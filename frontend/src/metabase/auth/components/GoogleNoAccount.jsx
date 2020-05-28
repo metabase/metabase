@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import AuthScene from "./AuthScene";
 import LogoIcon from "metabase/components/LogoIcon";
 import BackToLogin from "./BackToLogin";

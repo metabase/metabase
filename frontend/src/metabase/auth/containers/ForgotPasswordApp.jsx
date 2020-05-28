@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import AuthScene from "../components/AuthScene";
 import BackToLogin from "../components/BackToLogin";
 import Form from "metabase/containers/Form";

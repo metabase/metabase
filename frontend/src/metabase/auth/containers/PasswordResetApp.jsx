@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 
-import { t, jt } from "metabase/lib/ttag";
+import { t, jt } from "ttag";
 import AuthScene from "../components/AuthScene";
 import Form from "metabase/containers/Form";
 import LogoIcon from "metabase/components/LogoIcon";

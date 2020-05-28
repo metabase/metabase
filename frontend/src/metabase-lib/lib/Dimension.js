@@ -1,4 +1,4 @@
-import { t, ngettext, msgid } from "metabase/lib/ttag";
+import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";

@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
-import { t, ngettext, msgid } from "metabase/lib/ttag";
+import { t, ngettext, msgid } from "ttag";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Popover from "metabase/components/Popover";

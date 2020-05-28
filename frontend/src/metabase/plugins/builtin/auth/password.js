@@ -1,7 +1,7 @@
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 
 import React from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import LdapAndEmailForm from "metabase/auth/components/LdapAndEmailForm";
 

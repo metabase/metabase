@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import { SetupApi } from "metabase/services";
 

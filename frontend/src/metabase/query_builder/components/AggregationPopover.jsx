@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";

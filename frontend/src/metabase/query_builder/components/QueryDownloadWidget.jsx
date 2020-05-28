@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import { parse as urlParse } from "url";
 import querystring from "querystring";
 

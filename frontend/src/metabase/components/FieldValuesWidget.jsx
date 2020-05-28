@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t, jt } from "metabase/lib/ttag";
+import { t, jt } from "ttag";
 
 import TokenField from "metabase/components/TokenField";
 import ValueComponent from "metabase/components/Value";

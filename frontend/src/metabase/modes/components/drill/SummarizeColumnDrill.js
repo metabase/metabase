@@ -5,7 +5,7 @@ import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import type {
   ClickAction,
   ClickActionProps,

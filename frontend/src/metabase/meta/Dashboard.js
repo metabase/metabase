@@ -19,7 +19,7 @@ import Dimension, {
 } from "metabase-lib/lib/Dimension";
 import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
 
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { slugify } from "metabase/lib/formatting";

@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 import styled from "styled-components";

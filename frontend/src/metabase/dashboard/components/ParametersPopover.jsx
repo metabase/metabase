@@ -1,6 +1,6 @@
 /* @flow */
 import React, { Component } from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import { PARAMETER_SECTIONS } from "metabase/meta/Dashboard";
 
 import type { Parameter, ParameterOption } from "metabase/meta/types/Parameter";

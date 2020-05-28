@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
 import { Link } from "react-router";

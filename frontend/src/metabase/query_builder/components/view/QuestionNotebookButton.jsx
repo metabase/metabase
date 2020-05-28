@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import cx from "classnames";
 
 import Tooltip from "metabase/components/Tooltip";

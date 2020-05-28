@@ -6,7 +6,7 @@ import AggregationName from "./AggregationName";
 import FieldSet from "metabase/components/FieldSet";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 export default class QueryDefinitionTooltip extends Component {
   static propTypes = {

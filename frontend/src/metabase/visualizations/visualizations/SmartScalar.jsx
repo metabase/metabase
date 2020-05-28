@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import { t, jt } from "metabase/lib/ttag";
+import { t, jt } from "ttag";
 import _ from "underscore";
 
 import { formatNumber, formatValue } from "metabase/lib/formatting";

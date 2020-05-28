@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import Warnings from "metabase/query_builder/components/Warnings";
 
 import Button from "metabase/components/Button";

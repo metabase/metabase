@@ -25,7 +25,7 @@ import "ace/snippets/mysql";
 import "ace/snippets/pgsql";
 import "ace/snippets/sqlserver";
 import "ace/snippets/json";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import { isMac } from "metabase/lib/browser";
 import { delay } from "metabase/lib/promise";

@@ -6,7 +6,7 @@ import Select from "metabase/components/Select";
 
 import Settings from "metabase/lib/settings";
 import { capitalize } from "metabase/lib/formatting";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 export const HOUR_OPTIONS = _.times(12, n => ({

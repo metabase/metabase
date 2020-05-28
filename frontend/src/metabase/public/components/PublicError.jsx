@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import { connect } from "react-redux";
 import { getErrorMessage } from "metabase/selectors/app";
 

@@ -6,7 +6,7 @@ import {
 } from "metabase/lib/redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import { PermissionsApi } from "metabase/services";
 import Group from "metabase/entities/groups";
 

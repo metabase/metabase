@@ -13,7 +13,7 @@ import Icon from "metabase/components/Icon";
 import RetinaImage from "react-retina-image";
 
 import _ from "underscore";
-import { t, jt } from "metabase/lib/ttag";
+import { t, jt } from "ttag";
 
 @connect(
   null,

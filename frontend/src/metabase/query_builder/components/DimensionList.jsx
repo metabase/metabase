@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import _ from "underscore";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import AccordionList from "metabase/components/AccordionList";
 import Icon from "metabase/components/Icon";

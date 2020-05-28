@@ -1,6 +1,6 @@
 import React from "react";
 import { connect } from "react-redux";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";

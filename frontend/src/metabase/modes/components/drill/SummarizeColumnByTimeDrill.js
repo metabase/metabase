@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { fieldRefForColumn } from "metabase/lib/dataset";
 import {

@@ -3,7 +3,7 @@ import React from "react";
 import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield";
 import Button from "metabase/components/Button";
 
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 
 // TODO: combine with ExpressionWidget

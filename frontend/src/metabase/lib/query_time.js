@@ -3,7 +3,7 @@ import inflection from "inflection";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
-import { t, ngettext, msgid } from "metabase/lib/ttag";
+import { t, ngettext, msgid } from "ttag";
 
 export const DATETIME_UNITS = [
   // "default",

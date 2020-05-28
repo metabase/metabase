@@ -8,7 +8,7 @@ import { Route } from "metabase/hoc/Title";
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
 import { UserAuthWrapper } from "redux-auth-wrapper";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import { loadCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";

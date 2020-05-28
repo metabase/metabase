@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import AuthProviderButton from "metabase/auth/components/AuthProviderButton";
 

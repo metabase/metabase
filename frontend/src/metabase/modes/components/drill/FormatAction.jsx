@@ -1,6 +1,6 @@
 /* @flow */
 
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import type {
   ClickAction,
   ClickActionProps,

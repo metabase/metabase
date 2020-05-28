@@ -1,5 +1,5 @@
 import React from "react";
-import { t, jt } from "metabase/lib/ttag";
+import { t, jt } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/components/ExternalLink";

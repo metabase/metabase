@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t, jt, ngettext, msgid } from "metabase/lib/ttag";
+import { t, jt, ngettext, msgid } from "ttag";
 
 import PulseEditName from "./PulseEditName";
 import PulseEditCollection from "./PulseEditCollection";

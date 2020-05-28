@@ -3,7 +3,7 @@ import React from "react";
 import { Flex } from "grid-styled";
 import cx from "classnames";
 import _ from "underscore";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import {
   NotebookCell,

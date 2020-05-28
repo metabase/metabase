@@ -7,7 +7,7 @@ import styles from "./Text.css";
 import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 

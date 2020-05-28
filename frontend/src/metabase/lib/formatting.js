@@ -5,7 +5,7 @@ import inflection from "inflection";
 import moment from "moment";
 import Humanize from "humanize-plus";
 import React from "react";
-import { ngettext, msgid } from "metabase/lib/ttag";
+import { ngettext, msgid } from "ttag";
 
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";

@@ -2,7 +2,7 @@ import React from "react";
 
 import CustomForm from "./CustomForm";
 
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 const StandardForm = ({ onClose, submitTitle, ...props }) => (
   <CustomForm {...props}>

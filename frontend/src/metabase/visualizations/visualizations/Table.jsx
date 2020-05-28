@@ -4,7 +4,7 @@ import React, { Component } from "react";
 
 import TableInteractive from "../components/TableInteractive.jsx";
 import TableSimple from "../components/TableSimple";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import * as DataGrid from "metabase/lib/data_grid";
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";

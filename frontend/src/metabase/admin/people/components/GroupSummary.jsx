@@ -1,7 +1,7 @@
 import React from "react";
 
 import _ from "underscore";
-import { t, ngettext, msgid } from "metabase/lib/ttag";
+import { t, ngettext, msgid } from "ttag";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 
 const GroupSummary = ({ groups, selectedGroups }) => {

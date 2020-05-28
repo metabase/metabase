@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { assocIn } from "icepick";
 
 import SettingHeader from "./SettingHeader";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import SettingInput from "./widgets/SettingInput";
 import SettingNumber from "./widgets/SettingNumber";

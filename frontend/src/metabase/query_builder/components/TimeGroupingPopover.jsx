@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import cx from "classnames";
 
 const BUCKETINGS = [

@@ -1,5 +1,5 @@
 import generatePassword from "password-generator";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import _ from "underscore";
 

@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import d3 from "d3";
 import cx from "classnames";
 

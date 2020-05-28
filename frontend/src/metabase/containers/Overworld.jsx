@@ -2,7 +2,7 @@ import React from "react";
 import _ from "underscore";
 import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
-import { t, jt } from "metabase/lib/ttag";
+import { t, jt } from "ttag";
 import { createSelector } from "reselect";
 
 import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";

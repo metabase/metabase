@@ -1,7 +1,7 @@
 /* @flow  */
 
 import React, { Component } from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import { Flex } from "grid-styled";
 
 import Icon from "metabase/components/Icon";

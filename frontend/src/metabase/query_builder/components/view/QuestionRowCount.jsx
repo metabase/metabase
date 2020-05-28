@@ -1,6 +1,6 @@
 import React from "react";
 
-import { ngettext, msgid, t } from "metabase/lib/ttag";
+import { ngettext, msgid, t } from "ttag";
 
 import { formatNumber } from "metabase/lib/formatting";
 

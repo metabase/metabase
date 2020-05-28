@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import RetinaImage from "react-retina-image";
 import Icon from "metabase/components/Icon";
 import Toggle from "metabase/components/Toggle";

@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import Select from "metabase/components/Select";
 
 export const component = Select;

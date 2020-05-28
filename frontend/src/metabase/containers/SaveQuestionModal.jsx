@@ -10,7 +10,7 @@ import Radio from "metabase/components/Radio";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import validate from "metabase/lib/validate";
 
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import "./SaveQuestionModal.css";
 

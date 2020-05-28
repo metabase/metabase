@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import StepIndicators from "metabase/components/StepIndicators";
 import RetinaImage from "react-retina-image";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import { color } from "metabase/lib/colors";
 

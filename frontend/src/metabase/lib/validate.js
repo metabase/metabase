@@ -1,4 +1,4 @@
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import Utils from "metabase/lib/utils";
 import Settings from "metabase/lib/settings";
 

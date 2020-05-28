@@ -2,7 +2,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import S from "metabase/components/Sidebar.css";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import SidebarItem from "metabase/components/SidebarItem";
 

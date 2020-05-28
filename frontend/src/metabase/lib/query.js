@@ -2,7 +2,7 @@ import React from "react";
 
 import inflection from "inflection";
 import _ from "underscore";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import Utils from "metabase/lib/utils";
 import { isFK, TYPE } from "metabase/lib/types";
 import { stripId } from "metabase/lib/formatting";

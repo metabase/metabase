@@ -4,7 +4,7 @@ import {
   isNumeric,
   isAny,
 } from "metabase/lib/schema_metadata";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import {
   columnsAreValid,
   getFriendlyName,

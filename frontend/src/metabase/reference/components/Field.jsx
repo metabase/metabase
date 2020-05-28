@@ -2,7 +2,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 import { isa, isFK, TYPE } from "metabase/lib/types";

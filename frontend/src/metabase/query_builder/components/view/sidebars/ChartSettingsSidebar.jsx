@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import visualizations from "metabase/visualizations";

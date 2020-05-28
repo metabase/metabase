@@ -2,7 +2,7 @@ import React, { Component } from "react";
 
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 export default class SavedQuestionIntroModal extends Component {
   render() {

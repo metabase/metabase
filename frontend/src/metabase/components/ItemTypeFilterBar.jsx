@@ -1,6 +1,6 @@
 import React from "react";
 import { Flex } from "grid-styled";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import { withRouter } from "react-router";
 
 import Icon from "metabase/components/Icon";

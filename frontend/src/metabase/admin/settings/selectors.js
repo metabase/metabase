@@ -1,7 +1,7 @@
 import _ from "underscore";
 import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import {
   PublicLinksDashboardListing,

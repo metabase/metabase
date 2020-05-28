@@ -9,7 +9,7 @@ import L from "metabase/components/List.css";
 
 import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/components/Ellipsified";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 const ReferenceHeader = ({
   name,

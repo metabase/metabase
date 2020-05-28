@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import _ from "underscore";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import {
   isa,
   isFK as isTypeFK,

@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import cx from "classnames";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";

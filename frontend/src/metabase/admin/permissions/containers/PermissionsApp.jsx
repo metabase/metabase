@@ -6,7 +6,7 @@ import { push } from "react-router-redux";
 
 import { clearSaveError, initialize } from "../permissions";
 import { getIsDirty, getSaveError } from "../selectors";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";

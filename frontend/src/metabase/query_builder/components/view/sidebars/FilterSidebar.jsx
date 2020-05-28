@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import cx from "classnames";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";

@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import Form from "metabase/containers/Form";
 import ModalContent from "metabase/components/ModalContent";

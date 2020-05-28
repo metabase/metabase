@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import cx from "classnames";
 import { connect } from "react-redux";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import { CSSTransitionGroup } from "react-transition-group";
 
 import S from "./Formula.css";

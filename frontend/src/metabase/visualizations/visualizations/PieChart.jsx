@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import ChartTooltip from "../components/ChartTooltip";
 import ChartWithLegend from "../components/ChartWithLegend";
 

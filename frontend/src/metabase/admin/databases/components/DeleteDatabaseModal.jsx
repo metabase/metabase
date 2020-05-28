@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";

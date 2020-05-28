@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 import { getIn } from "icepick";

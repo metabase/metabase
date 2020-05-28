@@ -1,5 +1,5 @@
 import { createAction } from "redux-actions";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import { createThunkAction } from "metabase/lib/redux";
 
 import { UserApi } from "metabase/services";

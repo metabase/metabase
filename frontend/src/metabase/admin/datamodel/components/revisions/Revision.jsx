@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import RevisionDiff from "./RevisionDiff";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import UserAvatar from "metabase/components/UserAvatar";
 
 import moment from "moment";

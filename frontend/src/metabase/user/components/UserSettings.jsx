@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box, Flex } from "grid-styled";
 
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 
 import User from "metabase/entities/users";

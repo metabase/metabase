@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t, jt } from "metabase/lib/ttag";
+import { t, jt } from "ttag";
 import _ from "underscore";
 import Link from "metabase/components/Link";
 

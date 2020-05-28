@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import Toggle from "metabase/components/Toggle";
 
 const SettingToggle = ({ setting, onChange, disabled }) => {

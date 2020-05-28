@@ -5,7 +5,7 @@ import d3 from "d3";
 import dc from "dc";
 import _ from "underscore";
 import { assocIn, updateIn } from "icepick";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import { lighten } from "metabase/lib/colors";
 
 import Question from "metabase-lib/lib/Question";

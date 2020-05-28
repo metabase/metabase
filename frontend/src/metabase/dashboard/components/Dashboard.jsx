@@ -9,7 +9,7 @@ import { Box } from "grid-styled";
 import DashboardHeader from "../components/DashboardHeader";
 import DashboardGrid from "../components/DashboardGrid";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import Parameters from "metabase/parameters/components/Parameters";
 import EmptyState from "metabase/components/EmptyState";
 

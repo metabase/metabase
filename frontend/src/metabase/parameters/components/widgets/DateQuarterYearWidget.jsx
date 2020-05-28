@@ -5,7 +5,7 @@ import YearPicker from "./YearPicker";
 import moment from "moment";
 import _ from "underscore";
 import cx from "classnames";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 // translator: this is a "moment" format string (https://momentjs.com/docs/#/displaying/format/) It should include "Q" for the quarter number, and raw text can be escaped by brackets. For eample "[Quarter] Q" will be rendered as "Quarter 1" etc
 const QUARTER_FORMAT_STRING = t`[Q]Q`;

@@ -23,7 +23,7 @@ import {
 import { isExpression } from "metabase/lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
-import { t, ngettext, msgid } from "metabase/lib/ttag";
+import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 export default class Filter extends MBQLClause {

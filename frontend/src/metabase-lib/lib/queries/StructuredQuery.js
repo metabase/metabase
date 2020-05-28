@@ -14,7 +14,7 @@ import {
 
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import { memoize } from "metabase-lib/lib/utils";
 

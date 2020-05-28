@@ -2,7 +2,7 @@
 
 import _ from "underscore";
 import d3 from "d3";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import crossfilter from "crossfilter";
 
 import { isDimension, isMetric, isDate } from "metabase/lib/schema_metadata";

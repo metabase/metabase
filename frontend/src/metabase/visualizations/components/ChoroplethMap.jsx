@@ -1,7 +1,7 @@
 /* eslint-disable no-color-literals */
 
 import React, { Component } from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { isString } from "metabase/lib/schema_metadata";

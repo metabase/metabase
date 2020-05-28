@@ -1,6 +1,6 @@
 /* @flow */
 
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { barRenderer } from "../lib/LineAreaBarRenderer";
 import { assocIn } from "icepick";

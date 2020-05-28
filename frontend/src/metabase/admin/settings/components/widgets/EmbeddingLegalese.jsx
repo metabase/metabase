@@ -1,6 +1,6 @@
 import React from "react";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 const EmbeddingLegalese = ({ onChange }) => (
   <div className="bordered rounded text-measure p4">

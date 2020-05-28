@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
 import cx from "classnames";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import fitViewport from "metabase/hoc/FitViewPort";
 

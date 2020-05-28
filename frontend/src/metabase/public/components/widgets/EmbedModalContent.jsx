@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { titleize } from "inflection";
 
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 

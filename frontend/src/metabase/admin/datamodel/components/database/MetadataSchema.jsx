@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import withTableMetadataLoaded from "metabase/admin/datamodel/withTableMetadataLoaded";
 import Tables from "metabase/entities/tables";
 

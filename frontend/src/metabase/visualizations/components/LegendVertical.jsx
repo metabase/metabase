@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./Legend.css";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import Tooltip from "metabase/components/Tooltip";
 
 import LegendItem from "./LegendItem";

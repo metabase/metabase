@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import { Flex, Box } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";

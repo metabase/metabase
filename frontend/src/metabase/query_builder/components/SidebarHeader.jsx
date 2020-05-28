@@ -1,6 +1,6 @@
 import React from "react";
 import cx from "classnames";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 

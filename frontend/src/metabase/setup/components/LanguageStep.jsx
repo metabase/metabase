@@ -1,6 +1,6 @@
 import React from "react";
 import cx from "classnames";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import { Box } from "grid-styled";
 
 import MetabaseSettings from "metabase/lib/settings";

@@ -6,7 +6,7 @@ import FormInput from "../components/FormInput";
 import FormTextArea from "../components/FormTextArea";
 import FieldSet from "metabase/components/FieldSet";
 import PartialQueryBuilder from "../components/PartialQueryBuilder";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
 
 import { reduxForm } from "redux-form";

@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 

@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t, jt } from "metabase/lib/ttag";
+import { t, jt } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 

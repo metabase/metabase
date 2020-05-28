@@ -1,6 +1,6 @@
 import LeafletMap from "./LeafletMap";
 import L from "leaflet";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import d3 from "d3";
 
 import { rangeForValue } from "metabase/lib/dataset";

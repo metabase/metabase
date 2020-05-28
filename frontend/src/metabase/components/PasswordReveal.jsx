@@ -1,7 +1,7 @@
 /* flow */
 import React, { Component } from "react";
 import CopyButton from "metabase/components/CopyButton";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 
 type State = {

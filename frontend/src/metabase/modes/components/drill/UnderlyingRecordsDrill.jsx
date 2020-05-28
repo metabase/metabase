@@ -1,6 +1,6 @@
 /* @flow */
 
-import { ngettext, msgid } from "metabase/lib/ttag";
+import { ngettext, msgid } from "ttag";
 import { inflect } from "metabase/lib/formatting";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";

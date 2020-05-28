@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
 

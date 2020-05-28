@@ -8,7 +8,7 @@ import PermissionsTabs from "../components/PermissionsTabs";
 import EditBar from "metabase/components/EditBar";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Button from "metabase/components/Button";
-import { t } from "metabase/lib/ttag";
+import { t } from "ttag";
 import cx from "classnames";
 
 import _ from "underscore";

@@ -1,6 +1,6 @@
 import React from "react";
 import { Box } from "grid-styled";
-import { t, jt } from "metabase/lib/ttag";
+import { t, jt } from "ttag";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
