@@ -42,7 +42,7 @@ describe("scenarios > admin > settings", () => {
     cy.route("PUT", "**/custom-formatting").as("saveFormatting");
 
     // update the formatting
-    cy.visit("/admin/settings/formatting");
+    cy.visit("/admin/settings/localization");
     cy.contains("17:24 (24-hour clock)").click();
     cy.wait("@saveFormatting");
 
@@ -51,7 +51,7 @@ describe("scenarios > admin > settings", () => {
     cy.contains(/^February 11, 2019, 21:40$/).debug();
 
     // reset the formatting
-    cy.visit("/admin/settings/formatting");
+    cy.visit("/admin/settings/localization");
     cy.contains("5:24 PM (12-hour clock)").click();
     cy.wait("@saveFormatting");
 
