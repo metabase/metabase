@@ -432,6 +432,8 @@ jobs:
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
                   lein with-profile +ci,+junit test || lein with-profile +ci,+junit test
                 no_output_timeout: << parameters.timeout >>
+      - store_test_results:
+          path: /home/circleci/metabase/metabase/target/junit
 
   test-migrate-from-h2:
     parameters:
