@@ -197,8 +197,8 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - fe-deps-{{ checksum "yarn.lock" }}
-            - fe-deps-
+            - fe-deps-v2-{{ checksum "yarn.lock" }}
+            - fe-deps-v2-
 
   run-yarn-command:
     parameters:
@@ -475,7 +475,7 @@ jobs:
           name: Save yarn checksum
           command: md5sum yarn.lock > yarn.lock.checksum
       - save_cache:
-          key: fe-deps-{{ checksum "yarn.lock" }}
+          key: fe-deps-v2-{{ checksum "yarn.lock" }}
           paths:
             - /home/circleci/.yarn
             - /home/circleci/.yarn-cache
