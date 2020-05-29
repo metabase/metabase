@@ -32,7 +32,9 @@
     :fingerprint_version i/latest-fingerprint-version
     :last_analyzed       nil))
 
-(defn- empty-stats-map [fields-count]
+(defn empty-stats-map
+  "The default stats before any fingerprints happen"
+  [fields-count]
   {:no-data-fingerprints   0
    :failed-fingerprints    0
    :updated-fingerprints   0
@@ -159,7 +161,12 @@
   "Generate and save fingerprints for all the Fields in TABLE that have not been previously analyzed."
   [table :- i/TableInstance]
   (if-let [fields (fields-to-fingerprint table)]
-    (fingerprint-table! table fields)
+    (let [stats (sync-util/with-error-handling
+                  (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+                  (fingerprint-table! table fields))]
+      (if (instance? Exception stats)
+        (empty-stats-map 0)
+        stats))
     (empty-stats-map 0)))
 
 (s/defn fingerprint-fields-for-db!
@@ -167,11 +174,14 @@
   [database :- i/DatabaseInstance
    tables :- [i/TableInstance]
    log-progress-fn]
+  ;; TODO: Maybe the driver should have a function to tell you if it supports fingerprinting?
   (qp.store/with-store
     ;; store is bound so DB timezone can be used in date coercion logic
     (qp.store/store-database! database)
     (apply merge-with + (for [table tables
-                              :let  [result (fingerprint-fields! table)]]
+                              :let  [result (if (= :googleanalytics (:engine database))
+                                              (empty-stats-map 0)
+                                              (fingerprint-fields! table))]]
                           (do
                             (log-progress-fn "fingerprint-fields" table)
                             result)))))

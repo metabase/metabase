@@ -126,8 +126,9 @@
   "Wrap keyword or string `s` in single quotes and a HoneySQL `raw` form.
 
   We'll try to escape single quotes in the literal, unless they're already escaped (either as `''` or as `\\`, but
-  this won't handle wacky cases like three single quotes in a row. Don't use `literal` for things that might be wacky.
-  Only use it for things that are hardcoded."
+  this won't handle wacky cases like three single quotes in a row.
+
+  DON'T USE `LITERAL` FOR THINGS THAT MIGHT BE WACKY (USER INPUT). Only use it for things that are hardcoded."
   [s]
   (Literal. (u/qualified-name s)))
 

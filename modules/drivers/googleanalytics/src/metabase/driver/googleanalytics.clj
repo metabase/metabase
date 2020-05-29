@@ -114,6 +114,8 @@
                  (json/parse-string query keyword)
                  query)
         client (client/database->client database)]
+    (assert (not (str/blank? (:metrics query)))
+            ":metrics is required in a Google Analytics query")
     ;; `end-date` is inclusive!!!
     (u/prog1 (.get (.ga (.data client))
                    (:ids query)

@@ -145,6 +145,12 @@
        (map (partial sql.qp/->honeysql driver))
        (reduce (partial hsql/call :concat))))
 
+(defmethod sql.qp/->honeysql [:redshift :concat]
+  [driver [_ & args]]
+  (->> args
+       (map (partial sql.qp/->honeysql driver))
+       (reduce (partial hsql/call :concat))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+

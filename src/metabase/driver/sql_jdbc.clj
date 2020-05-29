@@ -7,7 +7,6 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util.honeysql-extensions :as hx]))
 
 (driver/register! :sql-jdbc, :parent :sql, :abstract? true)
@@ -64,12 +63,3 @@
 (defmethod driver/describe-table-fks :sql-jdbc
   [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table))
-
-;; `:sql-jdbc` drivers almost certainly don't need to override this method, and instead can implement
-;; `unprepare/unprepare-value` for specific classes, or, in extereme cases, `unprepare/unprepare` itself.
-(defmethod driver/splice-parameters-into-native-query :sql-jdbc
-  [driver {:keys [params], sql :query, :as query}]
-  (cond-> query
-    (seq params)
-    (merge {:params nil
-            :query  (unprepare/unprepare driver (cons sql params))})))
