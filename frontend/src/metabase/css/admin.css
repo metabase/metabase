@@ -329,5 +329,5 @@
 }
 
 .ColumnSortHelper {
-  box-shadow: 0 2px 2px var(--color-shadow);
+  box-shadow: 0 7px 20px var(--color-shadow);
 }
