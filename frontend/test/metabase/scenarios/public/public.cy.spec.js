@@ -143,6 +143,11 @@ describe("scenarios > public", () => {
       cy.contains("Save").click();
 
       cy.contains(COUNT_ALL);
+      cy.contains("Category")
+        .parent()
+        .parent()
+        .find("fieldset")
+        .should("not.exist");
 
       cy.contains("Category").click();
       cy.focused().type("Doohickey");
