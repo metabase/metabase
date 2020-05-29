@@ -5,9 +5,7 @@ import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
-import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
-import Card from "metabase/components/Card";
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType, isCurrency } from "metabase/lib/schema_metadata";
 import { TYPE, isa, isFK } from "metabase/lib/types";
@@ -50,7 +48,7 @@ export default class Column extends Component {
     const { field, idfields, dragHandle } = this.props;
 
     return (
-      <Card className="p1 mt1 mb3 flex">
+      <div className="p1 mt1 mb3 flex bordered rounded">
         <div className="flex flex-column flex-auto">
           <div>
             <InputBlurChange
@@ -81,7 +79,7 @@ export default class Column extends Component {
                   to={`${this.props.location.pathname}/${this.props.field.id}`}
                   className="text-brand-hover mr1"
                 >
-                  <Button icon="gear" style={{ padding: 13 }} />
+                  <Button icon="gear" style={{ padding: 10 }} />
                 </Link>
               </div>
             </div>
@@ -97,7 +95,7 @@ export default class Column extends Component {
           </div>
         </div>
         {dragHandle}
-      </Card>
+      </div>
     );
   }
 }

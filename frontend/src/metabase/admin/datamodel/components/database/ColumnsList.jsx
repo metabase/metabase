@@ -94,7 +94,7 @@ export default class ColumnsList extends Component {
         </div>
         <SortableColumns
           onSortEnd={this.handleSortEnd}
-          helperClass="sort-helper"
+          helperClass="ColumnSortHelper"
           useDragHandle={true}
         >
           {(fieldOrder == null
