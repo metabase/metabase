@@ -6,6 +6,7 @@ import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
 import Icon from "metabase/components/Icon";
+import Button from "metabase/components/Button";
 import Card from "metabase/components/Card";
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType, isCurrency } from "metabase/lib/schema_metadata";
@@ -76,6 +77,12 @@ export default class Column extends Component {
                     idfields={idfields}
                   />
                 </div>
+                <Link
+                  to={`${this.props.location.pathname}/${this.props.field.id}`}
+                  className="text-brand-hover mr1"
+                >
+                  <Button icon="gear" style={{ padding: 13 }} />
+                </Link>
               </div>
             </div>
           </div>
@@ -89,12 +96,6 @@ export default class Column extends Component {
             />
           </div>
         </div>
-        <Link
-          to={`${this.props.location.pathname}/${this.props.field.id}`}
-          className="text-brand-hover mx2 mt1"
-        >
-          <Icon name="gear" />
-        </Link>
         {dragHandle}
       </Card>
     );

@@ -215,6 +215,7 @@ describe("scenarios > admin > datamodel > table", () => {
       }).then(resp => {
         expect(resp.body.data.cols[0].name).to.eq("SUBTOTAL");
       });
+    });
 
     it("should allow bulk hiding tables", () => {
       cy.visit(ORDERS_URL);

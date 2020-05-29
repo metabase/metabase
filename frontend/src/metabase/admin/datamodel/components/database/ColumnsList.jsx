@@ -18,7 +18,7 @@ import ColumnItem from "./ColumnItem";
 export default class ColumnsList extends Component {
   constructor(props) {
     super(props);
-    this.state = { sortedColumns: undefined };
+    this.state = { fieldOrder: undefined };
   }
 
   static propTypes = {
@@ -28,53 +28,54 @@ export default class ColumnsList extends Component {
   };
 
   componentDidMount() {
-    this.setFieldOrder();
+    this.setState({ fieldOrder: this.getFieldOrder(this.props.table) });
   }
 
   componentDidUpdate(prevProps) {
-    const { fields } = this.props.table || {};
-    const { fields: prevFields } = prevProps.table || {};
-    if (
-      !_.isEqual(fields.map(f => f.position), prevFields.map(f => f.position))
-    ) {
-      this.setFieldOrder();
+    const prevFieldOrder = this.getFieldOrder(prevProps.table);
+    const fieldOrder = this.getFieldOrder(this.props.table);
+    if (!_.isEqual(fieldOrder, prevFieldOrder)) {
+      this.setState({ fieldOrder });
     }
   }
 
-  setFieldOrder() {
-    const { fields } = this.props.table || {};
+  getFieldOrder(table) {
+    const { fields } = table || {};
     if (!fields) {
       return;
     }
-    const sortedColumns = {};
+    const positionById = {};
     for (const { id, position } of fields) {
-      sortedColumns[id] = position;
+      positionById[id] = position;
     }
-    this.setState({ sortedColumns });
+    return positionById;
   }
 
-  handleSortEnd = ({ oldIndex, newIndex }) => {
+  handleSortEnd = async ({ oldIndex, newIndex }) => {
     if (oldIndex === newIndex) {
       return;
     }
-    const fieldIdPositionPairs = Object.entries(this.state.sortedColumns);
+    const fieldIdPositionPairs = Object.entries(this.state.fieldOrder);
     const sortedFieldIds = new Array(fieldIdPositionPairs.length);
-    const sortedColumns = {};
+    const fieldOrder = {};
     for (const [id, index] of fieldIdPositionPairs) {
       const idx =
         index === oldIndex ? newIndex : index === newIndex ? oldIndex : index;
-      sortedColumns[id] = idx;
+      fieldOrder[id] = idx;
       sortedFieldIds[idx] = parseInt(id);
     }
+    this.setState({ fieldOrder });
 
+    if (this.props.table.field_order !== "custom") {
+      await this.props.table.update({ field_order: "custom" });
+    }
     this.props.table.setFieldOrder(sortedFieldIds);
-    this.setState({ sortedColumns });
   };
 
   render() {
     const { table = {} } = this.props;
     const { fields = [] } = table;
-    const { sortedColumns } = this.state;
+    const { fieldOrder } = this.state;
     return (
       <div id="ColumnsList" className="my3">
         <div className="flex align-baseline justify-between">
@@ -91,38 +92,25 @@ export default class ColumnsList extends Component {
             <div className="flex-half px1">{t`Type`}</div>
           </div>
         </div>
-        {table.field_order === "custom" ? (
-          <SortableColumns
-            onSortEnd={this.handleSortEnd}
-            helperClass="sort-helper"
-            useDragHandle={true}
-          >
-            {(sortedColumns == null
-              ? fields
-              : _.sortBy(fields, ({ id }) => sortedColumns[id])
-            ).map((field, index) => (
-              <SortableColumnItem
-                key={field.id}
-                field={field}
-                updateField={this.props.updateField}
-                idfields={this.props.idfields}
-                dragHandle={<DragHandle />}
-                index={index}
-              />
-            ))}
-          </SortableColumns>
-        ) : (
-          <Columns>
-            {fields.map(field => (
-              <ColumnItem
-                key={field.id}
-                field={field}
-                updateField={this.props.updateField}
-                idfields={this.props.idfields}
-              />
-            ))}
-          </Columns>
-        )}
+        <SortableColumns
+          onSortEnd={this.handleSortEnd}
+          helperClass="sort-helper"
+          useDragHandle={true}
+        >
+          {(fieldOrder == null
+            ? fields
+            : _.sortBy(fields, ({ id }) => fieldOrder[id])
+          ).map((field, index) => (
+            <SortableColumnItem
+              key={field.id}
+              field={field}
+              updateField={this.props.updateField}
+              idfields={this.props.idfields}
+              dragHandle={<DragHandle />}
+              index={index}
+            />
+          ))}
+        </SortableColumns>
       </div>
     );
   }
