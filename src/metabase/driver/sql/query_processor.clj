@@ -834,7 +834,7 @@
                               (concat
                                (for [[expression-name expression-definition] expressions]
                                  [:expression-definition
-                                  (name expression-name)
+                                  (mbql.u/qualified-name expression-name)
                                   (mbql.u/replace expression-definition
                                     [:expression expr] (expressions (keyword expr)))])
                                (distinct

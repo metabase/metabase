@@ -8,7 +8,9 @@
             [metabase
              [driver :as driver]
              [query-processor-test :as qp.test]
+             [sync :as sync]
              [test :as mt]]
+            [metabase.test.data.one-off-dbs :as one-off-dbs]
             [metabase.util.date-2 :as u.date]))
 
 (deftest basic-test
@@ -246,7 +248,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                     JOINS                                                                      |
+;;; |                                                     JOINS                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest expressions+joins-test
@@ -266,3 +268,46 @@
                                                   [:joined-field "users__via__user_id" [:field-id (mt/id :users :id)]]]}]})
                  mt/rows
                  ffirst))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 MISC BUG FIXES                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Make sure no part of query compilation is lazy as that won't play well with dynamic bindings.
+;; This is not an issue limited to expressions, but using expressions is the most straightforward
+;; way to reproducing it.
+(deftest no-lazyness-test
+  (one-off-dbs/with-blank-db
+    (let [ ;; need more fields than seq chunking size
+          fields (repeatedly 1000 gensym)]
+      (doseq [statement ["drop table if exists \"LOTS_OF_FIELDS\";"
+                         (format "create table \"LOTS_OF_FIELDS\" (a integer, b integer, %s);"
+                                 (str/join ", " (for [field-name fields]
+                                                  (str (name field-name) " integer"))))
+                         (format "insert into \"LOTS_OF_FIELDS\" values(%s);"
+                                 (str/join "," (range (+ (count fields) 2))))]]
+        (jdbc/execute! one-off-dbs/*conn* [statement]))
+      (sync/sync-database! (mt/db))
+      (is (= 1
+             (->> (mt/run-mbql-query lots_of_fields
+                    {:expressions {:c [:+ [:field-id (mt/id :lots_of_fields :a)]
+                                       [:field-id (mt/id :lots_of_fields :b)]]}
+                     :fields      (concat [[:expression :c]]
+                                          (for [field fields]
+                                            [:field-id (mt/id :lots_of_fields (keyword field))]))})
+                  (mt/formatted-rows [int])
+                  ffirst))))))
+
+;; Test for https://github.com/metabase/metabase/issues/12305
+(deftest expression-with-slashes
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 4.0]
+            [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 3.0]
+            [3 "The Apple Pan"         11 34.0406 -118.428 2 3.0]]
+           (mt/formatted-rows [int str int 4.0 4.0 int float]
+             (mt/run-mbql-query venues
+               {:expressions {:TEST/my-cool-new-field [:+ $price 1]}
+                :limit       3
+                :order-by    [[:asc $id]]})))
+        "Make sure an expression with a / in its name works")))
