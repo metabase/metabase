@@ -287,7 +287,7 @@ jobs:
       - run:
           name: Generate checksums of all driver module source files to use as Uberjar cache key
           command: >
-            for file in `find ./modules -type f | sort`;
+            for file in `find ./modules -type f -name '*.clj' -or -name '*.yaml' | sort`;
               do echo `md5sum $file` >> modules-checksums.txt;
             done;
       - run:
