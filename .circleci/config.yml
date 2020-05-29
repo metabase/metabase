@@ -556,6 +556,7 @@ jobs:
           keys:
             - drivers-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
             - drivers-{{ checksum "./modules-checksums.txt" }}
+            - drivers
       - run:
           name: Build uberjar if needed
           command: >
@@ -579,7 +580,19 @@ jobs:
       - save_cache:
           key: drivers-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
           paths:
-            - /home/circleci/metabase/metabase/modules/drivers
+            - /home/circleci/metabase/metabase/modules/drivers/bigquery/target/uberjar/bigquery.metabase-driver.jar
+            - /home/circleci/metabase/metabase/modules/drivers/druid/target/uberjar/druid.metabase-driver.jar
+            - /home/circleci/metabase/metabase/modules/drivers/google/target/uberjar/google.metabase-driver.jar
+            - /home/circleci/metabase/metabase/modules/drivers/googleanalytics/target/uberjar/googleanalytics.metabase-driver.jar
+            - /home/circleci/metabase/metabase/modules/drivers/mongo/target/uberjar/mongo.metabase-driver.jar
+            - /home/circleci/metabase/metabase/modules/drivers/oracle/target/uberjar/oracle.metabase-driver.jar
+            - /home/circleci/metabase/metabase/modules/drivers/presto/target/uberjar/presto.metabase-driver.jar
+            - /home/circleci/metabase/metabase/modules/drivers/redshift/target/uberjar/redshift.metabase-driver.jar
+            - /home/circleci/metabase/metabase/modules/drivers/snowflake/target/uberjar/snowflake.metabase-driver.jar
+            - /home/circleci/metabase/metabase/modules/drivers/sparksql/target/uberjar/sparksql.metabase-driver.jar
+            - /home/circleci/metabase/metabase/modules/drivers/sqlite/target/uberjar/sqlite.metabase-driver.jar
+            - /home/circleci/metabase/metabase/modules/drivers/sqlserver/target/uberjar/sqlserver.metabase-driver.jar
+            - /home/circleci/metabase/metabase/modules/drivers/vertica/target/uberjar/vertica.metabase-driver.jar
 
   fe-tests-e2e:
     executor: clojure-and-node
