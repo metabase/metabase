@@ -539,7 +539,31 @@ jobs:
           command-name: Run frontend timezone tests
           command: run test-timezones
 
-  build-uberjar:
+  # Builds a slim uberjar, without database drivers - better for most development
+  build-slim-uberjar:
+    executor: clojure-and-node
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - restore_cache:
+          keys:
+            - uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
+      - run:
+          name: Build uberjar if needed
+          command: >
+            if [ ! -f './target/uberjar/metabase.jar' ];
+              then ./bin/build version frontend uberjar;
+            fi
+          no_output_timeout: 10m
+      - store_artifacts:
+          path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+      - save_cache:
+          key: uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
+          paths:
+            - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+
+  # Builds a complete uberjar, including all drivers - this takes a long time to complete
+  build-full-uberjar:
     executor: clojure-and-node
     steps:
       - attach-workspace
@@ -882,49 +906,52 @@ workflows:
       - fe-tests-timezones:
           requires:
             - fe-deps
-      - build-uberjar:
+      - build-slim-uberjar:
           requires:
             - be-deps
       - fe-tests-e2e:
           requires:
-            - build-uberjar
+            - build-slim-uberjar
             - fe-deps
 
       - fe-tests-cypress:
           name: fe-tests-cypress-1
           requires:
-            - build-uberjar
+            - build-slim-uberjar
             - fe-deps
           cypress-group: "default"
       - fe-tests-cypress:
           name: fe-tests-cypress-2
           requires:
-            - build-uberjar
+            - build-slim-uberjar
             - fe-deps
           cypress-group: "default"
       - fe-tests-cypress:
           name: fe-tests-cypress-3
           requires:
-            - build-uberjar
+            - build-slim-uberjar
             - fe-deps
           cypress-group: "default"
       - fe-tests-cypress:
           name: fe-tests-cypress-4
           requires:
-            - build-uberjar
+            - build-slim-uberjar
             - fe-deps
           cypress-group: "default"
 
       - fe-tests-cypress:
           name: fe-tests-cypress-mongo
           requires:
-            - build-uberjar
+            - build-full-uberjar
             - fe-deps
           e: fe-mongo
           cypress-group: "mongo"
           driver: mongo
           only-single-database: true
           test-files-location: frontend/test/metabase-db/mongo
+          branches:
+            only:
+              - /release-.*/
 
       - deploy-master:
           requires:
