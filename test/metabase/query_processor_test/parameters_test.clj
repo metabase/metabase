@@ -140,3 +140,12 @@
           (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
                  (mt/formatted-rows :checkins
                    (qp/process-query query)))))))))
+
+(deftest string-escape-test
+  ;; test `:sql` drivers that support native parameters
+  (mt/test-drivers (set (filter #(isa? driver/hierarchy % :sql) (mt/normal-drivers-with-feature :native-parameters)))
+    (testing "Make sure field filter parameters are properly escaped"
+      (let [query   (field-filter-count-query :venues :name :text "Tito's Tacos")
+            results (qp/process-query query)]
+        (is (= [[1]]
+               (mt/formatted-rows [int] results)))))))
