@@ -544,24 +544,36 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
+      # restore already-built uberjar
       - restore_cache:
           keys:
             - uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
-      # Restore the local maven installation of Metabase which is needed for building drivers
+      # restore the local maven installation of Metabase which is needed for building drivers
       - restore_cache:
           keys:
             - metabase-core-{{ checksum "./backend-checksums.txt" }}
-      # Restore the already-built drivers
+      # restore already-built drivers
       - restore_cache:
           keys:
             - drivers-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
             - drivers-{{ checksum "./modules-checksums.txt" }}
             - drivers
+      # restore already-built frontend
+      - restore_cache:
+          keys:
+            - frontend-{{ checksum "./frontend-checksums.txt" }}
+      - run:
+          name: Build frontend if needed
+          command: >
+            if [ ! -f './resources/frontend_client/index.html' ];
+              then ./bin/build version frontend;
+            fi
+          no_output_timeout: 5m
       - run:
           name: Build uberjar if needed
           command: >
             if [ ! -f './target/uberjar/metabase.jar' ];
-              then ./bin/build version frontend drivers uberjar;
+              then ./bin/build version drivers uberjar;
             fi
           no_output_timeout: 10m
       - store_artifacts:
@@ -593,6 +605,11 @@ jobs:
             - /home/circleci/metabase/metabase/modules/drivers/sqlite/target/uberjar/sqlite.metabase-driver.jar
             - /home/circleci/metabase/metabase/modules/drivers/sqlserver/target/uberjar/sqlserver.metabase-driver.jar
             - /home/circleci/metabase/metabase/modules/drivers/vertica/target/uberjar/vertica.metabase-driver.jar
+      # Cache the built frontend
+      - save_cache:
+          key: frontend-{{ checksum "./frontend-checksums.txt" }}
+          paths:
+            - /home/circleci/metabase/metabase/resources/frontend_client
 
   fe-tests-e2e:
     executor: clojure-and-node
