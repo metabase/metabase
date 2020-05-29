@@ -909,6 +909,13 @@ workflows:
       - build-slim-uberjar:
           requires:
             - be-deps
+      - build-full-uberjar:
+          requires:
+            - be-deps
+          filters:
+            branches:
+              only:
+                - /release-.*/
       - fe-tests-e2e:
           requires:
             - build-slim-uberjar
@@ -949,9 +956,10 @@ workflows:
           driver: mongo
           only-single-database: true
           test-files-location: frontend/test/metabase-db/mongo
-          branches:
-            only:
-              - /release-.*/
+          filters:
+            branches:
+              only:
+                - /release-.*/
 
       - deploy-master:
           requires:
