@@ -54,8 +54,8 @@
 ;; TODO: this should changed to `update-tables!` and update multiple tables in one db request
 (defn- update-table!
   [id {:keys [visibility_type] :as body}]
-  (api/write-check Table id)
-  (let [original-visibility-type (db/select-one-field :visibility_type Table :id id)]
+  (let [table (Table id)]
+    (api/write-check table)
     ;; always update visibility type; update display_name, show_in_getting_started, entity_type if non-nil; update
     ;; description and related fields if passed in
     (api/check-500
@@ -63,15 +63,20 @@
        (assoc (u/select-keys-when body
                 :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
                 :present [:description :caveats :points_of_interest])
-         :visibility_type visibility_type)))
-    (let [updated-table   (Table id)
-          now-visible?    (nil? (:visibility_type updated-table)) ; only Tables with `nil` visibility type are visible
-          was-visible?    (nil? original-visibility-type)
-          became-visible? (and now-visible? (not was-visible?))]
+              :visibility_type visibility_type)))
+    (let [updated-table        (Table id)
+          changed-field-order? (not= (:field_order updated-table) (:field_order table))
+          now-visible?         (nil? (:visibility_type updated-table)) ; only Tables with `nil` visibility type are visible
+          was-visible?         (nil? (:visibility_type table))
+          became-visible?      (and now-visible? (not was-visible?))]
       (when became-visible?
         (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name updated-table))))
         (sync/sync-table! updated-table))
-      updated-table)))
+      (if changed-field-order?
+        (do
+          (table/update-field-positions! updated-table)
+          (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
+         updated-table))))
 
 (api/defendpoint PUT "/:id"
   "Update `Table` with ID."
@@ -381,6 +386,6 @@
   [id :as {field_order :body}]
   {field_order [su/IntGreaterThanZero]}
   (api/check-superuser)
-  (-> id Table api/check-404 (table/order-fields field_order)))
+  (-> id Table api/check-404 (table/custom-order-fields! field_order)))
 
 (api/define-routes)

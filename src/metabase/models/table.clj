@@ -75,45 +75,46 @@
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
-(defmulti field-order-rule
-  "Generate `:order-by` clause for fields."
-  :field_order)
-
-(defmethod field-order-rule :custom
+(defn field-order-rule
+  "How should we order fields."
   [_]
-  [[:position :asc]])
+  [[:position :asc] [:%lower.name :asc]])
 
-(defmethod field-order-rule :database
-  [_]
-  [[:database_position :asc]])
-
-(defmethod field-order-rule :smart
-  [_]
-  [[(hsql/call :case
-               (mdb/isa :special_type :type/PK)       0
-               (mdb/isa :special_type :type/Name)     1
-               (mdb/isa :special_type :type/Temporal) 2
-               :else                                  3)
-    :asc]
-   [:%lower.name :asc]])
-
-(defmethod field-order-rule :alphabetical
-  [_]
-  [[:%lower.name :asc]])
+(defn update-field-positions!
+  "Update `:position` of field belonging to table `table` accordingly to `:field_order`"
+  [table]
+  (doall
+   (map-indexed (fn [idx field]
+                  (db/update! Field (u/get-id field) :position idx))
+                ;; Can't use `select-field` as that returns a set while we need an ordered list
+                (db/select [Field :id]
+                  :table_id (u/get-id table)
+                  {:order-by (case (:field_order table)
+                               :custom       [[:custom_position :asc]]
+                               :smart        [[(hsql/call :case
+                                                 (mdb/isa :special_type :type/PK)       0
+                                                 (mdb/isa :special_type :type/Name)     1
+                                                 (mdb/isa :special_type :type/Temporal) 2
+                                                 :else                                  3)
+                                               :asc]
+                                              [:%lower.name :asc]]
+                               :database     [[:database_position :asc]]
+                               :alphabetical [[:%lower.name :asc]])}))))
 
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
   (= (db/select-ids Field :table_id (u/get-id table)) (set field-ordering)))
 
-(defn order-fields
+(defn custom-order-fields!
   "Set field order to `field-order`."
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
   (db/update! Table (u/get-id table) {:field_order :custom})
   (doall
    (map-indexed (fn [idx field-id]
-                  (db/update! Field field-id :position idx))
+                  (db/update! Field field-id {:position        idx
+                                              :custom_position idx}))
                 field-order)))
 
 
