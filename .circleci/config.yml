@@ -547,6 +547,15 @@ jobs:
       - restore_cache:
           keys:
             - uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
+      # Restore the local maven installation of Metabase which is needed for building drivers
+      - restore_cache:
+          keys:
+            - metabase-core-{{ checksum "./backend-checksums.txt" }}
+      # Restore the already-built drivers
+      - restore_cache:
+          keys:
+            - drivers-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+            - drivers-{{ checksum "./modules-checksums.txt" }}
       - run:
           name: Build uberjar if needed
           command: >
@@ -556,10 +565,21 @@ jobs:
           no_output_timeout: 10m
       - store_artifacts:
           path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+      # Cache the built uberjar
       - save_cache:
           key: uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+      # Cache the maven installation of metabase-core
+      - save_cache:
+          key: metabase-core-{{ checksum "./backend-checksums.txt" }}
+          paths:
+            - /home/circleci/.m2/repository/metabase-core
+      # Cache the built drivers
+      - save_cache:
+          key: drivers-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+          paths:
+            - /home/circleci/metabase/metabase/modules/drivers
 
   fe-tests-e2e:
     executor: clojure-and-node
