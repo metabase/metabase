@@ -197,8 +197,8 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - fe-deps-{{ checksum "yarn.lock" }}
-            - fe-deps-
+            - fe-deps-v2-{{ checksum "yarn.lock" }}
+            - fe-deps-v2-
 
   run-yarn-command:
     parameters:
@@ -287,7 +287,7 @@ jobs:
       - run:
           name: Generate checksums of all driver module source files to use as Uberjar cache key
           command: >
-            for file in `find ./modules -type f | sort`;
+            for file in `find ./modules -type f -name '*.clj' -or -name '*.yaml' | sort`;
               do echo `md5sum $file` >> modules-checksums.txt;
             done;
       - run:
@@ -474,7 +474,7 @@ jobs:
           name: Save yarn checksum
           command: md5sum yarn.lock > yarn.lock.checksum
       - save_cache:
-          key: fe-deps-{{ checksum "yarn.lock" }}
+          key: fe-deps-v2-{{ checksum "yarn.lock" }}
           paths:
             - /home/circleci/.yarn
             - /home/circleci/.yarn-cache
@@ -543,22 +543,72 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
+      # restore already-built uberjar
       - restore_cache:
           keys:
             - uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
+      # restore the local maven installation of Metabase which is needed for building drivers
+      - restore_cache:
+          keys:
+            - metabase-core-{{ checksum "./backend-checksums.txt" }}
+      # restore already-built drivers
+      - restore_cache:
+          keys:
+            - drivers-v3-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+            - drivers-v3-{{ checksum "./modules-checksums.txt" }}
+            - drivers-v3-
+      # restore already-built frontend
+      - restore_cache:
+          keys:
+            - frontend-{{ checksum "./frontend-checksums.txt" }}
+      - run:
+          name: Build frontend if needed
+          command: >
+            if [ ! -f './resources/frontend_client/index.html' ];
+              then ./bin/build version frontend;
+            fi
+          no_output_timeout: 5m
       - run:
           name: Build uberjar if needed
           command: >
             if [ ! -f './target/uberjar/metabase.jar' ];
-              then ./bin/build version frontend drivers uberjar;
+              then ./bin/build version drivers uberjar;
             fi
           no_output_timeout: 10m
       - store_artifacts:
           path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+      # Cache the built uberjar
       - save_cache:
           key: uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+      # Cache the maven installation of metabase-core
+      - save_cache:
+          key: metabase-core-{{ checksum "./backend-checksums.txt" }}
+          paths:
+            - /home/circleci/.m2/repository/metabase-core
+      # Cache the built drivers
+      - save_cache:
+          key: drivers-v3-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+          paths:
+            - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
+            - /home/circleci/metabase/metabase/modules/drivers/druid/target
+            - /home/circleci/metabase/metabase/modules/drivers/google/target
+            - /home/circleci/metabase/metabase/modules/drivers/googleanalytics/target
+            - /home/circleci/metabase/metabase/modules/drivers/mongo/target
+            - /home/circleci/metabase/metabase/modules/drivers/oracle/target
+            - /home/circleci/metabase/metabase/modules/drivers/presto/target
+            - /home/circleci/metabase/metabase/modules/drivers/redshift/target
+            - /home/circleci/metabase/metabase/modules/drivers/snowflake/target
+            - /home/circleci/metabase/metabase/modules/drivers/sparksql/target
+            - /home/circleci/metabase/metabase/modules/drivers/sqlite/target
+            - /home/circleci/metabase/metabase/modules/drivers/sqlserver/target
+            - /home/circleci/metabase/metabase/modules/drivers/vertica/target
+      # Cache the built frontend
+      - save_cache:
+          key: frontend-{{ checksum "./frontend-checksums.txt" }}
+          paths:
+            - /home/circleci/metabase/metabase/resources/frontend_client
 
   fe-tests-e2e:
     executor: clojure-and-node
