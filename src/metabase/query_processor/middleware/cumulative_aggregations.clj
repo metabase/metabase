@@ -24,6 +24,12 @@
     [:cum-count field] [:count field]
     [:cum-sum field]   [:sum field]))
 
+(defn- maybe-add
+  [a b]
+  (if (and a b)
+    (+ a b)
+    (or a b 0)))
+
 (defn- add-values-from-last-row
   "Update values in `row` by adding values from `last-row` for a set of specified indexes.
 
@@ -37,7 +43,7 @@
    row
 
    :else
-   (recur more last-row (update (vec row) index (partial + (nth last-row index))))))
+   (recur more last-row (update (vec row) index (partial maybe-add (nth last-row index))))))
 
 (defn- cumulative-ags-xform [replaced-indecies rf]
   {:pre [(fn? rf)]}
