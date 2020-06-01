@@ -39,11 +39,11 @@ export default class LanguageStep extends React.Component {
           className="SetupStep SetupStep--active rounded bg-white full relative"
         >
           <StepTitle
-            title={t`What's your preferred language`}
+            title={t`What's your preferred language?`}
             circleText={String(stepNumber)}
           />
           <p className="text-default">
-            {t`This language will be used throughout Metabase and be the default for new users`}
+            {t`This language will be used throughout Metabase and will be the default for new users.`}
           </p>
           <div className="overflow-hidden mb2">
             <ol
