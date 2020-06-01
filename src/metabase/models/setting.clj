@@ -191,7 +191,9 @@
     (when (seq v)
       v)))
 
-(defn- string->boolean [string-value]
+(defn string->boolean
+  "Interpret a `string-value` of a Setting as a boolean."
+  [string-value]
   (when (seq string-value)
     (case (str/lower-case string-value)
       "true"  true
@@ -336,29 +338,29 @@
   such as `\"true\"` or `\"false\"` (these strings are case-insensitive)."
   [setting-definition-or-name new-value]
   (set-string! setting-definition-or-name (if (string? new-value)
-                                 (set-boolean! setting-definition-or-name (string->boolean new-value))
-                                 (case new-value
-                                   true  "true"
-                                   false "false"
-                                   nil   nil))))
+                                            (set-boolean! setting-definition-or-name (string->boolean new-value))
+                                            (case new-value
+                                              true  "true"
+                                              false "false"
+                                              nil   nil))))
 
 (defn set-integer!
   "Set the value of integer `setting-definition-or-name`."
   [setting-definition-or-name new-value]
   (set-string! setting-definition-or-name (when new-value
-                                 (assert (or (integer? new-value)
-                                             (and (string? new-value)
-                                                  (re-matches #"^\d+$" new-value))))
-                                 (str new-value))))
+                                            (assert (or (integer? new-value)
+                                                        (and (string? new-value)
+                                                             (re-matches #"^\d+$" new-value))))
+                                            (str new-value))))
 
 (defn set-double!
   "Set the value of double `setting-definition-or-name`."
   [setting-definition-or-name new-value]
   (set-string! setting-definition-or-name (when new-value
-                                 (assert (or (number? new-value)
-                                             (and (string? new-value)
-                                                  (re-matches #"[+-]?([0-9]*[.])?[0-9]+" new-value) )))
-                                 (str new-value))))
+                                            (assert (or (number? new-value)
+                                                        (and (string? new-value)
+                                                             (re-matches #"[+-]?([0-9]*[.])?[0-9]+" new-value) )))
+                                            (str new-value))))
 
 (defn set-json!
   "Serialize `new-value` for `setting-definition-or-name` as a JSON string and save it."
@@ -513,8 +515,8 @@
   (when-not (or (valid-trs-or-tru? desc)
                 (valid-str-of-trs-or-tru? desc))
     (throw (IllegalArgumentException.
-             (trs "defsetting descriptions strings must have `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
-                  (pr-str desc)))))
+            (trs "defsetting descriptions strings must have `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
+                 (pr-str desc)))))
   desc)
 
 (defmacro defsetting
@@ -565,8 +567,8 @@
                   description
                   (validate-description description))
          setting# (register-setting! (assoc ~options
-                                       :name ~(keyword setting-symb)
-                                       :description desc#))]
+                                            :name ~(keyword setting-symb)
+                                            :description desc#))]
      (-> (def ~setting-symb (setting-fn setting#))
          (alter-meta! merge (metadata-for-setting-fn setting#)))))
 
@@ -667,7 +669,7 @@
   "Returns settings values for a given :visibility"
   [visibility]
   (->> @registered-settings
-    (filter (fn [[_ options]] (and (not (:sensitive? options))
-                                   (= (:visibility options) visibility))))
-    (map (fn [[name]] [name (get name)]))
-    (into {})))
+       (filter (fn [[_ options]] (and (not (:sensitive? options))
+                                      (= (:visibility options) visibility))))
+       (map (fn [[name]] [name (get name)]))
+       (into {})))
