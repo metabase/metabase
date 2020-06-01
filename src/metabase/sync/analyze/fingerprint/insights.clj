@@ -202,11 +202,11 @@
                                (stats/simple-linear-regression xfn yfn)
                                (best-fit xfn yfn))))
                 (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit]]
-                  (let [unit         (let [unit (->> datetime :unit mbql.u/normalize-token)]
-                                       (if (or (nil? datetime)
+                  (let [unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
+                                       (if (or (nil? unit)
                                                (= unit :default))
                                          (infer-unit x-previous x-current)
-                                         (:unit datetime)))
+                                         unit))
                         show-change? (valid-period? x-previous x-current unit)]
                     (f/robust-map
                      :last-value     y-current
