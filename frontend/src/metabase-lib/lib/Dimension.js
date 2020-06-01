@@ -542,6 +542,21 @@ export class FieldLiteralDimension extends FieldDimension {
       },
     });
   }
+
+  defaultDimension(): ?Dimension {
+    if (this.field().isDate()) {
+      return new DatetimeFieldDimension(
+        this,
+        // Field literals don't have the fingerprint data we use to pick this, so let's just arbitrarily go with "day".
+        // We need some value to ensure that the date unit picker UI appears.
+        ["day"],
+        this._metadata,
+        this._query,
+      );
+    }
+    // TODO: Is there anything better to have here?
+    return null;
+  }
 }
 
 /**
