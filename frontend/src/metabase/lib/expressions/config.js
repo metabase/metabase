@@ -72,7 +72,7 @@ export const MBQL_CLAUSES = {
   count: {
     displayName: `Count`,
     type: "aggregation",
-    args: [],
+    args: ["expression"],
   },
   "cum-count": {
     displayName: `CumulativeCount`,
