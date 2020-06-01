@@ -499,7 +499,7 @@ describe("Dimension", () => {
     });
   });
 
-  describe.only("FieldLiteralDimension", () => {
+  describe("FieldLiteralDimension", () => {
     describe("INSTANCE METHODS", () => {
       describe("defaultDimension()", () => {
         it("should group date types by day", () => {
