@@ -72,10 +72,10 @@ export default class ColumnsList extends Component {
     }
     this.setState({ fieldOrder });
 
+    await this.props.table.setFieldOrder(sortedFieldIds);
     if (this.props.table.field_order !== "custom") {
       await this.props.table.update({ field_order: "custom" });
     }
-    this.props.table.setFieldOrder(sortedFieldIds);
   };
 
   render() {
