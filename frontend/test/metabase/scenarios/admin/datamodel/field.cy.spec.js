@@ -1,12 +1,20 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
-
-const ORDERS_CREATED_AT_URL = "/admin/datamodel/database/1/table/2/15/general";
-const ORDERS_PRODUCT_URL = "/admin/datamodel/database/1/table/2/11/general";
-const ORDERS_QUANTITY_URL = "/admin/datamodel/database/1/table/2/14/general";
+import {
+  signInAsAdmin,
+  restore,
+  withSampleDataset,
+  visitAlias,
+} from "__support__/cypress";
 
 describe("scenarios > admin > datamodel > field", () => {
   beforeEach(() => {
     signInAsAdmin();
+    withSampleDataset(({ ORDERS, ORDERS_ID }) => {
+      ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach(name => {
+        cy.wrap(
+          `/admin/datamodel/database/1/table/${ORDERS_ID}/${ORDERS[name]}/general`,
+        ).as(`ORDERS_${name}_URL`);
+      });
+    });
     cy.server();
     cy.route("PUT", "/api/field/*").as("fieldUpdate");
     cy.route("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
@@ -17,7 +25,7 @@ describe("scenarios > admin > datamodel > field", () => {
     before(restore);
 
     it("lets you change field name and description", () => {
-      cy.visit(ORDERS_CREATED_AT_URL);
+      visitAlias("@ORDERS_CREATED_AT_URL");
 
       cy.get('input[name="display_name"]').as("display_name");
       cy.get('input[name="description"]').as("description");
@@ -49,7 +57,7 @@ describe("scenarios > admin > datamodel > field", () => {
     before(restore);
 
     it("lets you change field visibility", () => {
-      cy.visit(ORDERS_CREATED_AT_URL);
+      visitAlias("@ORDERS_CREATED_AT_URL");
 
       cy.contains("Everywhere").click();
       cy.contains("Do not include").click({ force: true });
@@ -64,7 +72,7 @@ describe("scenarios > admin > datamodel > field", () => {
     before(restore);
 
     it("lets you change the type to 'No special type'", () => {
-      cy.visit(ORDERS_PRODUCT_URL);
+      visitAlias("@ORDERS_PRODUCT_ID_URL");
 
       cy.contains("Foreign Key").click();
       cy.contains("No special type").click({ force: true });
@@ -75,7 +83,7 @@ describe("scenarios > admin > datamodel > field", () => {
     });
 
     it("lets you change the type to 'Number'", () => {
-      cy.visit(ORDERS_PRODUCT_URL);
+      visitAlias("@ORDERS_PRODUCT_ID_URL");
 
       cy.contains("No special type").click();
       cy.contains("Number").click({ force: true });
@@ -86,7 +94,7 @@ describe("scenarios > admin > datamodel > field", () => {
     });
 
     it("lets you change the type to 'Foreign key' and choose the target field", () => {
-      cy.visit(ORDERS_PRODUCT_URL);
+      visitAlias("@ORDERS_PRODUCT_ID_URL");
 
       cy.contains("Number").click();
       cy.get(".ReactVirtualized__Grid").scrollTo(0, 0); // HACK: scroll to the top of the list. Ideally we should probably disable AccordianList virtualization
@@ -107,7 +115,7 @@ describe("scenarios > admin > datamodel > field", () => {
     before(restore);
 
     it("lets you change to 'Search box'", () => {
-      cy.visit(ORDERS_QUANTITY_URL);
+      visitAlias("@ORDERS_QUANTITY_URL");
 
       cy.contains("A list of all values").click();
       cy.contains("Search box").click();
@@ -122,7 +130,7 @@ describe("scenarios > admin > datamodel > field", () => {
     before(restore);
 
     it("lets you change to 'Use foreign key' and change the target for field with fk", () => {
-      cy.visit(ORDERS_PRODUCT_URL);
+      visitAlias("@ORDERS_PRODUCT_ID_URL");
 
       cy.contains("Use original value").click();
       cy.contains("Use foreign key").click();
@@ -135,7 +143,7 @@ describe("scenarios > admin > datamodel > field", () => {
     });
 
     it("lets you change to 'Custom mapping' and set custom values", () => {
-      cy.visit(ORDERS_QUANTITY_URL);
+      visitAlias("@ORDERS_QUANTITY_URL");
 
       cy.contains("Use original value").click();
       cy.contains("Custom mapping").click();

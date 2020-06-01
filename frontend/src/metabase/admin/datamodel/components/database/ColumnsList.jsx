@@ -60,7 +60,13 @@ export default class ColumnsList extends Component {
     const fieldOrder = {};
     for (const [id, index] of fieldIdPositionPairs) {
       const idx =
-        index === oldIndex ? newIndex : index === newIndex ? oldIndex : index;
+        newIndex <= index && index < oldIndex
+          ? index + 1 // shift down
+          : oldIndex < index && index <= newIndex
+          ? index - 1 // shift up
+          : index === oldIndex
+          ? newIndex // move dragged column to new location
+          : index; // otherwise, leave it where it is
       fieldOrder[id] = idx;
       sortedFieldIds[idx] = parseInt(id);
     }
