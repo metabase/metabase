@@ -1,5 +1,5 @@
 import path from "path";
-import { USERS, restore } from "__support__/cypress";
+import { USERS, restore, signInAsAdmin } from "__support__/cypress";
 
 const ADMIN = USERS.admin
 
@@ -32,13 +32,13 @@ describe("metabase-smoketest > admin", () => {
         cy.findByLabelText("Email").type(ADMIN.username);
         cy.findByLabelText("Your company or team name").type("Epic Team");
     
-        const strongPassword = "QJbHYJN3tPW[";
+        // const strongPassword = "QJbHYJN3tPW[";
         cy.findByLabelText("Create a password")
             .clear()
-            .type(strongPassword);
+            .type(ADMIN.password);
         cy.findByLabelText("Confirm your password")
             .clear()
-            .type(strongPassword);
+            .type(ADMIN.password);
         cy.findByText("Next").click();
 
         // ========
@@ -48,9 +48,6 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Select a database").click();
         cy.findByText("H2").click();
         cy.findByLabelText("Name").type("Metabase H2");
-        // cy.findByText("Next")
-        //     .closest("button")
-        //     .should("be.disabled");
         
         const dbPath = path.resolve(
             Cypress.config("fileServerFolder"),
@@ -67,9 +64,38 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Take me to Metabase").click();
         cy.url().should("be", "/");
     })
-        // should add a simple summarized question
-        // should add a simple JOINed question
-        // should add a questionw ith a default line visualization
-        // should add a new dashboard with the previous questions
-        // should add a new user
+    
+    it("should add a simple summarized question", () => {
+        // // *** When you click ask a question, you're redirected to a login page
+        // beforeEach(() => {
+        //     signInAsAdmin();
+        //     cy.server()
+        // });
+        before(signInAsAdmin())
+        cy.findByText("Ask a question").click()
+        
+        cy.findByText("Simple question").click()
+        cy.findByText("People").click()
+        
+        cy.findByText("Filter").click()
+        cy.findByText("Created At").click()
+        // Set timing to previous 12 months ('Previous' already selected)
+        cy.get('input[type="text"]').type("5")
+        cy.findByText("Days").click()
+        cy.findByText("Years").click()
+        cy.findByText("Add Filter").click()
+
+        cy.findByText("Summarize").click()
+        cy.findByText("Source").click()
+        cy.findByText("Done").click()
+
+        // Check that response is a bar graph
+    })
+    
+    it("should add a simple JOINed question", () => {
+        
+    })
+    // should add a questionw ith a default line visualization
+    // should add a new dashboard with the previous questions
+    // should add a new user 
 })
