@@ -93,9 +93,9 @@ export default class ColumnsList extends Component {
             style={{ minWidth: 420 }}
             className="float-left px1"
           >{t`Column`}</div>
-          <div className="flex clearfix">
-            <div className="flex-half px1">{t`Visibility`}</div>
-            <div className="flex-half px1">{t`Type`}</div>
+          <div className="flex clearfix" style={{ paddingRight: 47 }}>
+            <div className="flex-half pl2">{t`Visibility`}</div>
+            <div className="flex-half">{t`Type`}</div>
           </div>
         </div>
         <SortableColumns
@@ -123,11 +123,7 @@ export default class ColumnsList extends Component {
 }
 
 function Columns({ children, ...props }) {
-  return (
-    <div className="border-top border-bottom" {...props}>
-      {children}
-    </div>
-  );
+  return <div {...props}>{children}</div>;
 }
 
 const SortableColumns = SortableContainer(Columns);
@@ -159,7 +155,7 @@ class ColumnOrderDropdown extends Component {
         ref={ref => (this._popover = ref)}
         triggerElement={
           <span
-            className="text-brand"
+            className="text-brand text-bold"
             style={{ textTransform: "none", letterSpacing: 0 }}
           >
             {t`Column order: ${COLUMN_ORDERS[table.field_order]}`}

@@ -25,6 +25,11 @@
   flex: 0.5;
 }
 
+.flex-third,
+:local(.flex-third) {
+  flex: 0.33;
+}
+
 .flex-3-quarters,
 :local(.flex-3-quarters) {
   flex: 0.75;
