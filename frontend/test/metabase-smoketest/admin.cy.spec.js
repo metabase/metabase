@@ -56,21 +56,24 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Take me to Metabase").click();
         cy.url().should("be", "/");
 
+        
         // =================
         // should add a simple summarized question
         // =================
-
+        
+        // Following section is repeated-- turn into callback function?
+        // Also, selecting Metabase H2 doesn't do anything
         cy.findByText("Ask a question").click()        
         cy.findByText("Simple question").click()
-        // Selecting Metabase H2 doesn't do anything
         cy.findByText("Sample Dataset").click()
         cy.findByText("People").click()
         
+        // Filter for created within previous 5 years
+
         cy.findByText("Filter", {timeout: 20000}).click()
         cy.get(".scroll-y")
             .contains("Created At")
             .click()
-        // Set timing to previous 12 months ('Previous' already selected)
         cy.get("input[type='text']")
             .type("{backspace}{backspace}5")
         cy.findByText("Days").click()
@@ -78,14 +81,18 @@ describe("metabase-smoketest > admin", () => {
         cy.get(".scroll-y")
             .contains("Add filter")
             .click();
-
+        
+        // Summarize by source
+        
         cy.get(".Button")
             .contains("Summarize")
             .click()
         cy.findByText("Source").click()
         cy.findByText("Done").click()
 
-        // Check that response is a bar graph'
+        // =================
+        // should add question to a new dashboard
+        // =================
         
         cy.findByText("Save").click()
         cy.get("input[name='name']")
@@ -102,20 +109,50 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Create a new dashboard").click()
         cy.get("input[name='name']")
             .type("Demo Dash")
-        // Test can't find this input either...
-        // cy.get("input[name='description']")
-        //     .type("Many demos live here")
+        // Test can't find this description input either... should type: "Many demos live here"
         cy.findByText("Create").click()
         
         cy.contains("Save").click()
 
         // =================
-        // should add a simple JOINed question"
+        // should add a simple JOINed question
         // =================
+        
+        cy.findByText("Ask a question")
+        
+        cy.findByText("Ask a question").click()        
+        cy.findByText("Simple question").click()
+        cy.findByText("Sample Dataset").click()
+        cy.findByText("Orders").click()
+        
+        // Join tables
+        cy.get(".Icon-notebook", {timeout: 30000}).click()
+        cy.findByText("Join data").click()
+        cy.findByText("People").click()
+        cy.findByText("Visualize").click()
+        
+        // Summarize by 
+        cy.get(".Button", {timeout: 30000})
+            .contains("Summarize")
+            .click()
+        cy.findByText("State").click()
+        cy.findByText("Done").click()
+
+        // Save question (not to a dashboard)
+        cy.findByText("Save").click()
+        cy.get("input[name='name']")
+            .type("{selectall}{del}Order Totals by State")
+        cy.get(".ModalContent")
+            .get(".Button")
+            .contains("Save")
+            .click()
+        cy.findByText("Not now").click()
 
         // =================
-        // should add a questionw ith a default line visualization
+        // should add a question with a default line visualization
         // =================
+        
+        cy.findByText("Ask a question").click()
 
         // =================
         // should add a new dashboard with the previous questions
