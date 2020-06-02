@@ -183,7 +183,7 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Not now").click()
 
         // =================
-        // should add a new dashboard with the previous questions
+        // should create a new dashboard with the previous questions
         // =================
         
         // New dashboard
@@ -205,7 +205,7 @@ describe("metabase-smoketest > admin", () => {
         cy.contains("Order Totals by State")
         cy.contains("Orders Over Time")
 
-        cy.contains("Save").click()
+        cy.findByText("Save").click()
 
         // =================
         // should add a new user
