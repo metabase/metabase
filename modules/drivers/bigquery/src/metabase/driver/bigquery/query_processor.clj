@@ -23,8 +23,7 @@
             [metabase.util
              [date-2 :as u.date]
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]
-             [schema :as su]]
+             [i18n :refer [tru]]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
@@ -435,13 +434,6 @@
     (cond->> ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)
       t (->temporal-type t))))
 
-(s/defn ^:private honeysql-form->sql :- s/Str
-  [driver, honeysql-form :- su/Map]
-  (let [[sql & args :as sql+args] (sql.qp/format-honeysql driver honeysql-form)]
-    (if (seq args)
-      (unprepare/unprepare driver sql+args)
-      sql)))
-
 ;; From the dox: Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be
 ;; at most 128 characters long.
 (defmethod driver/format-custom-field-name :bigquery
@@ -451,25 +443,17 @@
                          (str/replace #"(^\d)" "_$1"))]
     (subs replaced-str 0 (min 128 (count replaced-str)))))
 
-;; These provide implementations of `->honeysql` that prevent HoneySQL from converting forms to prepared statement
-;; parameters (`?` symbols)
-;;
-;; TODO - these should probably be impls of `unprepare-value` instead, but it effectively ends up doing the same thing
-;; either way
-(defmethod sql.qp/->honeysql [:bigquery String]
-  [_ s]
-  (hx/literal s))
-
-(defmethod sql.qp/->honeysql [:bigquery Boolean]
-  [_ bool]
-  (hsql/raw (if bool "TRUE" "FALSE")))
-
 ;; See:
 ;;
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/time_functions
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions
+
+(defmethod unprepare/unprepare-value [:bigquery String]
+  [_ s]
+  ;; escape single-quotes like Cam's String -> Cam\'s String
+  (str \' (str/replace s "'" "\\\\'") \'))
 
 (defmethod unprepare/unprepare-value [:bigquery LocalTime]
   [_ t]
@@ -614,13 +598,15 @@
         {table-name :name} (some-> source-table-id qp.store/table)]
     (assert (seq dataset-id))
     (binding [sql.qp/*query* (assoc outer-query :dataset-id dataset-id)]
-      {:query      (->> outer-query
-                        (sql.qp/build-honeysql-form driver)
-                        (honeysql-form->sql driver))
-       :table-name (or table-name
-                       (when source-query
-                         sql.qp/source-query-alias))
-       :mbql?      true})))
+      (let [[sql & params] (->> outer-query
+                                (sql.qp/build-honeysql-form driver)
+                                (sql.qp/format-honeysql driver))]
+        {:query      sql
+         :params     params
+         :table-name (or table-name
+                         (when source-query
+                           sql.qp/source-query-alias))
+         :mbql?      true}))))
 
 (defrecord ^:private CurrentMomentForm [t]
   hformat/ToSql

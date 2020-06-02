@@ -622,7 +622,7 @@
     (remove-empty-clauses source-query [:query])))
 
 (def ^:private path->special-remove-empty-clauses-fn
-  {:native {:query identity}
+  {:native identity
    :query  {:source-query remove-empty-clauses-in-source-query
             :joins        {::sequence remove-empty-clauses-in-join}}})
 
