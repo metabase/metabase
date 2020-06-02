@@ -131,7 +131,7 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("People").click()
         cy.findByText("Visualize").click()
         
-        // Summarize by 
+        // Summarize by State
         cy.get(".Button", {timeout: 30000})
             .contains("Summarize")
             .click()
@@ -153,6 +153,33 @@ describe("metabase-smoketest > admin", () => {
         // =================
         
         cy.findByText("Ask a question").click()
+
+        cy.findByText("Ask a question").click()        
+        cy.findByText("Simple question").click()
+        cy.findByText("Sample Dataset").click()
+        cy.findByText("Orders").click()
+
+        // Summarize by date ordered
+        cy.get(".Button", {timeout: 30000})
+            .contains("Summarize")
+            .click()
+        cy.get(".scroll-y")
+            .contains("Created At")
+            .click()
+        cy.findByText("Done").click()
+
+        // checks that default is a line visualisation
+        cy.get(".Icon-line")
+
+        // Save question (not to a dashboard)
+        cy.findByText("Save").click()
+        cy.get("input[name='name']")
+            .type("{selectall}{del}Order Totals by State")
+        cy.get(".ModalContent")
+            .get(".Button")
+            .contains("Save")
+            .click()
+        cy.findByText("Not now").click()
 
         // =================
         // should add a new dashboard with the previous questions
