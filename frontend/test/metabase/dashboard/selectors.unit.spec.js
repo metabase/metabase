@@ -25,6 +25,7 @@ const STATE = {
   },
   entities: {
     databases: {},
+    schemas: {},
     tables: {},
     fields: {
       1: { id: 1 },
@@ -49,6 +50,7 @@ describe("dashboard/selectors", () => {
           id: 1,
           field_ids: [],
           field_id: null,
+          hasOnlyFieldTargets: true,
         },
       ]);
     });
@@ -66,6 +68,7 @@ describe("dashboard/selectors", () => {
           id: 1,
           field_ids: [],
           field_id: null,
+          hasOnlyFieldTargets: false,
         },
       ]);
     });
@@ -83,6 +86,7 @@ describe("dashboard/selectors", () => {
           id: 1,
           field_ids: [1],
           field_id: 1,
+          hasOnlyFieldTargets: true,
         },
       ]);
     });
@@ -105,6 +109,7 @@ describe("dashboard/selectors", () => {
           id: 1,
           field_ids: [1],
           field_id: 1,
+          hasOnlyFieldTargets: true,
         },
       ]);
     });
@@ -127,6 +132,7 @@ describe("dashboard/selectors", () => {
           id: 1,
           field_ids: [1],
           field_id: 1,
+          hasOnlyFieldTargets: false,
         },
       ]);
     });
@@ -149,6 +155,7 @@ describe("dashboard/selectors", () => {
           id: 1,
           field_ids: [1, 2],
           field_id: null,
+          hasOnlyFieldTargets: true,
         },
       ]);
     });

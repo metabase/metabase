@@ -8,7 +8,7 @@ import {
 } from "metabase/query_builder/actions";
 import { parse as urlParse } from "url";
 
-import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
+import { useSharedAdminLogin, createTestStore } from "__support__/e2e";
 
 import Question from "metabase-lib/lib/Question";
 import {
@@ -35,7 +35,7 @@ const question = Question.create({
   metadata,
 })
   .query()
-  .addAggregation(["count"])
+  .aggregate(["count"])
   .question();
 
 describe("Visualization drill-through", () => {

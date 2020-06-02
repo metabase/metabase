@@ -80,8 +80,7 @@
      (sync-metadata/update-metadata! table db-metadata (fetch-metadata/our-metadata table))))
 
 
-(s/defn sync-fields-for-table! :- {:updated-fields su/IntGreaterThanOrEqualToZero
-                                   :total-fields   su/IntGreaterThanOrEqualToZero}
+(s/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."
   ([table :- i/TableInstance]
    (sync-fields-for-table! (table/database table) table))
@@ -95,23 +94,22 @@
            new-hash      (calculate-table-hash db-metadata)
            hash-changed? (or (not old-hash) (not= new-hash old-hash))]
        ;; if hash is unchanged we can skip the rest of the sync process
-       (when-not hash-changed?
+       (if hash-changed?
+          ;; Now that Fields sync has completed successfully, save updated hash in the application DB...
+         (db/update! Table (u/get-id table) :fields_hash new-hash)
          (log/debug (trs "Hash of {0} matches stored hash, skipping Fields sync" (sync-util/name-for-logging table))))
-       ;; Ok, sync Fields if needed
-       (let [num-synced-fields (or (when hash-changed?
-                                     (sync-and-update! table db-metadata))
-                                   0)]
-         ;; Now that Fields sync has completed successfully, save updated hash in the application DB...
-         (when hash-changed?
-           (db/update! Table (u/get-id table) :fields_hash new-hash))
-         ;;; ...and return the results
-         {:total-fields total-fields, :updated-fields num-synced-fields})))))
+       {:total-fields   total-fields
+        :updated-fields (or (when hash-changed?
+                              (sync-and-update! table db-metadata))
+                            0)}))))
 
 
 (s/defn sync-fields! :- (s/maybe {:updated-fields su/IntGreaterThanOrEqualToZero
                                   :total-fields   su/IntGreaterThanOrEqualToZero})
-  "Sync the Fields in the Metabase application database for all the Tables in a DATABASE."
+  "Sync the Fields in the Metabase application database for all the Tables in a `database`."
   [database :- i/DatabaseInstance]
-  (let [tables (sync-util/db->sync-tables database)]
-    (apply merge-with + (for [table tables]
-                          (sync-fields-for-table! database table)))))
+  (->> database
+       sync-util/db->sync-tables
+       (map (partial sync-fields-for-table! database))
+       (remove (partial instance? Throwable))
+       (apply merge-with +)))

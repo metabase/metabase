@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import StructuredQuery from "../StructuredQuery";
 import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
+import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 import { TableId } from "metabase/meta/types/Table";
 import type {
@@ -157,7 +158,7 @@ export default class Join extends MBQLObjectClause {
   setDefaultAlias() {
     const parentDimension = this.parentDimension();
     if (parentDimension && parentDimension.field().isFK()) {
-      return this.setAlias(parentDimension.field().targetDisplayName());
+      return this.setAlias(parentDimension.field().targetObjectName());
     } else {
       const table = this.joinedTable();
       // $FlowFixMe
@@ -239,7 +240,7 @@ export default class Join extends MBQLObjectClause {
       options.count += fkOptions.count;
       options.fks.push(fkOptions);
     }
-    return options;
+    return new DimensionOptions(options);
   }
   setParentDimension(dimension: Dimension | ConcreteField): Join {
     if (dimension instanceof Dimension) {
@@ -274,11 +275,11 @@ export default class Join extends MBQLObjectClause {
   }
   joinDimensionOptions() {
     const dimensions = this.joinedDimensions();
-    return {
+    return new DimensionOptions({
       count: dimensions.length,
       dimensions: dimensions,
       fks: [],
-    };
+    });
   }
 
   // HELPERS
@@ -337,28 +338,27 @@ export default class Join extends MBQLObjectClause {
     dimensionFilter: (d: Dimension) => boolean = () => true,
   ) {
     const dimensions = this.joinedDimensions().filter(dimensionFilter);
-    return {
+    return new DimensionOptions({
       name: this.displayName(),
       icon: "join_left_outer",
       dimensions: dimensions,
       fks: [],
       count: dimensions.length,
-    };
+    });
   }
 
   joinedDimension(dimension: Dimension) {
-    return new JoinedDimension(
-      dimension,
-      [this.alias],
-      this.metadata(),
-      this.query(),
-    );
+    return this.query().parseFieldReference([
+      "joined-field",
+      this.alias,
+      dimension.mbql(),
+    ]);
   }
 
-  dependentTableIds() {
+  dependentMetadata() {
     const joinedQuery = this.joinedQuery();
     return joinedQuery
-      ? joinedQuery.dependentTableIds({ includeFKs: false })
+      ? joinedQuery.dependentMetadata({ foreignTables: false })
       : [];
   }
 

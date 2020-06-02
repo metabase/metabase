@@ -6,6 +6,7 @@
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -17,21 +18,23 @@
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]])
-  (:import java.sql.Time
-           java.util.Date
+  (:import [java.sql ResultSet Types]
+           [java.time OffsetDateTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier
            net.snowflake.client.jdbc.SnowflakeSQLException))
 
-(driver/register! :snowflake, :parent :sql-jdbc)
+(driver/register! :snowflake, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
 
-(defmethod sql-jdbc.conn/connection-details->spec :snowflake [_ {:keys [account regionid], :as opts}]
+(defmethod sql-jdbc.conn/connection-details->spec :snowflake
+  [_ {:keys [account regionid], :as opts}]
   (let [host (if regionid
                (str account "." regionid)
                account)]
@@ -58,7 +61,8 @@
                    (dissoc :host :port :timezone)))
         (sql-jdbc.common/handle-additional-options opts))))
 
-(defmethod sql-jdbc.sync/database-type->base-type :snowflake [_ base-type]
+(defmethod sql-jdbc.sync/database-type->base-type :snowflake
+  [_ base-type]
   ({:NUMBER                     :type/Number
     :DECIMAL                    :type/Decimal
     :NUMERIC                    :type/Number
@@ -88,25 +92,27 @@
     :TIMESTAMP                  :type/DateTime
     :TIMESTAMPLTZ               :type/DateTime
     :TIMESTAMPNTZ               :type/DateTime
-    :TIMESTAMPTZ                :type/DateTime
+    :TIMESTAMPTZ                :type/DateTimeWithTZ
     :VARIANT                    :type/*
     ;; Maybe also type *
     :OBJECT                     :type/Dictionary
     :ARRAY                      :type/*} base-type))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:snowflake :seconds]      [_ _ expr] (hsql/call :to_timestamp expr))
-(defmethod sql.qp/unix-timestamp->timestamp [:snowflake :milliseconds] [_ _ expr] (hsql/call :to_timestamp expr 3))
+(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] (hsql/call :to_timestamp expr))
+(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] (hsql/call :to_timestamp expr 3))
 
-(defmethod sql.qp/current-datetime-fn :snowflake [_]
+(defmethod sql.qp/current-datetime-honeysql-form :snowflake
+  [_]
   :%current_timestamp)
 
-(defmethod driver/date-add :snowflake [_ dt amount unit]
+(defmethod sql.qp/add-interval-honeysql-form :snowflake
+  [_ hsql-form amount unit]
   (hsql/call :dateadd
     (hsql/raw (name unit))
     (hsql/raw (int amount))
-    (hx/->timestamp dt)))
+    (hx/->timestamp hsql-form)))
 
-(defn- extract [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
+(defn- extract    [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
 (defn- date-trunc [unit expr] (hsql/call :date_trunc unit (hx/->timestamp expr)))
 
 (defmethod sql.qp/date [:snowflake :default]         [_ _ expr] expr)
@@ -125,6 +131,15 @@
 (defmethod sql.qp/date [:snowflake :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:snowflake :quarter-of-year] [_ _ expr] (extract :quarter expr))
 (defmethod sql.qp/date [:snowflake :year]            [_ _ expr] (date-trunc :year expr))
+
+
+(defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
+(defmethod sql.qp/->honeysql [:snowflake :median]
+  [driver [_ arg]]
+  (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but
@@ -185,7 +200,8 @@
   [driver [_ value unit]]
   (hx/->time (sql.qp/->honeysql driver value)))
 
-(defmethod sql.qp/field->identifier :snowflake [driver {table-id :table_id, :as field}]
+(defmethod sql.qp/field->identifier :snowflake
+  [driver {table-id :table_id, :as field}]
   ;; TODO - Making a DB call for each field to fetch its Table is inefficient and makes me cry, but this method is
   ;; currently only used for SQL params so it's not a huge deal at this point
   ;;
@@ -194,47 +210,57 @@
   (sql.qp/->honeysql driver field))
 
 
-(defmethod driver/table-rows-seq :snowflake [driver database table]
+(defmethod driver/table-rows-seq :snowflake
+  [driver database table]
   (sql-jdbc/query driver database {:select [:*]
                                    :from   [(qp.store/with-store
                                               (qp.store/fetch-and-store-database! (u/get-id database))
                                               (sql.qp/->honeysql driver table))]}))
 
-(defmethod driver/describe-database :snowflake [driver database]
+(defmethod driver/describe-database :snowflake
+  [driver database]
   {:tables (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
              (sql-jdbc.sync/fast-active-tables driver metadata (db-name database)))})
 
-(defmethod driver/describe-table :snowflake [driver database table]
+(defmethod driver/describe-table :snowflake
+  [driver database table]
   (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
     (->> (assoc (select-keys table [:name :schema])
-           :fields (sql-jdbc.sync/describe-table-fields metadata driver table (db-name database)))
+                :fields (sql-jdbc.sync/describe-table-fields metadata driver table (db-name database)))
          ;; find PKs and mark them
          (sql-jdbc.sync/add-table-pks metadata))))
 
-(defmethod driver/describe-table-fks :snowflake [driver database table]
+(defmethod driver/describe-table-fks :snowflake
+  [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table (db-name database)))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :snowflake [_] "ALTER SESSION SET TIMEZONE = %s;")
 
-(defmethod sql.qp/current-datetime-fn :snowflake [_] :%current_timestamp)
+(defmethod sql.qp/current-datetime-honeysql-form :snowflake [_] :%current_timestamp)
 
-(defmethod driver/format-custom-field-name :snowflake [_ s]
+(defmethod driver/format-custom-field-name :snowflake
+  [_ s]
   (str/lower-case s))
 
 ;; See https://docs.snowflake.net/manuals/sql-reference/data-types-datetime.html#timestamp.
-(defmethod driver.common/current-db-time-date-formatters :snowflake [_]
+(defmethod driver.common/current-db-time-date-formatters :snowflake
+  [_]
   (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSSSSSSSS Z"))
 
-(defmethod driver.common/current-db-time-native-query :snowflake [_]
+(defmethod driver.common/current-db-time-native-query :snowflake
+  [_]
   "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.FF TZHTZM')")
 
-(defmethod driver/current-db-time :snowflake [& args]
+(defmethod driver/current-db-time :snowflake
+  [& args]
   (apply driver.common/current-db-time args))
 
-(defmethod sql-jdbc.sync/excluded-schemas :snowflake [_]
+(defmethod sql-jdbc.sync/excluded-schemas :snowflake
+  [_]
   #{"INFORMATION_SCHEMA"})
 
-(defmethod driver/can-connect? :snowflake [driver {:keys [db], :as details}]
+(defmethod driver/can-connect? :snowflake
+  [driver {:keys [db], :as details}]
   (and ((get-method driver/can-connect? :sql-jdbc) driver details)
        (let [spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)
              sql  (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
@@ -245,7 +271,42 @@
              (log/error e (tru "Snowflake Database does not exist."))
              false)))))
 
-(defmethod unprepare/unprepare-value [:snowflake Date] [_ value]
-  (format "timestamp '%s'" (du/date->iso-8601 value)))
+(defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
+  [_ t]
+  (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
 
-(prefer-method unprepare/unprepare-value [:sql Time] [:snowflake Date])
+(defmethod unprepare/unprepare-value [:snowflake ZonedDateTime]
+  [driver t]
+  (unprepare/unprepare-value driver (t/offset-date-time t)))
+
+;; Like Vertica, Snowflake doesn't seem to be able to return a LocalTime/OffsetTime like everyone else, but it can
+;; return a String that we can parse
+(defmethod sql-jdbc.execute/read-column [:snowflake Types/TIME]
+  [_ _ ^ResultSet rs _ ^Integer i]
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
+      t)))
+
+(defmethod sql-jdbc.execute/read-column [:snowflake Types/TIME_WITH_TIMEZONE]
+  [_ _ ^ResultSet rs _ ^Integer i]
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+      t)))
+
+;; TODO ­ would it make more sense to use functions like `timestamp_tz_from_parts` directly instead of JDBC parameters?
+
+;; Snowflake seems to ignore the calendar parameter of `.setTime` and `.setTimestamp` and instead uses the session
+;; timezone; normalize temporal values to UTC so we end up with the right values
+(defmethod sql-jdbc.execute/set-parameter [::use-legacy-classes-for-read-and-set java.time.OffsetTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/sql-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+(defmethod sql-jdbc.execute/set-parameter [::use-legacy-classes-for-read-and-set java.time.OffsetDateTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+(defmethod sql-jdbc.execute/set-parameter [:snowflake java.time.ZonedDateTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))

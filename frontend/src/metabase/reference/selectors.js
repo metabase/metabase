@@ -152,7 +152,7 @@ export const getSegmentQuestions = createSelector(
         question =>
           question.dataset_query.type === "query" &&
           Query.getFilters(question.dataset_query.query).some(
-            filter => Filter.isSegmentFilter(filter) && filter[1] === segmentId,
+            filter => Filter.isSegment(filter) && filter[1] === segmentId,
           ),
       )
       .reduce((map, question) => assoc(map, question.id, question), {}),
@@ -199,7 +199,7 @@ export const getHasSingleSchema = createSelector(
   tables =>
     tables && Object.keys(tables).length > 0
       ? Object.values(tables).every(
-          (table, index, tables) => table.schema === tables[0].schema,
+          (table, index, tables) => table.schema_name === tables[0].schema,
         )
       : true,
 );

@@ -30,6 +30,7 @@ const ChartSettingFieldPicker = ({
   return (
     <div className={cx(className, "flex align-center")}>
       <ChartSettingSelect
+        className="flex-full"
         value={value}
         options={options}
         onChange={onChange}
@@ -56,8 +57,6 @@ const ChartSettingFieldPicker = ({
         className={cx("ml1 text-medium text-brand-hover cursor-pointer", {
           "disabled hidden": !onRemove,
         })}
-        width={12}
-        height={12}
         onClick={onRemove}
       />
     </div>

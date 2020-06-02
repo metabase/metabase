@@ -17,7 +17,7 @@ import cx from "classnames";
 @Tables.load({
   id: (state, { tableId }) => tableId,
   wrapped: true,
-  selectorName: "getTable",
+  selectorName: "getObjectUnfiltered",
 })
 @withTableMetadataLoaded
 export default class MetadataTable extends Component {
@@ -126,12 +126,14 @@ export default class MetadataTable extends Component {
         <div className="MetadataTable-title flex flex-column bordered rounded">
           <InputBlurChange
             className="AdminInput TableEditor-table-name text-bold border-bottom rounded-top"
+            name="display_name"
             type="text"
             value={table.display_name || ""}
             onBlurChange={this.onNameChange}
           />
           <InputBlurChange
             className="AdminInput TableEditor-table-description rounded-bottom"
+            name="description"
             type="text"
             value={table.description || ""}
             onBlurChange={this.onDescriptionChange}

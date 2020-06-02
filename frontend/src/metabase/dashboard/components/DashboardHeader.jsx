@@ -23,7 +23,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import cx from "classnames";
 
 import type { LocationDescriptor, QueryParams } from "metabase/meta/types";
-import type { Card, CardId } from "metabase/meta/types/Card";
+import type { CardId } from "metabase/meta/types/Card";
 import type {
   Parameter,
   ParameterId,
@@ -40,11 +40,10 @@ type Props = {
   location: LocationDescriptor,
 
   dashboard: DashboardWithCards,
-  cards: Card[],
 
   isAdmin: boolean,
   isEditable: boolean,
-  isEditing: boolean,
+  isEditing: false | DashboardWithCards,
   isFullscreen: boolean,
   isNightMode: boolean,
 
@@ -56,7 +55,6 @@ type Props = {
   addCardToDashboard: ({ dashId: DashCardId, cardId: CardId }) => void,
   addTextDashCardToDashboard: ({ dashId: DashCardId }) => void,
   archiveDashboard: (dashboardId: DashboardId) => void,
-  fetchCards: (filterMode?: string) => void,
   fetchDashboard: (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
   saveDashboardAndCards: () => Promise<void>,
   setDashboardAttribute: (attribute: string, value: any) => void,
@@ -64,7 +62,7 @@ type Props = {
   addParameter: (option: ParameterOption) => Promise<Parameter>,
   setEditingParameter: (parameterId: ?ParameterId) => void,
 
-  onEditingChange: (isEditing: boolean) => void,
+  onEditingChange: (isEditing: false | DashboardWithCards) => void,
   onRefreshPeriodChange: (?number) => void,
   onNightModeChange: boolean => void,
   onFullscreenChange: boolean => void,
@@ -85,7 +83,8 @@ export default class DashboardHeader extends Component {
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
     isEditable: PropTypes.bool.isRequired,
-    isEditing: PropTypes.bool.isRequired,
+    isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
+      .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
     isNightMode: PropTypes.bool.isRequired,
 
@@ -95,7 +94,6 @@ export default class DashboardHeader extends Component {
     addCardToDashboard: PropTypes.func.isRequired,
     addTextDashCardToDashboard: PropTypes.func.isRequired,
     archiveDashboard: PropTypes.func.isRequired,
-    fetchCards: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
@@ -106,8 +104,8 @@ export default class DashboardHeader extends Component {
     onFullscreenChange: PropTypes.func.isRequired,
   };
 
-  onEdit() {
-    this.props.onEditingChange(true);
+  handleEdit(dashboard: DashboardWithCards) {
+    this.props.onEditingChange(dashboard);
   }
 
   onAddTextBox() {
@@ -142,6 +140,22 @@ export default class DashboardHeader extends Component {
     this.props.onChangeLocation(Urls.collection(dashboard.collection_id));
   }
 
+  getEditWarning(dashboard: DashboardWithCards) {
+    if (dashboard.embedding_params) {
+      const currentSlugs = Object.keys(dashboard.embedding_params);
+      // are all of the original embedding params keys in the current
+      // embedding params keys?
+      if (
+        this.props.isEditing &&
+        !Object.keys(this.props.isEditing.embedding_params).every(slug =>
+          currentSlugs.includes(slug),
+        )
+      ) {
+        return "You've updated embedded params and will need to update your embed code.";
+      }
+    }
+  }
+
   getEditingButtons() {
     return [
       <a
@@ -156,7 +170,7 @@ export default class DashboardHeader extends Component {
         key="archive"
         ref="archiveDashboardModal"
         triggerClasses="Button Button--small"
-        triggerElement="Archive"
+        triggerElement={t`Archive`}
       >
         <ArchiveDashboardModal
           onArchive={() => this.onArchive(this.props.dashboard)}
@@ -188,8 +202,8 @@ export default class DashboardHeader extends Component {
     const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
-    const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
-    const isEmbeddingEnabled = MetabaseSettings.get("embedding");
+    const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
+    const isEmbeddingEnabled = MetabaseSettings.get("enable-embedding");
 
     const buttons = [];
 
@@ -221,8 +235,6 @@ export default class DashboardHeader extends Component {
         >
           <AddToDashSelectQuestionModal
             dashboard={dashboard}
-            cards={this.props.cards}
-            fetchCards={this.props.fetchCards}
             addCardToDashboard={this.props.addCardToDashboard}
             onEditingChange={this.props.onEditingChange}
             onClose={() => this.refs.addQuestionModal.toggle()}
@@ -294,7 +306,7 @@ export default class DashboardHeader extends Component {
             key="edit"
             title={t`Edit Dashboard Layout`}
             className="text-brand-hover cursor-pointer"
-            onClick={() => this.onEdit()}
+            onClick={() => this.handleEdit(dashboard)}
           >
             <Icon name="pencil" size={16} />
           </a>
@@ -355,6 +367,7 @@ export default class DashboardHeader extends Component {
         showBadge={!this.props.isEditing && !this.props.isFullscreen}
         isEditingInfo={this.props.isEditing}
         headerButtons={this.getHeaderButtons()}
+        editWarning={this.getEditWarning(dashboard)}
         editingTitle={t`You are editing a dashboard`}
         editingButtons={this.getEditingButtons()}
         setItemAttributeFn={this.props.setDashboardAttribute}

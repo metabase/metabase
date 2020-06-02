@@ -121,20 +121,8 @@ export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
 };
 
-// adds a flag to google analytics provided segments and metrics
-// we use this when we just want to filter out our own segments/metrics
-function addGoogleAnalyticsFlag(segmentOrMetric) {
-  return { ...segmentOrMetric, googleAnalyics: true };
-}
-
 export const MetabaseApi = {
   db_list: GET("/api/database"),
-  db_list_with_tables: GET(
-    "/api/database?include_tables=true&include_cards=true",
-  ),
-  db_real_list_with_tables: GET(
-    "/api/database?include_tables=true&include_cards=false",
-  ),
   db_create: POST("/api/database"),
   db_validate: POST("/api/database/validate"),
   db_add_sample_dataset: POST("/api/database/sample_dataset"),
@@ -142,6 +130,8 @@ export const MetabaseApi = {
   db_update: PUT("/api/database/:id"),
   db_delete: DELETE("/api/database/:dbId"),
   db_metadata: GET("/api/database/:dbId/metadata"),
+  db_schemas: GET("/api/database/:dbId/schemas"),
+  db_schema_tables: GET("/api/database/:dbId/schema/:schemaName"),
   //db_tables:   GET("/api/database/:dbId/tables"),
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
@@ -163,9 +153,24 @@ export const MetabaseApi = {
       // HACK: inject GA metadata that we don't have intergrated on the backend yet
       if (table && table.db && table.db.engine === "googleanalytics") {
         const GA = await getGAMetadata();
-        table.fields = table.fields.map(f => ({ ...f, ...GA.fields[f.name] }));
-        table.metrics.push(...GA.metrics.map(addGoogleAnalyticsFlag));
-        table.segments.push(...GA.segments.map(addGoogleAnalyticsFlag));
+        table.fields = table.fields.map(field => ({
+          ...field,
+          ...GA.fields[field.name],
+        }));
+        table.metrics.push(
+          ...GA.metrics.map(metric => ({
+            ...metric,
+            table_id: table.id,
+            googleAnalyics: true,
+          })),
+        );
+        table.segments.push(
+          ...GA.segments.map(segment => ({
+            ...segment,
+            table_id: table.id,
+            googleAnalyics: true,
+          })),
+        );
       }
 
       if (table && table.fields) {
@@ -203,6 +208,12 @@ export const MetabaseApi = {
   dataset: POST("/api/dataset"),
   dataset_duration: POST("/api/dataset/duration"),
   native: POST("/api/dataset/native"),
+
+  // to support audit app  allow the endpoint to be provided in the query
+  datasetEndpoint: POST("/api/:endpoint", {
+    // this prevents the `endpoint` parameter from being URL encoded
+    raw: { endpoint: true },
+  }),
 };
 
 export const PulseApi = {

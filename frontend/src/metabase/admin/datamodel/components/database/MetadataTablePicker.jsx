@@ -6,15 +6,20 @@ import MetadataSchemaList from "./MetadataSchemaList";
 
 import Tables from "metabase/entities/tables";
 
-import { titleize, humanize } from "metabase/lib/formatting";
+import _ from "underscore";
 
-@Tables.loadList()
+@Tables.loadList({
+  query: (state, { databaseId }) => ({
+    dbId: databaseId,
+    include_hidden: true,
+  }),
+  selectorName: "getListUnfiltered",
+})
 export default class MetadataTablePicker extends Component {
   constructor(props, context) {
     super(props, context);
 
     this.state = {
-      schemas: null,
       selectedSchema: null,
       showTablePicker: true,
     };
@@ -26,43 +31,24 @@ export default class MetadataTablePicker extends Component {
     selectTable: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
-    this.componentWillReceiveProps(this.props);
-  }
-
-  componentWillReceiveProps({ tables: allTables, databaseId, tableId }) {
-    const tables = allTables.filter(({ db_id }) => db_id === databaseId);
-    const schemas = {};
-    let selectedSchema;
-    for (const table of tables) {
-      const name = table.schema || ""; // possibly null
-      schemas[name] = schemas[name] || {
-        name: titleize(humanize(name)),
-        tables: [],
-      };
-      schemas[name].tables.push(table);
-      if (table.id === tableId) {
-        selectedSchema = schemas[name];
-      }
-    }
-    this.setState({
-      schemas: Object.values(schemas).sort((a, b) =>
-        a.name.localeCompare(b.name),
-      ),
-      selectedSchema: selectedSchema,
-    });
-  }
-
   render() {
-    const { schemas } = this.state;
+    const tablesBySchemaName = _.groupBy(this.props.tables, t => t.schema_name);
+    const schemas = Object.keys(tablesBySchemaName).sort((a, b) =>
+      a.localeCompare(b),
+    );
     if (schemas.length === 1) {
-      return <MetadataTableList {...this.props} tables={schemas[0].tables} />;
+      return (
+        <MetadataTableList
+          {...this.props}
+          tables={tablesBySchemaName[schemas[0]]}
+        />
+      );
     }
     if (this.state.selectedSchema && this.state.showTablePicker) {
       return (
         <MetadataTableList
           {...this.props}
-          tables={this.state.selectedSchema.tables}
+          tables={tablesBySchemaName[this.state.selectedSchema]}
           schema={this.state.selectedSchema}
           onBack={() => this.setState({ showTablePicker: false })}
         />
@@ -71,7 +57,7 @@ export default class MetadataTablePicker extends Component {
     return (
       <MetadataSchemaList
         schemas={schemas}
-        selectedSchema={this.state.schema}
+        selectedSchema={this.state.selectedSchema}
         onChangeSchema={schema =>
           this.setState({ selectedSchema: schema, showTablePicker: true })
         }

@@ -23,7 +23,7 @@ export default class MetadataHeader extends Component {
   setDatabaseIdIfUnset() {
     const { databaseId, databases = [], selectDatabase } = this.props;
     if (databaseId === undefined && databases.length > 0) {
-      selectDatabase(databases[0]);
+      selectDatabase(databases[0], true);
     }
   }
 
@@ -91,7 +91,7 @@ export default class MetadataHeader extends Component {
     return (
       <span className="ml4 mr3">
         <Link to={`${this.props.location.pathname}/settings`}>
-          <Icon name="gear" />
+          <Icon name="gear" className="text-brand-hover" />
         </Link>
       </span>
     );
@@ -106,7 +106,7 @@ export default class MetadataHeader extends Component {
         </div>
         <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
           <SaveStatus ref="status" />
-          <span className="mr1">{t`Show original schema`}</span>
+          <div className="mr1 text-medium">{t`Show original schema`}</div>
           <Toggle
             value={this.props.isShowingSchema}
             onChange={this.props.toggleShowSchema}

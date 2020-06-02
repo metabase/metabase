@@ -50,15 +50,18 @@
 
 (defsetting ldap-attribute-email
   (deferred-tru "Attribute to use for the user's email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
-  :default "mail")
+  :default "mail"
+  :getter (fn [] (u/lower-case-en (setting/get-string :ldap-attribute-email))))
 
 (defsetting ldap-attribute-firstname
   (deferred-tru "Attribute to use for the user''s first name. (usually ''givenName'')")
-  :default "givenName")
+  :default "givenName"
+  :getter (fn [] (u/lower-case-en (setting/get-string :ldap-attribute-firstname))))
 
 (defsetting ldap-attribute-lastname
   (deferred-tru "Attribute to use for the user''s last name. (usually ''sn'')")
-  :default "sn")
+  :default "sn"
+  :getter (fn [] (u/lower-case-en (setting/get-string :ldap-attribute-lastname))))
 
 (defsetting ldap-group-sync
   (deferred-tru "Enable group membership synchronization with LDAP.")
@@ -69,7 +72,8 @@
   (deferred-tru "Search base for groups, not required if your LDAP directory provides a ''memberOf'' overlay. (Will be searched recursively)"))
 
 (defsetting ldap-group-mappings
-  ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of MB groups IDs
+  ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of
+  ;; MB groups IDs
   (deferred-tru "JSON containing LDAP to Metabase group mappings.")
   :type    :json
   :default {}
@@ -81,12 +85,14 @@
                  (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
              (setting/set-json! :ldap-group-mappings new-value)))
 
-(defn ldap-configured?
+(defsetting ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."
-  []
-  (boolean (and (ldap-enabled)
-                (ldap-host)
-                (ldap-user-base))))
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (boolean (and (ldap-enabled)
+                                   (ldap-host)
+                                   (ldap-user-base)))))
 
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]
   {:host      (str host ":" port)
@@ -183,7 +189,7 @@
    (with-connection find-user username))
 
   ([conn username]
-   (when-let [{:keys [dn], :as result} (search conn username)]
+   (when-let [{:keys [dn], :as result} (u/lower-case-map-keys (search conn username))]
      (let [{fname (keyword (ldap-attribute-firstname))
             lname (keyword (ldap-attribute-lastname))
             email (keyword (ldap-attribute-email))}    result]
@@ -194,9 +200,9 @@
           :last-name  lname
           :email      email
           :groups     (when (ldap-group-sync)
-                        ;; ActiveDirectory (and others?) will supply a `memberOf` overlay attribute for groups
-                        ;; Otherwise we have to make the inverse query to get them
-                        (or (:memberOf result) (get-user-groups dn) []))})))))
+                        ;; Active Directory and others (like FreeIPA) will supply a `memberOf` overlay attribute for
+                        ;; groups. Otherwise we have to make the inverse query to get them.
+                        (or (:memberof result) (get-user-groups dn) []))})))))
 
 (defn verify-password
   "Verifies if the supplied password is valid for the `user-info` (from `find-user`) or DN."

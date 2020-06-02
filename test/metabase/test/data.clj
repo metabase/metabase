@@ -34,6 +34,8 @@
 
      (There are several variations of this macro; see documentation below for more details.)"
   (:require [cheshire.core :as json]
+            [clojure.test :as t]
+            [colorize.core :as colorize]
             [medley.core :as m]
             [metabase
              [query-processor :as qp]
@@ -226,11 +228,14 @@
      (data/dataset (get-dataset-definition) ...)"
   {:style/indent 1}
   [dataset & body]
-  `(impl/do-with-dataset ~(if (and (symbol? dataset)
-                                   (not (get &env dataset)))
-                            `(impl/resolve-dataset-definition '~(ns-name *ns*) '~dataset)
-                            dataset)
-     (fn [] ~@body)))
+  `(t/testing (colorize/magenta ~(if (symbol? dataset)
+                                   (format "using %s dataset" dataset)
+                                   "using inline dataset"))
+     (impl/do-with-dataset ~(if (and (symbol? dataset)
+                                     (not (get &env dataset)))
+                              `(impl/resolve-dataset-definition '~(ns-name *ns*) '~dataset)
+                              dataset)
+       (fn [] ~@body))))
 
 (defmacro with-temp-copy-of-db
   "Run `body` with the current DB (i.e., the one that powers `data/db` and `data/id`) bound to a temporary copy of the

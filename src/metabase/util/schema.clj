@@ -6,7 +6,7 @@
             [medley.core :as m]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [deferred-tru]]
+             [i18n :as i18n :refer [deferred-tru]]
              [password :as password]]
             [schema
              [core :as s]
@@ -27,7 +27,7 @@
                          {:value value, :error error}))
       value)))
 
-(intern 'schema.core 'validator schema-core-validator)
+(alter-var-root #'schema.core/validator (constantly schema-core-validator))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -35,8 +35,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn with-api-error-message
-  "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails
-   validation."
+  "Return `schema` with an additional `api-error-message` that will be used to explain the error if a parameter fails
+  validation."
   {:style/indent 1}
   [schema api-error-message]
   (if-not (record? schema)
@@ -45,9 +45,9 @@
     (assoc schema :api-error-message api-error-message)))
 
 (defn api-param
-  "Return SCHEMA with an additional API-PARAM-NAME key that will be used in the auto-generate documentation and in
-   error messages. This is important for situations where you want to bind a parameter coming in to the API to
-   something other than the `snake_case` key it normally comes in as:
+  "Return `schema` with an additional `api-param-name` key that will be used in the auto-generate documentation and in
+  error messages. This is important for situations where you want to bind a parameter coming in to the API to
+  something other than the `snake_case` key it normally comes in as:
 
      ;; BAD -- Documentation/errors will tell you `dimension-type` is wrong
      [:is {{dimension-type :type} :body}]
@@ -62,8 +62,8 @@
   (assoc schema :api-param-name (name api-param-name)))
 
 (defn- existing-schema->api-error-message
-  "Error messages for various schemas already defined in `schema.core`.
-   These are used as a fallback by API param validation if no value for `:api-error-message` is present."
+  "Error messages for various schemas already defined in `schema.core`. These are used as a fallback by API param
+  validation if no value for `:api-error-message` is present."
   [existing-schema]
   (cond
     (= existing-schema s/Int)                           (deferred-tru "value must be an integer.")
@@ -81,8 +81,7 @@
                        (format "%d) %s" (inc i) (api-error-message child-schema))))))
 
 (defn api-error-message
-  "Extract the API error messages attached to a schema, if any.
-   This functionality is fairly sophisticated:
+  "Extract the API error messages attached to a schema, if any. This functionality is fairly sophisticated:
 
     (api-error-message (s/maybe (non-empty [NonBlankString])))
     ;; -> \"value may be nil, or if non-nil, value must be an array. Each value must be a non-blank string.
@@ -139,7 +138,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                 USEFUL SCHEMAS                                                 |
+;;; |                                                 USEFUL `schema`S                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def NonBlankString
@@ -174,11 +173,12 @@
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
-  (s/named (s/cond-pre s/Keyword s/Str) (deferred-tru "Keyword or string")))
+  (with-api-error-message (s/named (s/cond-pre s/Keyword s/Str) (deferred-tru "Keyword or string"))
+    (deferred-tru "value must be a keyword or string.")))
 
 (def FieldType
   "Schema for a valid Field type (does it derive from `:type/*`)?"
-  (with-api-error-message (s/pred (u/rpartial isa? :type/*) (deferred-tru "Valid field type"))
+  (with-api-error-message (s/pred #(isa? % :type/*) (deferred-tru "Valid field type"))
     (deferred-tru "value must be a valid field type.")))
 
 (def FieldTypeKeywordOrString
@@ -239,10 +239,19 @@
 
 (def JSONString
   "Schema for a string that is valid serialized JSON."
-  (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (json/parse-string %)))
+  (with-api-error-message (s/constrained s/Str #(try
+                                                  (json/parse-string %)
+                                                  true
+                                                  (catch Throwable _
+                                                    false)))
     (deferred-tru "value must be a valid JSON string.")))
 
 (def EmbeddingParams
   "Schema for a valid map of embedding params."
   (with-api-error-message (s/maybe {s/Keyword (s/enum "disabled" "enabled" "locked")})
     (deferred-tru "value must be a valid embedding params map.")))
+
+(def ValidLocale
+  "Schema for a valid ISO Locale code e.g. `en` or `en-US`. Case-insensitive and allows dashes or underscores."
+  (with-api-error-message (s/constrained NonBlankString i18n/available-locale?)
+    (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.")))

@@ -29,6 +29,8 @@ import {
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
 
+import NoResults from "assets/img/no_results.svg";
+
 import { assoc, setIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
@@ -37,6 +39,7 @@ export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart
 export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
 
 import Question from "metabase-lib/lib/Question";
+import Mode from "metabase-lib/lib/Mode";
 import type {
   Card as CardObject,
   VisualizationSettings,
@@ -81,8 +84,11 @@ type Props = {
 
   // for click actions
   metadata: Metadata,
-  onChangeCardAndRun: OnChangeCardAndRun,
   dispatch: Function,
+  onChangeCardAndRun: OnChangeCardAndRun,
+  onChangeLocation: (url: string) => void,
+
+  mode?: Mode,
 
   // used for showing content in place of visualization, e.x. dashcard filter mapping
   replacementContent: React.Element<any>,
@@ -145,6 +151,10 @@ export default class Visualization extends React.PureComponent {
     isEditing: false,
     isSettings: false,
     onUpdateVisualizationSettings: () => {},
+    // prefer passing in a function that doesn't cause the application to reload
+    onChangeLocation: location => {
+      window.location = location;
+    },
   };
 
   componentWillMount() {
@@ -256,19 +266,21 @@ export default class Visualization extends React.PureComponent {
 
   @memoize
   _getQuestionForCardCached(metadata, card) {
-    return metadata && card && new Question(metadata, card);
+    return metadata && card && new Question(card, metadata);
   }
 
   getClickActions(clicked: ?ClickObject) {
     if (!clicked) {
       return [];
     }
-    // TODO: push this logic into Question?
     const { rawSeries, metadata } = this.props;
+    // TODO: push this logic into Question?
     const seriesIndex = clicked.seriesIndex || 0;
     const card = rawSeries[seriesIndex].card;
     const question = this._getQuestionForCardCached(metadata, card);
-    const mode = question && question.mode();
+    const mode = this.props.mode
+      ? question && new Mode(question, this.props.mode)
+      : question && question.mode();
     return mode ? mode.actionsForClick(clicked, {}) : [];
   }
 
@@ -451,7 +463,14 @@ export default class Visualization extends React.PureComponent {
     );
 
     let { gridSize, gridUnit, classNameWidgets } = this.props;
-    if (!gridSize && gridUnit) {
+    if (
+      !gridSize &&
+      gridUnit &&
+      // Check that width/height are set. If they're not, we want to pass
+      // undefined rather than {width: 0, height: 0}. Passing 0 will hide axes.
+      width != null &&
+      height != null
+    ) {
       gridSize = {
         width: Math.round(width / (gridUnit * 4)),
         height: Math.round(height / (gridUnit * 3)),
@@ -512,7 +531,7 @@ export default class Visualization extends React.PureComponent {
             }
           >
             <Tooltip tooltip={t`No results!`} isEnabled={small}>
-              <img src="app/assets/img/no_results.svg" />
+              <img src={NoResults} />
             </Tooltip>
             {!small && <span className="h4 text-bold">No results!</span>}
           </div>

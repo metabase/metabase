@@ -16,9 +16,9 @@ You can write SQL (or your database's native querying language) directly into th
 
 ![SQL editor](images/SQLInterface.png)
 
-To try it out, type the command `select sum(subtotal), created_at from orders group by created_at`. Don't worry if you don't understand this just yet. Click the blue run button and note the table that comes back is the same as if you had asked for the sum of Subtotal in the Orders table, grouped by Created At.
+To try it out, select the Sample Dataset, then type the command `select sum(subtotal), created_at from orders group by created_at`. Don't worry if you don't understand this just yet. Click the blue run button and note the table that comes back is the same as if you had asked for the sum of Subtotal in the Orders table, grouped by Created At.
 
-**Tip!** You can run your SQL query by pressing `ctrl` + `enter` on Windows, or `command` + `return` on a Mac. You can also run only a specific section of a query by selecting the part you'd like to run and pressing `ctrl` + `alt` + `enter` on Windows, or `command` + `option` + `return` on a Mac.
+**Tip:** You can run your SQL query by pressing **ctrl + enter** on Windows and Linux, or **⌘ + return** on a Mac. You can also run only the selected section of a query by highlighting the part you'd like to run before clicking the run button or using the run shortcut key.
 
 Questions asked using SQL can be saved, downloaded, or added to a dashboard just like questions asked using the question builder.
 
@@ -34,4 +34,4 @@ Writing SQL queries that use variables or parameters can be very powerful, but i
 
 ## Next: Creating charts
 
-Now that you have an answer to your question, you can now learn more about [visualizing answers](05-visualizing-results.md).
+Now that you have an answer to your question, you can learn about [visualizing answers](05-visualizing-results.md).

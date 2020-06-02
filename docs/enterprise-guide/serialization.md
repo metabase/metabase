@@ -4,31 +4,32 @@ Once you really get rolling with Metabase it's often the case that you'll have m
 
 To help you out in situations like this, Metabase has a serialization feature which lets you create a snapshot, called a dump, of the contents of a Metabase instance that can then be loaded into another instance. This lets you do things like create a set of dashboards and charts in one Metabase instance and then easily copy those items to a number of other Metabase instances. You could also use this feature to enable a staging-to-production workflow for important dashboards or reports by dumping from a staging instance of Metabase and then loading that dump into your production instance(s). You can even put the dump files into version control and audit changes to them, as the YAML files contained within the dump are pretty readable.
 
+If you're looking to do a one-time migration from H2 to MySQL/Postgres, then use the [migration guide instead](../operations-guide/migrating-from-h2.md).
 
 ### What gets dumped and loaded
 
 **Currently, dumps consist of the following Metabase artifacts:**
 
-* Collections
-* Dashboards
-* Saved questions
-* Pulses
-* Segments and Metrics defined in the Data Model
-* Archived collections, dashboards, saved questions, or pulses
-* Public sharing settings for questions and dashboards
+- Collections
+- Dashboards
+- Saved questions
+- Pulses
+- Segments and Metrics defined in the Data Model
+- Archived collections, dashboards, saved questions, or pulses
+- Public sharing settings for questions and dashboards
 
 **They also contain a number of system settings:**
 
-* Admin Panel settings, except for permissions
-* Database connection settings
-* Data Model settings
+- Admin Panel settings, except for permissions
+- Database connection settings
+- Data Model settings
 
 **Dumps do _not_ contain:**
 
-* Permission settings
-* User accounts or settings
-* Alerts on saved questions
-* Personal Collections or their contents (except for the user specified with the `--user` flag; see below)
+- Permission settings
+- User accounts or settings
+- Alerts on saved questions
+- Personal Collections or their contents (except for the user specified with the `--user` flag; see below)
 
 ### Before creating or loading a dump
 

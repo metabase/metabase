@@ -1,14 +1,19 @@
 (ns metabase.util.encryption-test
   "Tests for encryption of Metabase DB details."
-  (:require [clojure.string :as str]
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]]
             [expectations :refer :all]
+            [metabase.models.setting.cache :as setting.cache]
             [metabase.test.util :as tu]
             [metabase.util.encryption :as encryption]))
 
-(defn do-with-secret-key [^String secret-key, f]
+(defn do-with-secret-key [^String secret-key thunk]
+  ;; flush the Setting cache so unencrypted values have to be fetched from the DB again
+  (setting.cache/restore-cache!)
   (with-redefs [encryption/default-secret-key (when (seq secret-key)
                                                 (encryption/secret-key->hash secret-key))]
-    (f)))
+    (thunk)))
 
 (defmacro with-secret-key
   "Run `body` with the encryption secret key temporarily bound to `secret-key`. Useful for testing how functions behave
@@ -69,13 +74,13 @@
 
 (expect
   (includes-encryption-warning?
-   (tu/with-mb-log-messages-at-level :warn
+   (tu/with-log-messages-for-level :warn
      (encryption/maybe-decrypt secret-2 (encryption/encrypt secret "WOW")))))
 
 ;; Something obviously not encrypted should avoiding trying to decrypt it (and thus not log an error)
 (expect
   []
-  (tu/with-mb-log-messages-at-level :warn
+  (tu/with-log-messages-for-level :warn
     (encryption/maybe-decrypt secret "abc")))
 
 ;; Something obviously not encrypted should return the original string
@@ -89,12 +94,12 @@
   have the same size"
   (apply str (repeat 64 "a")))
 
-;; Something that is not encrypted, but might be (is the correct shape etc) should attempt to be decrypted. If unable
-;; to decrypt it, log a warning.
-(expect
-  (includes-encryption-warning?
-   (tu/with-mb-log-messages-at-level :warn
-     (encryption/maybe-decrypt secret fake-ciphertext))))
+(deftest log-warning-on-failure-test
+  (testing (str "Something that is not encrypted, but might be (is the correct shape etc) should attempt to be "
+                "decrypted. If unable to decrypt it, log a warning.")
+    (is (includes-encryption-warning?
+         (tu/with-log-messages-for-level :warn
+           (encryption/maybe-decrypt secret fake-ciphertext))))))
 
 ;; Something that is not encrypted, but might be should return the original text
 (expect

@@ -1,0 +1,9 @@
+{
+  "projectId": "a394u1",
+  "testFiles": "**/*.cy.spec.js",
+  "pluginsFile": "frontend/test/cypress-plugins.js",
+  "integrationFolder": "frontend/test/metabase",
+  "supportFile": "frontend/test/__support__/cypress.js",
+  "viewportHeight": 800,
+  "viewportWidth": 1280
+}

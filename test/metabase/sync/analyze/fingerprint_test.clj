@@ -1,6 +1,7 @@
 (ns metabase.sync.analyze.fingerprint-test
   "Basic tests to make sure the fingerprint generatation code is doing something that makes sense."
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
+            [expectations :refer :all]
             [metabase
              [db :as mdb]
              [util :as u]]
@@ -12,7 +13,6 @@
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.sync.interface :as i]
             [metabase.test.data :as data]
-            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -219,9 +219,23 @@
                               :table_id            (data/id :venues)
                               :fingerprint         nil
                               :fingerprint_version 1
-                              :last_analyzed       (du/->Timestamp #inst "2017-08-09")}]
+                              :last_analyzed       #t "2017-08-09T00:00:00"}]
     (with-redefs [i/latest-fingerprint-version       3
                   metadata-queries/table-rows-sample (constantly [[1] [2] [3] [4] [5]])
                   fingerprinters/fingerprinter       (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
       [(#'fingerprint/fingerprint-table! (Table (data/id :venues)) [field])
        (into {} (db/select-one [Field :fingerprint :fingerprint_version :last_analyzed] :id (u/get-id field)))])))
+
+(deftest test-fingerprint-failure
+  (testing "if fingerprinting fails, the exception should not propagate"
+    (with-redefs [fingerprint/fingerprint-table! (fn [_ _] (throw (Exception. "expected")))]
+      (is (= (fingerprint/empty-stats-map 0)
+             (fingerprint/fingerprint-fields! (Table (data/id :venues))))))))
+
+(deftest test-fingerprint-skipped-for-ga
+  (testing "Google Analytics doesn't support fingerprinting fields"
+    (let [fake-db (-> (data/db)
+                      (assoc :engine :googleanalytics))]
+      (with-redefs [fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
+        (is (= (fingerprint/empty-stats-map 0)
+               (fingerprint/fingerprint-fields-for-db! fake-db [(Table (data/id :venues))] (fn [_ _]))))))))

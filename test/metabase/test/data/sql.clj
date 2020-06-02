@@ -1,8 +1,12 @@
 (ns metabase.test.data.sql
   "Common test extension functionality for all SQL drivers."
   (:require [clojure.string :as str]
-            [metabase.driver :as driver]
+            [clojure.tools.logging :as log]
+            [metabase
+             [driver :as driver]
+             [query-processor :as qp]]
             [metabase.driver.sql.util :as sql.u]
+            [metabase.test.data :as data]
             [metabase.test.data.interface :as tx])
   (:import metabase.test.data.interface.FieldDefinition))
 
@@ -142,10 +146,25 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti field-base-type->sql-type
-  "Return a native SQL type that should be used for fields of BASE-TYPE."
+  "Return a native SQL type that should be used for fields of `base-type`."
   {:arglists '([driver base-type])}
   (fn [driver base-type] [(tx/dispatch-on-driver-with-test-extensions driver) base-type])
   :hierarchy #'driver/hierarchy)
+
+(defmethod field-base-type->sql-type :default
+  [driver base-type]
+  (or (some
+       (fn [ancestor-type]
+         (when-not (= ancestor-type :type/*)
+           (when-let [method (get (methods field-base-type->sql-type) [driver ancestor-type])]
+             (log/infof "No test data type mapping for driver %s for base type %s, falling back to ancestor base type %s"
+                        driver base-type ancestor-type)
+             (method driver base-type))))
+       (ancestors base-type))
+      (throw
+       (Exception.
+        (format "No test data type mapping for driver %s for base type %s; add an impl for field-base-type->sql-type."
+                driver base-type)))))
 
 
 (defmulti pk-sql-type
@@ -188,14 +207,15 @@
     (format "CREATE TABLE %s (%s, %s %s, PRIMARY KEY (%s)) %s;"
             (qualify-and-quote driver database-name table-name)
             (str/join
-             " ,"
+             ", "
              (for [{:keys [field-name base-type field-comment]} field-definitions]
-               (format "%s %s %s"
-                       (quot field-name)
-                       (if (map? base-type)
-                         (:native base-type)
-                         (field-base-type->sql-type driver base-type))
-                       (or (inline-column-comment-sql driver field-comment) ""))))
+               (str (format "%s %s"
+                            (quot field-name)
+                            (if (map? base-type)
+                              (:native base-type)
+                              (field-base-type->sql-type driver base-type)))
+                    (when-let [comment (inline-column-comment-sql driver field-comment)]
+                      (str " " comment)))))
             pk-field-name (pk-sql-type driver)
             pk-field-name
             (or (inline-table-comment-sql driver table-comment) ""))))
@@ -228,7 +248,33 @@
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
             ;; limit FK constraint name to 30 chars since Oracle doesn't support names longer than that
-            (quot :constraint (apply str (take 30 (format "fk_%s_%s_%s" table-name field-name dest-table-name))))
+            (let [fk-name (format "fk_%s_%s_%s_%s" database-name table-name field-name dest-table-name)
+                  fk-name (if (> (count fk-name) 30)
+                            (str/join (take-last 30 (str fk-name \_ (hash fk-name))))
+                            fk-name)]
+              (quot :constraint fk-name))
             (quot :field field-name)
             (qualify-and-quote driver database-name dest-table-name)
             (quot :field (pk-field-name driver)))))
+
+(defmethod tx/count-with-template-tag-query :sql/test-extensions
+  [driver table field param-type]
+  (driver/with-driver driver
+    (let [mbql-query      (data/mbql-query nil
+                            {:source-table (data/id table)
+                             :aggregation  [[:count]]
+                             :filter       [:= [:field-id (data/id table field)] 1]})
+          {:keys [query]} (qp/query->native mbql-query)
+          query           (str/replace query (re-pattern #"= .*") (format "= {{%s}}" (name field)))]
+      {:query query})))
+
+(defmethod tx/count-with-field-filter-query :sql/test-extensions
+  [driver table field]
+  (driver/with-driver driver
+    (let [mbql-query      (data/mbql-query nil
+                            {:source-table (data/id table)
+                             :aggregation  [[:count]]
+                             :filter       [:= [:field-id (data/id table field)] 1]})
+          {:keys [query]} (qp/query->native mbql-query)
+          query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
+      {:query query})))

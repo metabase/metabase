@@ -1,4 +1,4 @@
-import "__support__/e2e_tests";
+import "__support__/e2e";
 
 import React from "react";
 
@@ -15,7 +15,7 @@ import {
 } from "../__support__/visualizations";
 
 import { mount } from "enzyme";
-import { click } from "__support__/enzyme_utils";
+import { click } from "__support__/enzyme";
 
 function renderVisualization(props) {
   return mount(<Visualization className="spread" {...props} />);
@@ -113,6 +113,13 @@ describe("Visualization", () => {
           showTitle: true,
         });
         expect(getTitles(viz)).toEqual([["Foo_name"]]);
+      });
+      it("should render a blank title", () => {
+        const viz = renderVisualization({
+          rawSeries: [LineCard("")],
+          showTitle: true,
+        });
+        expect(getTitles(viz)).toEqual([["_name"]]);
       });
       it("should render normal title and breakout multiseries titles", () => {
         const viz = renderVisualization({

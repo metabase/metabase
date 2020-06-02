@@ -23,6 +23,7 @@ jest.mock("ace/mode-sql", () => {}, { virtual: true });
 jest.mock("ace/mode-mysql", () => {}, { virtual: true });
 jest.mock("ace/mode-pgsql", () => {}, { virtual: true });
 jest.mock("ace/mode-sqlserver", () => {}, { virtual: true });
+jest.mock("ace/snippets/text", () => {}, { virtual: true });
 jest.mock("ace/snippets/sql", () => {}, { virtual: true });
 jest.mock("ace/snippets/mysql", () => {}, { virtual: true });
 jest.mock("ace/snippets/pgsql", () => {}, { virtual: true });

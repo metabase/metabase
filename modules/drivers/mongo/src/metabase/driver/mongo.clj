@@ -3,42 +3,64 @@
   (:require [cheshire
              [core :as json]
              [generate :as json.generate]]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver.common :as driver.common]
             [metabase.driver.mongo
+             [execute :as execute]
+             [parameters :as parameters]
              [query-processor :as qp]
              [util :refer [with-mongo-connection]]]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.query-processor
+             [store :as qp.store]
+             [timezone :as qp.timezone]]
             [monger
              [collection :as mc]
              [command :as cmd]
-             [conversion :as conv]
+             [conversion :as m.conversion]
              [db :as mdb]]
-            [schema.core :as s])
+            [schema.core :as s]
+            [taoensso.nippy :as nippy])
   (:import com.mongodb.DB
-           org.bson.BsonUndefined))
+           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+           org.bson.BsonUndefined
+           org.bson.types.ObjectId))
+
+;; See http://clojuremongodb.info/articles/integration.html Loading this namespace will load appropriate Monger
+;; integrations with Cheshire.
+(classloader/require 'monger.json)
 
 ;; JSON Encoding (etc.)
 
 ;; Encode BSON undefined like `nil`
 (json.generate/add-encoder org.bson.BsonUndefined json.generate/encode-nil)
 
+(nippy/extend-freeze ObjectId :mongodb/ObjectId
+                     [^ObjectId oid data-output]
+                     (.writeUTF data-output (.toHexString oid)))
+
+(nippy/extend-thaw :mongodb/ObjectId
+  [data-input]
+  (ObjectId. (.readUTF data-input)))
+
 (driver/register! :mongo)
 
-;;; ## MongoDriver
-
-(defmethod driver/can-connect? :mongo [_ details]
+(defmethod driver/can-connect? :mongo
+  [_ details]
   (with-mongo-connection [^DB conn, details]
     (= (float (-> (cmd/db-stats conn)
-                  (conv/from-db-object :keywordize)
+                  (m.conversion/from-db-object :keywordize)
                   :ok))
        1.0)))
 
-(defmethod driver/humanize-connection-error-message :mongo [_ message]
+(defmethod driver/humanize-connection-error-message :mongo
+  [_ message]
   (condp re-matches message
     #"^Timed out after \d+ ms while waiting for a server .*$"
     (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
@@ -49,26 +71,25 @@
     #"^Password can not be null when the authentication mechanism is unspecified$"
     (driver.common/connection-error-messages :password-required)
 
-    #"^com.jcraft.jsch.JSchException: Auth fail$"
+    #"^org.apache.sshd.common.SshException: No more authentication methods available$"
     (driver.common/connection-error-messages :ssh-tunnel-auth-fail)
 
-    #".*JSchException: java.net.ConnectException: Connection refused.*"
+    #"^java.net.ConnectException: Connection refused$"
     (driver.common/connection-error-messages :ssh-tunnel-connection-fail)
+
+    #".*javax.net.ssl.SSLHandshakeException: PKIX path building failed.*"
+    (driver.common/connection-error-messages :certificate-not-trusted)
 
     #".*"                               ; default
     message))
-
-(defmethod driver/process-query-in-context :mongo [_ qp]
-  (fn [{database-id :database, :as query}]
-    (with-mongo-connection [_ (qp.store/database)]
-      (qp query))))
 
 
 ;;; ### Syncing
 
 (declare update-field-attrs)
 
-(defmethod driver/sync-in-context :mongo [_ database do-sync-fn]
+(defmethod driver/sync-in-context :mongo
+  [_ database do-sync-fn]
   (with-mongo-connection [_ database]
     (do-sync-fn)))
 
@@ -81,8 +102,8 @@
 
     ;; 2. json?
     (and (string? field-value)
-         (or (.startsWith "{" field-value)
-             (.startsWith "[" field-value)))
+         (or (str/starts-with? "{" field-value)
+             (str/starts-with? "[" field-value)))
     (when-let [j (u/ignore-exceptions (json/parse-string field-value))]
       (when (or (map? j)
                 (sequential? j))
@@ -112,6 +133,7 @@
                                  (find-nested-fields field-value nested-fields)
                                  nested-fields)))))
 
+;; TODO - use `driver.common/class->base-type` to implement this functionality
 (s/defn ^:private ^Class most-common-object-type :- (s/maybe Class)
   "Given a sequence of tuples like [Class <number-of-occurances>] return the Class with the highest number of
   occurances. The basic idea here is to take a sample of values for a Field and then determine the most common type
@@ -142,7 +164,8 @@
       (:nested-fields field-info) (assoc :nested-fields (set (for [field (keys (:nested-fields field-info))]
                                                                (describe-table-field field (field (:nested-fields field-info)))))))))
 
-(defmethod driver/describe-database :mongo [_ database]
+(defmethod driver/describe-database :mongo
+  [_ database]
   (with-mongo-connection [^com.mongodb.DB conn database]
     {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
@@ -167,7 +190,8 @@
     (catch Throwable t
       (log/error (format "Error introspecting collection: %s" (:name table)) t))))
 
-(defmethod driver/describe-table :mongo [_ database table]
+(defmethod driver/describe-table :mongo
+  [_ database table]
   (with-mongo-connection [^com.mongodb.DB conn database]
     (let [column-info (table-sample-column-info conn table)]
       {:schema nil
@@ -175,11 +199,60 @@
        :fields (set (for [[field info] column-info]
                       (describe-table-field field info)))})))
 
-(defmethod driver/supports? [:mongo :basic-aggregations] [_ _] true)
-(defmethod driver/supports? [:mongo :nested-fields]      [_ _] true)
+(doseq [feature [:basic-aggregations
+                 :nested-fields
+                 :native-parameters]]
+  (defmethod driver/supports? [:mongo feature] [_ _] true))
 
-(defmethod driver/mbql->native :mongo [_ query]
+(defmethod driver/mbql->native :mongo
+  [_ query]
   (qp/mbql->native query))
 
-(defmethod driver/execute-query :mongo [_ query]
-  (qp/execute-query query))
+(defmethod driver/execute-reducible-query :mongo
+  [_ query context respond]
+  (with-mongo-connection [_ (qp.store/database)]
+    (execute/execute-reducible-query query context respond)))
+
+(defmethod driver/substitute-native-parameters :mongo
+  [driver inner-query]
+  (parameters/substitute-native-parameters driver inner-query))
+
+;; It seems to be the case that the only thing BSON supports is DateTime which is basically the equivalent of Instant;
+;; for the rest of the types, we'll have to fake it
+(extend-protocol m.conversion/ConvertToDBObject
+  Instant
+  (to-db-object [t]
+    (org.bson.BsonDateTime. (t/to-millis-from-epoch t)))
+
+  LocalDate
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/local-date-time t (t/local-time 0))))
+
+  LocalDateTime
+  (to-db-object [t]
+    ;; QP store won't be bound when loading test data for example.
+    (m.conversion/to-db-object (t/instant t (t/zone-id (try
+                                                         (qp.timezone/results-timezone-id)
+                                                         (catch Throwable _
+                                                           "UTC"))))))
+
+  LocalTime
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/local-date-time (t/local-date "1970-01-01") t)))
+
+  OffsetDateTime
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/instant t)))
+
+  OffsetTime
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t))))
+
+  ZonedDateTime
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/instant t))))
+
+(extend-protocol m.conversion/ConvertFromDBObject
+  java.util.Date
+  (from-db-object [t _]
+    (t/instant t)))

@@ -26,14 +26,15 @@
 ;; during unit tests don't treat Spark SQL as having FK support
 (defmethod driver/supports? [:sparksql :foreign-keys] [_ _] (not config/is-test?))
 
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/BigInteger] [_ _] "BIGINT")
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Boolean]    [_ _] "BOOLEAN")
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Date]       [_ _] "DATE")
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/DateTime]   [_ _] "TIMESTAMP")
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Decimal]    [_ _] "DECIMAL")
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Float]      [_ _] "DOUBLE")
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Integer]    [_ _] "INTEGER")
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Text]       [_ _] "STRING")
+(doseq [[base-type database-type] {:type/BigInteger "BIGINT"
+                                   :type/Boolean    "BOOLEAN"
+                                   :type/Date       "DATE"
+                                   :type/DateTime   "TIMESTAMP"
+                                   :type/Decimal    "DECIMAL"
+                                   :type/Float      "DOUBLE"
+                                   :type/Integer    "INTEGER"
+                                   :type/Text       "STRING"}]
+  (defmethod sql.tx/field-base-type->sql-type [:sparksql base-type] [_ _] database-type))
 
 ;; If someone tries to run Time column tests with SparkSQL give them a heads up that SparkSQL does not support it
 (defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Time] [_ _]
@@ -50,10 +51,10 @@
 (defmethod tx/dbdef->connection-details :sparksql
   [driver context {:keys [database-name]}]
   (merge
-   {:host     "localhost"
-    :port     10000
-    :user     "admin"
-    :password "admin"}
+   {:host     (tx/db-test-env-var-or-throw :sparksql :host "localhost")
+    :port     (Integer/parseUnsignedInt (tx/db-test-env-var-or-throw :sparksql :port "10000"))
+    :user     (tx/db-test-env-var-or-throw :sparksql :user "admin")
+    :password (tx/db-test-env-var-or-throw :sparksql :password "admin")}
    (when (= context :db)
      {:db (tx/format-name driver database-name)})))
 
@@ -118,3 +119,19 @@
   (apply execute/sequentially-execute-sql! args))
 
 (defmethod sql.tx/pk-sql-type :sparksql [_] "INT")
+
+(defmethod tx/aggregate-column-info :sparksql
+  ([driver ag-type]
+   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
+
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (= ag-type :sum)
+      {:base_type :type/BigInteger}))))
+
+;; strip out the default table alias `t1` from the generated native query
+(defmethod tx/count-with-field-filter-query :sparksql
+  [driver table field]
+  (-> ((get-method tx/count-with-field-filter-query :sql/test-extensions) driver table field)
+      (update :query str/replace #"`t1` " "")))

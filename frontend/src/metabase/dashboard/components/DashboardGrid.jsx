@@ -42,11 +42,11 @@ export default class DashboardGrid extends Component {
   }
 
   static propTypes = {
-    isEditing: PropTypes.bool.isRequired,
+    isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
+      .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
     dashboard: PropTypes.object.isRequired,
     parameterValues: PropTypes.object.isRequired,
-    cards: PropTypes.array,
 
     setDashCardAttributes: PropTypes.func.isRequired,
     removeCardFromDashboard: PropTypes.func.isRequired,
@@ -160,10 +160,8 @@ export default class DashboardGrid extends Component {
           <AddSeriesModal
             dashcard={this.state.addSeriesModalDashCard}
             dashboard={this.props.dashboard}
-            cards={this.props.cards}
             dashcardData={this.props.dashcardData}
             databases={this.props.databases}
-            fetchCards={this.props.fetchCards}
             fetchCardData={this.props.fetchCardData}
             fetchDatabaseMetadata={this.props.fetchDatabaseMetadata}
             removeCardFromDashboard={this.props.removeCardFromDashboard}
@@ -223,9 +221,11 @@ export default class DashboardGrid extends Component {
           this,
           dc.id,
         )}
+        mode={this.props.mode}
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }
+        onChangeLocation={this.props.onChangeLocation}
         metadata={this.props.metadata}
         dashboard={this.props.dashboard}
       />

@@ -1,19 +1,22 @@
 (ns metabase.middleware.session
   "Ring middleware related to session (binding current user and permissions)."
-  (:require [clojure.string :as str]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
+            [honeysql.core :as hsql]
             [metabase
              [config :as config]
              [db :as mdb]]
             [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
             [metabase.core.initialization-status :as init-status]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
              [session :refer [Session]]
              [user :as user :refer [User]]]
+            [metabase.util.i18n :as i18n]
             [ring.util.response :as resp]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import java.util.UUID
-           org.joda.time.DateTime))
+  (:import java.util.UUID))
 
 ;; How do authenticated API requests work? Metabase first looks for a cookie called `metabase.SESSION`. This is the
 ;; normal way of doing things; this cookie gets set automatically upon login. `metabase.SESSION` is an HttpOnly
@@ -32,7 +35,7 @@
 (def ^:private ^String metabase-session-header        "x-metabase-session")
 
 (defn- clear-cookie [response cookie-name]
-  (resp/set-cookie response cookie-name nil {:expires (DateTime. 0), :path "/"}))
+  (resp/set-cookie response cookie-name nil {:expires "Thu, 1 Jan 1970 00:00:00 GMT", :path "/"}))
 
 (defn- wrap-body-if-needed
   "You can't add a cookie (by setting the `:cookies` key of a response) if the response is an unwrapped JSON response;
@@ -42,7 +45,7 @@
     response
     {:body response, :status 200}))
 
-(defn- https-request?
+(defn https-request?
   "True if the original request made by the frontend client (i.e., browser) was made over HTTPS.
 
   In many production instances, a reverse proxy such as an ELB or nginx will handle SSL termination, and the actual
@@ -122,72 +125,82 @@
   (fn [request respond raise]
     (handler (wrap-session-id* request) respond raise)))
 
-(defn- session-with-id
-  "Fetch a session with SESSION-ID, and include the User ID and superuser status associated with it."
-  [session-id]
-  (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
-    (mdb/join [Session :user_id] [User :id])
-    (db/qualify User :is_active) true
-    (db/qualify Session :id) session-id))
-
-(defn- session-age-ms [session]
-  (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
-                                      (.getTime created-at))
-                                    0)))
-
-(defn- session-age-minutes [session]
-  (quot (session-age-ms session) 60000))
-
-(defn- session-expired? [session]
-  (> (session-age-minutes session)
-     (config/config-int :max-session-age)))
+;; Because this query runs on every single API request it's worth it to optimize it a bit and only compile it to SQL
+;; once rather than every time
+(def ^:private ^{:arglists '([db-type max-age-minutes])} session-with-id-query
+  (memoize
+   (fn [db-type max-age-minutes]
+     (vec
+      (db/honeysql->sql
+       {:select    [[:session.user_id :metabase-user-id]
+                    [:user.is_superuser :is-superuser?]
+                    [:user.locale :user-locale]]
+        :from      [[Session :session]]
+        :left-join [[User :user] [:= :session.user_id :user.id]]
+        :where     [:and
+                    [:= :user.is_active true]
+                    [:= :session.id (hsql/raw "?")]
+                    (let [oldest-allowed (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute)]
+                      [:> :session.created_at oldest-allowed])]
+        :limit     1})))))
 
 (defn- current-user-info-for-session
-  "Return User ID and superuser status for Session with SESSION-ID if it is valid and not expired."
+  "Return User ID and superuser status for Session with `session-id` if it is valid and not expired."
   [session-id]
   (when (and session-id (init-status/complete?))
-    (when-let [session (session-with-id session-id)]
-      (when-not (session-expired? session)
-        {:metabase-user-id (:user_id session)
-         :is-superuser?    (:is_superuser session)}))))
+    (first
+     (jdbc/query (db/connection) (conj (session-with-id-query (mdb/db-type) (config/config-int :max-session-age))
+                                       session-id)))))
 
 (defn- wrap-current-user-id* [{:keys [metabase-session-id], :as request}]
   (merge request (current-user-info-for-session metabase-session-id)))
 
 (defn wrap-current-user-id
-  "Add `:metabase-user-id` to the request if a valid session token was passed."
+  "Add `:metabase-user-id`, `:is-superuser?`, and `:user-locale` to the request if a valid session token was passed."
   [handler]
   (fn [request respond raise]
     (handler (wrap-current-user-id* request) respond raise)))
-
 
 (def ^:private current-user-fields
   (into [User] user/admin-or-self-visible-columns))
 
 (defn- find-user [user-id]
-  (db/select-one current-user-fields, :id user-id))
+  (when user-id
+    (db/select-one current-user-fields, :id user-id)))
 
-(defn- do-with-current-user [request f]
-  (if-let [current-user-id (:metabase-user-id request)]
-    (binding [*current-user-id*              current-user-id
-              *is-superuser?*                (:is-superuser? request)
-              *current-user*                 (delay (find-user current-user-id))
-              *current-user-permissions-set* (delay (user/permissions-set current-user-id))]
-      (f))
-    (f)))
+(defn do-with-current-user
+  "Impl for `with-current-user`."
+  [{:keys [metabase-user-id is-superuser? user-locale]} thunk]
+  (binding [*current-user-id*              metabase-user-id
+            i18n/*user-locale*             user-locale
+            *is-superuser?*                (boolean is-superuser?)
+            *current-user*                 (delay (find-user metabase-user-id))
+            *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))]
+    (thunk)))
 
-(defmacro ^:private with-current-user [request & body]
+(defmacro ^:private with-current-user-for-request
+  [request & body]
   `(do-with-current-user ~request (fn [] ~@body)))
 
 (defn bind-current-user
   "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and
   `*current-user-permissions-set*`.
 
-  *  `*current-user-id*`             int ID or nil of user associated with request
-  *  `*current-user*`                delay that returns current user (or nil) from DB
-  *  `*is-superuser?*`               Boolean stating whether current user is a superuser.
-  *  `current-user-permissions-set*` delay that returns the set of permissions granted to the current user from DB"
+  *  `*current-user-id*`                int ID or nil of user associated with request
+  *  `*current-user*`                   delay that returns current user (or nil) from DB
+  *  `metabase.util.i18n/*user-locale*` ISO locale code e.g `en` or `en-US` to use for the current User. Overrides `site-locale` if set.
+  *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
+  *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB"
   [handler]
   (fn [request respond raise]
-    (with-current-user request
+    (with-current-user-for-request request
       (handler request respond raise))))
+
+(defmacro with-current-user
+  "Execute code in body with User with `current-user-id` bound as the current user. (This is not used in the middleware
+  itself but elsewhere where we want to simulate a User context, such as when rendering Pulses or in tests.) "
+  {:style/indent 1}
+  [current-user-id & body]
+  `(do-with-current-user
+    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale]] :id ~current-user-id)
+    (fn [] ~@body)))

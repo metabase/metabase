@@ -26,6 +26,7 @@
    ;; other application settings
    :mb-password-complexity "normal"
    :mb-version-info-url    "http://static.metabase.com/version-info.json"
+   :mb-ns-trace            ""                                             ; comma-separated namespaces to trace
    :max-session-age        "20160"                                        ; session length in minutes (14 days)
    :mb-colorize-logs       (str (not is-windows?))                        ; since PowerShell and cmd.exe don't support ANSI color escape codes or emoji,
    :mb-emoji-in-logs       (str (not is-windows?))                        ; disable them by default when running on Windows. Otherwise they're enabled
@@ -41,13 +42,17 @@
    2.  jvm options (ex: -Dmb.db.type -> :mb-db-type)
    3.  hard coded `app-defaults`"
   [k]
-  (let [k (keyword k)]
-    (or (k environ/env) (k app-defaults))))
+  (let [k       (keyword k)
+        env-val (k environ/env)]
+    (or (when-not (str/blank? env-val) env-val)
+        (k app-defaults))))
 
 
 ;; These are convenience functions for accessing config values that ensures a specific return type
-;; TODO - These names are bad. They should be something like  `int`, `boolean`, and `keyword`, respectively.
-;; See https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#dont-repeat-namespace-alias-in-function-names for discussion
+;;
+;; TODO - These names are bad. They should be something like `int`, `boolean`, and `keyword`, respectively. See
+;; https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#dont-repeat-namespace-alias-in-function-names
+;; for discussion
 (defn ^Integer config-int  "Fetch a configuration key and parse it as an integer." [k] (some-> k config-str Integer/parseInt))
 (defn ^Boolean config-bool "Fetch a configuration key and parse it as a boolean."  [k] (some-> k config-str Boolean/parseBoolean))
 (defn ^Keyword config-kw   "Fetch a configuration key and parse it as a keyword."  [k] (some-> k config-str keyword))
@@ -79,9 +84,11 @@
         (into {} (for [[k v] props]
                    [(keyword k) v]))))))
 
+;; TODO - Can we make this `^:const`, so we don't have to read the file at launch when running from the uberjar?
 (def mb-version-info
   "Information about the current version of Metabase.
-   This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./bin/version` script for dev.
+   This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./bin/version`
+  script for dev.
 
      mb-version-info -> {:tag: \"v0.11.1\", :hash: \"afdf863\", :branch: \"about_metabase\", :date: \"2015-10-05\"}"
   (or (if is-prod?

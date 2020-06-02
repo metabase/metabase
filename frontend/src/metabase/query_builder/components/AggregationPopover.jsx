@@ -2,13 +2,14 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import AccordionList from "metabase/components/AccordionList";
-import FieldList from "./FieldList";
-import QueryDefinitionTooltip from "./QueryDefinitionTooltip";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import Button from "metabase/components/Button";
+import AccordionList from "metabase/components/AccordionList";
+
+import FieldList from "./FieldList";
+import QueryDefinitionTooltip from "./QueryDefinitionTooltip";
+import ExpressionPopover from "./ExpressionPopover";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 import * as A_DEPRECATED from "metabase/lib/query_aggregation";
@@ -16,8 +17,6 @@ import * as A_DEPRECATED from "metabase/lib/query_aggregation";
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 
 import _ from "underscore";
-
-import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield";
 
 const COMMON_SECTION_NAME = t`Common Metrics`;
 const BASIC_SECTION_NAME = t`Basic Metrics`;
@@ -41,14 +40,6 @@ export default class AggregationPopover extends Component {
         (A_DEPRECATED.isCustom(props.aggregation) ||
           A_DEPRECATED.isNamed(props.aggregation)),
     };
-
-    _.bindAll(
-      this,
-      "commitAggregation",
-      "onPickAggregation",
-      "onPickField",
-      "onClearAggregation",
-    );
   }
 
   static propTypes = {
@@ -66,7 +57,7 @@ export default class AggregationPopover extends Component {
     customFields: PropTypes.object,
     datasetQuery: PropTypes.object,
 
-    availableAggregations: PropTypes.array,
+    aggregationOperators: PropTypes.array,
 
     showCustom: PropTypes.bool,
     showMetrics: PropTypes.bool,
@@ -92,12 +83,12 @@ export default class AggregationPopover extends Component {
     }
   }
 
-  commitAggregation(aggregation) {
+  commitAggregation = aggregation => {
     this.props.onChangeAggregation(aggregation);
     if (this.props.onClose) {
       this.props.onClose();
     }
-  }
+  };
 
   _getAggregation() {
     const { aggregation, query } = this.props;
@@ -108,7 +99,7 @@ export default class AggregationPopover extends Component {
     }
   }
 
-  onPickAggregation(item) {
+  onPickAggregation = item => {
     const { dimension } = this.props;
     const aggregation = this._getAggregation();
 
@@ -135,20 +126,20 @@ export default class AggregationPopover extends Component {
       // this includse picking a METRIC or picking an aggregation which doesn't require a field
       this.commitAggregation(item.value);
     }
-  }
+  };
 
-  onPickField(fieldId) {
+  onPickField = fieldId => {
     this.commitAggregation(
       A_DEPRECATED.setField(this.state.aggregation, fieldId),
     );
-  }
+  };
 
-  onClearAggregation() {
+  onClearAggregation = () => {
     this.setState({
       choosingField: false,
       editingAggregation: false,
     });
-  }
+  };
 
   _getTableMetadata() {
     const { query, tableMetadata } = this.props;
@@ -156,11 +147,11 @@ export default class AggregationPopover extends Component {
   }
 
   _getAvailableAggregations() {
-    const { availableAggregations, query, dimension, showRawData } = this.props;
+    const { aggregationOperators, query, dimension, showRawData } = this.props;
     return (
-      availableAggregations ||
-      (dimension && dimension.aggregations()) ||
-      query.table().aggregations()
+      aggregationOperators ||
+      (dimension && dimension.aggregationOperators()) ||
+      query.table().aggregationOperators()
     ).filter(agg => showRawData || agg.short !== "rows");
   }
 
@@ -222,7 +213,7 @@ export default class AggregationPopover extends Component {
 
     const tableMetadata = this._getTableMetadata();
     const customFields = this._getCustomFields();
-    const availableAggregations = this._getAvailableAggregations();
+    const aggregationOperators = this._getAvailableAggregations();
 
     if (dimension) {
       showCustom = false;
@@ -241,12 +232,12 @@ export default class AggregationPopover extends Component {
         id: A_DEPRECATED.getMetric(aggregation),
       });
     } else if (A_DEPRECATED.getOperator(aggregation)) {
-      selectedAggregation = _.findWhere(availableAggregations, {
+      selectedAggregation = _.findWhere(aggregationOperators, {
         short: A_DEPRECATED.getOperator(aggregation),
       });
     }
 
-    const aggregationItems = availableAggregations.map(aggregation => ({
+    const aggregationItems = aggregationOperators.map(aggregation => ({
       name: dimension
         ? aggregation.name.replace("of ...", "")
         : aggregation.name,
@@ -330,73 +321,31 @@ export default class AggregationPopover extends Component {
 
     if (editingAggregation) {
       return (
-        <div style={{ width: editingAggregation ? 500 : 300 }}>
-          <div className="text-medium p1 py2 border-bottom flex align-center">
-            <a
-              className="cursor-pointer flex align-center"
-              onClick={this.onClearAggregation}
-            >
-              <Icon name="chevronleft" size={18} />
-              <h3 className="inline-block pl1">{CUSTOM_SECTION_NAME}</h3>
-            </a>
-          </div>
-          <div className="p1">
-            <ExpressionEditorTextfield
-              startRule="aggregation"
-              expression={aggregation}
-              query={query}
-              tableMetadata={tableMetadata}
-              customFields={customFields}
-              onChange={parsedExpression =>
-                this.setState({
-                  aggregation: A_DEPRECATED.setContent(
-                    this.state.aggregation,
-                    parsedExpression,
-                  ),
-                  error: null,
-                })
-              }
-              onError={errorMessage =>
-                this.setState({
-                  error: errorMessage,
-                })
-              }
-            />
-            {this.state.error != null &&
-              (Array.isArray(this.state.error) ? (
-                this.state.error.map(error => (
-                  <div
-                    className="text-error mb1"
-                    style={{ whiteSpace: "pre-wrap" }}
-                  >
-                    {error.message}
-                  </div>
-                ))
-              ) : (
-                <div className="text-error mb1">{this.state.error.message}</div>
-              ))}
-            <input
-              className="input block full my1"
-              value={A_DEPRECATED.getName(this.state.aggregation)}
-              onChange={e =>
-                this.setState({
-                  aggregation: e.target.value
-                    ? A_DEPRECATED.setName(aggregation, e.target.value)
-                    : aggregation,
-                })
-              }
-              placeholder={t`Name (optional)`}
-            />
-            <Button
-              className="full"
-              primary
-              disabled={this.state.error}
-              onClick={() => this.commitAggregation(this.state.aggregation)}
-            >
-              {t`Done`}
-            </Button>
-          </div>
-        </div>
+        <ExpressionPopover
+          title={CUSTOM_SECTION_NAME}
+          query={query}
+          expression={aggregation}
+          startRule="aggregation"
+          onChange={parsedExpression =>
+            this.setState({
+              aggregation: A_DEPRECATED.setContent(
+                this.state.aggregation,
+                parsedExpression,
+              ),
+              error: null,
+            })
+          }
+          onBack={this.onClearAggregation}
+          onDone={() => this.commitAggregation(this.state.aggregation)}
+          name={A_DEPRECATED.getName(this.state.aggregation)}
+          onChangeName={name =>
+            this.setState({
+              aggregation: name
+                ? A_DEPRECATED.setName(aggregation, name)
+                : aggregation,
+            })
+          }
+        />
       );
     } else if (choosingField) {
       const [agg, fieldId] = aggregation;

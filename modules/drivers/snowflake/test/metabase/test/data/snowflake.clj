@@ -19,17 +19,20 @@
 
 (defmethod tx/sorts-nil-first? :snowflake [_] false)
 
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/BigInteger] [_ _] "BIGINT")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Boolean]    [_ _] "BOOLEAN")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Date]       [_ _] "DATE")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/DateTime]   [_ _] "TIMESTAMPLTZ")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Decimal]    [_ _] "DECIMAL")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Float]      [_ _] "FLOAT")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Integer]    [_ _] "INTEGER")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Text]       [_ _] "TEXT")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Time]       [_ _] "TIME")
+(doseq [[base-type sql-type] {:type/BigInteger     "BIGINT"
+                              :type/Boolean        "BOOLEAN"
+                              :type/Date           "DATE"
+                              :type/DateTime       "TIMESTAMP_LTZ"
+                              :type/DateTimeWithTZ "TIMESTAMP_TZ"
+                              :type/Decimal        "DECIMAL"
+                              :type/Float          "FLOAT"
+                              :type/Integer        "INTEGER"
+                              :type/Text           "TEXT"
+                              :type/Time           "TIME"}]
+  (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
-(defmethod tx/dbdef->connection-details :snowflake [_ context {:keys [database-name]}]
+(defmethod tx/dbdef->connection-details :snowflake
+  [_ context {:keys [database-name]}]
   (merge
    {:account   (tx/db-test-env-var-or-throw :snowflake :account)
     :user      (tx/db-test-env-var-or-throw :snowflake :user)
@@ -41,7 +44,6 @@
    ;; `metabase.driver.snowflake`
    (when (= context :db)
      {:db database-name})))
-
 
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
 (defmethod sql.tx/qualified-name-components :snowflake
@@ -76,7 +78,8 @@
   (defn- add-existing-dataset! [database-name]
     (swap! datasets conj database-name)))
 
-(defmethod tx/create-db! :snowflake [driver {:keys [database-name] :as db-def} & options]
+(defmethod tx/create-db! :snowflake
+  [driver {:keys [database-name] :as db-def} & options]
   ;; ok, now check if already created. If already created, no-op
   (when-not (contains? (existing-datasets) database-name)
     ;; if not created, create the DB...
@@ -102,12 +105,27 @@
   (for [sql+args ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier row-or-rows)]
     (unprepare/unprepare driver sql+args)))
 
-(defmethod execute/execute-sql! :snowflake [& args]
+(defmethod execute/execute-sql! :snowflake
+  [& args]
   (apply execute/sequentially-execute-sql! args))
 
 (defmethod sql.tx/pk-sql-type :snowflake [_] "INTEGER AUTOINCREMENT")
 
 (defmethod tx/id-field-type :snowflake [_] :type/Number)
 
-(defmethod load-data/load-data! :snowflake [& args]
+(defmethod load-data/load-data! :snowflake
+  [& args]
   (apply load-data/load-data-add-ids! args))
+
+(defmethod tx/aggregate-column-info :snowflake
+  ([driver ag-type]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type)
+    (when (#{:count :cum-count} ag-type)
+      {:base_type :type/Number})))
+
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (#{:count :cum-count} ag-type)
+      {:base_type :type/Number}))))

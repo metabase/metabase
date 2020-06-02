@@ -1,11 +1,12 @@
-(ns metabase.async.api-response
+(ns ^{:deprecated "0.35.0"} metabase.async.api-response
   "Handle ring response maps that contain a core.async chan in the :body key:
 
-    {:status 200
-     :body (a/chan)}
+    {:body (a/chan)}
 
-  and send strings (presumibly \n) as heartbeats to the client until the real results (a seq) is received, then stream
-  that to the client."
+  and send strings (presumibly newlines) as heartbeats to the client until the real results (a seq) is received, then stream
+  that to the client.
+
+  This namespace is deprecated in favor of `metabase.async.streaming-response`."
   (:require [cheshire.core :as json]
             [clojure.core.async :as a]
             [clojure.java.io :as io]
@@ -13,9 +14,7 @@
             [compojure.response :refer [Sendable]]
             [metabase.middleware.exceptions :as mw.exceptions]
             [metabase.util :as u]
-            [metabase.util
-             [date :as du]
-             [i18n :as ui18n :refer [trs]]]
+            [metabase.util.i18n :as ui18n :refer [trs]]
             [ring.core.protocols :as ring.protocols]
             [ring.util.response :as response])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
@@ -62,7 +61,12 @@
   (cond
     ;; An error has occurred, let the user know
     (instance? Throwable chunkk)
-    (json/generate-stream (:body (mw.exceptions/api-exception-response chunkk)) out)
+    (json/generate-stream (let [{:keys [body status]
+                                 :or   {status 500}} (mw.exceptions/api-exception-response chunkk)]
+                            (if (map? body)
+                              (assoc body :_status status)
+                              {:message body :_status status}))
+                          out)
 
     ;; We've recevied the response, write it to the output stream and we're done
     (seqable? chunkk)
@@ -150,7 +154,7 @@
               ;; Otherwise if we've been waiting longer than `absolute-max-keepalive-ms` it's time to call it quits
               exceeded-absolute-max-keepalive?
               (a/>! output-chan (TimeoutException. (trs "No response after waiting {0}. Canceling request."
-                                                        (du/format-milliseconds absolute-max-keepalive-ms))))
+                                                        (u/format-milliseconds absolute-max-keepalive-ms))))
 
               ;; if input-chan was unexpectedly closed log a message to that effect and return an appropriate error
               ;; rather than letting people wait forever
@@ -190,6 +194,10 @@
 (extend-protocol Sendable
   ManyToManyChannel
   (send* [input-chan _ respond _]
-    (respond
-     (assoc (response/response input-chan)
-       :content-type "applicaton/json; charset=utf-8"))))
+    (respond (assoc (response/response input-chan)
+                    :content-type "application/json; charset=utf-8"
+                    :status 202))))
+
+;; everthing in this namespace is deprecated!
+(doseq [[symb varr] (ns-interns *ns*)]
+  (alter-meta! varr assoc :deprecated "0.35.0"))

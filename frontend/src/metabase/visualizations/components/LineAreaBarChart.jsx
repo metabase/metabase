@@ -272,12 +272,22 @@ export default class LineAreaBarChart extends Component {
 
     const settings = this.getSettings();
 
-    let multiseriesHeaderSeries;
-    if (series.length > 1 || onAddSeries || onEditSeries || onRemoveSeries) {
-      multiseriesHeaderSeries = series;
-    }
+    const hasMultiSeriesHeaderSeries = !!(
+      series.length > 1 ||
+      onAddSeries ||
+      onEditSeries ||
+      onRemoveSeries
+    );
 
     const hasTitle = showTitle && settings["card.title"];
+
+    const defaultSeries = [
+      {
+        card: {
+          name: " ",
+        },
+      },
+    ];
 
     return (
       <div
@@ -295,10 +305,10 @@ export default class LineAreaBarChart extends Component {
             actionButtons={actionButtons}
           />
         )}
-        {multiseriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
+        {hasMultiSeriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
           <LegendHeader
             className="flex-no-shrink"
-            series={multiseriesHeaderSeries}
+            series={hasMultiSeriesHeaderSeries ? series : defaultSeries}
             settings={settings}
             hovered={hovered}
             onHoverChange={this.props.onHoverChange}
@@ -335,15 +345,17 @@ function transformSingleSeries(s, series, seriesIndex) {
   const { card, data } = s;
 
   // HACK: prevents cards from being transformed too many times
-  if (card._transformed) {
+  if (data._transformed) {
     return [s];
   }
 
   const { cols, rows } = data;
   const settings = getComputedSettingsForSeries([s]);
 
-  const dimensions = settings["graph.dimensions"].filter(d => d != null);
-  const metrics = settings["graph.metrics"].filter(d => d != null);
+  const dimensions = (settings["graph.dimensions"] || []).filter(
+    d => d != null,
+  );
+  const metrics = (settings["graph.metrics"] || []).filter(d => d != null);
   const dimensionColumnIndexes = dimensions.map(dimensionName =>
     _.findIndex(cols, col => col.name === dimensionName),
   );
@@ -396,7 +408,6 @@ function transformSingleSeries(s, series, seriesIndex) {
         ]
           .filter(n => n)
           .join(": "),
-        _transformed: true,
         _breakoutValue: breakoutValue,
         _breakoutColumn: cols[seriesColumnIndex],
       },
@@ -404,6 +415,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         rows: breakoutRowsByValue.get(breakoutValue),
         cols: rowColumnIndexes.map(i => cols[i]),
         _rawCols: cols,
+        _transformed: true,
       },
       // for when the legend header for the breakout is clicked
       clicked: {
@@ -439,7 +451,6 @@ function transformSingleSeries(s, series, seriesIndex) {
         card: {
           ...card,
           name: name,
-          _transformed: true,
           _seriesIndex: seriesIndex,
           // use underlying column name as the seriesKey since it should be unique
           // EXCEPT for dashboard multiseries, so check seriesIndex == 0
@@ -453,6 +464,7 @@ function transformSingleSeries(s, series, seriesIndex) {
             return newRow;
           }),
           cols: rowColumnIndexes.map(i => cols[i]),
+          _transformed: true,
           _rawCols: cols,
         },
       };

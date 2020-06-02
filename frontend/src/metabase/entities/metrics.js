@@ -4,6 +4,8 @@ import { MetricSchema } from "metabase/schema";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
+import { getMetadata } from "metabase/selectors/metadata";
+
 const Metrics = createEntity({
   name: "metrics",
   nameOne: "metric",
@@ -28,6 +30,10 @@ const Metrics = createEntity({
       Urls.tableRowsQuery(metric.database_id, metric.table_id, metric.id),
     getColor: metric => color("accent1"),
     getIcon: metric => "sum",
+  },
+
+  selectors: {
+    getObject: (state, { entityId }) => getMetadata(state).metric(entityId),
   },
 
   form: {

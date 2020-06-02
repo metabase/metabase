@@ -136,7 +136,14 @@ class ChartSettings extends Component {
   }
 
   render() {
-    const { question, addField, noPreview, children } = this.props;
+    const {
+      className,
+      question,
+      addField,
+      noPreview,
+      children,
+      setSidebarPropsOverride,
+    } = this.props;
     const { currentWidget } = this.state;
 
     const settings = this._getSettings();
@@ -184,12 +191,20 @@ class ChartSettings extends Component {
       visibleWidgets = sections[currentSection] || [];
     }
 
+    // This checks whether the current section contains a column settings widget
+    // at the top level. If it does, we avoid hiding the section tabs and
+    // overriding the sidebar title.
+    const currentSectionHasColumnSettings = (
+      sections[currentSection] || []
+    ).some(widget => widget.id === "column_settings");
+
     const extraWidgetProps = {
       // NOTE: special props to support adding additional fields
       question: question,
       addField: addField,
       onShowWidget: this.handleShowWidget,
       onEndShowWidget: this.handleEndShowWidget,
+      currentSectionHasColumnSettings,
     };
 
     const sectionPicker = (
@@ -208,6 +223,7 @@ class ChartSettings extends Component {
         key={`${widget.id}`}
         {...widget}
         {...extraWidgetProps}
+        setSidebarPropsOverride={setSidebarPropsOverride}
       />
     ));
 
@@ -225,10 +241,21 @@ class ChartSettings extends Component {
       });
     }
 
+    const showSectionPicker =
+      // don't show section tabs for a single section
+      sectionNames.length > 1 &&
+      // hide the section picker if the only widget is column_settings
+      !(
+        visibleWidgets.length === 1 &&
+        visibleWidgets[0].id === "column_settings" &&
+        // and this section doesn't doesn't have that as a direct child
+        !currentSectionHasColumnSettings
+      );
+
     // default layout with visualization
     return (
-      <div>
-        {sectionNames.length > 1 && (
+      <div className={cx(className, "flex flex-column")}>
+        {showSectionPicker && (
           <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
         )}
         {noPreview ? (
@@ -236,7 +263,7 @@ class ChartSettings extends Component {
             {widgetList}
           </div>
         ) : (
-          <div className="Grid">
+          <div className="Grid flex-full">
             <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
               {widgetList}
             </div>

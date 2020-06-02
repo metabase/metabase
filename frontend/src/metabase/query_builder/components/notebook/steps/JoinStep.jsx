@@ -56,7 +56,7 @@ export default function JoinStep({
           color={color}
           className="cursor-pointer ml-auto"
           onClick={() => {
-            query.addJoin(new Join({ fields: "all" })).update(updateQuery);
+            query.join(new Join({ fields: "all" })).update(updateQuery);
           }}
         />
       )}
@@ -126,6 +126,7 @@ class JoinClause extends React.Component {
             query.database(),
             query.database().savedQuestionsDatabase(),
           ].filter(d => d)}
+          tableFilter={table => table.db_id === query.database().id}
           selectedDatabaseId={query.databaseId()}
           selectedTableId={join.joinSourceTableId()}
           setSourceTableFn={tableId => {

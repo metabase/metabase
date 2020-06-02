@@ -1,15 +1,12 @@
 (ns metabase.async.api-response-test
   (:require [cheshire.core :as json]
-            [clj-http.client :as client]
             [clojure.core.async :as a]
-            [compojure.core :as compojure]
+            [clojure.test :refer :all]
             [expectations :refer [expect]]
-            [metabase
-             [server :as server]
-             [util :as u]]
             [metabase.async.api-response :as async-response]
             [metabase.test.util.async :as tu.async]
-            [ring.core.protocols :as ring.protocols])
+            [ring.core.protocols :as ring.protocols]
+            [schema.core :as s])
   (:import [java.io ByteArrayOutputStream Closeable]))
 
 (def ^:private long-timeout-ms
@@ -36,7 +33,7 @@
               response    {:status       200
                            :headers      {}
                            :body         input-chan
-                           :content-type "applicaton/json; charset=utf-8"}]
+                           :content-type "application/json; charset=utf-8"}]
           ;; and keep it from getting [re]created.
           (with-redefs [async-response/async-keepalive-channel identity]
             (ring.protocols/write-body-to-stream output-chan response os))
@@ -53,13 +50,7 @@
   true)
 
 (defn- os->response [^ByteArrayOutputStream os]
-  (some->
-   os
-   .toString
-   (json/parse-string keyword)
-   ((fn [response]
-      (cond-> response
-        (:stacktrace response) (update :stacktrace (partial every? string?)))))))
+  (some-> os .toString (json/parse-string keyword)))
 
 
 ;;; ------------------------------ Normal responses: message sent to the input channel -------------------------------
@@ -103,42 +94,37 @@
 
 ;;; ----------------------------------------- Input-chan closed unexpectedly -----------------------------------------
 
-;; if we close input-channel prematurely, output-channel should get closed
-(expect
-  (tu.async/with-chans [input-chan]
-    (with-response [{:keys [output-chan]} input-chan]
-      ;; output-chan may or may not get the InterruptedException written to it -- it's a race condition -- we're just
-      ;; want to make sure it closes
-      (a/close! input-chan)
-      (not= ::tu.async/timed-out (tu.async/wait-for-result output-chan)))))
+(deftest input-chan-closed-unexpectedly-test
+  (testing "When input-channel is closed prematurely"
+    (tu.async/with-chans [input-chan]
+      (with-response [{:keys [os output-chan os-closed-chan]} input-chan]
+        (a/close! input-chan)
+        (testing "output-channel should get closed"
+          ;; output-chan may or may not get the InterruptedException written to it -- it's a race condition -- we're just
+          ;; want to make sure it closes
+          (not= ::tu.async/timed-out (tu.async/wait-for-result output-chan))
 
-;; ...as should the output stream
-(expect
-  (tu.async/with-chans [input-chan]
-    (with-response [{:keys [os-closed-chan]} input-chan]
-      (a/close! input-chan)
-      (wait-for-close os-closed-chan))))
+          (testing "...as should the output stream"
+            (is (= true
+                   (wait-for-close os-closed-chan)))))
 
-;; An error should be written to the output stream
-(expect
-  {:message    "Input channel unexpectedly closed."
-   :type       "class java.lang.InterruptedException"
-   :stacktrace true}
-  (tu.async/with-chans [input-chan]
-    (with-response [{:keys [os os-closed-chan]} input-chan]
-      (a/close! input-chan)
-      (wait-for-close os-closed-chan)
-      (os->response os))))
+        (testing "An error should be written to the output stream"
+          (is (schema= {:message (s/eq "Input channel unexpectedly closed.")
+                        :type    (s/eq "class java.lang.InterruptedException")
+                        :_status (s/eq 500)
+                        :trace   s/Any
+                        s/Any    s/Any}
+                       (os->response os))))))))
 
 
 ;;; ------------------------------ Output-chan closed early (i.e. API request canceled) ------------------------------
 
 ;; If output-channel gets closed (presumably because the API request is canceled), input-chan should also get closed
 (expect
-  (tu.async/with-chans [input-chan]
-    (with-response [{:keys [output-chan]} input-chan]
-      (a/close! output-chan)
-      (wait-for-close input-chan))))
+ (tu.async/with-chans [input-chan]
+   (with-response [{:keys [output-chan]} input-chan]
+     (a/close! output-chan)
+     (wait-for-close input-chan))))
 
 ;; if output chan gets closed, output-stream should also get closed
 (expect
@@ -158,114 +144,44 @@
       (os->response os))))
 
 
-;;; ------------ Normal response with a delay: message sent to Input chan at unspecified point in future -------------
-
-;; Should write newlines if it has to wait
-(expect
-  "\n\n{\"ready?\":true}"
-  (with-redefs [async-response/keepalive-interval-ms 500]
-    (tu.async/with-chans [input-chan]
-      (with-response [{:keys [os-closed-chan os]} input-chan]
-        (a/<!! (a/timeout 1400))
-        (a/>!! input-chan {:ready? true})
-        (wait-for-close os-closed-chan)
-        (.toString os)))))
-
-
 ;;; --------------------------------------- input chan message is an Exception ---------------------------------------
 
-;; If the message sent to input-chan is an Exception an appropriate response should be generated
-(expect
-  {:message "Broken", :type "class java.lang.Exception", :stacktrace true}
-  (tu.async/with-chans [input-chan]
-    (with-response [{:keys [os os-closed-chan]} input-chan]
-      (a/>!! input-chan (Exception. "Broken"))
-      (wait-for-close os-closed-chan)
-      (os->response os))))
+(deftest input-change-message-is-exception-test
+  (testing "If the message sent to input-chan is an Exception an appropriate response should be generated"
+    (tu.async/with-chans [input-chan]
+      (with-response [{:keys [os os-closed-chan]} input-chan]
+        (a/>!! input-chan (Exception. "Broken"))
+        (wait-for-close os-closed-chan)
+        (is (schema= {:message  (s/eq "Broken")
+                      :type     (s/eq "class java.lang.Exception")
+                      :trace    s/Any
+                      :_status  (s/eq 500)
+                      s/Keyword s/Any}
+                     (os->response os)))))))
 
 
 ;;; ------------------------------------------ input-chan never written to -------------------------------------------
 
-;; If we write a bad API endpoint and return a channel but never write to it, the request should be canceled after
-;; `absolute-max-keepalive-ms`
-(expect
-  {:message    "No response after waiting 500.0 ms. Canceling request."
-   :type       "class java.util.concurrent.TimeoutException"
-   :stacktrace true}
-  (with-redefs [async-response/absolute-max-keepalive-ms 500]
-    (tu.async/with-chans [input-chan]
-      (with-response [{:keys [os os-closed-chan]} input-chan]
-        (wait-for-close os-closed-chan)
-        (os->response os)))))
+(deftest input-chan-never-written-to-test
+  (testing (str "If we write a bad API endpoint and return a channel but never write to it, the request should be "
+                "canceled after `absolute-max-keepalive-ms`")
+    (with-redefs [async-response/absolute-max-keepalive-ms 50]
+      (tu.async/with-chans [input-chan]
+        (with-response [{:keys [os os-closed-chan output-chan]} input-chan]
+          (is (= true
+                 (wait-for-close os-closed-chan)))
+          (testing "error should be written to output stream"
+            (is (schema= {:message  (s/eq "No response after waiting 50.0 ms. Canceling request.")
+                          :type     (s/eq "class java.util.concurrent.TimeoutException")
+                          :_status  (s/eq 500)
+                          :trace    s/Any
+                          s/Keyword s/Any}
+                         (os->response os))))
 
-;; input chan should get closed
-(expect
-  (with-redefs [async-response/absolute-max-keepalive-ms 500]
-    (tu.async/with-chans [input-chan]
-      (with-response [{:keys [os-closed-chan]} input-chan]
-        (wait-for-close os-closed-chan)
-        (wait-for-close input-chan)))))
+          (testing "input chan should get closed"
+            (is (= true
+                   (wait-for-close input-chan))))
 
-;; output chan should get closed
-(expect
-  (with-redefs [async-response/absolute-max-keepalive-ms 500]
-    (tu.async/with-chans [input-chan]
-      (with-response [{:keys [output-chan os-closed-chan]} input-chan]
-        (wait-for-close os-closed-chan)
-        (wait-for-close output-chan)))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                            Tests to make sure keepalive bytes actually get written                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- do-with-temp-server [handler f]
-  (let [port   (+ 60000 (rand-int 5000))
-        server (server/create-server handler {:port port})]
-    (try
-      (.start server)
-      (f port)
-      (finally
-        (.stop server)))))
-
-(defmacro ^:private with-temp-server
-  "Spin up a Jetty server with `handler` with a random port between 60000 and 65000; bind the random port to `port`, and
-  execute body. Shuts down server when finished."
-  [[port-binding handler] & body]
-  `(do-with-temp-server ~handler (fn [~port-binding] ~@body)))
-
-(defn- num-keepalive-chars-in-response
-  "Make a request to `handler` and count the number of newline keepalive chars in the response."
-  [handler]
-  (with-redefs [async-response/keepalive-interval-ms 50]
-    (with-temp-server [port handler]
-      (let [{response :body} (client/get (format "http://localhost:%d/" port))]
-        (count (re-seq #"\n" response))))))
-
-(defn- output-chan-with-delayed-result
-  "Returns an output channel that receives a 'DONE' value after 400ms. "
-  []
-  (u/prog1 (a/chan 1)
-    (a/go
-      (a/<! (a/timeout 400))
-      (a/>! <> "DONE"))))
-
-;; confirm that some newlines were written as part of the response for an async API response
-(defn- async-handler [_ respond _]
-  (respond {:status 200, :headers {"Content-Type" "text/plain"}, :body (output-chan-with-delayed-result)}))
-
-(expect pos? (num-keepalive-chars-in-response async-handler))
-
-;; make sure newlines are written for sync-style compojure endpoints (e.g. `defendpoint`)
-(def ^:private compojure-sync-handler
-  (compojure/routes
-   (compojure/GET "/" [_] (output-chan-with-delayed-result))))
-
-(expect pos? (num-keepalive-chars-in-response compojure-sync-handler))
-
-;; ...and for true async compojure endpoints (e.g. `defendpoint-async`)
-(def ^:private compojure-async-handler
-  (compojure/routes
-   (compojure/GET "/" [] (fn [_ respond _] (respond (output-chan-with-delayed-result))))))
-
-(expect pos? (num-keepalive-chars-in-response compojure-async-handler))
+          (testing "output chan should get closed"
+            (is (= true
+                   (wait-for-close output-chan)))))))))

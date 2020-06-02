@@ -6,11 +6,7 @@ import React from "react";
 //     from "metabase/modes/components/TimeseriesGroupingWidget";
 import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
 
-import { DEFAULT_ACTIONS } from "../actions";
-import { DEFAULT_DRILLS } from "../drill";
-
-import PivotByCategoryAction from "../actions/PivotByCategoryAction";
-import PivotByLocationAction from "../actions/PivotByLocationAction";
+import { getDefaultDrills } from "../drill";
 
 import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
 import PivotByLocationDrill from "../drill/PivotByLocationDrill";
@@ -43,8 +39,11 @@ export const TimeseriesModeFooter = (props: Props) => {
 
 const TimeseriesMode: QueryMode = {
   name: "timeseries",
-  actions: [PivotByCategoryAction, PivotByLocationAction, ...DEFAULT_ACTIONS],
-  drills: [PivotByCategoryDrill, PivotByLocationDrill, ...DEFAULT_DRILLS],
+  drills: () => [
+    PivotByCategoryDrill,
+    PivotByLocationDrill,
+    ...getDefaultDrills(),
+  ],
   ModeFooter: TimeseriesModeFooter,
 };
 

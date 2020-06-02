@@ -3,7 +3,7 @@ import _ from "underscore";
 import Field from "metabase-lib/lib/metadata/Field";
 import * as Table from "./table";
 
-import { getOperators } from "metabase/lib/schema_metadata";
+import { getFilterOperators } from "metabase/lib/schema_metadata";
 import { TYPE } from "metabase/lib/types";
 import { createLookupByProperty } from "metabase/lib/table";
 
@@ -40,6 +40,10 @@ export function isAggregateField(field: FieldReference): boolean {
   return Array.isArray(field) && field[0] === "aggregation";
 }
 
+export function isJoinedField(field: FieldReference): boolean {
+  return Array.isArray(field) && field[0] === "joined-field";
+}
+
 export function isValidField(field) {
   return (
     isRegularField(field) ||
@@ -56,6 +60,9 @@ export function isValidField(field) {
         : typeof field[2] === "string")) ||
     (isExpressionField(field) && _.isString(field[1])) ||
     (isAggregateField(field) && typeof field[1] === "number") ||
+    (isJoinedField(field) &&
+      typeof field[1] === "string" &&
+      isValidField(field[2])) ||
     isFieldLiteral(field)
   );
 }
@@ -119,8 +126,8 @@ export function getFieldTarget(field, tableDef, path = []) {
       metadata: tableDef.metadata,
       // TODO: we need to do something better here because filtering depends on knowing a sensible type for the field
       base_type: TYPE.Float,
-      operators_lookup: {},
-      operators: [],
+      filter_operators_lookup: {},
+      filter_operators: [],
       active: true,
       fk_target_field_id: null,
       parent_id: null,
@@ -129,9 +136,9 @@ export function getFieldTarget(field, tableDef, path = []) {
       target: null,
       visibility_type: "normal",
     });
-    fieldDef.operators = getOperators(fieldDef, tableDef);
-    fieldDef.operators_lookup = createLookupByProperty(
-      fieldDef.operators,
+    fieldDef.filter_operators = getFilterOperators(fieldDef, tableDef);
+    fieldDef.filter_operators_lookup = createLookupByProperty(
+      fieldDef.filter_operators,
       "name",
     );
 

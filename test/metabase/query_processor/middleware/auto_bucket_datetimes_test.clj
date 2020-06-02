@@ -1,14 +1,16 @@
 (ns metabase.query-processor.middleware.auto-bucket-datetimes-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
+            [metabase
+             [test :as mt]
+             [util :as u]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.auto-bucket-datetimes :as auto-bucket-datetimes]
             [metabase.test.data :as data]
-            [metabase.util :as u]
             [toucan.util.test :as tt]))
 
 (defn- auto-bucket [query]
-  ((auto-bucket-datetimes/auto-bucket-datetimes identity)
-   query))
+  (:pre (mt/test-qp-middleware auto-bucket-datetimes/auto-bucket-datetimes query)))
 
 (defn- auto-bucket-mbql [mbql-query]
   (-> (auto-bucket {:database (data/id), :type :query, :query mbql-query})
@@ -184,3 +186,15 @@
       (auto-bucket-mbql
        {:source-table $$incidents
         :breakout     [$timestamp]}))))
+
+(deftest relative-datetime-test
+  (is (= (->
+          (data/mbql-query checkins
+            {:filter [:= [:datetime-field $date :day] [:relative-datetime :current]]})
+          :query :filter)
+         (->
+          (auto-bucket
+           (data/mbql-query checkins
+             {:filter [:= $date [:relative-datetime :current]]}))
+          :query :filter))
+      "Fields being compared against `:relative-datetime`s should be subject to auto-bucketing. (#9014)"))

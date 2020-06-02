@@ -27,7 +27,7 @@ describe("SavedQuestionLoader", () => {
 
   it("should load a question given a questionId", async () => {
     const questionId = 1;
-    const q = new Question.create({ databaseId: 1, tableId: 2 });
+    const q = Question.create({ databaseId: 1, tableId: 2 });
     jest.spyOn(CardApi, "get").mockReturnValue(q.card());
 
     const wrapper = mount(

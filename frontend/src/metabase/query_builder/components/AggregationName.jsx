@@ -8,14 +8,15 @@ import { t } from "ttag";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import * as A_DEPRECATED from "metabase/lib/query_aggregation";
 
-import { getAggregator } from "metabase/lib/schema_metadata";
-import { format } from "metabase/lib/expressions/formatter";
+import { getAggregationOperator } from "metabase/lib/schema_metadata";
+import { format } from "metabase/lib/expressions/format";
 
 import FieldName from "./FieldName";
 
 import type { Aggregation } from "metabase/meta/types/Query";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import AggregationWrapper from "metabase-lib/lib/queries/structured/Aggregation";
+import { DISPLAY_QUOTES } from "../../lib/expressions";
 
 type Props = {
   aggregation: Aggregation | AggregationWrapper,
@@ -76,13 +77,11 @@ const NamedAggregation = ({ aggregation, className }) => (
   <span className={className}>{A_DEPRECATED.getName(aggregation)}</span>
 );
 
-const CustomAggregation = ({
-  query,
-  aggregation,
-  tableMetadata,
-  customFields,
-  className,
-}) => <span className={className}>{format(aggregation, { query })}</span>;
+const CustomAggregation = ({ aggregation, query, className }) => (
+  <span className={className}>
+    {format(aggregation, { query, quotes: DISPLAY_QUOTES })}
+  </span>
+);
 
 const MetricAggregation = ({ aggregation, tableMetadata, className }) => {
   const metricId = A_DEPRECATED.getMetric(aggregation);
@@ -106,13 +105,13 @@ const StandardAggregation = ({
 }) => {
   const fieldId = A_DEPRECATED.getField(aggregation);
 
-  const selectedAggregation = getAggregator(
+  const selectedAggregation = getAggregationOperator(
     A_DEPRECATED.getOperator(aggregation),
   );
   // if this table doesn't support the selected aggregation, prompt the user to select a different one
   if (
     selectedAggregation &&
-    _.findWhere(tableMetadata.aggregation_options, {
+    _.findWhere(tableMetadata.aggregation_operators, {
       short: selectedAggregation.short,
     })
   ) {

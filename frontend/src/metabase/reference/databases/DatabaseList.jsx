@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
 
@@ -46,34 +45,32 @@ export default class DatabaseList extends Component {
 
     return (
       <div style={style} className="full">
-        <ReferenceHeader name={t`Databases and tables`} />
+        <ReferenceHeader name={t`Our data`} />
         <LoadingAndErrorWrapper
           loading={!loadingError && loading}
           error={loadingError}
         >
           {() =>
             Object.keys(entities).length > 0 ? (
-              <div className="wrapper wrapper--trim">
+              <div className="wrapper">
                 <List>
-                  {Object.values(entities)
-                    .filter(isQueryable)
-                    .map(
-                      (entity, index) =>
-                        entity &&
-                        entity.id &&
-                        entity.name && (
-                          <li className="relative" key={entity.id}>
-                            <ListItem
-                              id={entity.id}
-                              index={index}
-                              name={entity.display_name || entity.name}
-                              description={entity.description}
-                              url={`/reference/databases/${entity.id}`}
-                              icon="database"
-                            />
-                          </li>
-                        ),
-                    )}
+                  {Object.values(entities).map(
+                    (entity, index) =>
+                      entity &&
+                      entity.id &&
+                      entity.name && (
+                        <li className="relative" key={entity.id}>
+                          <ListItem
+                            id={entity.id}
+                            index={index}
+                            name={entity.display_name || entity.name}
+                            description={entity.description}
+                            url={`/reference/databases/${entity.id}`}
+                            icon="database"
+                          />
+                        </li>
+                      ),
+                  )}
                 </List>
               </div>
             ) : (

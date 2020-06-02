@@ -366,6 +366,16 @@
   background-color: color(var(--color-bg-white) alpha(-86%));
 }
 
+.Dashboard--night text.value-label-outline {
+  stroke: var(--night-mode-card);
+}
+
+.Dashboard text.value-label,
+.Dashboard text.value-label-outline,
+.Dashboard .LineAreaBarChart .dc-chart .axis text {
+  font-size: 12px;
+}
+
 .ScalarValue {
   font-weight: 900;
   font-size: 1.8rem;

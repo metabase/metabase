@@ -1,68 +1,85 @@
 (ns metabase.middleware.session-test
-  (:require [environ.core :as env]
+  (:require [clojure.test :refer :all]
+            [environ.core :as env]
             [expectations :refer [expect]]
+            [metabase
+             [db :as mdb]
+             [models :refer [Session User]]
+             [test :as mt]]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.middleware.session :as mw.session]
             [metabase.test.data.users :as test-users]
-            [ring.mock.request :as mock])
-  (:import java.util.UUID
-           org.joda.time.DateTime))
+            [metabase.util.i18n :as i18n]
+            [ring.mock.request :as mock]
+            [toucan.db :as db])
+  (:import java.util.UUID))
 
-;;; ----------------------------------------------- set-session-cookie -----------------------------------------------
-
-;; let's see whether we can set a Session cookie using the default options
-(let [uuid (UUID/randomUUID)]
-  (expect
-    ;; should unset the old SESSION_ID if it's present
-    {"metabase.SESSION_ID"
-     {:value   nil
-      :expires (DateTime. 0)
-      :path    "/"}
-     "metabase.SESSION"
-     {:value     (str uuid)
-      :same-site :lax
-      :http-only true
-      :path      "/"
-      :max-age   1209600}}
-    (-> (mw.session/set-session-cookie {} {} uuid)
-        :cookies)))
-
-;; if `MB_SESSION_COOKIES=true` we shouldn't set a `Max-Age`
-(let [uuid (UUID/randomUUID)]
-  (expect
-    {:value     (str uuid)
-     :same-site :lax
-     :http-only true
-     :path      "/"}
-    (let [env env/env]
-      (with-redefs [env/env (assoc env :mb-session-cookies "true")]
-        (-> (mw.session/set-session-cookie {} {} uuid)
-            (get-in [:cookies "metabase.SESSION"]))))))
+(deftest set-session-cookie-test
+  (let [uuid (UUID/randomUUID)]
+    (testing "should unset the old SESSION_ID if it's present"
+      (is (= {"metabase.SESSION_ID"
+              {:value   nil
+               :expires "Thu, 1 Jan 1970 00:00:00 GMT"
+               :path    "/"}
+              "metabase.SESSION"
+              {:value     (str uuid)
+               :same-site :lax
+               :http-only true
+               :path      "/"
+               :max-age   1209600}}
+             (-> (mw.session/set-session-cookie {} {} uuid)
+                 :cookies))))
+    (testing "if `MB_SESSION_COOKIES=true` we shouldn't set a `Max-Age`"
+      (is (= {:value     (str uuid)
+              :same-site :lax
+              :http-only true
+              :path      "/"}
+             (let [env env/env]
+               (with-redefs [env/env (assoc env :mb-session-cookies "true")]
+                 (-> (mw.session/set-session-cookie {} {} uuid)
+                     (get-in [:cookies "metabase.SESSION"])))))))))
 
 ;; if request is an HTTPS request then we should set `:secure true`. There are several different headers we check for
 ;; this. Make sure they all work.
-(defn- secure-cookie-for-headers? [headers]
-  (-> (mw.session/set-session-cookie {:headers headers} {} (UUID/randomUUID))
-      (get-in [:cookies "metabase.SESSION" :secure])
-      boolean))
+(deftest secure-cookie-test
+  (doseq [[headers expected] [[{"x-forwarded-proto" "https"} true]
+                              [{"x-forwarded-proto" "http"} false]
+                              [{"x-forwarded-protocol" "https"} true]
+                              [{"x-forwarded-protocol" "http"} false]
+                              [{"x-url-scheme" "https"} true]
+                              [{"x-url-scheme" "http"} false]
+                              [{"x-forwarded-ssl" "on"} true]
+                              [{"x-forwarded-ssl" "off"} false]
+                              [{"front-end-https" "on"} true]
+                              [{"front-end-https" "off"} false]
+                              [{"origin" "https://mysite.com"} true]
+                              [{"origin" "http://mysite.com"} false]]]
+    (let [actual (-> (mw.session/set-session-cookie {:headers headers} {} (UUID/randomUUID))
+                     (get-in [:cookies "metabase.SESSION" :secure])
+                     boolean)]
+      (is (= expected
+             actual)
+          (format "With headers %s we %s set the 'secure' attribute on the session cookie"
+                  (pr-str headers) (if expected "SHOULD" "SHOULD NOT"))))))
 
-(expect true  (secure-cookie-for-headers? {"x-forwarded-proto" "https"}))
-(expect false (secure-cookie-for-headers? {"x-forwarded-proto" "http"}))
-
-(expect true  (secure-cookie-for-headers? {"x-forwarded-protocol" "https"}))
-(expect false (secure-cookie-for-headers? {"x-forwarded-protocol" "http"}))
-
-(expect true  (secure-cookie-for-headers? {"x-url-scheme" "https"}))
-(expect false (secure-cookie-for-headers? {"x-url-scheme" "http"}))
-
-(expect true  (secure-cookie-for-headers? {"x-forwarded-ssl" "on"}))
-(expect false (secure-cookie-for-headers? {"x-forwarded-ssl" "off"}))
-
-(expect true  (secure-cookie-for-headers? {"front-end-https" "on"}))
-(expect false (secure-cookie-for-headers? {"front-end-https" "off"}))
-
-(expect true  (secure-cookie-for-headers? {"origin" "https://mysite.com"}))
-(expect false (secure-cookie-for-headers? {"origin" "http://mysite.com"}))
+(deftest session-expired-test
+  (testing "Session expiration time = 1 minute"
+    (with-redefs [env/env (assoc env/env :max-session-age "1")]
+      (doseq [[created-at expected msg]
+              [[:%now                                                               false "brand-new session"]
+               [#t "1970-01-01T00:00:00Z"                                           true  "really old session"]
+               [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -61 :second) true  "session that is 61 seconds old"]
+               [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
+        (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
+          (mt/with-temp User [{user-id :id}]
+            (let [session-id (str (UUID/randomUUID))]
+              (db/simple-insert! Session {:id session-id, :user_id user-id, :created_at created-at})
+              (let [session (#'mw.session/current-user-info-for-session session-id)]
+                (if expected
+                  (is (= nil
+                         session))
+                  (is (some? session)))))))))))
 
 
 ;;; ---------------------------------------- TEST wrap-session-id middleware -----------------------------------------
@@ -144,3 +161,35 @@
    :user    {}}
   (user-bound-handler
    (request-with-user-id 0)))
+
+
+;;; ----------------------------------------------------- Locale -----------------------------------------------------
+
+(deftest bind-locale-test
+  (let [handler        (-> (fn [_ respond _]
+                             (respond i18n/*user-locale*))
+                           mw.session/bind-current-user
+                           mw.session/wrap-current-user-id)
+        session-locale (fn [session-id]
+                         (handler
+                          {:metabase-session-id session-id}
+                          identity
+                          (fn [e] (throw e))))]
+    (testing "No Session"
+      (is (= nil
+             (session-locale nil))))
+
+    (testing "w/ Session"
+      (testing "for user with no `:locale`"
+        (mt/with-temp User [{user-id :id}]
+          (let [session-id (str (UUID/randomUUID))]
+            (db/insert! Session {:id session-id, :user_id user-id})
+            (is (= nil
+                   (session-locale session-id))))))
+
+      (testing "for user *with* `:locale`"
+        (mt/with-temp User [{user-id :id} {:locale "es-MX"}]
+          (let [session-id (str (UUID/randomUUID))]
+            (db/insert! Session {:id session-id, :user_id user-id, :created_at :%now})
+            (is (= "es_MX"
+                   (session-locale session-id)))))))))

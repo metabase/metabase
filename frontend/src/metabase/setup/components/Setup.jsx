@@ -9,28 +9,31 @@ import NewsletterForm from "metabase/components/NewsletterForm";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
+import LanguageStep from "./LanguageStep";
 import UserStep from "./UserStep";
 import DatabaseConnectionStep from "./DatabaseConnectionStep";
 import PreferencesStep from "./PreferencesStep";
 import DatabaseSchedulingStep from "metabase/setup/components/DatabaseSchedulingStep";
 
 const WELCOME_STEP_NUMBER = 0;
-const USER_STEP_NUMBER = 1;
-const DATABASE_CONNECTION_STEP_NUMBER = 2;
-const DATABASE_SCHEDULING_STEP_NUMBER = 3;
-const PREFERENCES_STEP_NUMBER = 4;
+const LANGUAGE_STEP_NUMBER = 1;
+const USER_STEP_NUMBER = 2;
+const DATABASE_CONNECTION_STEP_NUMBER = 3;
+const DATABASE_SCHEDULING_STEP_NUMBER = 4;
+const PREFERENCES_STEP_NUMBER = 5;
 
 export default class Setup extends Component {
   static propTypes = {
     activeStep: PropTypes.number.isRequired,
     setupComplete: PropTypes.bool.isRequired,
     userDetails: PropTypes.object,
+    languageDetails: PropTypes.object,
     setActiveStep: PropTypes.func.isRequired,
     databaseDetails: PropTypes.object.isRequired,
   };
 
   completeWelcome() {
-    this.props.setActiveStep(USER_STEP_NUMBER);
+    this.props.setActiveStep(LANGUAGE_STEP_NUMBER);
     MetabaseAnalytics.trackEvent("Setup", "Welcome");
   }
 
@@ -81,7 +84,7 @@ export default class Setup extends Component {
       return (
         <div className="relative full-height flex flex-full layout-centered">
           <div className="wrapper wrapper--trim text-centered">
-            <LogoIcon className="text-brand mb4" width={89} height={118} />
+            <LogoIcon className="text-brand mb4" height={118} />
             <div
               className="relative z2 text-centered ml-auto mr-auto"
               style={{ maxWidth: 550 }}
@@ -106,11 +109,12 @@ export default class Setup extends Component {
       return (
         <div>
           <nav className="SetupNav text-brand py2 flex layout-centered">
-            <LogoIcon width={41} height={51} />
+            <LogoIcon height={51} />
           </nav>
 
           <div className="wrapper wrapper--small">
             <div className="SetupSteps full">
+              <LanguageStep {...this.props} stepNumber={LANGUAGE_STEP_NUMBER} />
               <UserStep {...this.props} stepNumber={USER_STEP_NUMBER} />
               <DatabaseConnectionStep
                 {...this.props}

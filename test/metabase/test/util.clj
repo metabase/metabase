@@ -1,42 +1,29 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
-            [clj-time.core :as time]
             [clojure
              [string :as str]
-             [test :as t]
+             [test :refer :all]
              [walk :as walk]]
             [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.scheduler :as qs]
+            [colorize.core :as colorize]
+            [java-time :as t]
             [metabase
              [driver :as driver]
+             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric Permissions
+                             PermissionsGroup Pulse PulseCard PulseChannel Revision Segment Table TaskHistory User]]
              [task :as task]
              [util :as u]]
             [metabase.models
-             [card :refer [Card]]
-             [collection :as collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card-series :refer [DashboardCardSeries]]
-             [database :refer [Database]]
-             [dimension :refer [Dimension]]
-             [field :refer [Field]]
-             [metric :refer [Metric]]
-             [permissions :as perms :refer [Permissions]]
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [pulse-channel :refer [PulseChannel]]
-             [revision :refer [Revision]]
-             [segment :refer [Segment]]
-             [setting :as setting]
-             [table :refer [Table]]
-             [task-history :refer [TaskHistory]]
-             [user :refer [User]]]
+             [collection :as collection]
+             [permissions :as perms]
+             [permissions-group :as group]
+             [setting :as setting]]
             [metabase.plugins.classloader :as classloader]
             [metabase.test
              [data :as data]
              [initialize :as initialize]]
-            [metabase.util.date :as du]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -44,26 +31,45 @@
            org.apache.log4j.Logger
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
-(defmethod t/assert-expr 'schema=
-  [message form]
-  (let [[_ schema actual] form]
-    `(let [schema# ~schema
-           actual# ~actual
-           pass?#  (nil? (s/check schema# actual#))]
-       (t/do-report
-        {:type     (if pass?# :pass :fail)
-         :message  ~message
-         :expected (s/explain schema#)
-         :actual   actual#
-         :diffs    (when-not pass?#
-                     [(s/check schema# actual#)])}))))
+(defmethod assert-expr 're= [msg [_ pattern actual]]
+  `(let [pattern#  ~pattern
+         actual#   ~actual
+         matches?# (some->> actual# (re-matches pattern#))]
+     (assert (instance? java.util.regex.Pattern pattern#))
+     (do-report
+      {:type     (if matches?# :pass :fail)
+       :message  ~msg
+       :expected pattern#
+       :actual   actual#
+       :diffs    (when-not matches?#
+                   [[actual# [pattern# nil]]])})))
+
+(defmethod assert-expr 'schema=
+  [message [_ schema actual]]
+  `(let [schema# ~schema
+         actual# ~actual
+         pass?#  (nil? (s/check schema# actual#))]
+     (do-report
+      {:type     (if pass?# :pass :fail)
+       :message  ~message
+       :expected (s/explain schema#)
+       :actual   actual#
+       :diffs    (when-not pass?#
+                   [[actual# [(s/check schema# actual#) nil]]])})))
 
 (defmacro ^:deprecated expect-schema
-  "Like `expect`, but checks that results match a schema."
+  "Like `expect`, but checks that results match a schema. DEPRECATED -- you can use `deftest` combined with `schema=`
+  instead.
+
+    (deftest my-test
+      (is (schema= expected-schema
+                   actual-value)))"
   {:style/indent 0}
   [expected actual]
-  `(t/deftest ~(symbol (format "expect-schema-%d" (hash &form)))
-     (t/is (~'schema= ~expected ~actual))))
+  (let [symb (symbol (format "expect-schema-%d" (hash &form)))]
+    `(deftest ~symb
+       (testing (format ~(str (ns-name *ns*) ":%s") (:line (meta (var ~symb))))
+         (is (~'schema= ~expected ~actual))))))
 
 (defn- random-uppercase-letter []
   (char (+ (int \A) (rand-int 26))))
@@ -204,13 +210,13 @@
 (u/strict-extend (class TaskHistory)
   tt/WithTempDefaults
   {:with-temp-defaults (fn [_]
-                         (let [started (time/now)
-                               ended   (time/plus started (time/millis 10))]
+                         (let [started (t/zoned-date-time)
+                               ended   (t/plus started (t/millis 10))]
                            {:db_id      (data/id)
                             :task       (random-name)
-                            :started_at (du/->Timestamp started)
-                            :ended_at   (du/->Timestamp ended)
-                            :duration   (du/calculate-duration started ended)}))})
+                            :started_at started
+                            :ended_at   ended
+                            :duration   (.toMillis (t/duration started ended))}))})
 
 (u/strict-extend (class User)
   tt/WithTempDefaults
@@ -258,14 +264,16 @@
    Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
   [setting-k value f]
-  (initialize/initialize-if-needed! :db)
+  ;; plugins have to be initialized because changing `report-timezone` will call driver methods
+  (initialize/initialize-if-needed! :db :plugins)
   (let [setting        (#'setting/resolve-setting setting-k)
         original-value (when (or (#'setting/db-or-cache-value setting)
                                  (#'setting/env-var-value setting))
                          (setting/get setting-k))]
     (try
       (setting/set! setting-k value)
-      (f)
+      (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
+        (f))
       (finally
         (setting/set! setting-k original-value)))))
 
@@ -275,12 +283,23 @@
 
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\""
-  [[setting-k value & more] & body]
-  (let [body `(t/testing ~(format "Setting %s = %s" (keyword setting-k) value)
-                (do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body)))]
-    (if (seq more)
-      `(with-temporary-setting-values ~more ~body)
-      body)))
+  [[setting-k value & more :as bindings] & body]
+  (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
+  (if (empty? bindings)
+    `(do ~@body)
+    `(do-with-temporary-setting-value ~(keyword setting-k) ~value
+       (fn []
+         (with-temporary-setting-values ~more
+           ~@body)))))
+
+(defn do-with-discarded-setting-changes [settings thunk]
+  (initialize/initialize-if-needed! :db :plugins)
+  ((reduce
+    (fn [thunk setting-k]
+      (fn []
+        (do-with-temporary-setting-value setting-k (setting/get setting-k) thunk)))
+    thunk
+    settings)))
 
 (defmacro discard-setting-changes
   "Execute `body` in a try-finally block, restoring any changes to listed `settings` to their original values at its
@@ -290,8 +309,7 @@
       ...)"
   {:style/indent 1}
   [settings & body]
-  `(with-temporary-setting-values ~(vec (mapcat (juxt identity #(list `setting/get (keyword %))) settings))
-     ~@body))
+  `(do-with-discarded-setting-changes ~(mapv keyword settings) (fn [] ~@body)))
 
 
 (defn do-with-temp-vals-in-db
@@ -328,7 +346,6 @@
   [model object-or-id column->temp-value & body]
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
 
-
 (defn is-uuid-string?
   "Is string S a valid UUID string?"
   ^Boolean [^String s]
@@ -343,7 +360,7 @@
     @messages))
 
 (defmacro with-log-messages
-  "Execute BODY, and return a vector of all messages logged using the `log/` family of functions. Messages are of the
+  "Execute `body`, and return a vector of all messages logged using the `log/` family of functions. Messages are of the
   format `[:level throwable message]`, and are returned in chronological order from oldest to newest.
 
      (with-log-messages (log/warn \"WOW\")) ; -> [[:warn nil \"WOW\"]]"
@@ -353,7 +370,7 @@
 
 (def level-kwd->level
   "Conversion from a keyword log level to the Log4J constance mapped to that log level.
-   Not intended for use outside of the `with-mb-log-messages-at-level` macro."
+   Not intended for use outside of the `with-log-messages-for-level` macro."
   {:error org.apache.log4j.Level/ERROR
    :warn  org.apache.log4j.Level/WARN
    :info  org.apache.log4j.Level/INFO
@@ -362,25 +379,40 @@
 
 (defn ^Logger metabase-logger
   "Gets the root logger for all metabase namespaces. Not intended for use outside of the
-  `with-mb-log-messages-at-level` macro."
+  `with-log-messages-for-level` macro."
   []
   (Logger/getLogger "metabase"))
 
-(defmacro with-mb-log-messages-at-level
-  "Executes `body` with the metabase logging level set to `level-kwd`. This is needed when the logging level is set at
-  a higher threshold than the log messages you're wanting to example. As an example if the metabase logging level is
-  set to `ERROR` in the log4j.properties file and you are looking for a `WARN` message, it won't show up in the
+(defn do-with-log-messages-for-level [level thunk]
+  (let [original-level (.getLevel (metabase-logger))
+        new-level      (get level-kwd->level (keyword level))]
+    (try
+      (.setLevel (metabase-logger) new-level)
+      (thunk)
+      (finally
+        (.setLevel (metabase-logger) original-level)))))
+
+(defmacro with-log-level
+  "Sets the log level (e.g. `:debug` or `:trace`) while executing `body`. Not thread safe! But good for debugging from
+  the REPL or for tests.
+
+    (with-log-level :debug
+      (do-something))"
+  [level & body]
+  `(do-with-log-messages-for-level ~level (fn [] ~@body)))
+
+(defmacro with-log-messages-for-level
+  "Executes `body` with the metabase logging level set to `level-kwd`. This is needed when the logging level is set at a
+  higher threshold than the log messages you're wanting to example. As an example if the metabase logging level is set
+  to `ERROR` in the log4j.properties file and you are looking for a `WARN` message, it won't show up in the
   `with-log-messages` call as there's a guard around the log invocation, if it's not enabled (it is set to `ERROR`)
   the log function will never be invoked. This macro will temporarily set the logging level to `level-kwd`, then
   invoke `with-log-messages`, then set the level back to what it was before the invocation. This allows testing log
   messages even if the threshold is higher than the message you are looking for."
   [level-kwd & body]
-  `(let  [orig-log-level# (.getLevel (metabase-logger))]
-     (try
-       (.setLevel (metabase-logger) (get level-kwd->level ~level-kwd))
-       (with-log-messages ~@body)
-       (finally
-         (.setLevel (metabase-logger) orig-log-level#)))))
+  `(with-log-level ~level-kwd
+     (with-log-messages
+       ~@body)))
 
 (defn- update-in-if-present
   "If the path `KS` is found in `M`, call update-in with the original
@@ -401,15 +433,17 @@
 (defn ^:deprecated round-fingerprint
   "Rounds the numerical fields of a fingerprint to 2 decimal places
 
-  DEPRECATED -- this should no longer be needed; use `qp.tt/col` to get the actual real-life fingerprint of the
-  column instead."
+  DEPRECATED -- this should no longer be needed; use `metabase.query-processor-test/col` to get the actual real-life
+  fingerprint of the column instead."
   [field]
   (-> field
       (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 2 [:min :max :avg :sd])
       ;; quartal estimation is order dependent and the ordering is not stable across different DB engines, hence more
       ;; aggressive trimming
       (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 0 [:q1 :q3])
-      (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields 2 [:percent-json :percent-url :percent-email :average-length])))
+      (update-in-if-present [:fingerprint :type :type/Text]
+                            round-fingerprint-fields 2
+                            [:percent-json :percent-url :percent-email :average-length])))
 
 (defn ^:deprecated round-fingerprint-cols
   "Round fingerprints to a few digits, so it can be included directly in 'expected' parts of tests.
@@ -423,6 +457,7 @@
                              [:cols])]
        (round-fingerprint-cols maybe-data-cols query-results))
      (map round-fingerprint query-results)))
+
   ([k query-results]
    (update-in query-results k #(map round-fingerprint %))))
 
@@ -450,18 +485,19 @@
 ;; Various functions for letting us check that things get scheduled properly. Use these to put a temporary scheduler
 ;; in place and then check the tasks that get scheduled
 
-(defn do-with-scheduler [scheduler f]
-  (with-redefs [metabase.task/scheduler (constantly scheduler)]
-    (f)))
+(defn do-with-scheduler [scheduler thunk]
+  (with-redefs [task/scheduler (constantly scheduler)]
+    (thunk)))
 
 (defmacro with-scheduler
-  "Temporarily bind the Metabase Quartzite scheduler to SCHEULDER and run BODY."
+  "Temporarily bind the Metabase Quartzite scheduler to `scheulder` and run `body`."
   {:style/indent 1}
   [scheduler & body]
   `(do-with-scheduler ~scheduler (fn [] ~@body)))
 
 (defn do-with-temp-scheduler [f]
   (classloader/the-classloader)
+  (initialize/initialize-if-needed! :db)
   (let [temp-scheduler (qs/start (qs/initialize))]
     (with-scheduler temp-scheduler
       (try
@@ -470,7 +506,7 @@
           (qs/shutdown temp-scheduler))))))
 
 (defmacro with-temp-scheduler
-  "Execute BODY with a temporary scheduler in place.
+  "Execute `body` with a temporary scheduler in place.
 
     (with-temp-scheduler
       (do-something-to-schedule-tasks)
@@ -502,8 +538,9 @@
                                   {:cron-schedule (.getCronExpression ^CronTrigger trigger)
                                    :data          (into {} (.getJobDataMap trigger))}))))}))))))
 
-(defn db-timezone-id
-  "Return the timezone id from the test database. Must be called with `*driver*` bound,such as via `driver/with-driver`"
+(defn ^:deprecated db-timezone-id
+  "Return the timezone id from the test database. Must be called with `*driver*` bound,such as via `driver/with-driver`.
+  DEPRECATED — just call `metabase.driver/db-default-timezone` instead directly."
   []
   (assert driver/*driver*)
   (let [db (data/db)]
@@ -513,10 +550,12 @@
     ;; determine the database's timezone.
     (driver/notify-database-updated driver/*driver* db)
     (data/dataset test-data
-      (-> (driver/current-db-time driver/*driver* db)
-          .getChronology
-          .getZone
-          .getID))))
+      (or
+       (driver/db-default-timezone driver/*driver* db)
+       (-> (driver/current-db-time driver/*driver* db)
+           .getChronology
+           .getZone
+           .getID)))))
 
 (defmulti ^:private do-model-cleanup! class)
 
@@ -531,7 +570,8 @@
 
 (defn do-with-model-cleanup [model-seq f]
   (try
-    (f)
+    (testing (str (pr-str (cons 'with-model-cleanup model-seq)) "\n")
+      (f))
     (finally
       (doseq [model model-seq]
         (do-model-cleanup! (db/resolve-model model))))))
@@ -595,6 +635,7 @@
 
 
 (defn do-with-non-admin-groups-no-root-collection-perms [f]
+  (initialize/initialize-if-needed! :db)
   (try
     (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
       (perms/revoke-collection-permissions! group-id collection/root-collection))

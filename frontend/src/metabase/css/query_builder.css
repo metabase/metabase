@@ -256,29 +256,25 @@
 .QueryError-image--noRows {
   width: 120px;
   height: 120px;
-  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
-  background-image: url("../assets/img/no_results.svg");
+  background-image: url("~assets/img/no_results.svg");
 }
 
 .QueryError-image--queryError {
   width: 120px;
   height: 120px;
-  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
-  background-image: url("../assets/img/no_understand.svg");
+  background-image: url("~assets/img/no_understand.svg");
 }
 
 .QueryError-image--serverError {
   width: 120px;
   height: 148px;
-  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
-  background-image: url("../assets/img/blown_up.svg");
+  background-image: url("~assets/img/blown_up.svg");
 }
 
 .QueryError-image--timeout {
   width: 120px;
   height: 120px;
-  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
-  background-image: url("../assets/img/stopwatch.svg");
+  background-image: url("~assets/img/stopwatch.svg");
 }
 
 .QueryError-message {
@@ -493,6 +489,24 @@
   border-right: none;
 }
 
+.NativeQueryEditorDragHandleWrapper {
+  position: absolute;
+  height: 8px;
+  width: 100%;
+  bottom: -4px;
+  cursor: row-resize;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.NativeQueryEditorDragHandle {
+  background: color(var(--color-border) blackness(+ 3%));
+  width: 100px;
+  height: 5px;
+  border-radius: 4px;
+}
+
 /* VISUALIZATION SETTINGS */
 
 .VisualizationSettings .GuiBuilder-section {
@@ -574,6 +588,7 @@
   background-color: var(--color-bg-light);
   border: 1px solid var(--color-border);
   border-radius: 2px;
+  white-space: pre-wrap;
 }
 
 .PopoverBody.AddToDashboard {

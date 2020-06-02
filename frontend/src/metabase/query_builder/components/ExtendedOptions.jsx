@@ -112,7 +112,7 @@ export class ExtendedOptionsPopover extends Component {
             text={t`Pick a field to sort by`}
             onClick={() => {
               // $FlowFixMe: shouldn't be adding a sort with null field
-              query.addSort(["asc", null]).update(setDatasetQuery);
+              query.sort(["asc", null]).update(setDatasetQuery);
             }}
           />
         );
@@ -144,8 +144,7 @@ export class ExtendedOptionsPopover extends Component {
     const { query } = this.props;
     return (
       <Expressions
-        expressions={query.expressions()}
-        tableMetadata={query.table()}
+        query={query}
         onAddExpression={() => this.setState({ editExpression: true })}
         onEditExpression={name => {
           this.setState({ editExpression: name });

@@ -1,6 +1,6 @@
 info:
   name: Metabase Spark SQL Driver
-  version: 1.0.0-SNAPSHOT
+  version: 1.0.0-SNAPSHOT-1.2.2
   description: Allows Metabase to connect to Spark SQL databases.
 driver:
   - name: hive-like
@@ -27,6 +27,8 @@ driver:
             placeholder: ';transportMode=http'
     connection-properties-include-tunnel-config: false
 init:
+  - step: load-namespace
+    namespace: metabase.driver.hive-like
   - step: load-namespace
     namespace: metabase.driver.sparksql
   - step: register-jdbc-driver

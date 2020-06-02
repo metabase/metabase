@@ -1,10 +1,10 @@
 **This guide will teach you:**
 
-* [How to compile your own copy of Metabase](#build-metabase)
-* [How to set up a development environment](#development-environment)
-* [How to run the Metabase Server](#development-server-quick-start)
-* [How to contribute back to the Metabase project](#contributing)
-* [How to add support in Metabase for other languages](#internationalization)
+- [How to compile your own copy of Metabase](#build-metabase)
+- [How to set up a development environment](#development-environment)
+- [How to run the Metabase Server](#development-server-quick-start)
+- [How to contribute back to the Metabase project](#contributing)
+- [How to add support in Metabase for other languages](#internationalization)
 
 # Contributing
 
@@ -79,9 +79,9 @@ Start the frontend build process with
 
 We use these technologies for our FE build process to allow us to use modules, es6 syntax, and css variables.
 
-* webpack
-* babel
-* cssnext
+- webpack
+- babel
+- cssnext
 
 Frontend tasks are executed using `yarn`. All available tasks can be found in `package.json` under _scripts_.
 
@@ -137,10 +137,10 @@ The way integration tests are written is a little unconventional so here is an e
 import {
     useSharedAdminLogin,
     createTestStore,
-} from "__support__/e2e_tests";
+} from "__support__/e2e";
 import {
     click
-} from "__support__/enzyme_utils"
+} from "__support__/enzyme"
 
 import { mount } from "enzyme"
 
@@ -180,7 +180,7 @@ describe("Query builder", () => {
         store.debug();
 
         // For simulating user interactions like clicks and input events you should use methods defined
-        // in `enzyme_utils.js` as they abstract away some React/Redux complexities.
+        // in `enzyme.js` as they abstract away some React/Redux complexities.
         click(app.find(RunButton))
 
         // Note: In pretty rare cases where rendering the whole app is problematic or slow, you can just render a single
@@ -190,7 +190,7 @@ describe("Query builder", () => {
 })
 ```
 
-You can also skim through [`__support__/e2e_tests.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/e2e_tests.js) and [`__support__/enzyme_utils.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/enzyme_utils.js) to see all available methods.
+You can also skim through [`__support__/e2e.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/e2e.js) and [`__support__/enzyme.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/enzyme.js) to see all available methods.
 
 ### Jest unit tests
 
@@ -295,12 +295,6 @@ You'll probably want to tell Emacs to store customizations in a different file. 
 
 ## Documentation
 
-#### Instant Cheatsheet
-
-Start up an instant cheatsheet for the project + dependencies by running
-
-    lein instant-cheatsheet
-
 ## Internationalization
 
 We are an application with lots of users all over the world. To help them use Metabase in their own language, we mark all of our strings as i18n.
@@ -316,7 +310,7 @@ const someString = t`Hello ${name}!`;
 const someJSX = <div>{jt`Hello ${name}`}</div>;
 ```
 
-and in the backend using `trs` and related macros (see more details in https://github.com/puppetlabs/clj-i18n):
+and in the backend using `trs` (to use the site language) or `tru` (to use the current User's language):
 
 ```clojure
 (trs "Hello {0}!" name)
@@ -324,10 +318,10 @@ and in the backend using `trs` and related macros (see more details in https://g
 
 ### Translation errors or missing strings
 
-If you see incorrect or missing strings for your langauge, please visit our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) and submit your fixes there.
+If you see incorrect or missing strings for your language, please visit our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) and submit your fixes there.
 
 ## License
 
-Copyright © 2017 Metabase, Inc
+Copyright © 2020 Metabase, Inc.
 
 Distributed under the terms of the GNU Affero General Public License (AGPL) except as otherwise noted. See individual files for details.

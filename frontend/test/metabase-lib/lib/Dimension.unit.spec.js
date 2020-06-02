@@ -1,5 +1,11 @@
 import Dimension, { FKDimension } from "metabase-lib/lib/Dimension";
-import { metadata, ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import {
+  metadata,
+  ORDERS,
+  PRODUCTS,
+  SAMPLE_DATASET,
+} from "__support__/sample_dataset_fixture";
 
 describe("Dimension", () => {
   describe("STATIC METHODS", () => {
@@ -195,7 +201,7 @@ describe("Dimension", () => {
           name: "TOTAL",
           display_name: "Total",
           base_type: "type/Float",
-          special_type: null,
+          special_type: "type/Currency",
           field_ref: ["field-id", ORDERS.TOTAL.id],
         });
       });
@@ -392,7 +398,7 @@ describe("Dimension", () => {
           name: "TOTAL",
           display_name: "Total",
           base_type: "type/Float",
-          special_type: null,
+          special_type: "type/Currency",
           field_ref: [
             "binning-strategy",
             ["field-id", ORDERS.TOTAL.id],
@@ -486,7 +492,7 @@ describe("Dimension", () => {
           name: "TOTAL",
           display_name: "Total",
           base_type: "type/Float",
-          special_type: null,
+          special_type: "type/Currency",
           field_ref: ["joined-field", "join1", ["field-id", ORDERS.TOTAL.id]],
         });
       });
@@ -500,6 +506,59 @@ describe("Dimension", () => {
       describe("mbql()", () => {
         it('returns an "aggregation" clause', () => {
           expect(dimension.mbql()).toEqual(["aggregation", 1]);
+        });
+      });
+
+      function aggregation(agg) {
+        const query = new StructuredQuery(ORDERS.question(), {
+          type: "query",
+          database: SAMPLE_DATASET.id,
+          query: {
+            "source-table": ORDERS.id,
+            aggregation: [agg],
+          },
+        });
+        return Dimension.parseMBQL(["aggregation", 0], metadata, query);
+      }
+
+      describe("column()", () => {
+        function sumOf(column) {
+          return aggregation(["sum", ["field-id", column.id]]);
+        }
+
+        it("should clear unaggregated special types", () => {
+          const { special_type } = sumOf(ORDERS.PRODUCT_ID).column();
+
+          expect(special_type).toBe(undefined);
+        });
+
+        it("should retain aggregated special types", () => {
+          const { special_type } = sumOf(ORDERS.TOTAL).column();
+
+          expect(special_type).toBe("type/Currency");
+        });
+      });
+
+      describe("field()", () => {
+        it("should return a float field for sum of order total", () => {
+          const { base_type } = aggregation([
+            "sum",
+            ["field-id", ORDERS.TOTAL.id],
+          ]).field();
+          expect(base_type).toBe("type/Float");
+        });
+
+        it("should return an int field for count distinct of product category", () => {
+          const { base_type } = aggregation([
+            "distinct",
+            ["field-id", PRODUCTS.CATEGORY.id],
+          ]).field();
+          expect(base_type).toBe("type/Integer");
+        });
+
+        it("should return an int field for count", () => {
+          const { base_type } = aggregation(["count"]).field();
+          expect(base_type).toBe("type/Integer");
         });
       });
     });

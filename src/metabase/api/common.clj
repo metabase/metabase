@@ -41,11 +41,20 @@
 
 ;;; ---------------------------------------- Precondition checking helper fns ----------------------------------------
 
+(defn- check-one [condition code message]
+  (when-not condition
+    (let [[message info] (if (and (map? message)
+                                  (not (ui18n/localized-string? message)))
+                           [(:message message) message]
+                           [message])]
+      (throw (ex-info (str message) (assoc info :status-code code)))))
+  condition)
+
 (defn check
   "Assertion mechanism for use inside API functions.
   Checks that `test` is true, or throws an `ExceptionInfo` with `status-code` and `message`.
 
-  MESSAGE can be either a plain string error message, or a map including the key `:message` and any additional
+  `message` can be either a plain string error message, or a map including the key `:message` and any additional
   details, such as an `:error_code`.
 
   This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is
@@ -63,18 +72,15 @@
 
     (check test1 code1 message1
            test2 code2 message2)"
-  {:style/indent 1}
-  ([tst code-or-code-message-pair & rest-args]
-   (let [[[code message] rest-args] (if (vector? code-or-code-message-pair)
-                                      [code-or-code-message-pair rest-args]
-                                      [[code-or-code-message-pair (first rest-args)] (rest rest-args)])]
-     (when-not tst
-       (throw (if (and (map? message)
-                       (not (ui18n/localized-string? message)))
-                (ui18n/ex-info (:message message) (assoc message :status-code code))
-                (ui18n/ex-info message            {:status-code code}))))
-     (if (empty? rest-args) tst
-         (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
+  {:style/indent 1, :arglists '([condition [code message] & more] [condition code message & more])}
+  [condition & args]
+  (let [[code message & more] (if (sequential? (first args))
+                                (concat (first args) (rest args))
+                                args)]
+    (check-one condition code message)
+    (if (seq more)
+      (recur (first more) (rest more))
+      condition)))
 
 (defn check-exists?
   "Check that object with ID (or other key/values) exists in the DB, or throw a 404."
@@ -95,7 +101,7 @@
 (defn throw-invalid-param-exception
   "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
   [field-name message]
-  (throw (ui18n/ex-info (tru "Invalid field: {0}" field-name)
+  (throw (ex-info (tru "Invalid field: {0}" field-name)
            {:status-code 400
             :errors      {(keyword field-name) message}})))
 
@@ -191,7 +197,7 @@
 (defn throw-403
   "Throw a generic 403 (no permissions) error response."
   []
-  (throw (ui18n/ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
+  (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
 
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
@@ -209,7 +215,7 @@
   [bindings & body]
   `(do-api-let ~generic-500 ~bindings ~@body))
 
-(def ^:const generic-204-no-content
+(def generic-204-no-content
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})
 
@@ -225,11 +231,11 @@
    -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
       `Integer/parseInt`
 
-   -  converts ROUTE from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
+   -  converts `route` from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
 
    -  sequentially applies specified annotation functions on args to validate them.
 
-   -  automatically calls `wrap-response-if-needed` on the result of BODY
+   -  automatically calls `wrap-response-if-needed` on the result of `body`
 
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below) will automatically include
       the function in the generated `defroutes` form.
@@ -245,12 +251,16 @@
         [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)
         validate-param-calls   (validate-params arg->schema)]
     (when-not docstr
-      (log/warn (deferred-trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
-    `(def ~(vary-meta fn-name assoc
+      ;; Don't i18n this, it's dev-facing only
+      (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
+                  (ns-name *ns*) fn-name)))
+    `(def ~(vary-meta fn-name
+                      merge
+                      (meta method)
                       ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
                       ;; their API error messages
-                      :doc (route-dox method route docstr args (m/map-vals eval arg->schema) body)
-                      :is-endpoint? true)
+                      {:doc          (route-dox method route docstr args (m/map-vals eval arg->schema) body)
+                       :is-endpoint? true})
        (~method ~route ~args
         (auto-parse ~args
           ~@validate-param-calls

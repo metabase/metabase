@@ -12,6 +12,7 @@
             [metabase.api.session :as session-api]
             [metabase.models
              [session :refer [Session]]
+             [setting :as setting]
              [user :refer [User]]]
             [metabase.test
              [fixtures :as fixtures]
@@ -50,8 +51,6 @@
   (client :post 400 "session" (-> (test-users/user->credentials :rasta)
                                   (assoc :password "something else"))))
 
-;;
-;;
 (deftest login-throttling-test
   (testing (str "Test that people get blocked from attempting to login if they try too many times (Check that"
                 " throttling works at the API level -- more tests in the throttle library itself:"
@@ -130,65 +129,67 @@
         (is (re= #"^Too many attempts! You must wait 4\d seconds before trying again\.$"
                  (error)))))))
 
+(deftest logout-test
+  (testing "DELETE /api/session"
+    (testing "Test that we can logout"
+      ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
+      ;; Session
+      (test-users/clear-cached-session-tokens!)
+      (let [session-id (test-users/username->token :rasta)]
+        ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
+        ;; in on the next API call
+        ((test-users/user->client :rasta) :delete 204 "session")
+        ;; check whether it's still there -- should be GONE
+        (is (= nil
+               (Session session-id)))))))
 
-;; ## DELETE /api/session
-;; Test that we can logout
-(expect
-  nil
-  (do
-    ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
-    ;; Session
-    (test-users/clear-cached-session-tokens!)
-    (let [session-id (test-users/username->token :rasta)]
-      ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
-      ;; in on the next API call
-      ((test-users/user->client :rasta) :delete 204 "session")
-      ;; check whether it's still there -- should be GONE
-      (Session session-id))))
+(deftest forgot-password-test
+  (testing "POST /api/session/forgot_password"
+    (testing "Test that we can initiate password reset"
+      (et/with-fake-inbox
+        (letfn [(reset-fields-set? []
+                  (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered]
+                                                                :id (test-users/user->id :rasta))]
+                    (boolean (and reset_token reset_triggered))))]
+          ;; make sure user is starting with no values
+          (db/update! User (test-users/user->id :rasta), :reset_token nil, :reset_triggered nil)
+          (assert (not (reset-fields-set?)))
+          ;; issue reset request (token & timestamp should be saved)
+          (is (= nil
+                 ((test-users/user->client :rasta) :post 204 "session/forgot_password" {:email (:username (test-users/user->credentials :rasta))}))
+              "Request should return no content")
+          (is (= true
+                 (reset-fields-set?))
+              "User `:reset_token` and `:reset_triggered` should be updated")
+          (is (= "[Metabase] Password Reset Request"
+                 (-> @et/inbox (get "rasta@metabase.com") first :subject))
+              "User should get a password reset email"))))
 
+    (testing "test that email is required"
+      (is (= {:errors {:email "value must be a valid email address."}}
+             (client :post 400 "session/forgot_password" {}))))
 
-;; ## POST /api/session/forgot_password
-;; Test that we can initiate password reset
-(expect
-  (et/with-fake-inbox
-    (let [reset-fields-set? (fn []
-                              (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered]
-                                                                            :id (test-users/user->id :rasta))]
-                                (boolean (and reset_token reset_triggered))))]
-      ;; make sure user is starting with no values
-      (db/update! User (test-users/user->id :rasta), :reset_token nil, :reset_triggered nil)
-      (assert (not (reset-fields-set?)))
-      ;; issue reset request (token & timestamp should be saved)
-      ((test-users/user->client :rasta) :post 200 "session/forgot_password" {:email (:username (test-users/user->credentials :rasta))})
-      ;; TODO - how can we test email sent here?
-      (reset-fields-set?))))
-
-;; Test that email is required
-(expect {:errors {:email "value must be a valid email address."}}
-  (client :post 400 "session/forgot_password" {}))
-
-;; Test that email not found also gives 200 as to not leak existence of user
-(expect nil
-  (client :post 200 "session/forgot_password" {:email "not-found@metabase.com"}))
-
-;; Test that email based throttling kicks in after the login failure threshold (10) has been reached
-(defn- send-password-reset [& [expected-status & more]]
-  (client :post (or expected-status 200) "session/forgot_password" {:email "not-found@metabase.com"}))
+    (testing "Test that email not found also gives 200 as to not leak existence of user"
+      (is (= nil
+             (client :post 204 "session/forgot_password" {:email "not-found@metabase.com"}))))))
 
 (deftest forgot-password-throttling-test
-  (with-redefs [session-api/forgot-password-throttlers (cleaned-throttlers #'session-api/forgot-password-throttlers
-                                                                           [:email :ip-address])]
-    (dotimes [n 10]
-      (send-password-reset))
-    (let [error (fn []
-                  (-> (send-password-reset 400)
-                      :errors
-                      :email))]
-      (is (= "Too many attempts! You must wait 15 seconds before trying again."
-             (error)))
-      ;;`throttling/check` gives 15 in stead of 42
-      (is (= "Too many attempts! You must wait 15 seconds before trying again."
-             (error))))))
+  (testing "Test that email based throttling kicks in after the login failure threshold (10) has been reached"
+    (letfn [(send-password-reset [& [expected-status & more]]
+              (client :post (or expected-status 204) "session/forgot_password" {:email "not-found@metabase.com"}))]
+      (with-redefs [session-api/forgot-password-throttlers (cleaned-throttlers #'session-api/forgot-password-throttlers
+                                                                               [:email :ip-address])]
+        (dotimes [n 10]
+          (send-password-reset))
+        (let [error (fn []
+                      (-> (send-password-reset 400)
+                          :errors
+                          :email))]
+          (is (= "Too many attempts! You must wait 15 seconds before trying again."
+                 (error)))
+          ;;`throttling/check` gives 15 in stead of 42
+          (is (= "Too many attempts! You must wait 15 seconds before trying again."
+                 (error))))))))
 
 
 ;; POST /api/session/reset_password
@@ -284,9 +285,26 @@
 
 
 ;; GET /session/properties
+
+;; Unauthenticated
 (expect
-  (keys (public-settings/public-settings))
-  (keys ((test-users/user->client :rasta) :get 200 "session/properties")))
+  (keys (setting/properties :public))
+  (keys (client :get 200 "session/properties")))
+
+;; Authenticated normal user
+(expect
+  (keys (merge
+          (setting/properties :public)
+          (setting/properties :authenticated)))
+  (keys ((test-users/user->client :lucky) :get 200 "session/properties")))
+
+;; Authenticated super user
+(expect
+  (keys (merge
+          (setting/properties :public)
+          (setting/properties :authenticated)
+          (setting/properties :admin)))
+  (keys ((test-users/user->client :crowberto) :get 200 "session/properties")))
 
 
 ;;; ------------------------------------------ TESTS FOR GOOGLE AUTH STUFF -------------------------------------------
@@ -340,6 +358,56 @@
                      (db/delete! User :id (:id <>))) ; make sure we clean up after ourselves !
                    [:first_name :last_name :email]))))
 
+
+;;; --------------------------------------------- google-auth-token-info ---------------------------------------------
+(deftest google-auth-token-info-tests
+  (testing "Throws exception"
+    (testing "for non-200 status"
+      (is (= [400 "Invalid Google Auth token."]
+             (try
+               (#'session-api/google-auth-token-info {:status 400} "")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)])))))
+
+    (testing "for invalid data."
+      (is (= [400 "Google Auth token appears to be incorrect. Double check that it matches in Google and Metabase."]
+             (try
+               (#'session-api/google-auth-token-info
+                 {:status 200
+                  :body   "{\"aud\":\"BAD-GOOGLE-CLIENT-ID\"}"}
+                 "PRETEND-GOOD-GOOGLE-CLIENT-ID")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)]))))
+      (is (= [400 "Email is not verified."]
+             (try
+               (#'session-api/google-auth-token-info
+                 {:status 200
+                  :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                               "\"email_verified\":false}")}
+                 "PRETEND-GOOD-GOOGLE-CLIENT-ID")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)]))))
+      (is (= {:aud            "PRETEND-GOOD-GOOGLE-CLIENT-ID"
+              :email_verified "true"}
+             (try
+               (#'session-api/google-auth-token-info
+                 {:status 200
+                  :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                               "\"email_verified\":\"true\"}")}
+                 "PRETEND-GOOD-GOOGLE-CLIENT-ID")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)]))))))
+
+  (testing "Supports multiple :aud token data fields"
+    (let [token-1 "GOOGLE-CLIENT-ID-1"
+          token-2 "GOOGLE-CLIENT-ID-2"]
+      (is (= [token-1 token-2]
+             (:aud (#'session-api/google-auth-token-info
+                     {:status 200
+                      :body   (format "{\"aud\":[\"%s\",\"%s\"],\"email_verified\":\"true\"}"
+                                      token-1
+                                      token-2)}
+                     token-1)))))))
 
 ;;; --------------------------------------- google-auth-fetch-or-create-user! ----------------------------------------
 

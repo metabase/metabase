@@ -24,6 +24,7 @@
   visibility: visible;
 }
 
-.hover-parent:hover.hover--inherit > * {
+.hover-parent:hover.hover--inherit > *,
+.hover-parent:hover.hover--inherit .hover-child {
   color: inherit !important;
 }

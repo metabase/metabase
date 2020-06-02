@@ -9,7 +9,7 @@
             [metabase.test.util :as tu]
             [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
-            [metabase.util.date :as du]
+            [metabase.util.date-2 :as u.date]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
@@ -168,7 +168,7 @@
            :ran-update-field-values? (deref update-field-values-ran?  500 false)})))))
 
 (defn- cron-schedule-for-next-year []
-  (format "0 15 10 * * ? %d" (inc (du/date-extract :year))))
+  (format "0 15 10 * * ? %d" (inc (u.date/extract :year))))
 
 ;; Make sure that a database that *is* marked full sync *will* get analyzed
 (expect
