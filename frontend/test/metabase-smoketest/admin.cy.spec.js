@@ -168,13 +168,13 @@ describe("metabase-smoketest > admin", () => {
             .click()
         cy.findByText("Done").click()
 
-        // checks that default is a line visualisation
+        // Checks that default is a line visualisation
         cy.get(".Icon-line")
 
         // Save question (not to a dashboard)
         cy.findByText("Save").click()
         cy.get("input[name='name']")
-            .type("{selectall}{del}Order Totals by State")
+            .type("{selectall}{del}Orders Over Time")
         cy.get(".ModalContent")
             .get(".Button")
             .contains("Save")
@@ -184,6 +184,27 @@ describe("metabase-smoketest > admin", () => {
         // =================
         // should add a new dashboard with the previous questions
         // =================
+        
+        // New dashboard
+        cy.get(".Icon-add").click()
+        cy.findByText("New dashboard").click()
+        cy.get("input[name='name']")
+            .type("Demo Dash 2")
+        cy.findByText("Create").click()
+        
+        // Adding saved questions
+        cy.get(".Header-buttonSection")
+            .click("left")
+        cy.findByText("Order Totals by State").click()
+        cy.get(".Header-buttonSection")
+            .click("left")
+        cy.findByText("Orders Over Time").click()
+
+        // Check they're both on the dashboard
+        cy.contains("Order Totals by State")
+        cy.contains("Orders Over Time")
+
+        cy.contains("Save").click()
 
         // =================
         // should add a new user
