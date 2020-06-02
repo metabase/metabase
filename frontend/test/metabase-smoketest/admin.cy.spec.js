@@ -65,16 +65,20 @@ describe("metabase-smoketest > admin", () => {
         cy.url().should("be", "/");
     })
     
+    // it("should move to question screen", () => {
+    //     cy.findByText("Ask a question").click()
+    // })
+
     it("should add a simple summarized question", () => {
-        // // *** When you click ask a question, you're redirected to a login page
-        // beforeEach(() => {
-        //     signInAsAdmin();
-        //     cy.server()
-        // });
-        before(signInAsAdmin())
-        cy.findByText("Ask a question").click()
+        // *** When you click ask a question, you're redirected to a login page
+        before(() => {
+            cy.findByText("Ask a question").click()
+            signInAsAdmin();
+        });
         
+        cy.findByText("Ask a question").click()        
         cy.findByText("Simple question").click()
+        cy.findByText("Metabase H2", { timeout: 30000 }).click()
         cy.findByText("People").click()
         
         cy.findByText("Filter").click()
@@ -89,11 +93,11 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Source").click()
         cy.findByText("Done").click()
 
-        // Check that response is a bar graph
+        // Check that response is a bar graph'
     })
     
     it("should add a simple JOINed question", () => {
-        
+
     })
     // should add a questionw ith a default line visualization
     // should add a new dashboard with the previous questions
