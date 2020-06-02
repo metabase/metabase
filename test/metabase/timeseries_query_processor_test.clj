@@ -9,21 +9,21 @@
 
 (deftest limit-test
   (tqp.test/test-timeseries-drivers
-    (is (= {:columns ["id"
-                      "timestamp"
-                      "count"
-                      "user_last_login"
-                      "user_name"
-                      "venue_category_name"
-                      "venue_latitude"
-                      "venue_longitude"
-                      "venue_name"
-                      "venue_price"]
-            :rows    [["931" "2013-01-03T08:00:00Z" 1 "2014-01-01T08:30:00.000Z" "Simcha Yan" "Thai" "34.094"  "-118.344" "Kinaree Thai Bistro"       "1"]
-                      ["285" "2013-01-10T08:00:00Z" 1 "2014-07-03T01:30:00.000Z" "Kfir Caj"   "Thai" "34.1021" "-118.306" "Ruen Pair Thai Restaurant" "2"]]}
-           (mt/rows+column-names
-             (mt/run-mbql-query checkins
-               {:limit 2}))))))
+   (is (= {:columns ["id"
+                     "count"
+                     "timestamp"
+                     "user_last_login"
+                     "user_name"
+                     "venue_category_name"
+                     "venue_latitude"
+                     "venue_longitude"
+                     "venue_name"
+                     "venue_price"]
+           :rows    [["931" 1 "2013-01-03T08:00:00Z" "2014-01-01T08:30:00.000Z" "Simcha Yan" "Thai" "34.094"  "-118.344" "Kinaree Thai Bistro"       "1"]
+                     ["285" 1 "2013-01-10T08:00:00Z" "2014-07-03T01:30:00.000Z" "Kfir Caj"   "Thai" "34.1021" "-118.306" "Ruen Pair Thai Restaurant" "2"]]}
+          (mt/rows+column-names
+           (mt/run-mbql-query checkins
+                              {:limit 2}))))))
 
 (deftest fields-test
   (tqp.test/test-timeseries-drivers
@@ -40,14 +40,14 @@
   (tqp.test/test-timeseries-drivers
     (testing "query w/o :fields"
       (doseq [[direction expected-rows]
-              {#_:desc #_[["693" "2015-12-29T08:00:00Z" 1 "2014-07-03T19:30:00.000Z" "Frans Hevel" "Mexican" "34.0489" "-118.238" "Señor Fish"                "2"]
-                          ["570" "2015-12-26T08:00:00Z" 1 "2014-07-03T01:30:00.000Z" "Kfir Caj"    "Chinese" "37.7949" "-122.406" "Empress of China"          "3"]]
-               :asc  [["931" "2013-01-03T08:00:00Z" 1 "2014-01-01T08:30:00.000Z" "Simcha Yan"  "Thai"    "34.094"  "-118.344" "Kinaree Thai Bistro"       "1"]
-                      ["285" "2013-01-10T08:00:00Z" 1 "2014-07-03T01:30:00.000Z" "Kfir Caj"    "Thai"    "34.1021" "-118.306" "Ruen Pair Thai Restaurant" "2"]]}]
+              {#_:desc #_[["693" 1 "2015-12-29T08:00:00Z" "2014-07-03T19:30:00.000Z" "Frans Hevel" "Mexican" "34.0489" "-118.238" "Señor Fish"                "2"]
+                          ["570" 1 "2015-12-26T08:00:00Z" "2014-07-03T01:30:00.000Z" "Kfir Caj"    "Chinese" "37.7949" "-122.406" "Empress of China"          "3"]]
+               :asc  [["931" 1 "2013-01-03T08:00:00Z" "2014-01-01T08:30:00.000Z" "Simcha Yan"  "Thai"    "34.094"  "-118.344" "Kinaree Thai Bistro"       "1"]
+                      ["285" 1 "2013-01-10T08:00:00Z" "2014-07-03T01:30:00.000Z" "Kfir Caj"    "Thai"    "34.1021" "-118.306" "Ruen Pair Thai Restaurant" "2"]]}]
         (testing direction
           (is (= {:columns ["id"
-                            "timestamp"
                             "count"
+                            "timestamp"
                             "user_last_login"
                             "user_name"
                             "venue_category_name"

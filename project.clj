@@ -17,7 +17,6 @@
    "run-with-repl"                     ["with-profile" "+run-with-repl" "repl"]
    "ring"                              ["with-profile" "+ring" "ring"]
    "test"                              ["with-profile" "+test" "test"]
-   "eftest"                            ["with-profile" "+test" "with-profile" "+eftest" "eftest"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
                                         "--max-line-length" "205"
                                         ;; see https://github.com/dakrone/lein-bikeshed/issues/41
@@ -30,7 +29,7 @@
    ;; `lein lint` will run all linters
    "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"] ["cloverage"]]
    "repl"                              ["with-profile" "+repl" "repl"]
-   "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]
+   "strip-and-compress"                ["with-profile" "+strip-and-compress,-user,-dev" "run"]
    "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]}
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -42,7 +41,7 @@
    [org.clojure/core.async "0.4.500"
     :exclusions [org.clojure/tools.reader]]
    [org.clojure/core.match "0.3.0"]                                   ; optimized pattern matching library for Clojure
-   [org.clojure/core.memoize "0.7.1"]                                 ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
+   [org.clojure/core.memoize "1.0.236"]                               ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
    [org.clojure/data.csv "0.1.4"]                                     ; CSV parsing / generation
    [org.clojure/java.classpath "0.3.0"]                               ; examine the Java classpath from Clojure programs
    [org.clojure/java.jdbc "0.7.11"]                                   ; basic JDBC access from Clojure
@@ -78,12 +77,11 @@
     :exclusions [org.slf4j/slf4j-api
                  it.unimi.dsi/fastutil]]
    [com.draines/postal "2.0.3"]                                       ; SMTP library
-   [com.jcraft/jsch "0.1.55"]                                         ; SSH client for tunnels
    [com.google.guava/guava "28.2-jre"]                                ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
-   [commons-codec/commons-codec "1.12"]                               ; Apache Commons -- useful codec util fns
+   [commons-codec/commons-codec "1.14"]                               ; Apache Commons -- useful codec util fns
    [commons-io/commons-io "2.6"]                                      ; Apache Commons -- useful IO util fns
    [commons-validator/commons-validator "1.6"                         ; Apache Commons -- useful validation util fns
     :exclusions [commons-beanutils
@@ -92,7 +90,7 @@
    [compojure "1.6.1" :exclusions [ring/ring-codec]]                  ; HTTP Routing library built on Ring
    [crypto-random "1.2.0"]                                            ; library for generating cryptographically secure random bytes and strings
    [dk.ative/docjure "1.13.0"]                                        ; Excel export
-   [environ "1.1.0"]                                                  ; easy environment management
+   [environ "1.2.0"]                                                  ; easy environment management
    [hiccup "1.0.5"]                                                   ; HTML templating
    [honeysql "0.9.5" :exclusions [org.clojure/clojurescript]]         ; Transform Clojure data structures to SQL
    [instaparse "1.4.10"]                                              ; Make your own parser
@@ -112,7 +110,9 @@
    [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
-   [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
+   [org.apache.commons/commons-lang3 "3.10"]                          ; helper methods for working with java.lang stuff
+   [org.apache.sshd/sshd-core "2.4.0"]                                ; ssh tunneling and test server
+   [org.bouncycastle/bcprov-jdk15on "1.65"]                           ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
    [org.eclipse.jetty/jetty-server "9.4.27.v20200227"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [org.flatland/ordered "1.5.9"]                                     ; ordered maps & sets
@@ -120,19 +120,19 @@
     :exclusions [ch.qos.logback/logback-classic]]
    [org.mariadb.jdbc/mariadb-java-client "2.5.1"]                     ; MySQL/MariaDB driver
    [org.postgresql/postgresql "42.2.8"]                               ; Postgres driver
-   [org.slf4j/slf4j-log4j12 "1.7.25"]                                 ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
-   [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
+   [org.slf4j/slf4j-api "1.7.30"]                                     ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
+   [org.slf4j/slf4j-log4j12 "1.7.30"]                                 ; ^^
+   [org.tcrawley/dynapath "1.1.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
    [org.threeten/threeten-extra "1.5.0"]                               ; extra Java 8 java.time classes like DayOfMonth and Quarter
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
    [potemkin "0.4.5" :exclusions [riddley]]                           ; utility macros & fns
    [pretty "1.0.4"]                                                   ; protocol for defining how custom types should be pretty printed
    [prismatic/schema "1.1.11"]                                        ; Data schema declaration and validation library
-   [puppetlabs/i18n "0.8.0"]                                          ; Internationalization library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
    [riddley "0.2.0"]                                                  ; code walking lib -- used interally by Potemkin, manifold, etc.
    [ring/ring-core "1.8.0"]
-   [ring/ring-jetty-adapter "1.8.0"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
-   [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
+   [ring/ring-jetty-adapter "1.8.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+   [ring/ring-json "0.5.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [toucan "1.15.1" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
                                  org.clojure/tools.logging
@@ -179,10 +179,10 @@
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
-     [jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]      ; to run Eastwood
+     [jonase/eastwood "0.3.11" :exclusions [org.clojure/clojure]]     ; to run Eastwood
      [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.10.0"]
-     [ring/ring-mock "0.3.2"]]
+     [ring/ring-mock "0.4.0"]]
 
     :plugins
     [[lein-environ "1.1.0"]] ; easy access to environment variables
@@ -205,10 +205,27 @@
     :repl-options
     {:init-ns user}} ; starting in the user namespace is a lot faster than metabase.core since it has less deps
 
+   ;; output test results in JUnit XML format
+   :junit
+   {:dependencies
+    [[pjstadig/humane-test-output "0.10.0"]
+     [test-report-junit-xml "0.2.0"]]
+
+    :plugins
+    [[lein-test-report-junit-xml "0.2.0"]]
+
+    ;; the custom JUnit formatting logic lives in `backend/junit/test/metabase/junit.clj`
+    :test-paths ["backend/junit/test"]
+
+    :injections
+    [(require 'metabase.junit)]
+
+    :test-report-junit-xml
+    {:output-dir    "target/junit"
+     :format-result metabase.junit/format-result}}
+
    :ci
-   {:jvm-opts ["-Xmx2500m"]
-    :eftest   {:report         eftest.report.junit/report
-               :report-to-file "target/test/junit.xml"}}
+   {:jvm-opts ["-Xmx2500m"]}
 
    :install
    {}
@@ -282,10 +299,6 @@
 
    :test
    [:with-include-drivers-middleware :test-common]
-
-   :eftest
-   {:plugins [[lein-eftest "0.5.9"]]
-    :eftest  {:multithread? false}}
 
    :include-all-drivers
    [:with-include-drivers-middleware
@@ -369,8 +382,9 @@
    ;; strips classes from my-plugin.jar that already exist in other JAR and recompresses with higher compression ratio.
    ;; Second arg (other JAR) is optional; defaults to target/uberjar/metabase.jar
    :strip-and-compress
-   {:source-paths ["src"
-                   "lein-commands/strip-and-compress"]
+   {:aliases      ^:replace {"run" ["run"]}
+    :source-paths ^:replace ["lein-commands/strip-and-compress"]
+    :test-paths   ^:replace []
     :main         ^:skip-aot metabase.strip-and-compress-module}
 
    ;; Profile Metabase start time with `lein profile`
@@ -386,5 +400,6 @@
    {:main metabase.automagic-dashboards.rules}
 
    :compare-h2-dbs
-   {:main         ^:skip-aot metabase.cmd.compare-h2-dbs
+   {:aliases      ^:replace  {"run" ["run"]}
+    :main         ^:skip-aot metabase.cmd.compare-h2-dbs
     :source-paths ["test"]}})

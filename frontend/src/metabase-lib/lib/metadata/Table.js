@@ -78,10 +78,6 @@ export default class Table extends Base {
     );
   }
 
-  isQueryable() {
-    return this.visibility_type == null;
-  }
-
   /**
    * The singular form of the object type this table represents
    * Currently we try to guess this by singularizing `display_name`, but ideally it would be configurable in metadata

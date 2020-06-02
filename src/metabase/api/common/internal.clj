@@ -53,7 +53,7 @@
              {arg nil})))
 
 (defn- dox-for-schema
-  "Look up the docstring for SCHEMA for use in auto-generated API documentation. In most cases this is defined by
+  "Look up the docstring for `schema` for use in auto-generated API documentation. In most cases this is defined by
   wrapping the schema with `with-api-error-message`."
   [schema]
   (if-not schema
@@ -64,19 +64,19 @@
           (log/warn
            (u/format-color 'red (str "We don't have a nice error message for schema: %s\n"
                                      "Consider wrapping it in `su/with-api-error-message`.")
-                           (u/pprint-to-str schema)))))))
+             (u/pprint-to-str schema)))))))
 
 (defn- param-name
-  "Return the appropriate name for this PARAM-SYMB based on its SCHEMA. Usually this is just the name of the
-  PARAM-SYMB, but if the schema used a call to `su/api-param` we;ll use that name instead."
+  "Return the appropriate name for this `param-symb` based on its `schema`. Usually this is just the name of the
+  `param-symb`, but if the schema used a call to `su/api-param` we;ll use that name instead."
   [param-symb schema]
   (or (when (record? schema)
         (:api-param-name schema))
       (name param-symb)))
 
 (defn- format-route-schema-dox
-  "Generate the `PARAMS` section of the documentation for a `defendpoint`-defined function by using the
-   PARAM-SYMB->SCHEMA map passed in after the argslist."
+  "Generate the `params` section of the documentation for a `defendpoint`-defined function by using the
+  `param-symb->schema` map passed in after the argslist."
   [param-symb->schema]
   (when (seq param-symb->schema)
     (str "\n\n##### PARAMS:\n\n"

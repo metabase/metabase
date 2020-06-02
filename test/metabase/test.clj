@@ -10,6 +10,8 @@
             [medley.core :as m]
             [metabase
              [driver :as driver]
+             [email-test :as et]
+             [http-client :as http]
              [query-processor :as qp]
              [query-processor-test :as qp.test]]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
@@ -28,6 +30,7 @@
              [users :as test-users]]
             [metabase.test.util
              [async :as tu.async]
+             [i18n :as i18n.tu]
              [log :as tu.log]
              [timezone :as tu.tz]]
             [potemkin :as p]
@@ -39,12 +42,15 @@
   data/keep-me
   datasets/keep-me
   driver/keep-me
+  et/keep-me
+  http/keep-me
+  i18n.tu/keep-me
   initialize/keep-me
   qp/keep-me
   qp.test-util/keep-me
   qp.test/keep-me
   sql-jdbc.tu/keep-me
-  [test-users/keep-me]
+  test-users/keep-me
   tt/keep-me
   tu/keep-me
   tu.async/keep-me
@@ -78,6 +84,26 @@
   *driver*
   with-driver]
 
+ [et
+  email-to
+  fake-inbox-email-fn
+  inbox
+  regex-email-bodies
+  reset-inbox!
+  summarize-multipart-email
+  with-expected-messages
+  with-fake-inbox]
+
+ [http
+  authenticate
+  build-url
+  client
+  client-full-response]
+
+ [i18n.tu
+  with-mock-i18n-bundles
+  with-user-locale]
+
  [initialize
   initialize-if-needed!]
 
@@ -109,6 +135,8 @@
   sql-jdbc-drivers]
 
  [test-users
+  fetch-user
+  test-user?
   user->id
   user->client
   user->credentials
@@ -170,6 +198,8 @@
  [tx.env
   set-test-drivers!
   with-test-drivers])
+
+;; TODO -- move this stuff into some other namespace and refer to it here
 
 (defn do-with-clock [clock thunk]
   (testing (format "\nsystem clock = %s" (pr-str clock))

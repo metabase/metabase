@@ -4,10 +4,6 @@ import _ from "underscore";
 
 import { MetabaseApi } from "metabase/services";
 
-export function isQueryable(table) {
-  return table.visibility_type == null;
-}
-
 export async function loadTableAndForeignKeys(tableId) {
   const [table, foreignKeys] = await Promise.all([
     MetabaseApi.table_query_metadata({ tableId }),

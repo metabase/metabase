@@ -1,7 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { isQueryable } from "metabase/lib/table";
 import Icon from "metabase/components/Icon";
 import Schemas from "metabase/entities/schemas";
 
@@ -9,9 +8,7 @@ import Schemas from "metabase/entities/schemas";
 class SchemaPane extends Component {
   render() {
     const { schema, show } = this.props;
-    const tables = schema.tables
-      .filter(isQueryable)
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const tables = schema.tables.sort((a, b) => a.name.localeCompare(b.name));
     return (
       <div>
         <div className="ml1 my2 flex align-center justify-between border-bottom pb1">

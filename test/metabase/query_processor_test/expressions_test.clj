@@ -10,7 +10,6 @@
              [query-processor-test :as qp.test]
              [sync :as sync]
              [test :as mt]]
-            [metabase.test.data :as data]
             [metabase.test.data.one-off-dbs :as one-off-dbs]
             [metabase.util.date-2 :as u.date]))
 
@@ -109,49 +108,6 @@
                  {:expressions {:x [:* $price 2.0]}
                   :aggregation [[:count]]
                   :breakout    [[:expression :x]]})))))))
-
-(deftest aggregate+breakout-by-expression-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= [[2 22] [4 59] [6 13] [8 6]]
-           (mt/formatted-rows [int int]
-             (mt/run-mbql-query venues
-               {:expressions {:x [:* $price 2.0]}
-                :aggregation [[:count]]
-                :breakout    [[:expression :x]]}))))))
-
-(deftest use-expressions-in-aggregations-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= [[406]]
-           (mt/formatted-rows [int]
-             (mt/run-mbql-query venues
-               {:expressions {:x [:* $price 2.0]}
-                :aggregation [[:sum [:expression :x]]]}))))
-    (testing "Can we refer to expressions in nested queries"
-      (is (= [[406]]
-             (mt/formatted-rows [int]
-               (mt/run-mbql-query venues
-                 {:source-query {:source-table (data/id :venues)
-                                 :expressions {:x [:* [:field-id (data/id :venues :price)] 2.0]}}
-                  :aggregation [[:sum [:field-literal "x" :type/Float]]]})))))))
-
-(deftest nesting+use-aggregations-in-expression-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= [[200]]
-           (mt/formatted-rows [int]
-             (mt/run-mbql-query venues
-               {:expressions  {:x [:* [:field-literal "count" :type/Integer] 2]}
-                :fields       [[:expression :x]]
-                :source-query {:source-table (data/id :venues)
-                               :aggregation  [[:count]]}}))))
-    (is (= [[2]]
-           (mt/formatted-rows [int]
-             (mt/run-mbql-query venues
-               {:expressions  {:x [:* [:field-literal "count" :type/Integer] 2]}
-                :fields       [[:expression :x]]
-                :source-query {:source-table (data/id :venues)
-                               :aggregation  [[:count]]
-                               :breakout     [[:field-id (data/id :venues :name)]]}
-                :limit        1}))))))
 
 (deftest expressions-should-include-type-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -292,7 +248,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                     JOINS                                                                      |
+;;; |                                                     JOINS                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest expressions+joins-test
@@ -311,27 +267,11 @@
                                    :condition    [:= $user_id
                                                   [:joined-field "users__via__user_id" [:field-id (mt/id :users :id)]]]}]})
                  mt/rows
-                 ffirst))))
-    (testing "Do joins where the same field name is present in multiple tables work with expression hoisting"
-      (is (= [[1 5 6]]
-             (->> (mt/run-mbql-query checkins
-                    {:expressions {:id-sum [:+ [:field-id (data/id :checkins :id)]
-                                                [:joined-field "users__via__user_id" [:field-id (data/id :users :id)]]]}
-                     :fields      [[:field-id (data/id :checkins :id)]
-                                   [:joined-field "users__via__user_id" [:field-id (data/id :users :id)]]
-                                   [:expression :id-sum]]
-                     :limit       1
-                     :order-by    [[:asc [:field-id (data/id :checkins :id)]]]
-                     :joins       [{:strategy :left-join
-                                    :source-table (data/id :users)
-                                    :alias        "users__via__user_id"
-                                    :condition    [:= $user_id
-                                                   [:joined-field "users__via__user_id" [:field-id (data/id :users :id)]]]}]})
-                  (mt/formatted-rows [int int int])))))))
+                 ffirst))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                     MISC BUG FIXES                                                             |
+;;; |                                                 MISC BUG FIXES                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Make sure no part of query compilation is lazy as that won't play well with dynamic bindings.
@@ -339,7 +279,7 @@
 ;; way to reproducing it.
 (deftest no-lazyness-test
   (one-off-dbs/with-blank-db
-    (let [;; need more fields than seq chunking size
+    (let [ ;; need more fields than seq chunking size
           fields (repeatedly 1000 gensym)]
       (doseq [statement ["drop table if exists \"LOTS_OF_FIELDS\";"
                          (format "create table \"LOTS_OF_FIELDS\" (a integer, b integer, %s);"
@@ -348,14 +288,14 @@
                          (format "insert into \"LOTS_OF_FIELDS\" values(%s);"
                                  (str/join "," (range (+ (count fields) 2))))]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
-      (sync/sync-database! (data/db))
+      (sync/sync-database! (mt/db))
       (is (= 1
              (->> (mt/run-mbql-query lots_of_fields
-                    {:expressions {:c [:+ [:field-id (data/id :lots_of_fields :a)]
-                                       [:field-id (data/id :lots_of_fields :b)]]}
+                    {:expressions {:c [:+ [:field-id (mt/id :lots_of_fields :a)]
+                                       [:field-id (mt/id :lots_of_fields :b)]]}
                      :fields      (concat [[:expression :c]]
                                           (for [field fields]
-                                            [:field-id (data/id :lots_of_fields (keyword field))]))})
+                                            [:field-id (mt/id :lots_of_fields (keyword field))]))})
                   (mt/formatted-rows [int])
                   ffirst))))))
 

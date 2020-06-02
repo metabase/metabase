@@ -14,7 +14,7 @@
              [user :as user :refer [User]]]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [tru]]
+             [i18n :as i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -22,7 +22,7 @@
              [hydrate :refer [hydrate]]]))
 
 (defn- check-self-or-superuser
-  "Check that USER-ID is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
+  "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
   [user-id]
   {:pre [(integer? user-id)]}
   (api/check-403
@@ -48,9 +48,9 @@
 
 (defn- updated-user-name [user-before-update first_name last_name]
   (let [prev_first_name (:first_name user-before-update)
-        prev_last_name (:last_name user-before-update)
-        first_name (or first_name prev_first_name)
-        last_name (or last_name prev_last_name)]
+        prev_last_name  (:last_name user-before-update)
+        first_name      (or first_name prev_first_name)
+        last_name       (or last_name prev_last_name)]
     (when (or (not= first_name prev_first_name)
               (not= last_name prev_last_name))
       [first_name last_name])))
@@ -130,7 +130,7 @@
 
 (defn- valid-email-update?
   "This predicate tests whether or not the user is allowed to update the email address associated with this account."
-  [{:keys [google_auth ldap_auth email] :as foo } maybe-new-email]
+  [{:keys [google_auth ldap_auth email]} maybe-new-email]
   (or
    ;; Admin users can update
    api/*is-superuser?*
@@ -143,13 +143,14 @@
 
 (api/defendpoint PUT "/:id"
   "Update an existing, active `User`."
-  [id :as {{:keys [email first_name last_name group_ids is_superuser login_attributes] :as body} :body}]
+  [id :as {{:keys [email first_name last_name group_ids is_superuser login_attributes locale] :as body} :body}]
   {email            (s/maybe su/Email)
    first_name       (s/maybe su/NonBlankString)
    last_name        (s/maybe su/NonBlankString)
    group_ids        (s/maybe [su/IntGreaterThanZero])
    is_superuser     (s/maybe s/Bool)
-   login_attributes (s/maybe user/LoginAttributes)}
+   login_attributes (s/maybe user/LoginAttributes)
+   locale           (s/maybe su/ValidLocale)}
   (check-self-or-superuser id)
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
@@ -162,8 +163,7 @@
       (api/check-500
        (db/update! User id
          (u/select-keys-when body
-           :present (when api/*is-superuser?*
-                      #{:login_attributes})
+           :present (into #{:locale} (when api/*is-superuser?* [:login_attributes]))
            :non-nil (set (concat [:first_name :last_name :email]
                                  (when api/*is-superuser?*
                                    [:is_superuser]))))))

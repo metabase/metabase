@@ -49,7 +49,7 @@
 
 ;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
 ;; for pprinting huge things like expanded queries
-(intern 'clojure.pprint '*print-right-margin* 200)
+(alter-var-root #'clojure.pprint/*print-right-margin* (constantly 200))
 
 (defmacro ignore-exceptions
   "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
