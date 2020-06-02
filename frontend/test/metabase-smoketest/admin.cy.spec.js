@@ -2,6 +2,7 @@ import path from "path";
 import { USERS, restore, signInAsAdmin } from "__support__/cypress";
 
 const ADMIN = USERS.admin
+const USER = USERS.normal
 
 describe("metabase-smoketest > admin", () => {
     before(() => restore("blank"));
@@ -70,9 +71,9 @@ describe("metabase-smoketest > admin", () => {
         
         // Filter for created within previous 5 years
 
-        cy.findByText("Filter", {timeout: 20000}).click()
+        cy.findByText("Filter").click()
         cy.get(".scroll-y")
-            .contains("Created At")
+            .contains("Created At", {timeout: 20000})
             .click()
         cy.get("input[type='text']")
             .type("{backspace}{backspace}5")
@@ -209,5 +210,31 @@ describe("metabase-smoketest > admin", () => {
         // =================
         // should add a new user
         // ================= 
+
+        cy.get(".Nav")
+            .children().last()
+            .children().last()
+            .click()
+        cy.findByText("Admin").click()
+        cy.findByText("People").click()
+        
+        // User info
+        cy.findByText("Add someone").click()
+        cy.get("input[name='first_name']")
+            .type(USER.first_name)
+        cy.get("input[name='last_name']")
+            .type(USER.last_name)
+        cy.get("input[name='email']")
+            .type(USER.username)
+        cy.get(".ModalBody")
+            .find(".Icon-chevrondown")
+            .click()
+        cy.findByText("English").click()
+        cy.findByText("Create").click()
+
+        cy.contains("has been added")
+        cy.findByText("Done").click()
+
+        cy.contains(ADMIN.username)
     }); 
 })
