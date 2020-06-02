@@ -7,9 +7,46 @@
 
 The below sections provide information on how to get connected and troubleshoot any issues that may come up.
 
-### Connecting to a BigQuery Dataset
+## Prerequisites
 
-1. make sure you have a [Google Cloud Platform](https://cloud.google.com/) account with a Project you would like to use in Metabase.
+You'll need to have a [Google Cloud Platform](https://cloud.google.com/) account with a [Project](https://cloud.google.com/storage/docs/projects) you would like to use in Metabase. Consult the Google Cloud Platform documentation for how to [create and manage a project](https://cloud.google.com/resource-manager/docs/creating-managing-projects).
+
+## Connecting to a BigQuery Dataset
+
+### For new connections
+To connect a BigQuery dataset, select **Admin** from the settings icon. In the **Setup** section, under **GET CONNECTED**, click on **Add a Database**.
+
+From the first dropdown, **Database Type**, select **BigQuery**. Metabase will present you with the relevant configuration fields to fill out:
+
+![images](../images/bigquery_add_database.png)
+
+#### Fields
+
+##### Name
+
+##### Dataset ID
+
+##### Service Account JSON file
+
+#### Sliders
+
+##### Use the Java Virtual Machine (JVM) timezone
+
+We suggest you leave this off unless you're doing manual timezone casting in many or most of your queries with this data.
+
+##### Automatically run queries when doing simple filtering and summarizing.
+
+When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.
+
+##### This is a large datbase, so let me choose when Metabase syncs and scans
+
+By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
+
+#### Save your database configuration
+
+When you're done, click the save button.
+
+### For legacy connections
 * Start by giving this connection a __Name__ and providing your Google Cloud Platform __Project ID__ along with your desired BigQuery __Dataset ID__.  If you don't have a dataset and want to play around with something we recommend copying one of the [sample tables](https://cloud.google.com/bigquery/sample-tables)
 ![Basic Fields](../images/bigquery_basic.png)
 * Follow the `Click here` link provided below the __Client ID__ field which will open a new browser tab and guide you through the process of generating OAuth 2.0 credentials for Metabase.  Make sure to choose `Other` for your application type.
