@@ -3,6 +3,8 @@ import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
 import { t } from "ttag";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
+import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
+import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
@@ -48,12 +50,14 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "site-url",
         display_name: t`Site URL`,
         type: "string",
+        widget: SiteUrlWidget,
       },
       {
         key: "redirect-all-requests-to-https",
         display_name: t`Redirect to HTTPS`,
         type: "boolean",
-        note: t`This value only takes effect if Site URL is HTTPS`,
+        getHidden: ({ "site-url": url }) => !/^https:\/\//.test(url),
+        widget: HttpsOnlyWidget,
       },
       {
         key: "admin-email",
