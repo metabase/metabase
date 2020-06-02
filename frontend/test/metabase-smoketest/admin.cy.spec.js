@@ -67,13 +67,16 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("People").click()
         
         cy.findByText("Filter", {timeout: 20000}).click()
-        cy.findByText("Created At").click()
+        cy.get(".scroll-y")
+            .contains("Created At")
+            .click()
         // Set timing to previous 12 months ('Previous' already selected)
-        cy.get('input[type="text"]').type("{backspace}{backspace}5")
+        cy.get("input[type='text']")
+            .type("{backspace}{backspace}5")
         cy.findByText("Days").click()
         cy.findByText("Years").click()
         cy.get(".scroll-y")
-            .findByText("Add filter")
+            .contains("Add filter")
             .click();
 
         cy.get(".Button")
@@ -83,6 +86,28 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Done").click()
 
         // Check that response is a bar graph'
+        
+        cy.findByText("Save").click()
+        cy.get("input[name='name']")
+            .type("{selectall}{del}People per Source")
+        // Test can't find this input... 
+        // cy.get("input[name='description']")
+        //     .type("Bar graph illustrating where our customers come from")
+        // Default: saves to Our analytics
+        cy.get(".ModalContent")
+            .get(".Button")
+            .contains("Save")
+            .click()
+        cy.findByText("Yes please!").click()
+        cy.findByText("Create a new dashboard").click()
+        cy.get("input[name='name']")
+            .type("Demo Dash")
+        // Test can't find this input either...
+        // cy.get("input[name='description']")
+        //     .type("Many demos live here")
+        cy.findByText("Create").click()
+        
+        cy.contains("Save").click()
 
         // =================
         // should add a simple JOINed question"
