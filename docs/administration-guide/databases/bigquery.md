@@ -1,7 +1,11 @@
 
 ## Working with Google BigQuery in Metabase
 
-Starting in v0.15.0 Metabase provides a driver for connecting to BigQuery directly and executing queries against any datasets you have.  The below sections provide information on how to get connected and troubleshoot any issues that may come up.
+**Starting in v0.15.0**, Metabase provides a driver for connecting to BigQuery directly and executing queries against any datasets you have.  
+
+**Starting in v0.36.0**, Metabase allows you to connect to your BigQuery dataset using a [Service Account](https://cloud.google.com/iam/docs/understanding-service-accounts).
+
+The below sections provide information on how to get connected and troubleshoot any issues that may come up.
 
 ### Connecting to a BigQuery Dataset
 
