@@ -8,7 +8,7 @@
             [java-time :as t]
             [metabase
              [driver :as driver]
-             [models :refer [Database Field]]
+             [models :refer [Database Field Table]]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
              [sync :as sync]
@@ -208,7 +208,7 @@
             "FROM `test_data.venues` "
             "LIMIT 1")
     (tt/with-temp* [Database [db {:engine :bigquery
-                                  :details (assoc (:details (data/db))
+                                  :details (assoc (:details (mt/db))
                                                   :include-user-id-and-hash false)}]
                     Table    [table {:name "venues" :db_id (u/get-id db)}]
                     Field    [_     {:table_id (u/get-id table)
