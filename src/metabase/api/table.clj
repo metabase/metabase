@@ -163,8 +163,7 @@
                :type "type/Coordinate"})))))
 
 (def ^:private dimension-options-for-response
-  (m/map-kv (fn [k v]
-              [(str k) v]) dimension-options))
+  (m/map-keys str dimension-options))
 
 (defn- create-dim-index-seq [dim-type]
   (->> dimension-options
@@ -254,11 +253,11 @@
         (assoc-dimension-options driver)
         format-fields-for-response
         (update :fields
-                (let [hidden (Boolean/parseBoolean include_hidden_fields)
+                (let [hidden    (Boolean/parseBoolean include_hidden_fields)
                       sensitive (Boolean/parseBoolean include_sensitive_fields)]
                   (partial filter (fn [{:keys [visibility_type]}]
                                     (case (keyword visibility_type)
-                                      :hidden hidden
+                                      :hidden    hidden
                                       :sensitive sensitive
                                       true))))))))
 
@@ -284,12 +283,12 @@
       (-> col
           (update :base_type keyword)
           (assoc
-              :table_id     (str "card__" card-id)
-              :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
-              ;; Assoc special_type at least temprorarily. We need the correct special type in place to make decisions
-              ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
-              ;; the dimension options
-              :special_type (keyword (:special_type col)))
+           :table_id     (str "card__" card-id)
+           :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
+           ;; Assoc special_type at least temprorarily. We need the correct special type in place to make decisions
+           ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
+           ;; the dimension options
+           :special_type (keyword (:special_type col)))
           add-field-dimension-options))))
 
 (defn root-collection-schema-name

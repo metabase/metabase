@@ -295,12 +295,6 @@ You'll probably want to tell Emacs to store customizations in a different file. 
 
 ## Documentation
 
-#### Instant Cheatsheet
-
-Start up an instant cheatsheet for the project + dependencies by running
-
-    lein instant-cheatsheet
-
 ## Internationalization
 
 We are an application with lots of users all over the world. To help them use Metabase in their own language, we mark all of our strings as i18n.

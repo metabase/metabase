@@ -8,6 +8,7 @@
              [helpers :as h]]
             [medley.core :as m]
             [metabase.driver :as driver]
+            [metabase.driver.hive-like :as hive-like]
             [metabase.driver.sql
              [query-processor :as sql.qp]
              [util :as sql.u]]
@@ -132,7 +133,8 @@
   (let [inner-query (-> (assoc inner-query
                                :remark (qputil/query->remark :sparksql outer-query)
                                :query  (if (seq params)
-                                         (unprepare/unprepare driver (cons sql params))
+                                         (binding [hive-like/*param-splice-style* :paranoid]
+                                           (unprepare/unprepare driver (cons sql params)))
                                          sql)
                                :max-rows (mbql.u/query->max-rows-limit outer-query))
                         (dissoc :params))
@@ -166,7 +168,6 @@
       (catch Throwable e
         (.close stmt)
         (throw e)))))
-
 
 (doseq [feature [:basic-aggregations
                  :binning

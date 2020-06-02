@@ -9,9 +9,9 @@
              [util :as u]]
             [metabase.driver.bigquery
              [common :as bigquery.common]
+             [params :as bigquery.params]
              [query-processor :as bigquery.qp]]
             [metabase.driver.google :as google]
-            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [error-type :as error-type]
              [store :as qp.store]
@@ -27,8 +27,6 @@
            java.util.Collections))
 
 (driver/register! :bigquery, :parent #{:google :sql})
-
-(defmethod driver/supports? [:bigquery :percentile-aggregations] [_ _] false)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -208,24 +206,25 @@
                (parser v)))))))))
 
 (defn- ^QueryResponse execute-bigquery
-  ([{{:keys [project-id]} :details, :as database} query-string]
-   (execute-bigquery (database->client database) project-id query-string))
+  ([{{:keys [project-id]} :details, :as database} sql parameters]
+   (execute-bigquery (database->client database) project-id sql parameters))
 
-  ([^Bigquery client, ^String project-id, ^String query-string]
-   {:pre [client (seq project-id) (seq query-string)]}
+  ([^Bigquery client ^String project-id ^String sql parameters]
+   {:pre [client (seq project-id) (seq sql)]}
    (let [request (doto (QueryRequest.)
                    (.setTimeoutMs (* query-timeout-seconds 1000))
                    ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
-                   (.setUseLegacySql (str/includes? (str/lower-case query-string) "#legacysql"))
-                   (.setQuery query-string))]
+                   (.setUseLegacySql (str/includes? (str/lower-case sql) "#legacysql"))
+                   (.setQuery sql)
+                   (bigquery.params/set-parameters! parameters))]
      (google/execute (.query (.jobs client) project-id request)))))
 
-(defn- process-native* [respond database query-string]
+(defn- process-native* [respond database sql parameters]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`
   (letfn [(thunk []
-            (post-process-native respond (execute-bigquery database query-string)))]
+            (post-process-native respond (execute-bigquery database sql parameters)))]
     (try
       (thunk)
       (catch Throwable e
@@ -239,19 +238,19 @@
 
 (defmethod driver/execute-reducible-query :bigquery
   ;; TODO - it doesn't actually cancel queries the way we'd expect
-  [driver {{sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query} _ respond]
+  [driver {{sql :query, :keys [params table-name mbql?]} :native, :as outer-query} _ respond]
   (let [database (qp.store/database)]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
-      (let [sql (str "-- " (qputil/query->remark :bigquery outer-query) "\n" (if (seq params)
-                                                                               (unprepare/unprepare driver (cons sql params))
-                                                                               sql))]
-        (process-native* respond database sql)))))
+      (let [sql (str "-- " (qputil/query->remark :bigquery outer-query) "\n" sql)]
+        (process-native* respond database sql params)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other Driver Method Impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/supports? [:bigquery :percentile-aggregations] [_ _] false)
 
 (defmethod driver/supports? [:bigquery :expressions] [_ _] false)
 
