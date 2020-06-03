@@ -8,7 +8,7 @@ This page provides information on how to connect Metabase to a [Bigquery](https:
 
 ## Prerequisites
 
-You'll need to have a [Google Cloud Platform](https://cloud.google.com/) account with a [Project](https://cloud.google.com/storage/docs/projects) you would like to use in Metabase. Consult the Google Cloud Platform documentation for how to [create and manage a project](https://cloud.google.com/resource-manager/docs/creating-managing-projects). This project should have a BigQuery dataset for Metabase to connect to.
+You'll need to have a [Google Cloud Platform](https://cloud.google.com/) account with a [project](https://cloud.google.com/storage/docs/projects) you would like to use in Metabase. Consult the Google Cloud Platform documentation for how to [create and manage a project](https://cloud.google.com/resource-manager/docs/creating-managing-projects). This project should have a BigQuery dataset for Metabase to connect to.
 
 ## For new connections: use a service account
 
@@ -16,7 +16,7 @@ You'll need to have a [Google Cloud Platform](https://cloud.google.com/) account
 
 To connect Metabase to a BigQuery dataset, select **Admin** from the settings icon. In the **Setup** section, under **GET CONNECTED**, click on **Add a Database**.
 
-From the first dropdown, **Database Type**, select **BigQuery**. Metabase will present you with the relevant configuration fields to fill out:
+From the first dropdown, **Database type**, select **BigQuery**. Metabase will present you with the relevant configuration fields to fill out:
 
 ![images](../images/bigquery_add_database.png)
 
@@ -44,6 +44,7 @@ To create the service account JSON file, follow Google's documentation on [setti
 
     - BigQuery Data Viewer
     - BigQuery Metadata Viewer
+    - BigQuery User
 
 3. **Create key**. Click on the **Create Key** button, and select **JSON** for the **key type**.
 
