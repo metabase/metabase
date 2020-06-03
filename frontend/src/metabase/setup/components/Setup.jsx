@@ -36,6 +36,23 @@ export default class Setup extends Component {
     MetabaseAnalytics.trackEvent("Setup", "Welcome");
   }
 
+  componentDidMount() {
+    const locales = MetabaseSettings.get("available-locales") || [];
+    const browserLocale = (navigator.language || "").toLowerCase();
+    const defaultLanguage =
+      // try to find an exact match (e.g. "zh-tw")
+      locales.find(([code]) => code.toLowerCase() === browserLocale) ||
+      // fall back to matching the prefix (e.g. just "zh" from "zh-tw")
+      locales.find(
+        ([code]) => code.toLowerCase() === browserLocale.split("-")[0],
+      );
+    if (defaultLanguage) {
+      const [code, name] = defaultLanguage;
+      this.setState({ defaultLanguage: { name, code } });
+      MetabaseSettings.set("user-locale", code);
+    }
+  }
+
   renderFooter() {
     return (
       <div className="SetupHelp bordered border-dashed p2 rounded mb4">
@@ -113,7 +130,11 @@ export default class Setup extends Component {
 
           <div className="wrapper wrapper--small">
             <div className="SetupSteps full">
-              <LanguageStep {...this.props} stepNumber={LANGUAGE_STEP_NUMBER} />
+              <LanguageStep
+                {...this.props}
+                stepNumber={LANGUAGE_STEP_NUMBER}
+                defaultLanguage={this.state.defaultLanguage}
+              />
               <UserStep {...this.props} stepNumber={USER_STEP_NUMBER} />
               <DatabaseConnectionStep
                 {...this.props}

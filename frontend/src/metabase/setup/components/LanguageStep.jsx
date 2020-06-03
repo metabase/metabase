@@ -13,7 +13,15 @@ import CollapsedStep from "./CollapsedStep";
 import _ from "underscore";
 
 export default class LanguageStep extends React.Component {
-  state = { selectedLanguage: { name: "English", code: "en" } };
+  constructor(props) {
+    super(props);
+    this.state = {
+      selectedLanguage: props.defaultLanguage || {
+        name: "English",
+        code: "en",
+      },
+    };
+  }
 
   render() {
     const {
