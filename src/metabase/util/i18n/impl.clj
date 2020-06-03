@@ -149,11 +149,13 @@
   (atom
    (fn []
      (when-let [db-is-setup? (resolve 'metabase.db/db-is-setup?)]
-       (when (db-is-setup?)
-         (when-let [get-string (var-get (resolve 'metabase.models.setting/get-string))]
-           (let [f (fn [] (get-string :site-locale))]
-             (reset! site-locale-from-setting-fn f)
-             (f))))))))
+       (when (and (bound? db-is-setup?)
+                  (db-is-setup?))
+         (when-let [get-string (resolve 'metabase.models.setting/get-string)]
+           (when (bound? get-string)
+             (let [f (fn [] (get-string :site-locale))]
+               (reset! system-locale-from-setting-fn f)
+               (f)))))))))
 
 (defn site-locale-from-setting
   "Fetch the value of the `site-locale` Setting."

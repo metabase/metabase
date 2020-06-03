@@ -1,12 +1,16 @@
 (ns metabase.driver.sql.util.unprepare
-  "Utility functions for converting a prepared statement with `?` into a plain SQL query.
+  "Utility functions for converting a prepared statement with `?` param placeholders into a plain SQL query by splicing
+  params in place.
 
-  TODO - since this is no longer strictly a 'util' namespace (most `:sql-jdbc` drivers need to implement one or
+  TODO -- since this is no longer strictly a 'util' namespace (most `:sql-jdbc` drivers need to implement one or
   methods from here) let's rename this `metabase.driver.sql.unprepare` when we get a chance."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.util.i18n :refer [trs]])
   (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
@@ -30,9 +34,9 @@
   "NULL")
 
 (defmethod unprepare-value [:sql String]
-  [_ value]
+  [_ s]
   ;; escape single-quotes like Cam's String -> Cam''s String
-  (str \' (str/replace value "'" "''") \'))
+  (str \' (sql.u/escape-sql s :ansi) \'))
 
 (defmethod unprepare-value [:sql Boolean]
   [_ value]
@@ -84,14 +88,21 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod unprepare :sql [driver [sql & args]]
-  (reduce
-   (fn [sql arg]
-     ;; Only match single question marks; do not match ones like `??` which JDBC converts to `?` to use as Postgres
-     ;; JSON operators amongst other things.
-     ;;
-     ;; TODO - this is not smart enough to handle question marks in non argument contexts, for example if someone
-     ;; were to have a question mark inside an identifier such as a table name. I think we'd have to parse the SQL in
-     ;; order to handle those situations.
-     (str/replace-first sql #"(?<!\?)\?(?!\?)" (unprepare-value driver arg)))
+  (transduce
+   identity
+   (completing
+    (fn [sql arg]
+      ;; Only match single question marks; do not match ones like `??` which JDBC converts to `?` to use as Postgres
+      ;; JSON operators amongst other things.
+      ;;
+      ;; TODO - this is not smart enough to handle question marks in non argument contexts, for example if someone
+      ;; were to have a question mark inside an identifier such as a table name. I think we'd have to parse the SQL in
+      ;; order to handle those situations.
+      (let [v (str (unprepare-value driver arg))]
+        (log/tracef "Splice %s as %s" (pr-str arg) (pr-str v))
+        (str/replace-first sql #"(?<!\?)\?(?!\?)" (str/re-quote-replacement v))))
+    (fn [spliced-sql]
+      (log/tracef "Spliced %s\n-> %s" (u/colorize 'green (pr-str sql)) (u/colorize 'blue (pr-str spliced-sql)))
+      spliced-sql))
    sql
    args))

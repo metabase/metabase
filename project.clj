@@ -29,7 +29,7 @@
    ;; `lein lint` will run all linters
    "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"] ["cloverage"]]
    "repl"                              ["with-profile" "+repl" "repl"]
-   "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]
+   "strip-and-compress"                ["with-profile" "+strip-and-compress,-user,-dev" "run"]
    "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]}
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -382,8 +382,9 @@
    ;; strips classes from my-plugin.jar that already exist in other JAR and recompresses with higher compression ratio.
    ;; Second arg (other JAR) is optional; defaults to target/uberjar/metabase.jar
    :strip-and-compress
-   {:source-paths ["src"
-                   "lein-commands/strip-and-compress"]
+   {:aliases      ^:replace {"run" ["run"]}
+    :source-paths ^:replace ["lein-commands/strip-and-compress"]
+    :test-paths   ^:replace []
     :main         ^:skip-aot metabase.strip-and-compress-module}
 
    ;; Profile Metabase start time with `lein profile`
@@ -399,5 +400,6 @@
    {:main metabase.automagic-dashboards.rules}
 
    :compare-h2-dbs
-   {:main         ^:skip-aot metabase.cmd.compare-h2-dbs
+   {:aliases      ^:replace  {"run" ["run"]}
+    :main         ^:skip-aot metabase.cmd.compare-h2-dbs
     :source-paths ["test"]}})
