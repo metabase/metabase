@@ -320,7 +320,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     title: t`Show values on data points`,
     widget: "toggle",
     getHidden: (series, vizSettings) =>
-      series.length > 1 || vizSettings["stackable.stack_type"] === "normalized",
+      vizSettings["stackable.stack_type"] === "normalized",
     getDefault: ([{ card, data }]) =>
       // small bar graphs should have this turned on by default,
       // but bar graphs that were saved without this feature shouldn't
@@ -334,7 +334,6 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     title: t`Values to show`,
     widget: "radio",
     getHidden: (series, vizSettings) =>
-      series.length > 1 ||
       vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",
     props: {
@@ -351,7 +350,6 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     title: t`Value formatting`,
     widget: "radio",
     getHidden: (series, vizSettings) =>
-      series.length > 1 ||
       vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",
     props: {

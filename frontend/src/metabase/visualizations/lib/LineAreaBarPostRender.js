@@ -247,32 +247,45 @@ function onRenderVoronoiHover(chart) {
     .order();
 }
 
-function onRenderValueLabels(chart, formatYValue, [data]) {
-  const hasDuplicateX = new Set(data.map(([x]) => x)).size < data.length;
+function onRenderValueLabels(chart, formatYValue, datas) {
   if (
     !chart.settings["graph.show_values"] || // setting is off
-    chart.settings["stackable.stack_type"] === "normalized" || // no normalized
-    chart.series.length > 1 || // no multiseries
-    hasDuplicateX // need unique x values
+    chart.settings["stackable.stack_type"] === "normalized" // no normalized
   ) {
     return;
   }
+
+  if (chart.settings["stackable.stack_type"] === "stacked") {
+    datas = [
+      _.zip(...datas).map(datasForSeries =>
+        datasForSeries.reduce(
+          ([prevX, sum], [x, y = 0] = []) => [prevX || x, sum + y],
+          [undefined, 0],
+        ),
+      ),
+    ];
+  }
   const showAll = chart.settings["graph.label_value_frequency"] === "all";
-  const { display } = chart.settings.series(chart.series[0]);
+  const displays = datas.map(
+    (data, index) => chart.settings.series(chart.series[index]).display,
+  );
 
   // Update `data` to use named x/y and include `showLabelBelow`.
   // We need to do that before data is filtered to show every nth value.
-  data = data
-    .map(([x, y], i) => {
-      const isLocalMin =
-        // first point or prior is greater than y
-        (i === 0 || data[i - 1][1] > y) &&
-        // last point point or next is greater than y
-        (i === data.length - 1 || data[i + 1][1] > y);
-      const showLabelBelow = isLocalMin && display === "line";
-      return { x, y, showLabelBelow };
-    })
-    .filter(d => display !== "bar" || d.y !== 0);
+  data = datas.flatMap((data, seriesIndex) => {
+    const display = displays[seriesIndex];
+    return data
+      .map(([x, y], i) => {
+        const isLocalMin =
+          // first point or prior is greater than y
+          (i === 0 || data[i - 1][1] > y) &&
+          // last point point or next is greater than y
+          (i === data.length - 1 || data[i + 1][1] > y);
+        const showLabelBelow = isLocalMin && display === "line";
+        return { x, y, showLabelBelow, seriesIndex };
+      })
+      .filter(d => display !== "bar" || d.y !== 0);
+  });
 
   const formattingSetting = chart.settings["graph.label_value_formatting"];
   let compact;
@@ -306,20 +319,34 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
   const yScale = chart.y();
 
   // Ordinal bar charts and histograms need extra logic to center the label.
-  let xShift = 0;
-  if (xScale.rangeBand) {
-    xShift += xScale.rangeBand() / 2;
-  }
-  if (isHistogramBar({ settings: chart.settings, chartType: display })) {
-    // this has to match the logic in `doHistogramBarStuff`
-    const [x1, x2] = chart
-      .svg()
-      .selectAll("rect")
-      .flat()
-      .map(r => parseFloat(r.getAttribute("x")));
-    const barWidth = x2 - x1;
-    xShift += barWidth / 2;
-  }
+  const xShifts = displays.map((display, index) => {
+    const barIndex = displays.slice(0, index).filter(d => d === "bar").length;
+    let xShift = 0;
+    if (xScale.rangeBand) {
+      // debugger; // eslint-disable-line
+      if (display === "bar") {
+        const xShiftForSeries =
+          xScale.rangeBand() / displays.filter(d => d === "bar").length;
+        xShift += (barIndex + 0.5) * xShiftForSeries;
+      } else {
+        xShift += xScale.rangeBand() / 2;
+      }
+      if (displays.some(d => d === "bar") && displays.some(d => d !== "bar")) {
+        xShift += (chart._rangeBandPadding() * xScale.rangeBand()) / 2;
+      }
+    }
+    if (isHistogramBar({ settings: chart.settings, chartType: display })) {
+      // this has to match the logic in `doHistogramBarStuff`
+      const [x1, x2] = chart
+        .svg()
+        .selectAll("rect")
+        .flat()
+        .map(r => parseFloat(r.getAttribute("x")));
+      const barWidth = x2 - x1;
+      xShift += barWidth / 2;
+    }
+    return xShift;
+  });
 
   const addLabels = data => {
     // make sure we don't add .value-lables multiple times
@@ -334,8 +361,8 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
       .data(data)
       .enter()
       .append("g")
-      .attr("transform", ({ x, y, showLabelBelow }) => {
-        const xPos = xShift + xScale(x);
+      .attr("transform", ({ x, y, showLabelBelow, seriesIndex }) => {
+        const xPos = xShifts[seriesIndex] + xScale(x);
         let yPos = yScale(y) + (showLabelBelow ? 18 : -8);
         // if the yPos is below the x axis, move it to be above the data point
         const [yMax] = yScale.range();
