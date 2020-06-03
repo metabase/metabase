@@ -1,8 +1,13 @@
 import path from "path";
-import { USERS, restore, signInAsAdmin } from "__support__/cypress";
+import { USERS, restore } from "__support__/cypress";
 
-const ADMIN = USERS.admin
-const USER = USERS.normal
+const admin = USERS.admin
+const new_user =  {
+    first_name: "Barb",
+    last_name: "Tabley",
+    username: "new@metabase.com",
+    password: "12341234"
+}
 
 describe("metabase-smoketest > admin", () => {
     before(() => restore("blank"));
@@ -24,17 +29,17 @@ describe("metabase-smoketest > admin", () => {
           .closest("button")
           .should("be.disabled");
         
-        cy.findByLabelText("First name").type(ADMIN.first_name);
-        cy.findByLabelText("Last name").type(ADMIN.last_name);
-        cy.findByLabelText("Email").type(ADMIN.username);
+        cy.findByLabelText("First name").type(admin.first_name);
+        cy.findByLabelText("Last name").type(admin.last_name);
+        cy.findByLabelText("Email").type(admin.username);
         cy.findByLabelText("Your company or team name").type("Epic Team");
     
         cy.findByLabelText("Create a password")
             .clear()
-            .type(ADMIN.password);
+            .type(admin.password);
         cy.findByLabelText("Confirm your password")
             .clear()
-            .type(ADMIN.password);
+            .type(admin.password);
         cy.findByText("Next").click();
         
         // Database
@@ -221,11 +226,11 @@ describe("metabase-smoketest > admin", () => {
         // User info
         cy.findByText("Add someone").click()
         cy.get("input[name='first_name']")
-            .type(USER.first_name)
+            .type(new_user.first_name)
         cy.get("input[name='last_name']")
-            .type(USER.last_name)
+            .type(new_user.last_name)
         cy.get("input[name='email']")
-            .type(USER.username)
+            .type(new_user.username)
         cy.get(".ModalBody")
             .find(".Icon-chevrondown")
             .click()
@@ -235,6 +240,8 @@ describe("metabase-smoketest > admin", () => {
         cy.contains("has been added")
         cy.findByText("Done").click()
 
-        cy.contains(ADMIN.username)
-    }); 
+        cy.contains(admin.username)
+    });
+    
+    
 })
