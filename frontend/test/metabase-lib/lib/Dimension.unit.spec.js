@@ -499,32 +499,6 @@ describe("Dimension", () => {
     });
   });
 
-  describe("FieldLiteralDimension", () => {
-    describe("INSTANCE METHODS", () => {
-      describe("defaultDimension()", () => {
-        it("should group date types by day", () => {
-          const dimension = Dimension.parseMBQL(
-            ["field-literal", "Created At", "type/Date"],
-            metadata,
-          );
-          expect(dimension.defaultDimension().mbql()).toEqual([
-            "datetime-field",
-            ["field-literal", "Created At", "type/Date"],
-            "day",
-          ]);
-        });
-
-        it("should return null otherwise", () => {
-          const dimension = Dimension.parseMBQL(
-            ["field-literal", "Total", "type/Float"],
-            metadata,
-          );
-          expect(dimension.defaultDimension()).toEqual(null);
-        });
-      });
-    });
-  });
-
   describe("AggregationDimension", () => {
     const dimension = Dimension.parseMBQL(["aggregation", 1], metadata);
 
