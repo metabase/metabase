@@ -1,5 +1,5 @@
 import path from "path";
-import { USERS, restore } from "__support__/cypress";
+import { USERS, restore, main, signOut } from "__support__/cypress";
 
 const admin = USERS.admin;
 const new_user = {
@@ -12,6 +12,10 @@ describe("metabase-smoketest > admin", () => {
   before(() => restore("blank"));
 
   it("should set up Metabase", () => {
+    // ****************
+    // ***  ADMIN   ***
+    // *****************
+
     // This is a simplified version of the "scenarios > setup" test
     cy.visit("/");
     cy.contains("Welcome to Metabase");
@@ -118,7 +122,7 @@ describe("metabase-smoketest > admin", () => {
     cy.contains("Google");
 
     // =================
-    // should add question to a new dashboard
+    // should add question to a new dashboard in my personal collection
     // =================
 
     cy.findByText("Save").click();
@@ -128,7 +132,10 @@ describe("metabase-smoketest > admin", () => {
     cy.findByLabelText("Description").type(
       "Bar graph illustrating where our customers come from",
     );
-    // Default: saves to Our analytics
+    // When I select 'My personal collection' I get the error "Referential integrity constraint violation:"
+    // cy.findByText("Our analytics").click();
+    // cy.findByText("My personal collection").click().pause();
+    // cy.contains("My personal collection");
     cy.get(".ModalContent")
       .get(".Button")
       .contains("Save")
@@ -172,7 +179,7 @@ describe("metabase-smoketest > admin", () => {
     cy.findByText("State").click();
     cy.findByText("Done").click();
 
-    cy.get(".Icon-pinmap").should("exist");
+    cy.get(".Icon-pinmap");
     cy.get(".Icon-table").should("not.exist");
 
     // Save question (not to a dashboard)
@@ -211,7 +218,7 @@ describe("metabase-smoketest > admin", () => {
       .click();
     cy.findByText("Done").click();
 
-    cy.get(".Icon-line").should("exist");
+    cy.get(".Icon-line");
 
     // Save question (not to a dashboard)
     cy.findByText("Save").click();
@@ -248,10 +255,18 @@ describe("metabase-smoketest > admin", () => {
 
     cy.findByText("Save").click();
 
-    // =================
+    // ================
     // should add a new user
     // =================
+    
+    // Sets up route
+    cy.server()
+    cy.route({
+      method: "POST",
+      url: "/api/user",
+    }).as("createUser");
 
+    // Navigates through admin pages
     cy.get(".Nav")
       .children()
       .last()
@@ -267,7 +282,7 @@ describe("metabase-smoketest > admin", () => {
 
     cy.contains("Groups");
 
-    // User info
+    // Inputs user info (first modal)
     cy.findByText("Add someone").click();
     cy.findByLabelText("First name").type(new_user.first_name);
     cy.findByLabelText("Last name").type(new_user.last_name);
@@ -277,14 +292,86 @@ describe("metabase-smoketest > admin", () => {
       .click();
     cy.findByText("English").click();
     cy.findByText("Create").click();
-
-    cy.contains("has been added");
-
-    cy.findByText("Show").click();
-    new_user.id = cy.get("input");
-    console.log(new_user.id)
+    
+    cy.wait("@createUser").then(xhr => {
+        cy.wrap(xhr.request.body.password).as("password");
+      });
+    
+    //  Password confirmation(second modal) 
+    cy.contains("has been added")
     cy.findByText("Done").click();
 
     cy.contains(new_user.username);
+
+    // ****************
+    // *** NEW USER ***
+    // *****************
+
+    // =================
+    // New user can sign in
+    // =================
+
+    signOut();
+    cy.get("@password").then(pass => {
+      cy.visit("/");
+      cy.findByLabelText("Email address").type(new_user.username);
+      cy.findByLabelText("Password").type(pass);
+      cy.findByText("Sign in").click();
+      cy.contains(new_user.first_name);
+
+    // =================
+    // should see questions currently in the "Our Analytics" collection
+    // =================
+
+    cy.findByText("Browse all items").click()
+    cy.contains("My personal collection")
+
+    // =================
+    // should see dashboard in the "Our Analytics" collection
+    // =================
+
+    cy.findByText("Dashboards").click();
+    cy.contains("Demo Dash 2");
+
+    // =================
+    // Create my own question
+    // =================
+
+    cy.findByText("Ask a question").click();
+    
+    cy.contains("Native query");
+
+    cy.findByText("Simple question").click();
+    cy.findByText("Sample Dataset").click();
+    cy.findByText("Reviews").click();
+
+    cy.get(".Button")
+        .contains("Summarize")
+        .click();
+    cy.get(".scroll-y")
+      .contains("Rating", { timeout: 20000 })
+      .click();
+    cy.findByText("Done").click();
+
+    cy.contains("Auto binned");
+    cy.get(".Icon-bar");
+
+    // =================
+    // Create my own dashboard
+    // =================
+
+    cy.get(".Icon-add").click();
+    cy.findByText("New dashboard").click();
+    cy.findByLabelText("Name").type("New User Demo Dash");
+    cy.findByLabelText("Description").type("This is my own demo dash!");
+    cy.get(".ModalBody")
+        .find(".Icon-chevrondown")
+        .click();
+    cy.findAllByText("Our analytics").last().click();
+    // Also cannot select "My personal collection" here
+    cy.findByText("Create").click();
+
+    cy.contains("This dashboard is looking empty");
+    });
   });
 });
