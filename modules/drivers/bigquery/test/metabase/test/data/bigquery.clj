@@ -1,5 +1,6 @@
 (ns metabase.test.data.bigquery
   (:require [clojure.string :as str]
+            [flatland.ordered.map :as ordered-map]
             [java-time :as t]
             [medley.core :as m]
             [metabase
@@ -19,9 +20,7 @@
             [schema.core :as s])
   (:import com.google.api.client.util.DateTime
            com.google.api.services.bigquery.Bigquery
-           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest QueryResponse
-            Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableDataInsertAllResponse TableFieldSchema
-            TableReference TableRow TableSchema]))
+           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest QueryResponse Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableDataInsertAllResponse TableFieldSchema TableReference TableRow TableSchema]))
 
 (sql.tx/add-test-extensions! :bigquery)
 
@@ -214,12 +213,14 @@
   "Convert `field-definitions` to a format appropriate for passing to `create-table!`."
   [field-definitions]
   (into
-   {"id" :INTEGER}
-   (for [{:keys [field-name base-type]} field-definitions]
-     {field-name (or (base-type->bigquery-type base-type)
-                     (let [message (format "Don't know what BigQuery type to use for base type: %s" base-type)]
-                       (println (u/format-color 'red message))
-                       (throw (ex-info message {:metabase.util/no-auto-retry? true}))))})))
+   (ordered-map/ordered-map)
+   (concat
+    (for [{:keys [field-name base-type]} field-definitions]
+      [field-name (or (base-type->bigquery-type base-type)
+                      (let [message (format "Don't know what BigQuery type to use for base type: %s" base-type)]
+                        (println (u/format-color 'red message))
+                        (throw (ex-info message {:metabase.util/no-auto-retry? true}))))])
+    [["id" :INTEGER]])))
 
 (defn- tabledef->prepared-rows
   "Convert `table-definition` to a format approprate for passing to `insert-data!`."

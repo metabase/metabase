@@ -186,6 +186,7 @@
       (try
         ;; TODO - why don't we use `execute/execute-sql!` here like we do below?
         (doseq [sql+args statements]
+          (log/tracef "[insert] %s" (pr-str sql+args))
           (jdbc/execute! spec sql+args {:set-parameters (fn [stmt params]
                                                           (sql-jdbc.execute/set-parameters! driver stmt params))}))
         (catch SQLException e

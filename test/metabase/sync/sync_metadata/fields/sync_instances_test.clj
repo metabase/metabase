@@ -8,6 +8,7 @@
             [metabase.test.mock.toucanery :as toucanery]
             [metabase.util :as u]
             [toucan.db :as db]
+            [clojure.test :refer :all]
             [toucan.util.test :as tt]))
 
 (def ^:private toucannery-transactions-expected-fields-hierarchy
@@ -27,30 +28,30 @@
                                                           (format-fields nested-fields))])))]
     (format-fields (get parent-id->children nil))))
 
-(expect
-  toucannery-transactions-expected-fields-hierarchy
+(deftest sync-fields-test
   (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]
                   Table    [table {:name "transactions", :db_id (u/get-id db)}]]
     ;; do the initial sync
     (sync-fields/sync-fields-for-table! table)
     (let [transactions-table-id (u/get-id (db/select-one-id Table :db_id (u/get-id db), :name "transactions"))]
-      (actual-fields-hierarchy transactions-table-id))))
+      (is (= toucannery-transactions-expected-fields-hierarchy
+             (actual-fields-hierarchy transactions-table-id))))))
 
-;; If you delete a nested Field, and re-sync a Table, it should recreate the Field as it was before! It should not
-;; create any duplicate Fields (#8950)
-(expect
-  toucannery-transactions-expected-fields-hierarchy
-  (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]
-                  Table    [table {:name "transactions", :db_id (u/get-id db)}]]
-    ;; do the initial sync
-    (sync-fields/sync-fields-for-table! table)
-    (let [transactions-table-id (u/get-id (db/select-one-id Table :db_id (u/get-id db), :name "transactions"))]
-      ;; Give the Table a new Hash, and delete `toucan.details.age`
-      (db/update! Table transactions-table-id :fields_hash "something new")
-      (db/delete! Field :table_id transactions-table-id, :name "age")
-      ;; ok, resync the Table. `toucan.details.age` should be recreated, but only one. We should *not* have a
-      ;; `toucan.age` Field as well, which was happening before the bugfix in this PR
+(deftest delete-nested-field-test
+  (testing (str "If you delete a nested Field, and re-sync a Table, it should recreate the Field as it was before! It "
+                "should not create any duplicate Fields (#8950)")
+    (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]
+                    Table    [table {:name "transactions", :db_id (u/get-id db)}]]
+      ;; do the initial sync
       (sync-fields/sync-fields-for-table! table)
-      ;; Fetch all the Fields in the `transactions` Table (name & parent name) after the sync, format them in a
-      ;; hierarchy for easy comparison
-      (actual-fields-hierarchy transactions-table-id))))
+      (let [transactions-table-id (u/get-id (db/select-one-id Table :db_id (u/get-id db), :name "transactions"))]
+        ;; Give the Table a new Hash, and delete `toucan.details.age`
+        (db/update! Table transactions-table-id :fields_hash "something new")
+        (db/delete! Field :table_id transactions-table-id, :name "age")
+        ;; ok, resync the Table. `toucan.details.age` should be recreated, but only one. We should *not* have a
+        ;; `toucan.age` Field as well, which was happening before the bugfix in this PR
+        (sync-fields/sync-fields-for-table! table)
+        ;; Fetch all the Fields in the `transactions` Table (name & parent name) after the sync, format them in a
+        ;; hierarchy for easy comparison
+        (is (= toucannery-transactions-expected-fields-hierarchy
+               (actual-fields-hierarchy transactions-table-id)))))))

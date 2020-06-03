@@ -330,7 +330,6 @@
 
   Example impl:
 
-
     (defmethod reducible-query :my-driver
       [_ query context respond]
       (with-open [results (run-query! query)]

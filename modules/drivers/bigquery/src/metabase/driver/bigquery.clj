@@ -176,7 +176,10 @@
       ~@body)))
 
 (defn- post-process-native
-  "Parse results of a BigQuery query."
+  "Parse results of a BigQuery query. `respond` is the same function passed to
+  `metabase.driver/execute-reducible-query`, and has the signature
+
+    (respond results-metadata rows)"
   [respond ^QueryResponse resp]
   (with-finished-response [response resp]
     (let [^TableSchema schema

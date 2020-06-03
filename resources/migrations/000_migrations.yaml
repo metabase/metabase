@@ -6242,7 +6242,8 @@ databaseChangeLog:
               remarks: 'Preferred ISO locale (language/country) code, e.g "en" or "en-US", for this User. Overrides site default.'
               type: varchar(5)
 
-# Add Field `database_position` to keep the order in which fields are ordered in the DB, `custom_position` for custom position; and Table `field_order` setting.
+# Add Field `database_position` to keep the order in which fields are ordered in the DB, `custom_position` for custom
+# position; and Table `field_order` setting.
 
   - changeSet:
       id: 165

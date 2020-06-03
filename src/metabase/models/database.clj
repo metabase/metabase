@@ -137,14 +137,14 @@
                         {:modifiers [:DISTINCT]}))))
 
 (defn pk-fields
-  "Return all the primary key `Fields` associated with this DATABASE."
+  "Return all the primary key `Fields` associated with this `database`."
   [{:keys [id]}]
   (let [table-ids (db/select-ids 'Table, :db_id id, :active true)]
     (when (seq table-ids)
       (db/select 'Field, :table_id [:in table-ids], :special_type (mdb/isa :type/PK)))))
 
 (defn schema-exists?
-  "Does DATABASE have any tables with SCHEMA?"
+  "Does `database` have any tables with `schema`?"
   ^Boolean [{:keys [id]}, schema]
   (db/exists? 'Table :db_id id, :schema (some-> schema name)))
 

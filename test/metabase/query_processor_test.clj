@@ -220,19 +220,23 @@
 
 (defmethod format-rows-fns :categories
   [_]
-  [int identity])
+  ;; NAME ID
+  [identity int])
 
 (defmethod format-rows-fns :checkins
   [_]
-  [int identity int int])
+  ;; USER_ID VENUE_ID DATE ID
+  [int int identity int])
 
 (defmethod format-rows-fns :users
   [_]
-  [int identity identity])
+  ;; NAME LAST_LOGIN ID
+  [identity identity int])
 
 (defmethod format-rows-fns :venues
   [_]
-  [int identity int 4.0 4.0 int])
+  ;; NAME LATITUDE LONGITUDE PRICE CATEGORY_ID ID
+  [identity 4.0 4.0 int int int])
 
 (defn- format-rows-fn
   "Handle a value formatting function passed to `format-rows-by`."
