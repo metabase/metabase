@@ -5,8 +5,7 @@ const admin = USERS.admin
 const new_user =  {
     first_name: "Barb",
     last_name: "Tabley",
-    username: "new@metabase.com",
-    password: "12341234"
+    username: "new@metabase.com"
 }
 
 describe("metabase-smoketest > admin", () => {
@@ -15,20 +14,20 @@ describe("metabase-smoketest > admin", () => {
     it("should set up Metabase", () => {
         // This is a simplified version of the "scenarios > setup" test
         cy.visit("/");
-        cy.findByText("Let's get started").click()
+        cy.contains("Welcome to Metabase");
+        cy.url().should("not.include", "login");
+        cy.findByText("Let's get started").click();
         
         // Language
 
-        cy.findByText("What's your preferred language");
+        cy.contains("What's your preferred language");
         cy.findByText("English").click();
         cy.findByText("Next").click();
 
         // User (with workaround from "scenarios > setup"  document)
         
-        cy.findByText("Next")
-          .closest("button")
-          .should("be.disabled");
-        
+        cy.contains("What should we call you?"); 
+
         cy.findByLabelText("First name").type(admin.first_name);
         cy.findByLabelText("Last name").type(admin.last_name);
         cy.findByLabelText("Email").type(admin.username);
@@ -44,6 +43,9 @@ describe("metabase-smoketest > admin", () => {
         
         // Database
 
+        cy.contains("Add your data");
+        cy.contains("I'll add my data later");
+
         cy.findByText("Select a database").click();
         cy.findByText("H2").click();
         cy.findByLabelText("Name").type("Metabase H2");
@@ -54,7 +56,14 @@ describe("metabase-smoketest > admin", () => {
         );
         cy.findByLabelText("Connection String").type(`file:${dbPath}`);
         cy.findByText("Next").click();
-        
+
+        // Turns off anonymous data collection
+        cy.findByLabelText(
+            "Allow Metabase to anonymously collect usage events",
+          ).click();
+          cy.findByText("All collection is completely anonymous.").should(
+            "not.exist",
+          );
         cy.findByText("Next").click();
 
         // Finish & Subscribe
@@ -67,16 +76,26 @@ describe("metabase-smoketest > admin", () => {
         // should add a simple summarized question
         // =================
         
+        cy.contains("Bobby");
+        // This page does not contain "OUR DATA"
+        cy.contains("Our analytics", {timeout: 10000});
+
         // Following section is repeated-- turn into callback function?
         // Also, selecting Metabase H2 doesn't do anything
-        cy.findByText("Ask a question").click()        
+        cy.findByText("Ask a question").click()
+        
+        cy.contains("Custom question");
+        cy.contains("Native query");
+        
         cy.findByText("Simple question").click()
         cy.findByText("Sample Dataset").click()
         cy.findByText("People").click()
         
+        cy.contains("Save");
+        
         // Filter for created within previous 5 years
 
-        cy.findByText("Filter").click()
+        cy.findByText("Filter").click();
         cy.get(".scroll-y")
             .contains("Created At", {timeout: 20000})
             .click()
@@ -93,19 +112,23 @@ describe("metabase-smoketest > admin", () => {
         cy.get(".Button")
             .contains("Summarize")
             .click()
-        cy.findByText("Source").click()
-        cy.findByText("Done").click()
+        cy.findByText("Source").click();
+        cy.findByText("Done").click();
+
+        cy.contains("Created At  Previous 5 Years");
+        cy.contains("Source");
+        cy.contains("Google");
+
 
         // =================
         // should add question to a new dashboard
         // =================
         
         cy.findByText("Save").click()
-        cy.get("input[name='name']")
-            .type("{selectall}{del}People per Source")
-        // Test can't find this input... 
-        // cy.get("input[name='description']")
-        //     .type("Bar graph illustrating where our customers come from")
+        cy.findByLabelText("Name")
+            .clear()
+            .type("People per Source");
+        cy.findByLabelText("Description").type("Bar graph illustrating where our customers come from");
         // Default: saves to Our analytics
         cy.get(".ModalContent")
             .get(".Button")
@@ -113,10 +136,12 @@ describe("metabase-smoketest > admin", () => {
             .click()
         cy.findByText("Yes please!").click()
         cy.findByText("Create a new dashboard").click()
-        cy.get("input[name='name']")
-            .type("Demo Dash")
-        // Test can't find this description input either... should type: "Many demos live here"
+        cy.findByLabelText("Name").type("Demo Dash")
+        cy.findByLabelText("Description").type("Many demos live here")
         cy.findByText("Create").click()
+        
+        cy.contains("People per")
+        cy.contains("This dashboard is loooking empty").should("not.exist");
         
         cy.contains("Save").click()
 
@@ -133,6 +158,10 @@ describe("metabase-smoketest > admin", () => {
         
         // Join tables
         cy.get(".Icon-notebook", {timeout: 30000}).click()
+
+        cy.contains("Data");
+        cy.contains("Showing").should("not.exist");
+
         cy.findByText("Join data").click()
         cy.findByText("People").click()
         cy.findByText("Visualize").click()
@@ -144,10 +173,14 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("State").click()
         cy.findByText("Done").click()
 
+        cy.get(".Icon-pinmap").should("exist");
+        cy.get(".Icon-table").should("not.exist");
+
         // Save question (not to a dashboard)
         cy.findByText("Save").click()
-        cy.get("input[name='name']")
-            .type("{selectall}{del}Order Totals by State")
+        cy.findByLabelText("Name")
+            .clear()
+            .type("Order Totals by State")
         cy.get(".ModalContent")
             .get(".Button")
             .contains("Save")
@@ -159,11 +192,16 @@ describe("metabase-smoketest > admin", () => {
         // =================
         
         cy.findByText("Ask a question").click()
+        
+        cy.contains("Native query");
 
         cy.findByText("Ask a question").click()        
         cy.findByText("Simple question").click()
         cy.findByText("Sample Dataset").click()
         cy.findByText("Orders").click()
+
+        cy.contains("Product ID");
+        cy.contains("Pick your data").should("not.exist");
 
         // Summarize by date ordered
         cy.get(".Button", {timeout: 30000})
@@ -174,13 +212,13 @@ describe("metabase-smoketest > admin", () => {
             .click()
         cy.findByText("Done").click()
 
-        // Checks that default is a line visualisation
-        cy.get(".Icon-line")
+        cy.get(".Icon-line").should("exist");
 
         // Save question (not to a dashboard)
         cy.findByText("Save").click()
-        cy.get("input[name='name']")
-            .type("{selectall}{del}Orders Over Time")
+        cy.findByLabelText("Name")
+            .clear()
+            .type("Orders Over Time")
         cy.get(".ModalContent")
             .get(".Button")
             .contains("Save")
@@ -194,23 +232,24 @@ describe("metabase-smoketest > admin", () => {
         // New dashboard
         cy.get(".Icon-add").click()
         cy.findByText("New dashboard").click()
-        cy.get("input[name='name']")
-            .type("Demo Dash 2")
+
+        cy.contains("Which collection should this go in?");
+
+        cy.findByLabelText("Name").type("Demo Dash 2");
         cy.findByText("Create").click()
         
         // Adding saved questions
         cy.get(".Header-buttonSection")
-            .click("left")
-        cy.findByText("Order Totals by State").click()
+            .click("left");
+        cy.findByText("Order Totals by State").click();
         cy.get(".Header-buttonSection")
-            .click("left")
-        cy.findByText("Orders Over Time").click()
+            .click("left");
+        cy.findByText("Orders Over Time").click();
 
-        // Check they're both on the dashboard
-        cy.contains("Order Totals by State")
-        cy.contains("Orders Over Time")
+        cy.contains("Order Totals by State");
+        cy.contains("Orders Over Time");
 
-        cy.findByText("Save").click()
+        cy.findByText("Save").click();
 
         // =================
         // should add a new user
@@ -219,29 +258,32 @@ describe("metabase-smoketest > admin", () => {
         cy.get(".Nav")
             .children().last()
             .children().last()
-            .click()
-        cy.findByText("Admin").click()
-        cy.findByText("People").click()
+            .click();
+        cy.findByText("Admin").click();
+
+        cy.contains("Metabase Admin");
+        cy.contains("dashboard").should("not.exist");
+
+        cy.findByText("People").click();
         
+        cy.contains("Groups");
+
         // User info
-        cy.findByText("Add someone").click()
-        cy.get("input[name='first_name']")
-            .type(new_user.first_name)
-        cy.get("input[name='last_name']")
-            .type(new_user.last_name)
-        cy.get("input[name='email']")
-            .type(new_user.username)
+        cy.findByText("Add someone").click();
+        cy.findByLabelText("First name").type(new_user.first_name);
+        cy.findByLabelText("Last name").type(new_user.last_name);
+        cy.findByLabelText("Email").type(new_user.username);
         cy.get(".ModalBody")
             .find(".Icon-chevrondown")
-            .click()
+            .click();
         cy.findByText("English").click()
         cy.findByText("Create").click()
 
-        cy.contains("has been added")
+        cy.contains("has been added");
+
+        cy.findByText("Show").click()
         cy.findByText("Done").click()
 
-        cy.contains(admin.username)
+        cy.contains(new_user.username)
     });
-    
-    
 })
