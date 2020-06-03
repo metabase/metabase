@@ -281,6 +281,8 @@ describe("metabase-smoketest > admin", () => {
     cy.contains("has been added");
 
     cy.findByText("Show").click();
+    new_user.id = cy.get("input");
+    console.log(new_user.id)
     cy.findByText("Done").click();
 
     cy.contains(new_user.username);
