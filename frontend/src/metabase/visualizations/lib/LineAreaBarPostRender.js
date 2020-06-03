@@ -270,9 +270,9 @@ function onRenderValueLabels(chart, formatYValue, datas) {
     (data, index) => chart.settings.series(chart.series[index]).display,
   );
 
-  // Update `data` to use named x/y and include `showLabelBelow`.
+  // Set `data` to flattened `datas` and use named x/y and include `showLabelBelow`.
   // We need to do that before data is filtered to show every nth value.
-  data = datas.flatMap((data, seriesIndex) => {
+  const data = datas.flatMap((data, seriesIndex) => {
     const display = displays[seriesIndex];
     return data
       .map(([x, y], i) => {
