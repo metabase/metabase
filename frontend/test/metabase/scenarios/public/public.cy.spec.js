@@ -38,6 +38,8 @@ describe("scenarios > public", () => {
     // Note: Test suite is sequential, so individual test cases can't be run individually
     it("should allow users to create parameterized SQL questions", () => {
       cy.visit(`/question/new?type=native&database=${SAMPLE_DATASET.id}`);
+      cy.contains("Sample Dataset"); // ensure everything is loaded before typing query
+      cy.wait(200);
       cy.get(".ace_text-input").type(
         "select count(*) from products where {{c}}",
         {
