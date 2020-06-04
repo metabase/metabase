@@ -115,12 +115,42 @@ describe("smoketest > new_user", () => {
         cy.get(".Icon-calendar").click();
         cy.findByText("Visualize").click();
 
-        cy.get("span");
+        cy.get("svg");
         cy.contains("Created At");
 
         // =================
         // should be able to create custom columns in the notebook editor
         // =================
+
+        cy.get(".Icon-notebook").click();
+        
+        // Delete last summary
+        cy.findAllByText("Count")
+            .first()
+            .click(70, 20);
+
+        // Switch table from Product to Orders
+
+        cy.findAllByText("Products")
+            .last()
+            .click();
+        cy.findByText("Orders").click();
+
+        // Create custom column
+        cy.get(".Icon-add_data").click();
+        cy.findByText("Product → Price").click();
+        cy.findByText("-").click();
+        cy.findByText("Subtotal").click();
+        cy.get(".PopoverBody")
+            .first()
+            .click();
+        cy.get("input[placeholder='Something nice and descriptive']").type("Demo Column");
+        cy.findByText("Done").click();
+        cy.findByText("Visualize").click();
+
+        cy.contains("ID");
+        cy.get(".Icon-table2");
+        cy.contains("Demo Column");
 
         // =================
         // should be able to create custom JOINs in the notebook editor
