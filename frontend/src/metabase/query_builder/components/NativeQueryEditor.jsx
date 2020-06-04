@@ -103,6 +103,10 @@ type Props = {
 
   viewHeight: number,
   width: number,
+
+  openSnippetModalWithSelectedText: () => void,
+  insertSnippet: () => void,
+  closeSnippetModal: () => void,
 };
 type State = {
   initialHeight: number,
