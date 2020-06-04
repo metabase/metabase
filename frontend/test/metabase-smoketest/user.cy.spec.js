@@ -151,9 +151,20 @@ describe("smoketest > new_user", () => {
         cy.contains("ID");
         cy.get(".Icon-table2");
         cy.contains("Demo Column");
+        cy.contains("People").should("not.exist");
 
         // =================
         // should be able to create custom JOINs in the notebook editor
         // =================
+
+        cy.get(".Icon-notebook").click();
+
+        cy.get(".Icon-join_left_outer").click();
+        cy.findByText("People").click(); // column selection happens automatcially
+        cy.findByText("Visualize").click();
+
+        cy.contains("Created At");
+        cy.contains("People");
+        cy.contains("User → Zip");
     });
 });
