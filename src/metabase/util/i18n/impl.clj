@@ -136,7 +136,7 @@
   (log/info "Reading available locales from locales.clj...")
   (some-> (io/resource "locales.clj") slurp edn/read-string :locales set))
 
-6(def ^{:arglists '([])} available-locale-names
+(def ^{:arglists '([])} available-locale-names
   "Return set of available locales, as Strings.
 
     (available-locale-names) ; -> #{\"nl\" \"pt\" \"en\" \"zh\"}"
@@ -154,7 +154,7 @@
          (when-let [get-string (resolve 'metabase.models.setting/get-string)]
            (when (bound? get-string)
              (let [f (fn [] (get-string :site-locale))]
-               (reset! system-locale-from-setting-fn f)
+               (reset! site-locale-from-setting-fn f)
                (f)))))))))
 
 (defn site-locale-from-setting
