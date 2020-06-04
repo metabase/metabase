@@ -133,6 +133,7 @@ export default class NativeQueryEditor extends Component {
 
     this.state = {
       initialHeight: getEditorLineHeight(lines),
+      isSelectedTextPopoverOpen: false,
     };
 
     // Ace sometimes fires mutliple "change" events in rapid succession
@@ -163,12 +164,42 @@ export default class NativeQueryEditor extends Component {
   componentDidMount() {
     this.loadAceEditor();
     document.addEventListener("keydown", this.handleKeyDown);
+    document.addEventListener("contextmenu", this.handleRightClick);
   }
+
+  handleRightClick = event => {
+    // For some reason the click doesn't target the selection element directly.
+    // We check if it falls in the selections bounding rectangle to know if the selected text was clicked.
+    const selection = document.querySelector(".ace_selection");
+    if (!selection) {
+      return;
+    }
+    const { clientX, clientY } = event;
+    const { top, bottom, left, right } = selection.getBoundingClientRect();
+    const clickOverSelection =
+      clientY >= top &&
+      clientY <= bottom &&
+      clientX >= left &&
+      clientX <= right;
+    if (this.props.nativeEditorSelectedText && clickOverSelection) {
+      event.preventDefault();
+      this.setState({ isSelectedTextPopoverOpen: true });
+    }
+  };
 
   componentDidUpdate(prevProps: Props) {
     const { query } = this.props;
     if (!query || !this._editor) {
       return;
+    }
+
+    if (
+      this.state.isSelectedTextPopoverOpen &&
+      !this.props.nativeEditorSelectedText &&
+      prevProps.nativeEditorSelectedText
+    ) {
+      // close selected text popover if text is deselected
+      this.setState({ isSelectedTextPopoverOpen: false });
     }
 
     // Check that the query prop changed before updating the editor. Otherwise,
@@ -220,6 +251,7 @@ export default class NativeQueryEditor extends Component {
   componentWillUnmount() {
     this.props.cancelQuery();
     document.removeEventListener("keydown", this.handleKeyDown);
+    document.removeEventListener("contextmenu", this.handleRightClick);
   }
 
   handleCursorChange = _.debounce(() => {
@@ -531,7 +563,7 @@ export default class NativeQueryEditor extends Component {
         >
           <div className="flex-full" id="id_sql" ref="editor" />
           <Popover
-            isOpen={!!this.props.nativeEditorSelectedText}
+            isOpen={this.state.isSelectedTextPopoverOpen}
             target={() =>
               ReactDOM.findDOMNode(this.refs.editor).querySelector(
                 ".ace_selection",
