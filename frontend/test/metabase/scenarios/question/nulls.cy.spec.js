@@ -35,6 +35,8 @@ describe("scenarios > question > null", () => {
       cy.findByText("There was a problem with your question").should(
         "not.exist",
       );
+
+      cy.get(".dot").should("have.length.of.at.least", 40);
     });
   });
 });
