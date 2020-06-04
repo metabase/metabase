@@ -11,6 +11,7 @@ import FormNumericInputWidget from "./widgets/FormNumericInputWidget";
 import FormToggleWidget from "./widgets/FormToggleWidget";
 import FormCollectionWidget from "./widgets/FormCollectionWidget";
 import FormHiddenWidget from "./widgets/FormHiddenWidget";
+import FormTextFileWidget from "./widgets/FormTextFileWidget";
 
 const WIDGETS = {
   input: FormInputWidget,
@@ -24,6 +25,7 @@ const WIDGETS = {
   boolean: FormToggleWidget,
   collection: FormCollectionWidget,
   hidden: FormHiddenWidget,
+  textFile: FormTextFileWidget,
 };
 
 const FormWidget = ({ field, formField, ...props }) => {

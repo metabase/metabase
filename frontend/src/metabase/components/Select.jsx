@@ -36,6 +36,9 @@ export default class Select extends Component {
     // PopoverWithTrigger props
     isInitiallyOpen: PropTypes.bool,
 
+    // SelectButton props
+    buttonProps: PropTypes.object,
+
     // AccordianList props
     searchProp: PropTypes.string,
     searchCaseInsensitive: PropTypes.bool,
@@ -156,6 +159,7 @@ export default class Select extends Component {
 
   render() {
     const {
+      buttonProps,
       className,
       placeholder,
       searchProp,
@@ -179,6 +183,7 @@ export default class Select extends Component {
           <SelectButton
             className="full-width"
             hasValue={selectedNames.length > 0}
+            {...buttonProps}
           >
             {selectedNames.length > 0
               ? selectedNames.map((name, index) => (

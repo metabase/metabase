@@ -19,7 +19,9 @@
              [analyze :as analyze]
              [field-values :as field-values]
              [sync-metadata :as sync-metadata]]
-            [metabase.test.fixtures :as fixtures]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
@@ -136,6 +138,7 @@
     (mt/with-temp* [Database [db {:name "My DB", :engine ::test-driver}]
                     Table    [t1 {:name "Table 1", :db_id (:id db)}]
                     Table    [t2 {:name "Table 2", :db_id (:id db)}]
+                    Table    [t3 {:name "Table 3", :db_id (:id db), :visibility_type "hidden"}]
                     Field    [f1 {:name "Field 1.1", :table_id (:id t1)}]
                     Field    [f2 {:name "Field 2.1", :table_id (:id t2)}]
                     Field    [f3 {:name "Field 2.2", :table_id (:id t2)}]]
@@ -151,9 +154,9 @@
                          :base_type        "type/Text"
                          :visibility_type  "normal"
                          :has_field_values "search"))]
-          (is (= (-> {:tables [(assoc (table-details t1) :fields [(field-details* f1)])
-                               (assoc (table-details t2) :fields [(field-details* f2)
-                                                                  (field-details* f3)])]})
+          (is (= {:tables [(assoc (table-details t1) :fields [(field-details* f1)])
+                           (assoc (table-details t2) :fields [(field-details* f2)
+                                                              (field-details* f3)])]}
                  (select-keys ((mt/user->client :lucky) :get 200 (format "database/%d?include=tables.fields" (:id db)))
                               [:tables]))))))
 
@@ -281,6 +284,30 @@
            (let [resp ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id)))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
 
+(deftest fetch-database-metadata-include-hidden-test
+  (mt/with-temp-vals-in-db Table (mt/id :categories) {:visibility_type "hidden"}
+    (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:visibility_type "sensitive"}
+      (testing "GET /api/database/:id/metadata?include_hidden=true"
+        (let [tables (->> ((mt/user->client :rasta) :get 200 (format "database/%d/metadata?include_hidden=true" (mt/id)))
+                          :tables)]
+          (is (some (partial = "CATEGORIES") (map :name tables)))
+          (is (->> tables
+                  (filter #(= "VENUES" (:name %)))
+                  first
+                  :fields
+                  (map :name)
+                  (some (partial = "PRICE"))))))
+      (testing "GET /api/database/:id/metadata"
+        (let [tables (->> ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id)))
+                          :tables)]
+          (is (not (some (partial = "CATEGORIES") (map :name tables))))
+          (is (not (->> tables
+                        (filter #(= "VENUES" (:name %)))
+                        first
+                        :fields
+                        (map :name)
+                        (some (partial = "PRICE"))))))))))
+
 (deftest autocomplete-suggestions-test
   (testing "GET /api/database/:id/autocomplete_suggestions"
     (doseq [[prefix expected] {"u"   [["USERS" "Table"]
@@ -292,7 +319,6 @@
                                       ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
       (is (= expected
              ((mt/user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (mt/id)) :prefix prefix))))))
-
 
 (defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
   (merge
@@ -360,8 +386,8 @@
 
 (deftest databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
-    (mt/with-temp* [Card [card (assoc (card-with-native-query "Some Card")
-                                      :result_metadata [{:name "col_name"}])]]
+    (mt/with-temp Card [card (assoc (card-with-native-query "Some Card")
+                                    :result_metadata [{:name "col_name"}])]
       (testing "We should be able to include the saved questions virtual DB (without Tables) with the param ?saved=true"
         (is (= {:name               "Saved Questions"
                 :id                 mbql.s/saved-questions-virtual-database-id
@@ -372,7 +398,34 @@
     (testing "We should not include the saved questions virtual DB if there aren't any cards"
       (not-any?
        :is_saved_questions
-       ((mt/user->client :lucky) :get 200 "database?saved=true")))))
+       ((mt/user->client :lucky) :get 200 "database?saved=true")))
+    (testing "Ommit virtual DB if nested queries are disabled"
+      (tu/with-temporary-setting-values [enable-nested-queries false]
+        (every? some? ((mt/user->client :lucky) :get 200 "database?saved=true"))))))
+
+(def ^:private SavedQuestionsDB
+  "Schema for the expected shape of info about the 'saved questions' virtual DB from API responses."
+  {:name               (s/eq "Saved Questions")
+   :id                 (s/eq -1337)
+   :features           (s/eq ["basic-aggregations"])
+   :is_saved_questions (s/eq true)
+   :tables             [{:id           #"^card__\d+$"
+                         :db_id        s/Int
+                         :display_name s/Str
+                         :schema       s/Str ; collection name
+                         :description  (s/maybe s/Str)}]})
+
+(defn- check-tables-included [response & tables]
+  (let [response-tables (set (:tables response))]
+    (doseq [table tables]
+      (testing (format "Should include Table %s" (pr-str table))
+        (is (contains? response-tables table))))))
+
+(defn- check-tables-not-included [response & tables]
+  (let [response-tables (set (:tables response))]
+    (doseq [table tables]
+      (testing (format "Should *not* include Table %s" (pr-str table))
+        (is (not (contains? response-tables table)))))))
 
 (deftest databases-list-include-saved-questions-tables-test
   ;; `?saved=true&include=tables` and `?include_cards=true` mean the same thing, so test them both
@@ -385,14 +438,14 @@
                       ((mt/user->client :crowberto) :get 200 (str "database" params))))]
         (testing "Check that we get back 'virtual' tables for Saved Questions"
           (testing "The saved questions virtual DB should be the last DB in the list"
-            (mt/with-temp* [Card [card (card-with-native-query "Kanye West Quote Views Per Month")]]
+            (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
               ;; run the Card which will populate its result_metadata column
               ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
               ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
-              (is (= (-> card
-                         virtual-table-for-card
-                         saved-questions-virtual-db)
-                     (last ((mt/user->client :crowberto) :get 200 (str "database" params)))))))
+              (let [response (last ((mt/user->client :crowberto) :get 200 (str "database" params)))]
+                (is (schema= SavedQuestionsDB
+                             response))
+                (check-tables-included response (virtual-table-for-card card)))))
 
           (testing "Make sure saved questions are NOT included if the setting is disabled"
             (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
@@ -413,18 +466,22 @@
               ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card))))
             ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their
             ;; Collection name as their Schema
-            (is (= (saved-questions-virtual-db
-                     (virtual-table-for-card coin-card  :schema "Coins")
-                     (virtual-table-for-card stamp-card :schema "Stamps"))
-                   (last ((mt/user->client :crowberto) :get 200 (str "database" params)))))))
+            (let [response (last ((mt/user->client :crowberto) :get 200 (str "database" params)))]
+              (is (schema= SavedQuestionsDB
+                           response))
+              (check-tables-included
+               response
+               (virtual-table-for-card coin-card :schema "Coins")
+               (virtual-table-for-card stamp-card :schema "Stamps")))))
 
         (testing "should remove Cards that have ambiguous columns"
           (mt/with-temp* [Card [ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])]
                           Card [cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]]
-            (is (= (-> ok-card
-                       virtual-table-for-card
-                       saved-questions-virtual-db)
-                   (fetch-virtual-database)))))
+            (let [response (fetch-virtual-database)]
+              (is (schema= SavedQuestionsDB
+                           response))
+              (check-tables-included response (virtual-table-for-card ok-card))
+              (check-tables-not-included response (virtual-table-for-card cambiguous-card)))))
 
         (testing "should remove Cards that belong to a driver that doesn't support nested queries"
           (mt/with-temp* [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
@@ -436,49 +493,72 @@
                                               :database_id     (u/get-id bad-db)}]
                           Card     [ok-card  (assoc (card-with-native-query "OK Card")
                                                     :result_metadata [{:name "finches"}])]]
-            (is (= (-> ok-card
-                       virtual-table-for-card
-                       saved-questions-virtual-db)
-                   (fetch-virtual-database)))))
+            (let [response (fetch-virtual-database)]
+              (is (schema= SavedQuestionsDB
+                           response))
+              (check-tables-included response (virtual-table-for-card ok-card))
+              (check-tables-not-included response (virtual-table-for-card bad-card)))))
+
+        (testing "should work when there are no DBs that support nested queries"
+          (with-redefs [metabase.driver/supports? (constantly false)]
+            (is (nil? (fetch-virtual-database)))))
+
+        (testing "should work when there are no DBs that support nested queries"
+          (with-redefs [metabase.driver/supports? (constantly false)]
+            (is (nil? (fetch-virtual-database)))))
 
         (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
-          (mt/with-temp* [Card [ok-card (ok-mbql-card)]
-                          Card [_ (merge
-                                   (mt/$ids checkins
-                                     (card-with-mbql-query "Cum Count Card"
-                                       :source-table $$checkins
-                                       :aggregation  [[:cum-count]]
-                                       :breakout     [!month.date]))
-                                   {:result_metadata [{:name "num_toucans"}]})]]
-            (is (= (-> ok-card
-                       virtual-table-for-card
-                       saved-questions-virtual-db)
-                   (fetch-virtual-database)))))))))
+          (mt/with-temp* [Card [ok-card  (ok-mbql-card)]
+                          Card [bad-card (merge
+                                          (mt/$ids checkins
+                                            (card-with-mbql-query "Cum Count Card"
+                                              :source-table $$checkins
+                                              :aggregation  [[:cum-count]]
+                                              :breakout     [!month.date]))
+                                          {:result_metadata [{:name "num_toucans"}]})]]
+            (let [response (fetch-virtual-database)]
+              (is (schema= SavedQuestionsDB
+                           response))
+              (check-tables-included response (virtual-table-for-card ok-card))
+              (check-tables-not-included response (virtual-table-for-card bad-card)))))))))
 
 (deftest db-metadata-saved-questions-db-test
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
-    (mt/with-temp* [Card [card (assoc (card-with-native-query "Birthday Card")
-                                      :result_metadata [{:name "age_in_bird_years"}])]]
-      (is (= (saved-questions-virtual-db
-               (assoc (virtual-table-for-card card)
-                      :fields [{:name                     "age_in_bird_years"
-                                :table_id                 (str "card__" (u/get-id card))
-                                :id                       ["field-literal" "age_in_bird_years" "type/*"]
-                                :special_type             nil
-                                :base_type                nil
-                                :default_dimension_option nil
-                                :dimension_options        []}]))
-             ((mt/user->client :crowberto) :get 200
-              (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id)))))
+    (mt/with-temp Card [card (assoc (card-with-native-query "Birthday Card")
+                                    :result_metadata [{:name "age_in_bird_years"}])]
+      (let [response ((mt/user->client :crowberto) :get 200
+                      (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))]
+        (is (schema= {:name               (s/eq "Saved Questions")
+                      :id                 (s/eq -1337)
+                      :is_saved_questions (s/eq true)
+                      :features           (s/eq ["basic-aggregations"])
+                      :tables             [{:id           #"^card__\d+$"
+                                            :db_id        s/Int
+                                            :display_name s/Str
+                                            :schema       s/Str ; collection name
+                                            :description  (s/maybe s/Str)
+                                            :fields       [su/Map]}]}
+                     response))
+        (check-tables-included
+         response
+         (assoc (virtual-table-for-card card)
+                :fields [{:name                     "age_in_bird_years"
+                          :table_id                 (str "card__" (u/get-id card))
+                          :id                       ["field-literal" "age_in_bird_years" "type/*"]
+                          :special_type             nil
+                          :base_type                nil
+                          :default_dimension_option nil
+                          :dimension_options        []}]))))
 
-    (testing "if no eligible Saved Questions exist the endpoint should return empty tables"
-      (is (= {:name               "Saved Questions"
-              :id                 mbql.s/saved-questions-virtual-database-id
-              :features           ["basic-aggregations"]
-              :is_saved_questions true
-              :tables             []}
-             ((mt/user->client :crowberto) :get 200
-              (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id)))))))
+    (testing "\nif no eligible Saved Questions exist the endpoint should return empty tables"
+      (with-redefs [database-api/cards-virtual-tables (constantly [])]
+        (is (= {:name               "Saved Questions"
+                :id                 mbql.s/saved-questions-virtual-database-id
+                :features           ["basic-aggregations"]
+                :is_saved_questions true
+                :tables             []}
+               ((mt/user->client :crowberto) :get 200
+                (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -701,7 +781,7 @@
                ((mt/user->client :lucky) :get 200 (format "database/%d/schemas" db-id))))))))
 
 (deftest get-schema-tables-test
-  (testing "GET /api/database/:id/schema/:schema"
+  (testing "GET /api/database/:id/schema/:schema\n"
     (testing "Permissions: Can we fetch the Tables in a schema?"
       (mt/with-temp* [Database [{db-id :id}]
                       Table    [t1 {:db_id db-id, :schema "schema1", :name "t1"}]
@@ -780,6 +860,13 @@
         (is (= ["table"]
                (map :name ((mt/user->client :rasta) :get 200 (format "database/%s/schema/%s" database-id "public")))))))
 
+    (testing "should exclude hidden Tables"
+      (mt/with-temp* [Database [{database-id :id}]
+                      Table    [_ {:db_id database-id, :schema "public", :name "table"}]
+                      Table    [_ {:db_id database-id, :schema "public", :name "hidden-table", :visibility_type "hidden"}]]
+        (is (= ["table"]
+               (map :name ((mt/user->client :rasta) :get 200 (format "database/%s/schema/%s" database-id "public")))))))
+
     (testing "should work for the saved questions 'virtual' database"
       (mt/with-temp* [Collection [coll   {:name "My Collection"}]
                       Card       [card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))]
@@ -797,13 +884,20 @@
                   (format "database/%d/schema/My Collection" mbql.s/saved-questions-virtual-database-id)))))
 
         (testing "Should be able to get saved questions in the root collection"
-          (is (= [{:id           (format "card__%d" (:id card-2))
-                   :db_id        (mt/id)
-                   :display_name "Card 2"
-                   :schema       (table-api/root-collection-schema-name)
-                   :description  nil}]
-                 ((mt/user->client :lucky) :get 200
-                  (format "database/%d/schema/%s" mbql.s/saved-questions-virtual-database-id (table-api/root-collection-schema-name))))))
+          (let [response ((mt/user->client :lucky) :get 200
+                          (format "database/%d/schema/%s" mbql.s/saved-questions-virtual-database-id (table-api/root-collection-schema-name)))]
+            (is (schema= [{:id           #"^card__\d+$"
+                           :db_id        s/Int
+                           :display_name s/Str
+                           :schema       (s/eq (table-api/root-collection-schema-name))
+                           :description  (s/maybe s/Str)}]
+                         response))
+            (is (contains? (set response)
+                           {:id           (format "card__%d" (:id card-2))
+                            :db_id        (mt/id)
+                            :display_name "Card 2"
+                            :schema       (table-api/root-collection-schema-name)
+                            :description  nil}))))
 
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."

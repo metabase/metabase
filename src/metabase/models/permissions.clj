@@ -14,6 +14,7 @@
              [permissions-group :as group]
              [permissions-revision :as perms-revision :refer [PermissionsRevision]]]
             [metabase.models.permissions.parse :as perms-parse]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :as ui18n :refer [deferred-tru trs tru]]
@@ -494,36 +495,41 @@
   [group-or-id database-or-id]
   (grant-permissions! group-or-id (object-path database-or-id)))
 
-(defn- check-not-personal-collection-or-descendant
+(defn- is-personal-collection-or-descendant-of-one? [collection]
+  (classloader/require 'metabase.models.collection)
+  ((resolve 'metabase.models.collection/is-personal-collection-or-descendant-of-one?) collection))
+
+(s/defn ^:private check-not-personal-collection-or-descendant
   "Check whether `collection-or-id` refers to a Personal Collection; if so, throw an Exception. This is done because we
   *should* never be editing granting/etc. permissions for *Personal* Collections to entire Groups! Their owner will
   get implicit permissions automatically, and of course admins will be able to see them,but a whole group should never
   be given some sort of access."
-  [collection-or-id]
+  [collection-or-id :- MapOrID]
   ;; don't apply this check to the Root Collection, because it's never personal
   (when-not (:metabase.models.collection/is-root? collection-or-id)
     ;; ok, once we've confirmed this isn't the Root Collection, see if it's in the DB with a personal_owner_id
-    (when ((resolve 'metabase.models.collection/is-personal-collection-or-descendant-of-one?)
-           (if (map? collection-or-id)
-             collection-or-id
-             (db/select-one 'Collection :id (u/get-id collection-or-id))))
-      (throw (Exception. (tru "You cannot edit permissions for a Personal Collection or its descendants."))))))
+    (let [collection (if (map? collection-or-id)
+                       collection-or-id
+                       (or (db/select-one 'Collection :id (u/get-id collection-or-id))
+                           (throw (ex-info (tru "Collection does not exist.") {:collection-id (u/get-id collection-or-id)}))))]
+      (when (is-personal-collection-or-descendant-of-one? collection)
+        (throw (Exception. (tru "You cannot edit permissions for a Personal Collection or its descendants.")))))))
 
-(defn revoke-collection-permissions!
+(s/defn revoke-collection-permissions!
   "Revoke all access for `group-or-id` to a Collection."
-  [group-or-id collection-or-id]
+  [group-or-id :- MapOrID collection-or-id :- MapOrID]
   (check-not-personal-collection-or-descendant collection-or-id)
   (delete-related-permissions! group-or-id (collection-readwrite-path collection-or-id)))
 
-(defn grant-collection-readwrite-permissions!
+(s/defn grant-collection-readwrite-permissions!
   "Grant full access to a Collection, which means a user can view all Cards in the Collection and add/remove Cards."
-  [group-or-id collection-or-id]
+  [group-or-id :- MapOrID collection-or-id :- MapOrID]
   (check-not-personal-collection-or-descendant collection-or-id)
   (grant-permissions! (u/get-id group-or-id) (collection-readwrite-path collection-or-id)))
 
-(defn grant-collection-read-permissions!
+(s/defn grant-collection-read-permissions!
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
-  [group-or-id collection-or-id]
+  [group-or-id :- MapOrID collection-or-id :- MapOrID]
   (check-not-personal-collection-or-descendant collection-or-id)
   (grant-permissions! (u/get-id group-or-id) (collection-read-path collection-or-id)))
 
@@ -666,6 +672,7 @@
          (doseq [[group-id changes] new]
            (update-group-permissions! group-id changes))
          (save-perms-revision! (:revision old-graph) old new)))))
+
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [s/Any], new-value]
    (update-graph! (assoc-in (graph) (cons :groups ks) new-value))))

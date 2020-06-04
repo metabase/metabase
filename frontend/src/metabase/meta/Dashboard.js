@@ -216,7 +216,9 @@ export function getParameterMappingOptions(
   // dimensions
   options.push(
     ...query
-      .dimensionOptions(parameter && dimensionFilterForParameter(parameter))
+      .dimensionOptions(
+        parameter ? dimensionFilterForParameter(parameter) : undefined,
+      )
       .sections()
       .flatMap(section =>
         section.items.map(({ dimension }) => ({
@@ -234,7 +236,7 @@ export function getParameterMappingOptions(
   // variables
   options.push(
     ...query
-      .variables(parameter && variableFilterForParameter(parameter))
+      .variables(parameter ? variableFilterForParameter(parameter) : undefined)
       .map(variable => ({
         sectionName: "Variables",
         name: variable.displayName(),

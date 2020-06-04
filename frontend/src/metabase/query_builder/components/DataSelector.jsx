@@ -850,13 +850,11 @@ const TablePicker = ({
     const sections = [
       {
         name: header,
-        items: tables
-          .filter(t => t.isQueryable())
-          .map(table => ({
-            name: table.displayName(),
-            table: table,
-            database: selectedDatabase,
-          })),
+        items: tables.map(table => ({
+          name: table.displayName(),
+          table: table,
+          database: selectedDatabase,
+        })),
         loading: tables.length === 0 && isLoading,
       },
     ];

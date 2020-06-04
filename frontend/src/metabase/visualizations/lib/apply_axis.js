@@ -122,12 +122,24 @@ export function applyChartTimeseriesXAxis(
     // special handling for weeks
     // TODO: are there any other cases where we should do this?
     let tickFormatUnit = dimensionColumn.unit;
+    const tickFormat = timestamp => {
+      const { column, ...columnSettings } = chart.settings.column(
+        dimensionColumn,
+      );
+      return formatValue(timestamp, {
+        ...columnSettings,
+        column: { ...column, unit: tickFormatUnit },
+        type: "axis",
+        compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
+      });
+    };
     if (dataInterval.interval === "week") {
       // if tick interval is compressed then show months instead of weeks because they're nicer formatted
       const newTickInterval = computeTimeseriesTicksInterval(
         xDomain,
         tickInterval,
         chart.width(),
+        tickFormat,
       );
       if (
         newTickInterval.interval !== tickInterval.interval ||
@@ -138,21 +150,16 @@ export function applyChartTimeseriesXAxis(
       }
     }
 
-    chart.xAxis().tickFormat(timestamp => {
-      const { column, ...columnSettings } = chart.settings.column(
-        dimensionColumn,
-      );
-      return formatValue(timestamp, {
-        ...columnSettings,
-        column: { ...column, unit: tickFormatUnit },
-        type: "axis",
-        compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
-      });
-    });
+    chart.xAxis().tickFormat(tickFormat);
 
     // Compute a sane interval to display based on the data granularity, domain, and chart width
     tickInterval = {
-      ...computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width()),
+      ...computeTimeseriesTicksInterval(
+        xDomain,
+        tickInterval,
+        chart.width(),
+        tickFormat,
+      ),
       timezone,
     };
   }

@@ -110,15 +110,15 @@
   "Cancel a single sync task for `database-or-id` and `task-info`."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (let [trigger-key (trigger-key database task-info)]
-    (log/debug (u/format-color 'red "Unscheduling task for Database %d: trigger: %s"
-                               (u/get-id database) (.getName trigger-key)))
+    (log/debug (u/format-color 'red
+                   (trs "Unscheduling task for Database {0}: trigger: {1}" (u/get-id database) (.getName trigger-key))))
     (task/delete-trigger! trigger-key)))
 
 (s/defn unschedule-tasks-for-db!
   "Cancel *all* scheduled sync and FieldValues caching tasks for `database-or-id`."
   [database :- DatabaseInstance]
-  (delete-task! database sync-analyze-task-info)
-  (delete-task! database field-values-task-info))
+  (doseq [task [sync-analyze-task-info field-values-task-info]]
+    (delete-task! database task)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -161,15 +161,12 @@
   [database :- DatabaseInstance]
   (let [sync-trigger (trigger database sync-analyze-task-info)
         fv-trigger   (trigger database field-values-task-info)]
-
     ;; unschedule any tasks that might already be scheduled
     (unschedule-tasks-for-db! database)
-
     (log/debug
      (u/format-color 'green "Scheduling sync/analyze and field-values task for database %d: trigger: %s and trigger: %s"
                      (u/get-id database) (.getName (.getKey sync-trigger))
                      (u/get-id database) (.getName (.getKey fv-trigger))))
-
     ;; now (re)schedule all the tasks
     (task/add-trigger! sync-trigger)
     (task/add-trigger! fv-trigger)))

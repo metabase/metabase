@@ -1,4 +1,9 @@
-import { signInAsAdmin, restore, openOrdersTable } from "__support__/cypress";
+import {
+  signInAsAdmin,
+  restore,
+  popover,
+  openOrdersTable,
+} from "__support__/cypress";
 
 describe("scenarios > admin > settings", () => {
   before(restore);
@@ -35,6 +40,57 @@ describe("scenarios > admin > settings", () => {
       .type("bob@metabase.com")
       .blur();
     cy.wait("@saveSettings");
+  });
+
+  it("should check for working https before enabling a redirect", () => {
+    cy.visit("/admin/settings/general");
+    cy.server();
+    cy.route("GET", "**/api/health", "ok").as("httpsCheck");
+
+    // settings have loaded, but there's no redirect setting visible
+    cy.contains("Site URL");
+    cy.contains("Redirect to HTTPS").should("not.exist");
+
+    // switch site url to use https
+    cy.contains("Site URL")
+      .parent()
+      .parent()
+      .find(".AdminSelect")
+      .click();
+    popover()
+      .contains("https://")
+      .click();
+
+    cy.wait("@httpsCheck");
+    cy.contains("Redirect to HTTPS")
+      .parent()
+      .parent()
+      .contains("Disabled");
+
+    restore(); // avoid leaving https site url
+  });
+
+  it("should display an error if the https redirect check fails", () => {
+    cy.visit("/admin/settings/general");
+    cy.server();
+    // return 500 on https check
+    cy.route({ method: "GET", url: "**/api/health", status: 500 }).as(
+      "httpsCheck",
+    );
+
+    // switch site url to use https
+    cy.contains("Site URL")
+      .parent()
+      .parent()
+      .find(".AdminSelect")
+      .click();
+    popover()
+      .contains("https://")
+      .click();
+
+    cy.wait("@httpsCheck");
+    cy.contains("It looks like HTTPS is not properly configured");
+    restore(); // avoid leaving https site url
   });
 
   it("should update the formatting", () => {
@@ -179,6 +235,18 @@ describe("scenarios > admin > settings", () => {
         "have.value",
         "",
       );
+    });
+  });
+
+  describe(" > slack settings", () => {
+    it("should present the form and display errors", () => {
+      cy.visit("/admin/settings/slack");
+      cy.contains("Answers sent right to your Slack");
+      cy.findByPlaceholderText("Enter the token you received from Slack")
+        .type("not-a-real-token")
+        .blur();
+      cy.findByText("Save changes").click();
+      cy.contains("Looks like we ran into some problems");
     });
   });
 });

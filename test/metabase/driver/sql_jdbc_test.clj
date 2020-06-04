@@ -81,9 +81,9 @@
   (mt/test-driver :postgres
     (testing "Make sure invalid ssh credentials are detected if a direct connection is possible"
       (is (thrown?
-           com.jcraft.jsch.JSchException
+           java.net.ConnectException
+           ;; this test works if sshd is running or not
            (try
-             ;; this test works if sshd is running or not
              (let [details {:dbname         "test"
                             :engine         :postgres
                             :host           "localhost"
@@ -93,17 +93,20 @@
                             :tunnel-enabled true
                             :tunnel-host    "localhost" ; this test works if sshd is running or not
                             :tunnel-pass    "BOGUS-BOGUS-BOGUS"
-                            :tunnel-port    22
+                            ;; we want to use a bogus port here on purpose -
+                            ;; so that locally, it gets a ConnectionRefused,
+                            ;; and in CI it does too. Apache's SSHD library
+                            ;; doesn't wrap every exception in an SshdException
+                            :tunnel-port    21212
                             :tunnel-user    "example"
                             :user           "postgres"}]
                (tu.log/suppress-output
-                 (driver.u/can-connect-with-details? :postgres details :throw-exceptions)))
+                (driver.u/can-connect-with-details? :postgres details :throw-exceptions)))
              (catch Throwable e
                (loop [^Throwable e e]
-                 (or (when (instance? com.jcraft.jsch.JSchException e)
+                 (or (when (instance? java.net.ConnectException e)
                        (throw e))
                      (some-> (.getCause e) recur))))))))))
-
 
 ;;; --------------------------------- Tests for splice-parameters-into-native-query ----------------------------------
 
@@ -158,37 +161,38 @@
          :native   spliced})))))
 
 (deftest splice-parameters-mbql-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
-    (mt/$ids venues
-      (testing "splicing a string"
-        (is (= 3
-               (spliced-count-of :venues [:starts-with $name "Sushi"])))
-        (testing "containing single quotes -- this is done differently from driver to driver"
-          (is (= 1
-                 (spliced-count-of :venues [:= $name "Barney's Beanery"])))))
-      (testing "splicing an integer"
-        (is (= 13
-               (spliced-count-of :venues [:= $price 3]))))
-      (testing "splicing floating-point numbers"
-        (is (= 13
-               (spliced-count-of :venues [:between $price 2.9 3.1]))))
-      (testing "splicing nil"
-        (is (= 0
-               (spliced-count-of :venues [:is-null $price])))))
-    (mt/dataset places-cam-likes
-      (mt/$ids places
-        (testing "splicing a boolean"
-          (is (= 2
-                 (spliced-count-of :places [:= $liked true]))))))
-    (mt/$ids checkins
-      (testing "splicing a date"
-        (is (= 3
-               (spliced-count-of :checkins [:= $date "2014-03-05"]))))))
+  (testing "`splice-parameters-into-native-query` should generate a query that works correctly"
+    (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+      (mt/$ids venues
+        (testing "splicing a string"
+          (is (= 3
+                 (spliced-count-of :venues [:starts-with $name "Sushi"])))
+          (testing "containing single quotes -- this is done differently from driver to driver"
+            (is (= 1
+                   (spliced-count-of :venues [:= $name "Barney's Beanery"])))))
+        (testing "splicing an integer"
+          (is (= 13
+                 (spliced-count-of :venues [:= $price 3]))))
+        (testing "splicing floating-point numbers"
+          (is (= 13
+                 (spliced-count-of :venues [:between $price 2.9 3.1]))))
+        (testing "splicing nil"
+          (is (= 0
+                 (spliced-count-of :venues [:is-null $price])))))
+      (mt/dataset places-cam-likes
+        (mt/$ids places
+          (testing "splicing a boolean"
+            (is (= 2
+                   (spliced-count-of :places [:= $liked true]))))))
+      (mt/$ids checkins
+        (testing "splicing a date"
+          (is (= 3
+                 (spliced-count-of :checkins [:= $date "2014-03-05"]))))))
 
-  ;; Oracle, Redshift, and SparkSQL don't have 'Time' types
-  (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :redshift :sparksql)
-    (testing "splicing a time"
-      (is (= 2
-             (mt/dataset test-data-with-time
-               (mt/$ids users
-                 (spliced-count-of :users [:= $last_login_time "09:30"]))))))))
+    ;; Oracle, Redshift, and SparkSQL don't have 'Time' types
+    (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :redshift :sparksql)
+      (testing "splicing a time"
+        (is (= 2
+               (mt/dataset test-data-with-time
+                 (mt/$ids users
+                   (spliced-count-of :users [:= $last_login_time "09:30"])))))))))

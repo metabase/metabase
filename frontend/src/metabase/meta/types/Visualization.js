@@ -113,4 +113,6 @@ export type VisualizationProps = {
   onAddSeries?: Function,
   onEditSeries?: Function,
   onRemoveSeries?: Function,
+
+  onUpdateWarnings?: Function,
 };

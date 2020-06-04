@@ -3,7 +3,7 @@
   (:require [clojure
              [string :as str]
              [test :refer :all]]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [email-test :as et]
              [util :as u]]
