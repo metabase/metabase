@@ -3,7 +3,6 @@
 import React from "react";
 import { t } from "ttag";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
 import { fieldRefForColumn } from "metabase/lib/dataset";
 import {
   getAggregationOperator,
@@ -51,8 +50,6 @@ export default ({
               ? [aggregator.short, fieldRefForColumn(column)]
               : [aggregator.short],
           )
-          .pivot([
-            DatetimeFieldDimension.defaultDimension(dateDimension).mbql(),
-          ]),
+          .pivot([dateDimension.defaultBreakout()]),
     }));
 };
