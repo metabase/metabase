@@ -102,7 +102,9 @@ describe("metabase-smoketest > admin", () => {
     cy.get(".scroll-y")
       .contains("Created At", { timeout: 20000 })
       .click();
-    cy.get("input[type='text']").type("{backspace}{backspace}5");
+    cy.get("input[type='text']")
+        .clear()
+        .type("5");
     cy.findByText("Days").click();
     cy.findByText("Years").click();
     cy.get(".scroll-y")

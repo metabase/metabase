@@ -39,13 +39,41 @@ describe("smoketest > new_user", () => {
         // should ensuring that header actions are appropriate for different data types
         // =================
         
-        cy.contains("Filter").click();
+        // cy.findbyText("Filter").click();
+
         
         // =================
         // should filter via both the sidebar and the header
         // =================
 
+        // Sidebar
+        cy.contains("Visualize", { timeout: 20000 }).should("not.exist")
+        cy.findAllByText("Filter").first().click();
+        cy.findByText("Category").click();
+        cy.contains("Is");
+        cy.findByText("Gadget").click();
+        cy.findByText("Add filter").click();
 
+        cy.contains("Vendor is not empty")
+
+        // Can delete filter in header
+        cy.findByText("Category is Gadget").click(140, 10);
+        cy.findByText("Category is Gadget").should("not.exist");
+
+        // Header
+        cy.get(".Icon-notebook").click();
+        cy.get(".Icon-filter", { timeout: 30000 })
+            .click();
+        cy.get(".Icon-int").click();
+        cy.findByText("Equal to").click();
+        cy.findByText("Greater than or equal to").click();
+        cy.get("input[placeholder='Enter a number']").type("5");
+        cy.findByText("Add filter").click();
+        cy.findByText("Visualize").click();
+
+        cy.contains("Visualize").should("not.exist");
+        cy.get("svg");
+        cy.contains("Average of Rating is greater than or equal to 5")
 
         // =================
         // should summarize via both the sidebar and the header
