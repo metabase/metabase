@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { signInAsAdmin, restore, popover } from "__support__/cypress";
 
 function typeField(label, value) {
   cy.findByLabelText(label)
@@ -118,5 +118,80 @@ describe("scenarios > admin > databases > add", () => {
     cy.wait("@createDatabase");
 
     cy.findByText("DATABASE CONNECTION ERROR").should("exist");
+  });
+
+  describe("BigQuery", () => {
+    it("should let you upload the service account json from a file", () => {
+      cy.visit("/admin/databases/create");
+
+      // select BigQuery
+      cy.contains("Database type")
+        .parents(".Form-field")
+        .find(".AdminSelect")
+        .click();
+      popover()
+        .contains("BigQuery")
+        .click({ force: true });
+
+      // enter text
+      typeField("Name", "bq db");
+      typeField("Dataset ID", "some-dataset");
+
+      // create blob to act as selected file
+      cy.get("input[type=file]")
+        .then(async input => {
+          const blob = await Cypress.Blob.binaryStringToBlob('{"foo": 123}');
+          const file = new File([blob], "service-account.json");
+          const dataTransfer = new DataTransfer();
+
+          dataTransfer.items.add(file);
+          input[0].files = dataTransfer.files;
+          return input;
+        })
+        .trigger("change", { force: true })
+        .trigger("blur", { force: true });
+
+      cy.route({
+        method: "POST",
+        url: "/api/database",
+        response: { id: 123 },
+        status: 200,
+        delay: 100,
+      }).as("createDatabase");
+
+      // submit form and check that the file's body is included
+      cy.contains("Save").click();
+      cy.wait("@createDatabase").should(xhr => {
+        expect(xhr.request.body.details["service-account-json"]).to.equal(
+          '{"foo": 123}',
+        );
+      });
+    });
+
+    it("should show the old BigQuery form for previously connected databases", () => {
+      cy.route({
+        method: "GET",
+        url: "/api/database/123",
+        response: {
+          id: 123,
+          engine: "bigquery",
+          details: {
+            "auth-code": "auth-code",
+            "client-id": "client-id",
+            "client-secret": "client-secret",
+            "dataset-id": "dataset-id",
+            "project-id": "project",
+            "use-jvm-timezone": false,
+          },
+        },
+        status: 200,
+        delay: 100,
+      });
+      cy.visit("/admin/databases/123");
+
+      cy.contains("Connect to a Service Account instead");
+
+      cy.contains("generate a Client ID and Client Secret for your project");
+    });
   });
 });

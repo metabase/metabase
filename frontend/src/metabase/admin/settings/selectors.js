@@ -3,6 +3,8 @@ import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
 import { t } from "ttag";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
+import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
+import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
@@ -17,6 +19,7 @@ import FormattingWidget from "./components/widgets/FormattingWidget";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
+import SettingsSlackForm from "./components/SettingsSlackForm";
 
 import { UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
@@ -47,6 +50,14 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "site-url",
         display_name: t`Site URL`,
         type: "string",
+        widget: SiteUrlWidget,
+      },
+      {
+        key: "redirect-all-requests-to-https",
+        display_name: t`Redirect to HTTPS`,
+        type: "boolean",
+        getHidden: ({ "site-url": url }) => !/^https:\/\//.test(url),
+        widget: HttpsOnlyWidget,
       },
       {
         key: "admin-email",
@@ -63,16 +74,6 @@ const SECTIONS = updateSectionsWithPlugins({
         ],
         note: t`Not all databases support timezones, in which case this setting won't take effect.`,
         allowValueCollection: true,
-      },
-      {
-        key: "site-locale",
-        display_name: t`Language`,
-        type: "select",
-        options: (MetabaseSettings.get("available-locales") || []).map(
-          ([value, name]) => ({ name, value }),
-        ),
-        defaultValue: "en",
-        getHidden: () => MetabaseSettings.get("available-locales").length < 2,
       },
       {
         key: "anon-tracking-enabled",
@@ -170,6 +171,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   slack: {
     name: "Slack",
+    component: SettingsSlackForm,
     settings: [
       {
         key: "slack-token",
@@ -214,10 +216,21 @@ const SECTIONS = updateSectionsWithPlugins({
     ],
   },
   formatting: {
-    name: t`Formatting`,
+    name: t`Localization`,
     settings: [
       {
-        display_name: t`Formatting Options`,
+        display_name: t`Instance language`,
+        key: "site-locale",
+        type: "select",
+        options: _.sortBy(
+          MetabaseSettings.get("available-locales") || [],
+          ([code, name]) => name,
+        ).map(([code, name]) => ({ name, value: code })),
+        defaultValue: "en",
+        note: t`Changes to this value will take effect after you reload the page.`,
+      },
+      {
+        display_name: t`Localization options`,
         description: "",
         key: "custom-formatting",
         widget: FormattingWidget,

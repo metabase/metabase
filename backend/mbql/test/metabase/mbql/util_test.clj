@@ -901,6 +901,17 @@
     [:sum [:field-id 1]]
     [:aggregation-options [:sum [:field-id 1]] {:name "sum_2", :display-name "Sum of Field 1"}]]))
 
+(deftest unique-name-generator-test
+  (testing "Can we get a simple unique name generator"
+    (is (= ["count" "sum" "count_2" "count_2_2"]
+           (map (mbql.u/unique-name-generator) ["count" "sum" "count" "count_2"]))))
+  (testing "Can we get an idempotent unique name generator"
+    (is (= ["count" "sum" "count" "count_2"]
+           (map (mbql.u/unique-name-generator) [:x :y :x :z] ["count" "sum" "count" "count_2"]))))
+  (testing "Can the same object have multiple aliases"
+    (is (= ["count" "sum" "count" "count_2"]
+           (map (mbql.u/unique-name-generator) [:x :y :x :x] ["count" "sum" "count" "count_2"])))))
+
 
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
 

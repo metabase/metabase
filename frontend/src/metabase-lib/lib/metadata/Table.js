@@ -36,7 +36,7 @@ export default class Table extends Base {
   entity_type: ?EntityType;
 
   hasSchema(): boolean {
-    return (this.schema_name && this.db.schemas.length > 1) || false;
+    return (this.schema_name && this.db && this.db.schemas.length > 1) || false;
   }
 
   // $FlowFixMe Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `table.db`)
@@ -52,7 +52,7 @@ export default class Table extends Base {
 
   question(): Question {
     return Question.create({
-      databaseId: this.db.id,
+      databaseId: this.db && this.db.id,
       tableId: this.id,
       metadata: this.metadata,
     });
@@ -76,10 +76,6 @@ export default class Table extends Base {
       (includeSchema && this.schema ? this.schema.displayName() + "." : "") +
       this.display_name
     );
-  }
-
-  isQueryable() {
-    return this.visibility_type == null;
   }
 
   /**

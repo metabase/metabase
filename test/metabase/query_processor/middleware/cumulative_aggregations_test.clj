@@ -14,7 +14,12 @@
   (is (thrown?
        IndexOutOfBoundsException
        (#'cumulative-aggregations/add-values-from-last-row #{4} [1 2 3] [1 2 3]))
-      "should throw an Exception if index is out of bounds"))
+      "should throw an Exception if index is out of bounds")
+
+  (testing "Do we handle nils correctly"
+    (is (= [1] (#'cumulative-aggregations/add-values-from-last-row #{0} [nil] [1])))
+    (is (= [0] (#'cumulative-aggregations/add-values-from-last-row #{0} [nil] [nil])))
+    (is (= [1] (#'cumulative-aggregations/add-values-from-last-row #{0} [1] [nil])))))
 
 (deftest diff-indicies-test
   (testing "collections are the same"

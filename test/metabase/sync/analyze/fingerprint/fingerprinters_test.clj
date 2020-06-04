@@ -42,7 +42,19 @@
                                  :sd  1.0}}}
          (transduce identity
                     (fingerprinter (field/map->FieldInstance {:base_type :type/Number}))
-                    [1.0 2.0 3.0]))))
+                    [1.0 2.0 3.0])))
+  (testing "We should robustly survive weird values such as NaN, Infinity, and nil"
+    (is (= {:global {:distinct-count 7
+                     :nil%           0.25}
+            :type   {:type/Number {:avg 2.0
+                                   :min 1.0
+                                   :max 3.0
+                                   :q1  1.25
+                                   :q3  2.75
+                                   :sd  1.0}}}
+           (transduce identity
+                      (fingerprinter (field/map->FieldInstance {:base_type :type/Number}))
+                      [1.0 2.0 3.0 Double/NaN Double/POSITIVE_INFINITY Double/NEGATIVE_INFINITY nil nil])))))
 
 (deftest fingerprint-string-values-test
   (is (= {:global {:distinct-count 5

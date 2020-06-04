@@ -1,5 +1,6 @@
 (ns metabase.models.permissions-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models
              [collection :as collection :refer [Collection]]
              [database :refer [Database]]
@@ -17,144 +18,164 @@
 
 ;;; ----------------------------------------------- valid-object-path? -----------------------------------------------
 
-(expect (perms/valid-object-path? "/db/1/"))
-(expect (perms/valid-object-path? "/db/1/native/"))
-(expect (perms/valid-object-path? "/db/1/schema/"))
-(expect (perms/valid-object-path? "/db/1/schema/public/"))
-(expect (perms/valid-object-path? "/db/1/schema/PUBLIC/"))
-(expect (perms/valid-object-path? "/db/1/schema//"))
-(expect (perms/valid-object-path? "/db/1/schema/1234/"))
-(expect (perms/valid-object-path? "/db/1/schema/public/table/1/"))
-(expect (perms/valid-object-path? "/db/1/schema/PUBLIC/table/1/"))
-(expect (perms/valid-object-path? "/db/1/schema//table/1/"))
-(expect (perms/valid-object-path? "/db/1/schema/public/table/1/"))
-(expect (perms/valid-object-path? "/db/1/schema/PUBLIC/table/1/"))
-(expect (perms/valid-object-path? "/db/1/schema//table/1/"))
-(expect (perms/valid-object-path? "/db/1/schema/1234/table/1/"))
+(deftest valid-object-path-test
+  (testing "valid paths"
+    (doseq [path
+            ["/db/1/"
+             "/db/1/native/"
+             "/db/1/schema/"
+             "/db/1/schema/public/"
+             "/db/1/schema/PUBLIC/"
+             "/db/1/schema//"
+             "/db/1/schema/1234/"
+             "/db/1/schema/public/table/1/"
+             "/db/1/schema/PUBLIC/table/1/"
+             "/db/1/schema//table/1/"
+             "/db/1/schema/public/table/1/"
+             "/db/1/schema/PUBLIC/table/1/"
+             "/db/1/schema//table/1/"
+             "/db/1/schema/1234/table/1/"]]
+      (testing path
+        (is (= true
+               (perms/valid-object-path? path)))))
 
-;; Native READ permissions are DEPRECATED as of v0.30 so they should no longer be treated as valid
-(expect false (perms/valid-object-path? "/db/1/native/read/"))
+    ;; TODO -- we need to esacpe forward-slashes as well
+    (testing "We should allow backslashes in permissions paths? (#8693)"
+      (is (= true
+             (perms/valid-object-path? "/db/16/schema/COMPANY-NET\\john.doe/")))))
 
-;; missing trailing slashes
-(expect false (perms/valid-object-path? "/db/1"))
-(expect false (perms/valid-object-path? "/db/1/native"))
+  (testing "invalid paths"
+    (doseq [[reason paths]
+            {"Native READ permissions are DEPRECATED as of v0.30 so they should no longer be treated as valid"
+             ["/db/1/native/read/"]
 
-(expect false (perms/valid-object-path? "/db/1/schema"))
-(expect false (perms/valid-object-path? "/db/1/schema/public"))
-(expect false (perms/valid-object-path? "/db/1/schema/PUBLIC"))
-(expect false (perms/valid-object-path? "/db/1/schema"))
-(expect false (perms/valid-object-path? "/db/1/schema/public/db/1"))
-(expect false (perms/valid-object-path? "/db/1/schema/PUBLIC/db/1"))
-(expect false (perms/valid-object-path? "/db/1/schema//db/1"))
-(expect false (perms/valid-object-path? "/db/1/schema/public/db/1/table/2"))
-(expect false (perms/valid-object-path? "/db/1/schema/PUBLIC/db/1/table/2"))
-(expect false (perms/valid-object-path? "/db/1/schema//db/1/table/2"))
+             "missing trailing slashes"
+             ["/db/1"
+              "/db/1/native"
+              "/db/1/schema"
+              "/db/1/schema/public"
+              "/db/1/schema/PUBLIC"
+              "/db/1/schema"
+              "/db/1/schema/public/db/1"
+              "/db/1/schema/PUBLIC/db/1"
+              "/db/1/schema//db/1"
+              "/db/1/schema/public/db/1/table/2"
+              "/db/1/schema/PUBLIC/db/1/table/2"
+              "/db/1/schema//db/1/table/2"]
 
-;; too many slashes
-(expect false (perms/valid-object-path? "/db/1//"))
-(expect false (perms/valid-object-path? "/db/1/native//"))
-(expect false (perms/valid-object-path? "/db/1/schema/public//"))
-(expect false (perms/valid-object-path? "/db/1/schema/PUBLIC//"))
-(expect false (perms/valid-object-path? "/db/1/schema///"))
-(expect false (perms/valid-object-path? "/db/1/schema/public/db/1//"))
-(expect false (perms/valid-object-path? "/db/1/schema/PUBLIC/db/1//"))
-(expect false (perms/valid-object-path? "/db/1/schema//db/1//"))
-(expect false (perms/valid-object-path? "/db/1/schema/public/db/1/table/2//"))
-(expect false (perms/valid-object-path? "/db/1/schema/PUBLIC/db/1/table/2//"))
-(expect false (perms/valid-object-path? "/db/1/schema//db/1/table/2//"))
+             "too many slashes"
+             ["/db/1//"
+              "/db/1/native//"
+              "/db/1/schema/public//"
+              "/db/1/schema/PUBLIC//"
+              "/db/1/schema///"
+              "/db/1/schema/public/db/1//"
+              "/db/1/schema/PUBLIC/db/1//"
+              "/db/1/schema//db/1//"
+              "/db/1/schema/public/db/1/table/2//"
+              "/db/1/schema/PUBLIC/db/1/table/2//"
+              "/db/1/schema//db/1/table/2//"]
 
-;; not referencing a specific object. These might be valid permissions paths but not valid paths to object  s
-(expect false (perms/valid-object-path? "/"))
-(expect false (perms/valid-object-path? "/db/"))
-(expect false (perms/valid-object-path? "/db/1/schema/public/db/"))
-(expect false (perms/valid-object-path? "/db/1/schema/public/db/1/table/"))
+             "not referencing a specific object. These might be valid permissions paths but not valid paths to objects"
+             ["/"
+              "/db/"
+              "/db/1/schema/public/db/"
+              "/db/1/schema/public/db/1/table/"]
 
-;; duplicate path components
-(expect false (perms/valid-object-path? "/db/db/1/"))
-(expect false (perms/valid-object-path? "/db/1/native/native/"))
-(expect false (perms/valid-object-path? "/db/1/schema/schema/public/"))
-(expect false (perms/valid-object-path? "/db/1/schema/public/public/"))
-(expect false (perms/valid-object-path? "/db/1/schema/public/db/1/table/table/"))
-(expect false (perms/valid-object-path? "/db/1/schema/public/db/1/table/table/2/"))
+             "duplicate path components"
+             ["/db/db/1/"
+              "/db/1/native/native/"
+              "/db/1/schema/schema/public/"
+              "/db/1/schema/public/public/"
+              "/db/1/schema/public/db/1/table/table/"
+              "/db/1/schema/public/db/1/table/table/2/"]
 
-;; missing beginning slash
-(expect false (perms/valid-object-path? "db/1/"))
-(expect false (perms/valid-object-path? "db/1/native/"))
-(expect false (perms/valid-object-path? "db/1/schema/public/"))
-(expect false (perms/valid-object-path? "db/1/schema/PUBLIC/"))
-(expect false (perms/valid-object-path? "db/1/schema//"))
-(expect false (perms/valid-object-path? "db/1/schema/public/db/1/"))
-(expect false (perms/valid-object-path? "db/1/schema/PUBLIC/db/1/"))
-(expect false (perms/valid-object-path? "db/1/schema//db/1/"))
-(expect false (perms/valid-object-path? "db/1/schema/public/db/1/table/2/"))
-(expect false (perms/valid-object-path? "db/1/schema/PUBLIC/db/1/table/2/"))
-(expect false (perms/valid-object-path? "db/1/schema//db/1/table/2/"))
+             "missing beginning slash"
+             ["db/1/"
+              "db/1/native/"
+              "db/1/schema/public/"
+              "db/1/schema/PUBLIC/"
+              "db/1/schema//"
+              "db/1/schema/public/db/1/"
+              "db/1/schema/PUBLIC/db/1/"
+              "db/1/schema//db/1/"
+              "db/1/schema/public/db/1/table/2/"
+              "db/1/schema/PUBLIC/db/1/table/2/"
+              "db/1/schema//db/1/table/2/"]
 
-;; non-numeric IDs
-(expect false (perms/valid-object-path? "/db/toucans/"))
-(expect false (perms/valid-object-path? "/db/1/schema/public/table/orders/"))
+             "non-numeric IDs"
+             ["/db/toucans/"
+              "/db/1/schema/public/table/orders/"]
 
-;; things that aren't even strings
-(expect false (perms/valid-object-path? nil))
-(expect false (perms/valid-object-path? {}))
-(expect false (perms/valid-object-path? []))
-(expect false (perms/valid-object-path? true))
-(expect false (perms/valid-object-path? false))
-(expect false (perms/valid-object-path? (keyword "/db/1/")))
-(expect false (perms/valid-object-path? 1234))
+             "things that aren't even strings"
+             [nil
+              {}
+              []
+              true
+              false
+              (keyword "/db/1/")
+              1234]
 
-;; other invalid paths
-(expect false (perms/valid-object-path? "/db/1/table/"))
-(expect false (perms/valid-object-path? "/db/1/table/2/"))
-(expect false (perms/valid-object-path? "/db/1/native/schema/"))
-(expect false (perms/valid-object-path? "/db/1/native/write/"))
-(expect false (perms/valid-object-path? "/rainforest/"))
-(expect false (perms/valid-object-path? "/rainforest/toucans/"))
-(expect false (perms/valid-object-path? ""))
-(expect false (perms/valid-object-path? "//"))
-(expect false (perms/valid-object-path? "/database/1/"))
-(expect false (perms/valid-object-path? "/DB/1/"))
-(expect false (perms/valid-object-path? "/db/1/SCHEMA/"))
-(expect false (perms/valid-object-path? "/db/1/SCHEMA/PUBLIC/"))
-(expect false (perms/valid-object-path? "/db/1/schema/PUBLIC/TABLE/1/"))
-
-;; do we allow backslashes in permissions paths? (#8693)
-(expect
-  (perms/valid-object-path? "/db/16/schema/COMPANY-NET\\john.doe/"))
-
-;; TODO - it would be nice if we could escape forward slashes somehow too...
+             "other invalid paths"
+             ["/db/1/table/"
+              "/db/1/table/2/"
+              "/db/1/native/schema/"
+              "/db/1/native/write/"
+              "/rainforest/"
+              "/rainforest/toucans/"
+              ""
+              "//"
+              "/database/1/"
+              "/DB/1/"
+              "/db/1/SCHEMA/"
+              "/db/1/SCHEMA/PUBLIC/"
+              "/db/1/schema/PUBLIC/TABLE/1/"]}]
+      (testing reason
+        (doseq [path paths]
+          (testing path
+            (is (= false
+                   (perms/valid-object-path? path)))))))))
 
 
 ;;; -------------------------------------------------- object-path ---------------------------------------------------
 
-(expect "/db/1/" (perms/object-path 1))
-(expect "/db/1/schema/public/" (perms/object-path 1 "public"))
-(expect "/db/1/schema/public/table/2/" (perms/object-path 1 "public" 2))
+(deftest object-path-test
+  (testing "valid paths"
+    (doseq [[expected args] {"/db/1/"                       [1]
+                             "/db/1/schema/public/"         [1 "public"]
+                             "/db/1/schema/public/table/2/" [1 "public" 2]}]
+      (testing (pr-str (cons 'perms/object-path args))
+        (is (= expected
+               (apply perms/object-path args))))))
 
-;; invalid input should throw an exception
-(expect clojure.lang.ArityException (perms/object-path))
-(expect clojure.lang.ArityException (perms/object-path 1 "public" 2 3))
+  (testing "invalid paths"
+    (testing "invalid input should throw an exception"
+      (doseq [args [[]
+                    [1 "public" 2 3]
+                    [nil]
+                    ["sales"]
+                    [:sales]
+                    [true]
+                    [false]
+                    [{}]
+                    [[]]
+                    [:sales]
+                    [1 true]
+                    [1 false]
+                    [1 {}]
+                    [1 []]
+                    [1 :sales]
+                    [1 "public" nil]
+                    [1 "public" "sales"]
+                    [1 "public" :sales]
+                    [1 "public" true]
+                    [1 "public" false]
+                    [1 "public" {}]
+                    [1 "public" []]]]
+        (testing (pr-str (cons 'perms/object-path args))
+          (is (thrown? Exception
+                       (apply perms/object-path args))))))))
 
-(expect Exception (perms/object-path nil))
-(expect Exception (perms/object-path "sales"))
-(expect Exception (perms/object-path :sales))
-(expect Exception (perms/object-path true))
-(expect Exception (perms/object-path false))
-(expect Exception (perms/object-path {}))
-(expect Exception (perms/object-path []))
-(expect Exception (perms/object-path :sales))
-(expect Exception (perms/object-path 1 true))
-(expect Exception (perms/object-path 1 false))
-(expect Exception (perms/object-path 1 {}))
-(expect Exception (perms/object-path 1 []))
-(expect Exception (perms/object-path 1 :sales))
-(expect Exception (perms/object-path 1 "public" nil))
-(expect Exception (perms/object-path 1 "public" "sales"))
-(expect Exception (perms/object-path 1 "public" :sales))
-(expect Exception (perms/object-path 1 "public" true))
-(expect Exception (perms/object-path 1 "public" false))
-(expect Exception (perms/object-path 1 "public"{}))
-(expect Exception (perms/object-path 1 "public"[]))
 
 ;;; ---------------------------------- Generating permissions paths for Collections ----------------------------------
 
@@ -208,42 +229,46 @@
 
 ;;; ---------------------------------------------- is-permissions-set? -----------------------------------------------
 
-(expect (perms/is-permissions-set? #{}))
-(expect (perms/is-permissions-set? #{"/"}))
-(expect (perms/is-permissions-set? #{"/db/1/"}))
-(expect (perms/is-permissions-set? #{"/db/1/"}))
-(expect (perms/is-permissions-set? #{"/db/1/schema/"}))
-(expect (perms/is-permissions-set? #{"/db/1/schema/public/"}))
-(expect (perms/is-permissions-set? #{"/db/1/schema/public/table/1/"}))
-(expect (perms/is-permissions-set? #{"/" "/db/2/"}))
-(expect (perms/is-permissions-set? #{"/db/1/" "/db/2/schema/"}))
-(expect (perms/is-permissions-set? #{"/db/1/schema/" "/db/2/schema/public/"}))
-(expect (perms/is-permissions-set? #{"/db/1/schema/public/" "/db/2/schema/public/table/3/"}))
-(expect (perms/is-permissions-set? #{"/db/1/schema/public/table/2/" "/db/3/schema/public/table/4/"}))
+(deftest is-permissions-set-test
+  (testing "valid permissions sets"
+    (doseq [perms-set [#{}
+                       #{"/"}
+                       #{"/db/1/"}
+                       #{"/db/1/"}
+                       #{"/db/1/schema/"}
+                       #{"/db/1/schema/public/"}
+                       #{"/db/1/schema/public/table/1/"}
+                       #{"/" "/db/2/"}
+                       #{"/db/1/" "/db/2/schema/"}
+                       #{"/db/1/schema/" "/db/2/schema/public/"}
+                       #{"/db/1/schema/public/" "/db/2/schema/public/table/3/"}
+                       #{"/db/1/schema/public/table/2/" "/db/3/schema/public/table/4/"}]]
+      (testing (pr-str (list 'perms/is-permissions-set? perms-set))
+        (is (= true
+               (perms/is-permissions-set? perms-set))))))
 
-;; things that aren't sets
-(expect false (perms/is-permissions-set? nil))
-(expect false (perms/is-permissions-set? {}))
-(expect false (perms/is-permissions-set? []))
-(expect false (perms/is-permissions-set? true))
-(expect false (perms/is-permissions-set? false))
-(expect false (perms/is-permissions-set? ""))
-(expect false (perms/is-permissions-set? 1234))
-(expect false (perms/is-permissions-set? :wow))
+  (testing "invalid permissions sets"
+    (doseq [[group sets] {"things that aren't sets"
+                          [nil {} [] true false "" 1234 :wow]
 
-;; things that contain invalid paths
-(expect false (perms/is-permissions-set? #{"/" "/toucans/"}))
-(expect false (perms/is-permissions-set? #{"/db/1/" "//"}))
-(expect false (perms/is-permissions-set? #{"/db/1/" "/db/1/table/2/"}))
-(expect false (perms/is-permissions-set? #{"/db/1/native/schema/"}))
-(expect false (perms/is-permissions-set? #{"/db/1/schema/public/" "/kanye/"}))
-(expect false (perms/is-permissions-set? #{"/db/1/schema/public/table/1/" "/ocean/"}))
+                          "things that contain invalid paths"
+                          [#{"/" "/toucans/"}
+                           #{"/db/1/" "//"}
+                           #{"/db/1/" "/db/1/table/2/"}
+                           #{"/db/1/native/schema/"}
+                           #{"/db/1/schema/public/" "/kanye/"}
+                           #{"/db/1/schema/public/table/1/" "/ocean/"}]}]
+      (testing group
+        (doseq [perms-set sets]
+          (testing (pr-str (list 'perms/is-permissions-set? perms-set))
+            (is (= false
+                   (perms/is-permissions-set? perms-set)))))))))
 
 
 ;;; ------------------------------------------- set-has-full-permissions? --------------------------------------------
 
 (expect (perms/set-has-full-permissions? #{"/"}
-                                         "/db/1/schema/public/table/2/"))
+          "/db/1/schema/public/table/2/"))
 
 (expect (perms/set-has-full-permissions? #{"/db/1/" "/db/3/"}
                                          "/db/1/schema/public/table/2/"))
@@ -627,33 +652,36 @@
 ;;; |                                 Granting/Revoking Permissions Helper Functions                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Make sure if you try to use the helper function to *revoke* perms for a Personal Collection, you get an Exception
-(expect
-  Exception
-  (do
-    (initialize/initialize-if-needed! :test-users-personal-collections)
-    (perms/revoke-collection-permissions!
-      (group/all-users)
-      (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
+(deftest revoke-permissions-helper-function-test
+  (initialize/initialize-if-needed! :test-users-personal-collections)
+  (testing "Make sure if you try to use the helper function to *revoke* perms for a Personal Collection, you get an Exception"
+    (is (thrown? Exception
+                 (perms/revoke-collection-permissions!
+                  (group/all-users)
+                  (u/get-id (db/select-one Collection :personal_owner_id (test-users/user->id :lucky))))))
 
-;; (should apply to descendants as well)
-(expect
-  Exception
-  (tt/with-temp Collection [collection {:location (collection/children-location
-                                                   (collection/user->personal-collection
-                                                    (test-users/user->id :lucky)))}]
-    (perms/revoke-collection-permissions!
-     (group/all-users)
-     collection)))
+    (testing "(should apply to descendants as well)"
+      (tt/with-temp Collection [collection {:location (collection/children-location
+                                                       (collection/user->personal-collection
+                                                        (test-users/user->id :lucky)))}]
+        (is (thrown? Exception
+                     (perms/revoke-collection-permissions! (group/all-users) collection)))))))
+
+(deftest revoke-collection-permissions-test
+  (testing "Should be able to revoke permissions for non-personal Collections"
+    (tt/with-temp Collection [{collection-id :id}]
+      (perms/revoke-collection-permissions! (group/all-users) collection-id)
+      (testing "Collection should still exist"
+        (is (some? (db/select-one Collection :id collection-id)))))))
 
 ;; Make sure if you try to use the helper function to grant read perms for a Personal Collection, you get an Exception
 (expect
-  Exception
-  (do
-    (initialize/initialize-if-needed! :test-users-personal-collections)
-    (perms/grant-collection-read-permissions!
-     (group/all-users)
-     (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
+ Exception
+ (do
+   (initialize/initialize-if-needed! :test-users-personal-collections)
+   (perms/grant-collection-read-permissions!
+    (group/all-users)
+    (u/get-id (db/select-one Collection :personal_owner_id (test-users/user->id :lucky))))))
 
 ;; (should apply to descendants as well)
 (expect
@@ -673,7 +701,7 @@
     (initialize/initialize-if-needed! :test-users-personal-collections)
     (perms/grant-collection-readwrite-permissions!
      (group/all-users)
-     (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
+     (u/get-id (db/select-one Collection :personal_owner_id (test-users/user->id :lucky))))))
 
 ;; (should apply to descendants as well)
 (expect

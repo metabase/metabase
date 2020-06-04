@@ -588,6 +588,7 @@
   background-color: var(--color-bg-light);
   border: 1px solid var(--color-border);
   border-radius: 2px;
+  white-space: pre-wrap;
 }
 
 .PopoverBody.AddToDashboard {

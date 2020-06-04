@@ -18,11 +18,9 @@
              [troubleshooting :as troubleshooting]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
-            [metabase.models
-             [setting :as setting]
-             [user :refer [User]]]
+            [metabase.models.user :refer [User]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.util.i18n :refer [deferred-trs set-locale trs]]
+            [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
@@ -106,8 +104,6 @@
 
     ;; start the metabot thread
     (metabot/start-metabot!))
-
-  (set-locale (setting/get :site-locale))
 
   (init-status/set-complete!)
   (log/info (trs "Metabase Initialization COMPLETE")))

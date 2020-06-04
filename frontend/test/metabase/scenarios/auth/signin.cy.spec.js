@@ -1,4 +1,4 @@
-import { restore, signOut, USERS } from "__support__/cypress";
+import { restore, signIn, signOut, USERS } from "__support__/cypress";
 
 describe("scenarios > auth > signin", () => {
   before(restore);
@@ -31,5 +31,26 @@ describe("scenarios > auth > signin", () => {
     cy.findByLabelText("Password").type(USERS.admin.password);
     cy.findByText("Sign in").click();
     cy.contains(/[a-z ]+, Bob/i);
+  });
+
+  it("should redirect to a unsaved question after login", () => {
+    signIn();
+    cy.visit("/");
+    cy.contains("Browse Data").click();
+    cy.contains("Sample Dataset").click();
+    cy.contains("Orders").click();
+    cy.contains("37.65");
+
+    // signout and reload page with question hash in url
+    signOut();
+    cy.reload();
+
+    cy.contains("Sign in to Metabase");
+    cy.findByLabelText("Email address").type(USERS.admin.username);
+    cy.findByLabelText("Password").type(USERS.admin.password);
+    cy.findByText("Sign in").click();
+
+    // order table should load after login
+    cy.contains("37.65");
   });
 });

@@ -21,11 +21,6 @@
              [schema :as su]]
             [toucan.db :as db]))
 
-(defn- native-query [sql]
-  {:database (mt/id)
-   :type     :native
-   :native   {:query sql}})
-
 (defn- card-metadata [card]
   (db/select-one-field :result_metadata Card :id (u/get-id card)))
 
@@ -57,7 +52,7 @@
   (testing "test that Card result metadata is saved after running a Card"
     (mt/with-temp Card [card]
       (let [result (qp/process-userland-query
-                    (assoc (native-query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES")
+                    (assoc (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
                            :info {:card-id    (u/get-id card)
                                   :query-hash (qputil/query-hash {})}))]
         (when-not (= :completed (:status result))
@@ -66,7 +61,7 @@
              (-> card card-metadata round-to-2-decimals tu/round-fingerprint-cols)))))
 
   (testing "check that using a Card as your source doesn't overwrite the results metadata..."
-    (mt/with-temp Card [card {:dataset_query   (native-query "SELECT * FROM VENUES")
+    (mt/with-temp Card [card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
                               :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]
       (let [result (qp/process-userland-query {:database mbql.s/saved-questions-virtual-database-id
                                                :type     :query
@@ -79,7 +74,7 @@
   (testing "...even when running via the API endpoint"
     (mt/with-temp* [Collection [collection]
                     Card       [card {:collection_id   (u/get-id collection)
-                                      :dataset_query   (native-query "SELECT * FROM VENUES")
+                                      :dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
                                       :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]]
       (perms/grant-collection-read-permissions! (group/all-users) collection)
       ((users/user->client :rasta) :post 202 "dataset" {:database mbql.s/saved-questions-virtual-database-id
@@ -193,15 +188,40 @@
                  round-to-2-decimals
                  tu/round-fingerprint-cols))))))
 
+(defn- results-metadata [query]
+  (-> (qp/process-query query) :data :results_metadata :columns))
+
 (deftest valid-results-metadata-test
   (mt/test-drivers (mt/normal-drivers)
-    (letfn [(results-metadata [query]
-              (-> (qp/process-query query) :data :results_metadata :columns))]
-      (testing "MBQL queries should come back with valid results metadata"
+    (testing "MBQL queries should come back with valid results metadata"
 
-        (is (schema= (su/non-empty qr/ResultsMetadata)
-                     (results-metadata (mt/query venues)))))
+      (is (schema= (su/non-empty qr/ResultsMetadata)
+                   (results-metadata (mt/query venues)))))
 
-      (testing "Native queries should come back with valid results metadata (#12265)"
-        (is (schema= (su/non-empty qr/ResultsMetadata)
-                     (results-metadata (-> (mt/mbql-query venues) qp/query->native mt/native-query))))))))
+    (testing "Native queries should come back with valid results metadata (#12265)"
+      (is (schema= (su/non-empty qr/ResultsMetadata)
+                   (results-metadata (-> (mt/mbql-query venues) qp/query->native mt/native-query)))))))
+
+(deftest native-query-datetime-metadata-test
+  (testing "Make sure base types inferred by the `annotate` middleware come back with the results metadata"
+    ;; H2 `date_trunc` returns a column of SQL type `NULL` -- so initially the `base_type` will be `:type/*`
+    ;; (unknown). However, the `annotate` middleware will scan the values of the column and determine that the column
+    ;; is actually a `:type/DateTime`. The query results metadata should come back with the correct type info.
+    (let [results (:data
+                   (qp/process-query
+                    {:type     :native
+                     :native   {:query "select date_trunc('day', checkins.\"DATE\") as d FROM checkins"}
+                     :database (mt/id)}))]
+      (testing "Sanity check: annotate should infer correct type from `:cols`"
+        (is (= {:base_type    :type/DateTime,
+                :display_name "D" :name "D"
+                :source       :native
+                :field_ref    [:field-literal "D" :type/DateTime]}
+               (first (:cols results)))))
+
+      (testing "Results metadata should have the same type info")
+      (is (= {:base_type    :type/DateTime
+              :display_name "D"
+              :name         "D"
+              :special_type nil}
+             (-> results :results_metadata :columns first (dissoc :fingerprint)))))))

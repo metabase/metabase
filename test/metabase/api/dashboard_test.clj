@@ -200,7 +200,6 @@
                                                            :creator_id             (user->id :rasta)
                                                            :collection_id          true
                                                            :display                "table"
-                                                           :read_permissions       nil
                                                            :visualization_settings {}
                                                            :result_metadata        nil})
                            :series                 []}]})
@@ -253,7 +252,6 @@
                                                            :collection_id          true
                                                            :display                "table"
                                                            :query_type             nil
-                                                           :read_permissions       nil
                                                            :visualization_settings {}
                                                            :result_metadata        nil})
                            :series                 []}]})
@@ -282,29 +280,34 @@
 ;;; |                                             PUT /api/dashboard/:id                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(expect
-  {1 (merge dashboard-defaults {:name          "Test Dashboard"
-                                :creator_id    (user->id :rasta)
-                                :collection_id true})
-   2 (merge dashboard-defaults {:name          "My Cool Dashboard"
-                                :description   "Some awesome description"
-                                :creator_id    (user->id :rasta)
-                                :collection_id true})
-   3 (merge dashboard-defaults {:name          "My Cool Dashboard"
-                                :description   "Some awesome description"
-                                :creator_id    (user->id :rasta)
-                                :collection_id true})}
-  (tt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
-    (with-dashboards-in-writeable-collection [dashboard-id]
-      (array-map
-       1 (dashboard-response (Dashboard dashboard-id))
-       2 (dashboard-response
-          ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id)
-           {:name        "My Cool Dashboard"
-            :description "Some awesome description"
-            ;; these things should fail to update
-            :creator_id  (user->id :trashbird)}))
-       3 (dashboard-response (Dashboard dashboard-id))))))
+(deftest update-dashboard-test
+  (testing "PUT /api/dashboard/:id"
+    (tt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
+      (with-dashboards-in-writeable-collection [dashboard-id]
+        (testing "GET before update"
+          (is (= (merge dashboard-defaults {:name          "Test Dashboard"
+                                            :creator_id    (user->id :rasta)
+                                            :collection_id true})
+                 (dashboard-response (Dashboard dashboard-id)))))
+
+        (testing "PUT response"
+          (is (= (merge dashboard-defaults {:name          "My Cool Dashboard"
+                                            :description   "Some awesome description"
+                                            :creator_id    (user->id :rasta)
+                                            :collection_id true})
+                 (dashboard-response
+                  ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id)
+                   {:name        "My Cool Dashboard"
+                    :description "Some awesome description"
+                    ;; these things should fail to update
+                    :creator_id  (user->id :trashbird)})))))
+
+        (testing "GET after update"
+          (is (= (merge dashboard-defaults {:name          "My Cool Dashboard"
+                                            :description   "Some awesome description"
+                                            :creator_id    (user->id :rasta)
+                                            :collection_id true})
+                 (dashboard-response (Dashboard dashboard-id)))))))))
 
 ;; allow "caveats" and "points_of_interest" to be empty strings, and "show_in_getting_started" should be a boolean
 (expect

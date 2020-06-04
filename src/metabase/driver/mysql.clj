@@ -83,7 +83,7 @@
   [_]
   (ssh/with-tunnel-config
     [driver.common/default-host-details
-     (assoc driver.common/default-port-details :default 3306)
+     (assoc driver.common/default-port-details :placeholder 3306)
      driver.common/default-dbname-details
      driver.common/default-user-details
      driver.common/default-password-details
@@ -338,15 +338,35 @@
 
 ;; MySQL TIMESTAMPS are actually TIMESTAMP WITH LOCAL TIME ZONE, i.e. they are stored normalized to UTC when stored.
 ;; However, MySQL returns them in the report time zone in an effort to make our lives horrible.
+(defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/TIMESTAMP]
+  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  ;; Check and see if the column type is `TIMESTAMP` (as opposed to `DATETIME`, which is the equivalent of
+  ;; LocalDateTime), and normalize it to a UTC timestamp if so.
+  (if (= (.getColumnTypeName rsmeta i) "TIMESTAMP")
+    (fn read-timestamp-thunk []
+      (when-let [t (.getObject rs i LocalDateTime)]
+        (t/with-offset-same-instant (t/offset-date-time t (t/zone-id (qp.timezone/results-timezone-id))) (t/zone-offset 0))))
+    (fn read-datetime-thunk []
+      (.getObject rs i LocalDateTime))))
+
+;; Results of `timediff()` might come back as negative values, or might come back as values that aren't valid
+;; `LocalTime`s e.g. `-01:00:00` or `25:00:00`.
 ;;
-;; Check and see if the column type is `TIMESTAMP` (as opposed to `DATETIME`, which is the equivalent of
-;; LocalDateTime), and normalize it to a UTC timestamp if so.
-(defmethod sql-jdbc.execute/read-column [:mysql Types/TIMESTAMP]
-  [_ _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (when-let [t (.getObject rs i LocalDateTime)]
-    (if (= (.getColumnTypeName rsmeta i) "TIMESTAMP")
-      (t/with-offset-same-instant (t/offset-date-time t (t/zone-id (qp.timezone/results-timezone-id))) (t/zone-offset 0))
-      t)))
+;; There is currently no way to tell whether the column is the result of a `timediff()` call (i.e., a duration) or a
+;; normal `LocalTime` -- JDBC doesn't have interval/duration type enums. `java.time.LocalTime`only accepts values of
+;; hour between 0 and 23 (inclusive). The MariaDB JDBC driver's implementations of `(.getObject rs i
+;; java.time.LocalTime)` will throw Exceptions theses cases.
+;;
+;; Thus we should attempt to fetch temporal results the normal way and fall back to string representations for cases
+;; where the values are unparseable.
+(defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/TIME]
+  [driver ^ResultSet rs rsmeta ^Integer i]
+  (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/TIME]) driver rs rsmeta i)]
+    (fn read-time-thunk []
+      (try
+        (parent-thunk)
+        (catch Throwable _
+          (.getString rs i))))))
 
 (defn- format-offset [t]
   (let [offset (t/format "ZZZZZ" (t/zone-offset t))]

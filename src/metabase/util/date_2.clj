@@ -409,7 +409,7 @@
                         ZonedDateTime  't/zoned-date-time}]
   (defmethod print-method klass
     [t writer]
-    (print-method (list f-symb (str t)) writer))
+    ((get-method print-dup klass) t writer))
 
   (defmethod print-dup klass
     [t ^java.io.Writer writer]
@@ -417,11 +417,11 @@
 
 (defmethod print-method PeriodDuration
   [d writer]
-  (print-method (list 'u.date/period-duration (str d)) writer))
+  ((get-method print-dup PeriodDuration) d writer))
 
 (defmethod print-dup PeriodDuration
   [d ^java.io.Writer writer]
-  (.write writer (clojure.core/format "(metabase.util.date-2/period-duration \"%s\")" (str d))))
+  (.write writer (clojure.core/format "(metabase.util.date-2/period-duration %s)" (pr-str (str d)))))
 
 (defmethod print-method Period
   [d writer]

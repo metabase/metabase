@@ -16,7 +16,8 @@
            com.google.api.client.googleapis.services.AbstractGoogleClientRequest
            com.google.api.client.http.HttpTransport
            com.google.api.client.json.jackson2.JacksonFactory
-           com.google.api.client.json.JsonFactory))
+           com.google.api.client.json.JsonFactory
+           java.io.ByteArrayInputStream))
 
 (driver/register! :google, :abstract? true)
 
@@ -70,12 +71,13 @@
 (defn- fetch-access-and-refresh-tokens* [scopes, ^String client-id, ^String client-secret, ^String auth-code]
   {:pre  [(seq client-id) (seq client-secret) (seq auth-code)]
    :post [(seq (:access-token %)) (seq (:refresh-token %))]}
+
   (log/info (u/format-color 'magenta (trs "Fetching Google access/refresh tokens with auth-code {0}..." (pr-str auth-code))))
   (let [^GoogleAuthorizationCodeFlow flow
         (.build (doto (GoogleAuthorizationCodeFlow$Builder. http-transport json-factory client-id client-secret scopes)
                   (.setAccessType "offline")))
 
-        ;; don't use `execute` here because this is a *different* type of Google request
+            ;; don't use `execute` here because this is a *different* type of Google request
         ^GoogleTokenResponse response
         (.execute (doto (.newTokenRequest flow auth-code)
                     (.setRedirectUri redirect-uri)))]
@@ -89,27 +91,40 @@
   (memoize fetch-access-and-refresh-tokens*))
 
 (defn- database->credential*
-  [scopes {{:keys [^String client-id, ^String client-secret, ^String auth-code, ^String access-token, ^String refresh-token]
+  [scopes {{:keys [^String client-id, ^String client-secret, ^String auth-code, ^String access-token, ^String refresh-token
+                   ^String service-account-json]
             :as   details} :details
            id              :id
            :as             db}]
-  {:pre [(map? db) (seq client-id) (seq client-secret) (or (seq auth-code)
-                                                           (and (seq access-token) (seq refresh-token)))]}
-  (if-not (and (seq access-token)
-               (seq refresh-token))
-    ;; If Database doesn't have access/refresh tokens fetch them and try again
-    (let [details (-> (merge details (fetch-access-and-refresh-tokens scopes client-id client-secret auth-code))
+  {:pre [(map? db) (or (and (seq client-id) (seq client-secret) (or (seq auth-code)
+                                                                    (and (seq access-token) (seq refresh-token))))
+                       (seq service-account-json))]}
+
+  (if (seq service-account-json)
+    (let [creds (GoogleCredential/fromStream (ByteArrayInputStream. (.getBytes service-account-json))
+                                             http-transport
+                                             json-factory)
+          details (-> (merge details {:project-id (.getServiceAccountProjectId creds)})
                       (dissoc :auth-code))]
       (when id
         (db/update! Database id, :details details))
-      (recur scopes (assoc db :details details)))
-    ;; Otherwise return credential as normal
-    (doto (.build (doto (GoogleCredential$Builder.)
-                    (.setClientSecrets client-id client-secret)
-                    (.setJsonFactory json-factory)
-                    (.setTransport http-transport)))
-      (.setAccessToken  access-token)
-      (.setRefreshToken refresh-token))))
+      (.createScoped creds scopes))
+
+    (if-not (and (seq access-token)
+                 (seq refresh-token))
+      ;; If Database doesn't have access/refresh tokens fetch them and try again
+      (let [details (-> (merge details (fetch-access-and-refresh-tokens scopes client-id client-secret auth-code))
+                        (dissoc :auth-code))]
+        (when id
+          (db/update! Database id, :details details))
+        (recur scopes (assoc db :details details)))
+      ;; Otherwise return credential as normal
+      (doto (.build (doto (GoogleCredential$Builder.)
+                      (.setClientSecrets client-id client-secret)
+                      (.setJsonFactory json-factory)
+                      (.setTransport http-transport)))
+        (.setAccessToken  access-token)
+        (.setRefreshToken refresh-token)))))
 
 (defn database->credential
   "Get a `GoogleCredential` for a `DatabaseInstance`."

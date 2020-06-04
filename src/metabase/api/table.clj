@@ -47,18 +47,9 @@
   (-> (api/read-check Table id)
       (hydrate :db :pk_field)))
 
-
-(api/defendpoint PUT "/:id"
-  "Update `Table` with ID."
-  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
-                   show_in_getting_started], :as body} :body}]
-  {display_name            (s/maybe su/NonBlankString)
-   entity_type             (s/maybe su/EntityTypeKeywordOrString)
-   visibility_type         (s/maybe TableVisibilityType)
-   description             (s/maybe su/NonBlankString)
-   caveats                 (s/maybe su/NonBlankString)
-   points_of_interest      (s/maybe su/NonBlankString)
-   show_in_getting_started (s/maybe s/Bool)}
+;; TODO: this should changed to `update-tables!` and update multiple tables in one db request
+(defn- update-table!
+  [id {:keys [visibility_type] :as body}]
   (api/write-check Table id)
   (let [original-visibility-type (db/select-one-field :visibility_type Table :id id)]
     ;; always update visibility type; update display_name, show_in_getting_started, entity_type if non-nil; update
@@ -77,6 +68,35 @@
         (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name updated-table))))
         (sync/sync-table! updated-table))
       updated-table)))
+
+(api/defendpoint PUT "/:id"
+  "Update `Table` with ID."
+  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
+                   show_in_getting_started], :as body} :body}]
+  {display_name            (s/maybe su/NonBlankString)
+   entity_type             (s/maybe su/EntityTypeKeywordOrString)
+   visibility_type         (s/maybe TableVisibilityType)
+   description             (s/maybe su/NonBlankString)
+   caveats                 (s/maybe su/NonBlankString)
+   points_of_interest      (s/maybe su/NonBlankString)
+   show_in_getting_started (s/maybe s/Bool)}
+  (update-table! id body))
+
+(api/defendpoint PUT "/"
+  "Update all `Table` in `ids`."
+  [:as {{:keys [ids display_name entity_type visibility_type description caveats points_of_interest
+                show_in_getting_started], :as body} :body}]
+  {ids                     (su/non-empty [su/IntGreaterThanZero])
+   display_name            (s/maybe su/NonBlankString)
+   entity_type             (s/maybe su/EntityTypeKeywordOrString)
+   visibility_type         (s/maybe TableVisibilityType)
+   description             (s/maybe su/NonBlankString)
+   caveats                 (s/maybe su/NonBlankString)
+   points_of_interest      (s/maybe su/NonBlankString)
+   show_in_getting_started (s/maybe s/Bool)}
+  (db/transaction
+    (mapv #(update-table! % body) ids)))
+
 
 (def ^:private auto-bin-str (deferred-tru "Auto bin"))
 (def ^:private dont-bin-str (deferred-tru "Don''t bin"))
@@ -133,8 +153,7 @@
                :type "type/Coordinate"})))))
 
 (def ^:private dimension-options-for-response
-  (m/map-kv (fn [k v]
-              [(str k) v]) dimension-options))
+  (m/map-keys str dimension-options))
 
 (defn- create-dim-index-seq [dim-type]
   (->> dimension-options
@@ -215,7 +234,7 @@
 
 (defn fetch-query-metadata
   "Returns the query metadata used to power the query builder for the given table `table-or-table-id`"
-  [table include_sensitive_fields]
+  [table include_sensitive_fields include_hidden_fields]
   (api/read-check table)
   (let [driver (driver.u/database->driver (:db_id table))]
     (-> table
@@ -223,22 +242,27 @@
         (m/dissoc-in [:db :details])
         (assoc-dimension-options driver)
         format-fields-for-response
-        (update :fields (if (Boolean/parseBoolean include_sensitive_fields)
-                          ;; If someone passes include_sensitive_fields return hydrated :fields as-is
-                          identity
-                          ;; Otherwise filter out all :sensitive fields
-                          (partial filter (fn [{:keys [visibility_type]}]
-                                            (not= (keyword visibility_type) :sensitive))))))))
+        (update :fields
+                (let [hidden    (Boolean/parseBoolean include_hidden_fields)
+                      sensitive (Boolean/parseBoolean include_sensitive_fields)]
+                  (partial filter (fn [{:keys [visibility_type]}]
+                                    (case (keyword visibility_type)
+                                      :hidden    hidden
+                                      :sensitive sensitive
+                                      true))))))))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
-  By passing `include_sensitive_fields=true`, information *about* sensitive `Fields` will be returned; in no case will
-  any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
-  [id include_sensitive_fields]
-  {include_sensitive_fields (s/maybe su/BooleanString)}
-  (fetch-query-metadata (Table id) include_sensitive_fields))
+  Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
+  Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
+
+  These options are provided for use in the Admin Edit Metadata page."
+  [id include_sensitive_fields include_hidden_fields]
+  {include_sensitive_fields (s/maybe su/BooleanString)
+   include_hidden_fields (s/maybe su/BooleanString)}
+  (fetch-query-metadata (Table id) include_sensitive_fields include_hidden_fields))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
@@ -249,12 +273,12 @@
       (-> col
           (update :base_type keyword)
           (assoc
-              :table_id     (str "card__" card-id)
-              :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
-              ;; Assoc special_type at least temprorarily. We need the correct special type in place to make decisions
-              ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
-              ;; the dimension options
-              :special_type (keyword (:special_type col)))
+           :table_id     (str "card__" card-id)
+           :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
+           ;; Assoc special_type at least temprorarily. We need the correct special type in place to make decisions
+           ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
+           ;; the dimension options
+           :special_type (keyword (:special_type col)))
           add-field-dimension-options))))
 
 (defn root-collection-schema-name

@@ -1,58 +1,70 @@
 (ns metabase.util.i18n
-  (:refer-clojure :exclude [ex-info])
+  "i18n functionality."
   (:require [cheshire.generate :as json-gen]
-            [clojure.tools.logging :as log]
             [clojure.walk :as walk]
+            [metabase.util.i18n.impl :as impl]
+            [potemkin :as p]
             [potemkin.types :as p.types]
-            [puppetlabs.i18n.core :as i18n :refer [available-locales]]
             [schema.core :as s])
   (:import java.text.MessageFormat
            java.util.Locale))
 
+(p/import-vars
+ [impl
+  available-locale?
+  locale
+  normalized-locale-string
+  parent-locale
+  translate])
+
+(def ^:dynamic *user-locale*
+  "Bind this to a string, keyword, or `Locale` to set the locale for the current User. To get the locale we should
+  *use*, use the `user-locale` function instead."
+  nil)
+
+(defn system-locale
+  "The default locale for this Metabase installation. Normally this is the value of the `site-locale` Setting."
+  ^Locale []
+  (locale (or (impl/system-locale-from-setting)
+              ;; if DB is not initialized yet fall back to English
+              "en")))
+
+(defn user-locale
+  "Locale we should *use* for the current User (e.g. `tru` messages) -- `*user-locale*` if bound, otherwise the system
+  locale."
+  ^Locale []
+  (locale
+   (or *user-locale*
+       (system-locale))))
+
 (defn available-locales-with-names
   "Returns all locale abbreviations and their full names"
   []
-  (map (fn [locale] [locale (.getDisplayName (Locale/forLanguageTag locale))]) (available-locales)))
+  (for [locale (impl/available-locales)]
+    [locale (.getDisplayName (Locale/forLanguageTag locale))]))
 
-(defn set-locale
-  "This sets the local for the instance"
-  [locale]
-  (Locale/setDefault (Locale/forLanguageTag locale)))
-
-(defn- translate
-  "A failsafe version of `i18n/translate`. Will attempt to translate `msg` but if for some reason we're not able
-  to (such as a typo in the translated version of the string), log the failure but return the original (untranslated)
-  string. This is a workaround for translations that, due to a typo, will fail to parse using Java's message
-  formatter."
-  [locale ns-str msg args]
-  (try
-    (apply i18n/translate ns-str (locale) msg args)
-    (catch IllegalArgumentException e
-      ;; Not translating this string to prevent an unfortunate stack overflow. If this string happened to be the one
-      ;; that had the typo, we'd just recur endlessly without logging an error.
-      (log/errorf e "Unable to translate string '%s'" msg)
-      msg)))
-
-(def ^{:arglists '([ns-str msg args])} translate-system-locale
+(defn translate-system-locale
   "Translate a string with the System locale."
-  (partial translate i18n/system-locale))
+  [msg & args]
+  (apply translate (system-locale) msg args))
 
-(def ^{:arglists '([ns-str msg args])} translate-user-locale
+(defn translate-user-locale
   "Translate a string with the current User's locale."
-  (partial translate i18n/user-locale))
+  [msg & args]
+  (apply translate (user-locale) msg args))
 
-(p.types/defrecord+ UserLocalizedString [ns-str msg args]
+(p.types/defrecord+ UserLocalizedString [msg args]
   Object
   (toString [_]
-    (translate-user-locale ns-str msg args))
+    (apply translate-user-locale msg args))
   schema.core.Schema
   (explain [this]
     (str this)))
 
-(p.types/defrecord+ SystemLocalizedString [ns-str msg args]
+(p.types/defrecord+ SystemLocalizedString [msg args]
   Object
   (toString [_]
-    (translate-system-locale ns-str msg args))
+    (apply translate-system-locale msg args))
   s/Schema
   (explain [this]
     (str this)))
@@ -85,24 +97,23 @@
               (.toPattern message-format) expected-num-args actual-num-args))))
 
 (defmacro deferred-tru
-  "Similar to `puppetlabs.i18n.core/tru` but creates a `UserLocalizedString` instance so that conversion to the
-  correct locale can be delayed until it is needed. The user locale comes from the browser, so conversion to the
-  localized string needs to be 'late bound' and only occur when the user's locale is in scope. Calling `str` on the
-  results of this invocation will lookup the translated version of the string."
+  "Similar to `tru` but creates a `UserLocalizedString` instance so that conversion to the correct locale can be delayed
+  until it is needed. The user locale comes from the browser, so conversion to the localized string needs to be 'late
+  bound' and only occur when the user's locale is in scope. Calling `str` on the results of this invocation will
+  lookup the translated version of the string."
   [msg & args]
   (validate-number-of-args msg args)
-  `(UserLocalizedString. ~(namespace-munge *ns*) ~msg ~(vec args)))
+  `(UserLocalizedString. ~msg ~(vec args)))
 
 (defmacro deferred-trs
-  "Similar to `puppetlabs.i18n.core/trs` but creates a `SystemLocalizedString` instance so that conversion to the
-  correct locale can be delayed until it is needed. This is needed as the system locale from the JVM can be
-  overridden/changed by a setting. Calling `str` on the results of this invocation will lookup the translated version
-  of the string."
+  "Similar to `trs` but creates a `SystemLocalizedString` instance so that conversion to the correct locale can be
+  delayed until it is needed. This is needed as the system locale from the JVM can be overridden/changed by a setting.
+  Calling `str` on the results of this invocation will lookup the translated version of the string."
   [msg & args]
   (validate-number-of-args msg args)
-  `(SystemLocalizedString. ~(namespace-munge *ns*) ~msg ~(vec args)))
+  `(SystemLocalizedString. ~msg ~(vec args)))
 
-(def ^String str*
+(def ^String ^{:arglists '([& args])} str*
   "Ensures that `trs`/`tru` isn't called prematurely, during compilation."
   (if *compile-files*
     (fn [& _]
@@ -128,13 +139,12 @@
 (defn localized-string?
   "Returns true if `x` is a system or user localized string instance"
   [x]
-  (or (instance? UserLocalizedString x)
-      (instance? SystemLocalizedString x)))
+  (boolean (some #(instance? % x) [UserLocalizedString SystemLocalizedString])))
 
 (defn localized-strings->strings
   "Walks the datastructure `x` and converts any localized strings to regular string"
   [x]
   (walk/postwalk (fn [node]
-                   (if (localized-string? node)
-                     (str node)
-                     node)) x))
+                   (cond-> node
+                     (localized-string? node) str))
+                 x))

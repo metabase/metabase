@@ -117,6 +117,10 @@ textarea {
     sans-serif;
 }
 
+textarea {
+  min-height: 110px;
+}
+
 .pointer-events-none {
   pointer-events: none;
 }

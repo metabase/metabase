@@ -2,6 +2,10 @@
   (:require [clojure
              [data :as data]
              [test :as t]]
+            [environ.core :as env]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [methodical.core :as m]))
 
 (alter-meta! *ns* assoc :deprecated true)
@@ -115,6 +119,27 @@
      (t/do-report
       (compare-expr ~e a# ~msg '~form))))
 
+;; each time we encounter a new expectations-style test, record a `namespace:line` symbol in `symbols` so we can
+;; display some stats on the total number of old-style tests when running tests, and make sure no one adds any new
+;; ones
+(def symbols (atom #{}))
+
+(t/deftest no-new-expectations-style-tests-test
+  (let [total-expect-forms            (count @symbols)
+        total-namespaces-using-expect (count (into #{} (map namespace @symbols)))
+        [worst-ns worst-ns-symbols]   (when (seq @symbols)
+                                        (apply max-key (comp count second) (seq (group-by namespace @symbols))))]
+    (println (u/format-color 'red "Total old-style expectations tests: %d" total-expect-forms))
+    (println (u/format-color 'red "Total namespaces still using old-style expectations tests: %d" total-namespaces-using-expect))
+    (when worst-ns
+      (println (u/format-color 'red "Who has the most? %s with %d old-style tests" worst-ns (count worst-ns-symbols))))
+    ;; only check total test forms when driver-specific tests are off! Otherwise this number can change without us
+    ;; expecting it.
+    (when-not (env/env :drivers)
+      (t/testing "Don't write any new tests using expect!"
+        (t/is (<= total-expect-forms 1889))
+        (t/is (<= total-namespaces-using-expect 124))))))
+
 (defmacro ^:deprecated expect
   "Simple macro that simulates converts an Expectations-style `expect` form into a `clojure.test` `deftest` form."
   {:arglists '([actual] [actual expected] [test-name actual expected])}
@@ -125,7 +150,10 @@
    `(expect ~(symbol (format "expect-%d" (hash &form))) ~expected ~actual))
 
   ([test-name expected actual]
-   `(t/deftest ~test-name
-      (t/testing (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~test-name)))
-        (t/is
-         (~'expect= ~expected ~actual))))))
+   `(do
+      (t/deftest ~test-name
+        (t/testing (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~test-name)))
+          (t/is
+           (~'expect= ~expected ~actual))))
+      (when config/is-test?
+        (swap! symbols conj (symbol ~(name (ns-name *ns*)) (str (:line (meta #'~test-name)))))))))

@@ -9,28 +9,31 @@ import NewsletterForm from "metabase/components/NewsletterForm";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
+import LanguageStep from "./LanguageStep";
 import UserStep from "./UserStep";
 import DatabaseConnectionStep from "./DatabaseConnectionStep";
 import PreferencesStep from "./PreferencesStep";
 import DatabaseSchedulingStep from "metabase/setup/components/DatabaseSchedulingStep";
 
 const WELCOME_STEP_NUMBER = 0;
-const USER_STEP_NUMBER = 1;
-const DATABASE_CONNECTION_STEP_NUMBER = 2;
-const DATABASE_SCHEDULING_STEP_NUMBER = 3;
-const PREFERENCES_STEP_NUMBER = 4;
+const LANGUAGE_STEP_NUMBER = 1;
+const USER_STEP_NUMBER = 2;
+const DATABASE_CONNECTION_STEP_NUMBER = 3;
+const DATABASE_SCHEDULING_STEP_NUMBER = 4;
+const PREFERENCES_STEP_NUMBER = 5;
 
 export default class Setup extends Component {
   static propTypes = {
     activeStep: PropTypes.number.isRequired,
     setupComplete: PropTypes.bool.isRequired,
     userDetails: PropTypes.object,
+    languageDetails: PropTypes.object,
     setActiveStep: PropTypes.func.isRequired,
     databaseDetails: PropTypes.object.isRequired,
   };
 
   completeWelcome() {
-    this.props.setActiveStep(USER_STEP_NUMBER);
+    this.props.setActiveStep(LANGUAGE_STEP_NUMBER);
     MetabaseAnalytics.trackEvent("Setup", "Welcome");
   }
 
@@ -111,6 +114,7 @@ export default class Setup extends Component {
 
           <div className="wrapper wrapper--small">
             <div className="SetupSteps full">
+              <LanguageStep {...this.props} stepNumber={LANGUAGE_STEP_NUMBER} />
               <UserStep {...this.props} stepNumber={USER_STEP_NUMBER} />
               <DatabaseConnectionStep
                 {...this.props}

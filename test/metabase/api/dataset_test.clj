@@ -291,8 +291,9 @@
       (is (schema= {:status   (s/eq "failed")
                     :error    (s/eq "You do not have permissions to run this query.")
                     s/Keyword s/Any}
-                   ((mt/user->client :rasta) :post "dataset"
-                    (mt/mbql-query venues {:limit 1})))))))
+                   (mt/suppress-output
+                    ((mt/user->client :rasta) :post "dataset"
+                     (mt/mbql-query venues {:limit 1}))))))))
 
 (deftest query->native-test
   (testing "POST /api/dataset/native"
