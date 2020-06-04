@@ -187,7 +187,10 @@ describe("scenarios > admin > datamodel > table", () => {
     });
 
     it("should allow bulk hiding tables", () => {
+      cy.route("GET", `**/api/table/*/query_metadata*`).as("tableMetadata");
       cy.visit(ORDERS_URL);
+      cy.wait(["@tableMetadata", "@tableMetadata", "@tableMetadata"]); // wait for these api calls to finish to avoid them overwriting later PUT calls
+
       cy.contains("4 Queryable Tables");
       cy.get(".AdminList-section .Icon-eye_crossed_out").click();
       cy.contains("4 Hidden Tables");
