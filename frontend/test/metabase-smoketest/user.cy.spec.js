@@ -47,6 +47,7 @@ describe("smoketest > new_user", () => {
         // =================
 
         // Sidebar
+
         cy.contains("Visualize", { timeout: 20000 }).should("not.exist")
         cy.findAllByText("Filter").first().click();
         cy.findByText("Category").click();
@@ -57,10 +58,12 @@ describe("smoketest > new_user", () => {
         cy.contains("Vendor is not empty")
 
         // Can delete filter in header
+
         cy.findByText("Category is Gadget").click(140, 10);
         cy.findByText("Category is Gadget").should("not.exist");
 
         // Header
+
         cy.get(".Icon-notebook").click();
         cy.get(".Icon-filter", { timeout: 30000 })
             .click();
@@ -75,11 +78,45 @@ describe("smoketest > new_user", () => {
         cy.get("svg");
         cy.contains("Average of Rating is greater than or equal to 5")
 
+        // Can minimize Filter dispay in header
+
+        cy.get(".Icon-filter").first().click();
+
+        cy.contains("Vendor is not empty").should("not.exist");
+
         // =================
         // should summarize via both the sidebar and the header
         // =================
 
+        // Sidebar summary
 
+        cy.findAllByText("Summarize").first().click();
+        cy.findByText("Category").click();
+        cy.findByText("Done").click();
+
+        // Delete summary from sidebar
+
+        cy.findAllByText("Summarize").first().click();
+        cy.get(".Icon-close").first().click();
+        cy.findByText("Done").click();
+
+        cy.findByText("Average of Rating by Category").should("not.exist");
+        cy.get("span")
+            .findByText("Group")
+            .should("not.exist");
+
+        // Header summary
+
+        cy.get(".Icon-notebook").click();
+
+        cy.get(".Icon-sum").click();
+        cy.findByText("Count of rows").click();
+        cy.findByText("Pick a column to group by").click();
+        cy.get(".Icon-calendar").click();
+        cy.findByText("Visualize").click();
+
+        cy.get("span");
+        cy.contains("Created At");
 
         // =================
         // should be able to create custom columns in the notebook editor
