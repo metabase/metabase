@@ -140,13 +140,12 @@ class SnippetRow extends React.Component {
           </a>
         </a>
         {isOpen && (
-          <div className="p2">
+          <div className="px2 pb2 pt1">
+            {description && <p className="text-medium mt0">{description}</p>}
             <a onClick={() => setModalSnippet(snippet)} className="text-brand">
               <Icon name="pencil" size={ICON_SIZE} className="mr1" />
               Edit
             </a>
-
-            <p className="text-medium">{description}</p>
             <pre className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap overflow-x-scroll">
               {content}
             </pre>
