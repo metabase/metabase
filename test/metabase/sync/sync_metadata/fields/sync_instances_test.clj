@@ -1,5 +1,6 @@
 (ns metabase.sync.sync-metadata.fields.sync-instances-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
@@ -8,7 +9,6 @@
             [metabase.test.mock.toucanery :as toucanery]
             [metabase.util :as u]
             [toucan.db :as db]
-            [clojure.test :refer :all]
             [toucan.util.test :as tt]))
 
 (def ^:private toucannery-transactions-expected-fields-hierarchy
