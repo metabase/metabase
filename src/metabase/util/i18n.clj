@@ -1,6 +1,7 @@
 (ns metabase.util.i18n
   "i18n functionality."
   (:require [cheshire.generate :as json-gen]
+            [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [metabase.util.i18n.impl :as impl]
             [potemkin :as p]
@@ -22,10 +23,10 @@
   *use*, use the `user-locale` function instead."
   nil)
 
-(defn system-locale
+(defn site-locale
   "The default locale for this Metabase installation. Normally this is the value of the `site-locale` Setting."
   ^Locale []
-  (locale (or (impl/system-locale-from-setting)
+  (locale (or (impl/site-locale-from-setting)
               ;; if DB is not initialized yet fall back to English
               "en")))
 
@@ -35,60 +36,65 @@
   ^Locale []
   (locale
    (or *user-locale*
-       (system-locale))))
+       (site-locale))))
 
 (defn available-locales-with-names
   "Returns all locale abbreviations and their full names"
   []
-  (for [locale (impl/available-locales)]
-    [locale (.getDisplayName (Locale/forLanguageTag locale))]))
+  (for [locale-name (impl/available-locale-names)]
+    [locale-name (.getDisplayName (locale locale-name))]))
 
-(defn translate-system-locale
+(defn translate-site-locale
   "Translate a string with the System locale."
-  [msg & args]
-  (apply translate (system-locale) msg args))
+  [format-string & args]
+  (let [translated (apply translate (site-locale) format-string args)]
+    (log/tracef "Translated %s for site locale %s -> %s" (pr-str format-string) (pr-str (site-locale)) (pr-str translated))
+    translated))
 
 (defn translate-user-locale
   "Translate a string with the current User's locale."
-  [msg & args]
-  (apply translate (user-locale) msg args))
+  [format-string & args]
+  (let [translated (apply translate (user-locale) format-string args)]
+    (log/tracef "Translating %s for user locale %s (site locale %s) -> %s"
+                (pr-str format-string) (pr-str (user-locale)) (pr-str (site-locale)) (pr-str translated))
+    translated))
 
-(p.types/defrecord+ UserLocalizedString [msg args]
+(p.types/defrecord+ UserLocalizedString [format-string args]
   Object
   (toString [_]
-    (apply translate-user-locale msg args))
+    (apply translate-user-locale format-string args))
   schema.core.Schema
   (explain [this]
     (str this)))
 
-(p.types/defrecord+ SystemLocalizedString [msg args]
+(p.types/defrecord+ SiteLocalizedString [format-string args]
   Object
   (toString [_]
-    (apply translate-system-locale msg args))
+    (apply translate-site-locale format-string args))
   s/Schema
   (explain [this]
     (str this)))
 
 (defn- localized-to-json
-  "Write a UserLocalizedString or SystemLocalizedString to the `json-generator`. This is intended for
+  "Write a UserLocalizedString or SiteLocalizedString to the `json-generator`. This is intended for
   `json-gen/add-encoder`. Ideallys we'd implement those protocols directly as it's faster, but currently that doesn't
   work with Cheshire"
   [localized-string json-generator]
   (json-gen/write-string json-generator (str localized-string)))
 
 (json-gen/add-encoder UserLocalizedString localized-to-json)
-(json-gen/add-encoder SystemLocalizedString localized-to-json)
+(json-gen/add-encoder SiteLocalizedString localized-to-json)
 
 (def LocalizedString
   "Schema for user and system localized string instances"
-  (s/cond-pre UserLocalizedString SystemLocalizedString))
+  (s/cond-pre UserLocalizedString SiteLocalizedString))
 
 (defn- validate-number-of-args
   "Make sure the right number of args were passed to `trs`/`tru` and related forms during macro expansion."
-  [msg args]
-  (assert (string? msg)
+  [format-string args]
+  (assert (string? format-string)
     "The first arg to (deferred-)trs/tru must be a String! `gettext` does not eval Clojure files.")
-  (let [message-format    (MessageFormat. msg)
+  (let [message-format    (MessageFormat. format-string)
         expected-num-args (count (.getFormats message-format))
         actual-num-args   (count args)]
     (assert (= expected-num-args actual-num-args)
@@ -101,17 +107,17 @@
   until it is needed. The user locale comes from the browser, so conversion to the localized string needs to be 'late
   bound' and only occur when the user's locale is in scope. Calling `str` on the results of this invocation will
   lookup the translated version of the string."
-  [msg & args]
-  (validate-number-of-args msg args)
-  `(UserLocalizedString. ~msg ~(vec args)))
+  [format-string & args]
+  (validate-number-of-args format-string args)
+  `(UserLocalizedString. ~format-string ~(vec args)))
 
 (defmacro deferred-trs
-  "Similar to `trs` but creates a `SystemLocalizedString` instance so that conversion to the correct locale can be
+  "Similar to `trs` but creates a `SiteLocalizedString` instance so that conversion to the correct locale can be
   delayed until it is needed. This is needed as the system locale from the JVM can be overridden/changed by a setting.
   Calling `str` on the results of this invocation will lookup the translated version of the string."
-  [msg & args]
-  (validate-number-of-args msg args)
-  `(SystemLocalizedString. ~msg ~(vec args)))
+  [format-string & args]
+  (validate-number-of-args format-string args)
+  `(SiteLocalizedString. ~format-string ~(vec args)))
 
 (def ^String ^{:arglists '([& args])} str*
   "Ensures that `trs`/`tru` isn't called prematurely, during compilation."
@@ -124,22 +130,22 @@
   "Applies `str` to `deferred-tru`'s expansion.
   Prefer this over `deferred-tru`. Use `deferred-tru` only in code executed at compile time, or where `str` is manually
   applied to the result."
-  [msg & args]
-  `(str* (deferred-tru ~msg ~@args)))
+  [format-string & args]
+  `(str* (deferred-tru ~format-string ~@args)))
 
 (defmacro trs
   "Applies `str` to `deferred-trs`'s expansion.
   Prefer this over `deferred-trs`. Use `deferred-trs` only in code executed at compile time, or where `str` is manually
   applied to the result."
-  [msg & args]
-  `(str* (deferred-trs ~msg ~@args)))
+  [format-string & args]
+  `(str* (deferred-trs ~format-string ~@args)))
 
 ;; TODO - I seriously doubt whether these are still actually needed now that `tru` and `trs` generate forms wrapped in
 ;; `str` by default
 (defn localized-string?
   "Returns true if `x` is a system or user localized string instance"
   [x]
-  (boolean (some #(instance? % x) [UserLocalizedString SystemLocalizedString])))
+  (boolean (some #(instance? % x) [UserLocalizedString SiteLocalizedString])))
 
 (defn localized-strings->strings
   "Walks the datastructure `x` and converts any localized strings to regular string"

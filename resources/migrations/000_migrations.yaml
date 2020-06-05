@@ -6177,25 +6177,7 @@ databaseChangeLog:
           - sql:
                 sql: ALTER TABLE `dashboardcard_series` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-# Change query_cache.updated_at from datetime to timestamp [with time zone] to get > second resolution on MySQL.
-
-  - property:
-      name: cache_timestamp_type
-      value: timestamp with time zone
-      dbms: postgresql,h2
-  - property:
-      name: cache_timestamp_type
-      value: timestamp
-      dbms: mysql,mariadb
-  - changeSet:
-      id: 161
-      author: camsaul
-      comment: Added 0.35.0
-      changes:
-        - modifyDataType:
-            tableName: query_cache
-            columnName: updated_at
-            newDataType: ${cache_timestamp_type}
+# [161 has been removed. Superceded by 166]
 
 # Drop the old query_queryexecution table if present. This was replaced by query_execution in 0.23.0. This was
 # formerly a data migration but was converted to a Liquibase migration so people running migrations manually will
@@ -6274,3 +6256,31 @@ databaseChangeLog:
                   defaultValue: database
                   constraints:
                     nullable: false
+
+# Change field_values.updated_at and query_cache.updated_at from datetime to timestamp [with time zone] to get >
+# second resolution on MySQL.
+#
+# query_cache.updated_at was originally converted to a timestamp in 161, but we used `timestamp` instead of
+# `timestamp(6)`. It is converted correctly here.
+
+  - property:
+      name: timestamp_type
+      value: timestamp with time zone
+      dbms: postgresql,h2
+  - property:
+      name: timestamp_type
+      value: timestamp(6)
+      dbms: mysql,mariadb
+  - changeSet:
+      id: 166
+      author: camsaul
+      comment: Added 0.36.0/1.35.4
+      changes:
+        - modifyDataType:
+            tableName: metabase_fieldvalues
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+        - modifyDataType:
+            tableName: query_cache
+            columnName: updated_at
+            newDataType: ${timestamp_type}
