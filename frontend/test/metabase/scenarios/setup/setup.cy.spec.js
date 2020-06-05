@@ -15,7 +15,7 @@ describe("scenarios > setup", () => {
     // Language
     // ========
 
-    cy.findByText("What's your preferred language");
+    cy.findByText("What's your preferred language?");
     cy.findByText("English").click();
     cy.findByText("Next").click();
 
