@@ -16,14 +16,14 @@
       (mt/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
         (is (= -1
                (position))))
-      (is (= 4
+      (is (= 5
              (position)))))
 
   (testing "if an Exception is thrown, original value should be restored"
     (u/ignore-exceptions
      (mt/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
        (throw (Exception.))))
-    (is (= 4
+    (is (= 5
            (db/select-one-field :position Field :id (data/id :venues :price))))))
 
 (setting/defsetting test-util-test-setting

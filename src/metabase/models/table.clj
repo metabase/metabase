@@ -186,8 +186,7 @@
     tables))
 
 (defn with-fields
-  "Efficiently hydrate the Fields for a collection of `tables`.
-   Note: does not respect `:field_order` setting of individual tables, but rather sorts by name."
+  "Efficiently hydrate the Fields for a collection of `tables`."
   [tables]
   (with-objects :fields
     (fn [table-ids]
@@ -195,7 +194,7 @@
         :active          true
         :table_id        [:in table-ids]
         :visibility_type [:not= "retired"]
-        {:order-by       [[:name :asc]]}))
+        {:order-by       (field-order-rule tables)}))
     tables))
 
 

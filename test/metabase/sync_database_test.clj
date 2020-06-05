@@ -119,6 +119,8 @@
    :parent_id           false
    :points_of_interest  nil
    :position            0
+   :database_position   0
+   :custom_position     0
    :preview_display     true
    :special_type        nil
    :table_id            true
