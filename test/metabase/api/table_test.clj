@@ -73,6 +73,7 @@
    :active                   true
    :position                 0
    :database_position        0
+   :custom_position          0
    :target                   nil
    :preview_display          true
    :visibility_type          "normal"
@@ -184,7 +185,9 @@
                      :base_type                "type/Text"
                      :dimension_options        []
                      :default_dimension_option nil
-                     :has_field_values         "list"})]
+                     :has_field_values         "list"
+                     :database_position        1
+                     :position                 1})]
     :rows         nil
     :id           (mt/id :categories)})
   ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :categories))))
@@ -210,16 +213,6 @@
                                    :base_type        "type/BigInteger"
                                    :visibility_type  "normal"
                                    :has_field_values "none")
-                            (assoc (field-details (Field (mt/id :users :last_login)))
-                                   :table_id                 (mt/id :users)
-                                   :name                     "LAST_LOGIN"
-                                   :display_name             "Last Login"
-                                   :database_type            "TIMESTAMP"
-                                   :base_type                "type/DateTime"
-                                   :visibility_type          "normal"
-                                   :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
-                                   :default_dimension_option (var-get #'table-api/date-default-index)
-                                   :has_field_values         "none")
                             (assoc (field-details (Field (mt/id :users :name)))
                                    :special_type             "type/Name"
                                    :table_id                 (mt/id :users)
@@ -230,7 +223,21 @@
                                    :visibility_type          "normal"
                                    :dimension_options        []
                                    :default_dimension_option nil
-                                   :has_field_values         "list")
+                                   :has_field_values         "list"
+                                   :position                 1
+                                   :database_position        1)
+                            (assoc (field-details (Field (mt/id :users :last_login)))
+                                   :table_id                 (mt/id :users)
+                                   :name                     "LAST_LOGIN"
+                                   :display_name             "Last Login"
+                                   :database_type            "TIMESTAMP"
+                                   :base_type                "type/DateTime"
+                                   :visibility_type          "normal"
+                                   :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
+                                   :default_dimension_option (var-get #'table-api/date-default-index)
+                                   :has_field_values         "none"
+                                   :position                 2
+                                   :database_position        2)
                             (assoc (field-details (Field :table_id (mt/id :users), :name "PASSWORD"))
                                    :special_type     "type/Category"
                                    :table_id         (mt/id :users)
@@ -239,7 +246,9 @@
                                    :database_type    "VARCHAR"
                                    :base_type        "type/Text"
                                    :visibility_type  "sensitive"
-                                   :has_field_values "list")]
+                                   :has_field_values "list"
+                                   :position          3
+                                   :database_position 3)]
              :rows         nil
              :id           (mt/id :users)})
            ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users)))))))
@@ -263,6 +272,16 @@
                                    :database_type    "BIGINT"
                                    :base_type        "type/BigInteger"
                                    :has_field_values "none")
+                            (assoc (field-details (Field (mt/id :users :name)))
+                                   :table_id         (mt/id :users)
+                                   :special_type     "type/Name"
+                                   :name             "NAME"
+                                   :display_name     "Name"
+                                   :database_type    "VARCHAR"
+                                   :base_type        "type/Text"
+                                   :has_field_values "list"
+                                   :position          1
+                                   :database_position 1)
                             (assoc (field-details (Field (mt/id :users :last_login)))
                                    :table_id                 (mt/id :users)
                                    :name                     "LAST_LOGIN"
@@ -271,15 +290,9 @@
                                    :base_type                "type/DateTime"
                                    :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                                    :default_dimension_option (var-get #'table-api/date-default-index)
-                                   :has_field_values         "none")
-                            (assoc (field-details (Field (mt/id :users :name)))
-                                   :table_id         (mt/id :users)
-                                   :special_type     "type/Name"
-                                   :name             "NAME"
-                                   :display_name     "Name"
-                                   :database_type    "VARCHAR"
-                                   :base_type        "type/Text"
-                                   :has_field_values "list")]
+                                   :has_field_values         "none"
+                                   :position                 2
+                                   :database_position        2)]
              :rows         nil
              :id           (mt/id :users)})
            ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :users)))))))
@@ -370,6 +383,8 @@
                                  :database_type "INTEGER"
                                  :base_type     "type/Integer"
                                  :special_type  "type/FK"
+                                 :database_position 2
+                                 :position          2
                                  :table         (merge
                                                  (dissoc (table-defaults) :segments :field_values :metrics)
                                                  (db/select-one [Table :id :created_at :updated_at :fields_hash]

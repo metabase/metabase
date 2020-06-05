@@ -124,8 +124,8 @@
          tabledef
          :field-definitions
          (fn [[name-field-def _ password-field-def]]
-           [name-field-def
-            (tx/map->FieldDefinition {:field-name "last_login", :base-type :type/DateTimeWithTZ})
+           [(tx/map->FieldDefinition {:field-name "last_login", :base-type :type/DateTimeWithTZ})
+            name-field-def
             password-field-def]))))))
 
 (defonce ^{:doc "The usual `test-data` dataset, but only the `users` table; adds a `created_by` column to the users
@@ -154,13 +154,13 @@
   [["attempts"
     [{:field-name "num_crows",      :base-type :type/Integer}
      {:field-name "date",           :base-type :type/Date}
-     {:field-name "time",           :base-type :type/Time}
-     {:field-name "time_ltz",       :base-type :type/TimeWithLocalTZ}
-     {:field-name "time_tz",        :base-type :type/TimeWithZoneOffset}
      {:field-name "datetime",       :base-type :type/DateTime}
      {:field-name "datetime_ltz",   :base-type :type/DateTimeWithLocalTZ}
      {:field-name "datetime_tz",    :base-type :type/DateTimeWithZoneOffset}
-     {:field-name "datetime_tz_id", :base-type :type/DateTimeWithZoneID}]
+     {:field-name "datetime_tz_id", :base-type :type/DateTimeWithZoneID}
+     {:field-name "time",           :base-type :type/Time}
+     {:field-name "time_ltz",       :base-type :type/TimeWithLocalTZ}
+     {:field-name "time_tz",        :base-type :type/TimeWithZoneOffset}]
     (for [[cnt t] [[6 #t "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"]
                    [8 #t "2019-11-02T00:14:14.246-07:00[America/Los_Angeles]"]
                    [6 #t "2019-11-03T23:35:17.906-08:00[America/Los_Angeles]"]
@@ -181,12 +181,13 @@
                    [3 #t "2019-11-18T20:47:27.902-08:00[America/Los_Angeles]"]
                    [5 #t "2019-11-19T00:35:23.146-08:00[America/Los_Angeles]"]
                    [1 #t "2019-11-20T20:09:55.752-08:00[America/Los_Angeles]"]]]
-      [cnt                              ; num-crows
-       (t/local-date t)                 ; date
-       (t/local-time t)                 ; time
-       (t/offset-time t)                ; time-ltz
-       (t/offset-time t)                ; time-tz
+      [(t/local-date t)                 ; date
        (t/local-date-time t)            ; datetime
        (t/offset-date-time t)           ; datetime-ltz
        (t/offset-date-time t)           ; datetime-tz
-       t])]])                           ; datetime-tz-id
+       t                                ; datetime-tz-id
+       (t/local-time t)                 ; time
+       (t/offset-time t)                ; time-ltz
+       (t/offset-time t)                ; time-tz
+       cnt                              ; num-crows
+       ])]])
