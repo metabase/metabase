@@ -4,7 +4,7 @@ describe("smoketest > admin_setup", () => {
     it("should be able to setup environment for team as admin", () => {
         // =================
         // should add a new database
-        // Should eventually include (PostreSQL, MongoDB, etc)
+        // Should eventually include BigQuery, Druid, Google Analytics, H2, MongoDB, MySQL/Maria DB, PostgreSQL, Presto, Amazon Redshift, Snowflake, Spark SQL, SQLite, SQL Server
         // =================
         
 

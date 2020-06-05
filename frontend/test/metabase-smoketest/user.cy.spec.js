@@ -40,15 +40,24 @@ describe("smoketest > new_user", () => {
         // should be able to do header actions
         // =================
 
-        // Sorting by Title
+        // Sorting by Title - check what's first, sort, then check again
 
+        cy.get(".Icon-table2").click();
+        cy.get(".TableInteractive-cellWrapper--firstColumn")   
+            .last()
+            .contains("Durable Wool Toucan");
+       
         cy.get(".Icon-notebook").click();
 
         cy.findByText("Sort").click();
-        cy.findAllByText("Title")
+        cy.findAllByText("Average of Rating")
             .last()
             .click();
         cy.findByText("Visualize").click();
+
+        cy.get(".TableInteractive-cellWrapper--firstColumn")   
+            .last()
+            .contains("Lightweight Steel Watch");
 
         // Setting Row limit
 
