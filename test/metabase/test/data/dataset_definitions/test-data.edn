@@ -1243,16 +1243,3 @@
    [#t "2015-04-16" 12 5]
    [#t "2015-02-07" 7 67]
    [#t "2014-06-03" 2 92]]]]
-
-[1 2 3 4 5 6]
-[1 4 2 3 5 6]
-
-
-(defn- move
-  [row from-idx to-idx]
-  (let [left (subvec row 0 to-idx)
-        middle (subvec row to-idx from-idx)
-        right (subvec row (inc)from-idx)]
-    (vec (concat left [(nth row from-idx)] middle right))))
-
-(move [1 2 3 4 5 6] 3 1)
