@@ -118,7 +118,7 @@ class SnippetRow extends React.Component {
           <Icon
             name={"snippet"}
             size={ICON_SIZE}
-            className="hover-child--hidden"
+            className="hover-child--hidden text-light"
           />
           <Icon
             name={"arrow_left_to_line"}
