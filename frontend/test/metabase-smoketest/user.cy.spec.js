@@ -34,7 +34,6 @@ describe("smoketest > new_user", () => {
         cy.get(".Icon-bar", { timeout: 30000 });
         cy.contains("Vendor is not empty");
         cy.contains("Visualization");
-        cy.contains("2.5");
 
         // =================
         // should ensuring that header actions are appropriate for different data types (int, str, bool)
@@ -42,24 +41,6 @@ describe("smoketest > new_user", () => {
         
         // cy.findbyText("Filter").click();
 
-        
-        // =================
-        // should be able to do header actions
-        // =================
-
-        // Formulating
-
-        // Distributing
-
-
-        // Refresh works
-
-        cy.get(".Icon-refresh")
-            .first()
-            .click();
-        // *** check that refresh has happened
-        cy.contains("Sample Dataset");
-       
         // =================
         // should filter via both the header and notebook editor
         // =================
@@ -79,7 +60,6 @@ describe("smoketest > new_user", () => {
         cy.get(".TableInteractive-cellWrapper--firstColumn")   
             .last()
             .contains("Lightweight Steel Watch");
-
 
         // Sorting by notebook editor
 
@@ -134,16 +114,32 @@ describe("smoketest > new_user", () => {
 
         cy.contains("Visualize").should("not.exist");
         cy.get("svg");
-        cy.contains("Average of Rating is greater than or equal to 5")
+        cy.contains("Average of Rating is greater than or equal to 5");
 
         // Can delete filter in header again
 
-        cy.findByText("Average of Rating is greater than or equal to 5").click(140, 10);
+        cy.findByText("Average of Rating is greater than or equal to 5").click(300, 10);
         cy.findByText("Average of Rating is greater than or equal to 5").should("not.exist");
         
         // Header filter
 
+        cy.get(".TableInteractive-cellWrapper--lastColumn")   
+            .eq(1)
+            .contains("0");
 
+        cy.findAllByText("Average of Rating").click();
+        cy.get(".Icon-funnel_outline")
+            .closest("div")
+            .click()
+        cy.findByText("Equal to").click();
+        cy.findByText("Greater than or equal to").click();
+        cy.get("input[placeholder='Enter a number']")
+            .type("4");
+        cy.findByText("Update filter").click();
+
+        cy.get(".TableInteractive-cellWrapper--lastColumn")   
+            .eq(1)
+            .contains("4");
 
         // Can minimize Filter dispay in header
 
@@ -152,7 +148,7 @@ describe("smoketest > new_user", () => {
         cy.contains("Vendor is not empty").should("not.exist");
 
         // =================
-        // should summarize via both the sidebar, header, and notebook editor
+        // should summarize via both the sidebar and notebook editor
         // =================
 
         // Sidebar summary
@@ -171,10 +167,6 @@ describe("smoketest > new_user", () => {
         cy.get("span")
             .findByText("Group")
             .should("not.exist");
-
-        // Header summary 
-
-
 
         // Notebook editor summary
 
@@ -255,11 +247,27 @@ describe("smoketest > new_user", () => {
             .last()
             .click();
 
-        cy.contains('SELECT "PUBLIC"."PRODUCTS"');
+        cy.contains('SELECT "source"."ID"');
         cy.get(".Icon-close")
             .last()
             .click();
 
         cy.findByText("Visualize").click();
+
+        // =================
+        // should be able to do header actions
+        // =================
+
+        // Distincts
+
+        // Distributing
+
+        // Refresh works
+
+        cy.get(".Icon-refresh")
+            .first()
+            .click();
+        // *** check that refresh has happened
+        cy.contains("Sample Dataset");
     });
 });
