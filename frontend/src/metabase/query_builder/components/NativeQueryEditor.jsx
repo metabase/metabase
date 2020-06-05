@@ -591,7 +591,7 @@ export default class NativeQueryEditor extends Component {
               closeModal={this.props.closeSnippetModal}
             />
           )}
-          <div className="flex flex-column align-center border-left">
+          <div className="flex flex-column align-center">
             <DataReferenceButton
               {...this.props}
               size={ICON_SIZE}
@@ -615,7 +615,8 @@ export default class NativeQueryEditor extends Component {
               onRun={this.runQuery}
               onCancel={() => cancelQuery()}
               compact
-              className="mx2 mb2 mt-auto p2"
+              className="mx2 mb2 mt-auto"
+              style={{ width: 40, height: 40 }}
               getTooltip={() =>
                 (this.props.nativeEditorSelectedText
                   ? t`Run selected text`

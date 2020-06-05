@@ -57,6 +57,19 @@ export const ICON_PATHS = {
       "M14.502 1.232a2.5 2.5 0 113.536 3.536l-8.732 8.731L32 13.5a2.5 2.5 0 012.495 2.336L34.5 16a2.5 2.5 0 01-2.5 2.5l-22.696-.001 8.734 8.733a2.5 2.5 0 01.122 3.405l-.122.13a2.5 2.5 0 01-3.536 0l-13-13a2.5 2.5 0 010-3.535z",
     attrs: { viewBox: "0 0 35 32" },
   },
+  arrow_left_to_line: {
+    path: "M1,1v10 M3,6h8 M6,3L3,6L6,9",
+    attrs: {
+      viewBox: "0 0 12 12",
+      style: {
+        fill: "none",
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+        strokeWidth: 1.5,
+        stroke: "currentColor",
+      },
+    },
+  },
   bar:
     "M2 23.467h6.4V32H2v-8.533zm10.667-12.8h6.4V32h-6.4V10.667zM23.333 0h6.4v32h-6.4V0z",
   beaker:
@@ -317,10 +330,10 @@ export const ICON_PATHS = {
   smartscalar:
     "M9.806 9.347v13.016h-2.79V9.593L3.502 14.12a1.405 1.405 0 0 1-1.957.254 1.372 1.372 0 0 1-.256-1.937L7.418 4.54a1.404 1.404 0 0 1 2.219.008l6.08 7.953a1.372 1.372 0 0 1-.27 1.935c-.615.46-1.49.34-1.955-.268l-3.686-4.82zM24.806 23.016V13h-2.79v9.77l-3.514-4.527a1.405 1.405 0 0 0-1.957-.254 1.372 1.372 0 0 0-.256 1.937l6.129 7.897c.56.723 1.663.72 2.219-.008l6.08-7.953a1.372 1.372 0 0 0-.27-1.935 1.405 1.405 0 0 0-1.955.268l-3.686 4.82z",
   snippet: {
-    path: "M0,1H8M0,3H10M0,5H7M0,7H10M0,9H3",
+    path: "M1,2H8M1,5H9M1,8H6",
     attrs: {
       viewBox: "0 0 10 10",
-      style: { strokeWidth: 1, stroke: "currentcolor" },
+      style: { strokeWidth: 2, stroke: "currentcolor", strokeLinecap: "round" },
     },
   },
   star: "M16 0 L21 11 L32 12 L23 19 L26 31 L16 25 L6 31 L9 19 L0 12 L11 11",
