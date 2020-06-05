@@ -55,7 +55,7 @@
              :special_type     "type/Name"
              :name             "NAME"
              :display_name     "Name"
-             :position         0
+             :position         1
              :id               (mt/id :users :name)
              :visibility_type  "normal"
              :database_type    "VARCHAR"

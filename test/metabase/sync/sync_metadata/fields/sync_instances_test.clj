@@ -1,6 +1,5 @@
 (ns metabase.sync.sync-metadata.fields.sync-instances-test
   (:require [clojure.test :refer :all]
-            [expectations :refer [expect]]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]

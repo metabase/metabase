@@ -31,7 +31,6 @@
     :active          true
     :visibility_type [:not-in ["sensitive" "retired"]]
     :parent_id       nil
-    ;; I suppose if we wanted to we could make the `order-by` rules swappable with something other set of rules
     {:order-by (table/field-order-rule (Table table-id))}))
 
 (s/defn sorted-implicit-fields-for-table :- mbql.s/Fields
