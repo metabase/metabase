@@ -107,12 +107,15 @@
         (update
          tabledef
          :field-definitions
-         concat
-         [(tx/map->FieldDefinition {:field-name "null_only_date", :base-type :type/Date})]))
+         (fn [[date-field-def user-id-field-def venue-id-field-def]]
+           [date-field-def
+            (tx/map->FieldDefinition {:field-name "null_only_date", :base-type :type/Date})
+            user-id-field-def
+            venue-id-field-def])))
       :rows
       (fn [rows]
-        (for [row rows]
-          (concat row [nil]))))))
+        (for [[date user-id venue-id] rows]
+          [date nil user-id venue-id])))))
 
 (defonce ^{:doc "The main `test-data` dataset, but `last_login` has a base type of `:type/DateTimeWithTZ`."}
   test-data-with-timezones
