@@ -127,8 +127,8 @@
          tabledef
          :field-definitions
          (fn [[name-field-def _ password-field-def]]
-           [(tx/map->FieldDefinition {:field-name "last_login", :base-type :type/DateTimeWithTZ})
-            name-field-def
+           [name-field-def
+            (tx/map->FieldDefinition {:field-name "last_login", :base-type :type/DateTimeWithTZ})
             password-field-def]))))))
 
 (defonce ^{:doc "The usual `test-data` dataset, but only the `users` table; adds a `created_by` column to the users
