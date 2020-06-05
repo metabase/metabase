@@ -5,14 +5,17 @@ import {
   selectDashboardFilter,
 } from "__support__/cypress";
 
-function filterDashboard() {
+function filterDashboard(suggests = true) {
   cy.visit("/dashboard/1");
   cy.contains("Orders");
 
-  cy.contains("Category").type("Aero");
-
-  // We should get a suggested response and be able to click it
-  cy.contains("Aerodynamic").click();
+  // We should get a suggested response and be able to click it if we're an admin
+  if (suggests) {
+    cy.contains("Category").type("Aero");
+    cy.contains("Aerodynamic").click();
+  } else {
+    cy.contains("Category").type("Aerodynamic Bronze Hat");
+  }
   cy.contains("Add filter").click();
   cy.contains("Rows 1-1 of 96");
 }
@@ -45,8 +48,8 @@ describe("support > permissions (metabase#8472)", () => {
     filterDashboard();
   });
 
-  it.skip("should allow a nodata user to select the filter", () => {
+  it("should allow a nodata user to select the filter", () => {
     signIn("nodata");
-    filterDashboard();
+    filterDashboard(false);
   });
 });
