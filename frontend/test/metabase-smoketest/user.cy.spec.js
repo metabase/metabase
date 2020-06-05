@@ -5,7 +5,6 @@ describe("smoketest > new_user", () => {
     before(signInAsNormalUser);
   
     it("should be able to do header actions", () => {
-
         // =================
         // should be able to ask a custom question
         // =================
@@ -32,15 +31,62 @@ describe("smoketest > new_user", () => {
 
         cy.findByText("Visualize").click();
         
+        cy.get(".Icon-bar", { timeout: 30000 });
         cy.contains("Vendor is not empty");
         cy.contains("Visualization");
-        
+        cy.contains("2.5");
+
         // =================
-        // should ensuring that header actions are appropriate for different data types
+        // should be able to do header actions
+        // =================
+
+        // Sorting by Title
+
+        cy.get(".Icon-notebook").click();
+
+        cy.findByText("Sort").click();
+        cy.findAllByText("Title")
+            .last()
+            .click();
+        cy.findByText("Visualize").click();
+
+        // Setting Row limit
+
+        cy.get(".Icon-notebook").click();
+
+        cy.findByText("Row limit").click();
+        cy.get("input[type='number']").type("10");
+        cy.findByText("Visualize").click();
+
+        // Can view the SQL query
+
+        cy.get(".Icon-notebook", { timeout: 20000 }).click();
+        cy.get(".Icon-sql")
+            .last()
+            .click();
+
+        cy.contains('SELECT "PUBLIC"."PRODUCTS"');
+        cy.get(".Icon-close")
+            .last()
+            .click();
+
+        cy.findByText("Visualize").click();
+
+        // Refresh works
+
+        cy.get(".Icon-refresh")
+            .first()
+            .click();
+        // *** check that refresh has happened
+        cy.contains("Sample Dataset");
+
+        // =================
+        // should ensuring that header actions are appropriate for different data types (int, str, bool)
         // =================
         
         // cy.findbyText("Filter").click();
 
+        
         
         // =================
         // should filter via both the sidebar and the header
@@ -165,6 +211,6 @@ describe("smoketest > new_user", () => {
 
         cy.contains("Created At");
         cy.contains("People");
-        cy.contains("User → Zip");
+        cy.contains("User → ID");
     });
 });
