@@ -1,273 +1,315 @@
 import { restore, USER, signInAsNormalUser } from "__support__/cypress";
 
 describe("smoketest > new_user", () => {
-    before(restore);
-    before(signInAsNormalUser);
-  
-    it("should be able to do header actions", () => {
-        // =================
-        // should be able to ask a custom question
-        // =================
-        cy.visit("/");
+  before(restore);
+  before(signInAsNormalUser);
 
-        cy.findByText("Ask a question").click();
-        cy.contains("Simple question");
+  it("should be able to do header actions", () => {
+    // =================
+    // should be able to ask a custom question
+    // =================
+    cy.visit("/");
 
-        cy.findByText("Custom question").click();
-        cy.findByText("Sample Dataset").click();
-        cy.findByText("Products").click();
-        cy.findByText("Add filters to narrow your answer").click();
-        cy.findByText("Vendor").click();
-        cy.findByText("Is").click();
-        cy.findByText("Not empty").click();
-        cy.findByText("Add filter").click();
-        cy.findByText("Pick the metric you want to see").click();
-        cy.findByText("Average of ...").click();
-        cy.findByText("Rating").click();
-        cy.findByText("Pick a column to group by").click();
-        cy.findByText("Title").click();
+    cy.findByText("Ask a question").click();
+    cy.contains("Simple question");
 
-        cy.contains("Average of Rating");
+    cy.findByText("Custom question").click();
+    cy.findByText("Sample Dataset").click();
+    cy.findByText("Products").click();
+    cy.findByText("Add filters to narrow your answer").click();
+    cy.findByText("Vendor").click();
+    cy.findByText("Is").click();
+    cy.findByText("Not empty").click();
+    cy.findByText("Add filter").click();
+    cy.findByText("Pick the metric you want to see").click();
+    cy.findByText("Average of ...").click();
+    cy.findByText("Rating").click();
+    cy.findByText("Pick a column to group by").click();
+    cy.findByText("Title").click();
 
-        cy.findByText("Visualize").click();
-        
-        cy.get(".Icon-bar", { timeout: 30000 });
-        cy.contains("Vendor is not empty");
-        cy.contains("Visualization");
+    cy.contains("Average of Rating");
 
-        // =================
-        // should ensuring that header actions are appropriate for different data types (int, str, bool)
-        // =================
-        
-        // cy.findbyText("Filter").click();
+    cy.findByText("Visualize").click();
 
-        // =================
-        // should filter via both the header and notebook editor
-        // =================
-        
-        // Sorting by header
+    cy.get(".Icon-bar", { timeout: 30000 });
+    cy.contains("Vendor is not empty");
+    cy.contains("Visualization");
 
-        cy.get(".Icon-table2").click()
-        cy.get(".TableInteractive-cellWrapper--firstColumn")   
-            .last()
-            .contains("Durable Wool Toucan");
+    // =================
+    // should ensuring that header actions are appropriate for different data types (int, str, bool)
+    // =================
 
-        cy.findAllByText("Average of Rating")
-            .last()
-            .click();
-        cy.findByText("Ascending").click();
+    // cy.findbyText("Filter").click();
 
-        cy.get(".TableInteractive-cellWrapper--firstColumn")   
-            .last()
-            .contains("Lightweight Steel Watch");
+    // =================
+    // should filter via both the header and notebook editor
+    // =================
 
-        // Sorting by notebook editor
+    // Sorting by header
 
-        cy.get(".Icon-notebook").click();
-        cy.get(".Icon-close")
-            .last()
-            .click();
+    cy.get(".Icon-table2").click();
+    cy.get(".TableInteractive-cellWrapper--firstColumn")
+      .last()
+      .contains("Durable Wool Toucan");
 
-        cy.findByText("Sort").click();
-        cy.findAllByText("Title")
-            .last()
-            .click();
-        cy.findByText("Visualize").click();
+    cy.findAllByText("Average of Rating")
+      .last()
+      .click();
+    cy.findByText("Ascending").click();
 
-        cy.get(".TableInteractive-cellWrapper--firstColumn")   
-            .last()
-            .contains("Durable Wool Toucan");
-        
-        cy.get(".Icon-table2").click();
+    cy.get(".TableInteractive-cellWrapper--firstColumn")
+      .last()
+      .contains("Lightweight Steel Watch");
 
-        // =================
-        // should filter via the sidebar, header, and notebook editor
-        // =================
+    // Sorting by notebook editor
 
-        // Sidebar filter
+    cy.get(".Icon-notebook").click();
+    cy.get(".Icon-close")
+      .last()
+      .click();
 
-        cy.contains("Visualize", { timeout: 20000 }).should("not.exist")
-        cy.findAllByText("Filter").first().click();
-        cy.findByText("Category").click();
-        cy.contains("Is");
-        cy.findByText("Gadget").click();
-        cy.findByText("Add filter").click();
+    cy.findByText("Sort").click();
+    cy.findAllByText("Title")
+      .last()
+      .click();
+    cy.findByText("Visualize").click();
 
-        cy.contains("Vendor is not empty")
+    cy.get(".TableInteractive-cellWrapper--firstColumn")
+      .last()
+      .contains("Durable Wool Toucan");
 
-        // Can delete filter in header
+    cy.get(".Icon-table2").click();
 
-        cy.findByText("Category is Gadget").click(140, 10);
-        cy.findByText("Category is Gadget").should("not.exist");
+    // =================
+    // should filter via the sidebar, header, and notebook editor
+    // =================
 
-        // Notebook editor filter
+    // Sidebar filter
 
-        cy.get(".Icon-notebook").click();
-        cy.get(".Icon-filter", { timeout: 30000 })
-            .click();
-        cy.get(".Icon-int").click();
-        cy.findByText("Equal to").click();
-        cy.findByText("Greater than or equal to").click();
-        cy.get("input[placeholder='Enter a number']").type("5");
-        cy.findByText("Add filter").click();
-        cy.findByText("Visualize").click();
+    cy.contains("Visualize", { timeout: 20000 }).should("not.exist");
+    cy.findAllByText("Filter")
+      .first()
+      .click();
+    cy.findByText("Category").click();
+    cy.contains("Is");
+    cy.findByText("Gadget").click();
+    cy.findByText("Add filter").click();
 
-        cy.contains("Visualize").should("not.exist");
-        cy.get("svg");
-        cy.contains("Average of Rating is greater than or equal to 5");
+    cy.contains("Vendor is not empty");
 
-        // Can delete filter in header again
+    // Can delete filter in header
 
-        cy.findByText("Average of Rating is greater than or equal to 5").click(300, 10);
-        cy.findByText("Average of Rating is greater than or equal to 5").should("not.exist");
-        
-        // Header filter
+    cy.findByText("Category is Gadget").click(140, 10);
+    cy.findByText("Category is Gadget").should("not.exist");
 
-        cy.get(".TableInteractive-cellWrapper--lastColumn")   
-            .eq(1)
-            .contains("0");
+    // Notebook editor filter
 
-        cy.findAllByText("Average of Rating").click();
-        cy.get(".Icon-funnel_outline")
-            .closest("div")
-            .click()
-        cy.findByText("Equal to").click();
-        cy.findByText("Greater than or equal to").click();
-        cy.get("input[placeholder='Enter a number']")
-            .type("4");
-        cy.findByText("Update filter").click();
+    cy.get(".Icon-notebook").click();
+    cy.get(".Icon-filter", { timeout: 30000 }).click();
+    cy.get(".Icon-int").click();
+    cy.findByText("Equal to").click();
+    cy.findByText("Greater than or equal to").click();
+    cy.get("input[placeholder='Enter a number']").type("5");
+    cy.findByText("Add filter").click();
+    cy.findByText("Visualize").click();
 
-        cy.get(".TableInteractive-cellWrapper--lastColumn")   
-            .eq(1)
-            .contains("4");
+    cy.contains("Visualize").should("not.exist");
+    cy.get("svg");
+    cy.contains("Average of Rating is greater than or equal to 5");
 
-        // Can minimize Filter dispay in header
+    // Can delete filter in header again
 
-        cy.get(".Icon-filter").first().click();
+    cy.findByText("Average of Rating is greater than or equal to 5").click(
+      300,
+      10,
+    );
+    cy.findByText("Average of Rating is greater than or equal to 5").should(
+      "not.exist",
+    );
 
-        cy.contains("Vendor is not empty").should("not.exist");
+    // Header filter
 
-        // =================
-        // should summarize via both the sidebar and notebook editor
-        // =================
+    cy.get(".TableInteractive-cellWrapper--lastColumn")
+      .eq(1)
+      .contains("0");
 
-        // Sidebar summary
+    cy.findAllByText("Average of Rating").click();
+    cy.get(".Icon-funnel_outline")
+      .closest("div")
+      .click();
+    cy.findByText("Equal to").click();
+    cy.findByText("Greater than or equal to").click();
+    cy.get("input[placeholder='Enter a number']").type("4");
+    cy.findByText("Update filter").click();
 
-        cy.findAllByText("Summarize").first().click();
-        cy.findByText("Category").click();
-        cy.findByText("Done").click();
+    cy.get(".TableInteractive-cellWrapper--lastColumn")
+      .eq(1)
+      .contains("4");
 
-        // Delete summary from sidebar
+    // Can minimize Filter dispay in header
 
-        cy.findAllByText("Summarize").first().click();
-        cy.get(".Icon-close").first().click();
-        cy.findByText("Done").click();
+    cy.get(".Icon-filter")
+      .first()
+      .click();
 
-        cy.findByText("Average of Rating by Category").should("not.exist");
-        cy.get("span")
-            .findByText("Group")
-            .should("not.exist");
+    cy.contains("Vendor is not empty").should("not.exist");
 
-        // Notebook editor summary
+    // =================
+    // should summarize via both the sidebar and notebook editor
+    // =================
 
-        cy.get(".Icon-notebook").click();
+    // Sidebar summary
 
-        cy.get(".Icon-sum").click();
-        cy.findByText("Count of rows").click();
-        cy.findByText("Pick a column to group by").click();
-        cy.get(".Icon-calendar").click();
-        cy.findByText("Visualize").click();
+    cy.findAllByText("Summarize")
+      .first()
+      .click();
+    cy.findByText("Category").click();
+    cy.findByText("Done").click();
 
-        cy.get("svg");
-        cy.contains("Created At");
+    // Delete summary from sidebar
 
-        // =================
-        // should be able to create custom columns in the notebook editor
-        // =================
+    cy.findAllByText("Summarize")
+      .first()
+      .click();
+    cy.get(".Icon-close")
+      .first()
+      .click();
+    cy.findByText("Done").click();
 
-        cy.get(".Icon-notebook").click();
-        
-        // Delete last summary
-        cy.findAllByText("Count")
-            .first()
-            .click(70, 20);
+    cy.findByText("Average of Rating by Category").should("not.exist");
+    cy.get("span")
+      .findByText("Group")
+      .should("not.exist");
 
-        // Switch table from Product to Orders
+    // Notebook editor summary
 
-        cy.findAllByText("Products")
-            .last()
-            .click();
-        cy.findByText("Orders").click();
+    cy.get(".Icon-notebook").click();
 
-        // Create custom column
-        cy.get(".Icon-add_data").click();
-        cy.findByText("Product → Price").click();
-        cy.findByText("-").click();
-        cy.findByText("Subtotal").click();
-        cy.get(".PopoverBody")
-            .first()
-            .click();
-        cy.get("input[placeholder='Something nice and descriptive']").type("Demo Column");
-        cy.findByText("Done").click();
-        cy.findByText("Visualize").click();
+    cy.get(".Icon-sum").click();
+    cy.findByText("Count of rows").click();
+    cy.findByText("Pick a column to group by").click();
+    cy.get(".Icon-calendar").click();
+    cy.findByText("Visualize").click();
 
-        cy.contains("ID");
-        cy.get(".Icon-table2");
-        cy.contains("Demo Column");
-        cy.contains("People").should("not.exist");
+    cy.get("svg");
+    cy.contains("Created At");
 
-        // =================
-        // should be able to use all notebook editor functions
-        // =================
+    // =================
+    // should be able to create custom columns in the notebook editor
+    // =================
 
-        // Custom JOINs
+    cy.get(".Icon-notebook").click();
 
-        cy.get(".Icon-notebook").click();
+    // Delete last summary
+    cy.findAllByText("Count")
+      .first()
+      .click(70, 20);
 
-        cy.get(".Icon-join_left_outer").click();
-        cy.findByText("People").click(); // column selection happens automatcially
-        cy.findByText("Visualize").click();
+    // Switch table from Product to Orders
 
-        cy.contains("Created At");
-        cy.contains("People");
-        cy.contains("User → ID");
+    cy.findAllByText("Products")
+      .last()
+      .click();
+    cy.findByText("Orders").click();
 
-        // Setting Row limit
+    // Create custom column
+    cy.get(".Icon-add_data").click();
+    cy.findByText("Product → Price").click();
+    cy.findByText("-").click();
+    cy.findByText("Subtotal").click();
+    cy.get(".PopoverBody")
+      .first()
+      .click();
+    cy.get("input[placeholder='Something nice and descriptive']").type(
+      "Demo Column",
+    );
+    cy.findByText("Done").click();
+    cy.findByText("Visualize").click();
 
-        cy.get(".Icon-notebook").click();
+    cy.contains("ID");
+    cy.get(".Icon-table2");
+    cy.contains("Demo Column");
+    cy.contains("People").should("not.exist");
 
-        cy.findByText("Row limit").click();
-        cy.get("input[type='number']").type("10");
-        cy.findByText("Visualize").click();
+    // =================
+    // should be able to use all notebook editor functions
+    // =================
 
-        // Can view the SQL query
+    // Custom JOINs
 
-        cy.get(".Icon-notebook", { timeout: 20000 }).click();
-        cy.get(".Icon-sql")
-            .last()
-            .click();
+    cy.get(".Icon-notebook").click();
 
-        cy.contains('SELECT "source"."ID"');
-        cy.get(".Icon-close")
-            .last()
-            .click();
+    cy.get(".Icon-join_left_outer").click();
+    cy.findByText("People").click(); // column selection happens automatcially
+    cy.findByText("Visualize").click();
 
-        cy.findByText("Visualize").click();
+    cy.contains("Created At");
+    cy.contains("People");
+    cy.contains("User → ID");
 
-        // =================
-        // should be able to do header actions
-        // =================
+    // Setting Row limit
 
-        // Distincts
+    cy.get(".Icon-notebook").click();
 
-        // Distributing
+    cy.findByText("Row limit").click();
+    cy.get("input[type='number']").type("10");
+    cy.findByText("Visualize").click();
 
-        // Refresh works
+    // Can view the SQL query
 
-        cy.get(".Icon-refresh")
-            .first()
-            .click();
-        // *** check that refresh has happened
-        cy.contains("Sample Dataset");
-    });
+    cy.get(".Icon-notebook", { timeout: 20000 }).click();
+    cy.get(".Icon-sql")
+      .last()
+      .click();
+
+    cy.contains('SELECT "source"."ID"');
+    cy.get(".Icon-close")
+      .last()
+      .click();
+
+    cy.findByText("Visualize").click();
+
+    // =================
+    // should be able to do header actions
+    // =================
+
+    // Distinctions
+    // **** This test needs to be improved with variables that will change if the Sample data changes
+
+    cy.get(".hover-parent")
+      .eq(1)
+      .trigger("mouseover")
+      .get(".Icon-close")
+      .click();
+
+    cy.get(".TableInteractive-header")
+      .find(".cellData")
+      .eq(-3)
+      .click();
+    cy.findByText("Distincts").click();
+    cy.contains("10");
+    cy.contains("3").should("not.exist");
+
+    cy.get(".Icon-close")
+      .last()
+      .click();
+
+    // Distributing
+
+    cy.findByText("Rating").click();
+    cy.findByText("Distribution").click();
+    cy.get(".Icon-table2").click();
+
+    cy.findByText("Count");
+    cy.findByText("Created At").should("not.exist");
+    cy.get(".cellData").should("have.length", 14);
+
+    // Refresh works
+
+    cy.get(".Icon-refresh")
+      .first()
+      .click();
+    // *** check that refresh has happened
+    cy.contains("Sample Dataset");
+  });
 });
