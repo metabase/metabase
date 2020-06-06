@@ -84,11 +84,11 @@
   "Update `:position` of field belonging to table `table` accordingly to `:field_order`"
   [table]
   (doall
-   (map-indexed (fn [idx field]
-                  (db/update! Field (u/get-id field) :position idx))
+   (map-indexed (fn [new-position field]
+                  (db/update! Field (u/get-id field) :position new-position))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
                 (db/select [Field :id]
-                  :table_id (u/get-id table)
+                  :table_id  (u/get-id table)
                   {:order-by (case (:field_order table)
                                :custom       [[:custom_position :asc]]
                                :smart        [[(hsql/call :case
@@ -110,11 +110,11 @@
   "Set field order to `field-order`."
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
-  (db/update! Table (u/get-id table) {:field_order :custom})
+  (db/update! Table (u/get-id table) :field_order :custom)
   (doall
-   (map-indexed (fn [idx field-id]
-                  (db/update! Field field-id {:position        idx
-                                              :custom_position idx}))
+   (map-indexed (fn [position field-id]
+                  (db/update! Field field-id {:position        position
+                                              :custom_position position}))
                 field-order)))
 
 

@@ -1,6 +1,7 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
-  (:require [clojure
+  (:require [cheshire.core :as json]
+            [clojure
              [test :refer :all]
              [walk :as walk]]
             [expectations :refer [expect]]
@@ -734,3 +735,35 @@
     (testing "For tables that don't exist, we should return a 404."
       (is (= "Not found."
              ((mt/user->client :crowberto) :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))))))
+
+(deftest field-ordering-test
+  (let [original-field-order (db/select-one-field :field_order Table :id (mt/id :venues))]
+    (try
+      (testing "Cane we set alphabetical field ordering?"
+        (is (= ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
+               (->> ((mt/user->client :crowberto) :put 200 (format "table/%s" (mt/id :venues))
+                     {:field_order :alphabetical})
+                    :fields
+                    (map :name)))))
+      (testing "Cane we set smart field ordering?"
+        (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]
+               (->> ((mt/user->client :crowberto) :put 200 (format "table/%s" (mt/id :venues))
+                     {:field_order :smart})
+                    :fields
+                    (map :name)))))
+      (testing "Cane we set database field ordering?"
+        (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]
+               (->> ((mt/user->client :crowberto) :put 200 (format "table/%s" (mt/id :venues))
+                     {:field_order :database})
+                    :fields
+                    (map :name)))))
+      (testing "Cane we set custom field ordering?"
+        (let [custom-field-order [(mt/id :venues :price) (mt/id :venues :longitude) (mt/id :venues :id)
+                                  (mt/id :venues :category_id) (mt/id :venues :name) (mt/id :venues :latitude)]]
+           ((mt/user->client :crowberto) :put 200 (format "table/%s/fields/order" (mt/id :venues))
+            {:request-options {:body (json/encode custom-field-order)}})
+          (is (= custom-field-order
+                 (->> (table/fields (Table (mt/id :venues)))
+                      (map u/get-id))))))
+      (finally ((mt/user->client :crowberto) :put 200 (format "table/%s" (mt/id :venues))
+                {:field_order original-field-order})))))

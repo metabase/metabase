@@ -3,15 +3,15 @@
              [test :refer :all]
              [walk :as walk]]
             [medley.core :as m]
+            [metabase
+             [test :as mt]
+             [util :as u]]
             [metabase.models
              [database :refer [Database]]
              [table :refer [Table]]]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.sync.sync-metadata.fields.fetch-metadata :as sync-fields.fetch-metadata]
             [metabase.test.mock.toucanery :as toucanery]
-            [metabase
-             [test :as mt]
-             [util :as u]]
             [toucan.db :as db]))
 
 ;; `our-metadata` should match up with what we have in the DB
