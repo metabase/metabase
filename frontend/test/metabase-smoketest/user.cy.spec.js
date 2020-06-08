@@ -272,7 +272,7 @@ describe("smoketest > new_user", () => {
     // =================
 
     // Reset question
-    
+
     cy.findAllByText("Orders")
       .first()
       .click();
