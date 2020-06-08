@@ -322,21 +322,21 @@ describe("metabase-smoketest > admin", () => {
       cy.contains(new_user.first_name);
 
       // =================
-      // should see questions currently in the "Our Analytics" collection
+      // should see questions currently in the "Our Analytics" collection as user
       // =================
 
       cy.findByText("Browse all items").click();
       cy.contains("My personal collection");
 
       // =================
-      // should see dashboard in the "Our Analytics" collection
+      // should see dashboard in the "Our Analytics" collection as user
       // =================
 
       cy.findByText("Dashboards").click();
       cy.contains("Demo Dash 2");
 
       // =================
-      // Create my own question
+      // should create my own question as user
       // =================
 
       cy.findByText("Ask a question").click();
@@ -359,7 +359,7 @@ describe("metabase-smoketest > admin", () => {
       cy.get(".Icon-bar");
 
       // =================
-      // Create my own dashboard
+      // Create my own dashboard as user
       // =================
 
       cy.get(".Icon-add").click();
@@ -372,7 +372,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findAllByText("Our analytics")
         .last()
         .click();
-      // Also cannot select "My personal collection" here
+      // *** Also cannot select "My personal collection" here
       cy.findByText("Create").click();
 
       cy.contains("This dashboard is looking empty");

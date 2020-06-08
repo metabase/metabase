@@ -1,14 +1,55 @@
-import { restore, USER, signIn } from "__support__/cypress";
+import { restore, USERS, signInAsAdmin } from "__support__/cypress";
 
 describe("smoketest > admin_setup", () => {
-  it("should be able to setup environment for team as admin", () => {
+  before(restore);
+  before(signInAsAdmin);
+
+  it("should have admin changes reflected with the user account", () => {
+    cy.visit("/")
+
+    // *******************************
+    // *** Admin > Successful Setup **
+    // ********************************
+
     // =================
     // should add a new database
-    // Should eventually include BigQuery, Druid, Google Analytics, H2, MongoDB, MySQL/Maria DB, PostgreSQL, Presto, Amazon Redshift, Snowflake, Spark SQL, SQLite, SQL Server
+    // *** I don't have any faux databases to hook up to. Are there some in the system already?
+    // *** Should eventually include BigQuery, Druid, Google Analytics, H2, MongoDB, MySQL/Maria DB, PostgreSQL, Presto, Amazon Redshift, Snowflake, Spark SQL, SQLite, SQL Server
     // =================
+
+    // Navigate to page
+    
+    cy.get(".Nav")
+      .children()
+      .last()
+      .children()
+      .last()
+      .click();
+    cy.findByText("Admin").click();
+
+    cy.contains("Metabase Admin");
+    cy.contains("dashboard").should("not.exist");
+
+    cy.findByText("Databases").click();
+    
+    cy.contains("Sample Dataset");
+    cy.contains("Updates").should("not.exist");
+    
+    cy.findByText("Add database").click();
+
+    cy.contains("Automatically run queries when doing simple filtering and summarizing");
+
+    // Adds new database
+
+    // cy.findByText("H2").click();
+    // cy.findByText("PostgreSQL").click();
+    // cy.findByLabelText("Name").type("Postgre Database");
+    // cy.findByLabelText("Host");
+
     // =================
     // should setup email (maybe using something like maildev)
     // =================
+
     // =================
     // should setup Slack
     // =================
@@ -21,9 +62,21 @@ describe("smoketest > admin_setup", () => {
     // =================
     // should set up custom maps
     // =================
-  });
 
-  it("should should refelct modifications to data models in the users' account", () => {
+
+    // ********************************
+    // * Data Model Changes Reflected *
+    // *********************************
+
+    // =================
+    // should sign in as new user
+    // =================
+    // =================
+    // should change password as user
+    // =================
+    // =================
+    // should check table names as user
+    // =================
     // =================
     // should rename a table as admin
     // =================
@@ -48,9 +101,12 @@ describe("smoketest > admin_setup", () => {
     // =================
     // should see changes to visibility, formatting, and foreign key mapping as user
     // =================
-  });
 
-  it("should should refelct modifications to permissions in the users' account", () => {
+
+    // *********************************
+    // ** Permission Changes Reflected *
+    // *********************************
+    
     // =================
     // should check current permissions as user
     // =================
