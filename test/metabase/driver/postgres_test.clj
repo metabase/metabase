@@ -153,7 +153,8 @@
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
                        ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
-                       SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
+                       SELECT 'Toucans are the coolest type of bird.' AS true_facts;
+                       GRANT ALL PRIVILAGES ON test_mview TO PUBLIC"])
         (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
           (is (= {:tables #{(default-table-result "test_mview")}}
                  (driver/describe-database :postgres database))))))))
@@ -171,7 +172,8 @@
                             CREATE TABLE public.local_table (data text);
                             CREATE FOREIGN TABLE foreign_table (data text)
                                 SERVER foreign_server
-                                OPTIONS (schema_name 'public', table_name 'local_table');")])
+                                OPTIONS (schema_name 'public', table_name 'local_table');
+                                GRANT ALL PRIVILAGES ON foregin_table TO PUBLIC")])
         (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
           (is (= {:tables (set (map default-table-result ["foreign_table" "local_table"]))}
                  (driver/describe-database :postgres database))))))))
@@ -192,7 +194,8 @@
             ;; populate the DB and create a view
             (exec! ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
                     "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Kanye Nest');"
-                    "CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"])
+                    "CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"
+                    "GRANT ALL PRIVILAGES ON angry_birds TO PUBLIC"])
             ;; now sync the DB
             (sync!)
             ;; drop the view
@@ -200,7 +203,8 @@
             ;; sync again
             (sync!)
             ;; recreate the view
-            (exec! ["CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"])
+            (exec! ["CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"
+                    "GRANT ALL PRIVILAGES ON angry_birds TO PUBLIC"])
             ;; sync one last time
             (sync!)
             ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!
