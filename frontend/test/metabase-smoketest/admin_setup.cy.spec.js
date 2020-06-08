@@ -44,18 +44,112 @@ describe("smoketest > admin_setup", () => {
     // cy.findByText("H2").click();
     // cy.findByText("PostgreSQL").click();
     // cy.findByLabelText("Name").type("Postgre Database");
-    // cy.findByLabelText("Host");
+    // cy.findByLabelText("Host").type("");
+    // cy.findByLabelText("Port").type("");
+    // cy.findByLabelText("Database name").type("");
+    // cy.findByLabelText("Database username").type("");
+    // cy.findByLabelText("Database password").type("");
+    // // *** check that toggles are correct
+    // cy.findByLabelText("Additional JDBC connection string options").type("");
+    // cy.findByText("Save").click();
 
     // =================
     // should setup email (maybe using something like maildev)
     // =================
 
+    cy.findByText("Settings").click();
+    cy.findByText("Email").click();
+
+    cy.contains("Email address you want to use as the sender of Metabase.")
+    cy.contains("Sample Database").should("not.exist");
+
+    // Email info
+    // cy.findByLabelText("SMTP HOST").type("smtp.gmail.com");
+    // cy.findByLabelText("SMTP PORT").type("465");
+    // cy.findByText("SSL").click();
+    // cy.findByLabelText("SMTP USERNAME").type(""); // *** enter email here
+    // cy.findByLabelText("SMTP PASSWORD").type(""); // *** enter password here
+    // cy.findByLabelText("FROM ADDRESS").type("metabase@metabase.com");
+    // cy.findByText("Save changes").click();
+
     // =================
     // should setup Slack
     // =================
+
+    cy.findByText("Slack").click();
+
+    cy.contains("Answers sent right to your Slack #channels");
+    cy.contains("metabase@metabase.com").should("not.exist");
+
+    // cy.findByText("Create a Slack Bot User for MetaBot").click();
+
+    // cy.contains("Sign in to your workspace");
+    // cy.url().should("not.include", "admin");
+
+    // cy.findByText("Save changes").click();
+
     // =================
     // should create new groups
     // =================
+
+    cy.findByText("People").click();
+
+    cy.contains("2 other groups");
+
+    cy.findAllByText("Groups")
+      .first()
+      .click();
+    
+    cy.contains("You can use groups to control your users' access to your data.");
+    cy.contains("All Users");
+    cy.contains("Slack").should("not.exist");
+
+    // Creates new group
+
+    cy.findByText("Create a group").click();
+    cy.get("input").type("Marketing");
+    cy.findByText("Add").click();
+    cy.findByText("Marketing").click();
+
+    cy.contains("A group is only as good as its members.");
+    
+    // Adds user as member
+
+    cy.findByText("Add members").click();
+    cy.get("input").type("T");
+    cy.findByText(USERS.normal.first_name + " " + USERS.normal.last_name).click();
+    cy.findByText("Add").click();
+    
+    cy.contains(USERS.normal.username)
+    cy.contains("A group is only as good as its members.").should("not.exist");
+
+    
+    // Adds self as member
+    
+    cy.findByText("Add members").click();
+    cy.get("input").type("T");
+    cy.findByText(USERS.admin.first_name + " " + USERS.admin.last_name).click();
+    cy.findByText("Add").click();
+    
+    cy.contains(USERS.admin.username)
+
+    // Check member count
+
+    cy.findAllByText("People")
+      .last()
+      .click();
+    
+    cy.contains("3 other groups");
+    
+    cy.findAllByText("Groups")
+      .first()
+      .click();
+    
+    cy.contains("Marketing");
+    cy.get("td")
+      .eq("-2")
+      .contains("2");
+
     // =================
     // should create new users in different groups
     // =================
