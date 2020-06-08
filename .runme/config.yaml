@@ -1,0 +1,8 @@
+version: 1.0
+publish: app
+services:
+  app:
+    image: metabase:metabase
+    ports:
+      - container: 3000
+        public: 80
