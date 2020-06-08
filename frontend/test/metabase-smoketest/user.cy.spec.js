@@ -267,15 +267,40 @@ describe("smoketest > new_user", () => {
       .last()
       .click();
 
-    cy.findByText("Visualize").click();
-
     // =================
     // should be able to do header actions
     // =================
 
+    // Reset question
+    
+    cy.findAllByText("Orders")
+      .first()
+      .click();
+    cy.findByText("Products").click();
+
     // Distinctions
+    // **** This test needs to be improved with variables that will change if the Sample data changes
+
+    cy.findByText("Visualize").click();
+
+    cy.findByText("Category").click();
+    cy.findByText("Distincts").click();
+    cy.contains("4");
+    cy.contains("3").should("not.exist");
+
+    cy.get(".Icon-close")
+      .last()
+      .click();
 
     // Distributing
+
+    cy.findByText("Rating").click();
+    cy.findByText("Distribution").click();
+    cy.get(".Icon-table2").click();
+
+    cy.findByText("Count");
+    cy.findByText("Created At").should("not.exist");
+    cy.get(".cellData").should("have.length", 14);
 
     // Refresh works
 
