@@ -218,6 +218,28 @@ describe("smoketest > admin_setup", () => {
     // should set up custom maps
     // =================
 
+    cy.findByText("Settings").click();
+    cy.findByText("Maps").click();
+
+    cy.contains("Custom Maps")
+    cy.contains("Groups").should("not.exist");
+    
+    // cy.findByText("Add a map").click();
+    // cy.get("input")
+    //   .first()
+    //   .type("Test Map");
+    // cy.get("input")
+    //   .last()
+    //   .type("") // *** type GeoJSON url here
+    // cy.findAllByText("Select...")
+    //   .first()
+    //   .click();
+    // cy.findByText("");
+    // cy.findAllByText("Select...")
+    //   .last()
+    //   .click;
+    // cy.findByText("");
+    // cy.findByText("Add map").click();
 
     // ********************************
     // * Data Model Changes Reflected *
