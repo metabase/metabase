@@ -37,6 +37,8 @@ import Icon from "metabase/components/Icon";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
 
+import Snippets from "metabase/entities/snippets";
+
 import Parameters from "metabase/parameters/components/Parameters";
 
 const SCROLL_MARGIN = 8;
@@ -113,6 +115,7 @@ type State = {
 };
 
 @ExplicitSize()
+@Snippets.loadList({ loadingAndErrorWrapper: false })
 export default class NativeQueryEditor extends Component {
   props: Props;
   state: State;
@@ -343,7 +346,7 @@ export default class NativeQueryEditor extends Component {
     const aceLanguageTools = ace.require("ace/ext/language_tools");
     this._editor.setOptions({
       enableBasicAutocompletion: true,
-      enableSnippets: true,
+      enableSnippets: false,
       enableLiveAutocompletion: true,
       showPrintMargin: false,
       highlightActiveLine: false,
@@ -354,6 +357,11 @@ export default class NativeQueryEditor extends Component {
     aceLanguageTools.addCompleter({
       getCompletions: async (editor, session, pos, prefix, callback) => {
         try {
+          const snippetCompletions = this.getSnippetCompletions(editor, pos);
+          if (snippetCompletions) {
+            callback(null, snippetCompletions);
+            return;
+          }
           // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
           const results = await this.props.autocompleteResultsFn(prefix);
           // transform results of the API call into what ACE expects
@@ -371,6 +379,25 @@ export default class NativeQueryEditor extends Component {
         }
       },
     });
+  }
+
+  getSnippetCompletions(editor, pos) {
+    const lines = editor.getValue().split("\n");
+    const linePrefix = lines[pos.row].slice(0, pos.column);
+    const match = linePrefix.match(/\{\{\s*snippet:\s*([^\}]*)$/);
+    if (!match) {
+      return null;
+    }
+
+    const snippets = (this.props.snippets || []).filter(snippet =>
+      snippet.name.toLowerCase().includes(match[1].toLowerCase()),
+    );
+
+    return snippets.map(({ name }) => ({
+      name: name,
+      value: name,
+      meta: "Metabase Snippet",
+    }));
   }
 
   _updateSize() {

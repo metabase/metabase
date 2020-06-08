@@ -547,7 +547,6 @@ export const closeSnippetModal = () => (dispatch, getState) => {
 };
 
 export const insertSnippet = snip => (dispatch, getState) => {
-  console.log("insertSnippet", snip);
   const name = snip.name;
   const question = getQuestion(getState());
   const query = question.query();
