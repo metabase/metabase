@@ -357,13 +357,13 @@
                  "CREATE TYPE bird_status AS ENUM ('good bird', 'angry bird', 'delicious bird');"
                  (str "CREATE TABLE birds ("
                       "  name varchar PRIMARY KEY NOT NULL,"
-                      "  type \"bird type\" NOT NULL,"
-                      "  status bird_status NOT NULL"
+                      "  status bird_status NOT NULL,"
+                      "  type \"bird type\" NOT NULL"
                       ");")
                  (str "INSERT INTO birds (\"name\", \"type\", status) VALUES"
-                      "  ('Rasta', 'toucan', 'good bird'),"
-                      "  ('Lucky', 'pigeon', 'angry bird'),"
-                      "  ('Theodore', 'turkey', 'delicious bird');")]]
+                      "  ('Rasta', 'good bird', 'toucan'),"
+                      "  ('Lucky', 'angry bird', 'pigeon'),"
+                      "  ('Theodore', 'delicious bird', 'turkey');")]]
       (jdbc/execute! conn [sql]))))
 
 (defn- do-with-enums-db {:style/indent 0} [f]

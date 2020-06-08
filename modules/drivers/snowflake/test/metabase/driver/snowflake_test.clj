@@ -74,7 +74,7 @@
                         {:name              "name"
                          :database-type     "VARCHAR"
                          :base-type         :type/Text
-                         :database-position 0}}}
+                         :database-position 1}}}
              (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (Table (mt/id :categories))))))))
 
 (deftest describe-table-fks-test
