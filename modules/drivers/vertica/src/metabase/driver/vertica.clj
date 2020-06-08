@@ -57,6 +57,17 @@
              (dissoc details :host :port :dbname :db :ssl))
       (sql-jdbc.common/handle-additional-options details)))
 
+(defmethod sql-jdbc.sync/has-select-privilege?
+  [_ _ user db-name schema table]
+  (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details (Database :name db-name)))
+              [(str "SELECT 1 FROM grants "
+                    "WHERE object_schema=? "
+                    "AND object_name=? "
+                    "AND grantee=? "
+                    "AND privilages_description LIKE '%SELECT%'")
+               schema table user]
+              {:result-set-fn (comp pos? count)}))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_ _ expr]
   (hsql/call :to_timestamp expr))

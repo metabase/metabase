@@ -81,6 +81,17 @@
                         (str "/" service-name)))}
    (dissoc details :host :port :sid :service-name)))
 
+(defmethod sql-jdbc.sync/has-select-privilege?
+  [_ _ user db-name schema table]
+  (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details (Database :name db-name)))
+              [(str "SELECT 1 FROM ALL_TAB_PRIVS "
+                    "WHERE TABLE_SCHEMA=? "
+                    "AND TABLE_NAME=? "
+                    "AND GRANTEE=? "
+                    "AND PRIVILEGE='SELECT'")
+               schema table user]
+              {:result-set-fn (comp pos? count)}))
+
 (defmethod driver/can-connect? :oracle
   [driver details]
   (let [connection (sql-jdbc.conn/connection-details->spec driver (ssh/include-ssh-tunnel details))]

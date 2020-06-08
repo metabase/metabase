@@ -12,7 +12,7 @@
             [java-time :as t]
             [metabase
              [driver :as driver]
-             [models :refer [Field]]
+             [models :refer [Database Field]]
              [util :as u]]
             [metabase.db.spec :as db.spec]
             [metabase.driver.common :as driver.common]
@@ -310,6 +310,18 @@
       (set/rename-keys {:dbname :db})
       db.spec/postgres
       (sql-jdbc.common/handle-additional-options details-map)))
+
+(defmethod sql-jdbc.sync/has-select-privilege?
+  [_ _ user db-name schema table]
+  (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details (Database :name db-name)))
+              [(str "SELECT 1 FROM information_schema.role_table_grants "
+                    "WHERE table_catalog=? "
+                    "AND table_schema=? "
+                    "AND table_name=? "
+                    "AND grantee=? "
+                    "AND privilages LIKE '%SELECT%'")
+               db-name schema table user]
+              {:result-set-fn (comp pos? count)}))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
   [_]

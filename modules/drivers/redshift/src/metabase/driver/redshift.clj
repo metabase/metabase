@@ -11,7 +11,8 @@
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]]
+             [execute :as sql-jdbc.execute]
+             [sync :as sync]]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.util :as mbql.u]
@@ -164,6 +165,13 @@
     :ssl                           true
     :OpenSourceSubProtocolOverride false}
    (dissoc opts :host :port :db)))
+
+(defmethod sql-jdbc.sync/has-select-privilege?
+  [_ _ user db-name schema table]
+  (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details (Database :name db-name)))
+              ["SELECT has_table_privilage(?, ?, 'select')"
+               user (str/join "." [schema table])]
+              {:result-set-fn ffirst}))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk
