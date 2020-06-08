@@ -1,4 +1,6 @@
-# API Documentation for Metabase v0.32.2
+# API Documentation for Metabase
+
+_This file was generated from source comments by `lein run api-documentation`._
 
 ## `GET /api/activity/`
 
@@ -394,13 +396,9 @@ Run the query associated with a Card, and return its results as a file in the sp
 
 *  **`card-id`** 
 
-*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
+*  **`export-format`** value must be one of: `api`, `csv`, `json`, `xlsx`.
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
-
-*  **`respond`** 
-
-*  **`raise`** 
 
 
 ## `POST /api/card/collections`
@@ -598,7 +596,7 @@ Delete a Dashboard.
 
 ## `DELETE /api/dashboard/:id/cards`
 
-Remove a DashboardCard from a Dashboard.
+Remove a `DashboardCard` from a Dashboard.
 
 ##### PARAMS:
 
@@ -631,7 +629,7 @@ Get `Dashboards`. With filter option `f` (default `all`), restrict results as fo
 
 ## `GET /api/dashboard/:id`
 
-Get Dashboard with `id`.
+Get Dashboard with ID.
 
 ##### PARAMS:
 
@@ -649,7 +647,7 @@ Return related entities.
 
 ## `GET /api/dashboard/:id/revisions`
 
-Fetch Revisions for Dashboard with `id`.
+Fetch `Revisions` for Dashboard with ID.
 
 ##### PARAMS:
 
@@ -725,7 +723,7 @@ Copy a Dashboard.
 
 ## `POST /api/dashboard/:id/cards`
 
-Add a Card to a Dashboard.
+Add a `Card` to a Dashboard.
 
 ##### PARAMS:
 
@@ -751,7 +749,7 @@ Favorite a Dashboard.
 
 ## `POST /api/dashboard/:id/revert`
 
-Revert a Dashboard to a prior Revision.
+Revert a Dashboard to a prior `Revision`.
 
 ##### PARAMS:
 
@@ -821,7 +819,7 @@ Update a Dashboard.
 
 ## `PUT /api/dashboard/:id/cards`
 
-Update Cards on a Dashboard. Request body should have the form:
+Update `Cards` on a Dashboard. Request body should have the form:
 
     {:cards [{:id     ...
               :sizeX  ...
@@ -849,9 +847,18 @@ Delete a `Database`.
 
 ## `GET /api/database/`
 
-Fetch all `Databases`. `include_tables` means we should hydrate the Tables belonging to each DB. `include_cards` here
-  means we should also include virtual Table entries for saved Questions, e.g. so we can easily use them as source
-  Tables in queries. Default for both is `false`.
+Fetch all `Databases`.
+
+  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.
+
+  * `saved` means we should include the saved questions virtual database. Default: `false`.
+
+  * `include_tables` is a legacy alias for `include=tables`, but should be considered deprecated as of 0.35.0, and will
+    be removed in a future release.
+
+  * `include_cards` here means we should also include virtual Table entries for saved Questions, e.g. so we can easily
+    use them as source Tables in queries. This is a deprecated alias for `saved=true` + `include=tables` (for the saved
+    questions virtual DB). Prefer using `include` and `saved` instead. 
 
 ##### PARAMS:
 
@@ -859,24 +866,32 @@ Fetch all `Databases`. `include_tables` means we should hydrate the Tables belon
 
 *  **`include_cards`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
+*  **`include`** value may be nil, or if non-nil, value must be `tables`
+
+*  **`saved`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+
 
 ## `GET /api/database/:id`
 
-Get `Database` with ID.
+Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
+  belonging to this database, or the Tables and Fields, respectively.
 
 ##### PARAMS:
 
 *  **`id`** 
 
+*  **`include`** value may be nil, or if non-nil, value must be one of: `tables`, `tables.fields`.
+
 
 ## `GET /api/database/:id/autocomplete_suggestions`
 
-Return a list of autocomplete suggestions for a given PREFIX.
-   This is intened for use with the ACE Editor when the User is typing raw SQL.
-   Suggestions include matching `Tables` and `Fields` in this `Database`.
+Return a list of autocomplete suggestions for a given `prefix`.
 
-   Tables are returned in the format `[table_name "Table"]`;
-   Fields are returned in the format `[field_name "table_name base_type special_type"]`
+  This is intened for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
+  and `Fields` in this `Database`.
+
+  Tables are returned in the format `[table_name "Table"]`;
+  Fields are returned in the format `[field_name "table_name base_type special_type"]`
 
 ##### PARAMS:
 
@@ -913,9 +928,18 @@ Get metadata about a `Database`, including all of its `Tables` and `Fields`.
 *  **`id`** 
 
 
+## `GET /api/database/:id/schema/`
+
+Return a list of Tables for a Database whose `schema` is `nil` or an empty string.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
 ## `GET /api/database/:id/schema/:schema`
 
-Returns a list of tables for the given database `id` and `schema`
+Returns a list of Tables for the given Database `id` and `schema`
 
 ##### PARAMS:
 
@@ -939,6 +963,20 @@ Endpoint that provides metadata for the Saved Questions 'virtual' database. Used
    and allowing it to treat the Saved Questions virtual DB just like any other database.
 
 
+## `GET /api/database/:virtual-db/schema/:schema`
+
+Returns a list of Tables for the saved questions virtual database.
+
+##### PARAMS:
+
+*  **`schema`** 
+
+
+## `GET /api/database/:virtual-db/schemas`
+
+Returns a list of all the schemas found for the saved questions virtual database.
+
+
 ## `POST /api/database/`
 
 Add a new `Database`.
@@ -958,6 +996,8 @@ You must be a superuser to do this.
 *  **`is_on_demand`** value may be nil, or if non-nil, value must be a boolean.
 
 *  **`schedules`** value may be nil, or if non-nil, value must be a valid map of schedule maps for a DB.
+
+*  **`auto_run_queries`** value may be nil, or if non-nil, value must be a boolean.
 
 
 ## `POST /api/database/:id/discard_values`
@@ -1038,6 +1078,8 @@ You must be a superuser to do this.
 
 *  **`description`** value may be nil, or if non-nil, value must be a string.
 
+*  **`auto_run_queries`** value may be nil, or if non-nil, value must be a boolean.
+
 *  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`caveats`** value may be nil, or if non-nil, value must be a string.
@@ -1068,13 +1110,9 @@ Execute a query and download the result data as a file in the specified format.
 
 ##### PARAMS:
 
-*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
+*  **`export-format`** value must be one of: `api`, `csv`, `json`, `xlsx`.
 
 *  **`query`** value must be a valid JSON string.
-
-*  **`respond`** 
-
-*  **`raise`** 
 
 
 ## `POST /api/dataset/duration`
@@ -1084,6 +1122,15 @@ Get historical query execution duration.
 ##### PARAMS:
 
 *  **`database`** 
+
+*  **`query`** 
+
+
+## `POST /api/dataset/native`
+
+Fetch a native version of an MBQL query.
+
+##### PARAMS:
 
 *  **`query`** 
 
@@ -1196,13 +1243,9 @@ Like `GET /api/embed/card/query`, but returns the results as a file in the speci
 
 *  **`token`** 
 
-*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
+*  **`export-format`** value must be one of: `api`, `csv`, `json`, `xlsx`.
 
 *  **`query-params`** 
-
-*  **`respond`** 
-
-*  **`raise`** 
 
 
 ## `GET /api/embed/dashboard/:token`
@@ -1245,17 +1288,13 @@ Fetch the results of running a Card belonging to a Dashboard using a JSON Web To
 
 *  **`token`** 
 
-*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
+*  **`export-format`** value must be one of: `api`, `csv`, `json`, `xlsx`.
 
 *  **`dashcard-id`** 
 
 *  **`card-id`** 
 
 *  **`query-params`** 
-
-*  **`respond`** 
-
-*  **`raise`** 
 
 
 ## `GET /api/embed/dashboard/:token/field/:field-id/remapping/:remapped-id`
@@ -1468,11 +1507,15 @@ Update `Field` with ID.
 ## `GET /api/geojson/:key`
 
 Fetch a custom GeoJSON file as defined in the `custom-geojson` setting. (This just acts as a simple proxy for the
-  file specified for KEY).
+  file specified for `key`).
 
 ##### PARAMS:
 
 *  **`key`** value must be a non-blank string.
+
+*  **`respond`** 
+
+*  **`raise`** 
 
 
 ## `PUT /api/ldap/settings`
@@ -1729,7 +1772,7 @@ You must be a superuser to do this.
 
 ## `GET /api/preview-embed/card/:token`
 
-Fetch a Card you're considering embedding by passing a JWT TOKEN.
+Fetch a Card you're considering embedding by passing a JWT `token`.
 
 ##### PARAMS:
 
@@ -1738,7 +1781,7 @@ Fetch a Card you're considering embedding by passing a JWT TOKEN.
 
 ## `GET /api/preview-embed/card/:token/query`
 
-Fetch the query results for a Card you're considering embedding by passing a JWT TOKEN.
+Fetch the query results for a Card you're considering embedding by passing a JWT `token`.
 
 ##### PARAMS:
 
@@ -1751,7 +1794,7 @@ Fetch the query results for a Card you're considering embedding by passing a JWT
 
 ## `GET /api/preview-embed/dashboard/:token`
 
-Fetch a Dashboard you're considering embedding by passing a JWT TOKEN. 
+Fetch a Dashboard you're considering embedding by passing a JWT `token`. 
 
 ##### PARAMS:
 
@@ -1760,7 +1803,7 @@ Fetch a Dashboard you're considering embedding by passing a JWT TOKEN.
 
 ## `GET /api/preview-embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
 
-Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT TOKEN.
+Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`.
 
 ##### PARAMS:
 
@@ -1850,13 +1893,9 @@ Fetch a publicly-accessible Card and return query results in the specified forma
 
 *  **`uuid`** 
 
-*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
+*  **`export-format`** value must be one of: `api`, `csv`, `json`, `xlsx`.
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
-
-*  **`respond`** 
-
-*  **`raise`** 
 
 
 ## `GET /api/public/dashboard/:uuid`
@@ -1944,6 +1983,15 @@ oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase
 ## `DELETE /api/pulse/:id`
 
 Delete a Pulse. (DEPRECATED -- don't delete a Pulse anymore -- archive it instead.)
+
+##### PARAMS:
+
+*  **`id`** 
+
+
+## `DELETE /api/pulse/:id/subscription/email`
+
+For users to unsubscribe themselves from a pulse subscription.
 
 ##### PARAMS:
 
@@ -2223,8 +2271,6 @@ Login.
 
 *  **`password`** value must be a non-blank string.
 
-*  **`remote-address`** 
-
 *  **`request`** 
 
 
@@ -2238,7 +2284,7 @@ Send a reset email when user has forgotten their password.
 
 *  **`email`** value must be a valid email address.
 
-*  **`remote-address`** 
+*  **`request`** 
 
 
 ## `POST /api/session/google_auth`
@@ -2248,8 +2294,6 @@ Login with Google Auth.
 ##### PARAMS:
 
 *  **`token`** value must be a non-blank string.
-
-*  **`remote-address`** 
 
 *  **`request`** 
 
@@ -2319,8 +2363,8 @@ You must be a superuser to do this.
 
 ## `POST /api/setup/`
 
-Special endpoint for creating the first user during setup.
-   This endpoint both creates the user AND logs them in and returns a session ID.
+Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
+  returns a session ID.
 
 ##### PARAMS:
 
@@ -2336,6 +2380,8 @@ Special endpoint for creating the first user during setup.
 
 *  **`request`** 
 
+*  **`auto_run_queries`** value may be nil, or if non-nil, value must be a boolean.
+
 *  **`password`** Insufficient password strength
 
 *  **`name`** 
@@ -2349,6 +2395,8 @@ Special endpoint for creating the first user during setup.
 *  **`details`** 
 
 *  **`is_on_demand`** 
+
+*  **`database`** 
 
 *  **`last_name`** value must be a non-blank string.
 
@@ -2521,7 +2569,7 @@ You must be a superuser to do this.
 
 ## `GET /api/tiles/:zoom/:x/:y/:lat-field-id/:lon-field-id/:lat-col-idx/:lon-col-idx/`
 
-This endpoints provides an image with the appropriate pins rendered given a MBQL QUERY (passed as a GET query
+This endpoints provides an image with the appropriate pins rendered given a MBQL `query` (passed as a GET query
   string param). We evaluate the query and find the set of lat/lon pairs which are relevant and then render the
   appropriate ones. It's expected that to render a full map view several calls will be made to this endpoint in
   parallel.
@@ -2543,6 +2591,17 @@ This endpoints provides an image with the appropriate pins rendered given a MBQL
 *  **`lon-col-idx`** value must be a valid integer.
 
 *  **`query`** value must be a valid JSON string.
+
+
+## `GET /api/transform/:db-id/:schema/:transform-name`
+
+##### PARAMS:
+
+*  **`db-id`** 
+
+*  **`schema`** 
+
+*  **`transform-name`** 
 
 
 ## `DELETE /api/user/:id`
@@ -2599,7 +2658,7 @@ You must be a superuser to do this.
 
 *  **`group_ids`** value may be nil, or if non-nil, value must be an array. Each value must be an integer greater than zero.
 
-*  **`login_attributes`** value may be nil, or if non-nil, value must be a map with each value either a string or number.
+*  **`login_attributes`** null
 
 
 ## `POST /api/user/:id/send_invite`
@@ -2631,7 +2690,7 @@ Update an existing, active `User`.
 
 *  **`is_superuser`** value may be nil, or if non-nil, value must be a boolean.
 
-*  **`login_attributes`** value may be nil, or if non-nil, value must be a map with each value either a string or number.
+*  **`login_attributes`** null
 
 
 ## `PUT /api/user/:id/password`
@@ -2665,6 +2724,13 @@ You must be a superuser to do this.
 ##### PARAMS:
 
 *  **`id`** 
+
+
+## `GET /api/util/bug_report_details`
+
+
+
+You must be a superuser to do this.
 
 
 ## `GET /api/util/logs`
