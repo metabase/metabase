@@ -149,7 +149,7 @@ describe("metabase-smoketest > admin", () => {
     cy.findByText("Create").click();
 
     cy.contains("People per");
-    cy.contains("This dashboard is loooking empty").should("not.exist");
+    cy.contains("This dashboard is looking empty").should("not.exist");
 
     cy.contains("Save").click();
 
