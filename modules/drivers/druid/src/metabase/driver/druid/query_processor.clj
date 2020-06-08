@@ -216,8 +216,9 @@
   (str/replace s #"([%_\\])" "\\\\$1"))
 
 (defn- filter:bound
-  "Numeric `bound` filter, for finding values of `field` that are less than some value-or-field, greater than some value-or-field, or
-  both. Defaults to being `inclusive` (e.g. `<=` instead of `<`) but specify option `inclusive?` to change this."
+  "Numeric `bound` filter, for finding values of `field` that are less than some value-or-field, greater than some
+  value-or-field, or both. Defaults to being `inclusive` (e.g. `<=` instead of `<`) but specify option `inclusive?` to
+  change this."
   [field & {:keys [lower upper inclusive?]
             :or   {inclusive? true}}]
   {:type        :bound
@@ -228,29 +229,18 @@
    :lowerStrict (not inclusive?)
    :upperStrict (not inclusive?)})
 
-(defn- filter-fields-are-dimensions?
-  [fields]
-  (every? (fn [field]
-            (or
-             (not= (dimension-or-metric? field) :metric)
-             (log/warn
-              (u/format-color 'red
-                  (tru "WARNING: Filtering only works on dimensions! ''{0}'' is a metric. Ignoring filter."
-                       (->rvalue field))))))
-          fields))
-
 (defmulti ^:private parse-filter
+  "Parse an MBQL `filter-clause` and generate an appropriate Druid filter map.
+
+    (parse-filter [:= [:field-id 1] 2]) ; -> {:type :selector, :dimension \"venue_price\", :value 2}"
   {:arglists '([filter-clause])}
   ;; dispatch function first checks to make sure this is a valid filter clause, then dispatches off of the clause name
   ;; if it is.
   (fn [[clause-name & args, :as filter-clause]]
     (let [fields (filter (partial mbql.u/is-clause? #{:field-id :datetime-field}) args)]
-      (when (and
-             ;; make sure all Field args are dimensions
-             (filter-fields-are-dimensions? fields)
-             ;; and make sure none of the Fields are datetime Fields
-             ;; We'll handle :timestamp separately. It needs to go in :intervals instead
-             (not-any? (partial mbql.u/is-clause? :datetime-field) fields))
+      ;; and make sure none of the Fields are datetime Fields We'll handle :timestamp separately. It needs to go in
+      ;; :intervals instead
+      (when (not-any? (partial mbql.u/is-clause? :datetime-field) fields)
         clause-name))))
 
 (defmethod parse-filter nil
@@ -445,7 +435,7 @@
   [_ {filter-clause :filter} druid-query]
   (if-not filter-clause
     druid-query
-    (let [filter    (parse-filter    filter-clause)
+    (let [filter    (parse-filter filter-clause)
           intervals (compile-intervals (filter-clause->intervals filter-clause))]
       (cond-> druid-query
         (seq filter)    (assoc-in [:query :filter] filter)

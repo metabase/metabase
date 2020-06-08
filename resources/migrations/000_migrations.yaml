@@ -6177,25 +6177,7 @@ databaseChangeLog:
           - sql:
                 sql: ALTER TABLE `dashboardcard_series` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-# Change query_cache.updated_at from datetime to timestamp [with time zone] to get > second resolution on MySQL.
-
-  - property:
-      name: cache_timestamp_type
-      value: timestamp with time zone
-      dbms: postgresql,h2
-  - property:
-      name: cache_timestamp_type
-      value: timestamp
-      dbms: mysql,mariadb
-  - changeSet:
-      id: 161
-      author: camsaul
-      comment: Added 0.35.0
-      changes:
-        - modifyDataType:
-            tableName: query_cache
-            columnName: updated_at
-            newDataType: ${cache_timestamp_type}
+# [161 has been removed. Superceded by 166]
 
 # Drop the old query_queryexecution table if present. This was replaced by query_execution in 0.23.0. This was
 # formerly a data migration but was converted to a Liquibase migration so people running migrations manually will
@@ -6212,3 +6194,60 @@ databaseChangeLog:
       changes:
         - dropTable:
             tableName: query_queryexecution
+
+# Drop Card.read_permissions. Prior to 0.30.0 Card permissions were always based on the Database/Table(s) being
+# queried (i.e., the permissions model we use for ad-hoc queries). These permissions were calculated and stored in
+# `read_permissions` for performance reasons. In 0.30.0, we switched to having Card permissions always be inherited
+# from their parent Collection, and the column hasn't been used since then. Time to let it go.
+
+  - changeSet:
+      id: 163
+      author: camsaul
+      comment: 'Added 0.35.0'
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: read_permissions
+
+# Add User `locale` -- when set, this User will see the Metabase in this Locale rather than the system default Locale
+# (the `site-locale` Setting).
+
+  - changeSet:
+      id: 164
+      author: camsaul
+      comment: 'Added 0.35.0'
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              name: locale
+              remarks: 'Preferred ISO locale (language/country) code, e.g "en" or "en-US", for this User. Overrides site default.'
+              type: varchar(5)
+
+# Change field_values.updated_at and query_cache.updated_at from datetime to timestamp [with time zone] to get >
+# second resolution on MySQL.
+#
+# query_cache.updated_at was originally converted to a timestamp in 161, but we used `timestamp` instead of
+# `timestamp(6)`. It is converted correctly here.
+
+  - property:
+      name: timestamp_type
+      value: timestamp with time zone
+      dbms: postgresql,h2
+  - property:
+      name: timestamp_type
+      value: timestamp(6)
+      dbms: mysql,mariadb
+  - changeSet:
+      id: 166
+      author: camsaul
+      comment: Added 0.36.0/1.35.4
+      changes:
+        - modifyDataType:
+            tableName: metabase_fieldvalues
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+        - modifyDataType:
+            tableName: query_cache
+            columnName: updated_at
+            newDataType: ${timestamp_type}

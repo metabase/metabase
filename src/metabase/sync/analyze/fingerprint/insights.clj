@@ -99,25 +99,19 @@
 
 (def ^:private ^:const ^Long validation-set-size 20)
 
-(defn- real-number?
-  [x]
-  (and (number? x)
-       (not (Double/isNaN x))
-       (not (Double/isInfinite x))))
-
 (defn- best-fit
   "Fit curves from `trendline-function-families` and pick the one with the smallest RMSE.
    To keep the operation single pass we collect a small validation set as we go using reservoir
    sampling, and use it to calculate RMSE."
   [fx fy]
   (redux/post-complete
-   (redux/fuse
+   (f/robust-fuse
     {:fits           (->> (for [{:keys [x-link-fn y-link-fn formula model]} trendline-function-families]
                             (redux/post-complete
                              (stats/simple-linear-regression (comp (stats/somef x-link-fn) fx)
                                                              (comp (stats/somef y-link-fn) fy))
                              (fn [[offset slope]]
-                               (when (every? real-number? [offset slope])
+                               (when (every? f/real-number? [offset slope])
                                  {:model   (model offset slope)
                                   :formula (formula offset slope)}))))
                           (apply redux/juxt))
@@ -133,7 +127,7 @@
               (map #(assoc % :mae (transduce identity
                                              (mae (comp (:model %) first) second)
                                              validation-set)))
-              (filter (comp real-number? :mae))
+              (filter (comp f/real-number? :mae))
               not-empty
               (apply min-key :mae)
               :formula))))
@@ -202,17 +196,20 @@
                (redux/post-complete
                 (let [y-position (:position number-col)
                       yfn        #(nth % y-position)]
-                  (redux/juxt ((map yfn) (last-n 2))
-                              ((map xfn) (last-n 2))
-                              (stats/simple-linear-regression xfn yfn)
-                              (best-fit xfn yfn)))
+                  ((filter (comp f/real-number? yfn))
+                   (redux/juxt ((map yfn) (last-n 2))
+                               ((map xfn) (last-n 2))
+                               (stats/simple-linear-regression xfn yfn)
+                               (best-fit xfn yfn))))
                 (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit]]
-                  (let [unit         (if (or (nil? (:unit datetime))
-                                             (->> datetime :unit mbql.u/normalize-token (= :default)))
-                                       (infer-unit x-previous x-current)
-                                       (:unit datetime))
+                  (let [unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
+                                       (if (or (nil? unit)
+                                               (= unit :default))
+                                         (infer-unit x-previous x-current)
+                                         unit))
                         show-change? (valid-period? x-previous x-current unit)]
-                    {:last-value     y-current
+                    (f/robust-map
+                     :last-value     y-current
                      :previous-value (when show-change?
                                        y-previous)
                      :last-change    (when show-change?
@@ -221,7 +218,7 @@
                      :offset         offset
                      :best-fit       best-fit
                      :col            (:name number-col)
-                     :unit           unit})))))
+                     :unit           unit))))))
       (trs "Error generating timeseries insight keyed by: {0}"
            (sync-util/name-for-logging (field/map->FieldInstance datetime))))))
 

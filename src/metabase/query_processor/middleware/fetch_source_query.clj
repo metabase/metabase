@@ -20,8 +20,11 @@
     {:database 1, :type :query, :query {:source-query {...}, :source-metadata {...}}}
 
   TODO - consider renaming this namespace to `metabase.query-processor.middleware.resolve-card-id-source-tables`"
-  (:require [clojure.string :as str]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.mbql
              [normalize :as normalize]
              [schema :as mbql.s]
@@ -77,7 +80,7 @@
 ;;; |                                       Resolving card__id -> source query                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private trim-query :- su/NonBlankString
+(s/defn ^:private trim-sql-query :- su/NonBlankString
   "Native queries can have trailing SQL comments. This works when executed directly, but when we use the query in a
   nested query, we wrap it in another query, which can cause the last part of the query to be unintentionally
   commented out, causing it to fail. This function removes any trailing SQL comment."
@@ -95,22 +98,26 @@
   (let [card
         (or (db/select-one [Card :dataset_query :database_id :result_metadata] :id card-id)
             (throw (ex-info (tru "Card {0} does not exist." card-id)
-                     {:card-id card-id})))
+                            {:card-id card-id})))
 
-        {{mbql-query                     :query
-          database-id                    :database
-          {native-query  :query,
-           template-tags :template-tags} :native} :dataset_query
-         result-metadata                          :result_metadata}
+        {{mbql-query                   :query
+          database-id                  :database
+          {template-tags :template-tags
+           :as           native-query} :native} :dataset_query
+         result-metadata                        :result_metadata}
         card
 
         source-query
         (or mbql-query
             (when native-query
-              (cond-> {:native (trim-query card-id native-query)}
-                (seq template-tags) (assoc :template-tags template-tags)))
+              ;; rename `:query` to `:native` because source queries have a slightly different shape
+              (let [native-query (set/rename-keys native-query {:query :native})]
+                (cond-> native-query
+                  ;; trim trailing slashes from SQL, but not other types of native queries
+                  (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
+                  (empty? template-tags)           (dissoc :template-tags))))
             (throw (ex-info (tru "Missing source query in Card {0}" card-id)
-                     {:card card})))]
+                            {:card card})))]
     ;; log the query at this point, it's useful for some purposes
     ;;
     ;; TODO - it would be nicer if we could just have some sort of debug function to store useful bits of context
@@ -142,9 +149,12 @@
 
 (s/defn ^:private resolve-one :- MapWithResolvedSourceQuery
   [{:keys [source-table], :as m} :- {:source-table mbql.s/source-table-card-id-regex, s/Keyword s/Any}]
-  (let [source-query-and-metadata (-> source-table source-table-str->card-id card-id->source-query-and-metadata)]
+  (let [card-id                   (-> source-table source-table-str->card-id)
+        source-query-and-metadata (-> card-id card-id->source-query-and-metadata)]
     (merge
      (dissoc m :source-table)
+     ;; record the `::card-id` we've resolved here. We'll include it in `:info` for permissions purposes later
+     {::card-id card-id}
      source-query-and-metadata)))
 
 (defn- resolve-all*
@@ -215,15 +225,29 @@
     (&match :guard (every-pred map? :database (comp integer? :database)))
     (recur (dissoc &match :database))))
 
+(defn- add-card-id-to-info
+  "If the ID of the Card we've resolved (`::card-id`) was added by a previous step, add it to `:info` so it can be used
+  for permissions purposes; remove any `::card-id`s in the query."
+  [query]
+  (let [card-id (get-in query [:query ::card-id])
+        query   (mbql.u/replace-in query [:query]
+                  (&match :guard (every-pred map? ::card-id))
+                  (recur (dissoc &match ::card-id)))]
+    (cond-> query
+      card-id (update-in [:info :card-id] #(or % card-id)))))
+
 (s/defn ^:private resolve-all :- su/Map
   "Recursively replace all Card ID source tables in `query` with resolved `:source-query` and `:source-metadata`. Since
   the `:database` is only useful for top-level source queries, we'll remove it from all other levels."
   [query :- su/Map]
-  (-> query
+  ;; if a `::card-id` is already in the query, remove it, so we don't pull user-supplied input up into `:info`
+  ;; allowing someone to bypass permissions
+  (-> (m/dissoc-in query [:query ::card-id])
       check-for-circular-references
       resolve-all*
       copy-source-query-database-ids
-      remove-unneeded-database-ids))
+      remove-unneeded-database-ids
+      add-card-id-to-info))
 
 (s/defn ^:private resolve-card-id-source-tables* :- FullyResolvedQuery
   "Resolve `card__n`-style `:source-tables` in `query`."

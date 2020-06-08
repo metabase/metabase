@@ -75,7 +75,7 @@
 
 (defn- native-column-info-for-a-single-column
   "Determine column metadata for a single column for native query results."
-  [{col-name :name, driver-base-type :base_type, :as col} values-sample]
+  [unique-name-fn {col-name :name, driver-base-type :base_type, :as driver-col-metadata} values-sample]
   ;; Native queries don't have the type information from the original `Field` objects used in the query.
   ;;
   ;; If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
@@ -94,14 +94,14 @@
      ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
      ;; `:field-literal`, omit the `:field_ref`.
      (when (seq col-name)
-       {:field_ref [:field-literal col-name base-type]})
-     col
+       {:field_ref [:field-literal (unique-name-fn col-name) base-type]})
+     driver-col-metadata
      {:base_type base-type})))
 
 (defmethod column-info :native
   [_ {:keys [cols rows]}]
   (check-driver-native-columns cols rows)
-  (mapv native-column-info-for-a-single-column
+  (mapv (partial native-column-info-for-a-single-column (mbql.u/unique-name-generator))
         cols
         (for [i (range (count cols))]
           (for [row rows]
@@ -521,31 +521,33 @@
 ;;; |                                           add-column-info middleware                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- merge-col-metadata
+  "Merge a map from `:cols` returned by the driver with the column metadata determined by the logic above."
+  [our-col-metadata driver-col-metadata]
+  ;; 1. Prefer our `:name` if it's something different that what's returned by the driver
+  ;;    (e.g. for named aggregations)
+  ;; 2. Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
+  ;; 3. Then, prefer any non-nil keys returned by the driver
+  ;; 4. Finally, merge in any of our other keys
+  (let [non-nil-driver-col-metadata (m/filter-vals some? driver-col-metadata)
+        our-base-type               (when (= (:base_type driver-col-metadata) :type/*)
+                                      (u/select-non-nil-keys our-col-metadata [:base_type]))
+        our-name                    (u/select-non-nil-keys our-col-metadata [:name])]
+    (merge our-col-metadata
+           non-nil-driver-col-metadata
+           our-base-type
+           our-name)))
+
 (defn- merge-cols-returned-by-driver
-  "If the driver returned a `:cols` map with its results, which is completely optional, merge our `:cols` derived
-  from logic above with theirs. We'll prefer the values in theirs to ours. This is important for wacky drivers
-  like GA that use things like native metrics, which we have no information about.
+  "Merge our column metadata (`:cols`) derived from logic above with the column metadata returned by the driver. We'll
+  prefer the values in theirs to ours. This is important for wacky drivers like GA that use things like native
+  metrics, which we have no information about.
 
   It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order."
-  [cols cols-returned-by-driver]
+  [our-cols cols-returned-by-driver]
   (if (seq cols-returned-by-driver)
-    (map (fn [our-col-metadata driver-col-metadata]
-           ;; 1. Prefer our `:name` if it's something different that what's returned by the driver
-           ;;    (e.g. for named aggregations)
-           ;; 2. Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
-           ;; 3. Then, prefer any non-nil keys returned by the driver
-           ;; 4. Finally, merge in any of our other keys
-           (let [non-nil-driver-col-metadata (m/filter-vals some? driver-col-metadata)
-                 our-base-type               (when (= (:base_type driver-col-metadata) :type/*)
-                                               (u/select-non-nil-keys our-col-metadata [:base_type]))
-                 our-name                    (u/select-non-nil-keys our-col-metadata [:name])]
-             (merge our-col-metadata
-                    non-nil-driver-col-metadata
-                    our-base-type
-                    our-name)))
-         cols
-         cols-returned-by-driver)
-    cols))
+    (mapv merge-col-metadata our-cols cols-returned-by-driver)
+    our-cols))
 
 (s/defn merged-column-info :- ColsWithUniqueNames
   "Returns deduplicated and merged column metadata (`:cols`) for query results by combining (a) the initial results

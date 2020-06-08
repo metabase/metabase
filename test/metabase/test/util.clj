@@ -287,10 +287,10 @@
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
     `(do ~@body)
-    (let [body `(do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body))]
-      (if (seq more)
-        `(with-temporary-setting-values ~more ~body)
-        body))))
+    `(do-with-temporary-setting-value ~(keyword setting-k) ~value
+       (fn []
+         (with-temporary-setting-values ~more
+           ~@body)))))
 
 (defn do-with-discarded-setting-changes [settings thunk]
   (initialize/initialize-if-needed! :db :plugins)
@@ -346,7 +346,6 @@
   [model object-or-id column->temp-value & body]
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
 
-
 (defn is-uuid-string?
   "Is string S a valid UUID string?"
   ^Boolean [^String s]
@@ -361,7 +360,7 @@
     @messages))
 
 (defmacro with-log-messages
-  "Execute BODY, and return a vector of all messages logged using the `log/` family of functions. Messages are of the
+  "Execute `body`, and return a vector of all messages logged using the `log/` family of functions. Messages are of the
   format `[:level throwable message]`, and are returned in chronological order from oldest to newest.
 
      (with-log-messages (log/warn \"WOW\")) ; -> [[:warn nil \"WOW\"]]"
@@ -571,7 +570,8 @@
 
 (defn do-with-model-cleanup [model-seq f]
   (try
-    (f)
+    (testing (str (pr-str (cons 'with-model-cleanup model-seq)) "\n")
+      (f))
     (finally
       (doseq [model model-seq]
         (do-model-cleanup! (db/resolve-model model))))))

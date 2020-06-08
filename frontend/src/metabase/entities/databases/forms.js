@@ -3,6 +3,7 @@ import { t, jt } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/components/ExternalLink";
+import getFieldsForBigQuery from "./big-query-fields";
 
 import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
@@ -30,6 +31,39 @@ const DATABASE_DETAIL_OVERRIDES = {
         <div>{getAuthCodeEnableAPILink(engine, details)}</div>
       </div>
     ),
+  }),
+  "service-account-json": (engine, details) => ({
+    validate: value => {
+      if (!value) {
+        return t`required`;
+      }
+      try {
+        JSON.parse(value);
+      } catch (e) {
+        return t`invalid JSON`;
+      }
+      return null;
+    },
+  }),
+  "tunnel-private-key": (engine, details) => ({
+    title: t`SSH private key`,
+    placeholder: t`Paste the contents of your ssh private key here`,
+    type: "text",
+  }),
+  "tunnel-private-key-passphrase": (engine, details) => ({
+    title: t`Passphrase for the SSH private key`,
+  }),
+  "tunnel-auth-option": (engine, details) => ({
+    title: t`SSH Authentication`,
+    options: [
+      { name: t`SSH Key`, value: "ssh-key" },
+      { name: t`Password`, value: "password" },
+    ],
+  }),
+  "ssl-cert": (engine, details) => ({
+    title: t`Server SSL certificate chain`,
+    placeholder: t`Paste the contents of the server's SSL certificate chain here`,
+    type: "text",
   }),
 };
 
@@ -137,7 +171,11 @@ function getAuthCodeEnableAPILink(engine, details) {
 }
 
 function getFieldsForEngine(engine, details) {
-  const info = (MetabaseSettings.get("engines") || {})[engine];
+  let info = (MetabaseSettings.get("engines") || {})[engine];
+  if (engine === "bigquery") {
+    // BigQuery has special logic to switch out forms depending on what style of authenication we use.
+    info = getFieldsForBigQuery(details);
+  }
   if (info) {
     const fields = [];
     for (const field of info["details-fields"]) {
@@ -149,6 +187,29 @@ function getFieldsForEngine(engine, details) {
       ) {
         continue;
       }
+
+      // hide the auth settings based on which auth method is selected
+      // private key auth needs tunnel-private-key and tunnel-private-key-passphrase
+      if (
+        field.name.startsWith("tunnel-private-") &&
+        details["tunnel-auth-option"] !== "ssh-key"
+      ) {
+        continue;
+      }
+
+      // username / password auth uses tunnel-pass
+      if (
+        field.name === "tunnel-pass" &&
+        details["tunnel-auth-option"] === "ssh-key"
+      ) {
+        continue;
+      }
+
+      // NOTE: special case to hide the SSL cert field if SSL is disabled
+      if (field.name === "ssl-cert" && !details["ssl"]) {
+        continue;
+      }
+
       const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
       // convert database details-fields to Form fields
       fields.push({
@@ -156,6 +217,7 @@ function getFieldsForEngine(engine, details) {
         title: field["display-name"],
         type: field.type,
         placeholder: field.placeholder || field.default,
+        options: field.options,
         validate: value => (field.required && !value ? t`required` : null),
         normalize: value =>
           value === "" || value == null
@@ -164,6 +226,7 @@ function getFieldsForEngine(engine, details) {
               : null
             : value,
         horizontal: field.type === "boolean",
+        initial: field.default,
         ...(overrides && overrides(engine, details)),
       });
     }

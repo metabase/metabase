@@ -87,14 +87,12 @@
   (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
         spec                (connection-details->spec driver details-with-tunnel)
         properties          (data-warehouse-connection-pool-properties driver)]
-    (assoc (connection-pool/connection-pool-spec spec properties)
-           :ssh-tunnel (:tunnel-connection details-with-tunnel))))
+    (connection-pool/connection-pool-spec spec properties)))
 
-(defn- destroy-pool! [database-id {:keys [ssh-tunnel], :as pool-spec}]
+(defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color 'red (trs "Closing old connection pool for database {0} ..." database-id)))
   (connection-pool/destroy-connection-pool! pool-spec)
-  (when ssh-tunnel
-    (.disconnect ^com.jcraft.jsch.Session ssh-tunnel)))
+  (ssh/close-tunnel! pool-spec))
 
 (defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by Database `:id`."}
   database-id->connection-pool

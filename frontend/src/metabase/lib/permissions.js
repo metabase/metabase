@@ -107,7 +107,7 @@ export const getTablesPermission = (
     return getPermission(
       permissions,
       groupId,
-      [databaseId, "schemas", schemaName],
+      [databaseId, "schemas", schemaName || ""],
       true,
     );
   } else {
@@ -128,7 +128,7 @@ export const getFieldsPermission = (
     return getPermission(
       permissions,
       groupId,
-      [databaseId, "schemas", schemaName, tableId],
+      [databaseId, "schemas", schemaName || "", tableId],
       true,
     );
   } else {
@@ -232,7 +232,8 @@ export function inferAndUpdateEntityPermissions(
   metadata: Metadata,
 ) {
   // $FlowFixMe
-  const { databaseId, schemaName } = entityId;
+  const { databaseId } = entityId;
+  const schemaName = entityId.schemaName || "";
 
   if (schemaName) {
     // Check all tables for current schema if their shared schema-level permission value should be updated
@@ -286,7 +287,8 @@ export function updateFieldsPermission(
   value: string,
   metadata: Metadata,
 ): GroupsPermissions {
-  const { databaseId, schemaName, tableId } = entityId;
+  const { databaseId, tableId } = entityId;
+  const schemaName = entityId.schemaName || "";
 
   permissions = updateTablesPermission(
     permissions,
@@ -325,7 +327,7 @@ export function updateTablesPermission(
   permissions = updatePermission(
     permissions,
     groupId,
-    [databaseId, "schemas", schemaName],
+    [databaseId, "schemas", schemaName || ""],
     value,
     tableIds,
   );
@@ -343,7 +345,11 @@ export function updateSchemasPermission(
   const database = metadata.databases[databaseId];
   const schemaNames = database && database.schemaNames();
   const schemaNamesOrNoSchema =
-    schemaNames && schemaNames.length > 0 ? schemaNames : [""];
+    schemaNames &&
+    schemaNames.length > 0 &&
+    !(schemaNames.length === 1 && schemaNames[0] === null)
+      ? schemaNames
+      : [""];
 
   permissions = downgradeNativePermissionsIfNeeded(
     permissions,

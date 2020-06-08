@@ -53,8 +53,9 @@
 
 (defn- add-tables [dbs]
   (let [db-id->tables (group-by :db_id (filter mi/can-read? (db/select Table
-                                                              :active true
-                                                              :db_id  [:in (map :id dbs)]
+                                                              :active          true
+                                                              :db_id           [:in (map :id dbs)]
+                                                              :visibility_type nil
                                                               {:order-by [[:%lower.schema :asc]
                                                                           [:%lower.display_name :asc]]})))]
     (for [db dbs]
@@ -123,19 +124,20 @@
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
   [& {:keys [additional-constraints xform], :or {xform identity}}]
-  (transduce
-   (comp (filter card-can-be-used-as-source-query?) xform)
-   (completing conj #(hydrate % :collection))
-   []
-   (db/select-reducible [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
-     {:where    (into [:and
-                       [:not= :result_metadata nil]
-                       [:= :archived false]
-                       [:in :database_id (ids-of-dbs-that-support-source-queries)]
-                       (collection/visible-collection-ids->honeysql-filter-clause
-                        (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-                      additional-constraints)
-      :order-by [[:%lower.name :asc]]})))
+  (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
+    (transduce
+     (comp (filter card-can-be-used-as-source-query?) xform)
+     (completing conj #(hydrate % :collection))
+     []
+     (db/select-reducible [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
+       {:where    (into [:and
+                         [:not= :result_metadata nil]
+                         [:= :archived false]
+                         [:in :database_id ids-of-dbs-that-support-source-queries]
+                         (collection/visible-collection-ids->honeysql-filter-clause
+                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                        additional-constraints)
+       :order-by [[:%lower.name :asc]]}))))
 
 (defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
@@ -163,7 +165,7 @@
   (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata options)]
     ;; only add the 'Saved Questions' DB if there are Cards that can be used
     (cond-> dbs
-      (source-query-cards-exist?) (concat [virtual-db-metadata]))))
+      (and (source-query-cards-exist?) virtual-db-metadata) (concat [virtual-db-metadata]))))
 
 (defn- dbs-list [& {:keys [include-tables? include-saved-questions-db? include-saved-questions-tables?]}]
   (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]})))]
@@ -232,6 +234,10 @@
   [db]
   (assoc db :schedules (expanded-schedules db)))
 
+(defn- filter-sensitive-fields
+  [fields]
+  (remove #(= :sensitive (:visibility_type %)) fields))
+
 (defn- get-database-hydrate-include
   "If URL param `?include=` was passed to `GET /api/database/:id`, hydrate the Database appropriately."
   [db include]
@@ -240,7 +246,12 @@
     (-> (hydrate db (case include
                       "tables"        :tables
                       "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
-        (update :tables (partial filter mi/can-read?)))))
+        (update :tables (fn [tables]
+                          (cond->> tables
+                            ; filter hidden tables
+                            true                        (filter (every-pred (complement :visibility_type) mi/can-read?))
+                            ; filter hidden fields
+                            (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
@@ -264,9 +275,15 @@
   []
   (saved-cards-virtual-db-metadata :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id]
+(defn- db-metadata [id include-hidden?]
   (-> (api/read-check Database id)
       (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
+      (update :tables (if include-hidden?
+                        identity
+                        (fn [tables]
+                          (->> tables
+                               (remove :visibility_type)
+                               (map #(update % :fields filter-sensitive-fields))))))
       (update :tables (fn [tables]
                         (for [table tables
                               :when (mi/can-read? table)]
@@ -276,9 +293,11 @@
 
 (api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`.
+   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
    Returns DB, fields, and field values."
-  [id]
-  (db-metadata id))
+  [id include_hidden]
+  {include_hidden (s/maybe su/BooleanString)}
+  (db-metadata id include_hidden))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
@@ -663,7 +682,7 @@
 (defn- schema-tables-list [db-id schema]
   (api/read-check Database db-id)
   (api/check-403 (can-read-schema? db-id schema))
-  (filter mi/can-read? (db/select Table :db_id db-id, :schema schema, :active true, {:order-by [[:name :asc]]})))
+  (filter mi/can-read? (db/select Table :db_id db-id, :schema schema, :active true, :visibility_type nil, {:order-by [[:name :asc]]})))
 
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"

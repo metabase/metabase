@@ -257,7 +257,7 @@
 
   Minimal example:
 
-    (streaming-response {:content-type \"applicaton/json; charset=utf-8\"} [os canceled-chan]
+    (streaming-response {:content-type \"application/json; charset=utf-8\"} [os canceled-chan]
       (write-something-to-stream! os))
 
   `f` should block until it is completely finished writing to the stream, which will be closed thereafter.

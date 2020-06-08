@@ -184,10 +184,25 @@ describe("scenarios > question > native", () => {
       metadata_checksum: null,
     }).then(response => {
       cy.visit(`/question/${response.body.id}?created_at=2020-01`);
-      modal()
-        .contains("Okay")
-        .click();
       cy.contains("580");
     });
+  });
+
+  it("can save a question with no rows", () => {
+    cy.visit("/question/new");
+    cy.contains("Native query").click();
+    cy.get(".ace_content").type("select * from people where false");
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.contains("No results!");
+    cy.get(".Icon-contract").click();
+    cy.contains("Save").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Name").type("empty question");
+      cy.findByText("Save").click();
+    });
+
+    // confirm that the question saved and url updated
+    cy.location("pathname").should("match", /\/question\/\d+/);
   });
 });

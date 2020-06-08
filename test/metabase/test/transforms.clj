@@ -1,5 +1,6 @@
 (ns metabase.test.transforms
-  (:require [metabase.transforms.specs :as t.specs]))
+  (:require [clojure.test :refer :all]
+            [metabase.transforms.specs :as t.specs]))
 
 (def test-transform-spec
   "A test transform spec written against our test DB."
@@ -24,5 +25,6 @@
 (defmacro with-test-transform-specs
   "Evaluate `body` in a context where `transforms.specs/transform-specs` have been swapped for `test-transform-specs`"
   [& body]
-  `(with-redefs [t.specs/transform-specs (delay [test-transform-spec])]
-     ~@body))
+  `(testing "with-test-transform-specs\n"
+     (with-redefs [t.specs/transform-specs (delay [test-transform-spec])]
+       ~@body)))
