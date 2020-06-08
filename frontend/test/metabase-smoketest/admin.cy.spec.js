@@ -103,8 +103,8 @@ describe("metabase-smoketest > admin", () => {
       .contains("Created At", { timeout: 20000 })
       .click();
     cy.get("input[type='text']")
-        .clear()
-        .type("5");
+      .clear()
+      .type("5");
     cy.findByText("Days").click();
     cy.findByText("Years").click();
     cy.get(".scroll-y")
@@ -260,9 +260,9 @@ describe("metabase-smoketest > admin", () => {
     // ================
     // should add a new user
     // =================
-    
+
     // Sets up route
-    cy.server()
+    cy.server();
     cy.route({
       method: "POST",
       url: "/api/user",
@@ -294,13 +294,13 @@ describe("metabase-smoketest > admin", () => {
       .click();
     cy.findByText("English").click();
     cy.findByText("Create").click();
-    
+
     cy.wait("@createUser").then(xhr => {
-        cy.wrap(xhr.request.body.password).as("password");
-      });
-    
-    //  Password confirmation(second modal) 
-    cy.contains("has been added")
+      cy.wrap(xhr.request.body.password).as("password");
+    });
+
+    //  Password confirmation(second modal)
+    cy.contains("has been added");
     cy.findByText("Done").click();
 
     cy.contains(new_user.username);
@@ -321,59 +321,61 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Sign in").click();
       cy.contains(new_user.first_name);
 
-    // =================
-    // should see questions currently in the "Our Analytics" collection
-    // =================
+      // =================
+      // should see questions currently in the "Our Analytics" collection
+      // =================
 
-    cy.findByText("Browse all items").click()
-    cy.contains("My personal collection")
+      cy.findByText("Browse all items").click();
+      cy.contains("My personal collection");
 
-    // =================
-    // should see dashboard in the "Our Analytics" collection
-    // =================
+      // =================
+      // should see dashboard in the "Our Analytics" collection
+      // =================
 
-    cy.findByText("Dashboards").click();
-    cy.contains("Demo Dash 2");
+      cy.findByText("Dashboards").click();
+      cy.contains("Demo Dash 2");
 
-    // =================
-    // Create my own question
-    // =================
+      // =================
+      // Create my own question
+      // =================
 
-    cy.findByText("Ask a question").click();
-    
-    cy.contains("Native query");
+      cy.findByText("Ask a question").click();
 
-    cy.findByText("Simple question").click();
-    cy.findByText("Sample Dataset").click();
-    cy.findByText("Reviews").click();
+      cy.contains("Native query");
 
-    cy.get(".Button")
+      cy.findByText("Simple question").click();
+      cy.findByText("Sample Dataset").click();
+      cy.findByText("Reviews").click();
+
+      cy.get(".Button")
         .contains("Summarize")
         .click();
-    cy.get(".scroll-y")
-      .contains("Rating", { timeout: 20000 })
-      .click();
-    cy.findByText("Done").click();
+      cy.get(".scroll-y")
+        .contains("Rating", { timeout: 20000 })
+        .click();
+      cy.findByText("Done").click();
 
-    cy.contains("Auto binned");
-    cy.get(".Icon-bar");
+      cy.contains("Auto binned");
+      cy.get(".Icon-bar");
 
-    // =================
-    // Create my own dashboard
-    // =================
+      // =================
+      // Create my own dashboard
+      // =================
 
-    cy.get(".Icon-add").click();
-    cy.findByText("New dashboard").click();
-    cy.findByLabelText("Name").type("New User Demo Dash");
-    cy.findByLabelText("Description").type("This is my own demo dash!");
-    cy.get(".ModalBody")
+      cy.get(".Icon-add").click();
+      cy.findByText("New dashboard").click();
+      cy.findByLabelText("Name").type("New User Demo Dash");
+      cy.findByLabelText("Description").type("This is my own demo dash!");
+      cy.get(".ModalBody")
         .find(".Icon-chevrondown")
         .click();
-    cy.findAllByText("Our analytics").last().click();
-    // Also cannot select "My personal collection" here
-    cy.findByText("Create").click();
+      cy.findAllByText("Our analytics")
+        .last()
+        .click();
+      // Also cannot select "My personal collection" here
+      cy.findByText("Create").click();
 
-    cy.contains("This dashboard is looking empty");
+      cy.contains("This dashboard is looking empty");
     });
   });
 });

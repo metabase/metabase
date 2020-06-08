@@ -274,35 +274,8 @@ describe("smoketest > new_user", () => {
     // =================
 
     // Distinctions
-    // **** This test needs to be improved with variables that will change if the Sample data changes
-
-    cy.get(".hover-parent")
-      .eq(1)
-      .trigger("mouseover")
-      .get(".Icon-close")
-      .click();
-
-    cy.get(".TableInteractive-header")
-      .find(".cellData")
-      .eq(-3)
-      .click();
-    cy.findByText("Distincts").click();
-    cy.contains("10");
-    cy.contains("3").should("not.exist");
-
-    cy.get(".Icon-close")
-      .last()
-      .click();
 
     // Distributing
-
-    cy.findByText("Rating").click();
-    cy.findByText("Distribution").click();
-    cy.get(".Icon-table2").click();
-
-    cy.findByText("Count");
-    cy.findByText("Created At").should("not.exist");
-    cy.get(".cellData").should("have.length", 14);
 
     // Refresh works
 
