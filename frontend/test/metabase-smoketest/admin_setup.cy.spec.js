@@ -1,5 +1,11 @@
 import { restore, USERS, signInAsAdmin } from "__support__/cypress";
 
+const new_user = {
+  first_name: "Barb",
+  last_name: "Tabley",
+  username: "new@metabase.com",
+};
+
 describe("smoketest > admin_setup", () => {
   before(restore);
   before(signInAsAdmin);
@@ -8,7 +14,7 @@ describe("smoketest > admin_setup", () => {
     cy.visit("/")
 
     // *******************************
-    // *** Admin > Successful Setup **
+    // *** Admin - Successful Setup **
     // ********************************
 
     // =================
@@ -135,7 +141,7 @@ describe("smoketest > admin_setup", () => {
 
     // Check member count
 
-    cy.findAllByText("People")
+    cy.findAllByText("People") // *** Going to People and then to Groups should be unnecessary
       .last()
       .click();
     
@@ -153,6 +159,61 @@ describe("smoketest > admin_setup", () => {
     // =================
     // should create new users in different groups
     // =================
+
+    cy.findAllByText("People")
+      .last()
+      .click();
+
+    // Add new user into 2 groups
+
+    cy.findByText("Add someone").click();
+    cy.findByLabelText("First name").type(new_user.first_name);
+    cy.findByLabelText("Last name").type(new_user.last_name);
+    cy.findByLabelText("Email").type(new_user.username);
+    cy.get(".ModalBody")
+      .find(".Icon-chevrondown")
+      .first()
+      .click();
+    cy.findByText("English").click();
+    cy.contains("Turkish").should("not.exist");
+    cy.get(".ModalBody") // *** I should be able to select using $ cy.findByText("Default"), but cypress says there are multiple instances
+      .find(".Icon-chevrondown")
+      .last()
+      .click();
+    cy.findAllByText("collection") // *** I should be able to select collection without "All" because there's only one instance of "collection"
+      .last()
+      .click();
+    cy.findByText("Marketing").click();
+    cy.findByText("Create").click();
+    cy.findByText("Done").click();
+
+    // Check new user is in those groups
+
+    cy.contains(new_user.first_name + " " + new_user.last_name)
+    cy.get("td")
+      .eq("-3")
+      .contains("2 other groups");
+
+    cy.findAllByText("Groups") // *** These 6 lines of code should be unnecessary.
+      .first()
+      .click();
+    cy.findAllByText("People") 
+      .last()
+      .click();
+    
+    cy.findAllByText("Groups")
+      .first()
+      .click();
+    cy.get("td")
+      .eq("-2")
+      .contains("3");
+
+    cy.findByText("Marketing").click();
+    
+    cy.contains(new_user.username);
+    cy.contains(USERS.nodata.username).should("not.exist");
+    
+
     // =================
     // should set up custom maps
     // =================
