@@ -12,10 +12,11 @@
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
-             [sync :as sync]]
+             [sync :as sql-jdbc.sync]]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.util :as mbql.u]
+            [metabase.models.database :refer [Database]]
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
@@ -166,12 +167,13 @@
     :OpenSourceSubProtocolOverride false}
    (dissoc opts :host :port :db)))
 
-(defmethod sql-jdbc.sync/has-select-privilege?
+(defmethod sql-jdbc.sync/has-select-privilege? :redshift
   [_ _ user db-name schema table]
-  (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details (Database :name db-name)))
-              ["SELECT has_table_privilage(?, ?, 'select')"
-               user (str/join "." [schema table])]
-              {:result-set-fn ffirst}))
+  (let [{:keys [engine details]} (Database :name db-name)]
+    (jdbc/query (sql-jdbc.conn/connection-details->spec engine details)
+                ["SELECT has_table_privilage(?, ?, 'select')"
+                 user (str/join "." [schema table])]
+                {:result-set-fn ffirst})))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk

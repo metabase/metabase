@@ -311,17 +311,18 @@
       db.spec/postgres
       (sql-jdbc.common/handle-additional-options details-map)))
 
-(defmethod sql-jdbc.sync/has-select-privilege?
+(defmethod sql-jdbc.sync/has-select-privilege? :postgres
   [_ _ user db-name schema table]
-  (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details (Database :name db-name)))
-              [(str "SELECT 1 FROM information_schema.role_table_grants "
-                    "WHERE table_catalog=? "
-                    "AND table_schema=? "
-                    "AND table_name=? "
-                    "AND grantee=? "
-                    "AND privilages LIKE '%SELECT%'")
-               db-name schema table user]
-              {:result-set-fn (comp pos? count)}))
+  (let [{:keys [engine details]} (Database :name db-name)]
+    (jdbc/query (sql-jdbc.conn/connection-details->spec engine details)
+                [(str "SELECT 1 FROM information_schema.role_table_grants "
+                      "WHERE table_catalog=? "
+                      "AND table_schema=? "
+                      "AND table_name=? "
+                      "AND grantee=? "
+                      "AND privilages LIKE '%SELECT%'")
+                 db-name schema table user]
+                {:result-set-fn (comp pos? count)})))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
   [_]

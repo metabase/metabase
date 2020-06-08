@@ -16,6 +16,7 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.models.database :refer [Database]]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]
@@ -81,16 +82,17 @@
                         (str "/" service-name)))}
    (dissoc details :host :port :sid :service-name)))
 
-(defmethod sql-jdbc.sync/has-select-privilege?
+(defmethod sql-jdbc.sync/has-select-privilege? :oracle
   [_ _ user db-name schema table]
-  (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details (Database :name db-name)))
-              [(str "SELECT 1 FROM ALL_TAB_PRIVS "
-                    "WHERE TABLE_SCHEMA=? "
-                    "AND TABLE_NAME=? "
-                    "AND GRANTEE=? "
-                    "AND PRIVILEGE='SELECT'")
-               schema table user]
-              {:result-set-fn (comp pos? count)}))
+  (let [{:keys [engine details]} (Database :name db-name)]
+    (jdbc/query (sql-jdbc.conn/connection-details->spec engine details)
+                [(str "SELECT 1 FROM ALL_TAB_PRIVS "
+                      "WHERE TABLE_SCHEMA=? "
+                      "AND TABLE_NAME=? "
+                      "AND GRANTEE=? "
+                      "AND PRIVILEGE='SELECT'")
+                 schema table user]
+                {:result-set-fn (comp pos? count)})))
 
 (defmethod driver/can-connect? :oracle
   [driver details]
