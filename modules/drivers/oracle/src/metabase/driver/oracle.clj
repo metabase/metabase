@@ -83,7 +83,7 @@
    (dissoc details :host :port :sid :service-name)))
 
 (defmethod sql-jdbc.sync/has-select-privilege? :oracle
-  [_ _ user db-name schema table]
+  [_ user db-name schema table]
   (let [{:keys [engine details]} (Database :name db-name)]
     (jdbc/query (sql-jdbc.conn/connection-details->spec engine details)
                 [(str "SELECT 1 FROM ALL_TAB_PRIVS "

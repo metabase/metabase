@@ -59,7 +59,7 @@
       (sql-jdbc.common/handle-additional-options details)))
 
 (defmethod sql-jdbc.sync/has-select-privilege? :vertica
-  [_ _ user db-name schema table]
+  [_ user db-name schema table]
   (let [{:keys [engine details]} (Database :name db-name)]
     (jdbc/query (sql-jdbc.conn/connection-details->spec engine details)
                 [(str "SELECT 1 FROM grants "

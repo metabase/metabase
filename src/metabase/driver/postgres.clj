@@ -312,7 +312,7 @@
       (sql-jdbc.common/handle-additional-options details-map)))
 
 (defmethod sql-jdbc.sync/has-select-privilege? :postgres
-  [_ _ user db-name schema table]
+  [_ user db-name schema table]
   (let [{:keys [engine details]} (Database :name db-name)]
     (jdbc/query (sql-jdbc.conn/connection-details->spec engine details)
                 [(str "SELECT 1 FROM information_schema.role_table_grants "

@@ -168,7 +168,7 @@
    (dissoc opts :host :port :db)))
 
 (defmethod sql-jdbc.sync/has-select-privilege? :redshift
-  [_ _ user db-name schema table]
+  [_ user db-name schema table]
   (let [{:keys [engine details]} (Database :name db-name)]
     (jdbc/query (sql-jdbc.conn/connection-details->spec engine details)
                 ["SELECT has_table_privilage(?, ?, 'select')"

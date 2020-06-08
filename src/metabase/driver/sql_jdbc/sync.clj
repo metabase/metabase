@@ -90,18 +90,13 @@
 
 (defmulti has-select-privilege?
   "Does the user `user` have (SELECT) access to a given table?"
-  {:arglists '([driver ^DatabaseMetaData metadata ^String user ^String db-name-or-nil ^String schema-or-nil
-                ^String table])}
+  {:arglists '([driver user db-name-or-nil schema-or-nil table])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod has-select-privilege? :sql-jdbc
-  [_ ^DatabaseMetaData metadata ^String user ^String db-name-or-nil ^String schema-or-nil ^String table]
-  (or (str/blank? user) ; DBs such as H2 and Druid don't require a username when connecting.
-                        ; In that case assume all tables are visible.
-      (with-open [rs (.getTablePrivileges metadata db-name-or-nil schema-or-nil table)]
-        (some (comp #{[table user "SELECT"]} (juxt :table_name :grantee :privilege))
-              (jdbc/metadata-result rs)))))
+  [_ _ _ _ _]
+  true)
 
 (defmulti db-tables
   "Fetch a JDBC Metadata ResultSet of tables accessable to us in the DB, optionally limited to ones belonging to a given
