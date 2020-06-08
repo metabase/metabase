@@ -1,4 +1,4 @@
-import { restore, USERS, signInAsAdmin } from "__support__/cypress";
+import { restore, signInAsAdmin, USERS, signOut, signInAsNormalUser } from "__support__/cypress";
 
 const new_user = {
   first_name: "Barb",
@@ -245,18 +245,42 @@ describe("smoketest > admin_setup", () => {
     // * Data Model Changes Reflected *
     // *********************************
 
-    // =================
-    // should sign in as new user
-    // =================
-    // =================
-    // should change password as user
-    // =================
+    // Log out as admin and sign in as user
+
+    signOut();
+    signInAsNormalUser();
+    cy.visit("/");
+
     // =================
     // should check table names as user
     // =================
+
+    cy.findByText("Browse all items").click();
+
+    cy.contains("Our analytics");
+    cy.contains("A look at your").should("not.exist");
+
+    cy.get(".hover-parent")
+      .eq("2")
+      .contains("Orders, Count");
+    cy.contains("Orders, Count, Grouped by Created At (year)");
+    cy.contains("Test Q Name Change").should("not.exist");
+
+    // Log out as user and sign in as admin
+
+    signOut();
+    signInAsAdmin();
+    cy.visit("/");
+    
     // =================
     // should rename a table as admin
     // =================
+
+    cy.findByText("Browse all items").click();
+
+    cy.contains("Our analytics");
+    cy.contains("A look at your").should("not.exist");
+
     // =================
     // should add a description to a table as admin
     // =================
