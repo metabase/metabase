@@ -158,7 +158,7 @@
 ;; TODO - do we really need this function? Why can't we just use `db/select` and `hydrate` like we do for everything
 ;; else?
 (s/defn retrieve-pulse :- (s/maybe PulseInstance)
-  "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert coulmns, since this is a
+  "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
   *Pulse* and they will all be unset."
   [pulse-or-id]
   (some-> (db/select-one Pulse :id (u/get-id pulse-or-id), :alert_condition nil)
