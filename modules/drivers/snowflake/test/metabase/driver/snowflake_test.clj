@@ -19,17 +19,17 @@
   (is (= (map
           #(str/replace % #"\s+" " ")
           ["DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"users\";"
-           "CREATE TABLE \"test-data\".\"PUBLIC\".\"users\" (\"name\" TEXT, \"last_login\" TIMESTAMP_LTZ, \"password\"
-           TEXT, \"id\" INTEGER AUTOINCREMENT, PRIMARY KEY (\"id\")) ;"
+           "CREATE TABLE \"test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, PRIMARY KEY (\"id\"), \"name\" TEXT, \"last_login\" TIMESTAMP_LTZ, \"password\"
+           TEXT) ;"
            "DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"categories\";"
-           "CREATE TABLE \"test-data\".\"PUBLIC\".\"categories\" (\"name\" TEXT, \"id\" INTEGER AUTOINCREMENT, PRIMARY
+           "CREATE TABLE \"test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT, PRIMARY
            KEY (\"id\")) ;"
            "DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"venues\";"
-           "CREATE TABLE \"test-data\".\"PUBLIC\".\"venues\" (\"name\" TEXT, \"latitude\" FLOAT, \"longitude\" FLOAT,
-           \"price\" INTEGER, \"category_id\" INTEGER, \"id\" INTEGER AUTOINCREMENT, PRIMARY KEY (\"id\")) ;"
+           "CREATE TABLE \"test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT, \"latitude\" FLOAT, \"longitude\" FLOAT,
+           \"price\" INTEGER, \"category_id\" INTEGER, PRIMARY KEY (\"id\")) ;"
            "DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"checkins\";"
-           "CREATE TABLE \"test-data\".\"PUBLIC\".\"checkins\" (\"user_id\" INTEGER, \"venue_id\" INTEGER, \"date\"
-           DATE, \"id\" INTEGER AUTOINCREMENT, PRIMARY KEY (\"id\")) ;"
+           "CREATE TABLE \"test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"user_id\" INTEGER, \"venue_id\" INTEGER, \"date\"
+           DATE, PRIMARY KEY (\"id\")) ;"
            "ALTER TABLE \"test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"tegory_id_categories_927642602\" FOREIGN
            KEY (\"category_id\") REFERENCES \"test-data\".\"PUBLIC\".\"categories\" (\"id\");"
            "ALTER TABLE \"test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_-815717481\"
@@ -66,11 +66,15 @@
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
       (is (= {:name   "categories"
               :schema "PUBLIC"
-              :fields #{{:name          "id"
-                         :database-type "NUMBER"
-                         :base-type     :type/Number
-                         :pk?           true}
-                        {:name "name", :database-type "VARCHAR", :base-type :type/Text}}}
+              :fields #{{:name              "id"
+                         :database-type     "NUMBER"
+                         :base-type         :type/Number
+                         :pk?               true
+                         :database-position 0}
+                        {:name              "name"
+                         :database-type     "VARCHAR"
+                         :base-type         :type/Text
+                         :database-position 0}}}
              (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (Table (mt/id :categories))))))))
 
 (deftest describe-table-fks-test

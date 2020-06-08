@@ -41,17 +41,20 @@
              :display_name "venue_id"
              :source       :native
              :base_type    :type/Integer
-             :field_ref    [:field-literal "venue_id" :type/Integer]}
+             :field_ref    [:field-literal "venue_id" :type/Integer]
+             :database-position 0}
             {:name         "user_id"
              :display_name "user_id"
              :source       :native
              :base_type    :type/Integer
-             :field_ref    [:field-literal "user_id" :type/Integer]}
+             :field_ref    [:field-literal "user_id" :type/Integer]
+             :database-position 1}
             {:name         "checkins_id"
              :display_name "checkins_id"
              :source       :native
              :base_type    :type/Integer
-             :field_ref    [:field-literal "checkins_id" :type/Integer]}]
+             :field_ref    [:field-literal "checkins_id" :type/Integer]
+             :database-position 2}]
            (qp.test/cols
              (qp/process-query
                {:native   {:query (str "SELECT `test_data.checkins`.`venue_id` AS `venue_id`, "

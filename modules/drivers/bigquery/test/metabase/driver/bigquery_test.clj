@@ -60,9 +60,9 @@
           "`describe-database` should see the view")
       (is (= {:schema nil
               :name   view-name
-              :fields #{{:name "id", :database-type "INTEGER", :base-type :type/Integer}
-                        {:name "venue_name", :database-type "STRING", :base-type :type/Text}
-                        {:name "category_name", :database-type "STRING", :base-type :type/Text}}}
+              :fields #{{:name "id", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
+                        {:name "venue_name", :database-type "STRING", :base-type :type/Text, :database-position 1}
+                        {:name "category_name", :database-type "STRING", :base-type :type/Text, :database-position 2}}}
              (driver/describe-table :bigquery (mt/db) {:name view-name}))
           "`describe-tables` should see the fields in the view")
       (sync/sync-database! (mt/db))
