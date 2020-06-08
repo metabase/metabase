@@ -1,4 +1,5 @@
 import { restore, USER, signInAsNormalUser } from "__support__/cypress";
+import { clearAsyncError } from "redux-form";
 
 describe("smoketest > new_user", () => {
   before(restore);
@@ -34,13 +35,7 @@ describe("smoketest > new_user", () => {
     cy.get(".Icon-bar", { timeout: 30000 });
     cy.contains("Vendor is not empty");
     cy.contains("Visualization");
-
-    // =================
-    // should ensuring that header actions are appropriate for different data types (int, str, bool)
-    // =================
-
-    // cy.findbyText("Filter").click();
-
+    
     // =================
     // should filter via both the header and notebook editor
     // =================
@@ -302,6 +297,9 @@ describe("smoketest > new_user", () => {
     cy.findByText("Created At").should("not.exist");
     cy.get(".cellData").should("have.length", 14);
 
+
+    // Formatting
+
     // Refresh works
 
     cy.get(".Icon-refresh")
@@ -309,5 +307,89 @@ describe("smoketest > new_user", () => {
       .click();
     // *** check that refresh has happened
     cy.contains("Sample Dataset");
+
+    // =================
+    // should ensuring that header actions are appropriate for different data types
+    // *** Currently Longitude is an integer while zip codes and dates are strings in terms of header options
+    // =================
+
+    cy.findAllByText("Summarize")
+      .first()
+      .click();
+    cy.get(".scroll-y")
+      .find(".Icon-close")
+      .first()
+      .click();
+    cy.findByText("Done").click();
+
+    // ID column 
+
+    cy.findByText("ID").click();
+    
+    cy.contains("Ascending");
+    cy.contains("Descending");
+    cy.contains("Distincts");
+    cy.contains("Distribution").should("not.exist");
+    cy.contains("Filter");
+    cy.contains("Formatting");
+
+    // String column
+
+    cy.findAllByText("Title")
+      .last()
+      .click();
+    
+    cy.contains("Ascending");
+    cy.contains("Descending");
+    cy.contains("Distincts");
+    cy.contains("Distribution");
+    cy.contains("Filter");
+    cy.contains("Formatting");
+    cy.get(".PopoverBody")
+      .contains("Sum")
+      .should("not.exist");
+
+    // Integer column
+
+    cy.findAllByText("Price")
+      .last()  
+      .click();
+    
+    cy.contains("Ascending");
+    cy.contains("Descending");
+    cy.contains("Sum");
+    cy.contains('Min');
+    cy.contains("Max");
+    cy.contains("Distincts");
+    cy.contains("Sum over time");
+    cy.contains("Distribution");
+    cy.contains("Filter");
+    cy.contains("Formatting");
+
+    // Longitude column (first switch to people table)
+    
+    cy.get(".Icon-notebook").click();
+    cy.findAllByText("Products")
+      .last()
+      .click();
+    cy.findByText("People").click();
+    cy.findByText("Visualize").click();
+
+    cy.findByText("Longitude").click();
+
+    cy.contains("Ascending");
+    cy.contains("Descending");
+    cy.contains("Sum");
+    cy.contains('Min');
+    cy.contains("Max");
+    cy.contains("Distincts");
+    cy.contains("Sum over time");
+    cy.contains("Distribution");
+    cy.contains("Filter");
+    cy.contains("Formatting");
+    
+
+    // Boolean column contians appropriate options
+    // *** The sample data does not contain any boolean columns
   });
 });
