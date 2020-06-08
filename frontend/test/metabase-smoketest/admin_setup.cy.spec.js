@@ -1,4 +1,10 @@
-import { restore, signInAsAdmin, USERS, signOut, signInAsNormalUser } from "__support__/cypress";
+import {
+  restore,
+  signInAsAdmin,
+  USERS,
+  signOut,
+  signInAsNormalUser,
+} from "__support__/cypress";
 
 const new_user = {
   first_name: "Barb",
@@ -11,7 +17,7 @@ describe("smoketest > admin_setup", () => {
   before(signInAsAdmin);
 
   it("should have admin changes reflected with the user account", () => {
-    cy.visit("/")
+    cy.visit("/");
 
     // *******************************
     // *** Admin - Successful Setup **
@@ -24,7 +30,7 @@ describe("smoketest > admin_setup", () => {
     // =================
 
     // Navigate to page
-    
+
     cy.get(".Nav")
       .children()
       .last()
@@ -37,13 +43,15 @@ describe("smoketest > admin_setup", () => {
     cy.contains("dashboard").should("not.exist");
 
     cy.findByText("Databases").click();
-    
+
     cy.contains("Sample Dataset");
     cy.contains("Updates").should("not.exist");
-    
+
     cy.findByText("Add database").click();
 
-    cy.contains("Automatically run queries when doing simple filtering and summarizing");
+    cy.contains(
+      "Automatically run queries when doing simple filtering and summarizing",
+    );
 
     // Adds new database
 
@@ -66,7 +74,7 @@ describe("smoketest > admin_setup", () => {
     cy.findByText("Settings").click();
     cy.findByText("Email").click();
 
-    cy.contains("Email address you want to use as the sender of Metabase.")
+    cy.contains("Email address you want to use as the sender of Metabase.");
     cy.contains("Sample Database").should("not.exist");
 
     // Email info
@@ -105,8 +113,10 @@ describe("smoketest > admin_setup", () => {
     cy.findAllByText("Groups")
       .first()
       .click();
-    
-    cy.contains("You can use groups to control your users' access to your data.");
+
+    cy.contains(
+      "You can use groups to control your users' access to your data.",
+    );
     cy.contains("All Users");
     cy.contains("Slack").should("not.exist");
 
@@ -118,39 +128,40 @@ describe("smoketest > admin_setup", () => {
     cy.findByText("Marketing").click();
 
     cy.contains("A group is only as good as its members.");
-    
+
     // Adds user as member
 
     cy.findByText("Add members").click();
     cy.get("input").type("T");
-    cy.findByText(USERS.normal.first_name + " " + USERS.normal.last_name).click();
+    cy.findByText(
+      USERS.normal.first_name + " " + USERS.normal.last_name,
+    ).click();
     cy.findByText("Add").click();
-    
-    cy.contains(USERS.normal.username)
+
+    cy.contains(USERS.normal.username);
     cy.contains("A group is only as good as its members.").should("not.exist");
 
-    
     // Adds self as member
-    
+
     cy.findByText("Add members").click();
     cy.get("input").type("T");
     cy.findByText(USERS.admin.first_name + " " + USERS.admin.last_name).click();
     cy.findByText("Add").click();
-    
-    cy.contains(USERS.admin.username)
+
+    cy.contains(USERS.admin.username);
 
     // Check member count
 
     cy.findAllByText("People") // *** Going to People and then to Groups should be unnecessary
       .last()
       .click();
-    
+
     cy.contains("3 other groups");
-    
+
     cy.findAllByText("Groups")
       .first()
       .click();
-    
+
     cy.contains("Marketing");
     cy.get("td")
       .eq("-2")
@@ -189,7 +200,7 @@ describe("smoketest > admin_setup", () => {
 
     // Check new user is in those groups
 
-    cy.contains(new_user.first_name + " " + new_user.last_name)
+    cy.contains(new_user.first_name + " " + new_user.last_name);
     cy.get("td")
       .eq("-3")
       .contains("2 other groups");
@@ -197,10 +208,10 @@ describe("smoketest > admin_setup", () => {
     cy.findAllByText("Groups") // *** These 6 lines of code should be unnecessary.
       .first()
       .click();
-    cy.findAllByText("People") 
+    cy.findAllByText("People")
       .last()
       .click();
-    
+
     cy.findAllByText("Groups")
       .first()
       .click();
@@ -209,10 +220,9 @@ describe("smoketest > admin_setup", () => {
       .contains("3");
 
     cy.findByText("Marketing").click();
-    
+
     cy.contains(new_user.username);
     cy.contains(USERS.nodata.username).should("not.exist");
-    
 
     // =================
     // should set up custom maps
@@ -221,9 +231,9 @@ describe("smoketest > admin_setup", () => {
     cy.findByText("Settings").click();
     cy.findByText("Maps").click();
 
-    cy.contains("Custom Maps")
+    cy.contains("Custom Maps");
     cy.contains("Groups").should("not.exist");
-    
+
     // cy.findByText("Add a map").click();
     // cy.get("input")
     //   .first()
@@ -271,7 +281,7 @@ describe("smoketest > admin_setup", () => {
     signOut();
     signInAsAdmin();
     cy.visit("/");
-    
+
     // =================
     // should rename a table as admin
     // =================
@@ -303,11 +313,10 @@ describe("smoketest > admin_setup", () => {
     // should see changes to visibility, formatting, and foreign key mapping as user
     // =================
 
-
     // *********************************
     // ** Permission Changes Reflected *
     // *********************************
-    
+
     // =================
     // should check current permissions as user
     // =================
