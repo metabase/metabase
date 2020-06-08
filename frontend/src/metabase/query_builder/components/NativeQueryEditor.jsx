@@ -1,4 +1,4 @@
-/* @flow */
+/* @flow weak */
 /*global ace*/
 
 import React, { Component } from "react";
@@ -109,9 +109,11 @@ type Props = {
   openSnippetModalWithSelectedText: () => void,
   insertSnippet: () => void,
   closeSnippetModal: () => void,
+  snippets: { name: string }[],
 };
 type State = {
   initialHeight: number,
+  isSelectedTextPopoverOpen: boolean,
 };
 
 @ExplicitSize()

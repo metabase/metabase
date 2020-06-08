@@ -97,6 +97,8 @@ export default class SnippetSidebar extends React.Component {
 }
 
 class SnippetRow extends React.Component {
+  state: { isOpen: boolean };
+
   constructor(props) {
     super(props);
     this.state = { isOpen: false };
