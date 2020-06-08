@@ -54,6 +54,7 @@ To run Metabase via Docker, just type
 ```sh
 docker run -d -p 3000:3000 --name metabase metabase/metabase
 ```
+to check how it loooks like click [![Runme](https://runme.io/static/button.svg)](https://runme.io/run?app_id=1f9b9d8e-7bb5-47b9-a1ce-32652e16f650)
 
 ### JVM Jar
 
