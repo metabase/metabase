@@ -255,7 +255,11 @@ function onRenderValueLabels(chart, formatYValue, datas) {
     return;
   }
 
+  let displays = datas.map(
+    (data, index) => chart.settings.series(chart.series[index]).display,
+  );
   if (chart.settings["stackable.stack_type"] === "stacked") {
+    // When stacked, zip together the corresponding values and sum them.
     datas = [
       _.zip(...datas).map(datasForSeries =>
         datasForSeries.reduce(
@@ -264,11 +268,14 @@ function onRenderValueLabels(chart, formatYValue, datas) {
         ),
       ),
     ];
+
+    // Individual series might have display set to something besides the actual stacked display.
+    displays = [chart.settings["stackable.stack_display"]];
   }
   const showAll = chart.settings["graph.label_value_frequency"] === "all";
-  const displays = datas.map(
-    (data, index) => chart.settings.series(chart.series[index]).display,
-  );
+
+  // Count max points in a single series to estimate when labels should be hidden
+  const maxSeriesLength = Math.max(...datas.map(d => d.length));
 
   // Set `data` to flattened `datas` and use named x/y and include `showLabelBelow`.
   // We need to do that before data is filtered to show every nth value.
@@ -320,10 +327,11 @@ function onRenderValueLabels(chart, formatYValue, datas) {
 
   // Ordinal bar charts and histograms need extra logic to center the label.
   const xShifts = displays.map((display, index) => {
+    const thisChart = chart.children()[index];
     const barIndex = displays.slice(0, index).filter(d => d === "bar").length;
     let xShift = 0;
+
     if (xScale.rangeBand) {
-      // debugger; // eslint-disable-line
       if (display === "bar") {
         const xShiftForSeries =
           xScale.rangeBand() / displays.filter(d => d === "bar").length;
@@ -334,8 +342,26 @@ function onRenderValueLabels(chart, formatYValue, datas) {
       if (displays.some(d => d === "bar") && displays.some(d => d !== "bar")) {
         xShift += (chart._rangeBandPadding() * xScale.rangeBand()) / 2;
       }
+    } else if (
+      // non-ordinal bar charts don't have rangeBand set, but still need xShifting if they're grouped.
+      thisChart.barPadding
+    ) {
+      const [firstTick, secondTick] = xScale
+        .ticks()
+        .slice(0, 2)
+        .map(xScale);
+      const groupWidth =
+        (secondTick - firstTick) * (1 - thisChart.barPadding());
+      xShift -= groupWidth / 2;
+      const xShiftForSeries =
+        groupWidth / displays.filter(d => d === "bar").length;
+      xShift += (barIndex + 0.5) * xShiftForSeries;
     }
-    if (isHistogramBar({ settings: chart.settings, chartType: display })) {
+
+    if (
+      isHistogramBar({ settings: chart.settings, chartType: display }) &&
+      displays.length === 1
+    ) {
       // this has to match the logic in `doHistogramBarStuff`
       const [x1, x2] = chart
         .svg()
@@ -391,7 +417,7 @@ function onRenderValueLabels(chart, formatYValue, datas) {
     // We use that estimate to compute the label interval.
     const LABEL_PADDING = 6;
     const MAX_SAMPLE_SIZE = 30;
-    const sampleStep = Math.ceil(data.length / MAX_SAMPLE_SIZE);
+    const sampleStep = Math.ceil(maxSeriesLength / MAX_SAMPLE_SIZE);
     const sample = data.filter((d, i) => i % sampleStep === 0);
     addLabels(sample);
     const totalWidth = chart
@@ -407,7 +433,7 @@ function onRenderValueLabels(chart, formatYValue, datas) {
       .node()
       .getBoundingClientRect();
 
-    nth = Math.ceil((labelWidth * data.length) / chartWidth);
+    nth = Math.ceil((labelWidth * maxSeriesLength) / chartWidth);
   }
 
   addLabels(data.filter((d, i) => i % nth === 0));
