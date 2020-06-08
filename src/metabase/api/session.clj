@@ -227,13 +227,11 @@
            session-id)))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
-
 (api/defendpoint GET "/password_reset_token_valid"
   "Check is a password reset token is valid and isn't expired."
   [token]
   {token s/Str}
   {:valid (boolean (valid-reset-token->user token))})
-
 
 (api/defendpoint GET "/properties"
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."

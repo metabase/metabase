@@ -15,8 +15,7 @@
   (t/testing (format "\nwith mock i18n bundles %s\n" (pr-str bundles))
     (let [locale->bundle (into {} (for [[locale m] bundles]
                                     [(impl/locale locale) (map-bundle m)]))]
-      (binding [impl/*bundle-fn* (fn [locale]
-                                   (get locale->bundle locale))]
+      (with-redefs [impl/bundle* locale->bundle]
         (thunk)))))
 
 (defmacro with-mock-i18n-bundles

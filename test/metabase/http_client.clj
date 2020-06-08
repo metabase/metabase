@@ -237,8 +237,9 @@
    *  `method`               `:get`, `:post`, `:delete`, or `:put`
    *  `expected-status-code` When passed, throw an exception if the response has a different status code.
    *  `url`                  Base URL of the request, which will be appended to `*url-prefix*`. e.g. `card/1/favorite`
-   *  `request-options`      Options to pass directly to `clj-http.client`
-   *  `http-body-map`        Optional map to send a the JSON-serialized HTTP body of the request
+   *  `request-options`      Optional map of options to pass as part of request to `clj-http.client`, e.g. `:headers`.
+                             The map must be wrapped in `{:request-options}` e.g. `{:request-options {:headers ...}}`
+   *  `http-body-map`        Optional map to send as the JSON-serialized HTTP body of the request
    *  `url-kwargs`           key-value pairs that will be encoded and added to the URL as GET params"
   {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & url-kwargs])}
   [& args]
