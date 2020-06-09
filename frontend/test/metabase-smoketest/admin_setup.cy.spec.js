@@ -92,12 +92,8 @@ describe("smoketest > admin_setup", () => {
     cy.contains("Answers sent right to your Slack #channels");
     cy.contains("metabase@metabase.com").should("not.exist");
 
-    // cy.findByText("Create a Slack Bot User for MetaBot").click();
-
-    // cy.contains("Sign in to your workspace");
-    // cy.url().should("not.include", "admin");
-
-    // cy.findByText("Save changes").click();
+    cy.findByText("Create a Slack Bot User for MetaBot").click();
+    cy.contains('Once you\'re there, give it a name and click "Add bot integration". Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Metabase needs this to upload graphs.');
 
     // =================
     // should create new groups
