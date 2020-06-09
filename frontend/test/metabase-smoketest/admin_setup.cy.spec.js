@@ -262,14 +262,18 @@ describe("smoketest > admin_setup", () => {
     cy.visit("/");
 
     // =================
-    // should check table names as user
+    // should check table and question names as user
     // =================
+    
+    cy.contains("A look at your People table");
+    cy.contains("A look at your Orders table");
+    cy.contains("A look at your Test Table table").should("not.exist");
 
     cy.findByText("Browse all items").click();
 
     cy.contains("Our analytics");
     cy.contains("A look at your").should("not.exist");
-
+    
     cy.get(".hover-parent")
       .eq("2")
       .contains("Orders, Count");
@@ -330,32 +334,94 @@ describe("smoketest > admin_setup", () => {
       .type("Testing table description");
 
     // =================
-    // should change a column name as admin
+    // should change a column name, visibility, and formatting as admin
     // =================
+
+    // Changing column name from Discount to Sale
 
     cy.get("input")
       .eq(5)
       .clear()
       .type("Sale");
 
-    // =================
-    // should change a column's visibility as admin
-    // =================
-
-    // Changing visibility
+    // Changing visibility of Created At column
 
     cy.findAllByText("Everywhere")
       .first()
       .click();
-    cy.findByText("Do not include").click();
+    cy.findByText("Do not include").click({ force: true });
+    
+    // Changing column formatting to display USD instead of $
+    
+    cy.get(".Icon-gear")
+      .eq(-2)
+      .click();
 
-    // Checking that change is in the notebook editor
+    cy.contains("Total – Field Settings");
+    cy.contains("Columns").should("not.exist");
+
+    cy.findByText("Formatting").click();
+
+    cy.contains("Show a mini bar chart");
+    cy.contains("Everywhere").should("not.exist");
+
+    cy.findByText("Normal").click();
+    cy.findByText("Currency").click({ force: true });
+    cy.findByText("Code (USD)").click();
+    cy.findByText("In every table cell").click();
+
+    cy.contains("Saved");
 
     // =================
-    // should change a columns formatting as admin
+    // Checking that changes to column name, visibility, and formatting are reflected in the notebook editor as admin
     // =================
-    // Changing column formatting
-    // Checking that change is in the notebook editor
+
+    // Navigate
+
+    cy.get(".Icon-gear")
+      .eq(1)
+      .click();
+    cy.findByText("Exit admin").click();
+    
+    // Checking table name
+
+    cy.contains("A look at your Test Table table");
+    cy.contains("A look at your Reviews table");
+    cy.contains("A look at your Orders table").should("not.exist");
+
+    // Navigating to Test Table table
+
+    cy.findByText("Browse Data").click();
+    cy.findByText("Sample Dataset").click();
+
+    cy.get(".Icon-info");
+    cy.get(".Icon-database").should("not.exist");
+
+    cy.findByText("Test Table").click();
+
+    // Checking three things in table display
+
+    cy.contains("Discount").should("not.exist");
+    cy.contains("Sale");
+
+    cy.contains("Created At").should("not.exist");
+
+    cy.contains("Total ($)").should("not.exist");
+    cy.contains("USD");
+
+    // Check column name and visibility in notebook editor
+
+    cy.get(".Icon-notebook").click();
+    
+    cy.contains("Test Table");
+    cy.contains("Orders").should("not.exist");
+    
+    cy.findByText("Filter").click();
+    cy.contains("Sale");
+    cy.contains("Discount").should("not.exist");
+
+    cy.contains("Created At").should("not.exist");
+
     // =================
     // should configure a foreign key to show the name (and have it be reflected in notebook editor) as admin
     // =================
