@@ -890,6 +890,7 @@ export default function lineAreaBar(
   lineAndBarOnRender(parent, {
     onGoalHover,
     isSplitAxis: yAxisProps.isSplit,
+    yAxisSplit: yAxisProps.yAxisSplit,
     isStacked: isStacked(parent.settings, datas),
     formatYValue: getYValueFormatter(parent, series, yAxisProps.yExtent),
     datas,

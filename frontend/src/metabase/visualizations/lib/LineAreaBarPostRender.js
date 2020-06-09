@@ -247,7 +247,7 @@ function onRenderVoronoiHover(chart) {
     .order();
 }
 
-function onRenderValueLabels(chart, formatYValue, datas) {
+function onRenderValueLabels(chart, { formatYValue, yAxisSplit, datas }) {
   if (
     !chart.settings["graph.show_values"] || // setting is off
     chart.settings["stackable.stack_type"] === "normalized" // no normalized
@@ -323,7 +323,8 @@ function onRenderValueLabels(chart, formatYValue, datas) {
   const parent = chart.svg().select(".chart-body");
 
   const xScale = chart.x();
-  const yScale = chart.y();
+  const yScaleForSeries = index =>
+    yAxisSplit[0].includes(index) ? chart.y() : chart.rightY();
 
   // Ordinal bar charts and histograms need extra logic to center the label.
   const xShifts = displays.map((display, index) => {
@@ -388,6 +389,7 @@ function onRenderValueLabels(chart, formatYValue, datas) {
       .enter()
       .append("g")
       .attr("transform", ({ x, y, showLabelBelow, seriesIndex }) => {
+        const yScale = yScaleForSeries(seriesIndex);
         const xPos = xShifts[seriesIndex] + xScale(x);
         let yPos = yScale(y) + (showLabelBelow ? 18 : -8);
         // if the yPos is below the x axis, move it to be above the data point
@@ -581,7 +583,7 @@ function onRenderAddExtraClickHandlers(chart) {
 // the various steps that get called
 function onRender(
   chart,
-  { onGoalHover, isSplitAxis, isStacked, formatYValue, datas },
+  { onGoalHover, isSplitAxis, yAxisSplit, isStacked, formatYValue, datas },
 ) {
   onRenderRemoveClipPath(chart);
   onRenderMoveContentToTop(chart);
@@ -591,7 +593,7 @@ function onRender(
   onRenderEnableDots(chart);
   onRenderVoronoiHover(chart);
   onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
-  onRenderValueLabels(chart, formatYValue, datas);
+  onRenderValueLabels(chart, { formatYValue, yAxisSplit, datas });
   onRenderHideDisabledLabels(chart);
   onRenderHideDisabledAxis(chart);
   onRenderHideBadAxis(chart);
