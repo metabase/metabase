@@ -114,15 +114,27 @@
     (vec (jdbc/metadata-result rs))))
 
 (defn- accessible-tables
-  [driver database ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
-  (let [user (.getUserName metadata)]
-    (vec (for [{:keys [table_name table_schem] :as table} (db-tables :sql-jdbc metadata schema-or-nil db-name-or-nil)
-               :when (has-select-privilege? driver
-                                            database
-                                            user
-                                            table_schem
-                                            table_name)]
-           table))))
+  "Remove tables for which we don't have SELECT privilege.
+
+   If no privileges are set (which is completely legal), querying the internal catalog (which is what `has-select-privilege`
+   does) will return no results. On a per-table level this is indistinguishable from not having the
+   SELECT privilage. However if we don't have access to any of the tables, it's more likely that no
+   privileges are set. In that case test the hypothesis by firing a simple SELECT against one of the
+   tables. If that goes through we in fact have access rights (and our hypothesis is correct) so go
+   ahead and return all the tables."
+  [driver database user tables]
+  (let [accessible-tables (filter (fn [{:keys [table_name table_schem]}]
+                                    (has-select-privilege? driver database user table_schem table_name))
+                                  tables)]
+    (if (empty? accessible-tables)
+      (try
+        (let [[{:keys [table_name table_schem] :as table} & _] tables]
+          (when (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
+                            [(str "SELECT 1 from " (str/join "." [table_schem table_name]))]
+                            {:result-set-fn (comp pos? count)})
+            tables))
+        (catch Throwable _ nil))
+      accessible-tables)))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -132,27 +144,19 @@
   vs 60)."
   [driver database ^DatabaseMetaData metadata & [db-name-or-nil]]
   (with-open [rs (.getSchemas metadata)]
-    (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))
-          schemas     (set/difference all-schemas (excluded-schemas driver))]
-      (set (for [schema schemas
-                 table  (accessible-tables driver database metadata schema db-name-or-nil)]
-             (let [remarks (:remarks table)]
-               {:name        (:table_name table)
-                :schema      schema
-                :description (when-not (str/blank? remarks)
-                               remarks)}))))))
+    (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))]
+      (->> (set/difference all-schemas (excluded-schemas driver))
+           (mapcat (fn [schema]
+                     (db-tables :sql-jdbc metadata schema db-name-or-nil)))
+           (accessible-tables driver database (.getUserName metadata))))))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, database, ^DatabaseMetaData metadata, & [db-name-or-nil]]
-  (set (for [table   (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                             (accessible-tables driver database metadata nil nil))]
-         (let [remarks (:remarks table)]
-           {:name        (:table_name  table)
-            :schema      (:table_schem table)
-            :description (when-not (str/blank? remarks)
-                           remarks)}))))
+  (->> (db-tables :sql-jdbc metadata nil nil)
+       (accessible-tables driver database (.getUserName metadata))
+       (remove (comp (partial contains? (excluded-schemas driver)) :table_schem))))
 
 (defn get-catalogs
   "Returns a set of all of the catalogs found via `metadata`"
@@ -218,11 +222,16 @@
   "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec]
   (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
-    {:tables (active-tables driver
-                            (if (u/id db-or-id-or-spec)
-                              (Database db-or-id-or-spec)
-                              db-or-id-or-spec)
-                            metadata)}))
+    {:tables (set (for [table (active-tables driver
+                                             (if (u/id db-or-id-or-spec)
+                                               (Database db-or-id-or-spec)
+                                               db-or-id-or-spec)
+                                             metadata)]
+                    (let [remarks (:remarks table)]
+                      {:name        (:table_name table)
+                       :schema      (:table_schem table)
+                       :description (when-not (str/blank? remarks)
+                                      remarks)})))}))
 
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
