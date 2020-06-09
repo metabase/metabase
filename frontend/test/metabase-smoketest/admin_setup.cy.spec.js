@@ -282,7 +282,6 @@ describe("smoketest > admin_setup", () => {
     signInAsAdmin();
     cy.visit("/");
 
-    
     // =================
     // should rename a question and description as admin
     // =================
@@ -303,7 +302,7 @@ describe("smoketest > admin_setup", () => {
       .type("Test Question");
     cy.findByLabelText("Description").type("Testing question description");
     cy.findByText("Save").click();
-    
+
     // =================
     // should rename a table and add a description as admin
     // =================
@@ -321,12 +320,12 @@ describe("smoketest > admin_setup", () => {
 
     cy.findByText("Data Model").click();
     cy.findByText("Orders").click();
-    cy.get(".TableEditor-table-name") //, { timeout: 30000 })
+    cy.get(".TableEditor-table-name")
       .clear()
       .type("Test Table");
 
     cy.get("input")
-      .eq(2) 
+      .eq(2)
       .clear()
       .type("Testing table description");
 
@@ -334,12 +333,29 @@ describe("smoketest > admin_setup", () => {
     // should change a column name as admin
     // =================
 
+    cy.get("input")
+      .eq(5)
+      .clear()
+      .type("Sale");
+
     // =================
-    // should change a column's visibility (and have it be reflected in notebook editor) as admin
+    // should change a column's visibility as admin
     // =================
+
+    // Changing visibility
+
+    cy.findAllByText("Everywhere")
+      .first()
+      .click();
+    cy.findByText("Do not include").click();
+
+    // Checking that change is in the notebook editor
+
     // =================
-    // should change a columns formatting (and have it be reflected in notebook editor) as admin
+    // should change a columns formatting as admin
     // =================
+    // Changing column formatting
+    // Checking that change is in the notebook editor
     // =================
     // should configure a foreign key to show the name (and have it be reflected in notebook editor) as admin
     // =================
