@@ -117,7 +117,7 @@
   (let [user (.getUserName metadata)]
     (vec (for [{:keys [table_name table_schem] :as table} (db-tables :sql-jdbc
                                                                      metadata schema-or-nil db-name-or-nil)
-               :when (has-select-privilege? :sql-jdbc metadata user db-name-or-nil table_schem table_name)]
+               :when (has-select-privilege? :sql-jdbc user db-name-or-nil table_schem table_name)]
            table))))
 
 (defn fast-active-tables
