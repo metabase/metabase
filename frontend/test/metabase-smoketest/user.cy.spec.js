@@ -35,7 +35,7 @@ describe("smoketest > new_user", () => {
     cy.get(".Icon-bar", { timeout: 30000 });
     cy.contains("Vendor is not empty");
     cy.contains("Visualization");
-
+    
     // =================
     // should filter via both the header and notebook editor
     // =================
@@ -297,6 +297,7 @@ describe("smoketest > new_user", () => {
     cy.findByText("Created At").should("not.exist");
     cy.get(".cellData").should("have.length", 14);
 
+
     // Formatting
 
     // Refresh works
@@ -321,10 +322,10 @@ describe("smoketest > new_user", () => {
       .click();
     cy.findByText("Done").click();
 
-    // ID column
+    // ID column 
 
     cy.findByText("ID").click();
-
+    
     cy.contains("Ascending");
     cy.contains("Descending");
     cy.contains("Distincts");
@@ -337,7 +338,7 @@ describe("smoketest > new_user", () => {
     cy.findAllByText("Title")
       .last()
       .click();
-
+    
     cy.contains("Ascending");
     cy.contains("Descending");
     cy.contains("Distincts");
@@ -351,13 +352,13 @@ describe("smoketest > new_user", () => {
     // Integer column
 
     cy.findAllByText("Price")
-      .last()
+      .last()  
       .click();
-
+    
     cy.contains("Ascending");
     cy.contains("Descending");
     cy.contains("Sum");
-    cy.contains("Min");
+    cy.contains('Min');
     cy.contains("Max");
     cy.contains("Distincts");
     cy.contains("Sum over time");
@@ -366,7 +367,7 @@ describe("smoketest > new_user", () => {
     cy.contains("Formatting");
 
     // Longitude column (first switch to people table)
-
+    
     cy.get(".Icon-notebook").click();
     cy.findAllByText("Products")
       .last()
@@ -379,13 +380,14 @@ describe("smoketest > new_user", () => {
     cy.contains("Ascending");
     cy.contains("Descending");
     cy.contains("Sum");
-    cy.contains("Min");
+    cy.contains('Min');
     cy.contains("Max");
     cy.contains("Distincts");
     cy.contains("Sum over time");
     cy.contains("Distribution");
     cy.contains("Filter");
     cy.contains("Formatting");
+    
 
     // Boolean column contians appropriate options
     // *** The sample data does not contain any boolean columns

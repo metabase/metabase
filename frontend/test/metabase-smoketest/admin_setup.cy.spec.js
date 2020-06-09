@@ -247,7 +247,7 @@ describe("smoketest > admin_setup", () => {
     // cy.findByText("");
     // cy.findAllByText("Select...")
     //   .last()
-    //   .click;
+    //   .click();
     // cy.findByText("");
     // cy.findByText("Add map").click();
 
@@ -282,18 +282,54 @@ describe("smoketest > admin_setup", () => {
     signInAsAdmin();
     cy.visit("/");
 
+    
     // =================
-    // should rename a table as admin
+    // should rename a question and description as admin
     // =================
 
     cy.findByText("Browse all items").click();
 
-    cy.contains("Our analytics");
+    cy.contains("All personal collections");
     cy.contains("A look at your").should("not.exist");
 
+    cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+
+    cy.contains("Settings");
+
+    cy.get(".Icon-pencil").click();
+    cy.findByText("Edit this question").click();
+    cy.findByLabelText("Name")
+      .clear()
+      .type("Test Question");
+    cy.findByLabelText("Description").type("Testing question description");
+    cy.findByText("Save").click();
+    
+    // =================
+    // should rename a table as admin
+    // =================
+
+    cy.get(".Nav")
+      .children()
+      .last()
+      .children()
+      .last()
+      .click();
+    cy.findByText("Admin").click();
+
+    cy.contains("Getting set up");
+    cy.contains(USERS.admin.first_name).should("not.exist");
+
+    cy.findByText("Data Model").click();
+    cy.findByText("Orders", { timeout: 30000 }).click();
+    cy.get("input")
+      .first()
+      .clear()
+      .type("Test Table");
+    
     // =================
     // should add a description to a table as admin
     // =================
+
     // =================
     // should change a column name as admin
     // =================
