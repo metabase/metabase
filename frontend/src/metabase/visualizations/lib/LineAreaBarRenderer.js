@@ -891,6 +891,7 @@ export default function lineAreaBar(
     onGoalHover,
     isSplitAxis: yAxisProps.isSplit,
     yAxisSplit: yAxisProps.yAxisSplit,
+    xInterval: xAxisProps.xInterval,
     isStacked: isStacked(parent.settings, datas),
     formatYValue: getYValueFormatter(parent, series, yAxisProps.yExtent),
     datas,

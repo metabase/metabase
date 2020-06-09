@@ -2,6 +2,7 @@
 
 import d3 from "d3";
 import _ from "underscore";
+import moment from "moment";
 
 import { color } from "metabase/lib/colors";
 import { clipPathReference } from "metabase/lib/dom";
@@ -247,7 +248,10 @@ function onRenderVoronoiHover(chart) {
     .order();
 }
 
-function onRenderValueLabels(chart, { formatYValue, yAxisSplit, datas }) {
+function onRenderValueLabels(
+  chart,
+  { formatYValue, xInterval, yAxisSplit, datas },
+) {
   if (
     !chart.settings["graph.show_values"] || // setting is off
     chart.settings["stackable.stack_type"] === "normalized" // no normalized
@@ -289,7 +293,7 @@ function onRenderValueLabels(chart, { formatYValue, yAxisSplit, datas }) {
           // last point point or next is greater than y
           (i === data.length - 1 || data[i + 1][1] > y);
         const showLabelBelow = isLocalMin && display === "line";
-        return { x, y, showLabelBelow, seriesIndex };
+        return { x, y, showLabelBelow };
       })
       .filter(d => display !== "bar" || d.y !== 0);
   });
@@ -348,12 +352,15 @@ function onRenderValueLabels(chart, { formatYValue, yAxisSplit, datas }) {
       // non-ordinal bar charts don't have rangeBand set, but still need xShifting if they're grouped.
       thisChart.barPadding
     ) {
-      const [firstTick, secondTick] = xScale
-        .ticks()
-        .slice(0, 2)
-        .map(xScale);
+      // For these timeseries/quantitative scales, we look at the distance between two points one "interval" apart.
+      // We then scale to remove the padding and divide by the number of bars to get the per-bar shift from the center.
+      const startOfDomain = xScale.domain()[0];
+      const oneIntervalOver = moment.isMoment(startOfDomain)
+        ? startOfDomain.clone().add(xInterval.count, xInterval.interval)
+        : startOfDomain + xInterval;
       const groupWidth =
-        (secondTick - firstTick) * (1 - thisChart.barPadding());
+        (xScale(oneIntervalOver) - xScale(startOfDomain)) *
+        (1 - thisChart.barPadding());
       xShift -= groupWidth / 2;
       const xShiftForSeries =
         groupWidth / displays.filter(d => d === "bar").length;
@@ -384,6 +391,7 @@ function onRenderValueLabels(chart, { formatYValue, yAxisSplit, datas }) {
     // for the white outline behind it.
     datas.forEach((data, index) => {
       const compact = compactForSeries[index];
+      const yScale = yScaleForSeries(index);
       const labelGroups = parent
         .append("svg:g")
         .classed("value-labels", true)
@@ -391,9 +399,8 @@ function onRenderValueLabels(chart, { formatYValue, yAxisSplit, datas }) {
         .data(data)
         .enter()
         .append("g")
-        .attr("transform", ({ x, y, showLabelBelow, seriesIndex }) => {
-          const yScale = yScaleForSeries(seriesIndex);
-          const xPos = xShifts[seriesIndex] + xScale(x);
+        .attr("transform", ({ x, y, showLabelBelow }) => {
+          const xPos = xShifts[index] + xScale(x);
           let yPos = yScale(y) + (showLabelBelow ? 18 : -8);
           // if the yPos is below the x axis, move it to be above the data point
           const [yMax] = yScale.range();
@@ -592,7 +599,15 @@ function onRenderAddExtraClickHandlers(chart) {
 // the various steps that get called
 function onRender(
   chart,
-  { onGoalHover, isSplitAxis, yAxisSplit, isStacked, formatYValue, datas },
+  {
+    onGoalHover,
+    isSplitAxis,
+    xInterval,
+    yAxisSplit,
+    isStacked,
+    formatYValue,
+    datas,
+  },
 ) {
   onRenderRemoveClipPath(chart);
   onRenderMoveContentToTop(chart);
@@ -602,7 +617,7 @@ function onRender(
   onRenderEnableDots(chart);
   onRenderVoronoiHover(chart);
   onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
-  onRenderValueLabels(chart, { formatYValue, yAxisSplit, datas });
+  onRenderValueLabels(chart, { formatYValue, xInterval, yAxisSplit, datas });
   onRenderHideDisabledLabels(chart);
   onRenderHideDisabledAxis(chart);
   onRenderHideBadAxis(chart);
