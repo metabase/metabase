@@ -31,11 +31,8 @@ describe("smoketest > admin_setup", () => {
 
     // Navigate to page
 
-    cy.get(".Nav")
-      .children()
-      .last()
-      .children()
-      .last()
+    cy.get(".Icon-gear")
+      .first()
       .click();
     cy.findByText("Admin").click();
 
@@ -311,11 +308,8 @@ describe("smoketest > admin_setup", () => {
     // should rename a table and add a description as admin
     // =================
 
-    cy.get(".Nav")
-      .children()
-      .last()
-      .children()
-      .last()
+    cy.get(".Icon-gear")
+      .first()
       .click();
     cy.findByText("Admin").click();
 
@@ -423,8 +417,58 @@ describe("smoketest > admin_setup", () => {
     cy.contains("Created At").should("not.exist");
 
     // =================
-    // should configure a foreign key to show the name (and have it be reflected in notebook editor) as admin
+    // should configure a foreign key to show the name as admin
     // =================
+    
+    cy.get(".Icon-gear")
+      .first()
+      .click();
+    cy.findByText("Admin").click()
+    cy.findByText("Data Model").click();
+    cy.findByText("Test Table").click()
+
+    // Configure Key
+    
+    cy.get(".Icon-gear")
+      .eq(6)
+      .click();
+    cy.findByText("Use original value").click();
+    cy.findByText("Use foreign key").click();
+    cy.findByText("Title").click();
+
+    cy.contains("You might want to update the field name to make sure it still makes sense based on your remapping choices.")
+
+    // Check key config in table display
+    // *** I went the fast way here instead of user journey
+
+    cy.visit("/browse/1");
+    cy.findByText("Test Table").click();
+    
+    cy.contains("Product ID");
+    cy.contains("Awesome Concrete Shoes");
+    cy.contains("Mediocre Wooden Bench");
+    cy.get(".Table-ID")
+      .eq("1")
+      .contains("14")
+      .should("not.exist");
+
+    // Check key config in notebook editor
+
+    cy.get(".Icon-notebook").click();
+    cy.findByText("Filter").click();
+    cy.findAllByText("Product ID")
+      .last()
+      .click();
+    cy.get("input") 
+      .last()
+      // .type("Awesome Concrete Shoes"); // *** should accept string, but only accepts ints
+      .type("14") // *** This pulls up title with the ID you've typed in
+    cy.findByText("Add filter").click();
+    cy.findByText("Visualize").click();
+
+    cy.contains("Awesome Concrete Shoes");
+    cy.contains("Mediocre Wooden Bench").should("not.exist");
+
     // =================
     // should hide a table (and have it be reflected in the notebook editor) as admin
     // =================
