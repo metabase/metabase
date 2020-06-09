@@ -16,7 +16,6 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models.database :refer [Database]]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]
@@ -83,20 +82,19 @@
    (dissoc details :host :port :sid :service-name)))
 
 (defmethod sql-jdbc.sync/has-select-privilege? :oracle
-  [_ user db-name schema table]
-  (let [{:keys [engine details]} (Database :name db-name)]
-    (println (jdbc/query (sql-jdbc.conn/connection-details->spec engine details)
-                [(str "SELECT * FROM sys.all_tab_privs ")
-                 ]
-                ))
-    (jdbc/query (sql-jdbc.conn/connection-details->spec engine details)
-                [(str "SELECT 1 FROM sys.all_tab_privs "
-                      "WHERE table_schema=? "
-                      "AND table_name=? "
-                      "AND grantee=? "
-                      "AND privilege='SELECT'")
-                 schema table user]
-                {:result-set-fn (comp pos? count)})))
+  [database user schema table]
+  (log/debug (jdbc/query (sql-jdbc.conn/connection-details->spec (:engine database) (:details database))
+                         [(str "SELECT * FROM sys.all_tab_privs ")
+                          ]
+                         ))
+  (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
+              [(str "SELECT 1 FROM sys.all_tab_privs "
+                    "WHERE table_schema=? "
+                    "AND table_name=? "
+                    "AND grantee=? "
+                    "AND privilege='SELECT'")
+               schema table user]
+              {:result-set-fn (comp pos? count)}))
 
 (defmethod driver/can-connect? :oracle
   [driver details]

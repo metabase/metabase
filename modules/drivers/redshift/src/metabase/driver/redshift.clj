@@ -16,7 +16,6 @@
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models.database :refer [Database]]
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
@@ -168,12 +167,11 @@
    (dissoc opts :host :port :db)))
 
 (defmethod sql-jdbc.sync/has-select-privilege? :redshift
-  [_ user db-name schema table]
-  (let [{:keys [engine details]} (Database :name db-name)]
-    (jdbc/query (sql-jdbc.conn/connection-details->spec engine details)
-                ["SELECT has_table_privilage(?, ?, 'select')"
-                 user (str/join "." [schema table])]
-                {:result-set-fn (comp :has_table_privilege first)})))
+  [database user schema table]
+  (jdbc/query (sql-jdbc.conn/connection-details->spec (:engine database) (:details database))
+              ["SELECT has_table_privilage(?, ?, 'select')"
+               user (str/join "." [schema table])]
+              {:result-set-fn (comp :has_table_privilege first)}))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk

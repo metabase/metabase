@@ -8,7 +8,8 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.models.database :refer [Database]])
   (:import java.sql.DatabaseMetaData))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -90,12 +91,13 @@
 
 (defmulti has-select-privilege?
   "Does the user `user` have (SELECT) access to a given table?"
-  {:arglists '([driver user db-name-or-nil schema-or-nil table])}
-  driver/dispatch-on-initialized-driver
+  {:arglists '([database user schema-or-nil table])}
+  (fn [database & _]
+    (driver/dispatch-on-initialized-driver (:engine database)))
   :hierarchy #'driver/hierarchy)
 
 (defmethod has-select-privilege? :default
-  [_ _ _ _ _]
+  [_ _ _ _]
   true)
 
 (defmulti db-tables
@@ -115,9 +117,11 @@
 (defn- accessible-tables
   [^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   (let [user (.getUserName metadata)]
-    (vec (for [{:keys [table_name table_schem] :as table} (db-tables :sql-jdbc
-                                                                     metadata schema-or-nil db-name-or-nil)
-               :when (has-select-privilege? :sql-jdbc user db-name-or-nil table_schem table_name)]
+    (vec (for [{:keys [table_cat table_name table_schem] :as table} (db-tables :sql-jdbc metadata schema-or-nil db-name-or-nil)
+               :when (has-select-privilege? (Database :name (or db-name-or-nil table_cat))
+                                            user
+                                            table_schem
+                                            table_name)]
            table))))
 
 (defn fast-active-tables

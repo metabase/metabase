@@ -14,7 +14,6 @@
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models.database :refer [Database]]
             [metabase.util
              [date-2 :as u.date]
              [honeysql-extensions :as hx]
@@ -59,16 +58,15 @@
       (sql-jdbc.common/handle-additional-options details)))
 
 (defmethod sql-jdbc.sync/has-select-privilege? :vertica
-  [_ user db-name schema table]
-  (let [{:keys [engine details]} (Database :name db-name)]
-    (jdbc/query (sql-jdbc.conn/connection-details->spec engine details)
-                [(str "SELECT 1 FROM grants "
-                      "WHERE object_schema=? "
-                      "AND object_name=? "
-                      "AND grantee=? "
-                      "AND privilages_description LIKE '%SELECT%'")
-                 schema table user]
-                {:result-set-fn (comp pos? count)})))
+  [database user schema table]
+  (jdbc/query (sql-jdbc.conn/connection-details->spec (:engine database) (:details database))
+              [(str "SELECT 1 FROM grants "
+                    "WHERE object_schema=? "
+                    "AND object_name=? "
+                    "AND grantee=? "
+                    "AND privilages_description LIKE '%SELECT%'")
+               schema table user]
+              {:result-set-fn (comp pos? count)}))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_ _ expr]

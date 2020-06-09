@@ -50,11 +50,10 @@
   0
   (describe-database-with-open-resultset-count driver/*driver* (data/db)))
 
-
 ;; Do we correctly determine SELECT privilege
 (deftest determine-select-privilege
-  (when-not (= (get-method sql-jdbc.sync/has-select-privilege? driver/*driver*)
-               (get-method sql-jdbc.sync/has-select-privilege? :default))
+  (when-not (identical? (get-method sql-jdbc.sync/has-select-privilege? driver/*driver*)
+                        (get-method sql-jdbc.sync/has-select-privilege? :default))
     (one-off-dbs/with-blank-db
       (doseq [statement ["create user if not exists GUEST password 'guest';"
                          "set db_close_delay -1;"
