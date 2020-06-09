@@ -3,7 +3,8 @@
             [clojure.test :refer [deftest is]]
             [metabase
              [driver :as driver]
-             [sync :as sync]]
+             [sync :as sync]
+             [test :as mt]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]]
@@ -61,9 +62,9 @@
                          "create table \"birds\" ();"
                          "grant all on \"birds\" to GUEST;"]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
-      (is (sql-jdbc.sync/has-select-privilege? :sql-jdbc "GUEST" nil nil "birds"))
+      (is (sql-jdbc.sync/has-select-privilege? driver/*driver* (mt/db) "GUEST" nil "birds"))
       (jdbc/execute! one-off-dbs/*conn* ["revoke all on \"birds\" from GUEST;"])
-      (is (not (sql-jdbc.sync/has-select-privilege? :sql-jdbc "GUEST" nil nil "birds"))))))
+      (is (not (sql-jdbc.sync/has-select-privilege? driver/*driver* (mt/db) "GUEST" nil "birds"))))))
 
 (defn- count-active-tables-in-db
   [db-id]
@@ -79,7 +80,7 @@
       (jdbc/execute! one-off-dbs/*conn* [statement]))
     (sync/sync-database! (data/db))
     (is (= 1 (count-active-tables-in-db (data/id))))
-    ;; We have to mock this as H2 doesn't have a notion of a user connecting to it
+    ;; We have to mock this as H2 doesn't have the notion of a user connecting to it
     (with-redefs [sql-jdbc.sync/has-select-privilege? (constantly false)]
       (sync/sync-database! (data/db))
       (is (= 0 (count-active-tables-in-db (data/id)))

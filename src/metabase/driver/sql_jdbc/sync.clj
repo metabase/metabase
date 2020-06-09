@@ -91,13 +91,12 @@
 
 (defmulti has-select-privilege?
   "Does the user `user` have (SELECT) access to a given table?"
-  {:arglists '([database user schema-or-nil table])}
-  (fn [database & _]
-    (driver/dispatch-on-initialized-driver (:engine database)))
+  {:arglists '([driver database user schema-or-nil table])}
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod has-select-privilege? :default
-  [_ _ _ _]
+  [_ _ _ _ _]
   true)
 
 (defmulti db-tables
@@ -115,10 +114,11 @@
     (vec (jdbc/metadata-result rs))))
 
 (defn- accessible-tables
-  [^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
+  [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   (let [user (.getUserName metadata)]
     (vec (for [{:keys [table_cat table_name table_schem] :as table} (db-tables :sql-jdbc metadata schema-or-nil db-name-or-nil)
-               :when (has-select-privilege? (Database :name (or db-name-or-nil table_cat))
+               :when (has-select-privilege? driver
+                                            (Database :name (or db-name-or-nil table_cat))
                                             user
                                             table_schem
                                             table_name)]
@@ -135,7 +135,7 @@
     (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))
           schemas     (set/difference all-schemas (excluded-schemas driver))]
       (set (for [schema schemas
-                 table  (accessible-tables metadata schema db-name-or-nil)]
+                 table  (accessible-tables driver metadata schema db-name-or-nil)]
              (let [remarks (:remarks table)]
                {:name        (:table_name table)
                 :schema      schema

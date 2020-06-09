@@ -82,8 +82,8 @@
    (dissoc details :host :port :sid :service-name)))
 
 (defmethod sql-jdbc.sync/has-select-privilege? :oracle
-  [database user schema table]
-  (log/debug (jdbc/query (sql-jdbc.conn/connection-details->spec (:engine database) (:details database))
+  [driver database user schema table]
+  (log/debug (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
                          [(str "SELECT * FROM sys.all_tab_privs ")
                           ]
                          ))
