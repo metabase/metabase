@@ -277,9 +277,9 @@ function onRenderValueLabels(chart, { formatYValue, yAxisSplit, datas }) {
   // Count max points in a single series to estimate when labels should be hidden
   const maxSeriesLength = Math.max(...datas.map(d => d.length));
 
-  // Set `data` to flattened `datas` and use named x/y and include `showLabelBelow`.
-  // We need to do that before data is filtered to show every nth value.
-  const data = datas.flatMap((data, seriesIndex) => {
+  // Update datas to use named x/y and include `showLabelBelow`.
+  // We need to add `showLabelBelow` before data is filtered to show every nth value.
+  datas = datas.map((data, seriesIndex) => {
     const display = displays[seriesIndex];
     return data
       .map(([x, y], i) => {
@@ -295,12 +295,13 @@ function onRenderValueLabels(chart, { formatYValue, yAxisSplit, datas }) {
   });
 
   const formattingSetting = chart.settings["graph.label_value_formatting"];
-  let compact;
-  if (formattingSetting === "compact") {
-    compact = true;
-  } else if (formattingSetting === "full") {
-    compact = false;
-  } else {
+  const compactForSeries = datas.map(data => {
+    if (formattingSetting === "compact") {
+      return true;
+    }
+    if (formattingSetting === "full") {
+      return false;
+    }
     // for "auto" we use compact if it shortens avg label length by >3 chars
     const getAvgLength = compact => {
       const options = {
@@ -316,8 +317,8 @@ function onRenderValueLabels(chart, { formatYValue, yAxisSplit, datas }) {
       const lengths = data.map(d => formatYValue(d.y, options).length);
       return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
     };
-    compact = getAvgLength(true) < getAvgLength(false) - 3;
-  }
+    return getAvgLength(true) < getAvgLength(false) - 3;
+  });
 
   // use the chart body so things line up properly
   const parent = chart.svg().select(".chart-body");
@@ -375,45 +376,48 @@ function onRenderValueLabels(chart, { formatYValue, yAxisSplit, datas }) {
     return xShift;
   });
 
-  const addLabels = data => {
+  const addLabels = (datas, compactForSeries) => {
     // make sure we don't add .value-lables multiple times
     parent.select(".value-labels").remove();
     // Safari had an issue with rendering paint-order: stroke. To work around
     // that, we create two text labels: one for the the black text and another
     // for the white outline behind it.
-    const labelGroups = parent
-      .append("svg:g")
-      .classed("value-labels", true)
-      .selectAll("g")
-      .data(data)
-      .enter()
-      .append("g")
-      .attr("transform", ({ x, y, showLabelBelow, seriesIndex }) => {
-        const yScale = yScaleForSeries(seriesIndex);
-        const xPos = xShifts[seriesIndex] + xScale(x);
-        let yPos = yScale(y) + (showLabelBelow ? 18 : -8);
-        // if the yPos is below the x axis, move it to be above the data point
-        const [yMax] = yScale.range();
-        if (yPos > yMax) {
-          yPos = yScale(y) - 8;
-        }
-        return `translate(${xPos}, ${yPos})`;
-      });
+    datas.forEach((data, index) => {
+      const compact = compactForSeries[index];
+      const labelGroups = parent
+        .append("svg:g")
+        .classed("value-labels", true)
+        .selectAll("g")
+        .data(data)
+        .enter()
+        .append("g")
+        .attr("transform", ({ x, y, showLabelBelow, seriesIndex }) => {
+          const yScale = yScaleForSeries(seriesIndex);
+          const xPos = xShifts[seriesIndex] + xScale(x);
+          let yPos = yScale(y) + (showLabelBelow ? 18 : -8);
+          // if the yPos is below the x axis, move it to be above the data point
+          const [yMax] = yScale.range();
+          if (yPos > yMax) {
+            yPos = yScale(y) - 8;
+          }
+          return `translate(${xPos}, ${yPos})`;
+        });
 
-    ["value-label-outline", "value-label"].forEach(klass =>
-      labelGroups
-        .append("text")
-        .attr("class", klass)
-        .attr("text-anchor", "middle")
-        .text(({ y }) => formatYValue(y, { compact })),
-    );
+      ["value-label-outline", "value-label"].forEach(klass =>
+        labelGroups
+          .append("text")
+          .attr("class", klass)
+          .attr("text-anchor", "middle")
+          .text(({ y }) => formatYValue(y, { compact })),
+      );
+    });
   };
 
-  let nth;
-  if (showAll) {
-    // show all
-    nth = 1;
-  } else {
+  const nthForSeries = datas.map((data, index) => {
+    if (showAll) {
+      // show all
+      return 1;
+    }
     // auto fit
     // Render a sample of rows to estimate average label size.
     // We use that estimate to compute the label interval.
@@ -421,7 +425,7 @@ function onRenderValueLabels(chart, { formatYValue, yAxisSplit, datas }) {
     const MAX_SAMPLE_SIZE = 30;
     const sampleStep = Math.ceil(maxSeriesLength / MAX_SAMPLE_SIZE);
     const sample = data.filter((d, i) => i % sampleStep === 0);
-    addLabels(sample);
+    addLabels([sample], [compactForSeries[index]]);
     const totalWidth = chart
       .svg()
       .selectAll(".value-label-outline")
@@ -435,10 +439,15 @@ function onRenderValueLabels(chart, { formatYValue, yAxisSplit, datas }) {
       .node()
       .getBoundingClientRect();
 
-    nth = Math.ceil((labelWidth * maxSeriesLength) / chartWidth);
-  }
+    return Math.ceil((labelWidth * maxSeriesLength) / chartWidth);
+  });
 
-  addLabels(data.filter((d, i) => i % nth === 0));
+  addLabels(
+    datas.map((data, index) =>
+      data.filter((d, i) => i % nthForSeries[index] === 0),
+    ),
+    compactForSeries,
+  );
 
   moveToTop(
     chart
