@@ -173,7 +173,7 @@
     (jdbc/query (sql-jdbc.conn/connection-details->spec engine details)
                 ["SELECT has_table_privilage(?, ?, 'select')"
                  user (str/join "." [schema table])]
-                {:result-set-fn ffirst})))
+                {:result-set-fn (comp :has_table_privilege first)})))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk
