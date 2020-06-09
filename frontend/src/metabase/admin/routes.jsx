@@ -24,6 +24,7 @@ import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp
 // Metadata / Data model
 import DataModelApp from "metabase/admin/datamodel/containers/DataModelApp";
 import MetadataEditorApp from "metabase/admin/datamodel/containers/MetadataEditorApp";
+import MetricListApp from "metabase/admin/datamodel/containers/MetricListApp";
 import MetricApp from "metabase/admin/datamodel/containers/MetricApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
@@ -79,7 +80,7 @@ const getRoutes = (store, IsAdmin) => (
         <IndexRedirect to="general" />
         <Route path=":section" component={FieldApp} />
       </Route>
-      <Route path="metrics" component={MetricApp} />
+      <Route path="metrics" component={MetricListApp} />
       <Route path="metric/create" component={MetricApp} />
       <Route path="metric/:id" component={MetricApp} />
       <Route path="segments" component={SegmentListApp} />
