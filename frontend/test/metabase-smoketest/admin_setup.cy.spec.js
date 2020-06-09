@@ -305,7 +305,7 @@ describe("smoketest > admin_setup", () => {
     cy.findByText("Save").click();
     
     // =================
-    // should rename a table as admin
+    // should rename a table and add a description as admin
     // =================
 
     cy.get(".Nav")
@@ -320,19 +320,20 @@ describe("smoketest > admin_setup", () => {
     cy.contains(USERS.admin.first_name).should("not.exist");
 
     cy.findByText("Data Model").click();
-    cy.findByText("Orders", { timeout: 30000 }).click();
-    cy.get("input")
-      .first()
+    cy.findByText("Orders").click();
+    cy.get(".TableEditor-table-name") //, { timeout: 30000 })
       .clear()
       .type("Test Table");
-    
-    // =================
-    // should add a description to a table as admin
-    // =================
+
+    cy.get("input")
+      .eq(2) 
+      .clear()
+      .type("Testing table description");
 
     // =================
     // should change a column name as admin
     // =================
+
     // =================
     // should change a column's visibility (and have it be reflected in notebook editor) as admin
     // =================
