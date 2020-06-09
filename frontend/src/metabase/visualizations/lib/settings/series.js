@@ -133,10 +133,11 @@ export function seriesSetting({
       title: t`Show values for this series`,
       widget: "toggle",
       getHidden: (single, seriesSettings, { settings }) =>
-        !settings["graph.show_values"],
+        !settings["graph.show_values"] ||
+        settings["stackable.stack_type"] === "stacked",
       getDefault: (single, seriesSettings, { settings }) =>
         settings["graph.show_values"],
-      readDependencies: ["graph.show_values"],
+      readDependencies: ["graph.show_values", "stackable.stack_type"],
     },
   };
 

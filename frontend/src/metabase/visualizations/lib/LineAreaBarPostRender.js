@@ -262,7 +262,8 @@ function onRenderValueLabels(
   let displays = datas.map(
     (data, index) => chart.settings.series(chart.series[index]).display,
   );
-  if (chart.settings["stackable.stack_type"] === "stacked") {
+  const stacked = chart.settings["stackable.stack_type"] === "stacked";
+  if (stacked) {
     // When stacked, zip together the corresponding values and sum them.
     datas = [
       _.zip(...datas).map(datasForSeries =>
@@ -287,7 +288,7 @@ function onRenderValueLabels(
     const display = displays[seriesIndex];
     const settings = chart.settings.series(chart.series[seriesIndex]);
 
-    if (settings["show_series_values"] === false) {
+    if (settings["show_series_values"] === false && !stacked) {
       // We need to keep the series in `datas` to place the labels correctly over grouped bar charts.
       // Instead, we remove all the data so no labels are displayed.
       return [];
