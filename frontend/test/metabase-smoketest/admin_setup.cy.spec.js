@@ -420,15 +420,11 @@ describe("smoketest > admin_setup", () => {
     // should configure a foreign key to show the name as admin
     // =================
     
-    cy.get(".Icon-gear")
-      .first()
-      .click();
-    cy.findByText("Admin").click()
-    cy.findByText("Data Model").click();
-    cy.findByText("Test Table").click()
+    cy.visit("/admin/datamodel/database/1/table/2");
 
     // Configure Key
     
+    cy.contains("Metrics");
     cy.get(".Icon-gear")
       .eq(6)
       .click();
@@ -470,8 +466,44 @@ describe("smoketest > admin_setup", () => {
     cy.contains("Mediocre Wooden Bench").should("not.exist");
 
     // =================
-    // should hide a table (and have it be reflected in the notebook editor) as admin
+    // should hide a table as admin
     // =================
+
+    cy.visit("/admin/datamodel/database/1/");
+
+    // Hide table
+    
+    cy.findByText("Reviews")
+      .find(".Icon-eye_crossed_out")
+      .click({ force: true});
+
+    // Check table hidden on home page
+    
+    cy.visit("/");
+
+    cy.contains(", " + USERS.admin.first_name);
+    cy.contains("A look at your People table");
+    cy.contains("A look at your Reviews table")
+      .should("not.exist");
+
+    // Check table hidden while browsing data
+
+    cy.visit("/browse/1");
+
+    cy.contains("Learn about our data")
+    cy.contains("Test Table");
+    cy.contains("Reviews").should("not.exist");
+
+    // Check table hidden in notebook editor
+
+    cy.findByText("Test Table").click();
+    cy.get(".Icon-notebook").click();
+
+    cy.findByText("Join data").click();
+
+    cy.contains("Test Table");
+    cy.contains("Reviews").should("not.exist");
+
     // =================
     // should see changes to visibility, formatting, and foreign key mapping as user
     // =================
