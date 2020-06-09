@@ -129,6 +129,15 @@ export function seriesSetting({
       },
       getHidden: (single, settings, { series }) => series.length < 2,
     },
+    show_series_values: {
+      title: t`Show values for this series`,
+      widget: "toggle",
+      getHidden: (single, seriesSettings, { settings }) =>
+        !settings["graph.show_values"],
+      getDefault: (single, seriesSettings, { settings }) =>
+        settings["graph.show_values"],
+      readDependencies: ["graph.show_values"],
+    },
   };
 
   function getSettingDefintionsForSingleSeries(series, object, settings) {

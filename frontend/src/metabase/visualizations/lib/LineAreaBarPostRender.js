@@ -285,6 +285,13 @@ function onRenderValueLabels(
   // We need to add `showLabelBelow` before data is filtered to show every nth value.
   datas = datas.map((data, seriesIndex) => {
     const display = displays[seriesIndex];
+    const settings = chart.settings.series(chart.series[seriesIndex]);
+
+    if (settings["show_series_values"] === false) {
+      // We need to keep the series in `datas` to place the labels correctly over grouped bar charts.
+      // Instead, we remove all the data so no labels are displayed.
+      return [];
+    }
     return data
       .map(([x, y], i) => {
         const isLocalMin =
