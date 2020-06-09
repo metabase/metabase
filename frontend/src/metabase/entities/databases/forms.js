@@ -4,6 +4,7 @@ import { t, jt } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/components/ExternalLink";
 import getFieldsForBigQuery from "./big-query-fields";
+import getFieldsForMongo from "./mongo-fields";
 
 import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
@@ -175,6 +176,10 @@ function getFieldsForEngine(engine, details) {
   if (engine === "bigquery") {
     // BigQuery has special logic to switch out forms depending on what style of authenication we use.
     info = getFieldsForBigQuery(details);
+  }
+  if (engine === "mongo") {
+    // Mongo has special logic to switch between a connection URI and broken out fields
+    info = getFieldsForMongo(details, info);
   }
   if (info) {
     const fields = [];
