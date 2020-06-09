@@ -53,16 +53,18 @@
 
 ;; Do we correctly determine SELECT privilege
 (deftest determine-select-privilege
-  (one-off-dbs/with-blank-db
-    (doseq [statement ["create user if not exists GUEST password 'guest';"
-                       "set db_close_delay -1;"
-                       "drop table if exists \"birds\";"
-                       "create table \"birds\" ();"
-                       "grant all on \"birds\" to GUEST;"]]
-      (jdbc/execute! one-off-dbs/*conn* [statement]))
-    (is (#'sql-jdbc.sync/has-select-privilege? :sql-jdbc "GUEST" nil nil "birds"))
-    (jdbc/execute! one-off-dbs/*conn* ["revoke all on \"birds\" from GUEST;"])
-    (is (not (#'sql-jdbc.sync/has-select-privilege? :sql-jdbc "GUEST" nil nil "birds")))))
+  (when-not (= (get-method sql-jdbc.sync/has-select-privilege? driver/*driver*)
+               (get-method sql-jdbc.sync/has-select-privilege? :default))
+    (one-off-dbs/with-blank-db
+      (doseq [statement ["create user if not exists GUEST password 'guest';"
+                         "set db_close_delay -1;"
+                         "drop table if exists \"birds\";"
+                         "create table \"birds\" ();"
+                         "grant all on \"birds\" to GUEST;"]]
+        (jdbc/execute! one-off-dbs/*conn* [statement]))
+      (is (sql-jdbc.sync/has-select-privilege? :sql-jdbc "GUEST" nil nil "birds"))
+      (jdbc/execute! one-off-dbs/*conn* ["revoke all on \"birds\" from GUEST;"])
+      (is (not (sql-jdbc.sync/has-select-privilege? :sql-jdbc "GUEST" nil nil "birds"))))))
 
 (defn- count-active-tables-in-db
   [db-id]

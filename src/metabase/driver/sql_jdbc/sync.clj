@@ -94,7 +94,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod has-select-privilege? :sql-jdbc
+(defmethod has-select-privilege? :default
   [_ _ _ _ _]
   true)
 
