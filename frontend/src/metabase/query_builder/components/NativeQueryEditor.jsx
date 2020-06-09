@@ -259,7 +259,8 @@ export default class NativeQueryEditor extends Component {
     document.removeEventListener("contextmenu", this.handleRightClick);
   }
 
-  handleCursorChange = _.debounce(() => {
+  handleCursorChange = _.debounce((e, { cursor }) => {
+    this.swapInCorrectCompletors && this.swapInCorrectCompletors(cursor);
     this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
   }, 100);
 
@@ -359,11 +360,6 @@ export default class NativeQueryEditor extends Component {
     aceLanguageTools.addCompleter({
       getCompletions: async (editor, session, pos, prefix, callback) => {
         try {
-          const snippetCompletions = this.getSnippetCompletions(editor, pos);
-          if (snippetCompletions) {
-            callback(null, snippetCompletions);
-            return;
-          }
           // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
           const results = await this.props.autocompleteResultsFn(prefix);
           // transform results of the API call into what ACE expects
@@ -381,26 +377,31 @@ export default class NativeQueryEditor extends Component {
         }
       },
     });
+
+    const allCompleters = [...this._editor.completers];
+    const snippetCompleter = [{ getCompletions: this.getSnippetCompletions }];
+
+    this.swapInCorrectCompletors = pos => {
+      const isInSnippet = this.getSnippetNameAtCursor(pos) !== null;
+      this._editor.completers = isInSnippet ? snippetCompleter : allCompleters;
+    };
   }
 
-  getSnippetCompletions(editor, pos) {
-    const lines = editor.getValue().split("\n");
-    const linePrefix = lines[pos.row].slice(0, pos.column);
+  getSnippetNameAtCursor = ({ row, column }) => {
+    const lines = this._editor.getValue().split("\n");
+    const linePrefix = lines[row].slice(0, column);
     const match = linePrefix.match(/\{\{\s*snippet:\s*([^\}]*)$/);
-    if (!match) {
-      return null;
-    }
+    return match ? match[1] : null;
+  };
 
+  getSnippetCompletions = (editor, session, pos, prefix, callback) => {
+    const name = this.getSnippetNameAtCursor(pos);
     const snippets = (this.props.snippets || []).filter(snippet =>
-      snippet.name.toLowerCase().includes(match[1].toLowerCase()),
+      snippet.name.toLowerCase().includes(name.toLowerCase()),
     );
 
-    return snippets.map(({ name }) => ({
-      name: name,
-      value: name,
-      meta: "Metabase Snippet",
-    }));
-  }
+    callback(null, snippets.map(({ name }) => ({ name, value: name })));
+  };
 
   _updateSize() {
     const doc = this._editor.getSession().getDocument();
