@@ -1,5 +1,4 @@
-import { restore, USER, signInAsNormalUser } from "__support__/cypress";
-import { clearAsyncError } from "redux-form";
+import { restore, signInAsNormalUser } from "__support__/cypress";
 
 describe("smoketest > new_user", () => {
   before(restore);
