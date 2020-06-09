@@ -26,14 +26,14 @@
   functions for more details on the differences.
 
   `metabase` is an instance of `DatabaseMetaData`."
-  {:arglists '([driver metadata])}
+  {:arglists '([driver database metadata])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (declare fast-active-tables)
 
-(defmethod active-tables :sql-jdbc [driver metadata]
-  (fast-active-tables driver metadata))
+(defmethod active-tables :sql-jdbc [driver database metadata]
+  (fast-active-tables driver database metadata))
 
 
 (defmulti excluded-schemas
@@ -114,11 +114,11 @@
     (vec (jdbc/metadata-result rs))))
 
 (defn- accessible-tables
-  [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
+  [driver database ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   (let [user (.getUserName metadata)]
-    (vec (for [{:keys [table_cat table_name table_schem] :as table} (db-tables :sql-jdbc metadata schema-or-nil db-name-or-nil)
+    (vec (for [{:keys [table_name table_schem] :as table} (db-tables :sql-jdbc metadata schema-or-nil db-name-or-nil)
                :when (has-select-privilege? driver
-                                            (Database :name (or db-name-or-nil table_cat))
+                                            database
                                             user
                                             table_schem
                                             table_name)]
@@ -130,12 +130,12 @@
 
   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds
   vs 60)."
-  [driver ^DatabaseMetaData metadata & [db-name-or-nil]]
+  [driver database ^DatabaseMetaData metadata & [db-name-or-nil]]
   (with-open [rs (.getSchemas metadata)]
     (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))
           schemas     (set/difference all-schemas (excluded-schemas driver))]
       (set (for [schema schemas
-                 table  (accessible-tables driver metadata schema db-name-or-nil)]
+                 table  (accessible-tables driver database metadata schema db-name-or-nil)]
              (let [remarks (:remarks table)]
                {:name        (:table_name table)
                 :schema      schema
@@ -145,9 +145,9 @@
 (defn post-filtered-active-tables
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
-  [driver, ^DatabaseMetaData metadata, & [db-name-or-nil]]
+  [driver, database, ^DatabaseMetaData metadata, & [db-name-or-nil]]
   (set (for [table   (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                             (accessible-tables metadata nil nil))]
+                             (accessible-tables driver database metadata nil nil))]
          (let [remarks (:remarks table)]
            {:name        (:table_name  table)
             :schema      (:table_schem table)
@@ -218,7 +218,11 @@
   "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec]
   (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
-    {:tables (active-tables driver metadata)}))
+    {:tables (active-tables driver
+                            (if (u/id db-or-id-or-spec)
+                              (Database db-or-id-or-spec)
+                              db-or-id-or-spec)
+                            metadata)}))
 
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

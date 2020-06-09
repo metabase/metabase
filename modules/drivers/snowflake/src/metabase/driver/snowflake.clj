@@ -220,7 +220,7 @@
 (defmethod driver/describe-database :snowflake
   [driver database]
   {:tables (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-             (sql-jdbc.sync/fast-active-tables driver metadata (db-name database)))})
+             (sql-jdbc.sync/fast-active-tables driver database metadata (db-name database)))})
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
