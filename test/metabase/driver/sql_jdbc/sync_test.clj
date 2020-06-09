@@ -60,11 +60,9 @@
                        "create table \"birds\" ();"
                        "grant all on \"birds\" to GUEST;"]]
       (jdbc/execute! one-off-dbs/*conn* [statement]))
-    (is (jdbc/with-db-metadata [metadata (#'sql-jdbc.sync/->spec (data/id))]
-          (#'sql-jdbc.sync/has-select-privilege? :sql-jdbc metadata "GUEST" nil nil "birds")))
+    (is (#'sql-jdbc.sync/has-select-privilege? :sql-jdbc "GUEST" nil nil "birds"))
     (jdbc/execute! one-off-dbs/*conn* ["revoke all on \"birds\" from GUEST;"])
-    (is (not (jdbc/with-db-metadata [metadata (#'sql-jdbc.sync/->spec (data/id))]
-               (#'sql-jdbc.sync/has-select-privilege? :sql-jdbc metadata "GUEST" nil nil "birds"))))))
+    (is (not (#'sql-jdbc.sync/has-select-privilege? :sql-jdbc "GUEST" nil nil "birds")))))
 
 (defn- count-active-tables-in-db
   [db-id]

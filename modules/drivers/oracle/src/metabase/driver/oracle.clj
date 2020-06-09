@@ -85,12 +85,16 @@
 (defmethod sql-jdbc.sync/has-select-privilege? :oracle
   [_ user db-name schema table]
   (let [{:keys [engine details]} (Database :name db-name)]
+    (println (jdbc/query (sql-jdbc.conn/connection-details->spec engine details)
+                [(str "SELECT * FROM sys.all_tab_privs ")
+                 ]
+                ))
     (jdbc/query (sql-jdbc.conn/connection-details->spec engine details)
-                [(str "SELECT 1 FROM ALL_TAB_PRIVS "
-                      "WHERE TABLE_SCHEMA=? "
-                      "AND TABLE_NAME=? "
-                      "AND GRANTEE=? "
-                      "AND PRIVILEGE='SELECT'")
+                [(str "SELECT 1 FROM sys.all_tab_privs "
+                      "WHERE table_schema=? "
+                      "AND table_name=? "
+                      "AND grantee=? "
+                      "AND privilege='SELECT'")
                  schema table user]
                 {:result-set-fn (comp pos? count)})))
 
