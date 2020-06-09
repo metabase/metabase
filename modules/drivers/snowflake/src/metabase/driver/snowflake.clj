@@ -219,8 +219,13 @@
 
 (defmethod driver/describe-database :snowflake
   [driver database]
-  {:tables (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-             (sql-jdbc.sync/fast-active-tables driver database metadata (db-name database)))})
+  {:tables (for [table (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
+                         (sql-jdbc.sync/fast-active-tables driver database metadata (db-name database)))]
+             (let [remarks (:remarks table)]
+               {:name        (:table_name table)
+                :schema      (:table_schem table)
+                :description (when-not (str/blank? remarks)
+                               remarks)}))})
 
 (defmethod driver/describe-table :snowflake
   [driver database table]

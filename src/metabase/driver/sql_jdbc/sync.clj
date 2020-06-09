@@ -124,13 +124,17 @@
    ahead and return all the tables."
   [driver database user tables]
   (let [accessible-tables (filter (fn [{:keys [table_name table_schem]}]
-                                    (has-select-privilege? driver database user table_schem table_name))
+                                    (try
+                                      (has-select-privilege? driver database user table_schem table_name)
+                                      ;; Some DBs (eg. Postgres) will throw if the role we're asking
+                                      ;; about doesn't exist
+                                      (catch Throwable _ false)))
                                   tables)]
     (if (empty? accessible-tables)
       (try
-        (let [[{:keys [table_name table_schem] :as table} & _] tables]
+        (let [[{:keys [table_name table_schem]} & _] tables]
           (when (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
-                            [(str "SELECT 1 from " (str/join "." [table_schem table_name]))]
+                            [(format "SELECT 1 from %.%" table_schem table_name)]
                             {:result-set-fn (comp pos? count)})
             tables))
         (catch Throwable _ nil))
