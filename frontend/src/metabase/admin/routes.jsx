@@ -25,6 +25,7 @@ import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp
 import DataModelApp from "metabase/admin/datamodel/containers/DataModelApp";
 import MetadataEditorApp from "metabase/admin/datamodel/containers/MetadataEditorApp";
 import MetricApp from "metabase/admin/datamodel/containers/MetricApp";
+import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp";
@@ -81,7 +82,7 @@ const getRoutes = (store, IsAdmin) => (
       <Route path="metrics" component={MetricApp} />
       <Route path="metric/create" component={MetricApp} />
       <Route path="metric/:id" component={MetricApp} />
-      <Route path="segments" component={SegmentApp} />
+      <Route path="segments" component={SegmentListApp} />
       <Route path="segment/create" component={SegmentApp} />
       <Route path="segment/:id" component={SegmentApp} />
       <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />

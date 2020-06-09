@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 
 import MetricsList from "./MetricsList";
 import ColumnsList from "./ColumnsList";
-import SegmentsList from "./SegmentsList";
 import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Databases from "metabase/entities/databases";
@@ -33,7 +32,6 @@ export default class MetadataTable extends Component {
     idfields: PropTypes.array,
     updateField: PropTypes.func.isRequired,
     onRetireMetric: PropTypes.func.isRequired,
-    onRetireSegment: PropTypes.func.isRequired,
   };
 
   componentWillMount() {
@@ -116,7 +114,7 @@ export default class MetadataTable extends Component {
   }
 
   render() {
-    const { table, onRetireMetric, onRetireSegment } = this.props;
+    const { table, onRetireMetric } = this.props;
     if (!table) {
       return false;
     }
@@ -145,7 +143,6 @@ export default class MetadataTable extends Component {
           {this.renderVisibilityWidget()}
         </div>
         <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>
-          <SegmentsList onRetire={onRetireSegment} tableMetadata={table} />
           <MetricsList onRetire={onRetireMetric} tableMetadata={table} />
           {this.props.idfields && (
             <ColumnsList
