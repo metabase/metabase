@@ -7,8 +7,6 @@ import Databases from "metabase/entities/databases";
 
 import SaveStatus from "metabase/components/SaveStatus";
 import Toggle from "metabase/components/Toggle";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import ColumnarSelector from "metabase/components/ColumnarSelector";
 import Icon from "metabase/components/Icon";
 import Select from "metabase/components/Select";
 
