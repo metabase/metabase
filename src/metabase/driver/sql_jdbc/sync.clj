@@ -134,7 +134,7 @@
       (try
         (let [[{:keys [table_name table_schem]} & _] tables]
           (when (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
-                            [(format "SELECT 1 from %.%" table_schem table_name)]
+                            [(format "SELECT 1 from %s.%s" table_schem table_name)]
                             {:result-set-fn (comp pos? count)})
             tables))
         (catch Throwable _ nil))
