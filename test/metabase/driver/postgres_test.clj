@@ -380,6 +380,12 @@
 
     (do-with-enums-db
       (fn [db]
+        (testing "check pg_enum and pg_type not exists for Aliyun MaxCompute Lightning"
+          (is (= #{:pg_enum :pg_type}
+                 (->> (#'postgres/get-all-tables :postgres db)
+                      (filter #{:pg_enum :pg_type})
+                      (into #{})))))
+
         (testing "check that we can actually fetch the enum types from a DB"
           (is (= #{(keyword "bird type") :bird_status}
                  (#'postgres/enum-types :postgres db))))

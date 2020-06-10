@@ -94,14 +94,25 @@
      (assoc driver.common/default-additional-options-details
        :placeholder "prepareThreshold=0")]))
 
-(defn- enum-types [driver database]
+(defn- get-all-tables [driver database]
   (set
-   (map (comp keyword :typname)
+   (map (comp keyword :relname)
         (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
-                    [(str "SELECT DISTINCT t.typname "
-                          "FROM pg_enum e "
-                          "LEFT JOIN pg_type t "
-                          "  ON t.oid = e.enumtypid")]))))
+                    [(str "SELECT relname FROM pg_catalog.pg_class WHERE relname LIKE 'pg_%' AND relkind='r'")]))))
+
+(defn- enum-types [driver database]
+  (let [check-tables-set #{:pg_enum :pg_type}]
+    (if (->> (get-all-tables driver database)
+             (filter check-tables-set)
+             empty?)
+      (set nil)
+      (set
+       (map (comp keyword :typname)
+            (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
+                        [(str "SELECT DISTINCT t.typname "
+                              "FROM pg_enum e "
+                              "LEFT JOIN pg_type t "
+                              "  ON t.oid = e.enumtypid")]))))))
 
 (def ^:private ^:dynamic *enum-types* nil)
 
