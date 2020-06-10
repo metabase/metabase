@@ -5,9 +5,7 @@
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
   (:import java.sql.DatabaseMetaData))
 
@@ -133,11 +131,11 @@
       (try
         (log/warn (format "User %s doesn't appear to have SELECT privilege for any table in the database. Falling back to probing privileges with a simple SELECT statement." user))
         (let [[{:keys [table_name table_schem]} & _] tables]
-          (if (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-                          [(format "SELECT 1 from %s.%s" table_schem table_name)]
-                          {:result-set-fn (comp pos? count)})
-            tables
-            (log/error "Can't even do a smiple select")))
+          (log/warn "Probing with " (str "SELECT 1 FROM " (str/join "." (filter some? [table_schem table_name]))))
+          (when (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
+                            [(str "SELECT 1 FROM " (str/join "." (filter some? [table_schem table_name])))]
+                            {:result-set-fn (comp pos? count)})
+            tables))
         (catch Throwable e (do (log/error "Probing failed" e) nil)))
       accessible-tables)))
 
@@ -233,10 +231,9 @@
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec table]
   (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)]
-    (->>
-     (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
-     ;; find PKs and mark them
-     (add-table-pks metadata))))
+    (->> (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
+         ;; find PKs and mark them
+         (add-table-pks metadata))))
 
 (defn describe-table-fks
   "Default implementation of `driver/describe-table-fks` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
