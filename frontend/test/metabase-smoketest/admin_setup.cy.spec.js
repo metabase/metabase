@@ -5,6 +5,7 @@ import {
   signOut,
   signInAsNormalUser,
 } from "__support__/cypress";
+import { createMasonryCellPositioner } from "react-virtualized";
 
 const new_user = {
   first_name: "Barb",
@@ -92,7 +93,7 @@ describe("smoketest > admin_setup", () => {
     cy.contains("Answers sent right to your Slack #channels");
     cy.contains("metabase@metabase.com").should("not.exist");
 
-    cy.findByText("Create a Slack Bot User for MetaBot").click();
+    cy.contains("Create a Slack Bot User for MetaBot");
     cy.contains('Once you\'re there, give it a name and click "Add bot integration". Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Metabase needs this to upload graphs.');
 
     // =================
@@ -403,7 +404,7 @@ describe("smoketest > admin_setup", () => {
 
     cy.get(".Icon-notebook").click();
     
-    cy.contains("Test Table");
+    cy.contains("Custom column");
     cy.contains("Orders").should("not.exist");
     
     cy.findByText("Filter").click();
@@ -460,7 +461,7 @@ describe("smoketest > admin_setup", () => {
 
     cy.contains("Awesome Concrete Shoes");
     cy.contains("Mediocre Wooden Bench").should("not.exist");
-
+    
     // =================
     // should hide a table as admin
     // =================
@@ -503,6 +504,56 @@ describe("smoketest > admin_setup", () => {
     // =================
     // should see changes to visibility, formatting, and foreign key mapping as user
     // =================
+
+    signOut();
+    signInAsNormalUser();
+    cy.visit("/");
+    
+    // Check table names and visibility
+
+    cy.contains("A look at your People table")
+    cy.contains("A look at your Test Table table");
+    cy.contains("Reviews").should("not.exist");
+
+    // Check question names and descriptions
+
+    cy.findByText("Browse all items").click();
+
+    cy.contains("Orders, Count");
+    cy.contains("Orders, Count, Grouped by Created At (year)").should("not.exist");
+    
+    cy.findByText("Test Question").click();
+    cy.get(".Icon-pencil").click();
+    cy.findByText("Edit this question").click();
+    
+    cy.contains("Edit question");
+    cy.contains("Testing question description");
+
+    cy.findByText("Cancel").click();
+    
+    // Check column names and visiblity
+
+    cy.findByText("Browse Data").click();
+    cy.findByText("Sample Dataset").click();
+    cy.findByText("Test Table").click();
+
+    cy.contains("Visualization");
+    cy.contains("Discount").should("not.exist");
+    cy.contains("Sale");
+    cy.contains("Created At").should("not.exist");
+    
+    // Check column formatting
+
+    cy.contains("USD");
+
+    // Check column foreign key mapping
+    
+    cy.contains("Awesome Concrete Shoes");
+    cy.contains("Mediocre Wooden Bench");
+    cy.get(".Table-ID")
+      .eq("1")
+      .contains("14")
+      .should("not.exist");
 
     // *********************************
     // ** Permission Changes Reflected *
