@@ -348,7 +348,7 @@ describe("smoketest > admin_setup", () => {
       cy.contains("Saved");
     });
 
-    it("should check that changes to column name, visibility, and formatting are reflected in the notebook editor as admin", () => {
+    it("should reflect changes to column name, visibility, and formatting in the notebook editor for admin", () => {
       // Navigate
 
       cy.get(".Icon-gear")
@@ -537,10 +537,10 @@ describe("smoketest > admin_setup", () => {
     
     describe("Permission Changes Reflected", () => {
       beforeEach(signInAsNormalUser);
+      
+      it("should check current permissions as use", () => {
 
-      // =================
-      // should check current permissions as user
-      // =================
+      });
 
       it("should modify user permissions for data access and SQL queries, both on a database/schema level as well as at a table level as admin", () => {
         // *** Need multible databases to test their permissions.
@@ -604,19 +604,22 @@ describe("smoketest > admin_setup", () => {
         cy.findByText("Save Changes").click();
       });
 
-      // =================
-      // should modify Collection permissions for top-level collections and sub-collections as admin
+      it("should modify Collection permissions for top-level collections and sub-collections as admin", () => {
       // *** Sub-collections need to exist before you can test them
-      // =================
-      // =================
-      // should no longer be able to access tables or questions that have been restricted as user
-      // =================
-      // =================
-      // should be able to view collections I have access to, but not ones that I don't (even with URL) as user
-      // =================
-      // =================
-      // should deactivate a user admin and subsequently user should be unable to login
-      // =================
+      
+      });
+
+      it("should no longer be able to access tables or questions that have been restricted as user", () => {
+      
+      });
+
+      it("should be able to view collections I have access to, but not ones that I don't (even with URL) as user", () => {
+
+      });
+
+      it("should deactivate a user admin and subsequently user should be unable to login", () => {
+
+      });
     });
   });
 });
