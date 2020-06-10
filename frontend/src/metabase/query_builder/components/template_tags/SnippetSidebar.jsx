@@ -32,6 +32,7 @@ const ICON_SIZE = 16;
 export default class SnippetSidebar extends React.Component {
   props: Props;
   state: State = { showSearch: false, searchString: "" };
+  searchBox: ?HTMLInputElement;
 
   static propTypes = {
     query: PropTypes.object.isRequired,
@@ -43,7 +44,7 @@ export default class SnippetSidebar extends React.Component {
 
   showSearch = () => {
     this.setState({ showSearch: true });
-    this.searchBox.focus();
+    this.searchBox && this.searchBox.focus();
   };
   hideSearch = () => {
     this.setState({ showSearch: false, searchString: "" });

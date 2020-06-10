@@ -260,8 +260,11 @@ export default class NativeQueryEditor extends Component {
     document.removeEventListener("contextmenu", this.handleRightClick);
   }
 
+  // this is overwritten when the editor is set up
+  swapInCorrectCompletors = () => undefined;
+
   handleCursorChange = _.debounce((e, { cursor }) => {
-    this.swapInCorrectCompletors && this.swapInCorrectCompletors(cursor);
+    this.swapInCorrectCompletors(cursor);
     this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
   }, 100);
 
