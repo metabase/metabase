@@ -13,17 +13,16 @@ const new_user = {
   username: "new@metabase.com",
 };
 
-before(restore);
-
 describe("smoketest > admin_setup", () => {
+  before(restore);
 
   describe("successful setup by admin", () => {
     beforeEach(signInAsAdmin);
-    
+
     it("should add a new database", () => {
       // *** I don't have any faux databases to hook up to. Are there some in the system already?
       // *** Should eventually include BigQuery, Druid, Google Analytics, H2, MongoDB, MySQL/Maria DB, PostgreSQL, Presto, Amazon Redshift, Snowflake, Spark SQL, SQLite, SQL Server
-      
+
       cy.visit("/");
 
       // Navigate to page
@@ -60,7 +59,7 @@ describe("smoketest > admin_setup", () => {
       // // *** check that toggles are correct
       // cy.findByLabelText("Additional JDBC connection string options").type("");
       // cy.findByText("Save").click();
-      });
+    });
 
     it("should setup email", () => {
       // *** maybe using something like maildev)
@@ -78,11 +77,10 @@ describe("smoketest > admin_setup", () => {
       // cy.findByLabelText("SMTP USERNAME").type(""); // *** enter email here
       // cy.findByLabelText("SMTP PASSWORD").type(""); // *** enter password here
       // cy.findByLabelText("FROM ADDRESS").type("metabase@metabase.com");
-      // cy.findByText("Save changes").click();  
-    })
-    
-    it("should setup Slack", () => {
+      // cy.findByText("Save changes").click();
+    });
 
+    it("should setup Slack", () => {
       cy.findByText("Slack").click();
 
       cy.contains("Answers sent right to your Slack #channels");
@@ -90,7 +88,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.contains("Create a Slack Bot User for MetaBot");
       cy.contains(
-        'Once you\'re there, give it a name and click "Add bot integration". Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Metabase needs this to upload graphs.',
+        'Once you\'re there, give it a name and click "Add bot integration". Then copy and paste the Bot API Token into the field below.',
       );
     });
 
@@ -128,13 +126,17 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Add").click();
 
       cy.contains(USERS.normal.username);
-      cy.contains("A group is only as good as its members.").should("not.exist");
+      cy.contains("A group is only as good as its members.").should(
+        "not.exist",
+      );
 
       // Adds self as member
 
       cy.findByText("Add members").click();
       cy.get("input").type("T");
-      cy.findByText(USERS.admin.first_name + " " + USERS.admin.last_name).click();
+      cy.findByText(
+        USERS.admin.first_name + " " + USERS.admin.last_name,
+      ).click();
       cy.findByText("Add").click();
 
       cy.contains(USERS.admin.username);
@@ -158,6 +160,12 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should create new users in different groups", () => {
+      cy.server();
+      cy.route({
+        method: "POST",
+        url: "/api/user",
+      }).as("createUser");
+
       cy.findAllByText("People")
         .last()
         .click();
@@ -183,6 +191,9 @@ describe("smoketest > admin_setup", () => {
         .click();
       cy.findByText("Marketing").click();
       cy.findByText("Create").click();
+      cy.wait("@createUser").then(xhr => {
+        cy.wrap(xhr.request.body.password).as("password");
+      });
       cy.findByText("Done").click();
 
       // Check new user is in those groups
@@ -237,7 +248,7 @@ describe("smoketest > admin_setup", () => {
       // cy.findByText("Add map").click();
     });
   });
-    
+
   describe("data model changes by admin reflected with user", () => {
     beforeEach(() => {
       signOut();
@@ -271,7 +282,7 @@ describe("smoketest > admin_setup", () => {
 
     it("should rename a question and description as admin", () => {
       cy.visit("/");
-      
+
       cy.findByText("Browse all items").click();
 
       cy.contains("All personal collections");
@@ -479,6 +490,8 @@ describe("smoketest > admin_setup", () => {
 
       cy.contains("Test Table");
       cy.contains("Reviews").should("not.exist");
+
+      cy.pause();
     });
 
     it("should see changes to visibility, formatting, and foreign key mapping as user", () => {
@@ -533,93 +546,98 @@ describe("smoketest > admin_setup", () => {
         .eq("1")
         .contains("14")
         .should("not.exist");
-      })
-    
-    describe("Permission Changes Reflected", () => {
-      beforeEach(signInAsNormalUser);
-      
-      it("should check current permissions as use", () => {
-
-      });
-
-      it("should modify user permissions for data access and SQL queries, both on a database/schema level as well as at a table level as admin", () => {
-        // *** Need multible databases to test their permissions.
-        // *** User in Marketing
-
-        signOut();
-        signInAsAdmin();
-        cy.visit("/");
-
-        cy.get(".Icon-gear").click();
-        cy.findByText("Admin").click();
-        cy.findByText("Permissions").click();
-
-        // data access permissions (database/schema)
-
-        // SQL queries permissions (database/schema)
-
-        // data access permissions (table)
-
-        cy.findByText("View tables").click();
-
-        cy.contains("Products");
-        cy.contains("SQL Queries").should("not.exist");
-
-        cy.get(".Icon-close") // Turn on data access for all users to Test Table
-          .eq(6)
-          .click();
-        cy.findByText("Grant unrestricted access").click();
-
-        cy.contains("Change access to this database to limited?");
-
-        cy.findByText("Change").click();
-
-        cy.get(".Icon-close") // Turn on data access for Marketing users to Products
-          .eq(2)
-          .click();
-        cy.findByText("Grant unrestricted access").click();
-
-        cy.contains("Are you sure you want to do this?");
-
-        cy.findByText("Change").click();
-
-        cy.get(".Icon-warning");
-
-        cy.findByText("Save Changes").click(); // *** inconcsistent formatting. Everywhere else would have a lowercase "c"
-
-        cy.contains("All Users will be given access to 1 table in Sample Dataset.");
-        cy.contains("Are you sure you want to do this?");
-
-        cy.findByText("Yes").click();
-
-        // SQL queries permissions (table)
-
-        cy.findByText("Data permissions").click();
-
-        cy.get(".Icon-sql")
-          .last()
-          .click();
-        cy.findByText("Revoke access").click();
-
-        cy.findByText("Save Changes").click();
-      });
-
-      it("should modify Collection permissions for top-level collections and sub-collections as admin", () => {
-      // *** Sub-collections need to exist before you can test them
-      
-      });
-
-      it("should no longer be able to access tables or questions that have been restricted as user", () => {
-      
-      });
-
-      it("should be able to view collections I have access to, but not ones that I don't (even with URL) as user", () => {
-
-      });
-
-      it("should deactivate a user admin and subsequently user should be unable to login", () => {
-
-      });
     });
+  });
+
+  describe("permission changes reflected", () => {
+    beforeEach(signInAsNormalUser);
+
+    it("should check current permissions as use", () => {});
+
+    it("should modify user permissions for data access and SQL queries, both on a database/schema level as well as at a table level as admin", () => {
+      // *** Need multible databases to test their permissions.
+      // *** User in Marketing
+
+      signOut();
+      signInAsAdmin();
+      cy.visit("/");
+
+      cy.get(".Icon-gear").click();
+      cy.findByText("Admin").click();
+      cy.findByText("Permissions").click();
+
+      // data access permissions (database/schema)
+
+      // SQL queries permissions (database/schema)
+
+      // data access permissions (table)
+
+      cy.findByText("View tables").click();
+
+      cy.contains("Products");
+      cy.contains("SQL Queries").should("not.exist");
+
+      cy.get(".Icon-close") // Turn on data access for all users to Test Table
+        .eq(6)
+        .click();
+      cy.findByText("Grant unrestricted access").click();
+
+      cy.contains("Change access to this database to limited?");
+
+      cy.findByText("Change").click();
+
+      cy.get(".Icon-close") // Turn on data access for Marketing users to Products
+        .eq(2)
+        .click();
+      cy.findByText("Grant unrestricted access").click();
+
+      cy.contains("Are you sure you want to do this?");
+
+      cy.findByText("Change").click();
+
+      cy.get(".Icon-warning");
+
+      cy.findByText("Save Changes").click(); // *** inconcsistent formatting. Everywhere else would have a lowercase "c"
+
+      cy.contains(
+        "All Users will be given access to 1 table in Sample Dataset.",
+      );
+      cy.contains("Are you sure you want to do this?");
+
+      cy.findByText("Yes").click();
+
+      // SQL queries permissions (table)
+
+      cy.findByText("Data permissions").click();
+
+      cy.get(".Icon-sql")
+        .last()
+        .click();
+      cy.findByText("Revoke access").click();
+
+      cy.findByText("Save Changes").click();
+    });
+
+    it("should modify Collection permissions for top-level collections and sub-collections as admin", () => {
+      // *** Sub-collections need to exist before you can test them
+    });
+
+    it("should no longer be able to access tables or questions that have been restricted as user", () => {
+      cy.visit("/");
+
+      // Normal user can still see everything
+
+      // Normal user cannot make an SQL query
+
+      // New user can sign in
+
+      // New user sees Test Table and Test Table
+
+      // New user can view Our Analytics, but not make any changes
+    });
+
+    it("should be able to view collections I have access to, but not ones that I don't (even with URL) as user", () => {});
+
+    it("should deactivate a user admin and subsequently user should be unable to login", () => {});
   });
 });
