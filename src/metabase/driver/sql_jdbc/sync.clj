@@ -5,7 +5,6 @@
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -138,7 +137,7 @@
                             ;; Using our SQL compiler here to get portable LIMIT
                             (sql.qp/format-honeysql driver
                               (sql.qp/apply-top-level-clause driver :limit
-                                {:select [(hsql/raw 1)]
+                                {:select [[1 :dummy]]
                                  :from   [(sql.qp/->honeysql driver (hx/identifier :table table_schem table_name))]}
                                 {:limit 1}))
                             {:result-set-fn first})
