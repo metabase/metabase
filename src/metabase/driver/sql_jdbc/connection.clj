@@ -121,23 +121,26 @@
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB."
-  [database-or-id]
-  (let [database-id (u/get-id database-or-id)]
-    (or
-     ;; we have an existing pool for this database, so use it
-     (get @database-id->connection-pool database-id)
-     ;; Even tho `set-pool!` will properly shut down old pools if two threads call this method at the same time, we
-     ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the very
-     ;; next instant. This will cause their queries to fail. Thus we should do the usual locking here and make sure only
-     ;; one thread will be creating a pool at a given instant.
-     (locking database-id->connection-pool
-       (or
-        ;; check if another thread created the pool while we were waiting to acquire the lock
-        (get @database-id->connection-pool database-id)
-        ;; create a new pool and add it to our cache, then return it
-        (let [db (db/select-one [Database :id :engine :details] :id database-id)]
-          (u/prog1 (create-pool! db)
-            (set-pool! database-id <>))))))))
+  [db-or-id-or-spec]
+  (if (u/id db-or-id-or-spec)
+    (let [database-id (u/get-id db-or-id-or-spec)]
+      (or
+       ;; we have an existing pool for this database, so use it
+       (get @database-id->connection-pool database-id)
+       ;; Even tho `set-pool!` will properly shut down old pools if two threads call this method at the same time, we
+       ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the very
+       ;; next instant. This will cause their queries to fail. Thus we should do the usual locking here and make sure only
+       ;; one thread will be creating a pool at a given instant.
+       (locking database-id->connection-pool
+         (or
+          ;; check if another thread created the pool while we were waiting to acquire the lock
+          (get @database-id->connection-pool database-id)
+          ;; create a new pool and add it to our cache, then return it
+          (let [db (db/select-one [Database :id :engine :details] :id database-id)]
+            (u/prog1 (create-pool! db)
+              (set-pool! database-id <>)))))))
+    ;; already a spec object
+    db-or-id-or-spec))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

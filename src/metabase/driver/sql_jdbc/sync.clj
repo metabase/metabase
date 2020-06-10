@@ -8,8 +8,7 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.models.database :refer [Database]])
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
   (:import java.sql.DatabaseMetaData))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -219,15 +218,10 @@
 ;;; |                            Default SQL JDBC metabase.driver impls for sync methods                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- ->spec [db-or-id-or-spec]
-  (if (u/id db-or-id-or-spec)
-    (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-    db-or-id-or-spec))
-
 (defn describe-database
   "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec]
-  (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
+  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)]
     {:tables (set (for [table (active-tables driver db-or-id-or-spec metadata)]
                     (let [remarks (:remarks table)]
                       {:name        (:table_name table)
@@ -238,7 +232,7 @@
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec table]
-  (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
+  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)]
     (->>
      (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
      ;; find PKs and mark them
@@ -247,7 +241,7 @@
 (defn describe-table-fks
   "Default implementation of `driver/describe-table-fks` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec table & [^String db-name-or-nil]]
-  (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
+  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)]
     (with-open [rs (.getImportedKeys metadata db-name-or-nil, ^String (:schema table), ^String (:name table))]
       (set
        (for [result (jdbc/metadata-result rs)]
