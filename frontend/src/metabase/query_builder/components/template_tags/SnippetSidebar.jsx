@@ -24,14 +24,14 @@ type Props = {
   snippets: Snippet[],
 };
 
-type State = { modalSnippet: ?Snippet };
+type State = { showSearch: boolean, searchString: string };
 
 const ICON_SIZE = 16;
 
 @Snippets.loadList({ wrapped: true })
 export default class SnippetSidebar extends React.Component {
   props: Props;
-  state: State = { modalSnippet: null };
+  state: State = { showSearch: false, searchString: "" };
 
   static propTypes = {
     query: PropTypes.object.isRequired,
@@ -41,8 +41,22 @@ export default class SnippetSidebar extends React.Component {
     insertSnippet: PropTypes.func.isRequired,
   };
 
+  showSearch = () => {
+    this.setState({ showSearch: true });
+    this.searchBox.focus();
+  };
+  hideSearch = () => {
+    this.setState({ showSearch: false, searchString: "" });
+  };
+
   render() {
-    const { query, openSnippetModalWithSelectedText, snippets } = this.props;
+    const { query, snippets, openSnippetModalWithSelectedText } = this.props;
+    const { showSearch, searchString } = this.state;
+    const filteredSnippets = showSearch
+      ? snippets.filter(s =>
+          s.name.toLowerCase().includes(searchString.toLowerCase()),
+        )
+      : snippets;
 
     return (
       <SidebarContent>
@@ -68,18 +82,65 @@ export default class SnippetSidebar extends React.Component {
         ) : (
           <div>
             <div className="flex align-center px3 py2 border-bottom">
-              <span className="flex align-center text-heavy h3">Snippets</span>
-              <a
-                className="flex-align-right text-medium text-brand-hover no-decoration"
-                onClick={openSnippetModalWithSelectedText}
-              >
-                <Icon name="add" size={18} />
-              </a>
+              <div className="flex-full">
+                <div
+                  /* Hide the search input by collapsing dimensions rather than `display: none`.
+                     This allows us to immediately focus on it when showSearch is set to true.*/
+                  style={showSearch ? {} : { width: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <input
+                    className="input input--borderless p0"
+                    ref={e => (this.searchBox = e)}
+                    onChange={e =>
+                      this.setState({ searchString: e.target.value })
+                    }
+                    value={searchString}
+                    onKeyDown={e => {
+                      if (e.key === "Escape") {
+                        this.hideSearch();
+                      }
+                    }}
+                  />
+                </div>
+                <span
+                  className={cx({ hide: showSearch }, "text-heavy h3")}
+                >{t`Snippets`}</span>
+              </div>
+              <div className="flex-align-right text-medium no-decoration">
+                <Icon
+                  className={cx(
+                    { hide: showSearch },
+                    "text-brand-hover cursor-pointer mr2",
+                  )}
+                  onClick={this.showSearch}
+                  name="search"
+                  size={18}
+                />
+                <Icon
+                  className={cx(
+                    { hide: showSearch },
+                    "text-brand-hover cursor-pointer",
+                  )}
+                  onClick={openSnippetModalWithSelectedText}
+                  name="add"
+                  size={18}
+                />
+                <Icon
+                  className={cx(
+                    { hide: !showSearch },
+                    "text-brand-hover cursor-pointer",
+                  )}
+                  onClick={this.hideSearch}
+                  name="close"
+                  size={18}
+                />
+              </div>
             </div>
             {query.databaseId() == null ? (
               <p className="text-body text-centered">{t`Select a database to see its snippets.`}</p>
             ) : (
-              snippets
+              filteredSnippets
                 .filter(snippet => query.databaseId() === snippet.database_id)
                 .map(snippet => (
                   <SnippetRow
