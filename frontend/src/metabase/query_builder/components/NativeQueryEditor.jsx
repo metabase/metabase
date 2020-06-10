@@ -3,6 +3,7 @@
 
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
+import ReactDOMServer from "react-dom/server";
 import cx from "classnames";
 
 import "./NativeQueryEditor.css";
@@ -400,7 +401,21 @@ export default class NativeQueryEditor extends Component {
       snippet.name.toLowerCase().includes(name.toLowerCase()),
     );
 
-    callback(null, snippets.map(({ name }) => ({ name, value: name })));
+    callback(
+      null,
+      snippets.map(({ name, description, content }) => ({
+        name,
+        value: name,
+        docHTML: ReactDOMServer.renderToStaticMarkup(
+          <div className="p2 bg-white">
+            {description && <p className="text-dark mt0">{description}</p>}
+            <pre className="bg-light bordered rounded p1 m0 text-monospace text-small text-pre-wrap overflow-x-scroll">
+              {content}
+            </pre>
+          </div>,
+        ),
+      })),
+    );
   };
 
   _updateSize() {

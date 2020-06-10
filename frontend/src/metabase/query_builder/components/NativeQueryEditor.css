@@ -51,3 +51,8 @@
 .NativeQueryEditor .ace_editor .ace_gutter {
   background-color: var(--color-bg-light);
 }
+
+.ace_doc-tooltip {
+  padding: 0;
+  border: none;
+}
