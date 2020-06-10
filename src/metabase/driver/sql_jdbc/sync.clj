@@ -110,6 +110,13 @@
                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
+(defn- schema-qualified-table-name
+  [schema table-name]
+  (->> [schema table-name]
+       (filter some?)
+       (map #(str "\"" % "\""))
+       (str/join ".")))
+
 (defn- filter-tables-with-select-privilege
   "Remove tables for which we don't have SELECT privilege.
 
@@ -127,12 +134,12 @@
                             (catch Throwable _))]
     (if (empty? accessible-tables)
       (try
-        (log/warn (format (str "User %s doesn't appear to have SELECT privilege for any table in the database. "
-                               "This might be due to no GRANTs being set. Falling back to probing privileges with a simple SELECT statement.")
-                          user))
+        (log/warn (str (format "User %s doesn't appear to have SELECT privilege for any table in the database. "
+                               user)
+                       "This might be due to no GRANTs being set. Falling back to probing privileges with a simple SELECT statement."))
         (let [[{:keys [table_name table_schem]} & _] tables]
           (when (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-                            [(str "SELECT 1 FROM " (str/join "." (filter some? [table_schem table_name])))]
+                            [(str "SELECT 1 FROM " (schema-qualified-table-name table_schem table_name))]
                             {:result-set-fn (comp pos? count)})
             tables))
         (catch Throwable e (do (log/error "Probing failed" e) nil)))
