@@ -94,7 +94,9 @@ describe("smoketest > admin_setup", () => {
     cy.contains("metabase@metabase.com").should("not.exist");
 
     cy.contains("Create a Slack Bot User for MetaBot");
-    cy.contains('Once you\'re there, give it a name and click "Add bot integration". Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Metabase needs this to upload graphs.');
+    cy.contains(
+      'Once you\'re there, give it a name and click "Add bot integration". Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Metabase needs this to upload graphs.',
+    );
 
     // =================
     // should create new groups
@@ -258,7 +260,7 @@ describe("smoketest > admin_setup", () => {
     // =================
     // should check table and question names as user
     // =================
-    
+
     cy.contains("A look at your People table");
     cy.contains("A look at your Orders table");
     cy.contains("A look at your Test Table table").should("not.exist");
@@ -267,7 +269,7 @@ describe("smoketest > admin_setup", () => {
 
     cy.contains("Our analytics");
     cy.contains("A look at your").should("not.exist");
-    
+
     cy.get(".hover-parent")
       .eq("2")
       .contains("Orders, Count");
@@ -341,9 +343,9 @@ describe("smoketest > admin_setup", () => {
       .first()
       .click();
     cy.findByText("Do not include").click({ force: true });
-    
+
     // Changing column formatting to display USD instead of $
-    
+
     cy.get(".Icon-gear")
       .eq(-2)
       .click();
@@ -373,7 +375,7 @@ describe("smoketest > admin_setup", () => {
       .eq(1)
       .click();
     cy.findByText("Exit admin").click();
-    
+
     // Checking table name
 
     cy.contains("A look at your Test Table table");
@@ -403,10 +405,10 @@ describe("smoketest > admin_setup", () => {
     // Check column name and visibility in notebook editor
 
     cy.get(".Icon-notebook").click();
-    
+
     cy.contains("Custom column");
     cy.contains("Orders").should("not.exist");
-    
+
     cy.findByText("Filter").click();
     cy.contains("Sale");
     cy.contains("Discount").should("not.exist");
@@ -416,11 +418,11 @@ describe("smoketest > admin_setup", () => {
     // =================
     // should configure a foreign key to show the name as admin
     // =================
-    
+
     cy.visit("/admin/datamodel/database/1/table/2");
 
     // Configure Key
-    
+
     cy.contains("Metrics");
     cy.get(".Icon-gear")
       .eq(6)
@@ -429,14 +431,16 @@ describe("smoketest > admin_setup", () => {
     cy.findByText("Use foreign key").click();
     cy.findByText("Title").click();
 
-    cy.contains("You might want to update the field name to make sure it still makes sense based on your remapping choices.")
+    cy.contains(
+      "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
+    );
 
     // Check key config in table display
     // *** I went the fast way here instead of user journey
 
     cy.visit("/browse/1");
     cy.findByText("Test Table").click();
-    
+
     cy.contains("Product ID");
     cy.contains("Awesome Concrete Shoes");
     cy.contains("Mediocre Wooden Bench");
@@ -452,16 +456,16 @@ describe("smoketest > admin_setup", () => {
     cy.findAllByText("Product ID")
       .last()
       .click();
-    cy.get("input") 
+    cy.get("input")
       .last()
       // .type("Awesome Concrete Shoes"); // *** should accept string, but only accepts ints
-      .type("14") // *** This pulls up title with the ID you've typed in
+      .type("14"); // *** This pulls up title with the ID you've typed in
     cy.findByText("Add filter").click();
     cy.findByText("Visualize").click();
 
     cy.contains("Awesome Concrete Shoes");
     cy.contains("Mediocre Wooden Bench").should("not.exist");
-    
+
     // =================
     // should hide a table as admin
     // =================
@@ -469,25 +473,24 @@ describe("smoketest > admin_setup", () => {
     cy.visit("/admin/datamodel/database/1/");
 
     // Hide table
-    
+
     cy.findByText("Reviews")
       .find(".Icon-eye_crossed_out")
-      .click({ force: true});
+      .click({ force: true });
 
     // Check table hidden on home page
-    
+
     cy.visit("/");
 
     cy.contains(", " + USERS.admin.first_name);
     cy.contains("A look at your People table");
-    cy.contains("A look at your Reviews table")
-      .should("not.exist");
+    cy.contains("A look at your Reviews table").should("not.exist");
 
     // Check table hidden while browsing data
 
     cy.visit("/browse/1");
 
-    cy.contains("Learn about our data")
+    cy.contains("Learn about our data");
     cy.contains("Test Table");
     cy.contains("Reviews").should("not.exist");
 
@@ -508,10 +511,10 @@ describe("smoketest > admin_setup", () => {
     signOut();
     signInAsNormalUser();
     cy.visit("/");
-    
+
     // Check table names and visibility
 
-    cy.contains("A look at your People table")
+    cy.contains("A look at your People table");
     cy.contains("A look at your Test Table table");
     cy.contains("Reviews").should("not.exist");
 
@@ -520,17 +523,19 @@ describe("smoketest > admin_setup", () => {
     cy.findByText("Browse all items").click();
 
     cy.contains("Orders, Count");
-    cy.contains("Orders, Count, Grouped by Created At (year)").should("not.exist");
-    
+    cy.contains("Orders, Count, Grouped by Created At (year)").should(
+      "not.exist",
+    );
+
     cy.findByText("Test Question").click();
     cy.get(".Icon-pencil").click();
     cy.findByText("Edit this question").click();
-    
+
     cy.contains("Edit question");
     cy.contains("Testing question description");
 
     cy.findByText("Cancel").click();
-    
+
     // Check column names and visiblity
 
     cy.findByText("Browse Data").click();
@@ -541,13 +546,13 @@ describe("smoketest > admin_setup", () => {
     cy.contains("Discount").should("not.exist");
     cy.contains("Sale");
     cy.contains("Created At").should("not.exist");
-    
+
     // Check column formatting
 
     cy.contains("USD");
 
     // Check column foreign key mapping
-    
+
     cy.contains("Awesome Concrete Shoes");
     cy.contains("Mediocre Wooden Bench");
     cy.get(".Table-ID")
@@ -558,7 +563,7 @@ describe("smoketest > admin_setup", () => {
     // *********************************
     // ** Permission Changes Reflected *
     // *********************************
-    
+
     // signOut();
     // signInAsNormalUser();
     // cy.visit("/");
@@ -567,27 +572,23 @@ describe("smoketest > admin_setup", () => {
     // should check current permissions as user
     // =================
 
-    
-
     // =================
     // should modify user permissions for data access and SQL queries, both on a database/schema level as well as at a table level as admin
     // *** Need multible databases to test their permissions.
-    // *** User in Marketing 
+    // *** User in Marketing
     // =================
 
     signOut();
     signInAsAdmin();
-    cy.visit("/")
+    cy.visit("/");
 
     cy.get(".Icon-gear").click();
     cy.findByText("Admin").click();
     cy.findByText("Permissions").click();
-    
+
     // data access permissions (database/schema)
 
-
     // SQL queries permissions (database/schema)
-
 
     // data access permissions (table)
 
@@ -597,8 +598,8 @@ describe("smoketest > admin_setup", () => {
     cy.contains("SQL Queries").should("not.exist");
 
     cy.get(".Icon-close") // Turn on data access for all users to Test Table
-    .eq(6)
-    .click();
+      .eq(6)
+      .click();
     cy.findByText("Grant unrestricted access").click();
 
     cy.contains("Change access to this database to limited?");
@@ -615,7 +616,7 @@ describe("smoketest > admin_setup", () => {
     cy.findByText("Change").click();
 
     cy.get(".Icon-warning");
-    
+
     cy.findByText("Save Changes").click(); // *** inconcsistent formatting. Everywhere else would have a lowercase "c"
 
     cy.contains("All Users will be given access to 1 table in Sample Dataset.");
@@ -624,15 +625,15 @@ describe("smoketest > admin_setup", () => {
     cy.findByText("Yes").click();
 
     // SQL queries permissions (table)
-  
+
     cy.findByText("Data permissions").click();
-    
+
     cy.get(".Icon-sql")
       .last()
       .click();
     cy.findByText("Revoke access").click();
 
-    cy.findByText("Save Changes");
+    cy.findByText("Save Changes").click();
 
     // =================
     // should modify Collection permissions for top-level collections and sub-collections as admin
