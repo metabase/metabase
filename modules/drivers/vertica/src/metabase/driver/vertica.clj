@@ -57,16 +57,15 @@
              (dissoc details :host :port :dbname :db :ssl))
       (sql-jdbc.common/handle-additional-options details)))
 
-(defmethod sql-jdbc.sync/has-select-privilege? :vertica
-  [driver db-or-id-or-spec user schema table]
+(defmethod sql-jdbc.sync/accessible-tables-for-user :vertica
+  [_ db-or-id-or-spec user]
   (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-              [(str "SELECT 1 FROM grants "
-                    "WHERE object_schema=? "
-                    "AND object_name=? "
-                    "AND grantee=? "
+              [(str "SELECT object_name AS table_name, object_schema AS table_schem "
+                    "FROM grants "
+                    "WHERE grantee=? "
                     "AND privilages_description LIKE '%SELECT%'")
-               schema table user]
-              {:result-set-fn (comp pos? count)}))
+                user]
+              {:result-set-fn set}))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_ _ expr]

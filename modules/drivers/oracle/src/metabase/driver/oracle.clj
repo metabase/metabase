@@ -81,20 +81,15 @@
                         (str "/" service-name)))}
    (dissoc details :host :port :sid :service-name)))
 
-(defmethod sql-jdbc.sync/has-select-privilege? :oracle
-  [driver db-or-id-or-spec user schema table]
-  (log/warn (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-                         [(str "SELECT * FROM sys.all_tab_privs ")
-                          ]
-                         ))
+(defmethod sql-jdbc.sync/accessible-tables-for-user :oracle
+  [_ db-or-id-or-spec user]
   (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-              [(str "SELECT 1 FROM sys.all_tab_privs "
-                    "WHERE table_schema=? "
-                    "AND table_name=? "
-                    "AND grantee=? "
+              [(str "SELECT table_name, table_schema AS table_schem "
+                    "FROM sys.all_tab_privs "
+                    "WHERE grantee=? "
                     "AND privilege='SELECT'")
-               schema table user]
-              {:result-set-fn (comp pos? count)}))
+               user]
+              {:result-set-fn set}))
 
 (defmethod driver/can-connect? :oracle
   [driver details]

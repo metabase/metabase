@@ -166,12 +166,19 @@
     :OpenSourceSubProtocolOverride false}
    (dissoc opts :host :port :db)))
 
-(defmethod sql-jdbc.sync/has-select-privilege? :redshift
-  [driver db-or-id-or-spec  user schema table]
+(defmethod sql-jdbc.sync/accessible-tables-for-user :redshift
+  [driver db-or-id-or-spec user]
   (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-              ["SELECT has_table_privilege(?, ?, 'select')"
-               user (str/join "." [schema table])]
-              {:result-set-fn (comp :has_table_privilege first)}))
+              ["WITH table_list AS
+                 (SELECT schemaname+'.'+tablename AS schema_qualified_table_name,
+                    tablename AS table_name,
+                    schemaname AS table_schem
+                  FROM pg_tables)
+               SELECT table_name, table_schem
+               FROM table_list
+               WHERE has_table_privilege(?, schema_qualified_table_name, 'select')"
+               user]
+              {:result-set-fn set}))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk

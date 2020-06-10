@@ -86,15 +86,15 @@
 ;; TODO - we should reduce the metadata ResultSets instead of realizing the entire thing in memory at once and then
 ;; filtering/transforming in Clojure-land
 
-(defmulti has-select-privilege?
-  "Does the user `user` have (SELECT) access to a given table?"
-  {:arglists '([driver database user schema-or-nil table])}
+(defmulti accessible-tables-for-user
+  "Return a predicate which checks if user `user` has SELECT privilega for a given table"
+  {:arglists '([driver database user])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod has-select-privilege? :default
-  [_ _ _ _ _]
-  true)
+(defmethod accessible-tables-for-user :default
+  [_ _ _]
+  (constantly true))
 
 (defmulti db-tables
   "Fetch a JDBC Metadata ResultSet of tables accessable to us in the DB, optionally limited to ones belonging to a given
@@ -110,7 +110,7 @@
                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
-(defn- accessible-tables
+(defn- filter-tables-with-select-privilege
   "Remove tables for which we don't have SELECT privilege.
 
    If no privileges are set (which is completely legal), querying the internal catalog (which is what `has-select-privilege`
@@ -120,18 +120,16 @@
    tables. If that goes through we in fact have access rights (and our hypothesis is correct), so go
    ahead and return all the tables."
   [driver db-or-id-or-spec user tables]
-  (let [accessible-tables (filter (fn [{:keys [table_name table_schem]}]
-                                    (try
-                                      (has-select-privilege? driver db-or-id-or-spec user table_schem table_name)
-                                      ;; Some DBs (eg. Postgres) will throw if the role we're asking
-                                      ;; about doesn't exist
-                                      (catch Throwable e (do (log/error "has-select-privilege? failed:" e) false))))
-                                  tables)]
+  (let [accessible-tables (try
+                            (filter (comp (accessible-tables-for-user driver db-or-id-or-spec user)
+                                          #(select-keys % [:table_name :table_schem]))
+                                    tables)
+                            (catch Throwable _))]
     (if (empty? accessible-tables)
       (try
-        (log/warn (format "User %s doesn't appear to have SELECT privilege for any table in the database. Falling back to probing privileges with a simple SELECT statement." user))
+        (log/warn (format "User %s doesn't appear to have SELECT privilege for any table in the database. This might be due to no GRANTs being set. Falling back to probing privileges with a simple SELECT statement."
+                          user))
         (let [[{:keys [table_name table_schem]} & _] tables]
-          (log/warn "Probing with " (str "SELECT 1 FROM " (str/join "." (filter some? [table_schem table_name]))))
           (when (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
                             [(str "SELECT 1 FROM " (str/join "." (filter some? [table_schem table_name])))]
                             {:result-set-fn (comp pos? count)})
@@ -145,20 +143,20 @@
 
   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds
   vs 60)."
-  [driver database ^DatabaseMetaData metadata & [db-name-or-nil]]
+  [driver, db-or-id-or-spec, ^DatabaseMetaData metadata, & [db-name-or-nil]]
   (with-open [rs (.getSchemas metadata)]
     (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))]
       (->> (set/difference all-schemas (excluded-schemas driver))
            (mapcat (fn [schema]
                      (db-tables :sql-jdbc metadata schema db-name-or-nil)))
-           (accessible-tables driver database (.getUserName metadata))))))
+           (filter-tables-with-select-privilege driver db-or-id-or-spec (.getUserName metadata))))))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
-  [driver, database, ^DatabaseMetaData metadata, & [db-name-or-nil]]
+  [driver, db-or-id-or-spec, ^DatabaseMetaData metadata, & [db-name-or-nil]]
   (->> (db-tables :sql-jdbc metadata nil db-name-or-nil)
-       (accessible-tables driver database (.getUserName metadata))
+       (filter-tables-with-select-privilege driver db-or-id-or-spec (.getUserName metadata))
        (remove (comp (partial contains? (excluded-schemas driver)) :table_schem))))
 
 (defn get-catalogs
