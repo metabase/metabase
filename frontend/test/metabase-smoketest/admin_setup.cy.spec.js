@@ -558,15 +558,85 @@ describe("smoketest > admin_setup", () => {
     // *********************************
     // ** Permission Changes Reflected *
     // *********************************
+    
+    // signOut();
+    // signInAsNormalUser();
+    // cy.visit("/");
 
     // =================
     // should check current permissions as user
     // =================
+
+    
+
     // =================
     // should modify user permissions for data access and SQL queries, both on a database/schema level as well as at a table level as admin
+    // *** Need multible databases to test their permissions.
+    // *** User in Marketing 
     // =================
+
+    signOut();
+    signInAsAdmin();
+    cy.visit("/")
+
+    cy.get(".Icon-gear").click();
+    cy.findByText("Admin").click();
+    cy.findByText("Permissions").click();
+    
+    // data access permissions (database/schema)
+
+
+    // SQL queries permissions (database/schema)
+
+
+    // data access permissions (table)
+
+    cy.findByText("View tables").click();
+
+    cy.contains("Products");
+    cy.contains("SQL Queries").should("not.exist");
+
+    cy.get(".Icon-close") // Turn on data access for all users to Test Table
+    .eq(6)
+    .click();
+    cy.findByText("Grant unrestricted access").click();
+
+    cy.contains("Change access to this database to limited?");
+
+    cy.findByText("Change").click();
+
+    cy.get(".Icon-close") // Turn on data access for Marketing users to Products
+      .eq(2)
+      .click();
+    cy.findByText("Grant unrestricted access").click();
+
+    cy.contains("Are you sure you want to do this?");
+
+    cy.findByText("Change").click();
+
+    cy.get(".Icon-warning");
+    
+    cy.findByText("Save Changes").click(); // *** inconcsistent formatting. Everywhere else would have a lowercase "c"
+
+    cy.contains("All Users will be given access to 1 table in Sample Dataset.");
+    cy.contains("Are you sure you want to do this?");
+
+    cy.findByText("Yes").click();
+
+    // SQL queries permissions (table)
+  
+    cy.findByText("Data permissions").click();
+    
+    cy.get(".Icon-sql")
+      .last()
+      .click();
+    cy.findByText("Revoke access").click();
+
+    cy.findByText("Save Changes");
+
     // =================
     // should modify Collection permissions for top-level collections and sub-collections as admin
+    // *** Sub-collections need to exist before you can test them
     // =================
     // =================
     // should no longer be able to access tables or questions that have been restricted as user
