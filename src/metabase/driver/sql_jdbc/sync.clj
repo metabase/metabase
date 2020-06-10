@@ -113,8 +113,8 @@
 (defn- filter-tables-with-select-privilege
   "Remove tables for which we don't have SELECT privilege.
 
-   If no privileges are set (which is completely legal), querying the internal catalog (which is what `has-select-privilege`
-   does) will return no results. On a per-table level this is indistinguishable from not having the
+   If no privileges are set (which is completely legal), querying the internal catalog (which is what `accessible-tables-for-user`
+   uses) will return no results. On a per-table level this is indistinguishable from not having the
    SELECT privilage. However if we don't have access to any of the tables, it's more likely that no
    privileges are set. In that case test the hypothesis by firing a simple SELECT against one of the
    tables. If that goes through we in fact have access rights (and our hypothesis is correct), so go
