@@ -122,21 +122,21 @@
    privileges are set. In that case test the hypothesis by firing a simple SELECT against one of the
    tables. If that goes through we in fact have access rights (and our hypothesis is correct), so go
    ahead and return all the tables."
-  [driver database user tables]
+  [driver db-or-id-or-spec user tables]
   (let [accessible-tables (filter (fn [{:keys [table_name table_schem]}]
                                     (try
-                                      (has-select-privilege? driver database user table_schem table_name)
+                                      (has-select-privilege? driver db-or-id-or-spec user table_schem table_name)
                                       ;; Some DBs (eg. Postgres) will throw if the role we're asking
                                       ;; about doesn't exist
                                       (catch Throwable e (do (log/error "has-select-privilege? failed:" e) false))))
                                   tables)]
     (if (empty? accessible-tables)
       (try
-        (log/warn (format "User %s doesn't appear to have SELECT privilege for any table in database %s. Falling back to probing privileges with a simple SELECT statement." user (:name database)))
+        (log/warn (format "User %s doesn't appear to have SELECT privilege for any table in the database. Falling back to probing privileges with a simple SELECT statement." user))
         (let [[{:keys [table_name table_schem]} & _] tables]
-          (if (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
-                            [(format "SELECT 1 from %s.%s" table_schem table_name)]
-                            {:result-set-fn (comp pos? count)})
+          (if (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
+                          [(format "SELECT 1 from %s.%s" table_schem table_name)]
+                          {:result-set-fn (comp pos? count)})
             tables
             (log/error "Can't even do a smiple select")))
         (catch Throwable e (do (log/error "Probing failed" e) nil)))
@@ -228,11 +228,7 @@
   "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec]
   (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
-    {:tables (set (for [table (active-tables driver
-                                             (if (u/id db-or-id-or-spec)
-                                               (Database db-or-id-or-spec)
-                                               db-or-id-or-spec)
-                                             metadata)]
+    {:tables (set (for [table (active-tables driver db-or-id-or-spec metadata)]
                     (let [remarks (:remarks table)]
                       {:name        (:table_name table)
                        :schema      (:table_schem table)

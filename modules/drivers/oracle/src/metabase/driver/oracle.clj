@@ -82,12 +82,12 @@
    (dissoc details :host :port :sid :service-name)))
 
 (defmethod sql-jdbc.sync/has-select-privilege? :oracle
-  [driver database user schema table]
-  (log/debug (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+  [driver db-or-id-or-spec user schema table]
+  (log/debug (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
                          [(str "SELECT * FROM sys.all_tab_privs ")
                           ]
                          ))
-  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
               [(str "SELECT 1 FROM sys.all_tab_privs "
                     "WHERE table_schema=? "
                     "AND table_name=? "

@@ -167,8 +167,8 @@
    (dissoc opts :host :port :db)))
 
 (defmethod sql-jdbc.sync/has-select-privilege? :redshift
-  [driver database user schema table]
-  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+  [driver db-or-id-or-spec  user schema table]
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
               ["SELECT has_table_privilege(?, ?, 'select')"
                user (str/join "." [schema table])]
               {:result-set-fn (comp :has_table_privilege first)}))

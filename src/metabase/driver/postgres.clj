@@ -312,15 +312,14 @@
       (sql-jdbc.common/handle-additional-options details-map)))
 
 (defmethod sql-jdbc.sync/has-select-privilege? :postgres
-  [driver database user schema table]
-  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+  [driver db-or-id-or-spec user schema table]
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
               [(str "SELECT * FROM information_schema.role_table_grants "
-                    "WHERE table_catalog=? "
-                    "AND table_schema=? "
+                    "WHERE table_schema=? "
                     "AND table_name=? "
                     "AND grantee=? "
                     "AND privilege_type='SELECT'")
-               (-> database :details :dbname) schema table user]
+               schema table user]
               {:result-set-fn (comp pos? count)}))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres

@@ -58,8 +58,8 @@
       (sql-jdbc.common/handle-additional-options details)))
 
 (defmethod sql-jdbc.sync/has-select-privilege? :vertica
-  [driver database user schema table]
-  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+  [driver db-or-id-or-spec user schema table]
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
               [(str "SELECT 1 FROM grants "
                     "WHERE object_schema=? "
                     "AND object_name=? "
