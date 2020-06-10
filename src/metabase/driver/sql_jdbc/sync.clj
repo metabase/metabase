@@ -120,7 +120,7 @@
    does) will return no results. On a per-table level this is indistinguishable from not having the
    SELECT privilage. However if we don't have access to any of the tables, it's more likely that no
    privileges are set. In that case test the hypothesis by firing a simple SELECT against one of the
-   tables. If that goes through we in fact have access rights (and our hypothesis is correct) so go
+   tables. If that goes through we in fact have access rights (and our hypothesis is correct), so go
    ahead and return all the tables."
   [driver database user tables]
   (let [accessible-tables (filter (fn [{:keys [table_name table_schem]}]
@@ -128,16 +128,18 @@
                                       (has-select-privilege? driver database user table_schem table_name)
                                       ;; Some DBs (eg. Postgres) will throw if the role we're asking
                                       ;; about doesn't exist
-                                      (catch Throwable _ false)))
+                                      (catch Throwable e (do (log/error "has-select-privilege? failed:" e) false))))
                                   tables)]
     (if (empty? accessible-tables)
       (try
+        (log/warn (format "User %s doesn't appear to have SELECT privilege for any table in database %s. Falling back to probing privileges with a simple SELECT statement."))
         (let [[{:keys [table_name table_schem]} & _] tables]
-          (when (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
+          (if (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
                             [(format "SELECT 1 from %s.%s" table_schem table_name)]
                             {:result-set-fn (comp pos? count)})
-            tables))
-        (catch Throwable _ nil))
+            tables
+            (log/error "Can't even do a smiple select")))
+        (catch Throwable e (do (log/error "Probing failed" e) nil)))
       accessible-tables)))
 
 (defn fast-active-tables
@@ -158,7 +160,7 @@
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, database, ^DatabaseMetaData metadata, & [db-name-or-nil]]
-  (->> (db-tables :sql-jdbc metadata nil nil)
+  (->> (db-tables :sql-jdbc metadata nil db-name-or-nil)
        (accessible-tables driver database (.getUserName metadata))
        (remove (comp (partial contains? (excluded-schemas driver)) :table_schem))))
 
@@ -236,6 +238,7 @@
                        :schema      (:table_schem table)
                        :description (when-not (str/blank? remarks)
                                       remarks)})))}))
+(describe-database :postgres 3)
 
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
