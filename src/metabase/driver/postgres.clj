@@ -313,7 +313,7 @@
 
 (defmethod sql-jdbc.sync/has-select-privilege? :postgres
   [driver database user schema table]
-  (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
               [(str "SELECT * FROM information_schema.role_table_grants "
                     "WHERE table_catalog=? "
                     "AND table_schema=? "

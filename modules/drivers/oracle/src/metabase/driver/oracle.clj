@@ -83,11 +83,11 @@
 
 (defmethod sql-jdbc.sync/has-select-privilege? :oracle
   [driver database user schema table]
-  (log/debug (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
+  (log/debug (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                          [(str "SELECT * FROM sys.all_tab_privs ")
                           ]
                          ))
-  (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
               [(str "SELECT 1 FROM sys.all_tab_privs "
                     "WHERE table_schema=? "
                     "AND table_name=? "
