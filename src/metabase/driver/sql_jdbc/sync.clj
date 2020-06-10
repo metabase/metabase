@@ -238,7 +238,6 @@
                        :schema      (:table_schem table)
                        :description (when-not (str/blank? remarks)
                                       remarks)})))}))
-(describe-database :postgres 3)
 
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
