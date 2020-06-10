@@ -53,8 +53,8 @@
 
 ;; Do we correctly determine SELECT privilege
 (deftest determine-select-privilege
-  (when-not (identical? (get-method sql-jdbc.sync/has-select-privilege? driver/*driver*)
-                        (get-method sql-jdbc.sync/has-select-privilege? :default))
+  (when-not (identical? (get-method sql-jdbc.sync/accessible-tables-for-user driver/*driver*)
+                        (get-method sql-jdbc.sync/accessible-tables-for-user :default))
     (one-off-dbs/with-blank-db
       (doseq [statement ["create user if not exists GUEST password 'guest';"
                          "set db_close_delay -1;"
@@ -62,9 +62,10 @@
                          "create table \"birds\" ();"
                          "grant all on \"birds\" to GUEST;"]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
-      (is (sql-jdbc.sync/has-select-privilege? driver/*driver* (mt/db) "GUEST" nil "birds"))
+      (is (= #{{:table_name "birds" :table_schem nil}}
+             (sql-jdbc.sync/accessible-tables-for-user driver/*driver* (mt/db) "GUEST")))
       (jdbc/execute! one-off-dbs/*conn* ["revoke all on \"birds\" from GUEST;"])
-      (is (not (sql-jdbc.sync/has-select-privilege? driver/*driver* (mt/db) "GUEST" nil "birds"))))))
+      (is (empty? (sql-jdbc.sync/accessible-tables-for-user driver/*driver* (mt/db) "GUEST"))))))
 
 (defn- count-active-tables-in-db
   [db-id]
