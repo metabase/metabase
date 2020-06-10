@@ -6,7 +6,9 @@
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.DatabaseMetaData))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -110,13 +112,6 @@
                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
-(defn- schema-qualified-table-name
-  [schema table-name]
-  (->> [schema table-name]
-       (filter some?)
-       (map #(str "\"" % "\""))
-       (str/join ".")))
-
 (defn- filter-tables-with-select-privilege
   "Remove tables for which we don't have SELECT privilege.
 
@@ -139,10 +134,15 @@
                        "This might be due to no GRANTs being set. Falling back to probing privileges with a simple SELECT statement."))
         (let [[{:keys [table_name table_schem]} & _] tables]
           (when (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-                            [(str "SELECT 1 FROM " (schema-qualified-table-name table_schem table_name))]
-                            {:result-set-fn (comp pos? count)})
+                            ;; Using our SQL compiler here to get portable LIMIT
+                            (sql.qp/format-honeysql driver
+                              (sql.qp/apply-top-level-clause driver :limit
+                                {:select [1]
+                                 :from [(sql.qp/->honeysql driver (hx/identifier :table table_schem table_name))]}
+                                {:limit 1}))
+                            {:result-set-fn first})
             tables))
-        (catch Throwable e (do (log/error "Probing failed" e) nil)))
+        (catch Throwable _))
       accessible-tables)))
 
 (defn fast-active-tables
