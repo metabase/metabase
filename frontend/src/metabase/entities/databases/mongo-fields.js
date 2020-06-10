@@ -3,20 +3,13 @@ import { t } from "ttag";
 
 import Link from "metabase/components/Link";
 
-function MongoConnectionStringToggle({
-  field: { value, onChange },
-  values: { details },
-}) {
-  return value === false ? (
+function MongoConnectionStringToggle({ field: { value, onChange } }) {
+  return (
     <div>
-      <Link className="link" onClick={() => onChange(true)}>
-        {t`Paste a connection string`}
-      </Link>
-    </div>
-  ) : (
-    <div>
-      <Link className="link" onClick={() => onChange(false)}>
-        {t`Fill out individual fields`}
+      <Link className="link" onClick={() => onChange(!value)}>
+        {value === false
+          ? t`Paste a connection string`
+          : t`Fill out individual fields`}
       </Link>
     </div>
   );
@@ -38,22 +31,13 @@ export default function getFieldsForMongo(details, defaults) {
     "ssl",
   ];
 
-  const fields = [];
-  for (const field of defaults["details-fields"]) {
-    if (
-      (useConnectionString && manualFields.includes(field["name"])) ||
-      (!useConnectionString && field["name"] === "conn-uri")
-    ) {
-      continue;
-    } else {
-      // in the case that we're adding the conn-uri field, it becomes required
-      if (field["name"] === "conn-uri") {
-        field.required = true;
-      }
-
-      fields.push(field);
-    }
-  }
+  const fields = defaults["details-fields"].filter(
+    field =>
+      !(
+        (useConnectionString && manualFields.includes(field["name"])) ||
+        (!useConnectionString && field["name"] === "conn-uri")
+      ),
+  );
 
   return {
     "details-fields": [
