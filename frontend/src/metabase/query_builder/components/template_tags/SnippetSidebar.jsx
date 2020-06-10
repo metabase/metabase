@@ -8,6 +8,7 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import { color } from "metabase/lib/colors";
 
 import Snippets from "metabase/entities/snippets";
@@ -24,14 +25,24 @@ type Props = {
   snippets: Snippet[],
 };
 
-type State = { showSearch: boolean, searchString: string };
+type State = {
+  showSearch: boolean,
+  searchString: string,
+  showArchived: boolean,
+};
 
 const ICON_SIZE = 16;
+const HEADER_ICON_SIZE = 18;
+const MIN_SNIPPETS_FOR_SEARCH = 15;
 
 @Snippets.loadList({ wrapped: true })
 export default class SnippetSidebar extends React.Component {
   props: Props;
-  state: State = { showSearch: false, searchString: "" };
+  state: State = {
+    showSearch: false,
+    searchString: "",
+    showArchived: false,
+  };
   searchBox: ?HTMLInputElement;
 
   static propTypes = {
@@ -50,17 +61,45 @@ export default class SnippetSidebar extends React.Component {
     this.setState({ showSearch: false, searchString: "" });
   };
 
+  footer = () => (
+    <a
+      className="p2 flex text-small text-medium text-brand-hover hover-parent hover--display"
+      onClick={() => this.setState({ showArchived: true })}
+    >
+      <Icon
+        className="mr1 text-light hover-child--hidden"
+        name="archive"
+        size={ICON_SIZE}
+      />
+      <Icon
+        className="mr1 text-brand hover-child"
+        name="archive"
+        size={ICON_SIZE}
+      />
+      {t`Archived snippets`}
+    </a>
+  );
+
   render() {
     const { query, snippets, openSnippetModalWithSelectedText } = this.props;
-    const { showSearch, searchString } = this.state;
-    const filteredSnippets = showSearch
-      ? snippets.filter(s =>
-          s.name.toLowerCase().includes(searchString.toLowerCase()),
-        )
-      : snippets;
+    const { showSearch, searchString, showArchived } = this.state;
+    const filteredSnippets = snippets.filter(
+      snippet =>
+        (!showSearch ||
+          snippet.name.toLowerCase().includes(searchString.toLowerCase())) &&
+        query.databaseId() === snippet.database_id,
+    );
+
+    if (showArchived) {
+      return (
+        <ArchivedSnippets
+          onBack={() => this.setState({ showArchived: false })}
+        />
+      );
+    }
 
     return (
-      <SidebarContent>
+      <SidebarContent footer={this.footer()}>
         {snippets.length === 0 ? (
           <div className="px3 flex flex-column align-center">
             <svg
@@ -82,7 +121,7 @@ export default class SnippetSidebar extends React.Component {
           </div>
         ) : (
           <div>
-            <div className="flex align-center px3 py2 border-bottom">
+            <div className="flex align-center p2 border-bottom">
               <div className="flex-full">
                 <div
                   /* Hide the search input by collapsing dimensions rather than `display: none`.
@@ -109,15 +148,17 @@ export default class SnippetSidebar extends React.Component {
                 >{t`Snippets`}</span>
               </div>
               <div className="flex-align-right text-medium no-decoration">
-                <Icon
-                  className={cx(
-                    { hide: showSearch },
-                    "text-brand-hover cursor-pointer mr2",
-                  )}
-                  onClick={this.showSearch}
-                  name="search"
-                  size={18}
-                />
+                {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
+                  <Icon
+                    className={cx(
+                      { hide: showSearch },
+                      "text-brand-hover cursor-pointer mr2",
+                    )}
+                    onClick={this.showSearch}
+                    name="search"
+                    size={HEADER_ICON_SIZE}
+                  />
+                )}
                 <Icon
                   className={cx(
                     { hide: showSearch },
@@ -125,7 +166,7 @@ export default class SnippetSidebar extends React.Component {
                   )}
                   onClick={openSnippetModalWithSelectedText}
                   name="add"
-                  size={18}
+                  size={HEADER_ICON_SIZE}
                 />
                 <Icon
                   className={cx(
@@ -134,22 +175,23 @@ export default class SnippetSidebar extends React.Component {
                   )}
                   onClick={this.hideSearch}
                   name="close"
-                  size={18}
+                  size={HEADER_ICON_SIZE}
                 />
               </div>
             </div>
             {query.databaseId() == null ? (
               <p className="text-body text-centered">{t`Select a database to see its snippets.`}</p>
             ) : (
-              filteredSnippets
-                .filter(snippet => query.databaseId() === snippet.database_id)
-                .map(snippet => (
+              <div className="flex-full">
+                {filteredSnippets.map(snippet => (
                   <SnippetRow
+                    key={snippet.id}
                     snippet={snippet}
                     insertSnippet={this.props.insertSnippet}
                     setModalSnippet={this.props.setModalSnippet}
                   />
-                ))
+                ))}
+              </div>
             )}
           </div>
         )}
@@ -158,6 +200,29 @@ export default class SnippetSidebar extends React.Component {
   }
 }
 
+@Snippets.loadList({ query: { archived: true }, wrapped: true })
+class ArchivedSnippets extends React.Component {
+  render() {
+    const { onBack, snippets } = this.props;
+    return (
+      <SidebarContent>
+        <SidebarHeader
+          className="p2"
+          title={t`Archived snippets`}
+          onBack={onBack}
+        />
+
+        {snippets.map(snippet => (
+          <SnippetRow
+            key={snippet.id}
+            snippet={snippet}
+            unarchiveSnippet={() => snippet.update({ archived: false })}
+          />
+        ))}
+      </SidebarContent>
+    );
+  }
+}
 class SnippetRow extends React.Component {
   state: { isOpen: boolean };
 
@@ -167,48 +232,62 @@ class SnippetRow extends React.Component {
   }
 
   render() {
-    const { snippet, insertSnippet, setModalSnippet } = this.props;
+    const {
+      snippet,
+      insertSnippet,
+      setModalSnippet,
+      unarchiveSnippet,
+    } = this.props;
     const { description, content } = snippet;
     const { isOpen } = this.state;
     return (
-      <div
-        key={snippet.id}
-        className={cx({ "border-bottom border-top": isOpen })}
-      >
+      <div className={cx({ "border-bottom border-top": isOpen })}>
         <a
           className="bg-light-blue-hover text-brand-hover hover-parent hover--display flex p2"
-          onClick={() => insertSnippet(snippet)}
+          onClick={
+            unarchiveSnippet
+              ? () => this.setState({ isOpen: true })
+              : () => insertSnippet(snippet)
+          }
         >
           <Icon
-            name={"snippet"}
+            name="snippet"
             size={ICON_SIZE}
             className="hover-child--hidden text-light"
           />
           <Icon
-            name={"arrow_left_to_line"}
+            name={insertSnippet ? "arrow_left_to_line" : "snippet"}
             size={ICON_SIZE}
             className="hover-child"
           />
           <span className="flex-full ml1">{snippet.name}</span>
-          <a
+          <Icon
+            name={isOpen ? "chevronup" : "chevrondown"}
+            size={ICON_SIZE}
             className={cx({ "hover-child": !isOpen })}
             onClick={e => {
               e.stopPropagation();
               this.setState({ isOpen: !isOpen });
             }}
-          >
-            <Icon
-              name={isOpen ? "chevronup" : "chevrondown"}
-              size={ICON_SIZE}
-            />
-          </a>
+          />
         </a>
         {isOpen && (
           <div className="px2 pb2 pt1">
             {description && <p className="text-medium mt0">{description}</p>}
-            <a onClick={() => setModalSnippet(snippet)} className="text-brand">
-              <Icon name="pencil" size={ICON_SIZE} className="mr1" />
-              Edit
+            <a
+              onClick={
+                unarchiveSnippet
+                  ? unarchiveSnippet
+                  : () => setModalSnippet(snippet)
+              }
+              className="text-brand"
+            >
+              <Icon
+                name={unarchiveSnippet ? "unarchive" : "pencil"}
+                size={ICON_SIZE}
+                className="mr1"
+              />
+              {unarchiveSnippet ? t`Unarchive` : t`Edit`}
             </a>
             <pre className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap overflow-x-scroll">
               {content}
