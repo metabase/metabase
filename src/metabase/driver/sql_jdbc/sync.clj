@@ -132,7 +132,7 @@
                                   tables)]
     (if (empty? accessible-tables)
       (try
-        (log/warn (format "User %s doesn't appear to have SELECT privilege for any table in database %s. Falling back to probing privileges with a simple SELECT statement."))
+        (log/warn (format "User %s doesn't appear to have SELECT privilege for any table in database %s. Falling back to probing privileges with a simple SELECT statement." user (name database)))
         (let [[{:keys [table_name table_schem]} & _] tables]
           (if (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
                             [(format "SELECT 1 from %s.%s" table_schem table_name)]
