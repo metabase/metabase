@@ -127,7 +127,8 @@
                             (catch Throwable _))]
     (if (empty? accessible-tables)
       (try
-        (log/warn (format "User %s doesn't appear to have SELECT privilege for any table in the database. This might be due to no GRANTs being set. Falling back to probing privileges with a simple SELECT statement."
+        (log/warn (format (str "User %s doesn't appear to have SELECT privilege for any table in the database. "
+                               "This might be due to no GRANTs being set. Falling back to probing privileges with a simple SELECT statement.")
                           user))
         (let [[{:keys [table_name table_schem]} & _] tables]
           (when (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
