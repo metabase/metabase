@@ -112,7 +112,7 @@
                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
-(defn filter-tables-with-select-privilege
+(defn- filter-tables-with-select-privilege
   "Remove tables for which we don't have SELECT privilege.
 
    If no privileges are set (which is completely legal), querying the internal catalog (which is what `accessible-tables-for-user`
@@ -140,9 +140,9 @@
                                 {:select [[1 :dummy]]
                                  :from   [(sql.qp/->honeysql driver (hx/identifier :table table_schem table_name))]}
                                 {:limit 1}))
-                            {:result-set-fn first})
+                            {:result-set-fn not-empty})
             tables))
-        (catch Throwable _))
+        (catch Throwable e (do (log/error "Probing failed" e) nil)))
       accessible-tables)))
 
 (defn fast-active-tables
