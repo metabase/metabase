@@ -3,6 +3,14 @@ import { t } from "ttag";
 
 import Link from "metabase/components/Link";
 
+function WhyReadonly() {
+  return (
+    <div>
+      <p>{t`Once the connection string has been entered and saved, you cannot edit it, since a connection string can contain a password. To update the connection string, delete and re-add the database.`}</p>
+    </div>
+  );
+}
+
 function MongoConnectionStringToggle({ field: { value, onChange } }) {
   return (
     <div>
@@ -15,7 +23,7 @@ function MongoConnectionStringToggle({ field: { value, onChange } }) {
   );
 }
 
-export default function getFieldsForMongo(details, defaults) {
+export default function getFieldsForMongo(details, defaults, id) {
   const useConnectionString =
     details["use-connection-uri"] == null || details["use-connection-uri"];
 
@@ -31,13 +39,23 @@ export default function getFieldsForMongo(details, defaults) {
     "ssl",
   ];
 
-  const fields = defaults["details-fields"].filter(
-    field =>
-      !(
-        (useConnectionString && manualFields.includes(field["name"])) ||
-        (!useConnectionString && field["name"] === "conn-uri")
-      ),
-  );
+  const fields = defaults["details-fields"]
+    .filter(
+      field =>
+        !(
+          (useConnectionString && manualFields.includes(field["name"])) ||
+          (!useConnectionString && field["name"] === "conn-uri")
+        ),
+    )
+    .map(function(field) {
+      if (field["name"] === "conn-uri" && id) {
+        // this has been previously saved, so you cannot edit it now
+        // to avoid leaking a password
+        // TODO: make the field value something like 'mongodb://************' in this case
+        field.readOnly = true;
+      }
+      return field;
+    });
 
   return {
     "details-fields": [
@@ -47,6 +65,14 @@ export default function getFieldsForMongo(details, defaults) {
         hidden: true,
         default: false,
       },
+      ...(id != null && useConnectionString
+        ? [
+            {
+              name: "readonly-info",
+              type: WhyReadonly,
+            },
+          ]
+        : []),
       ...fields,
     ],
   };
