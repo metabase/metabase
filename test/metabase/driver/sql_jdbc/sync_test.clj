@@ -53,7 +53,7 @@
 
 ;; Do we correctly determine SELECT privilege
 (deftest determine-select-privilege
-  (when-not (identical? (get-method sql-jdbc.sync/accessible-tables-for-user driver/*driver*)
+  (when-not (identical? (get-method sql-jdbc.sync/accessible-tables-for-user (:engine (mt/db)))
                         (get-method sql-jdbc.sync/accessible-tables-for-user :sql-jdbc))
     (one-off-dbs/with-blank-db
       (doseq [statement ["create user if not exists GUEST password 'guest';"
@@ -63,9 +63,9 @@
                          "grant all on \"birds\" to GUEST;"]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       (is (= #{{:table_name "birds" :table_schem nil}}
-             (sql-jdbc.sync/accessible-tables-for-user driver/*driver* (mt/db) "GUEST")))
+             (sql-jdbc.sync/accessible-tables-for-user (:engine (mt/db)) (mt/db) "GUEST")))
       (jdbc/execute! one-off-dbs/*conn* ["revoke all on \"birds\" from GUEST;"])
-      (is (empty? (sql-jdbc.sync/accessible-tables-for-user driver/*driver* (mt/db) "GUEST"))))))
+      (is (empty? (sql-jdbc.sync/accessible-tables-for-user (:engine (mt/db)) (mt/db) "GUEST"))))))
 
 (defn- count-active-tables-in-db
   [db-id]

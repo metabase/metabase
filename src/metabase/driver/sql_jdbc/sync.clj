@@ -88,16 +88,6 @@
 ;; TODO - we should reduce the metadata ResultSets instead of realizing the entire thing in memory at once and then
 ;; filtering/transforming in Clojure-land
 
-(defmulti accessible-tables-for-user
-  "Return a predicate which checks if user `user` has SELECT privilega for a given table"
-  {:arglists '([driver database user])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod accessible-tables-for-user :sql-jdbc
-  [_ _ _]
-  (constantly true))
-
 (defmulti db-tables
   "Fetch a JDBC Metadata ResultSet of tables accessable to us in the DB, optionally limited to ones belonging to a given
   schema."
@@ -111,6 +101,16 @@
   (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
     (vec (jdbc/metadata-result rs))))
+
+(defmulti accessible-tables-for-user
+  "Return a predicate which checks if user `user` has SELECT privilega for a given table"
+  {:arglists '([driver database user])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod accessible-tables-for-user :sql-jdbc
+  [_ _ _]
+  (constantly true))
 
 (defmulti simple-select-probe
   "Perform a simple (ie. cheap) SELECT on a given table to test for access."
