@@ -246,6 +246,12 @@
   [_]
   #{"INFORMATION_SCHEMA"})
 
+(defmethod sql-jdbc.sync/simple-select-probe :snowflake
+  [_ db-or-id-or-spec schema table]
+  (qp.store/with-store
+    (qp.store/fetch-and-store-database! (u/get-id db-or-id-or-spec))
+    (sql-jdbc.sync/simple-select-probe :snowflake db-or-id-or-spec schema table)))
+
 (defmethod sql-jdbc.sync/accessible-tables-for-user :snowflake
   [_ db-or-id-or-spec user]
   (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)

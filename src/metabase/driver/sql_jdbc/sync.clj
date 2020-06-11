@@ -94,7 +94,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod accessible-tables-for-user :default
+(defmethod accessible-tables-for-user :sql-jdbc
   [_ _ _]
   (constantly true))
 
@@ -111,6 +111,22 @@
   (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
     (vec (jdbc/metadata-result rs))))
+
+(defmulti simple-select-probe
+  "Perform a simple (ie. cheap) SELECT on a given table to test for access."
+  {:arglists '([driver db-or-id-or-spec schema table])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod simple-select-probe :sql-jdbc
+  [driver db-or-id-or-spec schema table]
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
+              ;; Using our SQL compiler here to get portable LIMIT
+              (sql.qp/format-honeysql driver
+                (sql.qp/apply-top-level-clause driver :limit
+                  {:select [[1 :dummy]]
+                   :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]}
+                  {:limit 1}))))
 
 (defn- filter-tables-with-select-privilege
   "Remove tables for which we don't have SELECT privilege.
@@ -133,17 +149,12 @@
                                user)
                        "This might be due to no GRANTs being set. Falling back to probing privileges with a simple SELECT statement."))
         (let [[{:keys [table_name table_schem]} & _] tables]
-          (when (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-                            ;; Using our SQL compiler here to get portable LIMIT
-                            (sql.qp/format-honeysql driver
-                              (sql.qp/apply-top-level-clause driver :limit
-                                {:select [[1 :dummy]]
-                                 :from   [(sql.qp/->honeysql driver (hx/identifier :table table_schem table_name))]}
-                                {:limit 1}))
-                            {:result-set-fn not-empty})
+          (when (not-empty (simple-select-probe driver db-or-id-or-spec table_schem table_name))
             tables))
         (catch Throwable e (do (log/error "Probing failed" e) nil)))
       accessible-tables)))
+
+(sql.qp/format-honeysql :h2 (sql.qp/->honeysql :h2 (hx/identifier :table "table_schem" "table_name" "db")))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
