@@ -247,7 +247,7 @@
   #{"INFORMATION_SCHEMA"})
 
 (defmethod sql-jdbc.sync/simple-select-probe :snowflake
-  [_ db-or-id-or-spec schema table]
+  [driver db-or-id-or-spec schema table]
   (qp.store/with-store
     (qp.store/fetch-and-store-database! (u/get-id db-or-id-or-spec))
     (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
