@@ -280,11 +280,11 @@ class SnippetRow extends React.Component {
                   ? unarchiveSnippet
                   : () => setModalSnippet(snippet)
               }
-              className="text-brand"
+              className="text-brand text-bold bg-light-hover p1 rounded"
             >
               <Icon
                 name={unarchiveSnippet ? "unarchive" : "pencil"}
-                size={ICON_SIZE}
+                size={14}
                 className="mr1"
               />
               {unarchiveSnippet ? t`Unarchive` : t`Edit`}
