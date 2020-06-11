@@ -112,7 +112,7 @@
                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
-(defn- filter-tables-with-select-privilege
+(defn filter-tables-with-select-privilege
   "Remove tables for which we don't have SELECT privilege.
 
    If no privileges are set (which is completely legal), querying the internal catalog (which is what `accessible-tables-for-user`

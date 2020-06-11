@@ -15,6 +15,7 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql
              [query-processor :as sql.qp]
              [util :as sql.u]]
@@ -227,12 +228,25 @@
         {:keys [rows]} (execute-presto-query-for-sync details sql)]
     (set (map first rows))))
 
-(defn- describe-schema [driver {{:keys [catalog] :as details} :details} {:keys [schema]}]
-  (let [sql            (str "SHOW TABLES FROM " (sql.u/quote-name driver :schema catalog schema))
-        {:keys [rows]} (execute-presto-query-for-sync details sql)
-        tables         (map first rows)]
-    (set (for [table-name tables]
-           {:name table-name, :schema schema}))))
+(defmethod sql-jdbc.sync/accessible-tables-for-user :presto
+  [_ {:keys [details]} user]
+  (->> (execute-presto-query-for-sync details
+                                      (format "SELECT table_name, table_schema AS table_schem
+                                               FROM information_schema.table_privileges
+                                               WHERE grantee='%s'
+                                               AND privilege_type='SELECT'" user))
+       :rows
+       set))
+
+(defn- describe-schema [driver {{:keys [catalog user] :as details} :details :as db} {:keys [schema]}]
+  (let [sql    (str "SHOW TABLES FROM " (sql.u/quote-name driver :schema catalog schema))
+        tables (->> (for [[table-name & _] (:rows (execute-presto-query-for-sync details sql))]
+                      {:table_name  table-name
+                       :table_schem schema})
+                    (sql-jdbc.sync/filter-tables-with-select-privilege driver db user))]
+    (set (for [{:keys [table_name table_schem]} tables]
+           {:name   table_name
+            :schema table_schem}))))
 
 (def ^:private excluded-schemas #{"information_schema"})
 

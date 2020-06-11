@@ -246,6 +246,16 @@
   [_]
   #{"INFORMATION_SCHEMA"})
 
+(defmethod sql-jdbc.sync/accessible-tables-for-user :snowflake
+  [_ db-or-id-or-spec user]
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
+              [(str "SELECT table_name, table_schema AS table_schem "
+                    "FROM information_schema.table_privileges "
+                    "WHERE grantee=? "
+                    "AND privilege_type='SELECT'")
+               user]
+              {:result-set-fn set}))
+
 (defmethod driver/can-connect? :snowflake
   [driver {:keys [db], :as details}]
   (and ((get-method driver/can-connect? :sql-jdbc) driver details)
