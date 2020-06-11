@@ -151,7 +151,7 @@
         (let [[{:keys [table_name table_schem]} & _] tables]
           (when (not-empty (simple-select-probe driver db-or-id-or-spec table_schem table_name))
             tables))
-        (catch Throwable e (do (log/error "Probing failed" e ((juxt :table_name :table_schem) (first tables))) nil)))
+        (catch Throwable e (do (log/error "Probing failed" e (map (juxt :table_name :table_schem) tables)) nil)))
       accessible-tables)))
 
 (defn fast-active-tables
