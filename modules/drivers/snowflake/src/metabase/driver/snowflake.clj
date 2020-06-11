@@ -250,7 +250,11 @@
   [_ db-or-id-or-spec schema table]
   (qp.store/with-store
     (qp.store/fetch-and-store-database! (u/get-id db-or-id-or-spec))
-    (sql-jdbc.sync/simple-select-probe :sql-jdbc db-or-id-or-spec schema table)))
+    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
+                (sql.qp/format-honeysql driver
+                  {:select [1]
+                   :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]
+                   :limit  1}))))
 
 (defmethod sql-jdbc.sync/accessible-tables-for-user :snowflake
   [_ db-or-id-or-spec user]
