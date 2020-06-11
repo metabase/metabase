@@ -243,32 +243,37 @@ class SnippetRow extends React.Component {
     return (
       <div className={cx({ "border-bottom border-top": isOpen })}>
         <a
-          className="bg-light-hover text-brand-hover hover-parent hover--display flex p2"
-          onClick={
-            unarchiveSnippet
-              ? () => this.setState({ isOpen: true })
-              : () => insertSnippet(snippet)
-          }
+          className="bg-light-hover text-brand-hover hover-parent hover--display flex align-center justify-between p2"
+          onClick={e => {
+            e.stopPropagation();
+            this.setState({ isOpen: !isOpen });
+          }}
         >
-          <Icon
-            name="snippet"
-            size={ICON_SIZE}
-            className="hover-child--hidden text-light"
-          />
-          <Icon
-            name={insertSnippet ? "arrow_left_to_line" : "snippet"}
-            size={ICON_SIZE}
-            className="hover-child"
-          />
-          <span className="flex-full ml1">{snippet.name}</span>
+          <a
+            className="flex bg-medium-hover rounded"
+            style={{ padding: 4 }}
+            onClick={
+              unarchiveSnippet
+                ? () => this.setState({ isOpen: true })
+                : () => insertSnippet(snippet)
+            }
+          >
+            <Icon
+              name="snippet"
+              size={ICON_SIZE}
+              className="hover-child--hidden text-light"
+            />
+            <Icon
+              name={insertSnippet ? "arrow_left_to_line" : "snippet"}
+              size={ICON_SIZE}
+              className="hover-child"
+            />
+            <span className="flex-full ml1">{snippet.name}</span>
+          </a>
           <Icon
             name={isOpen ? "chevronup" : "chevrondown"}
             size={ICON_SIZE}
             className={cx({ "hover-child": !isOpen })}
-            onClick={e => {
-              e.stopPropagation();
-              this.setState({ isOpen: !isOpen });
-            }}
           />
         </a>
         {isOpen && (
