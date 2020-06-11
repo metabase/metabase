@@ -252,16 +252,21 @@ function onRenderValueLabels(
   chart,
   { formatYValue, xInterval, yAxisSplit, datas },
 ) {
+  const seriesSettings = datas.map((_, seriesIndex) =>
+    chart.settings.series(chart.series[seriesIndex]),
+  );
   if (
-    !chart.settings["graph.show_values"] || // setting is off
+    (!chart.settings["graph.show_values"] && // global setting is off
+      // every series setting is off
+      seriesSettings.every(
+        settings => settings["show_series_values"] !== true,
+      )) ||
     chart.settings["stackable.stack_type"] === "normalized" // no normalized
   ) {
     return;
   }
 
-  let displays = datas.map(
-    (data, index) => chart.settings.series(chart.series[index]).display,
-  );
+  let displays = seriesSettings.map(settings => settings.display);
   const stacked = chart.settings["stackable.stack_type"] === "stacked";
   if (stacked) {
     // When stacked, zip together the corresponding values and sum them.
@@ -286,9 +291,9 @@ function onRenderValueLabels(
   // We need to add `showLabelBelow` before data is filtered to show every nth value.
   datas = datas.map((data, seriesIndex) => {
     const display = displays[seriesIndex];
-    const settings = chart.settings.series(chart.series[seriesIndex]);
+    const settings = seriesSettings[seriesIndex];
 
-    if (settings["show_series_values"] === false && !stacked) {
+    if (settings["show_series_values"] !== true && !stacked) {
       // We need to keep the series in `datas` to place the labels correctly over grouped bar charts.
       // Instead, we remove all the data so no labels are displayed.
       return [];
