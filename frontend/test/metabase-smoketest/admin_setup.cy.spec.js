@@ -5,7 +5,6 @@ import {
   signOut,
   signInAsNormalUser,
 } from "__support__/cypress";
-import { createMasonryCellPositioner } from "react-virtualized";
 
 const new_user = {
   first_name: "Barb",
@@ -116,16 +115,16 @@ describe("smoketest > admin_setup", () => {
 
       cy.contains("A group is only as good as its members.");
 
-      // Adds user as member
+      // Adds no collection user as member
 
       cy.findByText("Add members").click();
       cy.get("input").type("T");
       cy.findByText(
-        USERS.normal.first_name + " " + USERS.normal.last_name,
+        USERS.nocollection.first_name + " " + USERS.nocollection.last_name,
       ).click();
       cy.findByText("Add").click();
 
-      cy.contains(USERS.normal.username);
+      cy.contains(USERS.nocollection.username);
       cy.contains("A group is only as good as its members.").should(
         "not.exist",
       );
@@ -147,7 +146,7 @@ describe("smoketest > admin_setup", () => {
         .last()
         .click();
 
-      cy.contains("3 other groups");
+      cy.findAllByText("2 other groups").should("have.length", 2);
 
       cy.findAllByText("Groups")
         .first()
@@ -160,12 +159,6 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should create new users in different groups", () => {
-      cy.server();
-      cy.route({
-        method: "POST",
-        url: "/api/user",
-      }).as("createUser");
-
       cy.findAllByText("People")
         .last()
         .click();
@@ -191,17 +184,12 @@ describe("smoketest > admin_setup", () => {
         .click();
       cy.findByText("Marketing").click();
       cy.findByText("Create").click();
-      cy.wait("@createUser").then(xhr => {
-        cy.wrap(xhr.request.body.password).as("password");
-      });
       cy.findByText("Done").click();
 
       // Check new user is in those groups
 
       cy.contains(new_user.first_name + " " + new_user.last_name);
-      cy.get("td")
-        .eq("-3")
-        .contains("2 other groups");
+      cy.findAllByText("2 other groups").should("have.length", 3);
 
       cy.findAllByText("Groups") // *** These 6 lines of code should be unnecessary.
         .first()
@@ -490,8 +478,6 @@ describe("smoketest > admin_setup", () => {
 
       cy.contains("Test Table");
       cy.contains("Reviews").should("not.exist");
-
-      cy.pause();
     });
 
     it("should see changes to visibility, formatting, and foreign key mapping as user", () => {
@@ -616,9 +602,31 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Revoke access").click();
 
       cy.findByText("Save Changes").click();
+
+      cy.contains(
+        "data will no longer be able to read or write native queries for Sample Dataset.",
+      );
+      cy.findByText("Yes").click();
     });
 
     it("should modify Collection permissions for top-level collections and sub-collections as admin", () => {
+      signOut();
+      signInAsAdmin();
+      cy.visit("/admin/permissions/databases");
+
+      // modify for top-level collection
+
+      cy.findByText("Collection permissions").click();
+      cy.get(".Icon-close")
+        .eq(1)
+        .click();
+      cy.findByText("View collection").click();
+      cy.findByText("Save Changes").click();
+
+      cy.contains("Save permissions?");
+
+      cy.findByText("Yes").click();
+
       // *** Sub-collections need to exist before you can test them
     });
 
@@ -627,17 +635,67 @@ describe("smoketest > admin_setup", () => {
 
       // Normal user can still see everything
 
+      cy.contains("A look at your Test Table table");
+      cy.contains("A look at your Products table");
+
       // Normal user cannot make an SQL query
 
-      // New user can sign in
+      cy.findByText("Ask a question").click();
 
-      // New user sees Test Table and Test Table
+      cy.contains("Native query").should("not.exist");
 
-      // New user can view Our Analytics, but not make any changes
+      signOut();
+      signIn("nocollection");
+      cy.visit("/");
+
+      // No collection user sees Test Table and People table
+
+      cy.contains("A look at your Test Table table");
+      cy.contains("A look at your People table");
+      cy.contains("A look at your Reviews table").should("not.exist");
+
+      // No collection user can view Our Analytics, but not make any changes
+
+      cy.findByText("Browse all items").click();
+
+      cy.contains("Everything");
+      cy.contains("Orders, Count");
+      cy.contains(
+        'Access dashboards, questions, and collections in "Our analytics"',
+      ).should("not.exist");
+
+      cy.findByText("Orders").click();
+      cy.findByText("Summarize").click();
+      cy.findAllByText("Quantity")
+        .last()
+        .click();
+      cy.findAllByText("Done").click();
+
+      cy.contains("Quantity");
+      cy.contains("Product ID").should("not.exist");
+
+      cy.findAllByText("Save")
+        .last()
+        .click();
+      cy.findByText('Replace original question, "Orders"').click();
+      cy.findAllByText("Save") // *** There should be an error message here saying I'm not allowed to make any changes
+        .last()
+        .click();
+
+      // Normal user should not see changes that no collection user made
+      // *** Problem: Normal user still sees these changes
+
+      signOut();
+      signInAsNormalUser();
+      cy.visit("/question/1");
+
+      // cy.contains("Product ID");
+      // cy.contains("Quantity").should("not.exist");
     });
 
     it("should be able to view collections I have access to, but not ones that I don't (even with URL) as user", () => {});
 
-    it("should deactivate a user admin and subsequently user should be unable to login", () => {});
+    it("should deactivate a user admin and subsequently user should be unable to login", () => {
+    });
   });
 });
