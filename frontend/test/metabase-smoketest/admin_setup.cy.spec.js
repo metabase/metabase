@@ -4,6 +4,7 @@ import {
   USERS,
   signOut,
   signInAsNormalUser,
+  signIn,
 } from "__support__/cypress";
 
 const new_user = {
@@ -19,7 +20,7 @@ describe("smoketest > admin_setup", () => {
     beforeEach(signInAsAdmin);
 
     it("should add a new database", () => {
-      // *** I don't have any faux databases to hook up to. Are there some in the system already?
+      // *** Need faux databases to hook up to
       // *** Should eventually include BigQuery, Druid, Google Analytics, H2, MongoDB, MySQL/Maria DB, PostgreSQL, Presto, Amazon Redshift, Snowflake, Spark SQL, SQLite, SQL Server
 
       cy.visit("/");
@@ -31,21 +32,21 @@ describe("smoketest > admin_setup", () => {
         .click();
       cy.findByText("Admin").click();
 
-      cy.contains("Metabase Admin");
-      cy.contains("dashboard").should("not.exist");
+      cy.findByText("Metabase Admin");
+      cy.findByText("dashboard").should("not.exist");
 
       cy.findByText("Databases").click();
 
-      cy.contains("Sample Dataset");
-      cy.contains("Updates").should("not.exist");
+      cy.findByText("Sample Dataset");
+      cy.findByText("Updates").should("not.exist");
 
       cy.findByText("Add database").click();
 
-      cy.contains(
+      cy.findByText(
         "Automatically run queries when doing simple filtering and summarizing",
       );
 
-      // Adds new database
+      // Add new database
 
       // cy.findByText("H2").click();
       // cy.findByText("PostgreSQL").click();
@@ -66,45 +67,57 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Settings").click();
       cy.findByText("Email").click();
 
-      cy.contains("Email address you want to use as the sender of Metabase.");
-      cy.contains("Sample Database").should("not.exist");
+      cy.findByText("Email address you want to use as the sender of Metabase.");
+      cy.findByText("Sample Database").should("not.exist");
 
       // Email info
-      // cy.findByLabelText("SMTP HOST").type("smtp.gmail.com");
-      // cy.findByLabelText("SMTP PORT").type("465");
-      // cy.findByText("SSL").click();
-      // cy.findByLabelText("SMTP USERNAME").type(""); // *** enter email here
-      // cy.findByLabelText("SMTP PASSWORD").type(""); // *** enter password here
-      // cy.findByLabelText("FROM ADDRESS").type("metabase@metabase.com");
-      // cy.findByText("Save changes").click();
+      cy.findByPlaceholderText("smtp.yourservice.com").type("localhost");
+      cy.findByPlaceholderText("587").type("465");
+      cy.findByText("SSL").click();
+      cy.findByPlaceholderText("youlooknicetoday").type("myusername");
+      cy.findByPlaceholderText("Shhh...").type("password");
+      cy.findByPlaceholderText("metabase@yourcompany.com").type(
+        "metabase@yourcompany.com",
+      );
+
+      // *** should not have to click here first
+      cy.findByPlaceholderText("smtp.yourservice.com").click();
+
+      cy.findByText("Save changes").click();
+      cy.findByText("Changes saved!");
+
+      cy.findByText("Send test email").click();
+      // *** When faux email replaces fake email, this should stop appearing
+      // cy.findByText("Sorry, something went wrong.  Please try again").should("not.exist");
     });
 
     it("should setup Slack", () => {
       cy.findByText("Slack").click();
 
-      cy.contains("Answers sent right to your Slack #channels");
-      cy.contains("metabase@metabase.com").should("not.exist");
+      cy.findByText("Answers sent right to your Slack #channels");
+      cy.findByText("metabase@metabase.com").should("not.exist");
 
-      cy.contains("Create a Slack Bot User for MetaBot");
+      cy.findByText("Create a Slack Bot User for MetaBot");
       cy.contains(
-        'Once you\'re there, give it a name and click "Add bot integration". Then copy and paste the Bot API Token into the field below.',
+        'Once you\'re there, give it a name and click "Add bot integration". Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Metabase needs this to upload graphs.',
       );
     });
 
     it("should create new groups", () => {
       cy.findByText("People").click();
 
-      cy.contains("2 other groups");
+      cy.findByText("2 other groups");
 
       cy.findAllByText("Groups")
         .first()
         .click();
 
-      cy.contains(
-        "You can use groups to control your users' access to your data.",
+      cy.findByText(
+        "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.",
+        { exact: false },
       );
-      cy.contains("All Users");
-      cy.contains("Slack").should("not.exist");
+      cy.findByText("All Users");
+      cy.findByText("Slack").should("not.exist");
 
       // Creates new group
 
@@ -113,7 +126,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Add").click();
       cy.findByText("Marketing").click();
 
-      cy.contains("A group is only as good as its members.");
+      cy.findByText("A group is only as good as its members.");
 
       // Adds no collection user as member
 
@@ -124,8 +137,8 @@ describe("smoketest > admin_setup", () => {
       ).click();
       cy.findByText("Add").click();
 
-      cy.contains(USERS.nocollection.username);
-      cy.contains("A group is only as good as its members.").should(
+      cy.findByText(USERS.nocollection.username);
+      cy.findByText("A group is only as good as its members.").should(
         "not.exist",
       );
 
@@ -138,7 +151,7 @@ describe("smoketest > admin_setup", () => {
       ).click();
       cy.findByText("Add").click();
 
-      cy.contains(USERS.admin.username);
+      cy.findByText(USERS.admin.username);
 
       // Check member count
 
@@ -152,7 +165,7 @@ describe("smoketest > admin_setup", () => {
         .first()
         .click();
 
-      cy.contains("Marketing");
+      cy.findByText("Marketing");
       cy.get("td")
         .eq("-2")
         .contains("2");
@@ -174,7 +187,7 @@ describe("smoketest > admin_setup", () => {
         .first()
         .click();
       cy.findByText("English").click();
-      cy.contains("Turkish").should("not.exist");
+      cy.findByText("Turkish").should("not.exist");
       cy.get(".ModalBody") // *** I should be able to select using $ cy.findByText("Default"), but cypress says there are multiple instances
         .find(".Icon-chevrondown")
         .last()
@@ -188,7 +201,7 @@ describe("smoketest > admin_setup", () => {
 
       // Check new user is in those groups
 
-      cy.contains(new_user.first_name + " " + new_user.last_name);
+      cy.findByText(new_user.first_name + " " + new_user.last_name);
       cy.findAllByText("2 other groups").should("have.length", 3);
 
       cy.findAllByText("Groups") // *** These 6 lines of code should be unnecessary.
@@ -207,16 +220,16 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Marketing").click();
 
-      cy.contains(new_user.username);
-      cy.contains(USERS.nodata.username).should("not.exist");
+      cy.findByText(new_user.username);
+      cy.findByText(USERS.nodata.username).should("not.exist");
     });
 
     it("should set up custom maps", () => {
       cy.findByText("Settings").click();
       cy.findByText("Maps").click();
 
-      cy.contains("Custom Maps");
-      cy.contains("Groups").should("not.exist");
+      cy.findByText("Custom Maps");
+      cy.findByText("Groups").should("not.exist");
 
       // cy.findByText("Add a map").click();
       // cy.get("input")
@@ -224,7 +237,7 @@ describe("smoketest > admin_setup", () => {
       //   .type("Test Map");
       // cy.get("input")
       //   .last()
-      //   .type("") // *** type GeoJSON url here
+      //   .type(""); // *** type GeoJSON url here
       // cy.findAllByText("Select...")
       //   .first()
       //   .click();
@@ -234,6 +247,8 @@ describe("smoketest > admin_setup", () => {
       //   .click();
       // cy.findByText("");
       // cy.findByText("Add map").click();
+
+      // cy.pause();
     });
   });
 
@@ -258,14 +273,14 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Browse all items").click();
 
-      cy.contains("Our analytics");
-      cy.contains("A look at your").should("not.exist");
+      cy.findByText("Our analytics");
+      cy.findByText("A look at your").should("not.exist");
 
       cy.get(".hover-parent")
         .eq("2")
-        .contains("Orders, Count");
-      cy.contains("Orders, Count, Grouped by Created At (year)");
-      cy.contains("Test Q Name Change").should("not.exist");
+        .findByText("Orders, Count");
+      cy.findByText("Orders, Count, Grouped by Created At (year)");
+      cy.findByText("Test Q Name Change").should("not.exist");
     });
 
     it("should rename a question and description as admin", () => {
@@ -273,12 +288,12 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Browse all items").click();
 
-      cy.contains("All personal collections");
-      cy.contains("A look at your").should("not.exist");
+      cy.findByText("All personal collections");
+      cy.findByText("A look at your").should("not.exist");
 
       cy.findByText("Orders, Count, Grouped by Created At (year)").click();
 
-      cy.contains("Settings");
+      cy.findByText("Settings");
 
       cy.get(".Icon-pencil").click();
       cy.findByText("Edit this question").click();
@@ -295,8 +310,8 @@ describe("smoketest > admin_setup", () => {
         .click();
       cy.findByText("Admin").click();
 
-      cy.contains("Getting set up");
-      cy.contains(USERS.admin.first_name).should("not.exist");
+      cy.findByText("Getting set up");
+      cy.findByText(USERS.admin.first_name).should("not.exist");
 
       cy.findByText("Data Model").click();
       cy.findByText("Orders").click();
@@ -331,20 +346,22 @@ describe("smoketest > admin_setup", () => {
         .eq(-2)
         .click();
 
-      cy.contains("Total – Field Settings");
-      cy.contains("Columns").should("not.exist");
+      cy.findByText("Total – Field Settings");
+      cy.findByText("Columns").should("not.exist");
 
       cy.findByText("Formatting").click();
 
-      cy.contains("Show a mini bar chart");
-      cy.contains("Everywhere").should("not.exist");
+      cy.findByText("Show a mini bar chart");
+      cy.findByText("Everywhere").should("not.exist");
 
       cy.findByText("Normal").click();
       cy.findByText("Currency").click({ force: true });
-      cy.findByText("Code (USD)").click();
+      cy.findByText("Code (USD)")
+        .parent()
+        .click();
       cy.findByText("In every table cell").click();
 
-      cy.contains("Saved");
+      cy.findByText("Saved");
     });
 
     it("should reflect changes to column name, visibility, and formatting in the notebook editor for admin", () => {
@@ -373,26 +390,28 @@ describe("smoketest > admin_setup", () => {
 
       // Checking three things in table display
 
-      cy.contains("Discount").should("not.exist");
-      cy.contains("Sale");
+      cy.wait(1)
+        .findByText("Discount")
+        .should("not.exist");
+      cy.findByText("Sale ($)");
 
-      cy.contains("Created At").should("not.exist");
+      cy.findByText("Created At").should("not.exist");
 
-      cy.contains("Total ($)").should("not.exist");
+      cy.findByText("Total ($)").should("not.exist");
       cy.contains("USD");
 
       // Check column name and visibility in notebook editor
 
       cy.get(".Icon-notebook").click();
 
-      cy.contains("Custom column");
-      cy.contains("Orders").should("not.exist");
+      cy.findByText("Sale ($)");
+      cy.findByText("Orders").should("not.exist");
 
       cy.findByText("Filter").click();
-      cy.contains("Sale");
-      cy.contains("Discount").should("not.exist");
+      cy.findByText("Sale");
+      cy.findByText("Discount").should("not.exist");
 
-      cy.contains("Created At").should("not.exist");
+      cy.findByText("Created At").should("not.exist");
     });
 
     it("should configure a foreign key to show the name as admin", () => {
@@ -400,7 +419,7 @@ describe("smoketest > admin_setup", () => {
 
       // Configure Key
 
-      cy.contains("Metrics");
+      cy.findByText("Metrics");
       cy.get(".Icon-gear")
         .eq(6)
         .click();
@@ -408,7 +427,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Use foreign key").click();
       cy.findByText("Title").click();
 
-      cy.contains(
+      cy.findByText(
         "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
       );
 
@@ -418,9 +437,9 @@ describe("smoketest > admin_setup", () => {
       cy.visit("/browse/1");
       cy.findByText("Test Table").click();
 
-      cy.contains("Product ID");
-      cy.contains("Awesome Concrete Shoes");
-      cy.contains("Mediocre Wooden Bench");
+      cy.findByText("Product ID");
+      cy.findAllByText("Awesome Concrete Shoes");
+      cy.findAllByText("Mediocre Wooden Bench");
       cy.get(".Table-ID")
         .eq("1")
         .contains("14")
@@ -429,7 +448,9 @@ describe("smoketest > admin_setup", () => {
       // Check key config in notebook editor
 
       cy.get(".Icon-notebook").click();
-      cy.findByText("Filter").click();
+      cy.wait(2000)
+        .findByText("Filter")
+        .click();
       cy.findAllByText("Product ID")
         .last()
         .click();
@@ -440,8 +461,8 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Add filter").click();
       cy.findByText("Visualize").click();
 
-      cy.contains("Awesome Concrete Shoes");
-      cy.contains("Mediocre Wooden Bench").should("not.exist");
+      cy.findAllByText("Awesome Concrete Shoes");
+      cy.findByText("Mediocre Wooden Bench").should("not.exist");
     });
 
     it("should hide a table as admin", () => {
@@ -465,19 +486,21 @@ describe("smoketest > admin_setup", () => {
 
       cy.visit("/browse/1");
 
-      cy.contains("Learn about our data");
-      cy.contains("Test Table");
-      cy.contains("Reviews").should("not.exist");
+      cy.findByText("Learn about our data");
+      cy.findByText("Test Table");
+      cy.findByText("Reviews").should("not.exist");
 
       // Check table hidden in notebook editor
 
       cy.findByText("Test Table").click();
       cy.get(".Icon-notebook").click();
 
-      cy.findByText("Join data").click();
+      cy.wait(3000)
+        .findByText("Join data")
+        .click();
 
-      cy.contains("Test Table");
-      cy.contains("Reviews").should("not.exist");
+      cy.findAllByText("Test Table");
+      cy.findByText("Reviews").should("not.exist");
     });
 
     it("should see changes to visibility, formatting, and foreign key mapping as user", () => {
@@ -489,14 +512,14 @@ describe("smoketest > admin_setup", () => {
 
       cy.contains("A look at your People table");
       cy.contains("A look at your Test Table table");
-      cy.contains("Reviews").should("not.exist");
+      cy.findByText("Reviews").should("not.exist");
 
       // Check question names and descriptions
 
       cy.findByText("Browse all items").click();
 
-      cy.contains("Orders, Count");
-      cy.contains("Orders, Count, Grouped by Created At (year)").should(
+      cy.findByText("Orders, Count");
+      cy.findByText("Orders, Count, Grouped by Created At (year)").should(
         "not.exist",
       );
 
@@ -504,8 +527,8 @@ describe("smoketest > admin_setup", () => {
       cy.get(".Icon-pencil").click();
       cy.findByText("Edit this question").click();
 
-      cy.contains("Edit question");
-      cy.contains("Testing question description");
+      cy.findByText("Edit question");
+      cy.findByText("Testing question description");
 
       cy.findByText("Cancel").click();
 
@@ -515,10 +538,10 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Sample Dataset").click();
       cy.findByText("Test Table").click();
 
-      cy.contains("Visualization");
-      cy.contains("Discount").should("not.exist");
-      cy.contains("Sale");
-      cy.contains("Created At").should("not.exist");
+      cy.findByText("Visualization");
+      cy.findByText("Discount").should("not.exist");
+      cy.findByText("Sale ($)");
+      cy.findByText("Created At").should("not.exist");
 
       // Check column formatting
 
@@ -526,8 +549,8 @@ describe("smoketest > admin_setup", () => {
 
       // Check column foreign key mapping
 
-      cy.contains("Awesome Concrete Shoes");
-      cy.contains("Mediocre Wooden Bench");
+      cy.findAllByText("Awesome Concrete Shoes");
+      cy.findByText("Mediocre Wooden Bench");
       cy.get(".Table-ID")
         .eq("1")
         .contains("14")
@@ -538,7 +561,7 @@ describe("smoketest > admin_setup", () => {
   describe("permission changes reflected", () => {
     beforeEach(signInAsNormalUser);
 
-    it("should check current permissions as use", () => {});
+    it("should check current permissions as user", () => {});
 
     it("should modify user permissions for data access and SQL queries, both on a database/schema level as well as at a table level as admin", () => {
       // *** Need multible databases to test their permissions.
@@ -560,15 +583,15 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("View tables").click();
 
-      cy.contains("Products");
-      cy.contains("SQL Queries").should("not.exist");
+      cy.findByText("Products");
+      cy.findByText("SQL Queries").should("not.exist");
 
       cy.get(".Icon-close") // Turn on data access for all users to Test Table
         .eq(6)
         .click();
       cy.findByText("Grant unrestricted access").click();
 
-      cy.contains("Change access to this database to limited?");
+      cy.findByText("Change access to this database to limited?");
 
       cy.findByText("Change").click();
 
@@ -577,7 +600,7 @@ describe("smoketest > admin_setup", () => {
         .click();
       cy.findByText("Grant unrestricted access").click();
 
-      cy.contains("Are you sure you want to do this?");
+      cy.findByText("Are you sure you want to do this?");
 
       cy.findByText("Change").click();
 
@@ -588,7 +611,7 @@ describe("smoketest > admin_setup", () => {
       cy.contains(
         "All Users will be given access to 1 table in Sample Dataset.",
       );
-      cy.contains("Are you sure you want to do this?");
+      cy.findByText("Are you sure you want to do this?");
 
       cy.findByText("Yes").click();
 
@@ -623,7 +646,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("View collection").click();
       cy.findByText("Save Changes").click();
 
-      cy.contains("Save permissions?");
+      cy.findByText("Save permissions?");
 
       cy.findByText("Yes").click();
 
@@ -635,14 +658,14 @@ describe("smoketest > admin_setup", () => {
 
       // Normal user can still see everything
 
-      cy.contains("A look at your Test Table table");
+      cy.wait(1000).contains("A look at your Test Table table");
       cy.contains("A look at your Products table");
 
       // Normal user cannot make an SQL query
 
       cy.findByText("Ask a question").click();
 
-      cy.contains("Native query").should("not.exist");
+      cy.findByText("Native query").should("not.exist");
 
       signOut();
       signIn("nocollection");
@@ -658,21 +681,22 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Browse all items").click();
 
-      cy.contains("Everything");
-      cy.contains("Orders, Count");
-      cy.contains(
+      cy.findByText("Everything");
+      cy.findByText("Orders, Count");
+      cy.findByText(
         'Access dashboards, questions, and collections in "Our analytics"',
       ).should("not.exist");
 
       cy.findByText("Orders").click();
       cy.findByText("Summarize").click();
-      cy.findAllByText("Quantity")
+      cy.wait(1000)
+        .findAllByText("Quantity")
         .last()
         .click();
       cy.findAllByText("Done").click();
 
-      cy.contains("Quantity");
-      cy.contains("Product ID").should("not.exist");
+      cy.findByText("Quantity");
+      cy.findByText("Product ID").should("not.exist");
 
       cy.findAllByText("Save")
         .last()
@@ -689,13 +713,15 @@ describe("smoketest > admin_setup", () => {
       signInAsNormalUser();
       cy.visit("/question/1");
 
-      // cy.contains("Product ID");
-      // cy.contains("Quantity").should("not.exist");
+      // cy.findByText("Product ID");
+      // cy.findByText("Quantity").should("not.exist");
     });
 
     it("should be able to view collections I have access to, but not ones that I don't (even with URL) as user", () => {});
 
     it("should deactivate a user admin and subsequently user should be unable to login", () => {
+      signOut();
+      signInAsAdmin();
     });
   });
 });

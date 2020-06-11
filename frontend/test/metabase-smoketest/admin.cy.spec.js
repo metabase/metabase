@@ -18,19 +18,19 @@ describe("metabase-smoketest > admin", () => {
 
     // This is a simplified version of the "scenarios > setup" test
     cy.visit("/");
-    cy.contains("Welcome to Metabase");
+    cy.findByText("Welcome to Metabase");
     cy.url().should("not.include", "login");
     cy.findByText("Let's get started").click();
 
     // Language
 
-    cy.contains("What's your preferred language");
+    cy.findByText("What's your preferred language");
     cy.findByText("English").click();
     cy.findByText("Next").click();
 
     // User (with workaround from "scenarios > setup"  document)
 
-    cy.contains("What should we call you?");
+    cy.findByText("What should we call you?");
 
     cy.findByLabelText("First name").type(admin.first_name);
     cy.findByLabelText("Last name").type(admin.last_name);
@@ -47,8 +47,8 @@ describe("metabase-smoketest > admin", () => {
 
     // Database
 
-    cy.contains("Add your data");
-    cy.contains("I'll add my data later");
+    cy.findByText("Add your data");
+    cy.findByText("I'll add my data later");
 
     cy.findByText("Select a database").click();
     cy.findByText("H2").click();
@@ -76,39 +76,40 @@ describe("metabase-smoketest > admin", () => {
     cy.url().should("be", "/");
 
     // =================
-    // should add a simple summarized question
+    // should add a simple summarized question as admin
     // =================
 
-    cy.contains("Bobby");
+    cy.contains(", " + admin.first_name);
     // This page does not contain "OUR DATA"
-    cy.contains("Our analytics", { timeout: 10000 });
+    cy.findByText("Our analytics");
 
     // Following section is repeated-- turn into callback function?
     // Also, selecting Metabase H2 doesn't do anything
     cy.findByText("Ask a question").click();
 
-    cy.contains("Custom question");
-    cy.contains("Native query");
+    cy.findByText("Custom question");
+    cy.findByText("Native query");
 
     cy.findByText("Simple question").click();
     cy.findByText("Sample Dataset").click();
     cy.findByText("People").click();
 
-    cy.contains("Save");
+    cy.findByText("Save");
 
     // Filter for created within previous 5 years
 
     cy.findByText("Filter").click();
-    cy.get(".scroll-y")
-      .contains("Created At", { timeout: 20000 })
+    cy.findAllByText("Created At")
+      .last()
       .click();
     cy.get("input[type='text']")
       .clear()
+      .wait(1)
       .type("5");
     cy.findByText("Days").click();
     cy.findByText("Years").click();
     cy.get(".scroll-y")
-      .contains("Add filter")
+      .findByText("Add filter")
       .click();
 
     // Summarize by source
@@ -120,11 +121,11 @@ describe("metabase-smoketest > admin", () => {
     cy.findByText("Done").click();
 
     cy.contains("Created At  Previous 5 Years");
-    cy.contains("Source");
-    cy.contains("Google");
+    cy.findByText("Source");
+    cy.findByText("Google");
 
     // =================
-    // should add question to a new dashboard in my personal collection
+    // should add question to a new dashboard in my personal collection as admin
     // =================
 
     cy.findByText("Save").click();
@@ -138,9 +139,8 @@ describe("metabase-smoketest > admin", () => {
     // cy.findByText("Our analytics").click();
     // cy.findByText("My personal collection").click();
     // cy.contains("My personal collection");
-    cy.get(".ModalContent")
-      .get(".Button")
-      .contains("Save")
+    cy.findAllByText("Save")
+      .last()
       .click();
     cy.findByText("Yes please!").click();
     cy.findByText("Create a new dashboard").click();
@@ -149,12 +149,12 @@ describe("metabase-smoketest > admin", () => {
     cy.findByText("Create").click();
 
     cy.contains("People per");
-    cy.contains("This dashboard is looking empty").should("not.exist");
+    cy.findByText("This dashboard is looking empty").should("not.exist");
 
-    cy.contains("Save").click();
+    cy.findByText("Save").click();
 
     // =================
-    // should add a simple JOINed question
+    // should add a simple JOINed question as admin
     // =================
 
     cy.findByText("Ask a question");
@@ -165,18 +165,18 @@ describe("metabase-smoketest > admin", () => {
     cy.findByText("Orders").click();
 
     // Join tables
-    cy.get(".Icon-notebook", { timeout: 30000 }).click();
+    cy.get(".Icon-notebook").click();
 
-    cy.contains("Data");
-    cy.contains("Showing").should("not.exist");
+    cy.findByText("Data");
+    cy.findByText("Showing").should("not.exist");
 
     cy.findByText("Join data").click();
     cy.findByText("People").click();
     cy.findByText("Visualize").click();
 
     // Summarize by State
-    cy.get(".Button", { timeout: 30000 })
-      .contains("Summarize")
+    cy.findAllByText("Summarize")
+      .first()
       .click();
     cy.findByText("State").click();
     cy.findByText("Done").click();
@@ -189,31 +189,30 @@ describe("metabase-smoketest > admin", () => {
     cy.findByLabelText("Name")
       .clear()
       .type("Order Totals by State");
-    cy.get(".ModalContent")
-      .get(".Button")
-      .contains("Save")
+    cy.findAllByText("Save")
+      .last()
       .click();
     cy.findByText("Not now").click();
 
     // =================
-    // should add a question with a default line visualization
+    // should add a question with a default line visualization as admin
     // =================
 
     cy.findByText("Ask a question").click();
 
-    cy.contains("Native query");
+    cy.findByText("Native query");
 
     cy.findByText("Ask a question").click();
     cy.findByText("Simple question").click();
     cy.findByText("Sample Dataset").click();
     cy.findByText("Orders").click();
 
-    cy.contains("Product ID");
-    cy.contains("Pick your data").should("not.exist");
+    cy.findByText("Product ID");
+    cy.findByText("Pick your data").should("not.exist");
 
     // Summarize by date ordered
-    cy.get(".Button", { timeout: 30000 })
-      .contains("Summarize")
+    cy.findAllByText("Summarize")
+      .first()
       .click();
     cy.get(".scroll-y")
       .contains("Created At")
@@ -234,14 +233,14 @@ describe("metabase-smoketest > admin", () => {
     cy.findByText("Not now").click();
 
     // =================
-    // should create a new dashboard with the previous questions
+    // should create a new dashboard with the previous questions as admin
     // =================
 
     // New dashboard
     cy.get(".Icon-add").click();
     cy.findByText("New dashboard").click();
 
-    cy.contains("Which collection should this go in?");
+    cy.findByText("Which collection should this go in?");
 
     cy.findByLabelText("Name").type("Demo Dash 2");
     cy.findByText("Create").click();
@@ -277,12 +276,12 @@ describe("metabase-smoketest > admin", () => {
       .click();
     cy.findByText("Admin").click();
 
-    cy.contains("Metabase Admin");
-    cy.contains("dashboard").should("not.exist");
+    cy.findByText("Metabase Admin");
+    cy.findByText("dashboard").should("not.exist");
 
     cy.findByText("People").click();
 
-    cy.contains("Groups");
+    cy.findByText("Groups");
 
     // Inputs user info (first modal)
     cy.findByText("Add someone").click();
@@ -303,7 +302,7 @@ describe("metabase-smoketest > admin", () => {
     cy.contains("has been added");
     cy.findByText("Done").click();
 
-    cy.contains(new_user.username);
+    cy.findByText(new_user.username);
 
     // ****************
     // *** NEW USER ***
@@ -326,14 +325,29 @@ describe("metabase-smoketest > admin", () => {
       // =================
 
       cy.findByText("Browse all items").click();
-      cy.contains("My personal collection");
+      cy.findByText("My personal collection");
 
       // =================
-      // should see dashboard in the "Our Analytics" collection as user
+      // should see dashboard made by admin in the "Our Analytics" collection as user
       // =================
 
       cy.findByText("Dashboards").click();
-      cy.contains("Demo Dash 2");
+      // cy.findByText("");
+
+      cy.findAllByText("Demo Dash 2").click();
+
+      cy.get(".Icon-move");
+      cy.findByText("Created At");
+
+      cy.findByText("Orders Over Time").click();
+      cy.findByText(
+        "You won't make any permanent changes to a saved question unless you click Save and choose to replace the original question.",
+      );
+      cy.findByText("Okay").click();
+
+      cy.findByText("Orders Over Time");
+      cy.get(".Icon-line");
+      cy.findByText("Demo Dash 2").should("not.exist");
 
       // =================
       // should create my own question as user
@@ -341,25 +355,40 @@ describe("metabase-smoketest > admin", () => {
 
       cy.findByText("Ask a question").click();
 
-      cy.contains("Native query");
+      cy.findByText("Native query");
 
       cy.findByText("Simple question").click();
       cy.findByText("Sample Dataset").click();
       cy.findByText("Reviews").click();
 
       cy.get(".Button")
-        .contains("Summarize")
+        .findByText("Summarize")
         .click();
-      cy.get(".scroll-y")
-        .contains("Rating", { timeout: 20000 })
+      cy.findAllByText("Rating")
+        .last()
         .click();
       cy.findByText("Done").click();
 
       cy.contains("Auto binned");
       cy.get(".Icon-bar");
 
+      cy.findByText("Save").click();
+      cy.findByLabelText("Name")
+        .clear()
+        .type("Number of Reviews by Range of Rating");
+      cy.get(".Icon-chevrondown").click();
+      cy.findAllByText("Our analytics")
+        .last()
+        .click();
+      // *** Saving into personal collection should work
+      // cy.findByText("My personal collection").click();
+      cy.findAllByText("Save")
+        .last()
+        .click();
+      cy.findByText("Not now").click();
+
       // =================
-      // Create my own dashboard as user
+      // should create my own dashboard as user
       // =================
 
       cy.get(".Icon-add").click();
@@ -375,7 +404,17 @@ describe("metabase-smoketest > admin", () => {
       // *** Also cannot select "My personal collection" here
       cy.findByText("Create").click();
 
-      cy.contains("This dashboard is looking empty");
+      cy.findByText("This dashboard is looking empty.");
+      cy.contains("Number of").should("not.exist");
+
+      cy.get(".Icon-add")
+        .last()
+        .click();
+      cy.findByText("Number of Reviews by Range of Rating").click();
+      cy.findByText("Save").click();
+
+      cy.contains("Number of");
+      cy.findByText("This dashboard is looking empty.").should("not.exist");
     });
   });
 });

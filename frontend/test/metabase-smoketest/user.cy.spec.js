@@ -11,7 +11,7 @@ describe("smoketest > new_user", () => {
     cy.visit("/");
 
     cy.findByText("Ask a question").click();
-    cy.contains("Simple question");
+    cy.findByText("Simple question");
 
     cy.findByText("Custom question").click();
     cy.findByText("Sample Dataset").click();
@@ -27,13 +27,13 @@ describe("smoketest > new_user", () => {
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Title").click();
 
-    cy.contains("Average of Rating");
+    cy.findByText("Average of Rating");
 
     cy.findByText("Visualize").click();
 
-    cy.get(".Icon-bar", { timeout: 30000 });
-    cy.contains("Vendor is not empty");
-    cy.contains("Visualization");
+    cy.get(".Icon-bar");
+    cy.findAllByText("Vendor is not empty");
+    cy.findByText("Visualization");
 
     // =================
     // should filter via both the header and notebook editor
@@ -41,10 +41,12 @@ describe("smoketest > new_user", () => {
 
     // Sorting by header
 
-    cy.get(".Icon-table2").click();
-    cy.get(".TableInteractive-cellWrapper--firstColumn")
-      .last()
-      .contains("Durable Wool Toucan");
+    cy.wait(1000)
+      .get(".Icon-table2")
+      .click();
+    cy.get(".cellData")
+      .eq(2)
+      .findByText("Durable Wool Toucan");
 
     cy.findAllByText("Average of Rating")
       .last()
@@ -53,7 +55,7 @@ describe("smoketest > new_user", () => {
 
     cy.get(".TableInteractive-cellWrapper--firstColumn")
       .last()
-      .contains("Lightweight Steel Watch");
+      .findByText("Lightweight Steel Watch");
 
     // Sorting by notebook editor
 
@@ -80,16 +82,18 @@ describe("smoketest > new_user", () => {
 
     // Sidebar filter
 
-    cy.contains("Visualize", { timeout: 20000 }).should("not.exist");
+    cy.wait(1000)
+      .findByText("Visualize")
+      .should("not.exist");
     cy.findAllByText("Filter")
       .first()
       .click();
     cy.findByText("Category").click();
-    cy.contains("Is");
+    cy.findByText("Is");
     cy.findByText("Gadget").click();
     cy.findByText("Add filter").click();
 
-    cy.contains("Vendor is not empty");
+    cy.findByText("Vendor is not empty");
 
     // Can delete filter in header
 
@@ -107,9 +111,9 @@ describe("smoketest > new_user", () => {
     cy.findByText("Add filter").click();
     cy.findByText("Visualize").click();
 
-    cy.contains("Visualize").should("not.exist");
+    cy.findByText("Visualize").should("not.exist");
     cy.get("svg");
-    cy.contains("Average of Rating is greater than or equal to 5");
+    cy.findByText("Average of Rating is greater than or equal to 5");
 
     // Can delete filter in header again
 
@@ -146,7 +150,7 @@ describe("smoketest > new_user", () => {
       .first()
       .click();
 
-    cy.contains("Vendor is not empty").should("not.exist");
+    cy.findByText("Vendor is not empty").should("not.exist");
 
     // =================
     // should summarize via both the sidebar and notebook editor
@@ -186,7 +190,7 @@ describe("smoketest > new_user", () => {
     cy.findByText("Visualize").click();
 
     cy.get("svg");
-    cy.contains("Created At");
+    cy.findAllByText("Created At");
 
     // =================
     // should be able to create custom columns in the notebook editor
@@ -220,10 +224,10 @@ describe("smoketest > new_user", () => {
     cy.findByText("Done").click();
     cy.findByText("Visualize").click();
 
-    cy.contains("ID");
+    cy.findByText("ID");
     cy.get(".Icon-table2");
-    cy.contains("Demo Column");
-    cy.contains("People").should("not.exist");
+    cy.wait(1000).findByText("Demo Column");
+    cy.findByText("People").should("not.exist");
 
     // =================
     // should be able to use all notebook editor functions
@@ -237,9 +241,9 @@ describe("smoketest > new_user", () => {
     cy.findByText("People").click(); // column selection happens automatcially
     cy.findByText("Visualize").click();
 
-    cy.contains("Created At");
-    cy.contains("People");
-    cy.contains("User → ID");
+    cy.findByText("Created At");
+    cy.findByText("People");
+    cy.findByText("User → ID");
 
     // Setting Row limit
 
@@ -279,8 +283,8 @@ describe("smoketest > new_user", () => {
 
     cy.findByText("Category").click();
     cy.findByText("Distincts").click();
-    cy.contains("4");
-    cy.contains("3").should("not.exist");
+    cy.findByText("4");
+    cy.findByText("3").should("not.exist");
 
     cy.get(".Icon-close")
       .last()
@@ -304,7 +308,7 @@ describe("smoketest > new_user", () => {
       .first()
       .click();
     // *** check that refresh has happened
-    cy.contains("Sample Dataset");
+    cy.findByText("Sample Dataset");
 
     // =================
     // should ensuring that header actions are appropriate for different data types
@@ -324,12 +328,12 @@ describe("smoketest > new_user", () => {
 
     cy.findByText("ID").click();
 
-    cy.contains("Ascending");
-    cy.contains("Descending");
-    cy.contains("Distincts");
-    cy.contains("Distribution").should("not.exist");
-    cy.contains("Filter");
-    cy.contains("Formatting");
+    cy.findByText("Ascending");
+    cy.findByText("Descending");
+    cy.findByText("Distincts");
+    cy.findByText("Distribution").should("not.exist");
+    cy.get(".Icon-funnel_outline");
+    cy.findByText("Formatting");
 
     // String column
 
@@ -337,14 +341,14 @@ describe("smoketest > new_user", () => {
       .last()
       .click();
 
-    cy.contains("Ascending");
-    cy.contains("Descending");
-    cy.contains("Distincts");
-    cy.contains("Distribution");
-    cy.contains("Filter");
-    cy.contains("Formatting");
+    cy.findByText("Ascending");
+    cy.findByText("Descending");
+    cy.findByText("Distincts");
+    cy.findByText("Distribution");
+    cy.get(".Icon-funnel_outline");
+    cy.findByText("Formatting");
     cy.get(".PopoverBody")
-      .contains("Sum")
+      .findByText("Sum")
       .should("not.exist");
 
     // Integer column
@@ -353,16 +357,16 @@ describe("smoketest > new_user", () => {
       .last()
       .click();
 
-    cy.contains("Ascending");
-    cy.contains("Descending");
-    cy.contains("Sum");
-    cy.contains("Min");
-    cy.contains("Max");
-    cy.contains("Distincts");
-    cy.contains("Sum over time");
-    cy.contains("Distribution");
-    cy.contains("Filter");
-    cy.contains("Formatting");
+    cy.findByText("Ascending");
+    cy.findByText("Descending");
+    cy.findByText("Sum");
+    cy.findByText("Min");
+    cy.findByText("Max");
+    cy.findByText("Distincts");
+    cy.findByText("Sum over time");
+    cy.findByText("Distribution");
+    cy.get(".Icon-funnel_outline");
+    cy.findByText("Formatting");
 
     // Longitude column (first switch to people table)
 
@@ -375,16 +379,16 @@ describe("smoketest > new_user", () => {
 
     cy.findByText("Longitude").click();
 
-    cy.contains("Ascending");
-    cy.contains("Descending");
-    cy.contains("Sum");
-    cy.contains("Min");
-    cy.contains("Max");
-    cy.contains("Distincts");
-    cy.contains("Sum over time");
-    cy.contains("Distribution");
-    cy.contains("Filter");
-    cy.contains("Formatting");
+    cy.findByText("Ascending");
+    cy.findByText("Descending");
+    cy.findByText("Sum");
+    cy.findByText("Min");
+    cy.findByText("Max");
+    cy.findByText("Distincts");
+    cy.findByText("Sum over time");
+    cy.findByText("Distribution");
+    cy.get(".Icon-funnel_outline");
+    cy.findByText("Formatting");
 
     // Boolean column contians appropriate options
     // *** The sample data does not contain any boolean columns
