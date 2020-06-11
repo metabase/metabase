@@ -243,7 +243,7 @@ class SnippetRow extends React.Component {
     return (
       <div className={cx({ "border-bottom border-top": isOpen })}>
         <a
-          className="bg-light-blue-hover text-brand-hover hover-parent hover--display flex p2"
+          className="bg-light-hover text-brand-hover hover-parent hover--display flex p2"
           onClick={
             unarchiveSnippet
               ? () => this.setState({ isOpen: true })
