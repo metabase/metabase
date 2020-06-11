@@ -250,7 +250,7 @@
   [_ db-or-id-or-spec schema table]
   (qp.store/with-store
     (qp.store/fetch-and-store-database! (u/get-id db-or-id-or-spec))
-    (sql-jdbc.sync/simple-select-probe :snowflake db-or-id-or-spec schema table)))
+    (sql-jdbc.sync/simple-select-probe :sql-jdbc db-or-id-or-spec schema table)))
 
 (defmethod sql-jdbc.sync/accessible-tables-for-user :snowflake
   [_ db-or-id-or-spec user]
