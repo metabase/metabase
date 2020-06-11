@@ -15,10 +15,10 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql
              [query-processor :as sql.qp]
              [util :as sql.u]]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [context :as context]
