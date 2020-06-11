@@ -121,7 +121,10 @@ export default class SnippetSidebar extends React.Component {
           </div>
         ) : (
           <div>
-            <div className="flex align-center p2 border-bottom">
+            <div
+              className="flex align-center px2 border-bottom"
+              style={{ paddingTop: 10, paddingBottom: 8 }}
+            >
               <div className="flex-full">
                 <div
                   /* Hide the search input by collapsing dimensions rather than `display: none`.
@@ -162,7 +165,7 @@ export default class SnippetSidebar extends React.Component {
                 <Icon
                   className={cx(
                     { hide: showSearch },
-                    "text-brand-hover cursor-pointer",
+                    "text-brand bg-light-hover rounded p1 cursor-pointer",
                   )}
                   onClick={openSnippetModalWithSelectedText}
                   name="add"
