@@ -170,7 +170,7 @@ describe("scenarios > question > native", () => {
 
     // add a snippet of that text
     cy.get(".Icon-snippet").click();
-    cy.contains("Add a snippet").click();
+    cy.contains("Create a snippet").click();
     modal()
       .find("input[name=name]")
       .type("stuff-snippet");
