@@ -301,7 +301,7 @@ function onRenderValueLabels(
           // last point point or next is greater than y
           (i === data.length - 1 || data[i + 1][1] > y);
         const showLabelBelow = isLocalMin && display === "line";
-        return { x, y, showLabelBelow };
+        return { x, y, showLabelBelow, seriesIndex };
       })
       .filter(d => display !== "bar" || d.y !== 0);
   });
@@ -339,6 +339,8 @@ function onRenderValueLabels(
   const yScaleForSeries = index =>
     yAxisSplit[0].includes(index) ? chart.y() : chart.rightY();
 
+  const barCount = displays.filter(d => d === "bar").length;
+
   // Ordinal bar charts and histograms need extra logic to center the label.
   const xShifts = displays.map((display, index) => {
     const thisChart = chart.children()[index];
@@ -347,8 +349,7 @@ function onRenderValueLabels(
 
     if (xScale.rangeBand) {
       if (display === "bar") {
-        const xShiftForSeries =
-          xScale.rangeBand() / displays.filter(d => d === "bar").length;
+        const xShiftForSeries = xScale.rangeBand() / barCount;
         xShift += (barIndex + 0.5) * xShiftForSeries;
       } else {
         xShift += xScale.rangeBand() / 2;
@@ -370,8 +371,7 @@ function onRenderValueLabels(
         (xScale(oneIntervalOver) - xScale(startOfDomain)) *
         (1 - thisChart.barPadding());
       xShift -= groupWidth / 2;
-      const xShiftForSeries =
-        groupWidth / displays.filter(d => d === "bar").length;
+      const xShiftForSeries = groupWidth / barCount;
       xShift += (barIndex + 0.5) * xShiftForSeries;
     }
 
@@ -391,41 +391,47 @@ function onRenderValueLabels(
     return xShift;
   });
 
-  const addLabels = (datas, compactForSeries) => {
+  const xyPos = ({ x, y, showLabelBelow, seriesIndex }) => {
+    const yScale = yScaleForSeries(seriesIndex);
+    const xPos = xShifts[seriesIndex] + xScale(x);
+    let yPos = yScale(y) + (showLabelBelow ? 18 : -8);
+    // if the yPos is below the x axis, move it to be above the data point
+    const [yMax] = yScale.range();
+    if (yPos > yMax) {
+      yPos = yScale(y) - 8;
+    }
+    return { xPos, yPos };
+  };
+
+  const addLabels = (data, compact = null) => {
     // make sure we don't add .value-lables multiple times
     parent.select(".value-labels").remove();
     // Safari had an issue with rendering paint-order: stroke. To work around
     // that, we create two text labels: one for the the black text and another
     // for the white outline behind it.
-    datas.forEach((data, index) => {
-      const compact = compactForSeries[index];
-      const yScale = yScaleForSeries(index);
-      const labelGroups = parent
-        .append("svg:g")
-        .classed("value-labels", true)
-        .selectAll("g")
-        .data(data)
-        .enter()
-        .append("g")
-        .attr("transform", ({ x, y, showLabelBelow }) => {
-          const xPos = xShifts[index] + xScale(x);
-          let yPos = yScale(y) + (showLabelBelow ? 18 : -8);
-          // if the yPos is below the x axis, move it to be above the data point
-          const [yMax] = yScale.range();
-          if (yPos > yMax) {
-            yPos = yScale(y) - 8;
-          }
-          return `translate(${xPos}, ${yPos})`;
-        });
+    const labelGroups = parent
+      .append("svg:g")
+      .classed("value-labels", true)
+      .selectAll("g")
+      .data(data)
+      .enter()
+      .append("g")
+      .attr("transform", d => {
+        const { xPos, yPos } = xyPos(d);
+        return `translate(${xPos}, ${yPos})`;
+      });
 
-      ["value-label-outline", "value-label"].forEach(klass =>
-        labelGroups
-          .append("text")
-          .attr("class", klass)
-          .attr("text-anchor", "middle")
-          .text(({ y }) => formatYValue(y, { compact })),
-      );
-    });
+    ["value-label-outline", "value-label"].forEach(klass =>
+      labelGroups
+        .append("text")
+        .attr("class", klass)
+        .attr("text-anchor", "middle")
+        .text(({ y, seriesIndex }) =>
+          formatYValue(y, {
+            compact: compact === null ? compactForSeries[seriesIndex] : compact,
+          }),
+        ),
+    );
   };
 
   const nthForSeries = datas.map((data, index) => {
@@ -440,7 +446,7 @@ function onRenderValueLabels(
     const MAX_SAMPLE_SIZE = 30;
     const sampleStep = Math.ceil(maxSeriesLength / MAX_SAMPLE_SIZE);
     const sample = data.filter((d, i) => i % sampleStep === 0);
-    addLabels([sample], [compactForSeries[index]]);
+    addLabels(sample, compactForSeries[index]);
     const totalWidth = chart
       .svg()
       .selectAll(".value-label-outline")
@@ -457,11 +463,42 @@ function onRenderValueLabels(
     return Math.ceil((labelWidth * maxSeriesLength) / chartWidth);
   });
 
+  const MIN_SPACING = 20;
+  _.chain(datas)
+    .flatten()
+    .filter(d => displays[d.seriesIndex] === "line")
+    .map(d => ({ d, ...xyPos(d) }))
+    .groupBy(({ xPos }) => xPos)
+    .values()
+    .each(group => {
+      const sortedByY = _.sortBy(group, ({ yPos }) => yPos);
+      let prev;
+      for (const { d, yPos } of sortedByY) {
+        if (prev == null || yPos - prev > MIN_SPACING) {
+          // there's enough space between this label and the prev
+          prev = yPos;
+          continue;
+        }
+
+        if (!d.showLabelBelow) {
+          // try flipping the label below to get farther from previous label
+          const flippedYPos = xyPos({ ...d, showLabelBelow: true }).yPos;
+          if (flippedYPos - prev > MIN_SPACING) {
+            d.showLabelBelow = true;
+            prev = flippedYPos;
+            continue;
+          }
+        }
+
+        // hide this label and don't update prev so it isn't considered for collisions
+        d.hidden = true;
+      }
+    });
+
   addLabels(
-    datas.map((data, index) =>
-      data.filter((d, i) => i % nthForSeries[index] === 0),
+    datas.flatMap(data =>
+      data.filter((d, i) => i % nthForSeries[d.seriesIndex] === 0 && !d.hidden),
     ),
-    compactForSeries,
   );
 
   moveToTop(
