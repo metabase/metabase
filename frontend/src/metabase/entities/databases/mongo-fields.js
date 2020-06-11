@@ -51,8 +51,8 @@ export default function getFieldsForMongo(details, defaults, id) {
       if (field["name"] === "conn-uri" && id) {
         // this has been previously saved, so you cannot edit it now
         // to avoid leaking a password
-        // TODO: make the field value something like 'mongodb://************' in this case
         field.readOnly = true;
+        field.type = "password";
       }
       return field;
     });
