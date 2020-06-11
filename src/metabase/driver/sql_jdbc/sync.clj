@@ -154,8 +154,6 @@
         (catch Throwable e (do (log/error "Probing failed" e) nil)))
       accessible-tables)))
 
-(sql.qp/format-honeysql :h2 (sql.qp/->honeysql :h2 (hx/identifier :table "table_schem" "table_name" "db")))
-
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
   list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.

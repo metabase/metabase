@@ -54,7 +54,7 @@
 ;; Do we correctly determine SELECT privilege
 (deftest determine-select-privilege
   (when-not (identical? (get-method sql-jdbc.sync/accessible-tables-for-user driver/*driver*)
-                        (get-method sql-jdbc.sync/accessible-tables-for-user :default))
+                        (get-method sql-jdbc.sync/accessible-tables-for-user :sql-jdbc))
     (one-off-dbs/with-blank-db
       (doseq [statement ["create user if not exists GUEST password 'guest';"
                          "set db_close_delay -1;"
