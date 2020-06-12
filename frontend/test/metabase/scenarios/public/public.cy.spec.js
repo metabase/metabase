@@ -38,13 +38,13 @@ describe("scenarios > public", () => {
     // Note: Test suite is sequential, so individual test cases can't be run individually
     it("should allow users to create parameterized SQL questions", () => {
       cy.visit(`/question/new?type=native&database=${SAMPLE_DATASET.id}`);
-      cy.get(".ace_text-input").type(
-        "select count(*) from products where {{c}}",
-        {
+      cy.get(".ace_text-input")
+        .wait(500)
+        .type("select count(*) from products where {{c}}", {
           force: true,
           parseSpecialCharSequences: false,
-        },
-      );
+        })
+        .should("have.value", "select count(*) from products where {{c}}\n\n");
 
       // HACK: disable the editor due to weirdness with `.type()` on other elements typing into editor
       cy.window().then(win => {
@@ -176,7 +176,7 @@ describe("scenarios > public", () => {
       cy.contains("Public link")
         .parent()
         .find("input")
-        .then($input => {
+        .should($input => {
           expect($input[0].value).to.match(PUBLIC_URL_REGEX);
           questionPublicLink = $input[0].value.match(PUBLIC_URL_REGEX)[0];
         });
