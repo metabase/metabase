@@ -28,6 +28,7 @@ import "ace/snippets/json";
 import { t } from "ttag";
 
 import { isMac } from "metabase/lib/browser";
+import { isEventOverElement } from "metabase/lib/dom";
 import { delay } from "metabase/lib/promise";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 
@@ -179,14 +180,11 @@ export default class NativeQueryEditor extends Component {
     if (!selection) {
       return;
     }
-    const { clientX, clientY } = event;
-    const { top, bottom, left, right } = selection.getBoundingClientRect();
-    const clickOverSelection =
-      clientY >= top &&
-      clientY <= bottom &&
-      clientX >= left &&
-      clientX <= right;
-    if (this.props.nativeEditorSelectedText && clickOverSelection) {
+
+    if (
+      this.props.nativeEditorSelectedText &&
+      isEventOverElement(event, selection)
+    ) {
       event.preventDefault();
       this.setState({ isSelectedTextPopoverOpen: true });
     }
