@@ -134,17 +134,17 @@
   (when-let [card-id (:card-id tag)]
     (when-let [query (db/select-one-field :dataset_query Card :id card-id)]
       (try
-       (i/map->ReferencedCardQuery
-        {:card-id card-id
-         :query   (:query (qp/query->native (assoc query :parameters params)))})
-       (catch ExceptionInfo e
-         (throw (ex-info
-                 (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
-                      (str card-id) (.getMessage e))
-                 (merge (ex-data e)
-                        {:card-query-error? true
-                         :card-id           card-id
-                         :tag               tag}))))))))
+        (i/map->ReferencedCardQuery
+         {:card-id card-id
+          :query   (:query (qp/query->native (assoc query :parameters params, :info {:card-id card-id})))})
+        (catch ExceptionInfo e
+          (throw (ex-info
+                  (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
+                       (str card-id) (.getMessage e))
+                  {:card-query-error? true
+                   :card-id           card-id
+                   :tag               tag}
+                  e)))))))
 
 (defn- validate-tag-snippet-db
   [{database-id :database, :as tag} snippet]
