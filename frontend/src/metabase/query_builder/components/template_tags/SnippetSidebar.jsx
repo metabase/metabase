@@ -244,13 +244,15 @@ class SnippetRow extends React.Component {
     const { description, content } = snippet;
     const { isOpen } = this.state;
     return (
-      <div className={cx({ "border-bottom border-top": isOpen })}>
+      <div
+        className={cx(
+          { "border-transparent": !isOpen },
+          "border-bottom border-top",
+        )}
+      >
         <a
           className="bg-light-hover text-brand-hover hover-parent hover--display flex align-center justify-between p2"
-          onClick={e => {
-            e.stopPropagation();
-            this.setState({ isOpen: !isOpen });
-          }}
+          onClick={() => this.setState({ isOpen: !isOpen })}
         >
           <a
             className="flex bg-medium-hover rounded"
@@ -258,7 +260,10 @@ class SnippetRow extends React.Component {
             onClick={
               unarchiveSnippet
                 ? () => this.setState({ isOpen: true })
-                : () => insertSnippet(snippet)
+                : e => {
+                    e.stopPropagation();
+                    insertSnippet(snippet);
+                  }
             }
           >
             <Icon

@@ -8,6 +8,20 @@ import Link from "metabase/components/Link";
 import Snippets from "metabase/entities/snippets";
 
 export default class SnippetSidebar extends React.Component {
+  componentDidMount() {
+    document.addEventListener("keydown", this.handleKeyDown);
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener("keydown", this.handleKeyDown);
+  }
+
+  handleKeyDown = e => {
+    if (e.key === "Escape") {
+      this.props.closeModal();
+    }
+  };
+
   render() {
     const { insertSnippet, closeModal, snippet } = this.props;
     return (

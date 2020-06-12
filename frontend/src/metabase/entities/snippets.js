@@ -28,7 +28,7 @@ export default createEntity({
         name: "description",
         title: t`Add a description`,
         placeholder: t`It's optional but oh, so helpful`,
-        validate: validate.maxLength(100),
+        validate: validate.maxLength(500),
       },
       { name: "database_id", hidden: true },
     ],
