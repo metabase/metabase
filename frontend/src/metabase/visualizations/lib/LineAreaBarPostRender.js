@@ -255,20 +255,22 @@ function onRenderValueLabels(
   const seriesSettings = datas.map((_, seriesIndex) =>
     chart.settings.series(chart.series[seriesIndex]),
   );
+
+  // See if each series is enabled. Fall back to the chart-level setting if undefined.
+  let showSeries = seriesSettings.map(
+    ({ show_series_values = chart.settings["graph.show_values"] }) =>
+      show_series_values,
+  );
+
   if (
-    (!chart.settings["graph.show_values"] && // global setting is off
-      // every series setting is off
-      seriesSettings.every(
-        settings => settings["show_series_values"] !== true,
-      )) ||
-    chart.settings["stackable.stack_type"] === "normalized" // no normalized
+    showSeries.every(s => s === false) || // every series setting is off
+    chart.settings["stackable.stack_type"] === "normalized" // chart is normalized
   ) {
     return;
   }
 
   let displays = seriesSettings.map(settings => settings.display);
-  const stacked = chart.settings["stackable.stack_type"] === "stacked";
-  if (stacked) {
+  if (chart.settings["stackable.stack_type"] === "stacked") {
     // When stacked, zip together the corresponding values and sum them.
     datas = [
       _.zip(...datas).map(datasForSeries =>
@@ -281,6 +283,7 @@ function onRenderValueLabels(
 
     // Individual series might have display set to something besides the actual stacked display.
     displays = [chart.settings["stackable.stack_display"]];
+    showSeries = [true];
   }
   const showAll = chart.settings["graph.label_value_frequency"] === "all";
 
@@ -290,14 +293,13 @@ function onRenderValueLabels(
   // Update datas to use named x/y and include `showLabelBelow`.
   // We need to add `showLabelBelow` before data is filtered to show every nth value.
   datas = datas.map((data, seriesIndex) => {
-    const display = displays[seriesIndex];
-    const settings = seriesSettings[seriesIndex];
-
-    if (settings["show_series_values"] !== true && !stacked) {
+    if (!showSeries[seriesIndex]) {
       // We need to keep the series in `datas` to place the labels correctly over grouped bar charts.
       // Instead, we remove all the data so no labels are displayed.
       return [];
     }
+    const display = displays[seriesIndex];
+
     return data
       .map(([x, y], i) => {
         const isLocalMin =
