@@ -86,10 +86,12 @@ After you click on the Join Data button to add a join step, you'll need to pick 
 
 Next, you'll need to pick the columns you want to join on. This means you pick a column from the first table, and a column from the second table, and the join will stitch rows together where the value from the first column is equal to the value in the second column. A very common example is to join on an ID column in each table, so if you happened to pick a table to join on where there is a foreign key relationship between the tables, Metabase will automatically pick those corresponding ID columns for you. At the end of your join step, there's a `Columns` button you can click to choose which columns you want to include from the joined data.
 
-By default, Metabase will do a left outer join, but you can click on the Venn diagram icon to change this to a different type of join. Not all databases supports all types of joins, so the options you'll see will differ based on the type of database you're using. Here are what the basic types of joins each do:
+By default, Metabase will do a left outer join, but you can click on the Venn diagram icon to select a different type of join. Not all databases support all types of joins, so Metabase will only display the options supported by the database you're using.
+
+Here are the basic types of joins:
 
 - **Left outer join:** select all records from Table A, along with records from Table B that meet the join condition, if any.
-- **Right outer join:** select all records from Table B, along with records from Table B that meet the join condition, if any.
+- **Right outer join:** select all records from Table B, along with records from Table A that meet the join condition, if any.
 - **Inner join:** only select the records from Table A and B where the join condition is met.
 - **Full outer join:** select all records from both tables, whether or not the join condition is met.
 
