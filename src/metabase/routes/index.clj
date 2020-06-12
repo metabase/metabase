@@ -27,36 +27,36 @@
   (str/replace s #"(?i)</script" "</scr\\\\ipt"))
 
 
-(defn- fallback-localization [locale]
+(defn- fallback-localization [locale-or-name]
   (json/generate-string
    {"headers"
-    {"language"     locale
+    {"language"     (str locale-or-name)
      "plural-forms" "nplurals=2; plural=(n != 1);"}
 
     "translations"
     {"" {"Metabase" {"msgid"  "Metabase"
                      "msgstr" ["Metabase"]}}}}))
 
-(defn- localization-json-file-name [locale]
-  (str "frontend_client/app/locales/" (str (i18n/locale locale)) ".json"))
+(defn- localization-json-file-name [locale-or-name]
+  (format "frontend_client/app/locales/%s.json" (str (i18n/locale locale-or-name))))
 
-(defn- load-localization* [locale]
+(defn- load-localization* [locale-or-name]
   (or
-   (when (and locale (not= locale "en"))
-     (try
-       (slurp (or (io/resource (localization-json-file-name locale))
-                  (when-let [parent-locale (i18n/parent-locale locale)]
-                    (io/resource (localization-json-file-name parent-locale)))
-                  ;; don't try to i18n the Exception message below, we have no locale to translate it to!
-                  (throw (FileNotFoundException. (format "Locale '%s' not found." locale)))))
-       (catch Throwable e
-         (log/warn (.getMessage e)))))
-   (fallback-localization locale)))
+   (when-let [locale-name (some-> locale-or-name str)]
+     (when-not (= locale-name "en")
+       (try
+         (slurp (or (io/resource (localization-json-file-name locale-name))
+                    (when-let [parent-locale (i18n/parent-locale locale-name)]
+                      (io/resource (localization-json-file-name (str parent-locale))))
+                    ;; don't try to i18n the Exception message below, we have no locale to translate it to!
+                    (throw (FileNotFoundException. (format "Locale '%s' not found." locale-name)))))
+         (catch Throwable e
+           (log/warn (.getMessage e))))))
+   (fallback-localization locale-or-name)))
 
 (def ^:private ^{:arglists '([])} load-localization
-  (let [memoized-load-localization (memoize load-localization*)]
-    (fn []
-      (memoized-load-localization (i18n/user-locale)))))
+  "Load a JSON-encoded map of localized strings for the current user's Locale."
+  (comp (memoize load-localization*) #(some-> (i18n/user-locale) str)))
 
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))

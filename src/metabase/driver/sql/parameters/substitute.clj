@@ -14,9 +14,13 @@
     (let [{:keys [replacement-snippet prepared-statement-args]} (substitution/->replacement-snippet-info driver/*driver* v)]
       [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))
 
-(defn- subsistute-card-query [[sql args missing] _in-optional? _k v]
+(defn- subsistute-card-query [[sql args missing] v]
   (let [{:keys [replacement-snippet]} (substitution/->replacement-snippet-info driver/*driver* v)]
     [(str sql replacement-snippet) args missing]))
+
+(defn- substitute-native-query-snippet [[sql args missing] v]
+   (let [{:keys [replacement-snippet]} (substitution/->replacement-snippet-info driver/*driver* v)]
+     [(str sql replacement-snippet) args missing]))
 
 (defn- substitute-param [param->value [sql args missing] in-optional? {:keys [k]}]
   (if-not (contains? param->value k)
@@ -27,7 +31,10 @@
         (substitute-field-filter [sql args missing] in-optional? k v)
 
         (i/ReferencedCardQuery? v)
-        (subsistute-card-query [sql args missing] in-optional? k v)
+        (subsistute-card-query [sql args missing] v)
+
+        (i/NativeQuerySnippet? v)
+        (substitute-native-query-snippet [sql args missing] v)
 
         (= i/no-value v)
         [sql args (conj missing k)]

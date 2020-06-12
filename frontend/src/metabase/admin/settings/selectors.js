@@ -215,7 +215,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-  formatting: {
+  localization: {
     name: t`Localization`,
     settings: [
       {
@@ -227,7 +227,11 @@ const SECTIONS = updateSectionsWithPlugins({
           ([code, name]) => name,
         ).map(([code, name]) => ({ name, value: code })),
         defaultValue: "en",
-        note: t`Changes to this value will take effect after you reload the page.`,
+        onChanged: (oldLocale, newLocale) => {
+          if (oldLocale !== newLocale) {
+            window.location.reload();
+          }
+        },
       },
       {
         display_name: t`Localization options`,

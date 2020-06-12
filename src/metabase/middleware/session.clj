@@ -2,6 +2,7 @@
   "Ring middleware related to session (binding current user and permissions)."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase
              [config :as config]
@@ -152,14 +153,20 @@
      (jdbc/query (db/connection) (conj (session-with-id-query (mdb/db-type) (config/config-int :max-session-age))
                                        session-id)))))
 
-(defn- wrap-current-user-id* [{:keys [metabase-session-id], :as request}]
-  (merge request (current-user-info-for-session metabase-session-id)))
+;; if someone passes in an `X-Metabase-Locale` header, use that for `user-locale` (overriding any value in the DB)
+(defn- merge-current-user-info [{:keys [metabase-session-id], {:strs [x-metabase-locale]} :headers, :as request}]
+  (merge
+   request
+   (current-user-info-for-session metabase-session-id)
+   (when x-metabase-locale
+     (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
+     {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
 
-(defn wrap-current-user-id
+(defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, and `:user-locale` to the request if a valid session token was passed."
   [handler]
   (fn [request respond raise]
-    (handler (wrap-current-user-id* request) respond raise)))
+    (handler (merge-current-user-info request) respond raise)))
 
 (def ^:private current-user-fields
   (into [User] user/admin-or-self-visible-columns))

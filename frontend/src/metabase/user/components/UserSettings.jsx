@@ -1,8 +1,9 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
 import { Box, Flex } from "grid-styled";
+
+import { t } from "ttag";
 
 import User from "metabase/entities/users";
 
@@ -72,7 +73,15 @@ export default class UserSettings extends Component {
         </Flex>
         <Box w={["100%", 540]} ml="auto" mr="auto" px={[1, 2]} pt={[1, 3]}>
           {tab === "details" || !showChangePassword ? (
-            <User.Form {...this.props} form={User.forms.user} />
+            <User.Form
+              {...this.props}
+              form={User.forms.user}
+              onSaved={({ locale }) => {
+                if (locale !== this.props.user.locale) {
+                  window.location.reload();
+                }
+              }}
+            />
           ) : tab === "password" ? (
             <SetUserPassword
               submitFn={this.onUpdatePassword.bind(this)}

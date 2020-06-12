@@ -8,7 +8,6 @@
             [metabase.models
              [card :refer [Card]]
              [field :refer [map->FieldInstance]]]
-            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
             [toucan.util.test :as tt])
   (:import clojure.lang.ExceptionInfo))
@@ -21,16 +20,13 @@
             [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}]))))
 
   (testing "Unspecified value"
-    (is (=
-         i/no-value
-         (#'values/value-for-tag
-          {:name "id", :display-name "ID", :type :text} nil))))
+    (is (= i/no-value
+           (#'values/value-for-tag {:name "id", :display-name "ID", :type :text} nil))))
 
   (testing "Default used"
-    (is (=
-         "100"
-         (#'values/value-for-tag
-          {:name "id", :display-name "ID", :type :text, :required true, :default "100"} nil)))))
+    (is (= "100"
+           (#'values/value-for-tag
+            {:name "id", :display-name "ID", :type :text, :required true, :default "100"} nil)))))
 
 (deftest field-filter-test
   (testing "specified"
@@ -85,7 +81,7 @@
                      {:name         "checkin_date"
                       :display-name "Checkin Date"
                       :type         :dimension
-                      :dimension    [:field-id (data/id :checkins :date)]}
+                      :dimension    [:field-id (mt/id :checkins :date)]}
                      nil)))))
 
   (testing "id requiring casting"
@@ -98,7 +94,7 @@
             :value {:type  :id
                     :value 5}}
            (into {} (#'values/value-for-tag
-                     {:name "id", :display-name "ID", :type :dimension, :dimension [:field-id (data/id :checkins :id)]}
+                     {:name "id", :display-name "ID", :type :dimension, :dimension [:field-id (mt/id :checkins :id)]}
                      [{:type :id, :target [:dimension [:template-tag "id"]], :value "5"}])))))
 
   (testing "required but unspecified"
@@ -123,7 +119,7 @@
                       :type         :dimension
                       :required     true
                       :default      "2015-04-01~2015-05-01",
-                      :dimension    [:field-id (data/id :checkins :date)]}
+                      :dimension    [:field-id (mt/id :checkins :date)]}
                      nil)))))
 
 
@@ -139,7 +135,7 @@
                     {:type  :date/single
                      :value "2015-07-01"}]}
            (into {} (#'values/value-for-tag
-                     {:name "checkin_date", :display-name "Checkin Date", :type :dimension, :dimension [:field-id (data/id :checkins :date)]}
+                     {:name "checkin_date", :display-name "Checkin Date", :type :dimension, :dimension [:field-id (mt/id :checkins :date)]}
                      [{:type :date/range, :target [:dimension [:template-tag "checkin_date"]], :value "2015-01-01~2016-09-01"}
                       {:type :date/single, :target [:dimension [:template-tag "checkin_date"]], :value "2015-07-01"}])))))
 
@@ -156,7 +152,7 @@
                      {:name         "checkin_date"
                       :display-name "Checkin Date"
                       :type         :dimension
-                      :dimension    [:field-id (data/id :checkins :date)]
+                      :dimension    [:field-id (mt/id :checkins :date)]
                       :default      "past5days"
                       :widget-type  :date/all-options}
                      nil))))))
@@ -164,7 +160,7 @@
 (deftest card-query-test
   (testing "Card query template tag gets card's native query"
     (let [test-query "SELECT 1"]
-      (tt/with-temp Card [card {:dataset_query {:database (data/id)
+      (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                                 :type     "native"
                                                 :native   {:query test-query}}}]
         (is (= (i/->ReferencedCardQuery (:id card) test-query)
@@ -176,7 +172,7 @@
                 []))))))
 
   (testing "Card query template tag generates native query for MBQL query"
-    (qp.test-util/with-everything-store
+    (mt/with-everything-store
       (driver/with-driver :h2
         (let [mbql-query   (data/mbql-query venues
                              {:database (data/id)
@@ -191,7 +187,7 @@
                                 "FROM \"PUBLIC\".\"VENUES\" "
                                 "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3 "
                                 "LIMIT 1048576")]
-          (tt/with-temp Card [card {:dataset_query mbql-query}]
+          (mt/with-temp Card [card {:dataset_query mbql-query}]
             (is (= (i/->ReferencedCardQuery (:id card) expected-sql)
                    (#'values/value-for-tag
                     {:name         "card-template-tag-test"
