@@ -21,7 +21,7 @@ describe("smoketest > admin_setup", () => {
 
     it("should add a new database", () => {
       // *** Need faux databases to hook up to
-      // *** Should eventually include BigQuery, Druid, Google Analytics, H2, MongoDB, MySQL/Maria DB, PostgreSQL, Presto, Amazon Redshift, Snowflake, Spark SQL, SQLite, SQL Server
+      // Should eventually include BigQuery, Druid, Google Analytics, H2, MongoDB, MySQL/Maria DB, PostgreSQL, Presto, Amazon Redshift, Snowflake, Spark SQL, SQLite, SQL Server
 
       cy.visit("/");
 
@@ -56,13 +56,12 @@ describe("smoketest > admin_setup", () => {
       // cy.findByLabelText("Database name").type("");
       // cy.findByLabelText("Database username").type("");
       // cy.findByLabelText("Database password").type("");
-      // // *** check that toggles are correct
       // cy.findByLabelText("Additional JDBC connection string options").type("");
       // cy.findByText("Save").click();
     });
 
     it("should setup email", () => {
-      // *** maybe using something like maildev)
+      // *** maybe using something like maildev
 
       cy.findByText("Settings").click();
       cy.findByText("Email").click();
@@ -87,7 +86,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Changes saved!");
 
       cy.findByText("Send test email").click();
-      // *** When faux email replaces fake email, this should stop appearing
+      // *** When test email replaces fake email, this should stop appearing
       // cy.findByText("Sorry, something went wrong.  Please try again").should("not.exist");
     });
 
@@ -155,7 +154,8 @@ describe("smoketest > admin_setup", () => {
 
       // Check member count
 
-      cy.findAllByText("People") // *** Going to People and then to Groups should be unnecessary
+      // *** Going to People and then to Groups should be unnecessary
+      cy.findAllByText("People")
         .last()
         .click();
 
@@ -188,11 +188,11 @@ describe("smoketest > admin_setup", () => {
         .click();
       cy.findByText("English").click();
       cy.findByText("Turkish").should("not.exist");
-      cy.get(".ModalBody") // *** I should be able to select using $ cy.findByText("Default"), but cypress says there are multiple instances
-        .find(".Icon-chevrondown")
+      cy.wait(1000)
+        .findAllByText("Default")
         .last()
         .click();
-      cy.findAllByText("collection") // *** I should be able to select collection without "All" because there's only one instance of "collection"
+      cy.findAllByText("collection")
         .last()
         .click();
       cy.findByText("Marketing").click();
@@ -204,7 +204,8 @@ describe("smoketest > admin_setup", () => {
       cy.findByText(new_user.first_name + " " + new_user.last_name);
       cy.findAllByText("2 other groups").should("have.length", 3);
 
-      cy.findAllByText("Groups") // *** These 6 lines of code should be unnecessary.
+      // *** These 6 lines of code should be unnecessary.
+      cy.findAllByText("Groups")
         .first()
         .click();
       cy.findAllByText("People")
@@ -231,24 +232,33 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Custom Maps");
       cy.findByText("Groups").should("not.exist");
 
-      // cy.findByText("Add a map").click();
-      // cy.get("input")
-      //   .first()
-      //   .type("Test Map");
-      // cy.get("input")
-      //   .last()
-      //   .type(""); // *** type GeoJSON url here
-      // cy.findAllByText("Select...")
-      //   .first()
-      //   .click();
-      // cy.findByText("");
-      // cy.findAllByText("Select...")
-      //   .last()
-      //   .click();
-      // cy.findByText("");
-      // cy.findByText("Add map").click();
+      cy.findByText("Add a map").click();
+      cy.findByPlaceholderText("e.g. United Kingdom, Brazil, Mars").type(
+        "Test Map",
+      );
+      cy.findByPlaceholderText(
+        "Like https://my-mb-server.com/maps/my-map.json",
+      ).type(
+        "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/world.json",
+      );
+      cy.findByText("Load").click();
+      cy.wait(2000)
+        .findAllByText("Select…")
+        .first()
+        .click();
+      cy.findByText("NAME").click();
+      cy.findAllByText("Select…")
+        .last()
+        .click();
+      cy.findAllByText("NAME")
+        .last()
+        .click();
+      cy.findByText("Add map").click();
 
-      // cy.pause();
+      cy.wait(3000)
+        .findByText("NAME")
+        .should("not.exist");
+      cy.findByText("Test Map");
     });
   });
 
@@ -267,7 +277,7 @@ describe("smoketest > admin_setup", () => {
 
       // Check names
 
-      cy.contains("A look at your People table");
+      cy.wait(3000).contains("A look at your People table");
       cy.contains("A look at your Orders table");
       cy.contains("A look at your Test Table table").should("not.exist");
 
@@ -305,6 +315,7 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should rename a table and add a description as admin", () => {
+      cy.visit("/");
       cy.get(".Icon-gear")
         .first()
         .click();
@@ -316,7 +327,9 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Data Model").click();
       cy.findByText("Orders").click();
       cy.get(".TableEditor-table-name")
+        .wait(1)
         .clear()
+        .wait(1)
         .type("Test Table");
 
       cy.get("input")
@@ -331,6 +344,7 @@ describe("smoketest > admin_setup", () => {
       cy.get("input")
         .eq(5)
         .clear()
+        .wait(1)
         .type("Sale");
 
       // Changing visibility of Created At column
@@ -404,8 +418,10 @@ describe("smoketest > admin_setup", () => {
 
       cy.get(".Icon-notebook").click();
 
-      cy.findByText("Sale ($)");
-      cy.findByText("Orders").should("not.exist");
+      cy.wait(3000)
+        .findByText("Orders")
+        .should("not.exist");
+      cy.findByText("Custom column");
 
       cy.findByText("Filter").click();
       cy.findByText("Sale");
@@ -432,7 +448,6 @@ describe("smoketest > admin_setup", () => {
       );
 
       // Check key config in table display
-      // *** I went the fast way here instead of user journey
 
       cy.visit("/browse/1");
       cy.findByText("Test Table").click();
@@ -445,10 +460,10 @@ describe("smoketest > admin_setup", () => {
         .contains("14")
         .should("not.exist");
 
-      // Check key config in notebook editor
+      // Check key config in notebook editor (pulls up title with ID #, not from actual title)
 
       cy.get(".Icon-notebook").click();
-      cy.wait(2000)
+      cy.wait(3000)
         .findByText("Filter")
         .click();
       cy.findAllByText("Product ID")
@@ -457,7 +472,7 @@ describe("smoketest > admin_setup", () => {
       cy.get("input")
         .last()
         // .type("Awesome Concrete Shoes"); // *** should accept string, but only accepts ints
-        .type("14"); // *** This pulls up title with the ID you've typed in
+        .type("14");
       cy.findByText("Add filter").click();
       cy.findByText("Visualize").click();
 
@@ -493,7 +508,7 @@ describe("smoketest > admin_setup", () => {
       // Check table hidden in notebook editor
 
       cy.findByText("Test Table").click();
-      cy.get(".Icon-notebook").click();
+      cy.get(".Icon-notebook").click({ force: true });
 
       cy.wait(3000)
         .findByText("Join data")
@@ -561,11 +576,36 @@ describe("smoketest > admin_setup", () => {
   describe("permission changes reflected", () => {
     beforeEach(signInAsNormalUser);
 
-    it("should check current permissions as user", () => {});
+    it("should check current permissions as users", () => {
+      // Access to all tables as user
+      cy.visit("/");
+
+      cy.contains("A look at your People table");
+      cy.contains("A look at your Test Table table");
+      cy.findByText("A look at your Review table").should("not.exist");
+
+      // Access to SQl queries as user
+
+      cy.findByText("Ask a question").click();
+      cy.findByText("Native query");
+
+      // Cannot see Test Table or People table as no data user
+
+      signOut();
+      signIn("nocollection");
+      cy.visit("/");
+
+      cy.contains("A look at your People table").should("not.exist");
+      cy.contains("A look at your Test Table table").should("not.exist");
+
+      // Cannot view our analytics as no collection user
+
+      cy.findByText("Browse all items").click();
+      cy.findByText("Orders").should("not.exist");
+    });
 
     it("should modify user permissions for data access and SQL queries, both on a database/schema level as well as at a table level as admin", () => {
       // *** Need multible databases to test their permissions.
-      // *** User in Marketing
 
       signOut();
       signInAsAdmin();
@@ -586,7 +626,8 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Products");
       cy.findByText("SQL Queries").should("not.exist");
 
-      cy.get(".Icon-close") // Turn on data access for all users to Test Table
+      // Turn on data access for all users to Test Table
+      cy.get(".Icon-close")
         .eq(6)
         .click();
       cy.findByText("Grant unrestricted access").click();
@@ -595,7 +636,8 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Change").click();
 
-      cy.get(".Icon-close") // Turn on data access for Marketing users to Products
+      // Turn on data access for Marketing users to Products
+      cy.get(".Icon-close")
         .eq(2)
         .click();
       cy.findByText("Grant unrestricted access").click();
@@ -606,7 +648,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.get(".Icon-warning");
 
-      cy.findByText("Save Changes").click(); // *** inconcsistent formatting. Everywhere else would have a lowercase "c"
+      cy.findByText("Save Changes").click();
 
       cy.contains(
         "All Users will be given access to 1 table in Sample Dataset.",
@@ -632,12 +674,63 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Yes").click();
     });
 
+    it("should add sub-collection and change its permissions as admin", () => {
+      // Adds sub-collection
+
+      signOut();
+      signInAsAdmin();
+      cy.visit("/collection/root");
+
+      cy.findByText("Our analytics");
+
+      cy.findByText("New collection").click();
+      cy.findByLabelText("Name").type("test sub-collection");
+      cy.findByLabelText("Description").type(
+        "very descriptive of test sub-collection",
+      );
+      cy.get(".Icon-chevrondown").click();
+      cy.findAllByText("Our analytics")
+        .last()
+        .click();
+
+      cy.findByText("Create").click();
+
+      cy.get(".Icon-all");
+
+      // Changes permissions of sub-collection
+
+      cy.findByText("test sub-collection").click();
+
+      cy.findByText("This collection is empty, like a blank canvas");
+
+      cy.get(".Icon-lock").click();
+
+      cy.findByText("Permissions for this collection");
+
+      // Collection can no longer access sub-collection
+      cy.wait(1)
+        .get(".Icon-check")
+        .last()
+        .click();
+      cy.findByText("Revoke access").click();
+
+      // Marketing now has access to sub-collection
+      cy.get(".Icon-close")
+        .last()
+        .click();
+      cy.findByText("Curate collection").click();
+
+      cy.findByText("Save").click();
+
+      cy.findByText("This collection is empty, like a blank canvas");
+    });
+
     it("should modify Collection permissions for top-level collections and sub-collections as admin", () => {
       signOut();
       signInAsAdmin();
       cy.visit("/admin/permissions/databases");
 
-      // modify for top-level collection
+      // Modify permissions for top-level collection
 
       cy.findByText("Collection permissions").click();
       cy.get(".Icon-close")
@@ -650,7 +743,27 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Yes").click();
 
-      // *** Sub-collections need to exist before you can test them
+      // Modify permissions for sub-collection
+      cy.findByText("View sub-collections").click();
+
+      cy.get(".Icon-check")
+        .last()
+        .click();
+      cy.findByText("Revoke access").click();
+      cy.get(".Icon-eye").click();
+      cy.findByText("Revoke access").click();
+      cy.get(".Icon-close")
+        .last()
+        .click();
+      cy.findByText("Curate collection").click();
+      cy.findByText("Save Changes").click();
+
+      cy.findByText("Save permissions?");
+
+      cy.findByText("Yes").click();
+      cy.findByText("Collection permissions").click();
+
+      cy.get(".Icon-eye");
     });
 
     it("should no longer be able to access tables or questions that have been restricted as user", () => {
@@ -658,7 +771,7 @@ describe("smoketest > admin_setup", () => {
 
       // Normal user can still see everything
 
-      cy.wait(1000).contains("A look at your Test Table table");
+      cy.wait(2000).contains("A look at your Test Table table");
       cy.contains("A look at your Products table");
 
       // Normal user cannot make an SQL query
@@ -702,9 +815,10 @@ describe("smoketest > admin_setup", () => {
         .last()
         .click();
       cy.findByText('Replace original question, "Orders"').click();
-      cy.findAllByText("Save") // *** There should be an error message here saying I'm not allowed to make any changes
+      cy.findAllByText("Save")
         .last()
         .click();
+      // *** There should be an error message here saying I'm not allowed to make any changes
 
       // Normal user should not see changes that no collection user made
       // *** Problem: Normal user still sees these changes
@@ -717,11 +831,120 @@ describe("smoketest > admin_setup", () => {
       // cy.findByText("Quantity").should("not.exist");
     });
 
-    it("should be able to view collections I have access to, but not ones that I don't (even with URL) as user", () => {});
+    it("should be able to add a sub collection as a user", () => {
+      signOut();
+      signIn("nocollection");
+      cy.visit("/collection/root");
+
+      // *** Problem: User cannot add new collection, but should be able to
+      // cy.wait(3000)
+      //   .findByText("New collection")
+      //   .click();
+
+      // cy.findByLabelText("Name").type("test sub-collection");
+      // cy.findByLabelText("very descriptive of test sub-collection");
+      // cy.findByText("Marketing");
+
+      // cy.findByText("Save").click();
+    });
+
+    it("should be able to view collections I have access to, but not ones that I don't (even with URL) as user", () => {
+      // Check access as normal user
+
+      cy.visit("/collection/root");
+
+      cy.findByText("My personal collection");
+      cy.findByText("test sub-collection").should("not.exist");
+
+      cy.visit("/collection/6");
+
+      cy.wait(3000)
+        .findByText("This collection is empty, like a blank canvas")
+        .should("not.exist");
+      cy.findByText("Sorry, you don’t have permission to see that.");
+
+      // Check access as no collection user
+
+      signOut();
+      signIn("nocollection");
+      cy.visit("/collection/6");
+
+      cy.findByText("Sorry, you don’t have permission to see that.").should(
+        "not.exist",
+      );
+      cy.findByText("This collection is empty, like a blank canvas");
+
+      // Check editing abiltiy as no collection user (resetting to what we made it before)
+      cy.get(".Icon-pencil");
+
+      cy.findByText("Ask a question").click();
+      cy.findByText("Simple question").click();
+      cy.findByText("Sample Dataset").click();
+      cy.findByText("People").click();
+      cy.findByText("Save").click();
+      cy.findByLabelText("Name")
+        .clear()
+        .wait(1)
+        .type("q for sub-collection");
+      cy.findByText("No Collection Tableton's Personal Collection").click();
+
+      cy.findByText("My personal collection");
+
+      cy.findByText("test sub-collection").click();
+      cy.findAllByText("Save")
+        .last()
+        .click();
+      cy.findByText("Not now").click();
+      // *** should work
+      cy.findByText("test sub-collection").click();
+
+      cy.findByText("Sorry, you don’t have permission to see that.").should(
+        "not.exist",
+      );
+      cy.findByText("q for sub-collection");
+    });
+
+    it("should not be able to access question with URL, but no permissions", () => {
+      // *** FINISH
+      cy.visit("/question/4");
+      cy.findByText("q for sub-collection").should("not.exist");
+      cy.findByText("Sorry, you don’t have permission to see that.");
+    });
 
     it("should deactivate a user admin and subsequently user should be unable to login", () => {
+      // Admin deactiviates user
+
       signOut();
       signInAsAdmin();
+      cy.visit("/admin/settings/setup");
+
+      cy.findByText("People").click();
+      cy.get(".Icon-ellipsis")
+        .eq(-2)
+        .click();
+      cy.findByText("Deactivate user").click();
+
+      cy.findByText("Robert Tableton won't be able to log in anymore.");
+
+      cy.findByText("Deactivate").click();
+
+      cy.findByText(
+        USERS.normal.first_name + " " + USERS.normal.last_name,
+      ).should("not.exist");
+      cy.findByText(new_user.first_name + " " + new_user.last_name);
+
+      // User tries to log in
+
+      signOut();
+      cy.visit("/");
+      cy.findByLabelText("Email address").type(USERS.normal.username);
+      cy.findByLabelText("Password").type(USERS.normal.password);
+      cy.findByText("Sign in").click();
+
+      cy.contains(USERS.normal.first_name).should("not.exist");
+      cy.findByText("Our Analytics").should("not.exist");
+      cy.findByText("Failed");
+      cy.contains("Password : did not match stored password");
     });
   });
 });

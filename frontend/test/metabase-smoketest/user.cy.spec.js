@@ -103,7 +103,9 @@ describe("smoketest > new_user", () => {
     // Notebook editor filter
 
     cy.get(".Icon-notebook").click();
-    cy.get(".Icon-filter", { timeout: 30000 }).click();
+    cy.wait(1000)
+      .get(".Icon-filter")
+      .click();
     cy.get(".Icon-int").click();
     cy.findByText("Equal to").click();
     cy.findByText("Greater than or equal to").click();
