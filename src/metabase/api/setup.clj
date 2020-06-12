@@ -179,6 +179,17 @@
                     (db/exists? Pulse)
                     (>= (db/count Card) 5))})
 
+(defmethod admin-checklist-entry :migrate-app-db
+  [_]
+  {:title       (tru "Switch to a production-ready app database")
+   :group       (tru "Get connected")
+   :description (tru "Migrate off of the default H2 application database to something like PostgreSQL or MySQL.")
+   :link        "https://www.metabase.com/docs/latest/operations-guide/migrating-from-h2.html"
+   :completed   (> (db/count User) 1)
+   :triggered   (or (db/exists? Dashboard)
+                    (db/exists? Pulse)
+                    (>= (db/count Card) 5))})
+
 (defmethod admin-checklist-entry :hide-irrelevant-tables
   [_]
   {:title       (tru "Hide irrelevant tables")
@@ -219,8 +230,8 @@
 (defn- admin-checklist-values []
   (map
    admin-checklist-entry
-   [:add-a-database :set-up-email :set-slack-credentials :invite-team-members :hide-irrelevant-tables
-    :organize-questions :create-metrics :create-segments]))
+   [:add-a-database :set-up-email :set-slack-credentials :invite-team-members :migrate-app-db
+    :hide-irrelevant-tables :organize-questions :create-metrics :create-segments]))
 
 (defn- add-next-step-info
   "Add `is_next_step` key to all the `steps` from `admin-checklist`.
