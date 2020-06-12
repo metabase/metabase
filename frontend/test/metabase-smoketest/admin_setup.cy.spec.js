@@ -61,7 +61,7 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should setup email", () => {
-      // *** maybe using something like maildev
+      // *** Maybe using something like maildev
 
       cy.findByText("Settings").click();
       cy.findByText("Email").click();
@@ -79,7 +79,7 @@ describe("smoketest > admin_setup", () => {
         "metabase@yourcompany.com",
       );
 
-      // *** should not have to click here first
+      // *** Should not have to click here first
       cy.findByPlaceholderText("smtp.yourservice.com").click();
 
       cy.findByText("Save changes").click();
@@ -471,7 +471,7 @@ describe("smoketest > admin_setup", () => {
         .click();
       cy.get("input")
         .last()
-        // .type("Awesome Concrete Shoes"); // *** should accept string, but only accepts ints
+        // .type("Awesome Concrete Shoes"); // *** Should accept string, but only accepts ints
         .type("14");
       cy.findByText("Add filter").click();
       cy.findByText("Visualize").click();
@@ -615,11 +615,11 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Admin").click();
       cy.findByText("Permissions").click();
 
-      // data access permissions (database/schema)
+      // Data access permissions (database/schema)
 
       // SQL queries permissions (database/schema)
 
-      // data access permissions (table)
+      // Data access permissions (table)
 
       cy.findByText("View tables").click();
 
@@ -803,7 +803,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Orders").click();
       cy.findByText("Summarize").click();
       cy.wait(1000)
-        .findAllByText("Quantity")
+        .contains("Quantity")
         .last()
         .click();
       cy.findAllByText("Done").click();
@@ -895,7 +895,7 @@ describe("smoketest > admin_setup", () => {
         .last()
         .click();
       cy.findByText("Not now").click();
-      // *** should work
+      // *** Should work
       cy.findByText("test sub-collection").click();
 
       cy.findByText("Sorry, you don’t have permission to see that.").should(
@@ -905,7 +905,6 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should not be able to access question with URL, but no permissions", () => {
-      // *** FINISH
       cy.visit("/question/4");
       cy.findByText("q for sub-collection").should("not.exist");
       cy.findByText("Sorry, you don’t have permission to see that.");
