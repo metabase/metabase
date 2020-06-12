@@ -251,11 +251,11 @@ class SnippetRow extends React.Component {
         )}
       >
         <a
-          className="bg-light-hover text-brand-hover hover-parent hover--display flex align-center justify-between p2"
+          className="bg-light-hover text-brand-hover flex align-center justify-between p2"
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
           <a
-            className="flex bg-medium-hover rounded"
+            className="flex bg-medium-hover rounded hover-parent hover--display text-medium text-brand-hover"
             style={{ padding: 4 }}
             onClick={
               unarchiveSnippet
