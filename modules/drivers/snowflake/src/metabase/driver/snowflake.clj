@@ -217,6 +217,19 @@
                                               (qp.store/fetch-and-store-database! (u/get-id database))
                                               (sql.qp/->honeysql driver table))]}))
 
+(defmethod driver/describe-database :snowflake
+  [driver database]
+  {:tables (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
+             (sql-jdbc.sync/fast-active-tables driver database metadata (db-name database)))})
+
+(defmethod driver/describe-table :snowflake
+  [driver database table]
+  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (->> (assoc (select-keys table [:name :schema])
+                :fields (sql-jdbc.sync/describe-table-fields metadata driver table (db-name database)))
+         ;; find PKs and mark them
+         (sql-jdbc.sync/add-table-pks metadata))))
+
 (defmethod driver/describe-table-fks :snowflake
   [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table (db-name database)))
