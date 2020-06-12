@@ -35,7 +35,6 @@
   color: var(--color-text-dark);
   background-color: var(--color-bg-white);
   padding: 0.75em;
-  line-height: 1;
 }
 
 .Form-input,
