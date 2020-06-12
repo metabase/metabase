@@ -35,12 +35,13 @@
   "Execute `request`, and catch any `GoogleJsonResponseException` is throws, converting them to `ExceptionInfo` and
   rethrowing them."
   [^AbstractGoogleClientRequest request]
-  (try (.execute request)
-       (catch GoogleJsonResponseException e
-         (let [^GoogleJsonError error (.getDetails e)]
-           (throw (ex-info (or (.getMessage error)
-                               (.getStatusMessage e))
-                           (into {} error)))))))
+  (try
+    (.execute request)
+    (catch GoogleJsonResponseException e
+      (let [^GoogleJsonError error (.getDetails e)]
+        (throw (ex-info (or (.getMessage error)
+                            (.getStatusMessage e))
+                        (into {} error)))))))
 
 (defn execute
   "Execute `request`, and catch any `GoogleJsonResponseException` is throws, converting them to `ExceptionInfo` and
