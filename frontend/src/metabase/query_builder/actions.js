@@ -81,9 +81,7 @@ const PREVIEW_RESULT_LIMIT = 10;
 
 const getTemplateTagWithoutSnippetsCount = (question: Question) => {
   const query = question.query();
-  return query instanceof NativeQuery
-    ? query.templateTagsWithoutSnippets().length
-    : 0;
+  return query instanceof NativeQuery ? query.sidebarTemplateTags().length : 0;
 };
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
