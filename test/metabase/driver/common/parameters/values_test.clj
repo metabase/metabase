@@ -2,12 +2,16 @@
   (:require [clojure.test :refer :all]
             [metabase
              [driver :as driver]
-             [test :as mt]]
+             [models :refer [Card Collection]]
+             [query-processor :as qp]
+             [test :as mt]
+             [util :as u]]
             [metabase.driver.common.parameters :as i]
             [metabase.driver.common.parameters.values :as values]
             [metabase.models
-             [card :refer [Card]]
-             [field :refer [map->FieldInstance]]]
+             [field :refer [map->FieldInstance]]
+             [permissions :as perms]
+             [permissions-group :as group]]
             [metabase.test.data :as data]
             [toucan.util.test :as tt])
   (:import clojure.lang.ExceptionInfo))
@@ -233,3 +237,28 @@
             (testing "tag"
               (is (= tag
                      (:tag exc-data))))))))))
+
+(deftest card-query-permissions-test
+  (testing "We should be able to run a query referenced via a template tag if we have perms for the Card in question (#12354)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (perms/revoke-permissions! (group/all-users) (mt/id))
+        (mt/with-temp* [Collection [collection]
+                        Card       [{card-1-id :id, :as card-1} {:collection_id (u/get-id collection)
+                                                                 :dataset_query (mt/mbql-query venues
+                                                                                  {:order-by [[:asc $id]], :limit 2})}]
+                        Card       [card-2 {:collection_id (u/get-id collection)
+                                            :dataset_query (mt/native-query
+                                                             {:query         "SELECT * FROM {{card}}"
+                                                              :template-tags {"card" {:name         "card"
+                                                                                      :display-name "card"
+                                                                                      :type         :card
+                                                                                      :card-id      card-1-id}}})}]]
+          (perms/grant-collection-read-permissions! (group/all-users) collection)
+          (mt/with-test-user :rasta
+            (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                    [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
+                   (mt/rows
+                     (qp/process-userland-query (assoc (:dataset_query card-2)
+                                                       :info {:executed-by (mt/user->id :rasta)
+                                                              :card-id     (u/get-id card-2)})))))))))))
