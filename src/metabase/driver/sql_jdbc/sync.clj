@@ -85,18 +85,10 @@
 ;;; |                                                   Sync Impl                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - we should reduce the metadata ResultSets instead of realizing the entire thing in memory at once and then
-;; filtering/transforming in Clojure-land
-
-(defmulti db-tables
-  "Fetch a JDBC Metadata ResultSet of tables accessable to us in the DB, optionally limited to ones belonging to a given
+(defn- db-tables
+  "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
   schema."
-  {:arglists '([driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod db-tables :sql-jdbc
-  [_, ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
+  [^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
   (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
@@ -149,10 +141,9 @@
                                user)
                        "This might be due to no GRANTs being set. Falling back to probing privileges with a simple SELECT statement."))
         (let [[{:keys [table_name table_schem]} & _] tables]
-          (if (not-empty (simple-select-probe driver db-or-id-or-spec table_schem table_name))
-            tables
-            (log/error "Probing failed" (simple-select-probe driver db-or-id-or-spec table_schem table_name) tables)))
-        (catch Throwable e (do (log/error "Probing failed" e (map (juxt :table_name :table_schem) tables)) nil)))
+          (when (not-empty (simple-select-probe driver db-or-id-or-spec table_schem table_name))
+            tables))
+        (catch Throwable _))
       accessible-tables)))
 
 (defn fast-active-tables
@@ -166,14 +157,14 @@
     (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))]
       (->> (set/difference all-schemas (excluded-schemas driver))
            (mapcat (fn [schema]
-                     (db-tables :sql-jdbc metadata schema db-name-or-nil)))
+                     (db-tables metadata schema db-name-or-nil)))
            (filter-tables-with-select-privilege driver db-or-id-or-spec (.getUserName metadata))))))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, db-or-id-or-spec, ^DatabaseMetaData metadata, & [db-name-or-nil]]
-  (->> (db-tables :sql-jdbc metadata nil db-name-or-nil)
+  (->> (db-tables metadata nil db-name-or-nil)
        (filter-tables-with-select-privilege driver db-or-id-or-spec (.getUserName metadata))
        (remove (comp (partial contains? (excluded-schemas driver)) :table_schem))))
 
