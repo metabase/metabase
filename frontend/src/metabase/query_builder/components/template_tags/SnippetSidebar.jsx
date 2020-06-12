@@ -62,8 +62,8 @@ export default class SnippetSidebar extends React.Component {
   };
 
   footer = () => (
-    <a
-      className="p2 flex text-small text-medium text-brand-hover hover-parent hover--display"
+    <div
+      className="p2 flex text-small text-medium cursor-pointer text-brand-hover hover-parent hover--display"
       onClick={() => this.setState({ showArchived: true })}
     >
       <Icon
@@ -77,7 +77,7 @@ export default class SnippetSidebar extends React.Component {
         size={ICON_SIZE}
       />
       {t`Archived snippets`}
-    </a>
+    </div>
   );
 
   render() {
@@ -250,11 +250,11 @@ class SnippetRow extends React.Component {
           "border-bottom border-top",
         )}
       >
-        <a
-          className="bg-light-hover text-bold flex align-center justify-between p2"
+        <div
+          className="cursor-pointer bg-light-hover text-bold flex align-center justify-between p2"
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
-          <a
+          <div
             className="flex text-brand-hover hover-parent hover--display"
             onClick={
               unarchiveSnippet
@@ -276,23 +276,23 @@ class SnippetRow extends React.Component {
               className="hover-child"
             />
             <span className="flex-full ml1">{snippet.name}</span>
-          </a>
+          </div>
           <Icon
             name={isOpen ? "chevronup" : "chevrondown"}
             size={ICON_SIZE}
             className={cx({ "hover-child": !isOpen })}
           />
-        </a>
+        </div>
         {isOpen && (
           <div className="px2 pb2 pt1">
             {description && <p className="text-medium mt0">{description}</p>}
-            <a
+            <span
               onClick={
                 unarchiveSnippet
                   ? unarchiveSnippet
                   : () => setModalSnippet(snippet)
               }
-              className="text-brand text-bold bg-light-hover p1 rounded"
+              className="text-brand text-bold cursor-pointer bg-light-hover p1 rounded"
             >
               <Icon
                 name={unarchiveSnippet ? "unarchive" : "pencil"}
@@ -300,7 +300,7 @@ class SnippetRow extends React.Component {
                 className="mr1"
               />
               {unarchiveSnippet ? t`Unarchive` : t`Edit`}
-            </a>
+            </span>
             <pre className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap overflow-x-scroll">
               {content}
             </pre>

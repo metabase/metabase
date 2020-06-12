@@ -257,7 +257,7 @@ export const CustomFormSection = ({ collapsible, ...props }) =>
   );
 
 export const CustomFormFooter = (
-  { submitTitle, cancelTitle = t`Cancel`, onCancel, footerLeftButtons },
+  { submitTitle, cancelTitle = t`Cancel`, onCancel, footerExtraButtons },
   { isModal },
 ) => {
   return (
@@ -269,8 +269,8 @@ export const CustomFormFooter = (
         </Button>
       )}
       <div className="flex-full" />
-      {footerLeftButtons}
       <CustomFormMessage />
+      {footerExtraButtons}
     </div>
   );
 };

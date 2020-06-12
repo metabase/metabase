@@ -269,8 +269,7 @@ export default class NativeQuery extends AtomicQuery {
   templateTags(): TemplateTag[] {
     return Object.values(this.templateTagsMap());
   }
-  sidebarTemplateTags(): TemplateTag[] {
-    // The template tag sidebar excludes snippets since they have a separate sidebar.
+  templateTagsWithoutSnippets(): TemplateTag[] {
     return this.templateTags().filter(t => t.type !== "snippet");
   }
   templateTagsMap(): TemplateTags {

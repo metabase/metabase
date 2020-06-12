@@ -7,25 +7,11 @@ import Modal from "metabase/components/Modal";
 import Link from "metabase/components/Link";
 import Snippets from "metabase/entities/snippets";
 
-export default class SnippetSidebar extends React.Component {
-  componentDidMount() {
-    document.addEventListener("keydown", this.handleKeyDown);
-  }
-
-  componentWillUnmount() {
-    document.removeEventListener("keydown", this.handleKeyDown);
-  }
-
-  handleKeyDown = e => {
-    if (e.key === "Escape") {
-      this.props.closeModal();
-    }
-  };
-
+export default class SnippetModal extends React.Component {
   render() {
     const { insertSnippet, closeModal, snippet } = this.props;
     return (
-      <Modal>
+      <Modal onClose={closeModal}>
         <Snippets.ModalForm
           snippet={snippet}
           title={
@@ -42,7 +28,7 @@ export default class SnippetSidebar extends React.Component {
           onClose={closeModal} // the "x" button
           onCance={closeModal} // the cancel button
           submitTitle={t`Save`}
-          footerLeftButtons={
+          footerExtraButtons={
             // only display archive for saved snippets
             snippet.id != null ? (
               <Link
