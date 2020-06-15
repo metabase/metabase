@@ -329,8 +329,7 @@
           (u/ignore-exceptions
             (destroy-dataset! database-name))
           (create-dataset! database-name)
-          ;; do this in parallel because otherwise it can literally take an hour to load something like
-          ;; fifty_one_different_tables
+          ;; now create tables and load data.
           (doseq [tabledef table-definitions]
             (load-tabledef! database-name tabledef))
           (swap! existing-datasets conj database-name)

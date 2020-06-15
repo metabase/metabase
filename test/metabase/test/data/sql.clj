@@ -259,13 +259,16 @@
 
 (defmethod tx/count-with-template-tag-query :sql/test-extensions
   [driver table field param-type]
+  ;; generate a SQL query like SELECT count(*) ... WHERE last_login = 1
+  ;; then replace 1 with a template tag like {{last_login}}
   (driver/with-driver driver
     (let [mbql-query      (data/mbql-query nil
                             {:source-table (data/id table)
                              :aggregation  [[:count]]
                              :filter       [:= [:field-id (data/id table field)] 1]})
           {:keys [query]} (qp/query->native mbql-query)
-          query           (str/replace query (re-pattern #"= .*") (format "= {{%s}}" (name field)))]
+          ;; preserve stuff like cast(1 AS datetime) in the resulting query
+          query           (str/replace query (re-pattern #"= (.*)(?:1)(.*)") (format "= $1{{%s}}$2" (name field)))]
       {:query query})))
 
 (defmethod tx/count-with-field-filter-query :sql/test-extensions
