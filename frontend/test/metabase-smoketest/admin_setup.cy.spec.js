@@ -61,7 +61,8 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should setup email", () => {
-      // *** Maybe using something like maildev
+      // Requirs "python -m smtpd -n -c DebuggingServer localhost:1025" in terminal first
+      // *** Maybe switch to using something like maildev
 
       cy.findByText("Settings").click();
       cy.findByText("Email").click();
@@ -85,8 +86,9 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Changes saved!");
 
       cy.findByText("Send test email").click();
-      // *** This should not be appearing
-      // cy.findByText("Sorry, something went wrong.  Please try again").should("not.exist");
+
+      cy.findByText("Sent!")
+      cy.findByText("Sorry, something went wrong.  Please try again").should("not.exist");
     });
 
     it("should setup Slack", () => {
