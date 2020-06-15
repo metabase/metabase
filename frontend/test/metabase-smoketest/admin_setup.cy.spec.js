@@ -71,12 +71,11 @@ describe("smoketest > admin_setup", () => {
 
       // Email info
       cy.findByPlaceholderText("smtp.yourservice.com").type("localhost");
-      cy.findByPlaceholderText("587").type("465");
-      cy.findByText("SSL").click();
-      cy.findByPlaceholderText("youlooknicetoday").type("myusername");
-      cy.findByPlaceholderText("Shhh...").type("password");
+      cy.findByPlaceholderText("587").type("1025");
+      cy.findByText("None").click();
+      // Leaves password and username blank 
       cy.findByPlaceholderText("metabase@yourcompany.com").type(
-        "metabase@yourcompany.com",
+        "test@local.host",
       );
 
       // *** Should not have to click here first
@@ -86,7 +85,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Changes saved!");
 
       cy.findByText("Send test email").click();
-      // *** When test email replaces fake email, this should stop appearing
+      // *** This should not be appearing
       // cy.findByText("Sorry, something went wrong.  Please try again").should("not.exist");
     });
 
