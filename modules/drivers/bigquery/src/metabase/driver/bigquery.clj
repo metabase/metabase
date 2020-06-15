@@ -196,7 +196,7 @@
           (for [column (table-schema->metabase-field-info schema)]
             (-> column
                 (set/rename-keys {:base-type :base_type})
-                (dissoc :database-type)))]
+                (dissoc :database-type :database-position)))]
       (respond
        {:cols columns}
        (for [^TableRow row (.getRows response)]

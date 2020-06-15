@@ -118,24 +118,22 @@
    field-name->type :- {ValidFieldName (apply s/enum valid-field-types)}]
   (u/ignore-exceptions
     (delete-table! dataset-id table-id))
-  (let [response (google/execute-no-auto-retry
-                  (.insert
-                   (.tables (bigquery))
-                   (project-id)
-                   dataset-id
-                   (doto (Table.)
-                     (.setTableReference (doto (TableReference.)
-                                           (.setProjectId (project-id))
-                                           (.setDatasetId dataset-id)
-                                           (.setTableId table-id)))
-                     (.setSchema (doto (TableSchema.)
-                                   (.setFields (for [[field-name field-type] field-name->type]
-                                                 (doto (TableFieldSchema.)
-                                                   (.setMode "REQUIRED")
-                                                   (.setName (name field-name))
-                                                   (.setType (name field-type))))))))))]
-    (println "[create table] response:" response) ; NOCOMMIT
-    )
+  (google/execute-no-auto-retry
+   (.insert
+    (.tables (bigquery))
+    (project-id)
+    dataset-id
+    (doto (Table.)
+      (.setTableReference (doto (TableReference.)
+                            (.setProjectId (project-id))
+                            (.setDatasetId dataset-id)
+                            (.setTableId table-id)))
+      (.setSchema (doto (TableSchema.)
+                    (.setFields (for [[field-name field-type] field-name->type]
+                                  (doto (TableFieldSchema.)
+                                    (.setMode "REQUIRED")
+                                    (.setName (name field-name))
+                                    (.setType (name field-type))))))))))
   ;; now verify that the Table was created
   (.tables (bigquery))
   (println (u/format-color 'blue "Created BigQuery table `%s.%s.%s`." (project-id) dataset-id table-id)))
@@ -143,7 +141,6 @@
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
   (let [sql      (format "SELECT count(*) FROM `%s.%s.%s`" (project-id) dataset-id table-id)
         respond  (fn [_ rows]
-                   (println "rows:" rows) ; NOCOMMIT
                    (ffirst rows))
         response (google/execute
                   (.query (.jobs (bigquery)) (project-id)
@@ -151,7 +148,6 @@
                             (.setUseQueryCache false)
                             (.setUseLegacySql false)
                             (.setQuery sql))))]
-    (println "response:" response)      ; NOCOMMIT
     (#'bigquery/post-process-native respond response)))
 
 (defprotocol ^:private Insertable
@@ -165,12 +161,17 @@
   Object
   (->insertable [this] this)
 
+  clojure.lang.Keyword
+  (->insertable [k]
+    (u/qualified-name k))
+
   java.time.temporal.Temporal
   (->insertable [t] (u.date/format-sql t))
 
+  ;; normalize to UTC. BigQuery normalizes it anyway and tends to complain when inserting values that have an offset
   java.time.OffsetDateTime
   (->insertable [t]
-    (u.date/format t))
+    (->insertable (t/local-date-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 
   ;; for whatever reason the `date time zone-id` syntax that works in SQL doesn't work when loading data
   java.time.ZonedDateTime
@@ -182,18 +183,20 @@
   (->insertable [t]
     (u.date/format-sql (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 
-  ;; Convert the HoneySQL form we normally use to wrap a `Timestamp` to a plain literal string
+  ;; Convert the HoneySQL `timestamp(...)` form we sometimes use to wrap a `Timestamp` to a plain literal string
   honeysql.types.SqlCall
-  (->insertable [{[{s :literal}] :args}]
+  (->insertable [{[{s :literal}] :args, fn-name :name}]
+    (assert (= (name fn-name) "timestamp"))
     (->insertable (u.date/parse (str/replace s #"'" "")))))
 
+(defn- ->json [row-map]
+  (into {} (for [[k v] row-map]
+             [(name k) (->insertable v)])))
+
 (defn- row->request-row ^TableDataInsertAllRequest$Rows [row-map]
-  (println "(pr-str row-map):" (pr-str row-map)) ; NOCOMMIT
   (doto (TableDataInsertAllRequest$Rows.)
-    (.setJson (into {} (for [[k v] row-map]
-                         [(name k) (->insertable v)])))
-    (.setInsertId (str (get row-map :id)))
-    (#(println "ROW:"(pr-str %))) ))
+    (.setJson (->json row-map))
+    (.setInsertId (str (get row-map :id)))))
 
 (defn- rows->request ^TableDataInsertAllRequest [row-maps]
   (doto (TableDataInsertAllRequest.)
@@ -212,7 +215,6 @@
     (println (u/format-color 'blue "Sent request to insert %d rows into `%s.%s.%s`"
                (count (.getRows rows))
                (project-id) dataset-id table-id))
-    (println "response:" response)      ; NOCOMMIT
     (when (seq (.getInsertErrors response))
       (println "Error inserting rows:" (u/pprint-to-str (seq (.getInsertErrors response))))
       (throw (ex-info "Error inserting rows"
@@ -297,8 +299,13 @@
   (for [dataset (get (google/execute (doto (.list (.datasets (bigquery)) (project-id))
                                        ;; Long/MAX_VALUE barfs but it has to be a Long
                                        (.setMaxResults (long Integer/MAX_VALUE))))
-                     "datasets")]
-    (get-in dataset ["datasetReference" "datasetId"])))
+                     "datasets")
+        :let    [dataset-name (get-in dataset ["datasetReference" "datasetId"])]
+        ;; don't consider that checkins_interval_ datasets created in
+        ;; `metabase.query-processor-test.date-bucketing-test` to be already created, since those test things relative
+        ;; to the current moment in time and thus need to be recreated before running the tests.
+        :when   (not (str/includes? dataset-name "checkins_interval_"))]
+    dataset-name))
 
 ;; keep track of databases we haven't created yet
 (def ^:private existing-datasets

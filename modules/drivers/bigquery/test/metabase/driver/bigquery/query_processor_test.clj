@@ -25,47 +25,41 @@
 
 (deftest native-query-test
   (mt/test-driver :bigquery
-    (is (= [[100]
-            [99]]
-           (get-in
-            (qp/process-query
-              {:native   {:query (str "SELECT `v2_test_data.venues`.`id` "
-                                      "FROM `v2_test_data.venues` "
-                                      "ORDER BY `v2_test_data.venues`.`id` DESC "
-                                      "LIMIT 2;")}
-               :type     :native
-               :database (mt/id)})
-            [:data :rows])))
-
-    (is (= [{:name         "venue_id"
-             :display_name "venue_id"
-             :source       :native
-             :base_type    :type/Integer
-             :field_ref    [:field-literal "venue_id" :type/Integer]
-             :database-position 0}
-            {:name         "user_id"
-             :display_name "user_id"
-             :source       :native
-             :base_type    :type/Integer
-             :field_ref    [:field-literal "user_id" :type/Integer]
-             :database-position 1}
-            {:name         "checkins_id"
-             :display_name "checkins_id"
-             :source       :native
-             :base_type    :type/Integer
-             :field_ref    [:field-literal "checkins_id" :type/Integer]
-             :database-position 2}]
-           (qp.test/cols
+    (is (= [[100] [99]]
+           (mt/rows
              (qp/process-query
-               {:native   {:query (str "SELECT `v2_test_data.checkins`.`venue_id` AS `venue_id`, "
-                                       "       `v2_test_data.checkins`.`user_id` AS `user_id`, "
-                                       "       `v2_test_data.checkins`.`id` AS `checkins_id` "
-                                       "FROM `v2_test_data.checkins` "
-                                       "LIMIT 2")}
-                :type     :native
-                :database (mt/id)})))
-        (str "make sure that BigQuery native queries maintain the column ordering specified in the SQL -- "
-             "post-processing ordering shouldn't apply (Issue #2821)"))))
+              (mt/native-query
+                {:query (str "SELECT `v2_test_data.venues`.`id` "
+                             "FROM `v2_test_data.venues` "
+                             "ORDER BY `v2_test_data.venues`.`id` DESC "
+                             "LIMIT 2;")})))))
+
+    (testing (str "make sure that BigQuery native queries maintain the column ordering specified in the SQL -- "
+                  "post-processing ordering shouldn't apply (Issue #2821)")
+      (is (= [{:name         "venue_id"
+               :display_name "venue_id"
+               :source       :native
+               :base_type    :type/Integer
+               :field_ref    [:field-literal "venue_id" :type/Integer]}
+              {:name         "user_id"
+               :display_name "user_id"
+               :source       :native
+               :base_type    :type/Integer
+               :field_ref    [:field-literal "user_id" :type/Integer]}
+              {:name         "checkins_id"
+               :display_name "checkins_id"
+               :source       :native
+               :base_type    :type/Integer
+               :field_ref    [:field-literal "checkins_id" :type/Integer]}]
+             (qp.test/cols
+               (qp/process-query
+                {:native   {:query (str "SELECT `v2_test_data.checkins`.`venue_id` AS `venue_id`, "
+                                        "       `v2_test_data.checkins`.`user_id` AS `user_id`, "
+                                        "       `v2_test_data.checkins`.`id` AS `checkins_id` "
+                                        "FROM `v2_test_data.checkins` "
+                                        "LIMIT 2")}
+                 :type     :native
+                 :database (mt/id)})))))))
 
 (deftest aggregations-test
   (mt/test-driver :bigquery

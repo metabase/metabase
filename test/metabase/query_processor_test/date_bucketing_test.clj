@@ -861,7 +861,9 @@
               ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
               ;; generating Java classes here so they'll be in the DB's native timezone. Some DBs refuse to use
               ;; the same timezone we're running the tests from *cough* SQL Server *cough*
-              [(u/prog1 (if (isa? driver/hierarchy driver/*driver* :sql)
+              [(u/prog1 (if (and (isa? driver/hierarchy driver/*driver* :sql)
+                                 ;; BigQuery doesn't insert rows using SQL statements
+                                 (not= driver/*driver* :bigquery))
                           (sql.qp/add-interval-honeysql-form driver/*driver*
                                                              (sql.qp/current-datetime-honeysql-form driver/*driver*)
                                                              (* i interval-seconds)
@@ -901,20 +903,21 @@
                                (cons :relative-datetime relative-datetime-args)]})
               mt/first-row first int)))))
 
-;; HACK - Don't run these tests against BigQuery/etc. because the databases need to be loaded every time the tests are ran
-;;        and loading data into BigQuery/etc. is mind-bogglingly slow. Don't worry, I promise these work though!
+;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests
+;;        are ran and loading data into these DBs is mind-bogglingly slow.
+;;
+;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly
+;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
+;; machine isn't as slow as the CircleCI ones)
 (deftest count-of-grouping-test
-  ;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly
-  ;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
-  ;; machine isn't as slow as the CircleCI ones)
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :bigquery :oracle})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
     (testing "4 checkins per minute dataset"
       (testing "group by minute"
         (doseq [args [[:current] [-1 :minute] [1 :minute]]]
           (is (= 4
                  (apply count-of-grouping checkins:4-per-minute :minute args))
               (format "filter by minute = %s" (into [:relative-datetime] args)))))))
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :bigquery})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
     (testing "4 checkins per hour dataset"
       (testing "group by hour"
         (doseq [args [[:current] [-1 :hour] [1 :hour]]]
@@ -933,21 +936,20 @@
             "filter by week = [:relative-datetime :current]")))))
 
 (deftest time-interval-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :bigquery})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
     (testing "Syntactic sugar (`:time-interval` clause)"
-      (is (= 1
-             (-> (mt/dataset checkins:1-per-day
-                   (mt/run-mbql-query checkins
+      (mt/dataset checkins:1-per-day
+        (is (= 1
+               (-> (mt/run-mbql-query checkins
                      {:aggregation [[:count]]
-                      :filter      [:time-interval $timestamp :current :day]}))
-                 mt/first-row first int)))
+                      :filter      [:time-interval $timestamp :current :day]})
+                   mt/first-row first int)))
 
-      (is (= 7
-             (-> (mt/dataset checkins:1-per-day
-                   (mt/run-mbql-query checkins
+        (is (= 7
+               (-> (mt/run-mbql-query checkins
                      {:aggregation [[:count]]
-                      :filter      [:time-interval $timestamp :last :week]}))
-                 mt/first-row first int))))))
+                      :filter      [:time-interval $timestamp :last :week]})
+                   mt/first-row first int)))))))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually
 ;; reflects the units the results are in. eg when we breakout by one unit and filter by another, make sure the results
@@ -964,7 +966,7 @@
      :unit (-> results :data :cols first :unit)}))
 
 (deftest date-bucketing-when-you-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :bigquery})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
     (is (= {:rows 1, :unit :day}
            (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day")))
     (is (= {:rows 7, :unit :day}
@@ -992,15 +994,16 @@
 ;; We should get count = 1 for the current day, as opposed to count = 0 if we weren't auto-bucketing
 ;; (e.g. 2018-11-19T00:00 != 2018-11-19T12:37 or whatever time the checkin is at)
 (deftest default-bucketing-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :bigquery})
-    (is (= [[1]]
-           (mt/formatted-rows [int]
-             (mt/dataset checkins:1-per-day
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+    (mt/dataset checkins:1-per-day
+      (is (= [[1]]
+             (mt/formatted-rows [int]
                (mt/run-mbql-query checkins
                  {:aggregation [[:count]]
                   :filter      [:= [:field-id $timestamp] (t/format "yyyy-MM-dd" (u.date/truncate :day))]}))))))
+
   ;; this is basically the same test as above, but using the office-checkins dataset instead of the dynamically
-  ;; created checkins DBs so we can run it against Snowflake and BigQuery as well.
+  ;; created checkins DBs so we can run it against Snowflake as well.
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset office-checkins
       (is (= [[1]]
@@ -1016,11 +1019,12 @@
                    {:aggregation [[:count]]
                     :filter      [:and
                                   [:= [:field-id $timestamp] "2019-01-16"]
-                                  [:= [:field-id $id] 6]]}))))))
+                                  [:= [:field-id $id] 6]]})))))))
 
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
     (testing "if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches"
       (mt/dataset checkins:1-per-day
-        (is (= ;; Mongo returns empty row for count = 0. We should fix that
+        (is (= ;; Mongo returns empty row for count = 0. We should fix that (#5419)
              (case driver/*driver*
                :mongo []
                [[0]])
@@ -1064,13 +1068,13 @@
                           (name unit) filter-value (str/join ", " (sort expected-count)))))))))))
 
 (deftest legacy-default-datetime-bucketing-test
-  (is (= (str "SELECT count(*) AS \"count\" "
-              "FROM \"PUBLIC\".\"CHECKINS\" "
-              "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = CAST(now() AS date)")
-         (:query
-          (qp/query->native
-            (mt/mbql-query checkins
-              {:aggregation [[:count]]
-               :filter      [:= $date [:relative-datetime :current]]}))))
-      (str "Datetime fields that aren't wrapped in datetime-field clauses should get default :day bucketing for legacy "
-           "reasons. See #9014")))
+  (testing (str "Datetime fields that aren't wrapped in datetime-field clauses should get default :day bucketing for "
+                "legacy reasons. See #9014")
+    (is (= (str "SELECT count(*) AS \"count\" "
+                "FROM \"PUBLIC\".\"CHECKINS\" "
+                "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = CAST(now() AS date)")
+           (:query
+            (qp/query->native
+             (mt/mbql-query checkins
+               {:aggregation [[:count]]
+                :filter      [:= $date [:relative-datetime :current]]})))))))
