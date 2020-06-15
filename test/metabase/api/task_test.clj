@@ -1,11 +1,10 @@
 (ns metabase.api.task-test
-  (:require [clj-time.core :as time]
-            [expectations :refer :all]
+  (:require [expectations :refer :all]
+            [java-time :as t]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.test.data.users :as users]
             [metabase.test.util :as tu]
             [metabase.util :as u]
-            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -16,12 +15,12 @@
   "Creates `n` task history maps with guaranteed increasing `:ended_at` times. This means that when stored and queried
   via the GET `/` endpoint, will return in reverse order from how this function returns the task history maps."
   [n]
-  (let [task-names (repeatedly n tu/random-name)
-        now        (time/now)]
+  (let [now        (t/zoned-date-time)
+        task-names (repeatedly n tu/random-name)]
     (map-indexed (fn [idx task-name]
                    {:task       task-name
-                    :started_at (du/->Timestamp now)
-                    :ended_at   (du/->Timestamp (time/plus now (time/seconds idx)))})
+                    :started_at now
+                    :ended_at   (t/plus now (t/seconds idx))})
                  task-names)))
 
 ;; Only superusers can query for TaskHistory

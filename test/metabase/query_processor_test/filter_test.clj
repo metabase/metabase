@@ -1,8 +1,10 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
-  (:require [metabase
+  (:require [clojure.test :refer :all]
+            [metabase
              [driver :as driver]
-             [query-processor-test :as qp.test]]
+             [query-processor-test :as qp.test]
+             [test :as mt]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 
@@ -77,29 +79,28 @@
          :order-by [[:asc $id]]}))))
 
 
-;;; FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
-(qp.test/expect-with-non-timeseries-dbs
-  [[21 "PizzaHacker"    58 37.7441 -122.421 2]
-   [22 "Gordo Taqueria" 50 37.7822 -122.484 1]]
-  (qp.test/formatted-rows :venues
-    (data/run-mbql-query venues
-      {:filter   [:between $id 21 22]
-       :order-by [[:asc $id]]})))
-
-;;; FILTER -- "BETWEEN" with dates
-(qp.test/expect-with-non-timeseries-dbs
-  {:rows [[29]]
-   :cols [(qp.test/aggregate-col :count)]}
-  (do
-    ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's
-    ;; results
-    (when (= :snowflake driver/*driver*)
-      (driver/notify-database-updated driver/*driver* (data/id)))
-    (qp.test/rows-and-cols
-      (qp.test/format-rows-by [int]
-        (data/run-mbql-query checkins
-          {:aggregation [[:count]]
-           :filter      [:between [:datetime-field $date :day] "2015-04-01" "2015-05-01"]})))))
+(deftest between-test
+  (datasets/test-drivers (qp.test/normal-drivers)
+    (testing ":between filter, single subclause (neither :and nor :or)"
+      (is (= [[21 "PizzaHacker"    58 37.7441 -122.421 2]
+              [22 "Gordo Taqueria" 50 37.7822 -122.484 1]]
+             (qp.test/formatted-rows :venues
+               (data/run-mbql-query venues
+                 {:filter   [:between $id 21 22]
+                  :order-by [[:asc $id]]})))))
+    (testing ":between with dates"
+      (is (= {:rows [[29]]
+              :cols [(qp.test/aggregate-col :count)]}
+             (do
+               ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this
+               ;; test's results
+               (when (= :snowflake driver/*driver*)
+                 (driver/notify-database-updated driver/*driver* (data/id)))
+               (qp.test/rows-and-cols
+                 (qp.test/format-rows-by [int]
+                   (data/run-mbql-query checkins
+                     {:aggregation [[:count]]
+                      :filter      [:between [:datetime-field $date :day] "2015-04-01" "2015-05-01"]})))))))))
 
 ;;; FILTER -- "OR", "<=", "="
 (qp.test/expect-with-non-timeseries-dbs
@@ -119,34 +120,30 @@
     (data/run-mbql-query venues
       {:filter [:inside $latitude $longitude 10.0649 -165.379 10.0641 -165.371]})))
 
-;;; FILTER - `is-null` & `not-null` on datetime columns
-(qp.test/expect-with-non-timeseries-dbs
-  [1000]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query checkins
-        {:aggregation [[:count]]
-         :filter      [:not-null $date]}))))
+(deftest is-null-test
+  (mt/test-drivers (mt/normal-drivers)
+    (let [result (qp.test/first-row (data/run-mbql-query checkins
+                                      {:aggregation [[:count]]
+                                       :filter      [:is-null $date]}))]
+      ;; Some DBs like Mongo don't return any results at all in this case, and there's no easy workaround
+      (is (= true
+             (contains? #{[0] [0M] [nil] nil} result))))))
 
-;; Creates a query that uses a field-literal. Normally our test queries will use a field placeholder, but
-;; https://github.com/metabase/metabase/issues/7381 is only triggered by a field literal
-(qp.test/expect-with-non-timeseries-dbs
-  [1000]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query checkins
-        {:aggregation [[:count]]
-         :filter      ["NOT_NULL"
-                       ["field-id"
-                        ["field-literal" (data/format-name "date") "type/DateTime"]]]}))))
-
-(qp.test/expect-with-non-timeseries-dbs
-  true
-  (let [result (qp.test/first-row (data/run-mbql-query checkins
-                            {:aggregation [[:count]]
-                             :filter      [:is-null $date]}))]
-    ;; Some DBs like Mongo don't return any results at all in this case, and there's no easy workaround
-    (contains? #{[0] [0M] [nil] nil} result)))
+(deftest not-null-test
+  (mt/test-drivers (mt/normal-drivers)
+    (is (= [1000]
+           (qp.test/first-row
+             (qp.test/format-rows-by [int]
+               (data/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :filter      [:not-null $date]})))))
+    (testing "Make sure :not-null filters work correctly with field literals (#7381)"
+      (is (= [1000]
+             (qp.test/first-row
+               (qp.test/format-rows-by [int]
+                 (data/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not-null *date]}))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -243,35 +240,35 @@
 ;;; |                                             NESTED AND/OR CLAUSES                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(qp.test/expect-with-non-timeseries-dbs
-  [[81]]
-  (qp.test/formatted-rows [int]
-    (data/run-mbql-query venues
-      {:aggregation [[:count]]
-       :filter      [:and
-                     [:!= $price 3]
-                     [:or
-                      [:= $price 1]
-                      [:= $price 2]]]})))
+(defn- count-with-filter-clause* [table-name filter-clause]
+  (first
+   (qp.test/first-row
+     (qp.test/format-rows-by [int]
+       (data/run-mbql-query nil
+         {:source-table (data/id table-name)
+          :aggregation  [[:count]]
+          :filter       filter-clause})))))
+
+(defmacro ^:private count-with-filter-clause
+  ([filter-clause]
+   `(count-with-filter-clause ~'venues ~filter-clause))
+
+  ([table-name filter-clause]
+   `(count-with-filter-clause* ~(keyword table-name) (data/$ids ~table-name ~filter-clause))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         = AND != WITH MULTIPLE VALUES                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(qp.test/expect-with-non-timeseries-dbs
-  [[81]]
-  (qp.test/formatted-rows [int]
-    (data/run-mbql-query venues
-      {:aggregation [[:count]]
-       :filter      [:= $price 1 2]})))
-
-(qp.test/expect-with-non-timeseries-dbs
-  [[19]]
-  (qp.test/formatted-rows [int]
-    (data/run-mbql-query venues
-      {:aggregation [[:count]]
-       :filter      [:!= $price 1 2]})))
+(deftest equals-and-not-equals-with-extra-args-test
+  (datasets/test-drivers (qp.test/normal-drivers))
+  (testing ":= with >2 args"
+    (is (= 81
+           (count-with-filter-clause [:= $price 1 2]))))
+  (testing ":!= with >2 args"
+    (is (= 19
+           (count-with-filter-clause [:!= $price 1 2])))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -283,196 +280,91 @@
 ;; The majority of these tests aren't necessary since `not` automatically translates them to simpler, logically
 ;; equivalent expressions but I already wrote them so in this case it doesn't hurt to have a little more test coverage
 ;; than we need
-;;
 
-;;; =
-(qp.test/expect-with-non-timeseries-dbs
-  [99]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:= $id 1]]}))))
+(deftest not-filter-test
+  (datasets/test-drivers (qp.test/normal-drivers)
+    (testing "="
+      (is (= 99
+             (count-with-filter-clause [:not [:= $id 1]]))))
+    (testing "!="
+      (is (= 1
+             (count-with-filter-clause [:not [:!= $id 1]]))))
+    (testing "<"
+      (is (= 61
+             (count-with-filter-clause [:not [:< $id 40]]))))
+    (testing ">"
+      (is (= 40
+             (count-with-filter-clause [:not [:> $id 40]]))))
+    (testing "<="
+      (is (= 60
+             (count-with-filter-clause [:not [:<= $id 40]]))))
+    (testing ">="
+      (is (= 39
+             (count-with-filter-clause [:not [:>= $id 40]]))))
+    (testing "is-null"
+      (is (= 100
+             (count-with-filter-clause [:not [:is-null $id]]))))
+    (testing "between"
+      (is (= 89
+             (count-with-filter-clause [:not [:between $id 30 40]]))))
+    (testing "inside"
+      (is (= 39
+             (count-with-filter-clause [:not [:inside $latitude $longitude 40 -120 30 -110]]))))
+    (testing "starts-with"
+      (is (= 80
+             (count-with-filter-clause [:not [:starts-with $name "T"]]))))
+    (testing "contains"
+      (is (= 97
+             (count-with-filter-clause [:not [:contains $name "BBQ"]]))))
+    (testing "does-not-contain"
+      (is (= 97
+             (count-with-filter-clause [:does-not-contain $name "BBQ"]))
+          "sanity check — does-not-contain should get converted to `:not` + `:contains` by QP middleware"))
+    (testing "ends-with"
+      (is (= 87
+             (count-with-filter-clause [:not [:ends-with $name "a"]]))))
+    (testing "and"
+      (is (= 98
+             (count-with-filter-clause [:not [:and
+                                              [:> $id 32]
+                                              [:contains $name "BBQ"]]]))))
+    (testing "or"
+      (is (= 31
+             (count-with-filter-clause [:not [:or
+                                              [:> $id 32]
+                                              [:contains $name "BBQ"]]]))))
 
-;;; !=
-(qp.test/expect-with-non-timeseries-dbs
-  [1]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:!= $id 1]]}))))
-;;; <
-(qp.test/expect-with-non-timeseries-dbs
-  [61]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:< $id 40]]}))))
+    (testing "nested and/or"
+      (is (= 96
+             (count-with-filter-clause [:not [:or
+                                              [:and
+                                               [:> $id 32]
+                                               [:< $id 35]]
+                                              [:contains $name "BBQ"]]]))))
 
-;;; >
-(qp.test/expect-with-non-timeseries-dbs
-  [40]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:> $id 40]]}))))
+    (testing "nested not"
+      (is (= 3
+             (count-with-filter-clause [:not [:not [:contains $name "BBQ"]]]))))
 
-;;; <=
-(qp.test/expect-with-non-timeseries-dbs
-  [60]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:<= $id 40]]}))))
-
-;;; >=
-(qp.test/expect-with-non-timeseries-dbs
-  [39]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:>= $id 40]]}))))
-
-;;; is-null
-(qp.test/expect-with-non-timeseries-dbs
-  [100]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:is-null $id]]}))))
-
-;;; between
-(qp.test/expect-with-non-timeseries-dbs
-  [89]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:between $id 30 40]]}))))
-
-;;; inside
-(qp.test/expect-with-non-timeseries-dbs
-  [39]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:inside $latitude $longitude 40 -120 30 -110]]}))))
-
-;;; starts-with
-(qp.test/expect-with-non-timeseries-dbs
-  [80]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:starts-with $name "T"]]}))))
-
-;;; contains
-(qp.test/expect-with-non-timeseries-dbs
-  [97]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:contains $name "BBQ"]]}))))
-
-;;; does-not-contain
-;;
-;; This should literally be the exact same query as the one above by the time it leaves the Query eXpander, so this is
-;; more of a QX test than anything else
-(qp.test/expect-with-non-timeseries-dbs
-  [97]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:does-not-contain $name "BBQ"]}))))
-
-;;; ends-with
-(qp.test/expect-with-non-timeseries-dbs
-  [87]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:ends-with $name "a"]]}))))
-
-;;; and
-(qp.test/expect-with-non-timeseries-dbs
-  [98]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:and
-                             [:> $id 32]
-                             [:contains $name "BBQ"]]]}))))
-;;; or
-(qp.test/expect-with-non-timeseries-dbs
-  [31]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:or
-                             [:> $id 32]
-                             [:contains $name "BBQ"]]]}))))
-
-;;; nested and/or
-(qp.test/expect-with-non-timeseries-dbs
-  [96]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:or
-                             [:and
-                              [:> $id 32]
-                              [:< $id 35]]
-                             [:contains $name "BBQ"]]]}))))
-
-;;; nested not
-(qp.test/expect-with-non-timeseries-dbs
-  [3]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:not [:not [:contains $name "BBQ"]]]}))))
-
-;;; not nested inside and/or
-(qp.test/expect-with-non-timeseries-dbs
-  [1]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :filter      [:and
-                       [:not [:> $id 32]]
-                       [:contains $name "BBQ"]]}))))
+    (testing "not nested inside and/or"
+      (is (= 1
+             (count-with-filter-clause [:and
+                                        [:not [:> $id 32]]
+                                        [:contains $name "BBQ"]]))))))
 
 
-;; make sure that filtering with dates truncating to minutes works (#4632)
-(qp.test/expect-with-non-timeseries-dbs
-  [107]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query checkins
-        {:aggregation [[:count]]
-         :filter      [:between [:datetime-field $date :minute] "2015-01-01T12:30:00" "2015-05-31"]}))))
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                      Etc                                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; make sure that filtering with dates bucketing by weeks works (#4956)
-(qp.test/expect-with-non-timeseries-dbs
-  [7]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query checkins
-        {:aggregation [[:count]]
-         :filter      [:= [:datetime-field $date :week] "2015-06-21T07:00:00.000000000-00:00"]}))))
+(deftest etc-test
+  (datasets/test-drivers (qp.test/normal-drivers)
+    (testing "make sure that filtering with dates truncating to minutes works (#4632)"
+      (is (= 107
+             (count-with-filter-clause checkins [:between
+                                                 [:datetime-field $date :minute]
+                                                 "2015-01-01T12:30:00"
+                                                 "2015-05-31"]))))
+    (testing "make sure that filtering with dates bucketing by weeks works (#4956)"
+      (is (= 7
+             (count-with-filter-clause checkins [:= [:datetime-field $date :week] "2015-06-21T07:00:00.000000000-00:00"]))))))

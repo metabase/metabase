@@ -14,11 +14,11 @@
             [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
             [metabase.config :as config]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec]
             [weavejester.dependency :as dep])
-  (:import [java.io BufferedReader Reader]
-           [java.net InetAddress InetSocketAddress Socket]
+  (:import [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
            java.util.concurrent.TimeoutException
            java.util.Locale
@@ -57,41 +57,6 @@
   {:style/indent 0}
   [& body]
   `(try ~@body (catch Throwable ~'_)))
-
-;;; ## Etc
-
-(defprotocol ^:private IClobToStr
-  (jdbc-clob->str ^String [this]
-   "Convert a Postgres/H2/SQLServer JDBC Clob to a string. (If object isn't a Clob, this function returns it as-is.)"))
-
-(extend-protocol IClobToStr
-  nil     (jdbc-clob->str [_]    nil)
-  Object  (jdbc-clob->str [this] this)
-
-  org.postgresql.util.PGobject
-  (jdbc-clob->str [this] (.getValue this))
-
-  ;; H2 + SQLServer clobs both have methods called `.getCharacterStream` that officially return a `Reader`,
-  ;; but in practice I've only seen them return a `BufferedReader`. Just to be safe include a method to convert
-  ;; a plain `Reader` to a `BufferedReader` so we don't get caught with our pants down
-  Reader
-  (jdbc-clob->str [this]
-    (jdbc-clob->str (BufferedReader. this)))
-
-  ;; Read all the lines for the `BufferedReader` and combine into a single `String`
-  BufferedReader
-  (jdbc-clob->str [this]
-    (with-open [_ this]
-      (loop [acc []]
-        (if-let [line (.readLine this)]
-          (recur (conj acc line))
-          (str/join "\n" acc)))))
-
-  ;; H2 -- See also http://h2database.com/javadoc/org/h2/jdbc/JdbcClob.html
-  org.h2.jdbc.JdbcClob
-  (jdbc-clob->str [this]
-    (jdbc-clob->str (.getCharacterStream this))))
-
 
 (defn optional
   "Helper function for defining functions that accept optional arguments. If `pred?` is true of the first item in `args`,
@@ -313,6 +278,7 @@
          (some->> last-mb-frame (str "--> "))
          frames-before-last-mb))))})
 
+(declare format-milliseconds)
 
 (defn deref-with-timeout
   "Call `deref` on a something derefable (e.g. a future or promise), and throw an exception if it takes more than
@@ -322,7 +288,7 @@
     (when (= result ::timeout)
       (when (instance? java.util.concurrent.Future reff)
         (future-cancel reff))
-      (throw (TimeoutException. (tru "Timed out after {0} milliseconds." timeout-ms))))
+      (throw (TimeoutException. (tru "Timed out after {0}" (format-milliseconds timeout-ms)))))
     result))
 
 (defn do-with-timeout
@@ -488,6 +454,13 @@
   (or (id object-or-id)
       (throw (Exception. (tru "Not something with an ID: {0}" object-or-id)))))
 
+(defn- namespace-symbs* []
+  (for [ns-symb (ns-find/find-namespaces (concat (classpath/system-classpath)
+                                                 (classpath/classpath (classloader/the-classloader))))
+        :when   (and (.startsWith (name ns-symb) "metabase.")
+                     (not (.contains (name ns-symb) "test")))]
+    ns-symb))
+
 (def metabase-namespace-symbols
   "Delay to a vector of symbols of all Metabase namespaces, excluding test namespaces.
    This is intended for use by various routines that load related namespaces, such as task and events initialization.
@@ -496,10 +469,7 @@
   ;; We want to give JARs in the ./plugins directory a chance to load. At one point we have this as a future so it
   ;; start looking for things in the background while other stuff is happening but that meant plugins couldn't
   ;; introduce new Metabase namespaces such as drivers.
-  (delay (vec (for [ns-symb (ns-find/find-namespaces (classpath/system-classpath))
-                    :when   (and (.startsWith (name ns-symb) "metabase.")
-                                 (not (.contains (name ns-symb) "test")))]
-                ns-symb))))
+  (delay (vec (namespace-symbs*))))
 
 (def ^java.util.regex.Pattern uuid-regex
   "A regular expression for matching canonical string representations of UUIDs."
@@ -779,3 +749,67 @@
   `Locale/US` locale."
   [^CharSequence s]
   (.. s toString (toLowerCase (Locale/US))))
+
+(defn lower-case-map-keys
+  "Changes the keys of a given map to lower case."
+  [m]
+  (into {} (for [[k v] m]
+             [(-> k name lower-case-en keyword) v])))
+
+(defn format-nanoseconds
+  "Format a time interval in nanoseconds to something more readable. (µs/ms/etc.)"
+  ^String [nanoseconds]
+  ;; The basic idea is to take `n` and see if it's greater than the divisior. If it is, we'll print it out as that
+  ;; unit. If more, we'll divide by the divisor and recur, trying each successively larger unit in turn. e.g.
+  ;;
+  ;; (format-nanoseconds 500)    ; -> "500 ns"
+  ;; (format-nanoseconds 500000) ; -> "500 µs"
+  (loop [n nanoseconds, [[unit divisor] & more] [[:ns 1000] [:µs 1000] [:ms 1000] [:s 60] [:mins 60] [:hours 24]
+                                                 [:days 7] [:weeks (/ 365.25 7)] [:years Double/POSITIVE_INFINITY]]]
+    (if (and (> n divisor)
+             (seq more))
+      (recur (/ n divisor) more)
+      (format "%.1f %s" (double n) (name unit)))))
+
+(defn format-microseconds
+  "Format a time interval in microseconds into something more readable."
+  ^String [microseconds]
+  (format-nanoseconds (* 1000.0 microseconds)))
+
+(defn format-milliseconds
+  "Format a time interval in milliseconds into something more readable."
+  ^String [milliseconds]
+  (format-microseconds (* 1000.0 milliseconds)))
+
+(defn format-seconds
+  "Format a time interval in seconds into something more readable."
+  ^String [seconds]
+  (format-milliseconds (* 1000.0 seconds)))
+
+(defmacro profile
+  "Like `clojure.core/time`, but lets you specify a `message` that gets printed with the total time, and formats the
+  time nicely using `format-nanoseconds`."
+  {:style/indent 1}
+  ([form]
+   `(profile ~(str form) ~form))
+  ([message & body]
+   `(let [start-time# (System/nanoTime)]
+      (u/prog1 (do ~@body)
+        (println (u/format-color '~'green "%s took %s"
+                   ~message
+                   (format-nanoseconds (- (System/nanoTime) start-time#))))))))
+
+(defn seconds->ms
+  "Convert `seconds` to milliseconds. More readable than doing this math inline."
+  [seconds]
+  (* seconds 1000))
+
+(defn minutes->seconds
+  "Convert `minutes` to seconds. More readable than doing this math inline."
+  [minutes]
+  (* 60 minutes))
+
+(defn minutes->ms
+  "Convert `minutes` to milliseconds. More readable than doing this math inline."
+  [minutes]
+  (-> minutes minutes->seconds seconds->ms))

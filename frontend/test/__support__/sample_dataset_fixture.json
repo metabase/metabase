@@ -521,7 +521,7 @@
       "6": {
         "description": "The total billed amount.",
         "table_id": 1,
-        "special_type": null,
+        "special_type": "type/Currency",
         "name": "TOTAL",
         "caveats": null,
         "fk_target_field_id": null,

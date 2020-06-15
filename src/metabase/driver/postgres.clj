@@ -3,9 +3,11 @@
   for JDBC-based drivers."
   (:require [clojure
              [set :as set]
-            [string :as str]]
+             [string :as str]]
             [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
@@ -17,10 +19,11 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
-  (:import java.sql.Time
+  (:import [java.sql ResultSet ResultSetMetaData Time Types]
+           [java.time LocalDateTime OffsetDateTime OffsetTime]
            [java.util Date UUID]))
 
 (driver/register! :postgres, :parent :sql-jdbc)
@@ -159,7 +162,7 @@
 
 (defmethod unprepare/unprepare-value [:postgres Date]
   [_ value]
-  (format "'%s'::timestamp" (du/date->iso-8601 value)))
+  (format "'%s'::timestamp" (u.date/format value)))
 
 (prefer-method unprepare/unprepare-value [:sql Time] [:postgres Date])
 
@@ -216,9 +219,9 @@
    :smallserial   :type/Integer
    :text          :type/Text
    :time          :type/Time
-   :timetz        :type/Time
+   :timetz        :type/TimeWithLocalTZ
    :timestamp     :type/DateTime
-   :timestamptz   :type/DateTime
+   :timestamptz   :type/DateTimeWithLocalTZ
    :tsquery       :type/*
    :tsvector      :type/*
    :txid_snapshot :type/*
@@ -277,3 +280,30 @@
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
   [_]
   "SET SESSION TIMEZONE TO %s;")
+
+;; for some reason postgres `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems like a
+;; bug with the JDBC driver?
+(defmethod sql-jdbc.execute/read-column [:postgres Types/TIMESTAMP]
+  [_ _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (let [^Class klass (if (= (str/lower-case (.getColumnTypeName rsmeta i)) "timestamptz")
+                       OffsetDateTime
+                       LocalDateTime)]
+    (.getObject rs i klass)))
+
+;; Sometimes Postgres times come back as strings like `07:23:18.331+00` (no minute in offset) and there's a bug in the
+;; JDBC driver where it can't parse those correctly. We can do it ourselves in that case.
+(defmethod sql-jdbc.execute/read-column [:postgres Types/TIME]
+  [driver _ ^ResultSet rs rsmeta ^Integer i]
+  (let [parent-method (get-method sql-jdbc.execute/read-column [:sql-jdbc Types/TIME])]
+    (try
+      (parent-method driver nil rs rsmeta i)
+      (catch Throwable _
+        (let [s (.getString rs i)]
+          (log/tracef "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
+          (u.date/parse s))))))
+
+;; Postgres doesn't support OffsetTime
+(defmethod sql-jdbc.execute/set-parameter [:postgres OffsetTime]
+  [driver prepared-statement i t]
+  (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
+    (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))

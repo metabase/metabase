@@ -117,11 +117,11 @@
 (tu/expect-schema
   (merge
    (m/map-vals s/eq default-db-details)
-   {:created_at       java.sql.Timestamp
+   {:created_at       java.time.temporal.Temporal
     :engine           (s/eq ::test-driver)
     :id               su/IntGreaterThanZero
     :details          (s/eq {:db "my_db"})
-    :updated_at       java.sql.Timestamp
+    :updated_at       java.time.temporal.Temporal
     :name             su/NonBlankString
     :features         (s/eq (driver.u/features ::test-driver))})
   (create-db-via-api!))

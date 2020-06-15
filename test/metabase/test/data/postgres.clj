@@ -26,6 +26,7 @@
                              :type/IPAddress      "INET"
                              :type/Text           "TEXT"
                              :type/Time           "TIME"
+                             :type/TimeWithTZ     "TIME WITH TIME ZONE"
                              :type/UUID           "UUID"}]
   (defmethod sql.tx/field-base-type->sql-type [:postgres base-type] [_ _] db-type))
 

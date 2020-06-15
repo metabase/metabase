@@ -144,8 +144,6 @@
           :types          (constantly {:base_type        :keyword
                                        :special_type     :keyword
                                        :visibility_type  :keyword
-                                       :description      :clob
-                                       :database_type    :clob
                                        :has_field_values :keyword
                                        :fingerprint      :json-for-fingerprints
                                        :settings         :json})
@@ -298,4 +296,4 @@
   "Is field a UNIX timestamp?"
   [{:keys [base_type special_type]}]
   (and (isa? base_type :type/Integer)
-       (isa? special_type :type/DateTime)))
+       (isa? special_type :type/Temporal)))

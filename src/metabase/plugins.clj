@@ -6,7 +6,6 @@
             [metabase.plugins
              [classloader :as classloader]
              [initialize :as initialize]]
-            [metabase.util :as u]
             [metabase.util
              [files :as files]
              [i18n :refer [trs]]]
@@ -20,28 +19,30 @@
 ;; logic for determining plugins dir -- see below
 (defonce ^:private plugins-dir*
   (delay
-   (let [filename (plugins-dir-filename)]
-     (try
-       ;; attempt to create <current-dir>/plugins if it doesn't already exist. Check that the directory is readable.
-       (u/prog1 (files/get-path filename)
-         (files/create-dir-if-not-exists! <>)
-         (assert (Files/isWritable <>)
-           (trs "Metabase does not have permissions to write to plugins directory {0}" filename)))
-       ;; If we couldn't create the directory, or the directory is not writable, fall back to a temporary directory
-       ;; rather than failing to launch entirely. Log instructions for what should be done to fix the problem.
-       (catch Throwable e
-         (log/warn
-          e
-          (trs "Metabase cannot use the plugins directory {0}" filename)
-          "\n"
-          (trs "Please make sure the directory exists and that Metabase has permission to write to it.")
-          (trs "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR.")
-          (trs "Falling back to a temporary directory for now."))
-         ;; Check whether the fallback temporary directory is writable. If it's not, there's no way for us to
-         ;; gracefully proceed here. Throw an Exception detailing the critical issues.
-         (u/prog1 (files/get-path (System/getProperty "java.io.tmpdir"))
-           (assert (Files/isWritable <>)
-             (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))))))))
+    (let [filename (plugins-dir-filename)]
+      (try
+        ;; attempt to create <current-dir>/plugins if it doesn't already exist. Check that the directory is readable.
+        (let [path (files/get-path filename)]
+          (files/create-dir-if-not-exists! path)
+          (assert (Files/isWritable path)
+            (trs "Metabase does not have permissions to write to plugins directory {0}" filename))
+          path)
+        ;; If we couldn't create the directory, or the directory is not writable, fall back to a temporary directory
+        ;; rather than failing to launch entirely. Log instructions for what should be done to fix the problem.
+        (catch Throwable e
+          (log/warn
+           e
+           (trs "Metabase cannot use the plugins directory {0}" filename)
+           "\n"
+           (trs "Please make sure the directory exists and that Metabase has permission to write to it.")
+           (trs "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR.")
+           (trs "Falling back to a temporary directory for now."))
+          ;; Check whether the fallback temporary directory is writable. If it's not, there's no way for us to
+          ;; gracefully proceed here. Throw an Exception detailing the critical issues.
+          (let [path (files/get-path (System/getProperty "java.io.tmpdir"))]
+            (assert (Files/isWritable path)
+              (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))
+            path))))))
 
 ;; Actual logic is wrapped in a delay rather than a normal function so we don't log the error messages more than once
 ;; in cases where we have to fall back to the system temporary directory
@@ -100,8 +101,7 @@
                             ;; if different JARs with `metabase` packages have different signing keys. Go ahead and
                             ;; ignore it but let people know they can get rid of it.
                             (log/warn
-                             (u/format-color 'red
-                                 (trs "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory.")))))]
+                             (trs "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory."))))]
     path))
 
 (defn- has-manifest? ^Boolean [^Path path]
@@ -117,7 +117,15 @@
     (try
       (init-plugin! path)
       (catch Throwable e
-        (log/error e (u/format-color 'red (trs "Failied to initialize plugin {0}" (.getFileName path))))))))
+        (log/error e (trs "Failied to initialize plugin {0}" (.getFileName path)))))))
+
+(defn- load! []
+  (log/info (trs "Loading plugins in {0}..." (str (plugins-dir))))
+  (extract-system-modules!)
+  (let [paths (plugins-paths)]
+    (init-plugins! paths)))
+
+(defonce ^:private load!* (delay (load!)))
 
 (defn load-plugins!
   "Load Metabase plugins. The are JARs shipped as part of Metabase itself, under the `resources/modules` directory (the
@@ -129,10 +137,12 @@
   *  Metabase creates the plugins directory if it does not already exist.
   *  Any plugins that are shipped as part of Metabase itself are extracted from the Metabase uberjar (or `resources`
      directory when running with `lein`) into the plugins directory.
-  *  Each JAR in the plugins directory is added to the classpath.
-  *  For JARs that include a Metabase plugin manifest (a `metabase-plugin.yaml` file), "
+  *  Each JAR in the plugins directory that *does not* include a Metabase plugin manifest is added to the classpath.
+  *  For JARs that include a Metabase plugin manifest (a `metabase-plugin.yaml` file), a lazy-loading Metabase driver
+     is registered; when the driver is initialized (automatically, when certain methods are called) the JAR is added
+     to the classpath and the driver namespace is loaded
+
+  This function will only perform loading steps the first time it is called — it is safe to call this function more
+  than once."
   []
-  (log/info (u/format-color 'magenta (trs "Loading plugins in {0}..." (str (plugins-dir)))))
-  (extract-system-modules!)
-  (let [paths (plugins-paths)]
-    (init-plugins! paths)))
+  @load!*)

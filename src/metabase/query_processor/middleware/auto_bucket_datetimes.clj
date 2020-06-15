@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.auto-bucket-datetimes
-  "Middleware for automatically bucketing unbucketed `:type/DateTime` (but not `:type/Time`) Fields with `:day`
+  "Middleware for automatically bucketing unbucketed `:type/Temporal` (but not `:type/Time`) Fields with `:day`
   bucketing. Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against
   `yyyy-MM-dd` format datetime strings."
   (:require [metabase.mbql
@@ -68,6 +68,12 @@
    (and (mbql.preds/Field? x)
         (not (mbql.u/is-clause? #{:field-id :field-literal} x)))))
 
+(defn- date-or-datetime-field? [{base-type :base_type, special-type :special_type}]
+  (some (fn [field-type]
+          (some #(isa? field-type %)
+                [:type/Date :type/DateTime]))
+        [base-type special-type]))
+
 (s/defn ^:private wrap-unbucketed-fields
   "Wrap Fields in breakouts and filters in a `:datetime-field` clause if appropriate; look at corresponing type
   information in `field-id->type-inf` to see if we should do so."
@@ -79,13 +85,13 @@
        (wrap-unbucketed-fields field-id->type-info :filter)))
 
   ([query field-id->type-info clause-to-rewrite]
-   (let [datetime-but-not-time? (comp mbql.u/datetime-but-not-time-field? field-id->type-info)]
+   (let [datetime-but-not-time? (comp date-or-datetime-field? field-id->type-info)]
      (mbql.u/replace-in query [:query clause-to-rewrite]
        ;; don't replace anything that's already wrapping a `field-id`
        (_ :guard should-not-be-autobucketed?)
        &match
 
-       ;; if it's a raw `:field-id` and `field-id->type-info` tells us it's a `:type/DateTime` (but not `:type/Time`),
+       ;; if it's a raw `:field-id` and `field-id->type-info` tells us it's a `:type/Temporal` (but not `:type/Time`),
        ;; then go ahead and replace it
        [(_ :guard #{:field-id :field-literal}) (_ :guard datetime-but-not-time?) & _]
        [:datetime-field &match :day]))))
@@ -108,7 +114,7 @@
 
 (defn auto-bucket-datetimes
   "Middleware that automatically wraps breakout and filter `:field-id` clauses in `[:datetime-field ... :day]` if the
-  Field they refer to has a type that derives from `:type/DateTime` (but not `:type/Time`). (This is done for historic
+  Field they refer to has a type that derives from `:type/Temporal` (but not `:type/Time`). (This is done for historic
   reasons, before datetime bucketing was added to MBQL; datetime Fields defaulted to breaking out by day. We might
   want to revisit this behavior in the future.)
 

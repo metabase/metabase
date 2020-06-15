@@ -7,7 +7,7 @@
 (def ^:private ^:const ^String metabase-api-key-header "x-metabase-apikey")
 
 (defn enforce-authentication
-  "Middleware that returns a 401 response if REQUEST has no associated `:metabase-user-id`."
+  "Middleware that returns a 401 response if `request` has no associated `:metabase-user-id`."
   [handler]
   (fn [{:keys [metabase-user-id] :as request} respond raise]
     (if metabase-user-id

@@ -5,22 +5,22 @@
              [email :as email]
              [query-processor :as qp]
              [util :as u]]
-            [metabase.driver.util :as driver.u]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
             [metabase.middleware.session :as session]
             [metabase.models
              [card :refer [Card]]
+             [database :refer [Database]]
              [pulse :as pulse :refer [Pulse]]]
             [metabase.pulse.render :as render]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util
              [i18n :refer [deferred-tru trs tru]]
              [ui-logic :as ui]
              [urls :as urls]]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import java.util.TimeZone
-           metabase.models.card.CardInstance))
+  (:import metabase.models.card.CardInstance))
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
@@ -48,12 +48,11 @@
   (or (:database_id card)
       (get-in card [:dataset_query :database])))
 
-(s/defn defaulted-timezone :- TimeZone
-  "Returns the timezone for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
+(s/defn defaulted-timezone :- s/Str
+  "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
   [card :- CardInstance]
-  (let [^String timezone-str (or (some-> card database-id driver.u/database->driver driver.u/report-timezone-if-supported)
-                                 (System/getProperty "user.timezone"))]
-    (TimeZone/getTimeZone timezone-str)))
+  (or (some-> card database-id Database qp.timezone/results-timezone-id)
+      (qp.timezone/system-timezone-id)))
 
 (defn- first-question-name [pulse]
   (-> pulse :cards first :name))

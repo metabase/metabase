@@ -1,5 +1,6 @@
 (ns metabase.models.setting.cache-test
   (:require [clojure.core.memoize :as memoize]
+            [clojure.test :refer :all]
             [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [metabase
@@ -9,8 +10,12 @@
              [setting :refer [Setting]]
              [setting-test :as setting-test]]
             [metabase.models.setting.cache :as cache]
-            [metabase.test.util :as tu]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [toucan.db :as db]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;;; --------------------------------------------- Cache Synchronization ----------------------------------------------
 

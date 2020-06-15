@@ -13,7 +13,6 @@
             [metabase.driver.common :as driver.common]
             [metabase.plugins.init-steps :as init-steps]
             [metabase.util
-             [date :as du]
              [i18n :refer [trs]]
              [ssh :as ssh]])
   (:import clojure.lang.MultiFn))
@@ -55,7 +54,7 @@
     ;; implementation
     (remove-method driver/initialize! driver)
     ;; ok, do the init steps listed in the plugin mainfest
-    (du/profile (u/format-color 'magenta (trs "Load lazy loading driver {0}" driver))
+    (u/profile (u/format-color 'magenta (trs "Load lazy loading driver {0}" driver))
       (init-steps/do-init-steps! init-steps))
     ;; ok, now go ahead and call `driver/initialize!` a second time on the driver in case it actually has
     ;; an implementation of `initialize!` other than this one. If it does not, we'll just end up hitting

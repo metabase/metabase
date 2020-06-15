@@ -2,11 +2,11 @@
   "Middleware for implementing async QP behavior."
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.async.util :as async.u]
-            [metabase.config :as config]
-            [metabase.util
-             [date :as du]
-             [i18n :refer [trs tru]]])
+            [metabase.util.i18n :refer [trs tru]])
   (:import java.util.concurrent.TimeoutException))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -73,9 +73,9 @@
   ;; prod but for test and dev purposes we want to fail faster because it usually means I broke something in the QP
   ;; code
   (cond
-    config/is-prod? (du/minutes->ms 20)
-    config/is-test? (du/seconds->ms 30)
-    config/is-dev?  (du/minutes->ms 3)))
+    config/is-prod? (u/minutes->ms 20)
+    config/is-test? (u/seconds->ms 30)
+    config/is-dev?  (u/minutes->ms 3)))
 
 (defn- wait-for-result [out-chan]
   (let [[result port] (a/alts!! [out-chan (a/timeout query-timeout-ms)])]
@@ -86,7 +86,7 @@
       (not= port out-chan)
       (do
         (a/close! out-chan)
-        (throw (TimeoutException. (tru "Query timed out after {0}" (du/format-milliseconds query-timeout-ms)))))
+        (throw (TimeoutException. (tru "Query timed out after {0}" (u/format-milliseconds query-timeout-ms)))))
 
       :else
       result)))
