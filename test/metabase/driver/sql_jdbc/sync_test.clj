@@ -1,6 +1,6 @@
 (ns metabase.driver.sql-jdbc.sync-test
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer [deftest is]]
+            [clojure.test :refer [deftest is testing]]
             [metabase
              [driver :as driver]
              [sync :as sync]
@@ -86,7 +86,7 @@
       (sync/sync-database! (data/db))
       (is (= 0 (count-active-tables-in-db (data/id)))
           "We shouldn't sync tables for which we don't have select privilege"))
-    (testing "Do we fallback to SELECT probe"
+    (testing "Do we fallback to SELECT probe?"
       (with-redefs [sql-jdbc.sync/accessible-tables-for-user (constantly false)]
         (sync/sync-database! (data/db))
         (is (= 1 (count-active-tables-in-db (data/id))))))))
