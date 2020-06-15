@@ -271,15 +271,8 @@ function onRenderValueLabels(
 
   let displays = seriesSettings.map(settings => settings.display);
   if (chart.settings["stackable.stack_type"] === "stacked") {
-    // When stacked, zip together the corresponding values and sum them.
-    datas = [
-      _.zip(...datas).map(datasForSeries =>
-        datasForSeries.reduce(
-          ([prevX, sum], [x, y = 0] = []) => [prevX || x, sum + y],
-          [undefined, 0],
-        ),
-      ),
-    ];
+    // When stacked, flatten datas into one series. We'll sum values on the same x point later.
+    datas = [datas.flat()];
 
     // Individual series might have display set to something besides the actual stacked display.
     displays = [chart.settings["stackable.stack_display"]];
@@ -296,6 +289,10 @@ function onRenderValueLabels(
     .getAttribute("width");
   const barCount = displays.filter(d => d === "bar").length;
 
+  const xScale = chart.x();
+  const yScaleForSeries = index =>
+    yAxisSplit[0].includes(index) ? chart.y() : chart.rightY();
+
   // Update datas to use named x/y and include `showLabelBelow`.
   // We need to add `showLabelBelow` before data is filtered to show every nth value.
   datas = datas.map((data, seriesIndex) => {
@@ -305,6 +302,17 @@ function onRenderValueLabels(
       return [];
     }
     const display = displays[seriesIndex];
+
+    // Sum duplicate x values in the same series.
+    data = _.chain(data)
+      .groupBy(([x]) => xScale(x))
+      .values()
+      .map(data => {
+        const [[x]] = data;
+        const y = data.reduce((sum, [, y]) => sum + y, 0);
+        return [x, y];
+      })
+      .value();
 
     return data
       .map(([x, y], i) => {
@@ -319,7 +327,7 @@ function onRenderValueLabels(
           !showAll && barCount > 1 && display === "bar" && barWidth < 20;
         return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
       })
-      .filter(d => display !== "bar" || d.y !== 0);
+      .filter(d => !(display === "bar" && d.y === 0));
   });
 
   const formattingSetting = chart.settings["graph.label_value_formatting"];
@@ -350,10 +358,6 @@ function onRenderValueLabels(
 
   // use the chart body so things line up properly
   const parent = chart.svg().select(".chart-body");
-
-  const xScale = chart.x();
-  const yScaleForSeries = index =>
-    yAxisSplit[0].includes(index) ? chart.y() : chart.rightY();
 
   // Ordinal bar charts and histograms need extra logic to center the label.
   const xShifts = displays.map((display, index) => {
