@@ -290,6 +290,12 @@ function onRenderValueLabels(
   // Count max points in a single series to estimate when labels should be hidden
   const maxSeriesLength = Math.max(...datas.map(d => d.length));
 
+  const barWidth = chart
+    .svg()
+    .select("rect")[0][0]
+    .getAttribute("width");
+  const barCount = displays.filter(d => d === "bar").length;
+
   // Update datas to use named x/y and include `showLabelBelow`.
   // We need to add `showLabelBelow` before data is filtered to show every nth value.
   datas = datas.map((data, seriesIndex) => {
@@ -308,7 +314,10 @@ function onRenderValueLabels(
           // last point point or next is greater than y
           (i === data.length - 1 || data[i + 1][1] > y);
         const showLabelBelow = isLocalMin && display === "line";
-        return { x, y, showLabelBelow, seriesIndex };
+        const rotated = barCount > 1 && display === "bar" && barWidth < 40;
+        const hidden =
+          !showAll && barCount > 1 && display === "bar" && barWidth < 20;
+        return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
       })
       .filter(d => display !== "bar" || d.y !== 0);
   });
@@ -345,8 +354,6 @@ function onRenderValueLabels(
   const xScale = chart.x();
   const yScaleForSeries = index =>
     yAxisSplit[0].includes(index) ? chart.y() : chart.rightY();
-
-  const barCount = displays.filter(d => d === "bar").length;
 
   // Ordinal bar charts and histograms need extra logic to center the label.
   const xShifts = displays.map((display, index) => {
@@ -407,9 +414,10 @@ function onRenderValueLabels(
     if (yPos > yMax) {
       yPos = yScale(y) - 8;
     }
-    return { xPos, yPos };
+    return { xPos, yPos, yHeight: yMax - yPos };
   };
 
+  const MIN_ROTATED_HEIGHT = 50;
   const addLabels = (data, compact = null) => {
     // make sure we don't add .value-lables multiple times
     parent.select(".value-labels").remove();
@@ -423,16 +431,29 @@ function onRenderValueLabels(
       .data(data)
       .enter()
       .append("g")
+      .attr("text-anchor", d =>
+        !d.rotated
+          ? "middle"
+          : xyPos(d).yHeight < MIN_ROTATED_HEIGHT
+          ? "start"
+          : "end",
+      )
       .attr("transform", d => {
-        const { xPos, yPos } = xyPos(d);
-        return `translate(${xPos}, ${yPos})`;
+        const { xPos, yPos, yHeight } = xyPos(d);
+        const transforms = [`translate(${xPos}, ${yPos})`];
+        if (d.rotated) {
+          transforms.push(
+            "rotate(-90)",
+            `translate(${yHeight < MIN_ROTATED_HEIGHT ? -3 : -15}, 4)`,
+          );
+        }
+        return transforms.join(" ");
       });
 
     ["value-label-outline", "value-label"].forEach(klass =>
       labelGroups
         .append("text")
         .attr("class", klass)
-        .attr("text-anchor", "middle")
         .text(({ y, seriesIndex }) =>
           formatYValue(y, {
             compact: compact === null ? compactForSeries[seriesIndex] : compact,
@@ -442,8 +463,8 @@ function onRenderValueLabels(
   };
 
   const nthForSeries = datas.map((data, index) => {
-    if (showAll) {
-      // show all
+    if (showAll || (barCount > 1 && displays[index] === "bar")) {
+      // show all is turned on or this is a bar in a grouped bar chart
       return 1;
     }
     // auto fit
