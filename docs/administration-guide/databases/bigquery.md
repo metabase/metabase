@@ -12,7 +12,7 @@ You'll need to have a [Google Cloud Platform](https://cloud.google.com/) account
 
 ## Google Cloud Platform: creating a service account and JSON file
 
-You'll first need a [service account](https://cloud.google.com/iam/docs/service-accounts) JSON file that Metabase can use to access your BigQuery data set. Service accounts are intended for non-human users (such as applications like Metabase) to authorize their API calls.
+You'll first need a [service account](https://cloud.google.com/iam/docs/service-accounts) JSON file that Metabase can use to access your BigQuery dataset. Service accounts are intended for non-human users (such as applications like Metabase) to authorize their API calls.
 
 To create the service account JSON file, follow Google's documentation on [setting up a service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts) for your BigQuery dataset. Here's the basic flow:
 
@@ -82,18 +82,30 @@ When you're done, click the **Save** button. A modal should pop up, informing yo
 
 ![Database added](../images/database-added.png)
 
-For now, click on the **I'm good thanks**.
+You can click on **Explore this data** to have **Metabot** summarize the tables in your dataset, or click on the **I'm good thanks** to return to **Metabase Admin** mode.
 
-You should now see your new BigQuery database listed in the admin **Databases** section. Click on your new database, and look for the actions box to the the right.
+Give Metabase some time to sync with BigQuery, then exit the Admin mode, click on **Browse Data**, find your dataabase, and start exploring your data!
 
 ![Actions](../images/database-actions.png)
+
+### Managing your database connection 
+
+You should now see your BigQuery database listed in the **Databases** section of **Metabase Admin** mode.
+
+If you've recently updated your dataset, and don't want to wait for the normally scheduled sync, you can manually [**Sync** the schema](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#database-syncing) and [**Re-scan** the field values](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#scanning-for-field-values). Click on your new database, and look for the actions box to the the right.
 
 Click buttons to:
 
 - Sync database schema now
 - Re-scan field values now
 
-Give Metabase some time to sync with BigQuery, then exit the Admin mode, click on **Browse Data**, find your dataabase, and start exploring your data!
+The size of your dataset will determine how long these operations take to complete.
+
+You can also toggle the [sliders](#sliders) described above at anytime, or upload a new service account JSON file.
+
+### Deleting Your database
+
+See [deleting databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#deleting-databases).
 
 ## Using Legacy SQL
 
@@ -107,4 +119,4 @@ FROM [my_dataset.my_table]
 
 ## Troubleshooting
 
-If you're having trouble, check out [Metabase's discussion forum](https://discourse.metabase.com/search?q=bigquery) to see if someone has had and resolved a similar issue.
+If you're having trouble with your BigQuery connection, check out [Metabase's discussion forum](https://discourse.metabase.com/search?q=bigquery) to see if someone has had and resolved a similar issue.
