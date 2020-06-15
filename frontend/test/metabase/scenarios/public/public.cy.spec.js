@@ -6,7 +6,6 @@ import {
   popover,
   modal,
 } from "__support__/cypress";
-import { SAMPLE_DATASET } from "__support__/metadata";
 
 const COUNT_ALL = "200";
 const COUNT_DOOHICKEY = "42";
@@ -20,14 +19,42 @@ const USERS = {
 };
 
 describe("scenarios > public", () => {
-  before(restore);
+  let questionId;
+  before(() => {
+    restore();
+    signInAsAdmin();
+    cy.request("POST", "/api/card", {
+      name: "sql param",
+      dataset_query: {
+        type: "native",
+        native: {
+          query: "select count(*) from products where {{c}}",
+          "template-tags": {
+            c: {
+              id: "e116f242-fbaa-1feb-7331-21ac59f021cc",
+              name: "c",
+              "display-name": "Category",
+              type: "dimension",
+              dimension: ["field-id", 6],
+              default: null,
+              "widget-type": "category",
+            },
+          },
+        },
+        database: 1,
+      },
+      display: "scalar",
+      visualization_settings: {},
+    }).then(({ body }) => {
+      questionId = body.id;
+    });
+  });
 
   beforeEach(() => {
     signInAsAdmin();
     cy.server();
   });
 
-  let questionId;
   let questionPublicLink;
   let questionEmbedUrl;
   let dashboardId;
@@ -36,82 +63,6 @@ describe("scenarios > public", () => {
 
   describe("questions", () => {
     // Note: Test suite is sequential, so individual test cases can't be run individually
-    it("should allow users to create parameterized SQL questions", () => {
-      cy.visit(`/question/new?type=native&database=${SAMPLE_DATASET.id}`);
-      cy.get(".ace_text-input").type(
-        "select count(*) from products where {{c}}",
-        {
-          force: true,
-          parseSpecialCharSequences: false,
-        },
-      );
-
-      // HACK: disable the editor due to weirdness with `.type()` on other elements typing into editor
-      cy.window().then(win => {
-        win.document.querySelectorAll(".ace_text-input")[0].disabled = true;
-      });
-
-      cy.contains("Filter widget label")
-        .siblings("input")
-        .type("Category");
-
-      cy.contains("Text").click();
-      popover()
-        .contains("Field Filter")
-        .click();
-
-      popover()
-        .contains("Products")
-        .click();
-      popover()
-        .contains("Category")
-        .click();
-
-      cy.get(".Icon-play")
-        .first()
-        .click();
-      cy.contains(COUNT_ALL);
-
-      cy.contains("Category").click();
-      popover()
-        .contains("Doohickey")
-        .click();
-      popover()
-        .contains("Add filter")
-        .click();
-
-      cy.get(".Icon-play")
-        .first()
-        .click();
-      cy.contains(COUNT_DOOHICKEY);
-
-      cy.focused().blur();
-
-      // This is needed to work around a timing bug. Without closing the editor,
-      // part of the question name was getting entered into the ace editor.
-      cy.get(".Icon-contract").click();
-
-      cy.contains("Save").click();
-      modal()
-        .find('input[name="name"]')
-        .focus()
-        .type("sql param");
-      modal()
-        .contains("button", "Save")
-        .should("not.be.disabled")
-        .click();
-
-      modal()
-        .contains("Not now")
-        .click();
-
-      cy.url()
-        .should("match", /\/question\/\d+\?c=Doohickey$/)
-        .then(url => {
-          questionId = parseInt(url.match(/question\/(\d+)/)[1]);
-        });
-    });
-
     it("should allow users to create parameterized dashboards", () => {
       cy.visit(`/question/${questionId}`);
 
