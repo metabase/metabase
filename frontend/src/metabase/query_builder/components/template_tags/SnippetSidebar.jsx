@@ -14,10 +14,8 @@ import { color } from "metabase/lib/colors";
 import Snippets from "metabase/entities/snippets";
 
 import type { Snippet } from "metabase/meta/types/Snippet";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 type Props = {
-  query: NativeQuery,
   onClose: () => void,
   setModalSnippet: () => void,
   openSnippetModalWithSelectedText: () => void,
@@ -46,7 +44,6 @@ export default class SnippetSidebar extends React.Component {
   searchBox: ?HTMLInputElement;
 
   static propTypes = {
-    query: PropTypes.object.isRequired,
     onClose: PropTypes.func.isRequired,
     setModalSnippet: PropTypes.func.isRequired,
     openSnippetModalWithSelectedText: PropTypes.func.isRequired,
@@ -81,13 +78,12 @@ export default class SnippetSidebar extends React.Component {
   );
 
   render() {
-    const { query, snippets, openSnippetModalWithSelectedText } = this.props;
+    const { snippets, openSnippetModalWithSelectedText } = this.props;
     const { showSearch, searchString, showArchived } = this.state;
     const filteredSnippets = snippets.filter(
       snippet =>
-        (!showSearch ||
-          snippet.name.toLowerCase().includes(searchString.toLowerCase())) &&
-        query.databaseId() === snippet.database_id,
+        !showSearch ||
+        snippet.name.toLowerCase().includes(searchString.toLowerCase()),
     );
 
     if (showArchived) {
@@ -182,20 +178,16 @@ export default class SnippetSidebar extends React.Component {
                 />
               </div>
             </div>
-            {query.databaseId() == null ? (
-              <p className="text-body text-centered">{t`Select a database to see its snippets.`}</p>
-            ) : (
-              <div className="flex-full">
-                {filteredSnippets.map(snippet => (
-                  <SnippetRow
-                    key={snippet.id}
-                    snippet={snippet}
-                    insertSnippet={this.props.insertSnippet}
-                    setModalSnippet={this.props.setModalSnippet}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="flex-full">
+              {filteredSnippets.map(snippet => (
+                <SnippetRow
+                  key={snippet.id}
+                  snippet={snippet}
+                  insertSnippet={this.props.insertSnippet}
+                  setModalSnippet={this.props.setModalSnippet}
+                />
+              ))}
+            </div>
           </div>
         )}
       </SidebarContent>

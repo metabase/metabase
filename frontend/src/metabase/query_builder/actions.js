@@ -535,11 +535,8 @@ export const SET_MODAL_SNIPPET = "metabase/qb/SET_MODAL_SNIPPET";
 export const setModalSnippet = createAction(SET_MODAL_SNIPPET);
 
 export const openSnippetModalWithSelectedText = () => (dispatch, getState) => {
-  const database_id = getQuestion(getState())
-    .query()
-    .databaseId();
   const content = getNativeEditorSelectedText(getState());
-  dispatch(setModalSnippet({ database_id, content }));
+  dispatch(setModalSnippet({ content }));
 };
 
 export const closeSnippetModal = () => (dispatch, getState) => {
