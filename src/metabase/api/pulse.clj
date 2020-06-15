@@ -195,7 +195,7 @@
   {:ok true})
 
 (api/defendpoint DELETE "/:id/subscription/email"
-  "For uses to remove themselves from a pulse subscription"
+  "For users to unsubscribe themselves from a pulse subscription."
   [id]
   (api/let-404 [pulse-id (db/select-one-id Pulse :id id)
                 pc-id    (db/select-one-id PulseChannel :pulse_id pulse-id :channel_type "email")

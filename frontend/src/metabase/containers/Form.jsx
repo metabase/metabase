@@ -46,6 +46,7 @@ export type FormFieldDefinition = {
   initial?: FormValue | (() => FormValue),
   normalize?: (value: FormValue) => FormValue,
   validate?: (value: FormValue, props: FormProps) => ?FormError | boolean,
+  readOnly?: boolean,
 };
 
 export type FormDefinition = {

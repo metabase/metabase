@@ -81,6 +81,9 @@
     #".*javax.net.ssl.SSLHandshakeException: PKIX path building failed.*"
     (driver.common/connection-error-messages :certificate-not-trusted)
 
+    #".*MongoSocketReadException: Prematurely reached end of stream.*"
+    (driver.common/connection-error-messages :requires-ssl)
+
     #".*"                               ; default
     message))
 

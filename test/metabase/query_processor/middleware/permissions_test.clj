@@ -224,44 +224,62 @@
 (deftest e2e-nested-source-card-test
   (testing "Make sure permissions are calculated for Card -> Card -> Source Query (#12354)"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp* [Collection [collection]
-                      Card       [card-1 {:collection_id (u/get-id collection)
-                                          :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})}]
-                      Card       [card-2 {:collection_id (u/get-id collection)
-                                          :dataset_query (mt/mbql-query nil
-                                                           {:source-table (format "card__%d" (u/get-id card-1))})}]]
-        (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
+      (mt/with-temp-copy-of-db
+        (perms/revoke-permissions! (perms-group/all-users) (mt/id))
+        (mt/with-temp Collection [collection]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-          (mt/with-test-user :rasta
-            (let [expected [[1 "Red Medicine"           4 10.0646 -165.374 3]
-                            [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
-              (testing "Should be able to run Card 1 [Card -> Source Query]"
-                (is (= expected
-                       (mt/rows
-                         (qp/process-userland-query (assoc (:dataset_query card-1)
-                                                           :info {:executed-by (mt/user->id :rasta)
-                                                                  :card-id     (u/get-id card-1)}))))))
+          (doseq [[card-1-query-type card-1-query] {"MBQL"   (mt/mbql-query venues
+                                                               {:order-by [[:asc $id]], :limit 2})
+                                                    "native" (mt/native-query
+                                                               {:query (str "SELECT id, name, category_id, latitude, longitude, price "
+                                                                            "FROM venues "
+                                                                            "ORDER BY id ASC "
+                                                                            "LIMIT 2")})}]
+            (testing (format "\nCard 1 is a %s query" card-1-query-type)
+              (mt/with-temp Card [{card-1-id :id, :as card-1} {:collection_id (u/get-id collection)
+                                                               :dataset_query card-1-query}]
+                (doseq [[card-2-query-type card-2-query] {"MBQL"   (mt/mbql-query nil
+                                                                     {:source-table (format "card__%d" card-1-id)})
+                                                          "native" (mt/native-query
+                                                                     {:query         "SELECT * FROM {{card}}"
+                                                                      :template-tags {"card" {:name         "card"
+                                                                                              :display-name "card"
+                                                                                              :type         :card
+                                                                                              :card-id      card-1-id}}})}]
+                  (testing (format "\nCard 2 is a %s query" card-2-query-type)
+                    (mt/with-temp Card [card-2 {:collection_id (u/get-id collection)
+                                                :dataset_query card-2-query}]
+                      (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
+                        (mt/with-test-user :rasta
+                          (let [expected [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                                          [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
+                            (testing "Should be able to run Card 1 directly"
+                              (is (= expected
+                                     (mt/rows
+                                       (qp/process-userland-query (assoc (:dataset_query card-1)
+                                                                         :info {:executed-by (mt/user->id :rasta)
+                                                                                :card-id     card-1-id}))))))
 
-              (testing "Should be able to run Card 2 [Card -> Card -> Source Query]"
-                (is (= expected
-                       (mt/rows
-                         (qp/process-userland-query (assoc (:dataset_query card-2)
-                                                           :info {:executed-by (mt/user->id :rasta)
-                                                                  :card-id     (u/get-id card-2)}))))))
+                            (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
+                              (is (= expected
+                                     (mt/rows
+                                       (qp/process-userland-query (assoc (:dataset_query card-2)
+                                                                         :info {:executed-by (mt/user->id :rasta)
+                                                                                :card-id     (u/get-id card-2)}))))))
 
-              (testing "Should be able to run query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
-                (is (= expected
-                       (mt/rows
-                         (qp/process-userland-query (assoc (mt/mbql-query nil
-                                                             {:source-table (format "card__%d" (u/get-id card-1))})
-                                                           :info {:executed-by (mt/user->id :rasta)}))))))
+                            (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
+                              (is (= expected
+                                     (mt/rows
+                                       (qp/process-userland-query (assoc (mt/mbql-query nil
+                                                                           {:source-table (format "card__%d" card-1-id)})
+                                                                         :info {:executed-by (mt/user->id :rasta)}))))))
 
-              (testing "Should be able to run query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
-                (is (= expected
-                       (mt/rows
-                         (qp/process-userland-query (assoc (mt/mbql-query nil
-                                                             {:source-table (format "card__%d" (u/get-id card-2))})
-                                                           :info {:executed-by (mt/user->id :rasta)})))))))))))))
+                            (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
+                              (is (= expected
+                                     (mt/rows
+                                       (qp/process-userland-query (assoc (mt/mbql-query nil
+                                                                           {:source-table (format "card__%d" (u/get-id card-2))})
+                                                                         :info {:executed-by (mt/user->id :rasta)}))))))))))))))))))))
 
 (deftest e2e-ignore-user-supplied-card-ids-test
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."

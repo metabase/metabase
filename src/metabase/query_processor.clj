@@ -164,11 +164,8 @@
 
 (defn query->native
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
-  SQL form). (Like `preprocess`, this function will throw an Exception if preprocessing was not successful.)
-  (Currently, this function is mostly used by tests and in the REPL; `mbql-to-native/mbql->native` middleware handles
-  simliar functionality for queries that are actually executed.)"
+  SQL form). Like `preprocess`, this function will throw an Exception if preprocessing was not successful."
   [query]
-  (perms/check-current-user-has-adhoc-native-query-perms query)
   (preprocess-query query {:nativef
                            (fn [query context]
                              (context/raisef (qp.reducible/quit query) context))}))

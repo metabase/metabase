@@ -54,7 +54,10 @@
    (deferred-tru "Looks like the username or password is incorrect.")
 
    :certificate-not-trusted
-   (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")})
+   (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")
+
+   :requires-ssl
+   (deferred-tru "Server appears to require SSL - please enable SSL above")})
 
 ;; TODO - we should rename these from `default-*-details` to `default-*-connection-property`
 

@@ -104,7 +104,7 @@
 
 (s/defn get-table :- Table
   ([{{:keys [project-id dataset-id]} :details, :as database} table-id]
-   (get-table (database->client database) project-id dataset-id table-id))
+   (get-table (database->client database) (find-project-id project-id (database->credential database)) dataset-id table-id))
 
   ([client :- Bigquery, project-id :- su/NonBlankString, dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
    (google/execute (.get (.tables client) project-id dataset-id table-id))))
@@ -210,7 +210,7 @@
 
 (defn- ^QueryResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} sql parameters]
-   (execute-bigquery (database->client database) project-id sql parameters))
+   (execute-bigquery (database->client database) (find-project-id project-id (database->credential database)) sql parameters))
 
   ([^Bigquery client ^String project-id ^String sql parameters]
    {:pre [client (seq project-id) (seq sql)]}

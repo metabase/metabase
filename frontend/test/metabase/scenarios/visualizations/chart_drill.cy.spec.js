@@ -63,6 +63,12 @@ describe("scenarios > visualizations > chart drill", () => {
   });
 
   it("should drill through a nested query", () => {
+    // There's a slight hiccup in the UI with nested questions when we Summarize by City below.
+    // Because there's only 5 rows, it automatically switches to the chart, but issues another
+    // dataset request. So we wait for the dataset to load.
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
     // save a question of people in CA
     cy.request("POST", "/api/card", {
       name: "CA People",
@@ -89,6 +95,7 @@ describe("scenarios > visualizations > chart drill", () => {
       .click();
 
     // wait for chart to load
+    cy.wait("@dataset");
     cy.contains("Count by City");
     // drill into the first bar
     cy.get(".bar")

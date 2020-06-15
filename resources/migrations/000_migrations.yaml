@@ -6284,3 +6284,79 @@ databaseChangeLog:
             tableName: query_cache
             columnName: updated_at
             newDataType: ${timestamp_type}
+
+# Create the native query snippets table, intended to store snippets and their metadata
+  - changeSet:
+      id: 167
+      author: walterl
+      comment: 'Added 0.36.0'
+      changes:
+        - createTable:
+            tableName: native_query_snippet
+            remarks: 'Query snippets to be substituted in native queries'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: integer
+                  constraints:
+                    nullable: false
+                    references: metabase_database(id)
+                    foreignKeyName: fk_snippet_database_id
+                    deleteCascade: true
+              - column:
+                  name: name
+                  type: VARCHAR(254)
+                  remarks: 'Name of the query snippet'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: content
+                  type: text
+                  remarks: 'Raw query snippet'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_snippet_creator_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: native_query_snippet
+            indexName: idx_snippet_database_id
+            columns:
+              - column:
+                  name: database_id
+        - addUniqueConstraint:
+            tableName: native_query_snippet
+            constraintName: idx_unique_name_database_id
+            columnNames: name, database_id
