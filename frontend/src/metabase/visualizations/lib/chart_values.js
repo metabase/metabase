@@ -7,7 +7,7 @@ import { isHistogramBar } from "./renderer_utils";
 
 /*
 There's a lot of messy logic in this function. Its purpose is to place text labels at the appropriate place over a chart.
-To do this it has to match the behavior in dc.js and our own hacks on top of that. Here's a description of what it does:
+To do this it has to match the behavior in dc.js and our own hacks on top of that. Here are some things it does:
  - Show labels under (rather than over) local minima on line charts.
  - Hide labels to only show every nth label if there isn't enough horizontal space.
  - Rotate labels for tightly spaced grouped bar chart.
@@ -50,11 +50,14 @@ export function onRenderValueLabels(
   // Count max points in a single series to estimate when labels should be hidden
   const maxSeriesLength = Math.max(...datas.map(d => d.length));
 
-  const barWidth = chart
-    .svg()
-    .select("rect")[0][0]
-    .getAttribute("width");
+  let barWidth;
   const barCount = displays.filter(d => d === "bar").length;
+  if (barCount > 0) {
+    barWidth = chart
+      .svg()
+      .select("rect.bar")[0][0]
+      .getAttribute("width");
+  }
 
   const xScale = chart.x();
   const yScaleForSeries = index =>
