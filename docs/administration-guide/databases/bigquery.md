@@ -1,10 +1,9 @@
 ## Working with Google BigQuery in Metabase
 
-This page provides information on how to connect Metabase to a Google [Bigquery](https://cloud.google.com/bigquery) dataset.
+This page provides information on how to create and manage a connection to a Google [Bigquery](https://cloud.google.com/bigquery) dataset.
 
-- **Starting in v0.15.0**, Metabase provides a driver for connecting to BigQuery directly and executing queries against any datasets you have.  
-
-- **Starting in v0.36.0**, Metabase allows you to connect to your BigQuery dataset using a [Service Account](https://cloud.google.com/iam/docs/understanding-service-accounts).
+> **Starting in v0.15.0**, Metabase provides a driver for connecting to BigQuery directly and executing queries against any datasets you have.  
+>**Starting in v0.36.0**, Metabase allows you to connect to your BigQuery dataset using a [Service Account](https://cloud.google.com/iam/docs/understanding-service-accounts).
 
 ## Prerequisites
 
@@ -84,7 +83,7 @@ When you're done, click the **Save** button. A modal should pop up, informing yo
 
 You can click on **Explore this data** to have **Metabot** summarize the tables in your dataset, or click on the **I'm good thanks** to return to **Metabase Admin** mode.
 
-Give Metabase some time to sync with BigQuery, then exit the Admin mode, click on **Browse Data**, find your dataabase, and start exploring your data!
+Give Metabase some time to sync with BigQuery, then exit the Admin mode, click on **Browse Data**, find your database, and start exploring your data!
 
 ![Actions](../images/database-actions.png)
 
@@ -120,3 +119,14 @@ FROM [my_dataset.my_table]
 ## Troubleshooting
 
 If you're having trouble with your BigQuery connection, check out [Metabase's discussion forum](https://discourse.metabase.com/search?q=bigquery) to see if someone has had and resolved a similar issue.
+
+## Further reading
+
+- [Managing databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html).
+- [Metadata editing](https://www.metabase.com/docs/latest/administration-guide/03-metadata-editing.html).
+- [Creating segments and metrics](https://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html).
+- [Setting data access permissions](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html).
+- [Creating collections](https://www.metabase.com/docs/latest/administration-guide/06-collections.html).
+
+
+
