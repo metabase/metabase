@@ -85,4 +85,8 @@
     (with-redefs [sql-jdbc.sync/filter-tables-with-select-privilege (constantly nil)]
       (sync/sync-database! (data/db))
       (is (= 0 (count-active-tables-in-db (data/id)))
-          "We shouldn't sync tables for which we don't have select privilege"))))
+          "We shouldn't sync tables for which we don't have select privilege"))
+    (testing "Do we fallback to SELECT probe"
+      (with-redefs [sql-jdbc.sync/accessible-tables-for-user (constantly false)]
+        (sync/sync-database! (data/db))
+        (is (= 1 (count-active-tables-in-db (data/id))))))))
