@@ -119,7 +119,7 @@ FROM [my_dataset.my_table]
 
 ## Troubleshooting
 
-If you're having trouble with your BigQuery connection, check out [Metabase's discussion forum](https://discourse.metabase.com/search?q=bigquery) to see if someone has had and resolved a similar issue.
+If you're having trouble with your BigQuery connection, check out [Metabase's discussion forum](https://discourse.metabase.com/search?q=bigquery) to see if someone has encountered and resolved a similar issue.
 
 ## Further reading
 
