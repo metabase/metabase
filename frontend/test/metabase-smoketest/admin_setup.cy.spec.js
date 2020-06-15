@@ -326,9 +326,9 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Data Model").click();
       cy.findByText("Orders").click();
       cy.get(".TableEditor-table-name")
-        .wait(1)
+        .wait(500)
         .clear()
-        .wait(1)
+        .wait(500)
         .type("Test Table");
 
       cy.get("input")
@@ -415,9 +415,9 @@ describe("smoketest > admin_setup", () => {
 
       // Check column name and visibility in notebook editor
 
-      cy.get(".Icon-notebook").click();
+      cy.get(".Icon-notebook").click({ force: true });
 
-      cy.wait(3000)
+      cy.wait(1000)
         .findByText("Orders")
         .should("not.exist");
       cy.findByText("Custom column");
@@ -438,6 +438,8 @@ describe("smoketest > admin_setup", () => {
       cy.get(".Icon-gear")
         .eq(6)
         .click();
+      cy.findByText("Plain input box").click();
+      cy.findByText("Search box").click();
       cy.findByText("Use original value").click();
       cy.findByText("Use foreign key").click();
       cy.findByText("Title").click();
@@ -450,7 +452,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.visit("/browse/1");
       cy.findByText("Test Table").click();
-
+      
       cy.findByText("Product ID");
       cy.findAllByText("Awesome Concrete Shoes");
       cy.findAllByText("Mediocre Wooden Bench");
@@ -458,10 +460,10 @@ describe("smoketest > admin_setup", () => {
         .eq("1")
         .contains("14")
         .should("not.exist");
-
+      
       // Check key config in notebook editor (pulls up title with ID #, not from actual title)
-
-      cy.get(".Icon-notebook").click();
+      
+      cy.get(".Icon-notebook").click({ force: true });
       cy.wait(3000)
         .findByText("Filter")
         .click();
@@ -470,8 +472,11 @@ describe("smoketest > admin_setup", () => {
         .click();
       cy.get("input")
         .last()
-        // .type("Awesome Concrete Shoes"); // *** Should accept string, but only accepts ints
-        .type("14");
+        .type("Awesome Concrete");
+      cy.wait(1000)
+        .findAllByText("Awesome Concrete Shoes")
+        .last()
+        .click();
       cy.findByText("Add filter").click();
       cy.findByText("Visualize").click();
 
@@ -684,9 +689,11 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("New collection").click();
       cy.findByLabelText("Name").type("test sub-collection");
-      cy.findByLabelText("Description").type(
-        "very descriptive of test sub-collection",
-      );
+      cy.findByLabelText("Description")
+        .wait(1)
+        .type(
+          "very descriptive of test sub-collection",
+        );
       cy.get(".Icon-chevrondown").click();
       cy.findAllByText("Our analytics")
         .last()
@@ -802,12 +809,13 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Orders").click();
       cy.findByText("Summarize").click();
       cy.wait(1000)
-        .contains("Quantity")
-        .last()
+        .get(".Icon-int")
+        .eq(1)
         .click();
       cy.findAllByText("Done").click();
 
-      cy.findByText("Quantity");
+      cy.wait(1000)
+        .findByText("Quantity");
       cy.findByText("Product ID").should("not.exist");
 
       cy.findAllByText("Save")
@@ -831,20 +839,22 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should be able to add a sub collection as a user", () => {
-      signOut();
-      signIn("nocollection");
       cy.visit("/collection/root");
 
-      // *** Problem: User cannot add new collection, but should be able to
-      // cy.wait(3000)
-      //   .findByText("New collection")
-      //   .click();
+      cy.wait(3000)
+        .findByText("New collection")
+        .click();
 
-      // cy.findByLabelText("Name").type("test sub-collection");
-      // cy.findByLabelText("very descriptive of test sub-collection");
-      // cy.findByText("Marketing");
+      cy.findByLabelText("Name").type("test sub-collection");
+      cy.findByLabelText("Description").type("very descriptive of test sub-collection");
+      cy.get(".Icon-chevrondown").click();
+      cy.findAllByText("Our analytics")
+        .last()
+        .click();
 
-      // cy.findByText("Save").click();
+      cy.findByText("Create").click();
+
+      cy.get(".Icon-all")
     });
 
     it("should be able to view collections I have access to, but not ones that I don't (even with URL) as user", () => {
