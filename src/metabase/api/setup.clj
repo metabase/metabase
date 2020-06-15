@@ -183,7 +183,7 @@
   [_]
   {:title       (tru "Switch to a production-ready app database")
    :group       (tru "Get connected")
-   :description (tru "Migrate off of the default H2 application database to something like PostgreSQL or MySQL.")
+   :description (tru "Migrate off of the default H2 application database to PostgreSQL or MySQL.")
    :link        "https://www.metabase.com/docs/latest/operations-guide/migrating-from-h2.html"
    :completed   (> (db/count User) 1)
    :triggered   (or (db/exists? Dashboard)
