@@ -15,7 +15,7 @@
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
              [session :refer [Session]]]
             [metabase.util
-             [i18n :as i18n :refer [trs]]
+             [i18n :as i18n :refer [deferred-tru trs]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -163,7 +163,9 @@
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
-  {su/KeywordOrString s/Any})
+  (su/with-api-error-message
+      {su/KeywordOrString s/Any}
+    (deferred-tru "login attribute keys must be a keyword or string")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
