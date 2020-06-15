@@ -15,8 +15,6 @@ const FormToggleWidget = ({
     {showEnabledLabel && (
       <span className="text-bold mx1">
         {/* HACK: ensure a consistent width by always rendering both labels */}
-        <div style={field.value ? {} : HIDDEN_STYLE}>{t`Enabled`}</div>
-        <div style={field.value ? HIDDEN_STYLE : {}}>{t`Disabled`}</div>
       </span>
     )}
   </div>
