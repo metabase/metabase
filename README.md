@@ -1,3 +1,15 @@
+## MAJ metabase analytics
+
+```sh
+git pull upstream
+```
+
+Modify files (if needed) then build metabase
+
+```sh
+./bin/build
+```
+
 # Metabase
 Metabase is the easy, open source way for everyone in your company to ask questions and learn from data.
 
