@@ -297,11 +297,11 @@
 (defmethod sql-jdbc.sync/accessible-tables-for-user :mysql
   [_ db-or-id-or-spec user]
   (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-              [(format "SELECT table_name, table_schema AS table_schem
-                        FROM information_schema.table_privileges
-                        WHERE grantee like \"'%s'@%%\"
-                        AND privilege_type='SELECT'"
-                       user)]
+              ["SELECT table_name, table_schema AS table_schem
+                FROM information_schema.table_privileges
+                WHERE grantee like ?
+                  AND privilege_type='SELECT'"
+               (format "'%s'@%%" user)]
               {:result-set-fn set}))
 
 (defmethod sql-jdbc.sync/active-tables :mysql

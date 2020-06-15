@@ -95,7 +95,7 @@
     (vec (jdbc/metadata-result rs))))
 
 (defmulti accessible-tables-for-user
-  "Return a predicate which checks if user `user` has SELECT privilega for a given table"
+  "Return a predicate which checks if user `user` has SELECT privilege for a given table"
   {:arglists '([driver database user])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -125,7 +125,7 @@
 
    If no privileges are set (which is completely legal), querying the internal catalog (which is what `accessible-tables-for-user`
    uses) will return no results. On a per-table level this is indistinguishable from not having the
-   SELECT privilage. However if we don't have access to any of the tables, it's more likely that no
+   SELECT privilege. However if we don't have access to any of the tables, it's more likely that no
    privileges are set. In that case test the hypothesis by firing a simple SELECT against one of the
    tables. If that goes through we in fact have access rights (and our hypothesis is correct), so go
    ahead and return all the tables."
