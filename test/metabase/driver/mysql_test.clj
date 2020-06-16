@@ -216,9 +216,9 @@
     (testing "Do we correctly determine SELECT privilege"
       (let [db-name "privilege_test"
             spec    (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
-        (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS %s;
-                                      CREATE DATABASE %s;" db-name db-name)]
-                       {:transaction? false})
+        (doseq [statement [(format "DROP DATABASE IF EXISTS \"%s\";" db-name)
+                           (format "CREATE DATABASE \"%s\";" db-name)]]
+          (jdbc/execute! spec [statement] {:transaction? false}))
         (let [details (mt/dbdef->connection-details :mysql :db {:database-name db-name})
               spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
           (mt/with-temp Database [db {:engine  :mysql

@@ -14,7 +14,9 @@
              [sync :as sql-jdbc.sync]]
             [metabase.models.database :refer [Database]]
             [metabase.plugins.jdbc-proxy :as jdbc-proxy]
-            [metabase.test.data.redshift :as rstest]
+            [metabase.test.data
+             [interface :as tx]
+             [redshift :as rstest]]
             [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :plugins))
