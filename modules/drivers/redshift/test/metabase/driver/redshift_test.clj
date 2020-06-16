@@ -73,7 +73,7 @@
     (testing "Do we correctly determine SELECT privilege"
       (let [db-name "privilege_test"
             spec    (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift :server nil))]
-        (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
+        (jdbc/execute! spec [(format "DROP DATABASE \"%s\";
                                       CREATE DATABASE \"%s\";" db-name db-name)]
                        {:transaction? false})
         (let [details (mt/dbdef->connection-details :redshift :db {:database-name db-name})

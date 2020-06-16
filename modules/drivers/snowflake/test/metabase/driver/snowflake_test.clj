@@ -159,7 +159,7 @@
           (jdbc/execute! spec [statement] {:transaction? false}))
         (mt/with-temp Database [db {:engine  :snowflake
                                     :details (assoc details :dbname db-name)}]
-          (doseq [statement ["create user if not exists GUEST password 'guest';"
+          (doseq [statement ["create user if not exists GUEST;"
                              "drop table if exists \"birds\";"
                              "create table \"birds\" ();"
                              "grant all on \"birds\" to GUEST;"]]

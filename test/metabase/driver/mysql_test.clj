@@ -216,14 +216,14 @@
     (testing "Do we correctly determine SELECT privilege"
       (let [db-name "privilege_test"
             spec    (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
-        (doseq [statement [(format "DROP DATABASE IF EXISTS \"%s\";" db-name)
-                           (format "CREATE DATABASE \"%s\";" db-name)]]
+        (doseq [statement [(format "DROP DATABASE IF EXISTS %s;" db-name)
+                           (format "CREATE DATABASE %s;" db-name)]]
           (jdbc/execute! spec [statement] {:transaction? false}))
         (let [details (mt/dbdef->connection-details :mysql :db {:database-name db-name})
               spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
           (mt/with-temp Database [db {:engine  :mysql
                                       :details details}]
-            (doseq [statement ["create user if not exists GUEST password 'guest';"
+            (doseq [statement ["create user if not exists GUEST;"
                                "drop table if exists \"birds\";"
                                "create table \"birds\" ();"
                                "grant all on \"birds\" to GUEST;"]]

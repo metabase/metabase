@@ -220,7 +220,7 @@
                                       :details details}]
             (doseq [statement ["create user GUEST;"
                                "drop table if exists \"birds\";"
-                               "create table \"birds\" ();"
+                               "create table \"birds\" (id integer);"
                                "grant all on \"birds\" to GUEST;"]]
               (jdbc/execute! spec [statement]))
             (is (= #{{:table_name "birds" :table_schem nil}}
