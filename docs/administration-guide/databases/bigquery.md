@@ -76,7 +76,7 @@ When you're done, click the **Save** button. A modal should pop up, informing yo
 
 ![Database added](../images/database-added.png)
 
-You can click on **Explore this data** to see some automatic explorations of your data, or click on the **I'm good thanks** to return to **Metabase Admin** mode.
+You can click on **Explore this data** to see some automatic explorations of your data, or click **I'm good thanks** to stay in the Admin Panel.
 
 Give Metabase some time to sync with your BigQuery dataset, then exit Admin mode, click on **Browse Data**, find your database, and start exploring your data.
 
@@ -100,5 +100,4 @@ If you're having trouble with your BigQuery connection, check out [Metabase's di
 - [Metadata editing](https://www.metabase.com/docs/latest/administration-guide/03-metadata-editing.html).
 - [Creating segments and metrics](https://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html).
 - [Setting data access permissions](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html).
-
 
