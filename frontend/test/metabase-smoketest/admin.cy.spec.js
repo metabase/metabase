@@ -133,10 +133,12 @@ describe("metabase-smoketest > admin", () => {
       cy.findByLabelText("Description").type(
         "Bar graph illustrating where our customers come from",
       );
-      // When I select 'My personal collection' I get the error "Referential integrity constraint violation:"
-      // cy.findByText("Our analytics").click();
-      // cy.findByText("My personal collection").click();
+
+      // *** When I select 'My personal collection' I get the error "Referential integrity constraint violation:"
+      cy.findByText("Our analytics").click();
+      cy.findByText("My personal collection").click();
       // cy.contains("My personal collection");
+
       cy.findAllByText("Save")
         .last()
         .click();
