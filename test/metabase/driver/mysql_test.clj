@@ -40,8 +40,8 @@
             (jdbc/execute! spec [sql]))
           ;; create & sync MB DB
           (tt/with-temp Database [database {:engine "mysql", :details details}]
-            (sync/sync-database! mt)
-            (database/with-db database
+            (sync/sync-database! database)
+            (mt/with-db database
               ;; run the query
               (is (= [[1 nil]]
                      (mt/rows
