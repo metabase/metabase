@@ -361,9 +361,9 @@
                       "  type \"bird type\" NOT NULL"
                       ");")
                  (str "INSERT INTO birds (\"name\", status, \"type\") VALUES"
-                      "  ('Rasta', 'toucan', 'good bird'),"
-                      "  ('Lucky', 'pigeon', 'angry bird'),"
-                      "  ('Theodore', 'turkey', 'delicious bird');")]]
+                      "  ('Rasta', 'good bird', 'toucan'),"
+                      "  ('Lucky', 'angry bird', 'pigeon'),"
+                      "  ('Theodore', 'delicious bird', 'turkey');")]]
       (jdbc/execute! conn [sql]))))
 
 (defn- do-with-enums-db {:style/indent 0} [f]

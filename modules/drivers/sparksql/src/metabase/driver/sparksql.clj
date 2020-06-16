@@ -121,7 +121,7 @@
                                                       (dash-to-underscore table-name)))])]
        (set
         (for [[idx {col-name :col_name, data-type :data_type, :as result}] (m/indexed results)
-              :when                                                  (valid-describe-table-row? result)]
+              :when (valid-describe-table-row? result)]
           {:name              col-name
            :database-type     data-type
            :base-type         (sql-jdbc.sync/database-type->base-type :hive-like (keyword data-type))

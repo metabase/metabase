@@ -1,6 +1,7 @@
 (ns metabase.api.field-test
   "Tests for `/api/field` endpoints."
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase
              [models :refer [Database Field FieldValues Table]]
              [test :as mt]
@@ -20,7 +21,7 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :created_at :updated_at :timezone])
+   (select-keys (mt/db) [:id :timezone])
    (dissoc (mt/object-defaults Database) :details)
    {:engine   "h2"
     :name     "test-data"
@@ -63,7 +64,8 @@
              :has_field_values "list"
              :dimensions       []
              :name_field       nil})
-           ((mt/user->client :rasta) :get 200 (format "field/%d" (mt/id :users :name)))))))
+           (-> ((mt/user->client :rasta) :get 200 (format "field/%d" (mt/id :users :name)))
+               (m/dissoc-in [:table :db :updated_at] [:table :db :created_at]))))))
 
 (deftest get-field-summary-test
   (testing "GET /api/field/:id/summary"
