@@ -47,9 +47,6 @@ export function onRenderValueLabels(
   }
   const showAll = chart.settings["graph.label_value_frequency"] === "all";
 
-  // Count max points in a single series to estimate when labels should be hidden
-  const maxSeriesLength = Math.max(...datas.map(d => d.length));
-
   let barWidth;
   const barCount = displays.filter(d => d === "bar").length;
   if (barCount > 0) {
@@ -99,6 +96,9 @@ export function onRenderValueLabels(
       })
       .filter(d => !(display === "bar" && d.y === 0));
   });
+
+  // Count max points in a single series to estimate when labels should be hidden
+  const maxSeriesLength = Math.max(...datas.map(d => d.length));
 
   const formattingSetting = chart.settings["graph.label_value_formatting"];
   const compactForSeries = datas.map(data => {
