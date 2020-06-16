@@ -59,6 +59,14 @@ function isCardQueryName(name) {
   return CARD_TAG_REGEX.test(name);
 }
 
+function snippetNameFromTagName(name) {
+  return name.slice("snippet:".length).trim();
+}
+
+function isSnippetName(name) {
+  return name.startsWith("snippet:");
+}
+
 export default class NativeQuery extends AtomicQuery {
   // For Flow type completion
   _nativeDatasetQuery: NativeDatasetQuery;
@@ -261,6 +269,9 @@ export default class NativeQuery extends AtomicQuery {
   templateTags(): TemplateTag[] {
     return Object.values(this.templateTagsMap());
   }
+  templateTagsWithoutSnippets(): TemplateTag[] {
+    return this.templateTags().filter(t => t.type !== "snippet");
+  }
   templateTagsMap(): TemplateTags {
     return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
   }
@@ -325,7 +336,7 @@ export default class NativeQuery extends AtomicQuery {
       // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
       // variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
       let match;
-      const re = /\{\{\s*([A-Za-z0-9_]+?|#[0-9]*)\s*\}\}/g;
+      const re = /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_]+?|#[0-9]*)\s*\}\}/g;
       while ((match = re.exec(queryText)) != null) {
         tags.push(match[1]);
       }
@@ -353,6 +364,9 @@ export default class NativeQuery extends AtomicQuery {
           if (isCardQueryName(newTag.name)) {
             newTag.type = "card";
             newTag["card-id"] = cardTagCardId(newTag.name);
+          } else if (isSnippetName(newTag.name)) {
+            newTag.type = "snippet";
+            newTag.snippet_name = snippetNameFromTagName(newTag.name);
           }
           templateTags[newTag.name] = newTag;
           delete templateTags[oldTags[0]];
@@ -376,6 +390,12 @@ export default class NativeQuery extends AtomicQuery {
               templateTags[tagName] = Object.assign(templateTags[tagName], {
                 type: "card",
                 "card-id": cardTagCardId(tagName),
+              });
+            } else if (isSnippetName(tagName)) {
+              // extract snippet name from snippet tag
+              templateTags[tagName] = Object.assign(templateTags[tagName], {
+                type: "snippet",
+                snippet_name: snippetNameFromTagName(tagName),
               });
             }
           }

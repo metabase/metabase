@@ -42,6 +42,21 @@
   [x]
   (instance? ReferencedCardQuery x))
 
+;; An "NativeQuerySnippet" parameter expands to the partial query snippet stored in the referenced `NativeQuerySnippet`.
+;;
+;; `snippet-id` is the ID of the `NativeQuerySnippet` instance from where the snippet content is loaded.
+;;
+;; `content` is the raw query snippet which will be replaced, verbatim, for this template tag.
+(p.types/defrecord+ NativeQuerySnippet [snippet-id content]
+  PrettyPrintable
+  (pretty [this]
+    (list 'map->NativeQuerySnippet (into {} this))))
+
+(defn NativeQuerySnippet?
+  "Is `x` an instance of the `NativeQuerySnippet` record type?"
+  [x]
+  (instance? NativeQuerySnippet x))
+
 ;; as in a literal date, defined by date-string S
 ;;
 ;; TODO - why don't we just parse this into a Temporal type and let drivers handle it.

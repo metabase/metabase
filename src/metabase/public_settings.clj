@@ -58,8 +58,10 @@
     (assert (u/url? s) (tru "Invalid site URL: {0}" (pr-str s)))
     s))
 
+(declare redirect-all-requests-to-https)
+
 ;; This value is *guaranteed* to never have a trailing slash :D
-;; It will also prepend `http://` to the URL if there's not protocol when it comes in
+;; It will also prepend `http://` to the URL if there's no protocol when it comes in
 (defsetting site-url
   (deferred-tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
   :visibility :public
@@ -69,7 +71,12 @@
               (catch AssertionError e
                 (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
   :setter (fn [new-value]
-            (setting/set-string! :site-url (some-> new-value normalize-site-url))))
+            (let [new-value (some-> new-value normalize-site-url)
+                  https?    (some-> new-value (str/starts-with?  "https:" ))]
+              ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
+              (when-not https?
+                (redirect-all-requests-to-https false))
+              (setting/set-string! :site-url new-value))))
 
 (defsetting site-locale
   (str (deferred-tru "The language that should be used for Metabase's UI, system emails, pulses, and alerts.")
@@ -283,4 +290,12 @@
   (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")
   :visibility :public
   :type       :boolean
-  :default    false)
+  :default    false
+  :setter     (fn [new-value]
+                ;; if we're trying to enable this setting, make sure `site-url` is actually an HTTPS URL.
+                (when (if (string? new-value)
+                        (setting/string->boolean new-value)
+                        new-value)
+                  (assert (some-> (site-url) (str/starts-with? "https:"))
+                          (tru "Cannot redirect requests to HTTPS unless `site-url` is HTTPS.")))
+                (setting/set-boolean! :redirect-all-requests-to-https new-value)))

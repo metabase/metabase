@@ -207,3 +207,29 @@
                     :parameters [{:type   "date/single"
                                   :target ["variable" ["template-tag" "date"]]
                                   :value  "2014-08-02"}]}))))))))
+
+(deftest splice-strings-test
+  (mt/test-driver :presto
+    (let [query (mt/mbql-query venues
+                  {:aggregation [[:count]]
+                   :filter      [:= $name "wow"]})]
+      (testing "The native query returned in query results should use user-friendly splicing"
+        (is (= (str "SELECT count(*) AS \"count\" "
+                    "FROM \"default\".\"test_data_venues\" "
+                    "WHERE \"default\".\"test_data_venues\".\"name\" = 'wow'")
+               (:query (qp/query->native-with-spliced-params query))
+               (-> (qp/process-query query) :data :native_form :query))))
+
+      (testing "When actually running the query we should use paranoid splicing and hex-encode strings"
+        (let [orig    @#'presto/execute-presto-query
+              the-sql (atom nil)]
+          (with-redefs [presto/execute-presto-query (fn [details sql canceled-chan respond]
+                                                      (reset! the-sql sql)
+                                                      (with-redefs [presto/execute-presto-query orig]
+                                                        (orig details sql canceled-chan respond)))]
+            (qp/process-query query)
+            (is (= (str "-- Metabase\n"
+                        "SELECT count(*) AS \"count\" "
+                        "FROM \"default\".\"test_data_venues\" "
+                        "WHERE \"default\".\"test_data_venues\".\"name\" = from_utf8(from_hex('776f77'))")
+                   @the-sql))))))))

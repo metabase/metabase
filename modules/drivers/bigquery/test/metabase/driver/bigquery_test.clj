@@ -4,38 +4,34 @@
              [driver :as driver]
              [models :refer [Field Table]]
              [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [sync :as sync]]
+             [sync :as sync]
+             [test :as mt]]
             [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
-            [metabase.test.data
-             [bigquery :as bigquery.tx]
-             [datasets :as datasets]]))
+            [metabase.test.data.bigquery :as bigquery.tx]
+            [metabase.test.util :as tu]))
 
 (deftest table-rows-sample-test
-  (datasets/test-driver :bigquery
+  (mt/test-driver :bigquery
     (is (= [[1 "Red Medicine"]
             [2 "Stout Burgers & Beers"]
             [3 "The Apple Pan"]
             [4 "Wurstküche"]
             [5 "Brite Spot Family Restaurant"]]
-           (->> (metadata-queries/table-rows-sample (Table (data/id :venues))
-                  [(Field (data/id :venues :id))
-                   (Field (data/id :venues :name))])
+           (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
+                  [(Field (mt/id :venues :id))
+                   (Field (mt/id :venues :name))])
                 (sort-by first)
                 (take 5))))))
 
 (deftest db-timezone-id-test
-  (datasets/test-driver :bigquery
+  (mt/test-driver :bigquery
     (is (= "UTC"
            (tu/db-timezone-id)))))
 
 (defn- do-with-view [f]
   (driver/with-driver :bigquery
     (let [view-name (name (munge (gensym "view_")))]
-      (data/with-temp-copy-of-db
+      (mt/with-temp-copy-of-db
         (try
           (bigquery.tx/execute!
            (str "CREATE VIEW `test_data.%s` "
@@ -57,9 +53,9 @@
   `(do-with-view (fn [~(or view-name-binding '_)] ~@body)))
 
 (deftest sync-views-test
-  (datasets/test-driver :bigquery
+  (mt/test-driver :bigquery
     (with-view [view-name]
-      (is (contains? (:tables (driver/describe-database :bigquery (data/db)))
+      (is (contains? (:tables (driver/describe-database :bigquery (mt/db)))
                      {:schema nil, :name view-name})
           "`describe-database` should see the view")
       (is (= {:schema nil
@@ -67,16 +63,16 @@
               :fields #{{:name "id", :database-type "INTEGER", :base-type :type/Integer}
                         {:name "venue_name", :database-type "STRING", :base-type :type/Text}
                         {:name "category_name", :database-type "STRING", :base-type :type/Text}}}
-             (driver/describe-table :bigquery (data/db) {:name view-name}))
+             (driver/describe-table :bigquery (mt/db) {:name view-name}))
           "`describe-tables` should see the fields in the view")
-      (sync/sync-database! (data/db))
-      (is (= [[1 "Asian" "Red Medicine"]
-              [2 "Burger" "Stout Burgers & Beers"]
-              [3 "Burger" "The Apple Pan"]]
-             (qp.test/rows
-               (qp/process-query
-                 {:database (data/id)
-                  :type     :query
-                  :query    {:source-table (data/id view-name)
-                             :order-by     [[:asc (data/id view-name :id)]]}})))
-          "We should be able to run queries against the view (#3414)"))))
+      (sync/sync-database! (mt/db))
+      (testing "We should be able to run queries against the view (#3414)"
+        (is (= [[1 "Asian" "Red Medicine"]
+                [2 "Burger" "Stout Burgers & Beers"]
+                [3 "Burger" "The Apple Pan"]]
+               (mt/rows
+                 (qp/process-query
+                  {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table (mt/id view-name)
+                              :order-by     [[:asc (mt/id view-name :id)]]}}))))))))

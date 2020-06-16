@@ -12,6 +12,7 @@ const StandardForm = ({ onClose, submitTitle, ...props }) => (
           <FormField key={formField.name} name={formField.name} />
         ))}
         <FormFooter
+          footerExtraButtons={props.footerExtraButtons}
           onCancel={onClose}
           submitTitle={
             submitTitle || (values.id != null ? t`Update` : t`Create`)

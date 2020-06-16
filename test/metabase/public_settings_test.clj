@@ -77,6 +77,25 @@
           (is (= nil
                  (public-settings/site-url))))))))
 
+(deftest site-url-should-update-https-redirect-test
+  (testing "Changing `site-url` to non-HTTPS should disable forced HTTPS redirection"
+    (mt/with-temporary-setting-values [site-url                       "https://example.com"
+                                       redirect-all-requests-to-https true]
+      (is (= true
+             (public-settings/redirect-all-requests-to-https)))
+      (public-settings/site-url "http://example.com")
+      (is (= false
+             (public-settings/redirect-all-requests-to-https)))))
+
+  (testing "Changing `site-url` to non-HTTPS should disable forced HTTPS redirection"
+    (mt/with-temporary-setting-values [site-url                       "https://example.com"
+                                       redirect-all-requests-to-https true]
+      (is (= true
+             (public-settings/redirect-all-requests-to-https)))
+      (public-settings/site-url "https://different.example.com")
+      (is (= true
+             (public-settings/redirect-all-requests-to-https))))))
+
 (deftest translate-public-setting
   (mt/with-mock-i18n-bundles {"zz" {"Host" "HOST"}}
     (mt/with-user-locale "zz"
@@ -131,3 +150,23 @@
         (is (= "en"
                (public-settings/site-locale))
             "should default to English")))))
+
+(deftest redirect-all-requests-to-https-test
+  (testing "Shouldn't be allowed to set `redirect-all-requests-to-https` to `true` unless `site-url` is HTTPS"
+    (doseq [v [true "true"]]
+      (testing (format "\nSet value to ^%s %s" (.getCanonicalName (class v)) (pr-str v))
+        (testing "\n`site-url` *is* HTTPS"
+          (mt/with-temporary-setting-values [site-url                       "https://example.com"
+                                             redirect-all-requests-to-https false]
+            (public-settings/redirect-all-requests-to-https v)
+            (is (= true
+                   (public-settings/redirect-all-requests-to-https)))))
+
+        (testing "\n`site-url` is not HTTPS"
+          (mt/with-temporary-setting-values [site-url                       "http://example.com"
+                                             redirect-all-requests-to-https false]
+            (is (thrown?
+                 AssertionError
+                 (public-settings/redirect-all-requests-to-https v)))
+            (is (= false
+                   (public-settings/redirect-all-requests-to-https)))))))))

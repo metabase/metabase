@@ -509,7 +509,8 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod splice-parameters-into-native-query ::driver [_ query]
+(defmethod splice-parameters-into-native-query ::driver
+  [_ query]
   query)
 
 

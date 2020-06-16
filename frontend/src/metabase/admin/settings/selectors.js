@@ -3,6 +3,8 @@ import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
 import { t } from "ttag";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
+import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
+import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
@@ -48,12 +50,14 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "site-url",
         display_name: t`Site URL`,
         type: "string",
+        widget: SiteUrlWidget,
       },
       {
         key: "redirect-all-requests-to-https",
         display_name: t`Redirect to HTTPS`,
         type: "boolean",
-        note: t`This value only takes effect if Site URL is HTTPS`,
+        getHidden: ({ "site-url": url }) => !/^https:\/\//.test(url),
+        widget: HttpsOnlyWidget,
       },
       {
         key: "admin-email",
@@ -211,7 +215,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-  formatting: {
+  localization: {
     name: t`Localization`,
     settings: [
       {
@@ -223,7 +227,11 @@ const SECTIONS = updateSectionsWithPlugins({
           ([code, name]) => name,
         ).map(([code, name]) => ({ name, value: code })),
         defaultValue: "en",
-        note: t`Changes to this value will take effect after you reload the page.`,
+        onChanged: (oldLocale, newLocale) => {
+          if (oldLocale !== newLocale) {
+            window.location.reload();
+          }
+        },
       },
       {
         display_name: t`Localization options`,

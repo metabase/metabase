@@ -39,6 +39,7 @@ import {
   getIsRunnable,
   getIsResultDirty,
   getMode,
+  getModalSnippet,
   getQuery,
   getQuestion,
   getOriginalQuestion,
@@ -52,6 +53,8 @@ import {
   getIsPreviewable,
   getIsVisualized,
   getIsLiveResizable,
+  getNativeEditorCursorOffset,
+  getNativeEditorSelectedText,
 } from "../selectors";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -143,6 +146,9 @@ const mapStateToProps = (state, props) => {
       props,
     ),
     queryStartTime: getQueryStartTime(state),
+    nativeEditorCursorOffset: getNativeEditorCursorOffset(state),
+    nativeEditorSelectedText: getNativeEditorSelectedText(state),
+    modalSnippet: getModalSnippet(state),
   };
 };
 

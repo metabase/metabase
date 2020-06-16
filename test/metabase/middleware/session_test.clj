@@ -169,10 +169,10 @@
   (let [handler        (-> (fn [_ respond _]
                              (respond i18n/*user-locale*))
                            mw.session/bind-current-user
-                           mw.session/wrap-current-user-id)
-        session-locale (fn [session-id]
+                           mw.session/wrap-current-user-info)
+        session-locale (fn [session-id & {:as more}]
                          (handler
-                          {:metabase-session-id session-id}
+                          (merge {:metabase-session-id session-id} more)
                           identity
                           (fn [e] (throw e))))]
     (testing "No Session"
@@ -185,11 +185,19 @@
           (let [session-id (str (UUID/randomUUID))]
             (db/insert! Session {:id session-id, :user_id user-id})
             (is (= nil
-                   (session-locale session-id))))))
+                   (session-locale session-id)))
+
+            (testing "w/ X-Metabase-Locale header"
+              (is (= "es_MX"
+                     (session-locale session-id :headers {"x-metabase-locale" "es-mx"})))))))
 
       (testing "for user *with* `:locale`"
         (mt/with-temp User [{user-id :id} {:locale "es-MX"}]
           (let [session-id (str (UUID/randomUUID))]
             (db/insert! Session {:id session-id, :user_id user-id, :created_at :%now})
             (is (= "es_MX"
-                   (session-locale session-id)))))))))
+                   (session-locale session-id)))
+
+            (testing "w/ X-Metabase-Locale header"
+              (is (= "en_GB"
+                     (session-locale session-id :headers {"x-metabase-locale" "en-GB"}))))))))))
