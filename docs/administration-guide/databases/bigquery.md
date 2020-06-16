@@ -92,7 +92,7 @@ FROM [my_dataset.my_table]
 
 ## Troubleshooting
 
-If you're having trouble with your BigQuery connection, check out [Metabase's discussion forum](https://discourse.metabase.com/search?q=bigquery) to see if someone has encountered and resolved a similar issue.
+If you're having trouble with your BigQuery connection, you can check out this [troubleshooting guide](https://www.metabase.com/docs/latest/troubleshooting-guide/datawarehouse.html), or visit [Metabase's discussion forum](https://discourse.metabase.com/search?q=bigquery) to see if someone has encountered and resolved a similar issue.
 
 ## Further reading
 
