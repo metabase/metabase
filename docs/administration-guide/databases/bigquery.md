@@ -72,7 +72,7 @@ By default, Metabase does a lightweight hourly sync and an intensive daily scan 
 
 ### Save your database configuration
 
-When you're done, click the **Save** button. A modal should pop up, informing you that your database have been added.
+When you're done, click the **Save** button. A modal should pop up, informing you that your database has been added.
 
 ![Database added](../images/database-added.png)
 
@@ -100,6 +100,5 @@ If you're having trouble with your BigQuery connection, check out [Metabase's di
 - [Metadata editing](https://www.metabase.com/docs/latest/administration-guide/03-metadata-editing.html).
 - [Creating segments and metrics](https://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html).
 - [Setting data access permissions](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html).
-
 
 
