@@ -72,7 +72,7 @@
       (let [db-name "privilege_test"
             details (mt/dbdef->connection-details :redshift :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :redshift details)]
-        (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
+        (jdbc/execute! spec [(format "DROP DATABASE \"%s\";
                                       CREATE DATABASE \"%s\";" db-name db-name)]
                        {:transaction? false})
         (mt/with-temp Database [db {:engine  :redshift

@@ -528,7 +528,7 @@
                              "create table \"birds\" ();"
                              "grant all on \"birds\" to rasta;"]]
             (jdbc/execute! spec [statement]))
-          (is (= #{{:table_name "birds" :table_schem nil}}
+          (is (= #{{:table_name "birds" :table_schem "public"}}
                  (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")))
           (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
           (is (empty? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta"))))))))

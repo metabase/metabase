@@ -40,8 +40,8 @@
             (jdbc/execute! spec [sql]))
           ;; create & sync MB DB
           (tt/with-temp Database [database {:engine "mysql", :details details}]
-            (sync/sync-database! database)
-            (mt/with-db database
+            (sync/sync-database! mt)
+            (database/with-db database
               ;; run the query
               (is (= [[1 nil]]
                      (mt/rows
@@ -215,19 +215,20 @@
   (mt/test-driver :mysql
     (testing "Do we correctly determine SELECT privilege"
       (let [db-name "privilege_test"
-            details (mt/dbdef->connection-details :mysql :db {:database-name db-name})
-            spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+            spec    (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
         (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
                                       CREATE DATABASE \"%s\";" db-name db-name)]
                        {:transaction? false})
-        (mt/with-temp Database [db {:engine  :mysql
-                                    :details (assoc details :dbname db-name)}]
-          (doseq [statement ["create user if not exists GUEST password 'guest';"
-                             "drop table if exists \"birds\";"
-                             "create table \"birds\" ();"
-                             "grant all on \"birds\" to GUEST;"]]
-            (jdbc/execute! spec [statement]))
-          (is (= #{{:table_name "birds" :table_schem nil}}
-                 (sql-jdbc.sync/accessible-tables-for-user :mysql db "GUEST")))
-          (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
-          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :mysql db "GUEST"))))))))
+        (let [details (mt/dbdef->connection-details :mysql :db {:database-name db-name})
+              spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+          (mt/with-temp Database [db {:engine  :mysql
+                                      :details details}]
+            (doseq [statement ["create user if not exists GUEST password 'guest';"
+                               "drop table if exists \"birds\";"
+                               "create table \"birds\" ();"
+                               "grant all on \"birds\" to GUEST;"]]
+              (jdbc/execute! spec [statement]))
+            (is (= #{{:table_name "birds" :table_schem nil}}
+                   (sql-jdbc.sync/accessible-tables-for-user :mysql db "GUEST")))
+            (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
+            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :mysql db "GUEST")))))))))
