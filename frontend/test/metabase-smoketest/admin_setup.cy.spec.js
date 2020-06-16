@@ -61,7 +61,6 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should setup email", () => {
-      // Requirs "python -m smtpd -n -c DebuggingServer localhost:1025" in terminal first
       // *** Maybe switch to using something like maildev
 
       cy.findByText("Settings").click();
@@ -74,7 +73,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByPlaceholderText("smtp.yourservice.com").type("localhost");
       cy.findByPlaceholderText("587").type("1025");
       cy.findByText("None").click();
-      // Leaves password and username blank 
+      // Leaves password and username blank
       cy.findByPlaceholderText("metabase@yourcompany.com").type(
         "test@local.host",
       );
@@ -87,8 +86,10 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Send test email").click();
 
-      cy.findByText("Sent!")
-      cy.findByText("Sorry, something went wrong.  Please try again").should("not.exist");
+      cy.findByText("Sent!");
+      cy.findByText("Sorry, something went wrong.  Please try again").should(
+        "not.exist",
+      );
     });
 
     it("should setup Slack", () => {
@@ -340,9 +341,12 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should change a column name, visibility, and formatting as admin", () => {
+      cy.visit("/admin/datamodel/database/1/table/2");
+
       // Changing column name from Discount to Sale
 
-      cy.get("input")
+      cy.wait(1000)
+        .get("input")
         .eq(5)
         .clear()
         .wait(1)
@@ -454,7 +458,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.visit("/browse/1");
       cy.findByText("Test Table").click();
-      
+
       cy.findByText("Product ID");
       cy.findAllByText("Awesome Concrete Shoes");
       cy.findAllByText("Mediocre Wooden Bench");
@@ -462,9 +466,9 @@ describe("smoketest > admin_setup", () => {
         .eq("1")
         .contains("14")
         .should("not.exist");
-      
+
       // Check key config in notebook editor (pulls up title with ID #, not from actual title)
-      
+
       cy.get(".Icon-notebook").click({ force: true });
       cy.wait(3000)
         .findByText("Filter")
@@ -693,9 +697,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByLabelText("Name").type("test sub-collection");
       cy.findByLabelText("Description")
         .wait(1)
-        .type(
-          "very descriptive of test sub-collection",
-        );
+        .type("very descriptive of test sub-collection");
       cy.get(".Icon-chevrondown").click();
       cy.findAllByText("Our analytics")
         .last()
@@ -751,19 +753,21 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Yes").click();
 
-      // Modify permissions for sub-collection
       cy.findByText("View sub-collections").click();
 
-      cy.get(".Icon-check")
-        .last()
-        .click();
-      cy.findByText("Revoke access").click();
-      cy.get(".Icon-eye").click();
-      cy.findByText("Revoke access").click();
+      // Give collection full access to sub-collection
       cy.get(".Icon-close")
         .last()
         .click();
       cy.findByText("Curate collection").click();
+      // Revoke Marketing access to sub-collection
+      cy.get(".Icon-check")
+        .last()
+        .click();
+      cy.findByText("Revoke access").click();
+      // Revoke data access to sub-collection
+      cy.get(".Icon-eye").click();
+      cy.findByText("Revoke access").click();
       cy.findByText("Save Changes").click();
 
       cy.findByText("Save permissions?");
@@ -816,8 +820,7 @@ describe("smoketest > admin_setup", () => {
         .click();
       cy.findAllByText("Done").click();
 
-      cy.wait(1000)
-        .findByText("Quantity");
+      cy.wait(1000).findByText("Quantity");
       cy.findByText("Product ID").should("not.exist");
 
       cy.findAllByText("Save")
@@ -847,8 +850,10 @@ describe("smoketest > admin_setup", () => {
         .findByText("New collection")
         .click();
 
-      cy.findByLabelText("Name").type("test sub-collection");
-      cy.findByLabelText("Description").type("very descriptive of test sub-collection");
+      cy.findByLabelText("Name").type("test user added sub-collection");
+      cy.findByLabelText("Description").type(
+        "very descriptive of test user added sub-collection",
+      );
       cy.get(".Icon-chevrondown").click();
       cy.findAllByText("Our analytics")
         .last()
@@ -856,7 +861,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Create").click();
 
-      cy.get(".Icon-all")
+      cy.get(".Icon-all");
     });
 
     it("should be able to view collections I have access to, but not ones that I don't (even with URL) as user", () => {
@@ -865,27 +870,17 @@ describe("smoketest > admin_setup", () => {
       cy.visit("/collection/root");
 
       cy.findByText("My personal collection");
-      cy.findByText("test sub-collection").should("not.exist");
+      cy.findByText("test sub-collection");
 
       cy.visit("/collection/6");
 
-      cy.wait(3000)
-        .findByText("This collection is empty, like a blank canvas")
-        .should("not.exist");
-      cy.findByText("Sorry, you don’t have permission to see that.");
-
-      // Check access as no collection user
-
-      signOut();
-      signIn("nocollection");
-      cy.visit("/collection/6");
-
+      cy.wait(3000).findByText("This collection is empty, like a blank canvas");
       cy.findByText("Sorry, you don’t have permission to see that.").should(
         "not.exist",
       );
-      cy.findByText("This collection is empty, like a blank canvas");
 
       // Check editing abiltiy as no collection user (resetting to what we made it before)
+
       cy.get(".Icon-pencil");
 
       cy.findByText("Ask a question").click();
@@ -897,7 +892,7 @@ describe("smoketest > admin_setup", () => {
         .clear()
         .wait(1)
         .type("q for sub-collection");
-      cy.findByText("No Collection Tableton's Personal Collection").click();
+      cy.findByText("Robert Tableton's Personal Collection").click();
 
       cy.findByText("My personal collection");
 
@@ -906,16 +901,34 @@ describe("smoketest > admin_setup", () => {
         .last()
         .click();
       cy.findByText("Not now").click();
-      // *** Should work
+
       cy.findByText("test sub-collection").click();
 
       cy.findByText("Sorry, you don’t have permission to see that.").should(
         "not.exist",
       );
       cy.findByText("q for sub-collection");
+
+      // Check access as no collection user
+
+      signOut();
+      signIn("nocollection");
+      cy.visit("/");
+
+      cy.findByText("test sub-collection").should("not.exist");
+
+      cy.visit("/collection/6");
+
+      cy.findByText("Sorry, you don’t have permission to see that.");
+      cy.findByText("This collection is empty, like a blank canvas").should(
+        "not.exist",
+      );
     });
 
     it("should not be able to access question with URL, but no permissions", () => {
+      signOut();
+      signIn("nocollection");
+
       cy.visit("/question/4");
       cy.findByText("q for sub-collection").should("not.exist");
       cy.findByText("Sorry, you don’t have permission to see that.");
