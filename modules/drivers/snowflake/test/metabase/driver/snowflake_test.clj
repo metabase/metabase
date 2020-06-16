@@ -152,19 +152,20 @@
   (mt/test-driver :snowflake
     (testing "Do we correctly determine SELECT privilege"
       (let [db-name "privilege_test"
-            details (mt/dbdef->connection-details :snowflake :db {:database-name db-name})
-            spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
-        (doseq [statement [(format "DROP DATABASE IF EXISTS \"%s\";" db-name)
-                           (format "CREATE DATABASE \"%s\";" db-name)]]
+            spec    (sql-jdbc.conn/connection-details->spec :snowflake (tx/dbdef->connection-details :snowflake :server nil))]
+        (doseq [statement [(format "DROP DATABASE IF EXISTS %s;" db-name)
+                           (format "CREATE DATABASE %s;" db-name)]]
           (jdbc/execute! spec [statement] {:transaction? false}))
-        (mt/with-temp Database [db {:engine  :snowflake
-                                    :details (assoc details :dbname db-name)}]
-          (doseq [statement ["create user if not exists GUEST;"
-                             "drop table if exists \"birds\";"
-                             "create table \"birds\" ();"
-                             "grant all on \"birds\" to GUEST;"]]
-            (jdbc/execute! spec [statement]))
-          (is (= #{{:table_name "birds" :table_schem nil}}
-                 (sql-jdbc.sync/accessible-tables-for-user :snowflake db "GUEST")))
-          (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
-          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :snowflake db "GUEST"))))))))
+        (let [details (mt/dbdef->connection-details :snowflake :db {:database-name db-name})
+              spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
+          (mt/with-temp Database [db {:engine  :snowflake
+                                      :details details}]
+            (doseq [statement ["create user if not exists GUEST;"
+                               "drop table if exists `birds`;"
+                               "create table `birds` ();"
+                               "grant all on `birds` to GUEST;"]]
+              (jdbc/execute! spec [statement]))
+            (is (= #{{:table_name "birds" :table_schem nil}}
+                   (sql-jdbc.sync/accessible-tables-for-user :snowflake db "GUEST")))
+            (jdbc/execute! spec ["revoke all on `birds` from GUEST;"])
+            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :snowflake db "GUEST")))))))))

@@ -223,7 +223,7 @@
                                "create table \"birds\" (id integer);"
                                "grant all on \"birds\" to GUEST;"]]
               (jdbc/execute! spec [statement]))
-            (is (= #{{:table_name "birds" :table_schem nil}}
+            (is (= #{{:table_name "birds" :table_schem "dbo"}}
                    (sql-jdbc.sync/accessible-tables-for-user :sqlserver db "GUEST")))
             (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
             (is (empty? (sql-jdbc.sync/accessible-tables-for-user :sqlserver db "GUEST")))))))))

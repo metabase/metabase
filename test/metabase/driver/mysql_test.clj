@@ -224,11 +224,11 @@
           (mt/with-temp Database [db {:engine  :mysql
                                       :details details}]
             (doseq [statement ["create user if not exists GUEST;"
-                               "drop table if exists \"birds\";"
-                               "create table \"birds\" ();"
-                               "grant all on \"birds\" to GUEST;"]]
+                               "drop table if exists `birds`;"
+                               "create table `birds` ();"
+                               "grant all on `birds` to GUEST;"]]
               (jdbc/execute! spec [statement]))
             (is (= #{{:table_name "birds" :table_schem nil}}
                    (sql-jdbc.sync/accessible-tables-for-user :mysql db "GUEST")))
-            (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
+            (jdbc/execute! spec ["revoke all on `birds` from GUEST;"])
             (is (empty? (sql-jdbc.sync/accessible-tables-for-user :mysql db "GUEST")))))))))
