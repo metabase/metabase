@@ -10,10 +10,13 @@
              [query-processor-test :as qp.test]
              [test :as mt]
              [util :as u]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc
+             [connection :as sql-jdbc.conn]
+             [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.util :as driver.u]
             [metabase.models
+             [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor.test-util :as qp.test-util]
@@ -202,3 +205,24 @@
                                  :fk-field-id  (data/id :venues :category_id)
                                  :fields       :none}]}))))
         "Correct HoneySQL form should be generated")))
+
+(deftest determine-select-privilege
+  (mt/test-driver :oracle
+    (testing "Do we correctly determine SELECT privilege"
+      (let [db-name "privilege_test"
+            details (mt/dbdef->connection-details :oracle :db {:database-name db-name})
+            spec    (sql-jdbc.conn/connection-details->spec :oracle details)]
+        (jdbc/execute! [(format "DROP DATABASE IF EXISTS \"%s\";
+                                 CREATE DATABASE \"%s\";" db-name db-name)]
+                       {:transaction? false})
+        (mt/with-temp Database [db {:engine  :oracle
+                                    :details (assoc details :dbname db-name)}]
+          (doseq [statement ["create user if not exists GUEST password 'guest';"
+                             "drop table if exists \"birds\";"
+                             "create table \"birds\" ();"
+                             "grant all on \"birds\" to GUEST;"]]
+            (jdbc/execute! spec [statement]))
+          (is (= #{{:table_name "birds" :table_schem nil}}
+                 (sql-jdbc.sync/accessible-tables-for-user :oracle db "GUEST")))
+          (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
+          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle db "GUEST"))))))))

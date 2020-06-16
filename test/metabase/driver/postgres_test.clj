@@ -12,7 +12,8 @@
             [metabase.driver.postgres :as postgres]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]]
+             [execute :as sql-jdbc.execute]
+             [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
              [database :refer [Database]]
@@ -511,3 +512,22 @@
                    :field_ref    [:field-literal "sleep" :type/Text]
                    :name         "sleep"}]
                  (mt/cols results))))))))
+
+(deftest determine-select-privilege
+  (mt/test-driver :postgres
+    (testing "Do we correctly determine SELECT privilege"
+      (let [db-name "privilege_test"
+            details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (drop-if-exists-and-create-db! db-name)
+        (mt/with-temp Database [db {:engine  :postgres
+                                    :details (assoc details :dbname db-name)}]
+          (doseq [statement ["create user if not exists GUEST password 'guest';"
+                             "drop table if exists \"birds\";"
+                             "create table \"birds\" ();"
+                             "grant all on \"birds\" to GUEST;"]]
+            (jdbc/execute! spec [statement]))
+          (is (= #{{:table_name "birds" :table_schem nil}}
+                 (sql-jdbc.sync/accessible-tables-for-user :postgres db "GUEST")))
+          (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
+          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :postgres db "GUEST"))))))))

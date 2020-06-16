@@ -141,7 +141,7 @@
                                user)
                        "This might be due to no GRANTs being set. Falling back to probing privileges with a simple SELECT statement."))
         (let [[{:keys [table_name table_schem]} & _] tables]
-          (when (not-empty (simple-select-probe driver db-or-id-or-spec table_schem table_name))
+          (when (simple-select-probe driver db-or-id-or-spec table_schem table_name)
             tables))
         (catch Throwable _))
       accessible-tables)))

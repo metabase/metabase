@@ -2,6 +2,7 @@
   (:require [clojure
              [string :as str]
              [test :refer :all]]
+            [clojure.java.jdbc :as jdbc]
             [colorize.core :as colorize]
             [honeysql.core :as hsql]
             [java-time :as t]
@@ -13,9 +14,11 @@
              [test :as mt]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]]
+             [execute :as sql-jdbc.execute]
+             [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.models.database :refer [Database]]
             [metabase.query-processor
              [test-util :as qp.test-util]
              [timezone :as qp.timezone]]
@@ -202,3 +205,24 @@
                   (is (= [expected]
                          (row-thunk))
                       (format "SQL %s should return %s" (colorize/blue (pr-str sql)) (colorize/green expected))))))))))))
+
+(deftest determine-select-privilege
+  (mt/test-driver :sqlserver
+    (testing "Do we correctly determine SELECT privilege"
+      (let [db-name "privilege_test"
+            details (mt/dbdef->connection-details :sqlserver :db {:database-name db-name})
+            spec    (sql-jdbc.conn/connection-details->spec :sqlserver details)]
+        (jdbc/execute! [(format "DROP DATABASE IF EXISTS \"%s\";
+                                 CREATE DATABASE \"%s\";" db-name db-name)]
+                       {:transaction? false})
+        (mt/with-temp Database [db {:engine  :sqlserver
+                                    :details (assoc details :dbname db-name)}]
+          (doseq [statement ["create user if not exists GUEST password 'guest';"
+                             "drop table if exists \"birds\";"
+                             "create table \"birds\" ();"
+                             "grant all on \"birds\" to GUEST;"]]
+            (jdbc/execute! spec [statement]))
+          (is (= #{{:table_name "birds" :table_schem nil}}
+                 (sql-jdbc.sync/accessible-tables-for-user :sqlserver db "GUEST")))
+          (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
+          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :sqlserver db "GUEST"))))))))

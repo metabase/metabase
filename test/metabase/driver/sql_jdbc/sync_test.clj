@@ -51,22 +51,6 @@
   0
   (describe-database-with-open-resultset-count driver/*driver* (data/db)))
 
-;; Do we correctly determine SELECT privilege
-(deftest determine-select-privilege
-  (when-not (identical? (get-method sql-jdbc.sync/accessible-tables-for-user (:engine (mt/db)))
-                        (get-method sql-jdbc.sync/accessible-tables-for-user :sql-jdbc))
-    (one-off-dbs/with-blank-db
-      (doseq [statement ["create user if not exists GUEST password 'guest';"
-                         "set db_close_delay -1;"
-                         "drop table if exists \"birds\";"
-                         "create table \"birds\" ();"
-                         "grant all on \"birds\" to GUEST;"]]
-        (jdbc/execute! one-off-dbs/*conn* [statement]))
-      (is (= #{{:table_name "birds" :table_schem nil}}
-             (sql-jdbc.sync/accessible-tables-for-user (:engine (mt/db)) (mt/db) "GUEST")))
-      (jdbc/execute! one-off-dbs/*conn* ["revoke all on \"birds\" from GUEST;"])
-      (is (empty? (sql-jdbc.sync/accessible-tables-for-user (:engine (mt/db)) (mt/db) "GUEST"))))))
-
 (defn- count-active-tables-in-db
   [db-id]
   (db/count Table
@@ -87,6 +71,6 @@
       (is (= 0 (count-active-tables-in-db (data/id)))
           "We shouldn't sync tables for which we don't have select privilege"))
     (testing "Do we fallback to SELECT probe?"
-      (with-redefs [sql-jdbc.sync/accessible-tables-for-user (constantly false)]
+      (with-redefs [sql-jdbc.sync/accessible-tables-for-user (constantly (constantly false))]
         (sync/sync-database! (data/db))
         (is (= 1 (count-active-tables-in-db (data/id))))))))

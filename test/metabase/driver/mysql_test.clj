@@ -9,7 +9,9 @@
              [sync :as sync]
              [test :as mt]
              [util :as u]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc
+             [connection :as sql-jdbc.conn]
+             [sync :as sql-jdbc.sync]]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]]
@@ -208,3 +210,24 @@
                            ;; disable the middleware that normally converts `LocalTime` to `Strings` so we can verify
                            ;; our driver is actually doing the right thing
                            :middleware {:format-rows? false}))))))))))
+
+(deftest determine-select-privilege
+  (mt/test-driver :mysql
+    (testing "Do we correctly determine SELECT privilege"
+      (let [db-name "privilege_test"
+            details (mt/dbdef->connection-details :mysql :db {:database-name db-name})
+            spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+        (jdbc/execute! [(format "DROP DATABASE IF EXISTS \"%s\";
+                                 CREATE DATABASE \"%s\";" db-name db-name)]
+                       {:transaction? false})
+        (mt/with-temp Database [db {:engine  :mysql
+                                    :details (assoc details :dbname db-name)}]
+          (doseq [statement ["create user if not exists GUEST password 'guest';"
+                             "drop table if exists \"birds\";"
+                             "create table \"birds\" ();"
+                             "grant all on \"birds\" to GUEST;"]]
+            (jdbc/execute! spec [statement]))
+          (is (= #{{:table_name "birds" :table_schem nil}}
+                 (sql-jdbc.sync/accessible-tables-for-user :mysql db "GUEST")))
+          (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
+          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :mysql db "GUEST"))))))))
