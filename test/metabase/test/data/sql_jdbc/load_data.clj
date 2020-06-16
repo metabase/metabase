@@ -68,7 +68,7 @@
   specified. (This isn't meant for composition with `load-data-get-rows`; "
   [rows]
   (for [[i row] (m/indexed rows)]
-    (assoc row :id (inc i))))
+    (into {:id (inc i)} row)))
 
 (defn load-data-add-ids
   "Middleware function intended for use with `make-load-data-fn`. Add IDs to each row, presumabily for doing a parallel

@@ -37,8 +37,8 @@
         (doseq [[i row] (map-indexed (partial vector) rows)]
           (try
             ;; Insert each row
-            (mc/insert mongo-db (name table-name) (assoc (zipmap field-names row)
-                                                         :_id (inc i)))
+            (mc/insert mongo-db (name table-name) (into {:_id (inc i)}
+                                                        (zipmap field-names row)))
             ;; If row already exists then nothing to do
             (catch com.mongodb.MongoException _)))))))
 

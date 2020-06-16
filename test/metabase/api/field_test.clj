@@ -30,40 +30,41 @@
 
 (deftest get-field-test
   (testing "GET /api/field/:id"
-    (is (= (merge
-            (mt/object-defaults Field)
-            (db/select-one [Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version :database_position]
-              :id (mt/id :users :name))
-            {:table_id         (mt/id :users)
-             :table            (merge
-                                (mt/obj->json->obj (mt/object-defaults Table))
-                                (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :users))
-                                {:description             nil
-                                 :entity_type             "entity/UserTable"
-                                 :visibility_type         nil
-                                 :db                      (db-details)
-                                 :schema                  "PUBLIC"
-                                 :name                    "USERS"
-                                 :display_name            "Users"
-                                 :rows                    nil
-                                 :entity_name             nil
-                                 :active                  true
-                                 :id                      (mt/id :users)
-                                 :db_id                   (mt/id)
-                                 :caveats                 nil
-                                 :points_of_interest      nil
-                                 :show_in_getting_started false})
-             :special_type     "type/Name"
-             :name             "NAME"
-             :display_name     "Name"
-             :position         1
-             :id               (mt/id :users :name)
-             :visibility_type  "normal"
-             :database_type    "VARCHAR"
-             :base_type        "type/Text"
-             :has_field_values "list"
-             :dimensions       []
-             :name_field       nil})
+    (is (= (-> (merge
+                (mt/object-defaults Field)
+                (db/select-one [Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version :database_position]
+                  :id (mt/id :users :name))
+                {:table_id         (mt/id :users)
+                 :table            (merge
+                                    (mt/obj->json->obj (mt/object-defaults Table))
+                                    (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :users))
+                                    {:description             nil
+                                     :entity_type             "entity/UserTable"
+                                     :visibility_type         nil
+                                     :db                      (db-details)
+                                     :schema                  "PUBLIC"
+                                     :name                    "USERS"
+                                     :display_name            "Users"
+                                     :rows                    nil
+                                     :entity_name             nil
+                                     :active                  true
+                                     :id                      (mt/id :users)
+                                     :db_id                   (mt/id)
+                                     :caveats                 nil
+                                     :points_of_interest      nil
+                                     :show_in_getting_started false})
+                 :special_type     "type/Name"
+                 :name             "NAME"
+                 :display_name     "Name"
+                 :position         1
+                 :id               (mt/id :users :name)
+                 :visibility_type  "normal"
+                 :database_type    "VARCHAR"
+                 :base_type        "type/Text"
+                 :has_field_values "list"
+                 :dimensions       []
+                 :name_field       nil})
+               (m/dissoc-in [:table :db :updated_at] [:table :db :created_at]))
            (-> ((mt/user->client :rasta) :get 200 (format "field/%d" (mt/id :users :name)))
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at]))))))
 

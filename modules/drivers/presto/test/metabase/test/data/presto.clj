@@ -77,7 +77,7 @@
   (str "DROP TABLE IF EXISTS " (sql.tx/qualify-and-quote driver database-name table-name)))
 
 (defn- insert-sql [driver {:keys [database-name]} {:keys [table-name], :as tabledef} rows]
-  (let [field-definitions (conj (:field-definitions tabledef) {:field-name "id"})
+  (let [field-definitions (cons {:field-name "id"} (:field-definitions tabledef))
         columns           (map (comp keyword :field-name) field-definitions)
         [query & params]  (-> (apply h/columns columns)
                               (h/insert-into (apply hsql/qualify
