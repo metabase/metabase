@@ -90,9 +90,14 @@
        (map :name)
        set))
 
-(defn- verify-data-loaded-correctly
+(defmulti verify-data-loaded-correctly
   "Make sure the expected Tables and Fields are available *before* running sync. Otherwise the data was loaded
   incorrectly."
+  {:arglists '([driver database-definition database])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod verify-data-loaded-correctly :default
   [driver {:keys [table-definitions database-name]} database]
   (log/trace "verify data loaded correctly")
   (let [loaded-table-names (loaded-table-names driver database)

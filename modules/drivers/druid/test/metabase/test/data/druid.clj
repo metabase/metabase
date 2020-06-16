@@ -1,5 +1,7 @@
 (ns metabase.test.data.druid
-  (:require [metabase.test.data.interface :as tx]))
+  (:require [metabase.test.data
+             [impl :as tx.impl]
+             [interface :as tx]]))
 
 (tx/add-test-extensions! :druid)
 
@@ -14,4 +16,10 @@
 
 (defmethod tx/destroy-db! :druid
   [& _]
+  nil)
+
+;; no-op -- because the names of the columns actually loaded by Druid differ from ones in the database definition, the
+;; default impl will fail. TODO -- we should write an implementation that works for Druid
+(defmethod tx.impl/verify-data-loaded-correctly :druid
+  [_ _ _]
   nil)
