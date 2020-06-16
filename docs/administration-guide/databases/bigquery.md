@@ -80,28 +80,6 @@ You can click on **Explore this data** to see some automatic explorations of you
 
 Give Metabase some time to sync with your BigQuery dataset, then exit Admin mode, click on **Browse Data**, find your database, and start exploring your data.
 
-
-### Managing your database connection 
-
-You should now see your BigQuery database listed in the **Databases** section of **Metabase Admin** mode.
-
-If you've recently updated your dataset, and don't want to wait for the normally scheduled sync, you can manually [**Sync** the schema](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#database-syncing) and [**Re-scan** the field values](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#scanning-for-field-values). Click on your new database, and look for the actions box to the the right.
-
-![Actions](../images/database-actions.png)
-
-Actions include:
-
-- Sync database schema now
-- Re-scan field values now
-
-The size of your dataset will determine how long these operations take to complete.
-
-You can also update your [settings](#settings), or upload a new service account JSON file.
-
-### Danger Zone
-
-Under **Actions** in **Danger Zone**, you can discard [saved field values](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#scanning-for-field-values), and [remove the database](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#deleting-databases).
-
 ## Using Legacy SQL
 
 As of version 0.30.0, Metabase tells BigQuery to interpret SQL queries as [Standard SQL](https://cloud.google.com/bigquery/docs/reference/standard-sql/). If you prefer using [Legacy SQL](https://cloud.google.com/bigquery/docs/reference/legacy-sql) instead, you can tell Metabase to do so by including a `#legacySQL` directive at the beginning of your query, for example:
@@ -118,6 +96,7 @@ If you're having trouble with your BigQuery connection, check out [Metabase's di
 
 ## Further reading
 
+- [Managing databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html).
 - [Metadata editing](https://www.metabase.com/docs/latest/administration-guide/03-metadata-editing.html).
 - [Creating segments and metrics](https://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html).
 - [Setting data access permissions](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html).
