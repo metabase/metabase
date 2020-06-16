@@ -42,6 +42,10 @@
             ;; If row already exists then nothing to do
             (catch com.mongodb.MongoException _)))))))
 
+(defmethod tx/destroy-db! :mongo
+  [driver dbdef]
+  (destroy-db! driver dbdef))
+
 (defmethod tx/format-name :mongo
   [_ table-or-field-name]
   (if (= table-or-field-name "id")

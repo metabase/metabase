@@ -13,6 +13,7 @@
   "Schema for the expected output of `describe-database` for a Table."
   {:name                         su/NonBlankString
    :schema                       (s/maybe su/NonBlankString)
+   ;; `:description` in this case should be a column/remark on the Table, if there is one.
    (s/optional-key :description) (s/maybe su/NonBlankString)})
 
 (def DatabaseMetadata

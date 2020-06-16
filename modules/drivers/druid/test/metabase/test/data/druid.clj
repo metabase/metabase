@@ -8,5 +8,10 @@
   {:host (tx/db-test-env-var-or-throw :druid :host)
    :port (Integer/parseInt (tx/db-test-env-var-or-throw :druid :port))})
 
-(defmethod tx/create-db! :druid [& _]
+(defmethod tx/create-db! :druid
+  [& _]
+  nil)
+
+(defmethod tx/destroy-db! :druid
+  [& _]
   nil)

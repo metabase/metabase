@@ -99,18 +99,17 @@
                                 :name                    "Foo"
                                 :type                    :external
                                 :human_readable_field_id (data/id :categories :name)})])
-      (are [expected sort-order] (testing (format "sort order = %s" sort-order)
-                                   (is (= expected
-                                          (->> (mt/run-mbql-query venues
-                                                 {:order-by [[sort-order $category_id]]
-                                                  :limit    10})
-                                               qp.test/rows
-                                               (mapv last)))))
-        ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
-        :desc
-
-        ["American" "American" "American" "American" "American" "American" "American" "American" "Artisan" "Artisan"]
-        :asc))))
+      (doseq [[sort-order expected] {:desc ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse"
+                                            "Steakhouse" "Steakhouse" "Southern"]
+                                     :asc  ["American" "American" "American" "American" "American" "American" "American"
+                                            "American" "Artisan" "Artisan"]}]
+        (testing (format "sort order = %s" sort-order)
+          (is (= expected
+                 (->> (mt/run-mbql-query venues
+                        {:order-by [[sort-order $category_id]]
+                         :limit    10})
+                      qp.test/rows
+                      (mapv last)))))))))
 
 (deftest binning-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)

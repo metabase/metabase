@@ -342,6 +342,13 @@
             (destroy-dataset! database-name))
           (throw e))))))
 
+(defmethod tx/destroy-db! :bigquery
+  [_ {:keys [database-name]}]
+  (u/ignore-exceptions
+    (destroy-dataset! database-name))
+  (when (seq @existing-datasets)
+    (swap! existing-datasets disj database-name)))
+
 (defmethod tx/aggregate-column-info :bigquery
   ([driver aggregation-type]
    (merge

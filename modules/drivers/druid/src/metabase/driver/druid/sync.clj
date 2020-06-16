@@ -31,18 +31,19 @@
        :name   (:name table)
        :fields (set (cons
                      ;; every Druid table is an event stream w/ a timestamp field
-                     {:name          "timestamp"
-                      :database-type "timestamp"
-                      :base-type     :type/Instant
-                      :pk?           false}
+                     {:name              "timestamp"
+                      :database-type     "timestamp"
+                      :base-type         :type/Instant
+                      :pk?               false
+                      :database-position 0}
                      (for [[idx [field-name {field-type :type}]] (m/indexed (dissoc columns :__time))
-                           :let                            [metric? (contains? metric-column-names field-name)]]
+                           :let                                  [metric? (contains? metric-column-names field-name)]]
                        {:name              (name field-name)
                         :base-type         (druid-type->base-type field-type)
                         :database-type     (if metric?
                                              (format "%s [metric]" field-type)
                                              field-type)
-                        :database-position idx})))})))
+                        :database-position (inc idx)})))})))
 
 (defn describe-database
   "Impl of `driver/describe-database` for Druid."

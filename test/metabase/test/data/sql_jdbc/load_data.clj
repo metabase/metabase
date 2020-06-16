@@ -209,3 +209,9 @@
   (doseq [tabledef table-definitions]
     (u/profile (format "load-data for %s %s %s" (name driver) (:database-name dbdef) (:table-name tabledef))
       (load-data! driver dbdef tabledef))))
+
+(defn destroy-db!
+  "Default impl of `destroy-db!` for SQL drivers."
+  [driver dbdef]
+  (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef)]
+    (execute/execute-sql! driver :server dbdef statement)))

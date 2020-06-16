@@ -107,6 +107,8 @@
       (doseq [batch batches]
         (execute! (insert-sql driver dbdef tabledef batch))))))
 
+(defmethod tx/destroy-db! :presto [_ _]) ; no-op
+
 (defmethod tx/format-name :presto
   [_ s]
   (str/lower-case s))

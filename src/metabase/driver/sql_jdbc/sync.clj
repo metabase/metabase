@@ -95,7 +95,8 @@
   ;; tablePattern "%" = match all tables
   (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
-    (vec (jdbc/metadata-result rs))))
+    (mapv #(select-keys % [:table_name :remarks :table_schem])
+          (jdbc/result-set-seq rs))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -105,7 +106,7 @@
   vs 60)."
   [driver ^DatabaseMetaData metadata & [db-name-or-nil]]
   (with-open [rs (.getSchemas metadata)]
-    (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))
+    (let [all-schemas (set (map :table_schem (jdbc/result-set-seq rs)))
           schemas     (set/difference all-schemas (excluded-schemas driver))]
       (set (for [schema schemas
                  table  (get-tables metadata schema db-name-or-nil)]
