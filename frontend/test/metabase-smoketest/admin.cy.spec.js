@@ -12,7 +12,6 @@ describe("metabase-smoketest > admin", () => {
   before(() => restore("blank"));
 
   describe("Admin can setup an account", () => {
-
     it("should set up Metabase", () => {
       // This is a simplified version of the "scenarios > setup" test
       cy.visit("/");
@@ -250,7 +249,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Save").click();
     });
 
-    it("should add a new user who can perform basic functions", () => { 
+    it("should add a new user who can perform basic functions", () => {
       // Sets up route
       cy.server();
       cy.route({
@@ -294,13 +293,13 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Done").click();
 
       cy.findByText(new_user.username);
-    // ***});
+      // ***});
 
-  // ==============
-  // == NEW USER ==
-  // ==============
+      // ==============
+      // == NEW USER ==
+      // ==============
 
-    // ***it("should sign in as new user", () => {
+      // ***it("should sign in as new user", () => {
       signOut();
       cy.get("@password").then(pass => {
         cy.visit("/");
@@ -308,7 +307,7 @@ describe("metabase-smoketest > admin", () => {
         cy.findByLabelText("Password").type(pass);
         cy.findByText("Sign in").click();
         cy.contains(new_user.first_name);
-        
+
         // =================
         // should see questions currently in the "Our Analytics" collection
         // =================
