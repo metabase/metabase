@@ -1,6 +1,6 @@
 ## Working with Google BigQuery in Metabase
 
-This page provides information on how to create and manage a connection to a Google [Bigquery](https://cloud.google.com/bigquery) dataset.
+This page provides information on how to create and manage a connection to a Google [BigQuery](https://cloud.google.com/bigquery) dataset.
 
 ## Prerequisites
 
@@ -100,4 +100,3 @@ If you're having trouble with your BigQuery connection, check out [Metabase's di
 - [Metadata editing](https://www.metabase.com/docs/latest/administration-guide/03-metadata-editing.html).
 - [Creating segments and metrics](https://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html).
 - [Setting data access permissions](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html).
-
