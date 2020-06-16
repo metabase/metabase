@@ -14,6 +14,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.test.data
              [dataset-definitions :as dataset-defs]
+             [interface :as tx]
              [sql :as sql.tx]]
             [metabase.test.data.sql.ddl :as ddl]))
 

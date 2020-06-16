@@ -77,7 +77,7 @@
                            (format "CREATE DATABASE \"%s\";" db-name)]]
           (try
             (jdbc/execute! spec [statement] {:transaction? false})
-            (expect java.sql.SQLException _)))
+            (catch java.sql.SQLException _)))
         (let [details (mt/dbdef->connection-details :redshift :db {:database-name db-name})
               spec    (sql-jdbc.conn/connection-details->spec :redshift details)]
           (mt/with-temp Database [db {:engine  :redshift

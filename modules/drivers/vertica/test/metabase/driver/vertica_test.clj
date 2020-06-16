@@ -28,19 +28,20 @@
   (mt/test-driver :vertica
     (testing "Do we correctly determine SELECT privilege"
       (let [db-name "privilege_test"
-            details (mt/dbdef->connection-details :mysql :db {:database-name db-name})
-            spec    (sql-jdbc.conn/connection-details->spec :vertica details)]
-        (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
-                                      CREATE DATABASE \"%s\";" db-name db-name)]
-                       {:transaction? false})
-        (mt/with-temp Database [db {:engine  :vertica
-                                    :details (assoc details :dbname db-name)}]
-          (doseq [statement ["create user if not exists GUEST password 'guest';"
-                             "drop table if exists \"birds\";"
-                             "create table \"birds\" ();"
-                             "grant all on \"birds\" to GUEST;"]]
-            (jdbc/execute! spec [statement]))
-          (is (= #{{:table_name "birds" :table_schem nil}}
-                 (sql-jdbc.sync/accessible-tables-for-user :vertica db "GUEST")))
-          (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
-          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :vertica db "GUEST"))))))))
+            spec    (sql-jdbc.conn/connection-details->spec :vertica (tx/dbdef->connection-details :vertica :server nil))]
+        (doseq [statement [(format "DROP DATABASE IF EXISTS %s;" db-name)
+                           (format "CREATE DATABASE %s;" db-name)]]
+          (jdbc/execute! spec [statement] {:transaction? false}))
+        (let [details (mt/dbdef->connection-details :vertica :db {:database-name db-name})
+              spec    (sql-jdbc.conn/connection-details->spec :vertica details)]
+          (mt/with-temp Database [db {:engine  :vertica
+                                      :details details}]
+            (doseq [statement ["create user if not exists GUEST;"
+                               "drop table if exists `birds`;"
+                               "create table `birds` ();"
+                               "grant all on `birds` to GUEST;"]]
+              (jdbc/execute! spec [statement]))
+            (is (= #{{:table_name "birds" :table_schem nil}}
+                   (sql-jdbc.sync/accessible-tables-for-user :vertica db "GUEST")))
+            (jdbc/execute! spec ["revoke all on `birds` from GUEST;"])
+            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :vertica db "GUEST")))))))))
