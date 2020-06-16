@@ -212,8 +212,8 @@
       (let [db-name "privilege_test"
             details (mt/dbdef->connection-details :oracle :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :oracle details)]
-        (jdbc/execute! [(format "DROP DATABASE IF EXISTS \"%s\";
-                                 CREATE DATABASE \"%s\";" db-name db-name)]
+        (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
+                                      CREATE DATABASE \"%s\";" db-name db-name)]
                        {:transaction? false})
         (mt/with-temp Database [db {:engine  :oracle
                                     :details (assoc details :dbname db-name)}]

@@ -154,8 +154,8 @@
       (let [db-name "privilege_test"
             details (mt/dbdef->connection-details :snowflake :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
-        (jdbc/execute! [(format "DROP DATABASE IF EXISTS \"%s\";
-                                 CREATE DATABASE \"%s\";" db-name db-name)]
+        (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
+                                      CREATE DATABASE \"%s\";" db-name db-name)]
                        {:transaction? false})
         (mt/with-temp Database [db {:engine  :snowflake
                                     :details (assoc details :dbname db-name)}]

@@ -3,8 +3,7 @@
             [clojure.test :refer [deftest is testing]]
             [metabase
              [driver :as driver]
-             [sync :as sync]
-             [test :as mt]]
+             [sync :as sync]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]]

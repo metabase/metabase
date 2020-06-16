@@ -522,12 +522,13 @@
         (drop-if-exists-and-create-db! db-name)
         (mt/with-temp Database [db {:engine  :postgres
                                     :details (assoc details :dbname db-name)}]
-          (doseq [statement ["create user if not exists GUEST password 'guest';"
+          (doseq [statement ["drop user if exists rasta;"
+                             "create user rasta password 'guest';"
                              "drop table if exists \"birds\";"
                              "create table \"birds\" ();"
-                             "grant all on \"birds\" to GUEST;"]]
+                             "grant all on \"birds\" to rasta;"]]
             (jdbc/execute! spec [statement]))
           (is (= #{{:table_name "birds" :table_schem nil}}
-                 (sql-jdbc.sync/accessible-tables-for-user :postgres db "GUEST")))
+                 (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")))
           (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
-          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :postgres db "GUEST"))))))))
+          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta"))))))))

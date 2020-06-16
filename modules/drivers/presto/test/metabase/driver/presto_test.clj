@@ -1,6 +1,7 @@
 (ns metabase.driver.presto-test
   (:require [clj-http.client :as http]
             [clojure.core.async :as a]
+            [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [expectations :refer [expect]]
             [java-time :as t]
@@ -14,6 +15,7 @@
              [util :as driver.u]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
+             [database :refer [Database]]
              [field :refer [Field]]
              [table :as table :refer [Table]]]
             [metabase.test
@@ -233,3 +235,24 @@
                         "FROM \"default\".\"test_data_venues\" "
                         "WHERE \"default\".\"test_data_venues\".\"name\" = from_utf8(from_hex('776f77'))")
                    @the-sql))))))))
+
+(deftest determine-select-privilege
+  (mt/test-driver :presto
+    (testing "Do we correctly determine SELECT privilege"
+      (let [db-name "privilege_test"
+            details (mt/dbdef->connection-details :presto :db {:database-name db-name})
+            spec    (sql-jdbc.conn/connection-details->spec :presto details)
+            exec!   (partial #'presto/execute-presto-query-for-sync spec)]
+        (exec! (format "DROP DATABASE IF EXISTS \"%s\";
+                                 CREATE DATABASE \"%s\";" db-name db-name))
+        (mt/with-temp Database [db {:engine  :presto
+                                    :details (assoc details :dbname db-name)}]
+          (doseq [statement ["create user if not exists GUEST password 'guest';"
+                             "drop table if exists \"birds\";"
+                             "create table \"birds\" ();"
+                             "grant all on \"birds\" to GUEST;"]]
+            (exec! statement))
+          (is (= #{{:table_name "birds" :table_schem nil}}
+                 (sql-jdbc.sync/accessible-tables-for-user :presto db "GUEST")))
+          (exec! "revoke all on \"birds\" from GUEST;")
+          (is (empty? (#'presto/accessible-tables-for-user :presto db "GUEST"))))))))
