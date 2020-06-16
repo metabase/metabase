@@ -323,6 +323,21 @@ export default class NativeQuery extends AtomicQuery {
       .filter(variableFilter);
   }
 
+  updateSnippetsWithIds(snippets): NativeQuery {
+    const snippetTags = this.templateTags().filter(t => t.type === "snippet");
+    let _this = this; // swap out "this" as we update each template tag
+    for (const snippet of snippets) {
+      const tag = snippetTags.find(tag => tag["snippet-name"] === snippet.name);
+      if (tag) {
+        _this = _this.setTemplateTag(tag.name, {
+          ...tag,
+          "snippet-id": snippet.id,
+        });
+      }
+    }
+    return _this;
+  }
+
   /**
    * special handling for NATIVE cards to automatically detect parameters ... {{varname}}
    */
@@ -366,7 +381,7 @@ export default class NativeQuery extends AtomicQuery {
             newTag["card-id"] = cardTagCardId(newTag.name);
           } else if (isSnippetName(newTag.name)) {
             newTag.type = "snippet";
-            newTag.snippet_name = snippetNameFromTagName(newTag.name);
+            newTag["snippet-name"] = snippetNameFromTagName(newTag.name);
           }
           templateTags[newTag.name] = newTag;
           delete templateTags[oldTags[0]];
@@ -395,7 +410,7 @@ export default class NativeQuery extends AtomicQuery {
               // extract snippet name from snippet tag
               templateTags[tagName] = Object.assign(templateTags[tagName], {
                 type: "snippet",
-                snippet_name: snippetNameFromTagName(tagName),
+                "snippet-name": snippetNameFromTagName(tagName),
               });
             }
           }

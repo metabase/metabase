@@ -53,6 +53,7 @@
     (s/optional-key :dimension)    [s/Any]
     (s/optional-key :card-id)      su/IntGreaterThanZero
     (s/optional-key :snippet-name) su/NonBlankString
+    (s/optional-key :snippet-id)   su/IntGreaterThanZero
     (s/optional-key :database)     su/IntGreaterThanZero ; used by tags of `:type :snippet`
     (s/optional-key :widget-type)  s/Keyword ; type of the [default] value if `:type` itself is `dimension`
     (s/optional-key :required)     s/Bool

@@ -434,6 +434,7 @@ export default class NativeQueryEditor extends Component {
       if (query.queryText() !== this._editor.getValue()) {
         query
           .setQueryText(this._editor.getValue())
+          .updateSnippetsWithIds(this.props.snippets)
           .update(this.props.setDatasetQuery);
       }
     }
