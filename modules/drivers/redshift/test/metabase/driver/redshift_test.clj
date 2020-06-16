@@ -70,19 +70,20 @@
   (mt/test-driver :redshift
     (testing "Do we correctly determine SELECT privilege"
       (let [db-name "privilege_test"
-            details (mt/dbdef->connection-details :redshift :db {:database-name db-name})
-            spec    (sql-jdbc.conn/connection-details->spec :redshift details)]
-        (jdbc/execute! spec [(format "DROP DATABASE \"%s\";
+            spec    (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift :server nil))]
+        (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
                                       CREATE DATABASE \"%s\";" db-name db-name)]
                        {:transaction? false})
-        (mt/with-temp Database [db {:engine  :redshift
-                                    :details (assoc details :dbname db-name)}]
-          (doseq [statement ["create user if not exists GUEST password 'guest';"
-                             "drop table if exists \"birds\";"
-                             "create table \"birds\" ();"
-                             "grant all on \"birds\" to GUEST;"]]
-            (jdbc/execute! spec [statement]))
-          (is (= #{{:table_name "birds" :table_schem nil}}
-                 (sql-jdbc.sync/accessible-tables-for-user :redshift db "GUEST")))
-          (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
-          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :redshift db "GUEST"))))))))
+        (let [details (mt/dbdef->connection-details :redshift :db {:database-name db-name})
+              spec    (sql-jdbc.conn/connection-details->spec :redshift details)]
+          (mt/with-temp Database [db {:engine  :redshift
+                                      :details details}]
+            (doseq [statement ["create user GUEST password 'guest';"
+                               "drop table if exists \"birds\";"
+                               "create table \"birds\" ();"
+                               "grant all on \"birds\" to GUEST;"]]
+              (jdbc/execute! spec [statement]))
+            (is (= #{{:table_name "birds" :table_schem nil}}
+                   (sql-jdbc.sync/accessible-tables-for-user :redshift db "GUEST")))
+            (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
+            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :redshift db "GUEST")))))))))

@@ -530,5 +530,5 @@
             (jdbc/execute! spec [statement]))
           (is (= #{{:table_name "birds" :table_schem "public"}}
                  (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")))
-          (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
+          (jdbc/execute! spec ["revoke all on \"birds\" from rasta;"])
           (is (empty? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta"))))))))
