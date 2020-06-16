@@ -61,7 +61,7 @@
 
 (defmethod sql.tx/create-table-sql :presto
   [driver {:keys [database-name]} {:keys [table-name], :as tabledef}]
-  (let [field-definitions (conj (:field-definitions tabledef) {:field-name "id", :base-type  :type/Integer})
+  (let [field-definitions (cons {:field-name "id", :base-type  :type/Integer} (:field-definitions tabledef))
         dummy-values      (map (comp field-base-type->dummy-value :base-type) field-definitions)
         columns           (map :field-name field-definitions)]
     ;; Presto won't let us use the `CREATE TABLE (...)` form, but we can still do it creatively if we select the right
