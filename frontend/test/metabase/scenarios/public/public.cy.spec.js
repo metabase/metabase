@@ -127,7 +127,7 @@ describe("scenarios > public", () => {
       cy.contains("Public link")
         .parent()
         .find("input")
-        .then($input => {
+        .should($input => {
           expect($input[0].value).to.match(PUBLIC_URL_REGEX);
           questionPublicLink = $input[0].value.match(PUBLIC_URL_REGEX)[0];
         });
@@ -171,7 +171,7 @@ describe("scenarios > public", () => {
       cy.contains("Public link")
         .parent()
         .find("input")
-        .then($input => {
+        .should($input => {
           expect($input[0].value).to.match(PUBLIC_URL_REGEX);
           dashboardPublicLink = $input[0].value.match(PUBLIC_URL_REGEX)[0];
         });
