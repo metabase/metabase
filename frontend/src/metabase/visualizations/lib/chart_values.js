@@ -50,10 +50,12 @@ export function onRenderValueLabels(
   let barWidth;
   const barCount = displays.filter(d => d === "bar").length;
   if (barCount > 0) {
-    barWidth = chart
-      .svg()
-      .select("rect.bar")[0][0]
-      .getAttribute("width");
+    barWidth = parseFloat(
+      chart
+        .svg()
+        .select("rect.bar")[0][0]
+        .getAttribute("width"),
+    );
   }
 
   const xScale = chart.x();
@@ -147,7 +149,7 @@ export function onRenderValueLabels(
       }
     } else if (
       // non-ordinal bar charts don't have rangeBand set, but still need xShifting if they're grouped.
-      thisChart.barPadding
+      barWidth
     ) {
       // For these timeseries/quantitative scales, we look at the distance between two points one "interval" apart.
       // We then scale to remove the padding and divide by the number of bars to get the per-bar shift from the center.
@@ -155,9 +157,9 @@ export function onRenderValueLabels(
       const oneIntervalOver = moment.isMoment(startOfDomain)
         ? startOfDomain.clone().add(xInterval.count, xInterval.interval)
         : startOfDomain + xInterval;
-      const groupWidth =
-        (xScale(oneIntervalOver) - xScale(startOfDomain)) *
-        (1 - thisChart.barPadding());
+      const seriesPadding = barWidth < 4 ? 0 : barWidth < 8 ? 1 : 2;
+      const groupWidth = (barWidth + seriesPadding) * barCount;
+
       xShift -= groupWidth / 2;
       const xShiftForSeries = groupWidth / barCount;
       xShift += (barIndex + 0.5) * xShiftForSeries;
