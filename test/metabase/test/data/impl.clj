@@ -86,7 +86,7 @@
 
 (defn- loaded-field-names [driver database table-name]
   (->> (driver/describe-table driver database {:name table-name})
-       ;; u/ignore-exceptions
+       u/ignore-exceptions
        :fields
        (map :name)
        set))
