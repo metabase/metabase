@@ -8,7 +8,7 @@ const FormTextFileWidget = ({ field }) => {
   return (
     <input
       type="file"
-      className="Form-input"
+      className="Form-file-input"
       aria-labelledby={`${field.name}-label`}
       {...otherProps}
       onChange={wrapHandler(field.onChange)}
