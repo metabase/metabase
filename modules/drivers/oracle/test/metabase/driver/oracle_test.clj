@@ -210,16 +210,13 @@
     (testing "Do we correctly determine SELECT privilege"
       (let [details  (:details (data/db))
             spec     (sql-jdbc.conn/connection-details->spec :oracle details)]
-        (with-temp-user [username]
-          (doseq [statement ["drop table \"birds\";"
-                             "create table \"birds\" (\"id\" int);"
-                             (format "grant SELECT on TABLE \"birds\" to %s;" username)]]
-            (try
-              (jdbc/execute! spec [statement])
-              (catch java.sql.SQLSyntaxErrorException _)))
-          (is (= #{{:table_name "birds" :table_schem nil}}
-                 (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)))
-          (jdbc/execute! spec [(format "revoke SELECT on TABLE \"birds\" from %s;" username)])
-          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)))
-          ;; Cleanup
-          (jdbc/execute! spec ["drop table \"birds\";"]))))))
+        (doseq [statement ["drop table \"birds\";"
+                           "create table \"birds\" (\"id\" int);"
+                           (format "grant SELECT on \"birds\" to PUBLIC;" username)]]
+          (try
+            (jdbc/execute! spec [statement])
+            (catch java.sql.SQLSyntaxErrorException _)))
+        (is (= #{{:table_name "birds" :table_schem nil}}
+               (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)))
+        (jdbc/execute! spec [(format "revoke SELECT on TABLE \"birds\" from PUBLIC;")])
+        (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)))))))

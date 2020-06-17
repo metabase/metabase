@@ -249,12 +249,12 @@
             exec!   (partial #'presto/execute-presto-query-for-sync details)]
         (exec! (sql.tx/drop-table-if-exists-sql :presto {:database-name (:name (mt/db))} {:table-name "birds"}))
         (exec! (sql.tx/create-table-sql :presto {:database-name (:name (mt/db))}
-                                        {:table-name "birds"
+                                        {:table-name        "birds"
                                          ;; We will append ID automatically
                                          :field-definitions []}))
-        (exec! (format "grant all on \"default\".\"birds\" to %s" (:user details)))
-        (is (= #{{:table_name "birds" :table_schem nil}}
+        (exec! (format "grant select on \"default\".\"birds\" to %s" (:user details)))
+        (is (= #{{:table_name "birds" :table_schem "default"}}
                (sql-jdbc.sync/accessible-tables-for-user :presto (mt/db) (:user details))))
-        (exec! (format "revoke all on \"default\".\"birds\" from %s" (:user details)))
+        (exec! (format "revoke select on \"default\".\"birds\" from %s" (:user details)))
         (is (empty? (#'presto/accessible-tables-for-user :presto (mt/db) (:user details))))
         (exec! (sql.tx/drop-table-if-exists-sql :presto {:database-name (:name (mt/db))} {:table-name "birds"}))))))
