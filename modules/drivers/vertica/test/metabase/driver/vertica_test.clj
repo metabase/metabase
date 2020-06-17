@@ -6,7 +6,9 @@
              [sync :as sql-jdbc.sync]]
             [metabase.models.database :refer [Database]]
             [metabase.test :as mt]
-            [metabase.test.data.datasets :refer [expect-with-driver]]
+            [metabase.test.data
+             [datasets :refer [expect-with-driver]]
+             [interface :as tx]]
             [metabase.test.util :as tu]))
 
 (deftest db-timezone-test

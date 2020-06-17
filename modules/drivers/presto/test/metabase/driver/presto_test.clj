@@ -13,6 +13,9 @@
             [metabase.driver
              [presto :as presto]
              [util :as driver.u]]
+            [metabase.driver.sql-jdbc
+             [connection :as sql-jdbc.conn]
+             [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
              [database :refer [Database]]

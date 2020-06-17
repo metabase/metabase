@@ -16,7 +16,6 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.util :as driver.u]
             [metabase.models
-             [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor.test-util :as qp.test-util]
@@ -209,20 +208,16 @@
 (deftest determine-select-privilege
   (mt/test-driver :oracle
     (testing "Do we correctly determine SELECT privilege"
-      (let [db-name "privilege_test"
-            details (mt/dbdef->connection-details :oracle :db {:database-name db-name})
-            spec    (sql-jdbc.conn/connection-details->spec :oracle details)]
-        (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
-                                      CREATE DATABASE \"%s\";" db-name db-name)]
-                       {:transaction? false})
-        (mt/with-temp Database [db {:engine  :oracle
-                                    :details (assoc details :dbname db-name)}]
-          (doseq [statement ["create user if not exists GUEST password 'guest';"
-                             "drop table if exists \"birds\";"
+      (let [details  (:details (data/db))
+            spec     (sql-jdbc.conn/connection-details->spec :oracle details)]
+        (with-temp-user [username]
+          (doseq [statement ["drop table if exists \"birds\";"
                              "create table \"birds\" ();"
-                             "grant all on \"birds\" to GUEST;"]]
+                             (format "grant all on \"birds\" to %s;" username)]]
             (jdbc/execute! spec [statement]))
           (is (= #{{:table_name "birds" :table_schem nil}}
-                 (sql-jdbc.sync/accessible-tables-for-user :oracle db "GUEST")))
-          (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
-          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle db "GUEST"))))))))
+                 (sql-jdbc.sync/accessible-tables-for-user :oracle db username)))
+          (jdbc/execute! spec [(format "revoke all on \"birds\" from %s;" username)])
+          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle db username)))
+          ;; Cleanup
+          (jdbc/execute! spec ["drop table \"birds\";"]))))))
