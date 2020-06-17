@@ -243,11 +243,10 @@
 (deftest determine-select-privilege
   (mt/test-driver :presto
     (testing "Do we correctly determine SELECT privilege"
-      (let [db-name "privilege_test"
-            details (mt/dbdef->connection-details :presto :db {:database-name db-name})
+      (let [details (tx/dbdef->connection-details :presto :server nil)
             exec!   (partial #'presto/execute-presto-query-for-sync details)]
-        (exec! (sql.tx/drop-table-if-exists-sql :presto {:database-name db-name} {:table-name "birds"}))
-        (exec! (sql.tx/create-table-sql :presto {:database-name db-name}
+        (exec! (sql.tx/drop-table-if-exists-sql :presto {:database-name (:name (mt/db))} {:table-name "birds"}))
+        (exec! (sql.tx/create-table-sql :presto {:database-name (:name (mt/db))}
                                         {:table-name "birds"
                                          :field-definitions [{:field-name "id"
                                                               :base-type  :type/Integer}]}))
@@ -258,4 +257,4 @@
                (sql-jdbc.sync/accessible-tables-for-user :presto (mt/db) "GUEST")))
         (exec! "revoke all on \"birds\" from GUEST;")
         (is (empty? (#'presto/accessible-tables-for-user :presto (mt/db) "GUEST")))
-        (exec! (sql.tx/drop-table-if-exists-sql :presto {:database-name db-name} {:table-name "birds"}))))))
+        (exec! (sql.tx/drop-table-if-exists-sql :presto {:database-name (:name (mt/db))} {:table-name "birds"}))))))
