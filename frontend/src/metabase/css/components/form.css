@@ -47,6 +47,8 @@
 
 .Form-file-input::-webkit-file-upload-button {
   visibility: hidden;
+  padding-right: 32px;
+  padding-top: 8px;
 }
 .Form-file-input::before {
   background: transparent;
@@ -70,7 +72,10 @@
   border-color: var(--color-brand);
 }
 .Form-file-input:active {
-  outline: 0;
+  outline: none;
+}
+.Form-file-input:focus {
+  outline: none;
 }
 .Form-file-input:active::before {
   background: transparent;
