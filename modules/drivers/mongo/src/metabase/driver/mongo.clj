@@ -6,7 +6,6 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
