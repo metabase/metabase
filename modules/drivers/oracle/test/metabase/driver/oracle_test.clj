@@ -222,4 +222,4 @@
           (jdbc/execute! spec [(format "revoke all PRIVILEGES on TABLE \"birds\" from %s;" username)])
           (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)))
           ;; Cleanup
-          (jdbc/execute! spec ["drop table \"birds\";"]))))))
+          (jdbc/execute! spec ["drop table birds;"]))))))
