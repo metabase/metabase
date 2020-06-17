@@ -38,7 +38,6 @@ export default class LegendHeader extends Component {
       series,
       hovered,
 
-      actionButtons,
       onHoverChange,
       onChangeCardAndRun,
       settings,
@@ -128,16 +127,6 @@ export default class LegendHeader extends Component {
             style={{ padding: 5 }}
             onClick={e => onAddSeries(e)}
           />
-        )}
-        {actionButtons && (
-          <span
-            className={cx(
-              classNameWidgets,
-              "flex-no-shrink flex-align-right relative",
-            )}
-          >
-            {actionButtons}
-          </span>
         )}
       </div>
     );

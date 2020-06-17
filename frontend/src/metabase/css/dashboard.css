@@ -1,6 +1,4 @@
 .DashboardHeader {
-  background-color: white;
-  border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
 .Dash-wrapper {

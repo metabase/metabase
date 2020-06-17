@@ -50,8 +50,8 @@
 .LineAreaBarChart .dc-chart .x-axis-label,
 .LineAreaBarChart .dc-chart .y-axis-label {
   fill: var(--color-text-medium);
-  font-size: 14px;
-  font-weight: 900;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 /* disable grid lines */

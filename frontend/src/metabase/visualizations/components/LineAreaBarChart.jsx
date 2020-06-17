@@ -305,6 +305,14 @@ export default class LineAreaBarChart extends Component {
             actionButtons={actionButtons}
           />
         )}
+        <CardRenderer
+          {...this.props}
+          series={series}
+          settings={settings}
+          className="renderer flex-full"
+          maxSeries={MAX_SERIES}
+          renderer={this.constructor.renderer}
+        />
         {hasMultiSeriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
           <LegendHeader
             className="flex-no-shrink"
@@ -321,14 +329,6 @@ export default class LineAreaBarChart extends Component {
             onRemoveSeries={onRemoveSeries}
           />
         ) : null}
-        <CardRenderer
-          {...this.props}
-          series={series}
-          settings={settings}
-          className="renderer flex-full"
-          maxSeries={MAX_SERIES}
-          renderer={this.constructor.renderer}
-        />
       </div>
     );
   }

@@ -9,6 +9,7 @@ import ChartClickActions from "metabase/visualizations/components/ChartClickActi
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
+
 import { t, jt } from "ttag";
 import { duration, formatNumber } from "metabase/lib/formatting";
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -462,7 +463,7 @@ export default class Visualization extends React.PureComponent {
       </span>
     );
 
-    let { gridSize, gridUnit, classNameWidgets } = this.props;
+    let { gridSize, gridUnit } = this.props;
     if (
       !gridSize &&
       gridUnit &&
@@ -491,35 +492,6 @@ export default class Visualization extends React.PureComponent {
 
     return (
       <div className={cx(className, "flex flex-column")} style={style}>
-        {(showTitle &&
-          (settings["card.title"] || extra) &&
-          (loading ||
-            error ||
-            noResults ||
-            !(visualization && visualization.noHeader))) ||
-        replacementContent ? (
-          <div className="p1 flex-no-shrink">
-            <LegendHeader
-              classNameWidgets={classNameWidgets}
-              series={
-                settings["card.title"]
-                  ? // if we have a card title set, use it
-                    // $FlowFixMe
-                    setIn(series, [0, "card", "name"], settings["card.title"])
-                  : // otherwise use the original series
-                    series
-              }
-              actionButtons={extra}
-              description={settings["card.description"]}
-              settings={settings}
-              onChangeCardAndRun={
-                this.props.onChangeCardAndRun
-                  ? this.handleOnChangeCardAndRun
-                  : null
-              }
-            />
-          </div>
-        ) : null}
         {replacementContent ? (
           replacementContent
         ) : // on dashboards we should show the "No results!" warning if there are no rows or there's a MinRowsError and actualRows === 0
