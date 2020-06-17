@@ -216,8 +216,8 @@
                              (format "grant all on \"birds\" to %s;" username)]]
             (jdbc/execute! spec [statement]))
           (is (= #{{:table_name "birds" :table_schem nil}}
-                 (sql-jdbc.sync/accessible-tables-for-user :oracle db username)))
+                 (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)))
           (jdbc/execute! spec [(format "revoke all on \"birds\" from %s;" username)])
-          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle db username)))
+          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)))
           ;; Cleanup
           (jdbc/execute! spec ["drop table \"birds\";"]))))))

@@ -31,7 +31,7 @@
     (testing "Do we correctly determine SELECT privilege"
       (let [db-name "privilege_test"
             spec    (sql-jdbc.conn/connection-details->spec :vertica (tx/dbdef->connection-details :vertica :server nil))]
-        (doseq [statement [(format "DROP DATABASE IF EXISTS %s;" db-name)
+        (doseq [statement [(format "DROP DATABASE %s;" db-name)
                            (format "CREATE DATABASE %s;" db-name)]]
           (jdbc/execute! spec [statement] {:transaction? false}))
         (let [details (mt/dbdef->connection-details :vertica :db {:database-name db-name})

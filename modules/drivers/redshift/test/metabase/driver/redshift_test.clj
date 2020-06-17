@@ -82,7 +82,7 @@
               spec    (sql-jdbc.conn/connection-details->spec :redshift details)]
           (mt/with-temp Database [db {:engine  :redshift
                                       :details details}]
-            (doseq [statement ["create user GUEST password 'guest';"
+            (doseq [statement ["create user GUEST;"
                                "drop table if exists \"birds\";"
                                "create table \"birds\" ();"
                                "grant all on \"birds\" to GUEST;"]]
