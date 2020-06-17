@@ -30,7 +30,7 @@ To create the service account JSON file, follow Google's documentation on [setti
 
 ## Metabase: adding a BigQuery dataset
 
-Once you have your created and downloaded your service account JSON file for your BigQuery dataset, head over to your Metabase instance, click on the **settings** cog, and select **Admin** to bring up Admin mode. In the **Databases** section, click on the **Add database** button in the upper right. 
+Once you have created and downloaded your service account JSON file for your BigQuery dataset, head over to your Metabase instance, click on the **settings** cog, and select **Admin** to bring up Admin mode. In the **Databases** section, click on the **Add database** button in the upper right. 
 
 On the **ADD DATABASE** page, select **BigQuery** from the **Database type** dropdown. Metabase will present you with the relevant configuration settings to fill out:
 
