@@ -84,9 +84,9 @@
                                                     (sql.tx/qualified-name-components driver database-name table-name)))
                               (h/values rows)
                               (hsql/format :allow-dashed-names? true, :quoting :ansi))]
-    (log/warn "Inserting Presto rows")
+    (log/tracef "Inserting Presto rows")
     (doseq [row rows]
-      (log/warn (str/join ", " (map #(format "^%s %s" (.getName (class %)) (pr-str %)) row))))
+      (log/trace (str/join ", " (map #(format "^%s %s" (.getName (class %)) (pr-str %)) row))))
     (if (nil? params)
       query
       (unprepare/unprepare :presto (cons query params)))))
@@ -103,7 +103,6 @@
                       batches    (partition 100 100 nil keyed-rows)]]
       (when-not skip-drop-db?
         (execute! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef)))
-      (log/warn (sql.tx/create-table-sql driver dbdef tabledef))
       (execute! (sql.tx/create-table-sql driver dbdef tabledef))
       (doseq [batch batches]
         (execute! (insert-sql driver dbdef tabledef batch))))))

@@ -85,11 +85,13 @@
        set))
 
 (defn- loaded-field-names [driver database table-name]
-  (->> (driver/describe-table driver database {:name table-name})
-       u/ignore-exceptions
-       :fields
-       (map :name)
-       set))
+  (try
+    (->> (driver/describe-table driver database {:name table-name})
+         ;  u/ignore-exceptions
+           :fields
+           (map :name)
+           set)
+    (catch Throwable e (log/error e))))
 
 (defmulti verify-data-loaded-correctly
   "Make sure the expected Tables and Fields are available *before* running sync. Otherwise the data was loaded
