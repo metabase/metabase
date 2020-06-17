@@ -27,8 +27,7 @@
     (testing "Do we correctly determine SELECT privilege"
       (let [details (:details (mt/db))
             spec    (sql-jdbc.conn/connection-details->spec :vertica details)]
-        (doseq [statement ["create user GUEST;"
-                           "drop table if exists birds;"
+        (doseq [statement ["drop table if exists birds;"
                            "create table birds ();"
                            "grant all on birds to GUEST;"]]
           (jdbc/execute! spec [statement]))

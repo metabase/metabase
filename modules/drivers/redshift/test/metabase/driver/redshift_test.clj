@@ -82,7 +82,8 @@
               spec    (sql-jdbc.conn/connection-details->spec :redshift details)]
           (mt/with-temp Database [db {:engine  :redshift
                                       :details details}]
-            (doseq [statement ["create user rasta password DISABLE;"
+            (doseq [statement ["drop user if exists rasta;"
+                               "create user rasta password DISABLE;"
                                "drop table if exists \"birds\";"
                                "create table \"birds\" (id int);"
                                "grant all on \"birds\" to rasta;"]]

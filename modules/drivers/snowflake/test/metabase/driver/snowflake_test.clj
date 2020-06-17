@@ -168,6 +168,6 @@
                                (format "grant all on %s to PUBLIC;" table-qualified-name)]]
               (jdbc/execute! spec [statement]))
             (is (= #{{:table_name "birds" :table_schem "PUBLIC"}}
-                   (sql-jdbc.sync/accessible-tables-for-user :snowflake db (:user details))))
+                   (sql-jdbc.sync/accessible-tables-for-user :snowflake db "PUBLIC")))
             (jdbc/execute! spec [(format "revoke all on %s from PUBLIC;" table-qualified-name)])
-            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :snowflake db (:user details))))))))))
+            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :snowflake db "PUBLIC")))))))))
