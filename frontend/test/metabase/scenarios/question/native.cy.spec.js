@@ -178,13 +178,8 @@ describe("scenarios > question > native", () => {
       .contains("Save")
       .click();
 
-    // update the query to use that snippet
-    cy.get("@ace")
-      // delete existing selection before selecting all
-      .type("{backspace}{selectAll}{backspace}")
-      .type("select {{snippet: stuff-snippet}}", {
-        parseSpecialCharSequences: false,
-      });
+    // SQL editor should get updated automatically
+    cy.get("@ace").contains("select {{snippet: stuff-snippet}}");
 
     // run the query and check the displayed scalar
     cy.get(".NativeQueryEditor .Icon-play").click();
