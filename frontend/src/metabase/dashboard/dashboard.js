@@ -15,6 +15,7 @@ import { normalize, schema } from "normalizr";
 
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
+import Tables from "metabase/entities/tables";
 
 import {
   createParameter,
@@ -662,16 +663,23 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     }
 
     if (dashboardType === "normal" || dashboardType === "transient") {
-      // fetch database metadata for every card
-      _.chain(result.ordered_cards)
+      const cards = _.chain(result.ordered_cards)
         .map(dc => [dc.card].concat(dc.series))
-        .flatten()
-        .filter(
-          card => card && card.dataset_query && card.dataset_query.database,
-        )
+        .flatten();
+
+      // fetch database metadata for every card
+      cards
+        .filter(card => getIn(card, ["dataset_query", "database"]))
         .map(card => card.dataset_query.database)
         .uniq()
         .each(dbId => dispatch(fetchDatabaseMetadata(dbId)));
+
+      // fetch nested question tables
+      cards
+        .map(card => getIn(card, ["dataset_query", "query", "source-table"]))
+        .filter(tableId => /card__\d+/.test(tableId))
+        .uniq()
+        .each(id => dispatch(Tables.actions.fetchMetadata({ id })));
     }
 
     // copy over any virtual cards from the dashcard to the underlying card/question
