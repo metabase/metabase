@@ -27,13 +27,15 @@
     (testing "Do we correctly determine SELECT privilege"
       (let [details (:details (mt/db))
             spec    (sql-jdbc.conn/connection-details->spec :vertica details)]
-        (doseq [statement ["drop table if exists birds;"
+        (doseq [statement ["drop user if exists rasta;"
+                           "create user rasta;"
+                           "drop table if exists birds;"
                            "create table birds (id integer);"
-                           "grant all on birds to GUEST;"]]
+                           "grant all on birds to rasta;"]]
           (jdbc/execute! spec [statement]))
         (is (= #{{:table_name "birds" :table_schem nil}}
-               (sql-jdbc.sync/accessible-tables-for-user :vertica (mt/db) "GUEST")))
-        (jdbc/execute! spec ["revoke all on birds from GUEST;"])
-        (is (empty? (sql-jdbc.sync/accessible-tables-for-user :vertica (mt/db) "GUEST")))
+               (sql-jdbc.sync/accessible-tables-for-user :vertica (mt/db) "rasta")))
+        (jdbc/execute! spec ["revoke all on birds from rasta;"])
+        (is (empty? (sql-jdbc.sync/accessible-tables-for-user :vertica (mt/db) "rasta")))
         ;; Cleanup
         (jdbc/execute! spec ["drop table birds;"])))))
