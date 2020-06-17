@@ -98,7 +98,7 @@
     (doseq [tabledef table-definitions
             :let     [rows       (:rows tabledef)
                       ;; generate an ID for each row because we don't have auto increments
-                      keyed-rows (map-indexed (fn [i row] (conj row (inc i))) rows)
+                      keyed-rows (map-indexed (fn [i row] (cons (inc i) row)) rows)
                       ;; make 100 rows batches since we have to inline everything
                       batches    (partition 100 100 nil keyed-rows)]]
       (when-not skip-drop-db?

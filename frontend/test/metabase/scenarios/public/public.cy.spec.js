@@ -6,7 +6,6 @@ import {
   popover,
   modal,
 } from "__support__/cypress";
-import { SAMPLE_DATASET } from "__support__/metadata";
 
 const COUNT_ALL = "200";
 const COUNT_DOOHICKEY = "42";
@@ -20,14 +19,42 @@ const USERS = {
 };
 
 describe("scenarios > public", () => {
-  before(restore);
+  let questionId;
+  before(() => {
+    restore();
+    signInAsAdmin();
+    cy.request("POST", "/api/card", {
+      name: "sql param",
+      dataset_query: {
+        type: "native",
+        native: {
+          query: "select count(*) from products where {{c}}",
+          "template-tags": {
+            c: {
+              id: "e116f242-fbaa-1feb-7331-21ac59f021cc",
+              name: "c",
+              "display-name": "Category",
+              type: "dimension",
+              dimension: ["field-id", 6],
+              default: null,
+              "widget-type": "category",
+            },
+          },
+        },
+        database: 1,
+      },
+      display: "scalar",
+      visualization_settings: {},
+    }).then(({ body }) => {
+      questionId = body.id;
+    });
+  });
 
   beforeEach(() => {
     signInAsAdmin();
     cy.server();
   });
 
-  let questionId;
   let questionPublicLink;
   let questionEmbedUrl;
   let dashboardId;
@@ -178,7 +205,7 @@ describe("scenarios > public", () => {
       cy.contains("Public link")
         .parent()
         .find("input")
-        .then($input => {
+        .should($input => {
           expect($input[0].value).to.match(PUBLIC_URL_REGEX);
           questionPublicLink = $input[0].value.match(PUBLIC_URL_REGEX)[0];
         });
@@ -222,7 +249,7 @@ describe("scenarios > public", () => {
       cy.contains("Public link")
         .parent()
         .find("input")
-        .then($input => {
+        .should($input => {
           expect($input[0].value).to.match(PUBLIC_URL_REGEX);
           dashboardPublicLink = $input[0].value.match(PUBLIC_URL_REGEX)[0];
         });
