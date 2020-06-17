@@ -24,7 +24,9 @@
             [metabase.test
              [fixtures :as fixtures]
              [util :as tu]]
-            [metabase.test.data.sql :as sql.tx]
+            [metabase.test.data
+             [interface :as tx]
+             [sql :as sql.tx]]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]))
 

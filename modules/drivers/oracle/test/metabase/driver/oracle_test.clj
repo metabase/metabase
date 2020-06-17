@@ -212,8 +212,8 @@
             spec     (sql-jdbc.conn/connection-details->spec :oracle details)]
         (with-temp-user [username]
           (doseq [statement ["drop table if exists \"birds\";"
-                             "create table \"birds\" (\"id\" integer);"
-                             (format "grant all on \"birds\" to %s;" username)]]
+                             "create table \"birds\" (\"id\" int);"
+                             (format "grant all PRIVILEGES on \"birds\" to %s;" username)]]
             (jdbc/execute! spec [statement]))
           (is (= #{{:table_name "birds" :table_schem nil}}
                  (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)))
