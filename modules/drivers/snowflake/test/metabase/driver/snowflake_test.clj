@@ -158,15 +158,16 @@
         (doseq [statement [(format "DROP DATABASE IF EXISTS %s;" db-name)
                            (format "CREATE DATABASE %s;" db-name)]]
           (jdbc/execute! spec [statement] {:transaction? false}))
-        (let [details (mt/dbdef->connection-details :snowflake :db {:database-name db-name})
-              spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
+        (let [details              (mt/dbdef->connection-details :snowflake :db {:database-name db-name})
+              spec                 (sql-jdbc.conn/connection-details->spec :snowflake details)
+              table-qualified-name (format "\"%s\".\"PUBLIC\".\"birds\"" db-name)]
           (mt/with-temp Database [db {:engine  :snowflake
                                       :details details}]
-            (doseq [statement ["drop table if exists `birds`;"
-                               "create table `birds` ();"
-                               (format "grant all on `birds` to %s;" (:user details))]]
+            (doseq [statement [(format "drop table if exists %s;" table-qualified-name)
+                               (format "create table %s (id integer);" table-qualified-name)
+                               (format "grant all on %s to %s;" table-qualified-name (:user details))]]
               (jdbc/execute! spec [statement]))
-            (is (= #{{:table_name "birds" :table_schem nil}}
+            (is (= #{{:table_name "birds" :table_schem "PUBLIC"}}
                    (sql-jdbc.sync/accessible-tables-for-user :snowflake db (:user details))))
-            (jdbc/execute! spec [(format "revoke all on `birds` from %s;" (:user details))])
+            (jdbc/execute! spec [(format "revoke all on %s from %s;" table-qualified-name (:user details))])
             (is (empty? (sql-jdbc.sync/accessible-tables-for-user :snowflake db (:user details))))))))))

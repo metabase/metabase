@@ -213,13 +213,13 @@
         (with-temp-user [username]
           (doseq [statement ["drop table \"birds\";"
                              "create table \"birds\" (\"id\" int);"
-                             (format "grant all PRIVILEGES on \"birds\" to %s;" username)]]
+                             (format "grant all PRIVILEGES on TABLE \"birds\" to %s;" username)]]
             (try
               (jdbc/execute! spec [statement])
               (catch java.sql.SQLSyntaxErrorException _)))
           (is (= #{{:table_name "birds" :table_schem nil}}
                  (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)))
-          (jdbc/execute! spec [(format "revoke all on \"birds\" from %s;" username)])
+          (jdbc/execute! spec [(format "revoke all PRIVILEGES on TABLE \"birds\" from %s;" username)])
           (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)))
           ;; Cleanup
           (jdbc/execute! spec ["drop table \"birds\";"]))))))

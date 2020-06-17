@@ -82,12 +82,12 @@
               spec    (sql-jdbc.conn/connection-details->spec :redshift details)]
           (mt/with-temp Database [db {:engine  :redshift
                                       :details details}]
-            (doseq [statement ["create user GUEST password DISABLE;"
+            (doseq [statement ["create user rasta password DISABLE;"
                                "drop table if exists \"birds\";"
                                "create table \"birds\" (id int);"
-                               "grant all on \"birds\" to GUEST;"]]
+                               "grant all on \"birds\" to rasta;"]]
               (jdbc/execute! spec [statement]))
             (is (= #{{:table_name "birds" :table_schem nil}}
-                   (sql-jdbc.sync/accessible-tables-for-user :redshift db "GUEST")))
-            (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
-            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :redshift db "GUEST")))))))))
+                   (sql-jdbc.sync/accessible-tables-for-user :redshift db "rasta")))
+            (jdbc/execute! spec ["revoke all on \"birds\" from rasta;"])
+            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :redshift db "rasta")))))))))

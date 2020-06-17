@@ -252,11 +252,10 @@
                                         {:table-name "birds"
                                          ;; We will append ID automatically
                                          :field-definitions []}))
-        (doseq [statement ["create user if not exists GUEST password 'guest';"
-                           "grant all on \"birds\" to GUEST;"]]
+        (doseq [statement [(format "grant all on \"birds\" to %s;" (:user details))]]
           (exec! statement))
         (is (= #{{:table_name "birds" :table_schem nil}}
-               (sql-jdbc.sync/accessible-tables-for-user :presto (mt/db) "GUEST")))
-        (exec! "revoke all on \"birds\" from GUEST;")
-        (is (empty? (#'presto/accessible-tables-for-user :presto (mt/db) "GUEST")))
+               (sql-jdbc.sync/accessible-tables-for-user :presto (mt/db) (:user details))))
+        (exec! (format "revoke all on \"birds\" from %s;" (:user details)))
+        (is (empty? (#'presto/accessible-tables-for-user :presto (mt/db) (:user details))))
         (exec! (sql.tx/drop-table-if-exists-sql :presto {:database-name (:name (mt/db))} {:table-name "birds"}))))))
