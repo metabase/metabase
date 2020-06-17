@@ -1,4 +1,3 @@
-
 ## The Data Model: editing metadata
 
 The **Data Model** section of the **Admin Panel** contains settings to edit metadata for:
@@ -17,7 +16,7 @@ Metabase allows you to annotate the data in your database. Annotations can give 
 
 ### Accessing the data model page
 
-Click the settings cog in the top right of Metabase navigation bar, and select **Admin**. Then click on **Data Model** from the top menu.
+Click the settings gear in the top right of Metabase navigation bar, and select **Admin**. Then click on **Data Model** from the top menu.
 
 In the sidebar on the left, you can choose which database to configure. Next, select the table to view and edit its metadata.
 
@@ -25,17 +24,21 @@ In the sidebar on the left, you can choose which database to configure. Next, se
 
 For table Metadata, you can:
 
-- Change table **visibility**
+- Change table **visibility**.
 - Change table **name** and **description**.
-- View the original schema
+- View the original **schema**.
 
 #### Table visibility
 
-You can set tables to be **Queryable** or **Hidden**. 
+You can set tables to be **Queryable** or **Hidden**. Setting table visibility can be especially useful if you have a lot of tables in your database but your users will only be interested in a subset of those tables. Table visibility can help keep your Metabase instance tidy by hiding unnecessary tables out of the user interface. 
 
-**Queryable tables** can be selected from the question builder, and all of the data in the table can be displayed (unless certain columns are excluded — more on that below).
+> Visibility settings are distinct from **permissions**. Users can still query hidden tables using the **SQL editor**. See [**permissions**](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html) for controlling access to data.
 
-**Hidden tables** can’t be selected from the query builder, and their data can’t be accessed.
+**Queryable tables** can be selected from the **notebook editor**, and all of the data in the table can be displayed (unless certain columns are excluded — more on that below).
+
+**Hidden tables** can’t be selected from the **notebook editor**, and their data can’t be accessed anywhere in Metabase except in the **Admin Panel** and the **SQL Editor**.
+
+![TODO image/gif of hidden tables toggle]()
 
 #### Table name and description
 
@@ -72,7 +75,7 @@ By default, users can see every **column** in a table.
 
 - **Do Not Include**. This column won't be visible or selectable in questions created with the **notebook editor** (the GUI editor). Useful if you have sensitive or irrelevant columns.
 
-> Columns will still be accessible using Metabase's **SQL editor**.
+> For the **SQL editor**, **Do Not Include** settings only affect visibility in the **data reference** section. Though columns will not be visible in the **data reference** section, users will still be able to query these columns.
 
 #### Types
 
@@ -140,11 +143,11 @@ You can also designate a column as the table's **primary key** or **foreign key*
 - **Other**
   - Field containing JSON
 
+### Remapping column values
 
-### Remapping field values
-One thing that happens commonly in tables is that you'll have a foreign key field, like `Product ID`, with a bunch of ID values in it, when what you actually want to see most of the time is the entity name, like the `Product Title`. You might also have fields which contain coded values that you'd prefer to show up as translated or readable values in your tables and charts — like changing `0`, `1`, and `2` to `Female`, `Male`, and `Other` for example.
+One thing that happens commonly in tables is that you'll have a **foreign key column**, like `Product ID`, with a bunch of ID values in it, when what you actually want to see most of the time is the **entity name**, like the `Product Title`. You might also have fields which contain coded values that you'd prefer to show up as translated or readable values in your tables and charts — like changing `0`, `1`, and `2` to `Female`, `Male`, and `Other`.
 
-To do this in Metabase, click on the gear icon to the right of a field's Type dropdown in the Data Model section of the Admin Panel. You'll see a form with these options:
+To remap column values, click on the gear icon to the right of a field's Type dropdown in the Data Model section of the Admin Panel. You'll see a form with these options:
 
 ![Remapping form](./images/remapping/form.png)
 
@@ -158,13 +161,25 @@ Another option is custom remapping, which is currently only possible for numeric
 
 ![Remapping form](./images/remapping/custom-mapping.png)
 
-### Picking the filter UI for a field
+### Picking the filter user interface for a column
 
-Metabase will automatically try to pick the best kind of filter interface for each field based on that field's type and the number of different values in it. Fields with only a few possible choices, like a `Gender` field, will display a dropdown list by default when filtering on them; fields with more than 100 possible selections will show a search box with autocomplete.
+Metabase will automatically try to pick the best kind of filter interface for each column based on that column's type, and the number of different values in it. Columns with only a few possible choices, like a `Gender` column, will display a dropdown list by default when filtering on them. Columns with more than 100 possible selections will show a search box with autocomplete.
 
-If Metabase picked the wrong kind of filter UI for one of your fields, you can manually change it. You can choose from a drop down list, a search box, or just a plain input box:
+You can manually change the user interface for the filter to:
+
+- drop down list
+- search box
+- plain input box
 
 ![Filter options](./images/filter-options.png)
+
+### Column order
+
+Metabase will default to the column order native to the database.
+
+You can re-order the way Metabase presents columns in menus and other interfaces (without affecting the database) by clicking on the grab bar to the right of each column, and dragging the column to a new position in the order.
+
+![TODO gif of reorder]()
 
 ---
 
