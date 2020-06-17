@@ -211,10 +211,12 @@
       (let [details  (:details (data/db))
             spec     (sql-jdbc.conn/connection-details->spec :oracle details)]
         (with-temp-user [username]
-          (doseq [statement ["drop table if exists \"birds\";"
+          (doseq [statement ["drop table \"birds\";"
                              "create table \"birds\" (\"id\" int);"
                              (format "grant all PRIVILEGES on \"birds\" to %s;" username)]]
-            (jdbc/execute! spec [statement]))
+            (try
+              (jdbc/execute! spec [statement])
+              (catch java.sql.SQLSyntaxErrorException _)))
           (is (= #{{:table_name "birds" :table_schem nil}}
                  (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)))
           (jdbc/execute! spec [(format "revoke all on \"birds\" from %s;" username)])

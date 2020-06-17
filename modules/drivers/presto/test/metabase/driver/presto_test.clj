@@ -250,8 +250,8 @@
         (exec! (sql.tx/drop-table-if-exists-sql :presto {:database-name (:name (mt/db))} {:table-name "birds"}))
         (exec! (sql.tx/create-table-sql :presto {:database-name (:name (mt/db))}
                                         {:table-name "birds"
-                                         :field-definitions [{:field-name "id"
-                                                              :base-type  :type/Integer}]}))
+                                         ;; We will append ID automatically
+                                         :field-definitions []}))
         (doseq [statement ["create user if not exists GUEST password 'guest';"
                            "grant all on \"birds\" to GUEST;"]]
           (exec! statement))
