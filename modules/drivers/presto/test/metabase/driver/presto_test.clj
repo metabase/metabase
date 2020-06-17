@@ -24,6 +24,7 @@
             [metabase.test
              [fixtures :as fixtures]
              [util :as tu]]
+            [metabase.test.data.sql :as sql.tx]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]))
 
@@ -244,18 +245,17 @@
     (testing "Do we correctly determine SELECT privilege"
       (let [db-name "privilege_test"
             details (mt/dbdef->connection-details :presto :db {:database-name db-name})
-            spec    (sql-jdbc.conn/connection-details->spec :presto details)
-            exec!   (partial #'presto/execute-presto-query-for-sync spec)]
-        (exec! (format "DROP DATABASE IF EXISTS \"%s\";
-                                 CREATE DATABASE \"%s\";" db-name db-name))
-        (mt/with-temp Database [db {:engine  :presto
-                                    :details (assoc details :dbname db-name)}]
-          (doseq [statement ["create user if not exists GUEST password 'guest';"
-                             "drop table if exists \"birds\";"
-                             "create table \"birds\" ();"
-                             "grant all on \"birds\" to GUEST;"]]
-            (exec! statement))
-          (is (= #{{:table_name "birds" :table_schem nil}}
-                 (sql-jdbc.sync/accessible-tables-for-user :presto db "GUEST")))
-          (exec! "revoke all on \"birds\" from GUEST;")
-          (is (empty? (#'presto/accessible-tables-for-user :presto db "GUEST"))))))))
+            exec!   (partial #'presto/execute-presto-query-for-sync details)]
+        (exec! (sql.tx/drop-table-if-exists-sql :presto {:database-name db-name} {:table-name "birds"}))
+        (exec! (sql.tx/create-table-sql :presto {:database-name db-name}
+                                        {:table-name "birds"
+                                         :field-definitions [{:field-name "id"
+                                                              :base-type  :type/Integer}]}))
+        (doseq [statement ["create user if not exists GUEST password 'guest';"
+                           "grant all on \"birds\" to GUEST;"]]
+          (exec! statement))
+        (is (= #{{:table_name "birds" :table_schem nil}}
+               (sql-jdbc.sync/accessible-tables-for-user :presto (mt/db) "GUEST")))
+        (exec! "revoke all on \"birds\" from GUEST;")
+        (is (empty? (#'presto/accessible-tables-for-user :presto (mt/db) "GUEST")))
+        (exec! (sql.tx/drop-table-if-exists-sql :presto {:database-name db-name} {:table-name "birds"}))))))
