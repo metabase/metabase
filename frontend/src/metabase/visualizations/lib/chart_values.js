@@ -1,5 +1,4 @@
 import _ from "underscore";
-import moment from "moment";
 
 import { COMPACT_CURRENCY_OPTIONS } from "metabase/lib/formatting";
 import { moveToFront } from "metabase/lib/dom";
@@ -133,7 +132,6 @@ export function onRenderValueLabels(
 
   // Ordinal bar charts and histograms need extra logic to center the label.
   const xShifts = displays.map((display, index) => {
-    const thisChart = chart.children()[index];
     const barIndex = displays.slice(0, index).filter(d => d === "bar").length;
     let xShift = 0;
 
@@ -151,12 +149,7 @@ export function onRenderValueLabels(
       // non-ordinal bar charts don't have rangeBand set, but still need xShifting if they're grouped.
       barWidth
     ) {
-      // For these timeseries/quantitative scales, we look at the distance between two points one "interval" apart.
-      // We then scale to remove the padding and divide by the number of bars to get the per-bar shift from the center.
-      const startOfDomain = xScale.domain()[0];
-      const oneIntervalOver = moment.isMoment(startOfDomain)
-        ? startOfDomain.clone().add(xInterval.count, xInterval.interval)
-        : startOfDomain + xInterval;
+      // This mirrors the behavior of `doGroupedBarStuff`
       const seriesPadding = barWidth < 4 ? 0 : barWidth < 8 ? 1 : 2;
       const groupWidth = (barWidth + seriesPadding) * barCount;
 
@@ -202,9 +195,13 @@ export function onRenderValueLabels(
   const addLabels = (data, compact = null) => {
     // make sure we don't add .value-lables multiple times
     parent.select(".value-labels").remove();
-    // Safari had an issue with rendering paint-order: stroke. To work around
-    // that, we create two text labels: one for the the black text and another
-    // for the white outline behind it.
+
+    data = data.map(d => {
+      const { xPos, yPos, yHeight } = xyPos(d);
+      const insideBar = d.rotated && yHeight > MIN_ROTATED_HEIGHT;
+      return { ...d, xPos, yPos, insideBar };
+    });
+
     const labelGroups = parent
       .append("svg:g")
       .classed("value-labels", true)
@@ -212,32 +209,36 @@ export function onRenderValueLabels(
       .data(data)
       .enter()
       .append("g")
-      .attr("text-anchor", d =>
+      .attr("text-anchor", d => {
+        if (d.rotated) {
+          // Rotated labels should appear a fixed distance from the top of the bar.
+          // If the rotated label is above the bar, we anchor the start.
+          // When the label is inside the bar, we anchor the end.
+          return d.insideBar ? "end" : "start";
+        }
         // Unrotated (horizontal) labels should be centered above the bar or point.
-        // Rotated labels should appear a fixed distance from the top of the bar.
-        // If the rotated label is above the bar, we anchor the start.
-        // When the label is inside the bar, we anchor the end.
-        !d.rotated
-          ? "middle"
-          : xyPos(d).yHeight < MIN_ROTATED_HEIGHT
-          ? "start"
-          : "end",
-      )
+        return "middle";
+      })
       .attr("transform", d => {
-        const { xPos, yPos, yHeight } = xyPos(d);
-        const transforms = [`translate(${xPos}, ${yPos})`];
+        const transforms = [`translate(${d.xPos}, ${d.yPos})`];
         if (d.rotated) {
           transforms.push(
             "rotate(-90)",
-            `translate(${yHeight < MIN_ROTATED_HEIGHT ? -3 : -15}, 4)`,
+            `translate(${d.insideBar ? -15 : -3}, 4)`,
           );
         }
         return transforms.join(" ");
       });
 
-    ["value-label-outline", "value-label"].forEach(klass =>
+    // Labels are either white inside the bar or black with white outline.
+    // For outlined labels, Safari had an issue with rendering paint-order: stroke.
+    // To work around that, we create two text labels: one for the the black text
+    // and another for the white outline behind it.
+    ["value-label-outline", "value-label", "value-label-white"].forEach(klass =>
       labelGroups
         .append("text")
+        // only create labels for the correct class(es) given the type of label
+        .filter(d => !(d.insideBar ^ (klass === "value-label-white")))
         .attr("class", klass)
         .text(({ y, seriesIndex }) =>
           formatYValue(y, {

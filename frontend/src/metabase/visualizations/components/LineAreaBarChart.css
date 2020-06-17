@@ -222,3 +222,8 @@ text.value-label {
   fill: var(--color-text-dark);
   font-weight: 800;
 }
+
+text.value-label-white {
+  fill: var(--color-text-white);
+  font-weight: 800;
+}
