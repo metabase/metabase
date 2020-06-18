@@ -11,7 +11,7 @@ To do this it has to match the behavior in dc.js and our own hacks on top of tha
  - Hide labels to only show every nth label if there isn't enough horizontal space.
  - Rotate labels for tightly spaced grouped bar chart.
  - Switch label formatting to compact if it will save space.
- - Drop clustered labels for overlapping lines.
+ - Drop clustered labels for overlapping lines and bars.
 */
 
 export function onRenderValueLabels(
@@ -271,7 +271,10 @@ export function onRenderValueLabels(
   const MIN_SPACING = 20;
   _.chain(datas)
     .flatten()
-    .filter(d => displays[d.seriesIndex] === "line")
+    .filter(
+      d =>
+        displays[d.seriesIndex] === "line" || displays[d.seriesIndex] === "bar",
+    )
     .map(d => ({ d, ...xyPos(d) }))
     .groupBy(({ xPos }) => xPos)
     .values()

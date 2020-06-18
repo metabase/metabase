@@ -311,9 +311,6 @@ export const GRAPH_GOAL_SETTINGS = {
   },
 };
 
-// with more than this many rows, don't display values on top of bars by default
-const AUTO_SHOW_VALUES_MAX_ROWS = 25;
-
 export const GRAPH_DISPLAY_VALUES_SETTINGS = {
   "graph.show_values": {
     section: t`Display`,
@@ -321,13 +318,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     widget: "toggle",
     getHidden: (series, vizSettings) =>
       vizSettings["stackable.stack_type"] === "normalized",
-    getDefault: ([{ card, data }]) =>
-      // small bar graphs should have this turned on by default,
-      // but bar graphs that were saved without this feature shouldn't
-      card.original_card_id == null &&
-      card.display === "bar" &&
-      data.rows.length < AUTO_SHOW_VALUES_MAX_ROWS,
-    persistDefault: true,
+    default: false,
   },
   "graph.label_value_frequency": {
     section: t`Display`,
