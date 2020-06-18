@@ -1,6 +1,8 @@
-## Settings
+## General settings
 
-Here are a few other miscellaneous settings you can configure from the home page of the **Admin Panel**.
+General settings collects miscellaneous settings that do not fit in other sections of the Admin **Settings** tab.
+
+You can configure these settings in the **General** section of the **Settings** tab in the **Admin Panel**.
 
 ### Site Name
 
@@ -19,10 +21,6 @@ This email address will be displayed in various messages throughout Metabase whe
 The **report timezone** sets the default time zone for displaying times. The timezone is used when breaking out data by dates.
 
 _Setting the default timezone will not change the timezone of any data in your database_. If the underlying times in your database aren't assigned to a timezone, Metabase will use the report timezone as the default timezone.
-
-### Language Settings
-
-Metabase has been translated into a variety of languages, and this setting allows you to configure the language to be used for external Metabase communications, such as emails and pulses. There is not currently a setting to set the language in the Metabase interface for all of your users; instead, Metabase relies on each user's browser language to determine which language should be used, provided Metabase supports that translation. You can check [which languages Metabase currently supports](../faq/general/what-languages-can-be-used-with-metabase.md).
 
 ### Anonymous Tracking
 
