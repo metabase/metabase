@@ -38,6 +38,8 @@ You can start typing `{{snippet:` and Metabase will present autocomplete options
 
 ### Snippet menu
 
+![Snippet sidebar and insertion](./images/sql-snippets/snippet_sidebar_and_insertion.gif)
+
 The SQL editor **sidebar** has a snippets menu to list available and archived snippets.
 
 Click on the code icon on the right side of the SQL editor, below **Data Reference** book icon (learn about your data) and the **Variables** χ icon. Metabase will slide out a sibebar menu that lists available snippets.
@@ -45,8 +47,6 @@ Click on the code icon on the right side of the SQL editor, below **Data Referen
 Click on a snippet to insert it into your query at the current cursor point.
 
 Click on the down arrow to the right of a snippet to see a preview of its SQL code.
-
-![TODO image of preview]
 
 You can **edit** the snippet. You can change the SQL code, name, and description. You can also **archive** the snippet, which removes the snippet from the menu, but does not affect any existing queries that use the snippet.
 
