@@ -65,7 +65,7 @@ Another great thing about sandboxing is that this user can still use all of the 
 
 As we mentioned above, the second way you can create a sandbox is by using a saved question to define a customized view of a table to display. When a user with sandboxed access to a table queries that table, behind the scenes they'll really be using that saved question as the source data for their query.
 
-#### Example 1: hiding specific columns**
+#### Example 1: hiding specific columns
 
 In this example I have a table called `People` that I want users in my Marketing team to be able to see, but I don't want them to see most of these sensitive columns that have personal information in them:
 
@@ -86,6 +86,7 @@ To verify things are working correctly, I'll log in as a test user in the Market
 **Note:** this filtering will also happen when a user with sandboxed access goes to look at a chart that uses data from the sandboxed table. If the chart uses any columns that aren't included in the sandboxed version of the table, the chart will not load for that user.
 
 #### Example 2: using variables in a saved question
+
 To create even more powerful and nuanced filters, you can use variables in a filtering question in conjunction with user attributes.
 
 In this example, I'm going to give users in a specific group access to my `Orders` table, but I'll filter out which columns they can see, and I'll also make it so that they only see rows where the "Customer ID" column equals the user's `customer_id` attribute.
