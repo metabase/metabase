@@ -1,7 +1,5 @@
 /* @flow weak */
 
-import Query from "./Query";
-
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 
@@ -197,7 +195,7 @@ export default class NativeQuery extends AtomicQuery {
     return getIn(this.datasetQuery(), ["native", "query"]) || "";
   }
 
-  setQueryText(newQueryText: string): Query {
+  setQueryText(newQueryText: string): NativeQuery {
     return new NativeQuery(
       this._originalQuestion,
       chain(this._datasetQuery)
