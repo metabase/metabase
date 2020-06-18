@@ -95,7 +95,7 @@
 ;;; |                                            Loading Test Extensions                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(declare before-run after-run)
+(declare before-run)
 
 (defonce ^:private has-done-before-run (atom #{}))
 
@@ -246,7 +246,6 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod before-run ::test-extensions [_]) ; default-impl is a no-op
-
 
 (defmulti dbdef->connection-details
   "Return the connection details map that should be used to connect to the Database we will create for
