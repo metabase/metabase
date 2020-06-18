@@ -132,6 +132,9 @@ export function onRenderValueLabels(
 
   // Ordinal bar charts and histograms need extra logic to center the label.
   const xShifts = displays.map((display, index) => {
+    if (display !== "bar") {
+      return 0;
+    }
     const barIndex = displays.slice(0, index).filter(d => d === "bar").length;
     let xShift = 0;
 
@@ -288,7 +291,8 @@ export function onRenderValueLabels(
           continue;
         }
 
-        if (!d.showLabelBelow) {
+        if (!d.showLabelBelow && displays[d.seriesIndex] === "line") {
+          // if we're a line label that's currently above the line
           // try flipping the label below to get farther from previous label
           const flippedYPos = xyPos({ ...d, showLabelBelow: true }).yPos;
           if (flippedYPos - prev > MIN_SPACING) {
