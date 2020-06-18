@@ -11,7 +11,9 @@ Your secret key must be at least 16 characters (longer is even better!), and we 
 This gives you a cryptographically-secure, randomly-generated 32-character key that will look something like `IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=`. Set it as an environment variable and
 start Metabase as usual:
 
-    MB_ENCRYPTION_SECRET_KEY='IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=' java -jar metabase.jar
+    MB_ENCRYPTION_SECRET_KEY="IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=" java -jar metabase.jar
+
+**Note** Single-quotes (`'`) and double-quotes (`"`) are interpreted differently for environment variable values on some versions of Linux, so when upgrading to a newer version of Linux, then it might be needed to wrap it in double-quotes, if single-quotes were used originally, so the single-quotes are interpreted literally. Ex. `MB_ENCRYPTION_SECRET_KEY='IYq...sM='` would be `MB_ENCRYPTION_SECRET_KEY="'IYq...sM='"`
 
 Metabase will securely encrypt and store the connection details for any new Databases you add. (Connection details for existing databases will be encrypted as well if you save them in the admin panel).
 Existing databases with unencrypted details will continue to work normally.
