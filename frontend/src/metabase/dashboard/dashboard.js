@@ -167,10 +167,7 @@ export const addCardToDashboard = ({
   dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
   dispatch(fetchCardData(card, dashcard, { reload: true, clear: true }));
 
-  // guard in case card was filtered
-  if (card.dataset_query && card.dataset_query.database) {
-    dispatch(fetchDatabaseMetadata(card.dataset_query.database));
-  }
+  fetchDashCardEntities(dispatch, [dashcard]);
 };
 
 export const addDashCardToDashboard = function({
@@ -663,23 +660,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     }
 
     if (dashboardType === "normal" || dashboardType === "transient") {
-      const cards = _.chain(result.ordered_cards)
-        .map(dc => [dc.card].concat(dc.series))
-        .flatten();
-
-      // fetch database metadata for every card
-      cards
-        .filter(card => getIn(card, ["dataset_query", "database"]))
-        .map(card => card.dataset_query.database)
-        .uniq()
-        .each(dbId => dispatch(fetchDatabaseMetadata(dbId)));
-
-      // fetch nested question tables
-      cards
-        .map(card => getIn(card, ["dataset_query", "query", "source-table"]))
-        .filter(tableId => /card__\d+/.test(tableId))
-        .uniq()
-        .each(id => dispatch(Tables.actions.fetchMetadata({ id })));
+      fetchDashCardEntities(dispatch, result.ordered_cards);
     }
 
     // copy over any virtual cards from the dashcard to the underlying card/question
@@ -1180,6 +1161,28 @@ const loadingDashCards = handleActions(
   },
   { dashcardIds: [], loadingIds: [], startTime: null },
 );
+
+// This loads database metadata and nested questions for a list of dash cards.
+// We load the nested questions separately because the db metadata only includes real tables.
+function fetchDashCardEntities(dispatch, dashCards) {
+  const cards = _.chain(dashCards)
+    .map(dc => [dc.card].concat(dc.series))
+    .flatten();
+
+  // fetch database metadata for every card
+  cards
+    .filter(card => getIn(card, ["dataset_query", "database"]))
+    .map(card => card.dataset_query.database)
+    .uniq()
+    .each(dbId => dispatch(fetchDatabaseMetadata(dbId)));
+
+  // fetch nested question tables
+  cards
+    .map(card => getIn(card, ["dataset_query", "query", "source-table"]))
+    .filter(tableId => /card__\d+/.test(tableId))
+    .uniq()
+    .each(id => dispatch(Tables.actions.fetchMetadata({ id })));
+}
 
 export default combineReducers({
   dashboardId,
