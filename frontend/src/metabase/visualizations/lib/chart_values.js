@@ -196,11 +196,10 @@ export function onRenderValueLabels(
     // make sure we don't add .value-lables multiple times
     parent.select(".value-labels").remove();
 
-    data = data.map(d => {
-      const { xPos, yPos, yHeight } = xyPos(d);
-      const insideBar = d.rotated && yHeight > MIN_ROTATED_HEIGHT;
-      return { ...d, xPos, yPos, insideBar };
-    });
+    data = data
+      .map(d => ({ ...d, ...xyPos(d) }))
+      // remove rotated labels when the bar is too short
+      .filter(d => !(d.rotated && d.yHeight < MIN_ROTATED_HEIGHT));
 
     const labelGroups = parent
       .append("svg:g")
@@ -209,23 +208,11 @@ export function onRenderValueLabels(
       .data(data)
       .enter()
       .append("g")
-      .attr("text-anchor", d => {
-        if (d.rotated) {
-          // Rotated labels should appear a fixed distance from the top of the bar.
-          // If the rotated label is above the bar, we anchor the start.
-          // When the label is inside the bar, we anchor the end.
-          return d.insideBar ? "end" : "start";
-        }
-        // Unrotated (horizontal) labels should be centered above the bar or point.
-        return "middle";
-      })
+      .attr("text-anchor", d => (d.rotated ? "end" : "middle"))
       .attr("transform", d => {
         const transforms = [`translate(${d.xPos}, ${d.yPos})`];
         if (d.rotated) {
-          transforms.push(
-            "rotate(-90)",
-            `translate(${d.insideBar ? -15 : -3}, 4)`,
-          );
+          transforms.push("rotate(-90)", `translate(-15, 4)`);
         }
         return transforms.join(" ");
       });
@@ -238,7 +225,7 @@ export function onRenderValueLabels(
       labelGroups
         .append("text")
         // only create labels for the correct class(es) given the type of label
-        .filter(d => !(d.insideBar ^ (klass === "value-label-white")))
+        .filter(d => !(d.rotated ^ (klass === "value-label-white")))
         .attr("class", klass)
         .text(({ y, seriesIndex }) =>
           formatYValue(y, {
