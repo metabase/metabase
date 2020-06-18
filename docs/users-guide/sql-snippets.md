@@ -1,8 +1,10 @@
 ## SQL snippets
 
+![Highlight and save as snippet](./images/sql-snippets/highlight_and_save_as_snippet.gif)
+
 **SQL snippets** are reusable bits of SQL. Anyone can create and edit snippets, and snippets become available for all to take advantage of.
 
-For example, if you frequently perform queries that involve multiple tables, you can save the statement that joins those tables as a snippet.
+For example, if you frequently perform queries that involve multiple tables, you can save the statement that joins those tables as a snippet to use in multiple questions.
 
 Metabase's [Enterprise edition](https://www.metabase.com/docs/latest/enterprise-guide/start.html) adds additional functionality for managing snippets at scale by offering **folder organization** and **group-level permissions**.
 
