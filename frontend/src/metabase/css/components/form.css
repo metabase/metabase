@@ -50,6 +50,10 @@
   padding-right: 32px;
   padding-top: 8px;
 }
+.Form-file-input--has-value {
+  color: var(--color-text-dark);
+  font-weight: bold;
+}
 .Form-file-input::before {
   background: transparent;
   border: 1px solid color(var(--color-border) blackness(+ 5%));
