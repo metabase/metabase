@@ -212,11 +212,11 @@
             spec     (sql-jdbc.conn/connection-details->spec :oracle details)]
         (doseq [statement ["drop table \"birds\";"
                            "create table \"birds\" (\"id\" int);"
-                           "grant SELECT on \"birds\" to PUBLIC;"]]
+                           (format "grant SELECT on \"birds\" to %s;" (:user details))]]
           (try
             (jdbc/execute! spec [statement])
             (catch java.sql.SQLSyntaxErrorException _)))
-        (is (= #{{:table_name "birds" :table_schem nil}}
-               (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) "PUBLIC")))
-        (jdbc/execute! spec ["revoke SELECT on TABLE \"birds\" from PUBLIC;"])
-        (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) "PUBLIC")))))))
+        (is (contains? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) (:user details))
+                       {:table_name "birds" :table_schem nil}))
+        (jdbc/execute! spec [(format "revoke SELECT on TABLE \"birds\" from %s;" (:user details))])
+        (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) (:user details))))))))

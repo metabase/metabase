@@ -33,7 +33,7 @@
                            "create table birds (id integer);"
                            "grant all on birds to rasta;"]]
           (jdbc/execute! spec [statement]))
-        (is (= #{{:table_name "birds" :table_schem nil}}
+        (is (= #{{:table_name "birds" :table_schem "public"}}
                (sql-jdbc.sync/accessible-tables-for-user :vertica (mt/db) "rasta")))
         (jdbc/execute! spec ["revoke all on birds from rasta;"])
         (is (empty? (sql-jdbc.sync/accessible-tables-for-user :vertica (mt/db) "rasta")))

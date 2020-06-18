@@ -165,9 +165,9 @@
                                       :details details}]
             (doseq [statement [(format "drop table if exists %s;" table-qualified-name)
                                (format "create table %s (id integer);" table-qualified-name)
-                               (format "grant SELECT on %s to PUBLIC;" table-qualified-name)]]
+                               (format "grant SELECT on %s to %s;" table-qualified-name (:user details))]]
               (jdbc/execute! spec [statement]))
             (is (= #{{:table_name "birds" :table_schem "PUBLIC"}}
-                   (sql-jdbc.sync/accessible-tables-for-user :snowflake db "PUBLIC")))
-            (jdbc/execute! spec [(format "revoke SELECT on %s from PUBLIC;" table-qualified-name)])
-            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :snowflake db "PUBLIC")))))))))
+                   (sql-jdbc.sync/accessible-tables-for-user :snowflake db (:user details))))
+            (jdbc/execute! spec [(format "revoke SELECT on %s from %s;" table-qualified-names (:user details))])
+            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :snowflake db (:user details))))))))))
