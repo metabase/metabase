@@ -261,12 +261,10 @@
 (deftest expand-multiple-snippets-test
   (mt/with-temp* [NativeQuerySnippet [select-snippet {:content     "name, price"
                                                       :creator_id  (mt/user->id :rasta)
-                                                      :database_id (mt/id)
                                                       :description "Fields to SELECT"
                                                       :name        "Venue fields"}]
                   NativeQuerySnippet [where-snippet  {:content     "price > 2"
                                                       :creator_id  (mt/user->id :rasta)
-                                                      :database_id (mt/id)
                                                       :description "Meant for use in WHERE clause"
                                                       :name        "Filter: expensive venues"}]
                   Card [card {:dataset_query

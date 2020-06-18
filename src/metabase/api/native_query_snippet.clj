@@ -33,9 +33,8 @@
 
 (api/defendpoint POST "/"
   "Create a new `NativeQuerySnippet`."
-  [:as {{:keys [content database_id description name]} :body}]
+  [:as {{:keys [content description name]} :body}]
   {content     s/Str
-   database_id su/IntGreaterThanZero
    description (s/maybe s/Str)
    name        snippet/NativeQuerySnippetName}
   (api/check-superuser)
@@ -43,7 +42,6 @@
    (db/insert! NativeQuerySnippet
                {:content     content
                 :creator_id  api/*current-user-id*
-                :database_id database_id
                 :description description
                 :name        name})))
 

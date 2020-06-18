@@ -147,29 +147,18 @@
                    :tag               tag}
                   e)))))))
 
-(defn- validate-tag-snippet-db
-  [{database-id :database, :as tag} snippet]
-  (when (and snippet
-             (not= database-id (:database_id snippet)))
-    (throw (ex-info
-            (tru "Snippet \"{0}\" is associated with a different database and may not be used here."
-                 (:name snippet))
-            {:snippet-db-id (:database_id snippet)
-             :tag-db-id     database-id
-             :snippet       snippet
-             :tag           tag})))
-  snippet)
-
 (s/defn ^:private snippet-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
   "Returns the query snippet for the NativeQuerySnippet referenced by `(:snippet-name tag)`"
   [tag :- TagParam]
   (when-let [snippet-name (:snippet-name tag)]
-    (if-let [snippet (validate-tag-snippet-db tag (db/select-one NativeQuerySnippet :name snippet-name))]
+    (let [snippet (or (db/select-one NativeQuerySnippet :name snippet-name)
+                      (throw (ex-info (tru "Snippet \"{0}\" not found." snippet-name)
+                                      {:snippet-name snippet-name
+                                       :tag          tag
+                                       :type         qp.error-type/invalid-parameter})))]
       (i/map->NativeQuerySnippet
        {:snippet-id (:id snippet)
-        :content    (:content snippet)})
-      (throw (ex-info (tru "Snippet \"{0}\" not found." snippet-name)
-                      {:snippet-name snippet-name, :tag tag})))))
+        :content    (:content snippet)}))))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
