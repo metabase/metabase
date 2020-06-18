@@ -169,5 +169,5 @@
               (jdbc/execute! spec [statement]))
             (is (= #{{:table_name "birds" :table_schem "PUBLIC"}}
                    (sql-jdbc.sync/accessible-tables-for-user :snowflake db (:user details))))
-            (jdbc/execute! spec [(format "revoke SELECT on %s from %s;" table-qualified-names (:user details))])
+            (jdbc/execute! spec [(format "revoke SELECT on %s from %s;" table-qualified-name (:user details))])
             (is (empty? (sql-jdbc.sync/accessible-tables-for-user :snowflake db (:user details))))))))))
