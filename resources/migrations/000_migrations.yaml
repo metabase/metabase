@@ -6304,13 +6304,11 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
         # Needed to efficiently enforce the unique constraint on name and so we can lookup by name as well.
