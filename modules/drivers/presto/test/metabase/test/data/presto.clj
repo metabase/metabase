@@ -107,7 +107,14 @@
       (doseq [batch batches]
         (execute! (insert-sql driver dbdef tabledef batch))))))
 
-(defmethod tx/destroy-db! :presto [_ _]) ; no-op
+(defmethod tx/destroy-db! :presto
+  [driver {:keys [database-name table-definitions], :as dbdef}]
+  (let [details  (tx/dbdef->connection-details driver :db dbdef)
+        execute! (partial #'presto/execute-presto-query-for-sync details)]
+    (doseq [{:keys [table-name], :as tabledef} table-definitions]
+      (println (format "[Presto] destroying %s.%s" (pr-str database-name) (pr-str table-name)))
+      (execute! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef))
+      (println "[Presto] [ok]"))))
 
 (defmethod tx/format-name :presto
   [_ s]

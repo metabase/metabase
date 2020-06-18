@@ -37,12 +37,12 @@
               :data
               :rows))))))
 
-;; Do we correctly check for permissions?
-(expect
-  (try
-    (do
-      (perms/revoke-permissions! (perms-group/all-users) (data/id))
-      (= ((test-users/user->client :rasta) :get 403 (test-endpoint))
-         "You don't have permissions to do that."))
-    (finally
-      (perms/grant-permissions! (perms-group/all-users) (perms/object-path (data/id))))))
+(deftest permissions-test
+  (testing "GET /api/transform/:db-id/:schema/:transform-name"
+    (testing "Do we correctly check for permissions?"
+      (try
+        (perms/revoke-permissions! (perms-group/all-users) (data/id))
+        (is (= "You don't have permissions to do that."
+               ((test-users/user->client :rasta) :get 403 (test-endpoint))))
+        (finally
+          (perms/grant-permissions! (perms-group/all-users) (perms/object-path (data/id))))))))

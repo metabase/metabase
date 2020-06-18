@@ -1,7 +1,6 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [driver :as driver]
@@ -15,9 +14,16 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [interface :as tx]]
+            [metabase.test.data.impl.verify :as verify]
             [metabase.test.initialize :as initialize]
             [metabase.test.util.timezone :as tu.tz]
+            [potemkin :as p]
             [toucan.db :as db]))
+
+(comment verify/keep-me)
+
+(p/import-vars
+ [verify verify-data-loaded-correctly])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          get-or-create-database!; db                                           |
@@ -77,59 +83,6 @@
 (def ^:private sync-timeout-ms
   "Max amount of time to wait for sync to complete."
   (u/minutes->ms 5)) ; five minutes
-
-(defn- loaded-table-names [driver database]
-  (->> (driver/describe-database driver database)
-       :tables
-       (map :name)
-       set))
-
-(defn- loaded-field-names [driver database table-name]
-  (->> (driver/describe-table driver database {:name table-name})
-       u/ignore-exceptions
-       :fields
-       (map :name)
-       set))
-
-(defmulti verify-data-loaded-correctly
-  "Make sure the expected Tables and Fields are available *before* running sync. Otherwise the data was loaded
-  incorrectly."
-  {:arglists '([driver database-definition database])}
-  tx/dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod verify-data-loaded-correctly :default
-  [driver {:keys [table-definitions database-name]} database]
-  (log/trace "verify data loaded correctly")
-  (let [loaded-table-names (loaded-table-names driver database)
-        format-name        (fn [a-name]
-                             (binding [driver/*driver* driver]
-                               ((requiring-resolve 'metabase.test.data/format-name) a-name)))]
-    (doseq [{:keys [table-name field-definitions]} table-definitions
-            :let                                   [table-name           (format-name table-name)
-                                                    qualified-table-name (tx/db-qualified-table-name (:name database) table-name)
-                                                    table-loaded?        (fn [table-name]
-                                                                           (or (contains? loaded-table-names table-name)
-                                                                               (contains? loaded-table-names qualified-table-name)))]]
-      (when-not (table-loaded? table-name)
-        (throw (ex-info (format "Error loading data: Table %s does not exist after sync" (pr-str table-name))
-                        {:driver        driver
-                         :database-name database-name
-                         :actual-tables loaded-table-names})))
-      ;; now check that the fields exist
-      (doseq [{:keys [field-name]} field-definitions
-              :let                 [field-name         (format-name field-name)
-                                    loaded-field-names (set/union (loaded-field-names driver database table-name)
-                                                                  (loaded-field-names driver database qualified-table-name))]]
-        (when-not (contains? loaded-field-names field-name)
-          (throw (ex-info (format "Error loading data: Field %s.%s does not exist after sync"
-                                  (pr-str table-name)
-                                  (pr-str field-name))
-                          {:driver        driver
-                           :database-name database-name
-                           :table-name    table-name
-                           :actual-fields loaded-field-names}))))))
-  (log/trace "data loaded correctly."))
 
 (defn- create-database! [driver {:keys [database-name table-definitions], :as database-definition}]
   {:pre [(seq database-name)]}

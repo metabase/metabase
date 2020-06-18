@@ -37,12 +37,19 @@
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
   in `metabase.query-processor.sort`, for all the Fields in a given Table."
   [table-id :- su/IntGreaterThanZero]
-  (for [field (table->sorted-fields table-id)]
-    (if (types/temporal-field? field)
-      ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
-      ;; default bucketing of `:day`
-      [:datetime-field [:field-id (u/get-id field)] :default]
-      [:field-id (u/get-id field)])))
+  (let [fields (table->sorted-fields table-id)]
+    (when (empty? fields)
+      (throw (ex-info (tru "No fields found for table {0}." (pr-str (:name (qp.store/table table-id))))
+                      {:table-id table-id
+                       :type     error-type/invalid-query})))
+    (mapv
+     (fn [field]
+       (if (types/temporal-field? field)
+         ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
+         ;; default bucketing of `:day`
+         [:datetime-field [:field-id (u/get-id field)] :default]
+         [:field-id (u/get-id field)]))
+     fields)))
 
 (s/defn ^:private source-metadata->fields :- mbql.s/Fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
