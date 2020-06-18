@@ -63,7 +63,7 @@
               [(str "SELECT object_name AS table_name, object_schema AS table_schem "
                     "FROM grants "
                     "WHERE grantee=? "
-                    "AND privilages_description LIKE '%SELECT%'")
+                    "AND privileges_description LIKE '%SELECT%'")
                 user]
               {:result-set-fn set}))
 

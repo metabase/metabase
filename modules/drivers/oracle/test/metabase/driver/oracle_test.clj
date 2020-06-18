@@ -217,6 +217,6 @@
             (jdbc/execute! spec [statement])
             (catch java.sql.SQLSyntaxErrorException _)))
         (is (= #{{:table_name "birds" :table_schem nil}}
-               (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)))
+               (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) "PUBLIC")))
         (jdbc/execute! spec ["revoke SELECT on TABLE \"birds\" from PUBLIC;"])
-        (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)))))))
+        (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) "PUBLIC")))))))
