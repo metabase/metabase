@@ -35,7 +35,7 @@ const STRING_FUNCTIONS = [
   { text: "ltrim(", type: "functions" },
   { text: "regexextract(", type: "functions" },
   { text: "rtrim(", type: "functions" },
-  { text: "substitute(", type: "functions" },
+  { text: "replace(", type: "functions" },
   { text: "substring(", type: "functions" },
   { text: "trim(", type: "functions" },
   { text: "upper(", type: "functions" },

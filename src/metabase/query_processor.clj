@@ -1,12 +1,10 @@
 (ns metabase.query-processor
-  "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific
-  implementations."
+  "The main entrypoint to running queries."
   (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [driver :as driver]]
             [metabase.driver.util :as driver.u]
-            [metabase.mbql.schema :as mbql.s]
             [metabase.query-processor
              [context :as context]
              [error-type :as error-type]
@@ -166,11 +164,8 @@
 
 (defn query->native
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
-  SQL form). (Like `preprocess`, this function will throw an Exception if preprocessing was not successful.)
-  (Currently, this function is mostly used by tests and in the REPL; `mbql-to-native/mbql->native` middleware handles
-  simliar functionality for queries that are actually executed.)"
+  SQL form). Like `preprocess`, this function will throw an Exception if preprocessing was not successful."
   [query]
-  (perms/check-current-user-has-adhoc-native-query-perms query)
   (preprocess-query query {:nativef
                            (fn [query context]
                              (context/raisef (qp.reducible/quit query) context))}))
@@ -219,18 +214,15 @@
          query
          args))
 
-(s/defn ^:private add-info [query info :- mbql.s/Info]
-  (update query :info merge info))
-
 (s/defn process-query-and-save-execution!
   "Process and run a 'userland' MBQL query (e.g. one ran as the result of an API call, scheduled Pulse, MetaBot query,
   etc.). Returns results in a format appropriate for consumption by FE client. Saves QueryExecution row in application
   DB."
   ([query info]
-   (process-userland-query (add-info query info)))
+   (process-userland-query (assoc query :info info)))
 
   ([query info context]
-   (process-userland-query (add-info query info) context)))
+   (process-userland-query (assoc query :info info) context)))
 
 (defn- add-default-constraints [query]
   (assoc-in query [:middleware :add-default-userland-constraints?] true))

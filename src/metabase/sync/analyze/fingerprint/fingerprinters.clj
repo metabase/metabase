@@ -6,13 +6,14 @@
             [kixi.stats
              [core :as stats]
              [math :as math]]
+            [medley.core :as m]
             [metabase.models.field :as field]
             [metabase.sync.analyze.classifiers.name :as classify.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util
              [date-2 :as u.date]
-             [i18n :refer [trs]]]
+             [i18n :refer [deferred-trs trs]]]
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram
            com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
@@ -53,6 +54,46 @@
    (.offer acc x)
    acc))
 
+(defmacro robust-map
+  "Wrap each map value in try-catch block."
+  [& kvs]
+  `(hash-map ~@(apply concat (for [[k v] (partition 2 kvs)]
+                               `[~k (try
+                                      ~v
+                                      (catch Throwable _#))]))))
+
+(defmacro ^:private with-reduced-error
+  [msg & body]
+  `(let [result# (sync-util/with-error-handling ~msg ~@body)]
+     (if (instance? Throwable result#)
+       (reduced result#)
+       result#)))
+
+(defn with-error-handling
+  "Wrap `rf` in an error-catching transducer."
+  [rf msg]
+  (fn
+    ([] (with-reduced-error msg (rf)))
+    ([acc]
+     (unreduced
+      (if (or (reduced? acc)
+              (instance? Throwable acc))
+        acc
+        (with-reduced-error msg (rf acc)))))
+    ([acc e] (with-reduced-error msg (rf acc e)))))
+
+(defn robust-fuse
+  "Like `redux/fuse` but wraps every reducing fn in `with-error-handling` and returns `nil` for
+   that fn if an error has been encountered during transducing."
+  [kfs]
+  (redux/fuse (m/map-kv-vals (fn [k f]
+                               (redux/post-complete
+                                (with-error-handling f (deferred-trs "Error reducing {0}" (name k)))
+                                (fn [result]
+                                  (when-not (instance? Throwable result)
+                                    result))))
+                             kfs)))
+
 (defmulti fingerprinter
   "Return a fingerprinter transducer for a given field based on the field's type."
   {:arglists '([field])}
@@ -68,8 +109,8 @@
 
 (def ^:private global-fingerprinter
   (redux/post-complete
-   (redux/fuse {:distinct-count cardinality
-                :nil%           (stats/share nil?)})
+   (robust-fuse {:distinct-count cardinality
+                 :nil%           (stats/share nil?)})
    (partial hash-map :global)))
 
 (defmethod fingerprinter :default
@@ -100,25 +141,6 @@
    (fn [[type-fingerprint global-fingerprint]]
      (merge global-fingerprint
             type-fingerprint))))
-
-(defmacro ^:private with-reduced-error
-  [msg & body]
-  `(let [result# (sync-util/with-error-handling ~msg ~@body)]
-     (if (instance? Throwable result#)
-       (reduced result#)
-       result#)))
-
-(defn- with-error-handling
-  [rf msg]
-  (fn
-    ([] (with-reduced-error msg (rf)))
-    ([acc]
-     (unreduced
-      (if (or (reduced? acc)
-              (instance? Throwable acc))
-        acc
-        (with-reduced-error msg (rf acc)))))
-    ([acc e] (with-reduced-error msg (rf acc e)))))
 
 (defmacro ^:private deffingerprinter
   [field-type transducer]
@@ -167,8 +189,8 @@
 
 (deffingerprinter :type/DateTime
   ((map ->temporal)
-   (redux/fuse {:earliest earliest
-                :latest   latest})))
+   (robust-fuse {:earliest earliest
+                 :latest   latest})))
 
 (defn- histogram
   "Transducer that summarizes numerical data with a histogram."
@@ -176,17 +198,25 @@
   ([^Histogram histogram] histogram)
   ([^Histogram histogram x] (hist/insert-simple! histogram x)))
 
+(defn real-number?
+  "Is `x` a real number (i.e. not a `NaN` or an `Infinity`)?"
+  [x]
+  (and (number? x)
+       (not (Double/isNaN x))
+       (not (Double/isInfinite x))))
+
 (deffingerprinter :type/Number
   (redux/post-complete
-   histogram
+   ((filter real-number?) histogram)
    (fn [h]
      (let [{q1 0.25 q3 0.75} (hist/percentiles h 0.25 0.75)]
-       {:min (hist/minimum h)
+       (robust-map
+        :min (hist/minimum h)
         :max (hist/maximum h)
         :avg (hist/mean h)
         :sd  (some-> h hist/variance math/sqrt)
         :q1  q1
-        :q3  q3}))))
+        :q3  q3)))))
 
 (defn- valid-serialized-json?
   "Is x a serialized JSON dictionary or array."
@@ -198,10 +228,10 @@
   ((map str) ; we cast to str to support `field-literal` type overwriting:
              ; `[:field-literal "A_NUMBER" :type/Text]` (which still
              ; returns numbers in the result set)
-   (redux/fuse {:percent-json   (stats/share valid-serialized-json?)
-                :percent-url    (stats/share u/url?)
-                :percent-email  (stats/share u/email?)
-                :average-length ((map count) stats/mean)})))
+   (robust-fuse {:percent-json   (stats/share valid-serialized-json?)
+                 :percent-url    (stats/share u/url?)
+                 :percent-email  (stats/share u/email?)
+                 :average-length ((map count) stats/mean)})))
 
 (defn fingerprint-fields
   "Return a transducer for fingerprinting a resultset with fields `fields`."

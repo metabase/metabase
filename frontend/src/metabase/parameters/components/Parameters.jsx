@@ -21,6 +21,7 @@ import type {
 } from "metabase/meta/types/Parameter";
 
 import type { DashboardWithCards } from "metabase/meta/types/Dashboard";
+import Dimension from "metabase-lib/lib/Dimension";
 import type Field from "metabase-lib/lib/metadata/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
@@ -71,15 +72,23 @@ export default class Parameters extends Component {
         const queryParam = query && query[parameter.slug];
         if (queryParam != null || parameter.default != null) {
           let value = queryParam != null ? queryParam : parameter.default;
-          if (parameter.hasOnlyFieldTargets && value && !Array.isArray(value)) {
-            // FieldValuesWidget always produces an array. If this param has
-            // only field targets we'll use that widget, so we should start with
-            // an array to match.
+
+          // ParameterValueWidget uses FieldValuesWidget if there's no available
+          // date widget and all targets are fields. This matches that logic.
+          const willUseFieldValuesWidget =
+            parameter.hasOnlyFieldTargets && !/^date\//.test(parameter.type);
+          if (willUseFieldValuesWidget && value && !Array.isArray(value)) {
+            // FieldValuesWidget always produces an array. If we'll use that
+            // widget, we should start with an array to match.
             value = [value];
           }
+          // field IDs can be either ["field-id", <id>] or ["field-literal", <name>, <type>]
           const fieldIds = parameter.field_ids || [];
-          // $FlowFixMe
-          const fields = fieldIds.map(id => metadata.field(id));
+          const fields = fieldIds.map(
+            id =>
+              // $FlowFixMe
+              metadata.field(id) || Dimension.parseMBQL(id, metadata).field(),
+          );
           // $FlowFixMe
           setParameterValue(parameter.id, parseQueryParam(value, fields));
         }

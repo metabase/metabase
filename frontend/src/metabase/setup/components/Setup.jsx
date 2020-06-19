@@ -2,40 +2,55 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
 import { t } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
 import NewsletterForm from "metabase/components/NewsletterForm";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
+import LanguageStep from "./LanguageStep";
 import UserStep from "./UserStep";
 import DatabaseConnectionStep from "./DatabaseConnectionStep";
 import PreferencesStep from "./PreferencesStep";
 import DatabaseSchedulingStep from "metabase/setup/components/DatabaseSchedulingStep";
 
 const WELCOME_STEP_NUMBER = 0;
-const USER_STEP_NUMBER = 1;
-const DATABASE_CONNECTION_STEP_NUMBER = 2;
-const DATABASE_SCHEDULING_STEP_NUMBER = 3;
-const PREFERENCES_STEP_NUMBER = 4;
+const LANGUAGE_STEP_NUMBER = 1;
+const USER_STEP_NUMBER = 2;
+const DATABASE_CONNECTION_STEP_NUMBER = 3;
+const DATABASE_SCHEDULING_STEP_NUMBER = 4;
+const PREFERENCES_STEP_NUMBER = 5;
 
 export default class Setup extends Component {
   static propTypes = {
     activeStep: PropTypes.number.isRequired,
     setupComplete: PropTypes.bool.isRequired,
     userDetails: PropTypes.object,
+    languageDetails: PropTypes.object,
     setActiveStep: PropTypes.func.isRequired,
     databaseDetails: PropTypes.object.isRequired,
   };
 
   completeWelcome() {
-    this.props.setActiveStep(USER_STEP_NUMBER);
+    this.props.setActiveStep(LANGUAGE_STEP_NUMBER);
     MetabaseAnalytics.trackEvent("Setup", "Welcome");
   }
 
-  completeSetup() {
-    MetabaseAnalytics.trackEvent("Setup", "Complete");
+  componentDidMount() {
+    const locales = MetabaseSettings.get("available-locales") || [];
+    const browserLocale = (navigator.language || "").toLowerCase();
+    const defaultLanguage =
+      // try to find an exact match (e.g. "zh-tw")
+      locales.find(([code]) => code.toLowerCase() === browserLocale) ||
+      // fall back to matching the prefix (e.g. just "zh" from "zh-tw")
+      locales.find(
+        ([code]) => code.toLowerCase() === browserLocale.split("-")[0],
+      );
+    if (defaultLanguage) {
+      const [code, name] = defaultLanguage;
+      this.setState({ defaultLanguage: { name, code } });
+      MetabaseSettings.set("user-locale", code);
+    }
   }
 
   renderFooter() {
@@ -66,6 +81,10 @@ export default class Setup extends Component {
           node && node.scrollIntoView && node.scrollIntoView();
         }
       }, 10);
+    }
+
+    if (!this.props.setupComplete && nextProps.setupComplete) {
+      MetabaseAnalytics.trackEvent("Setup", "Complete");
     }
   }
 
@@ -111,6 +130,11 @@ export default class Setup extends Component {
 
           <div className="wrapper wrapper--small">
             <div className="SetupSteps full">
+              <LanguageStep
+                {...this.props}
+                stepNumber={LANGUAGE_STEP_NUMBER}
+                defaultLanguage={this.state.defaultLanguage}
+              />
               <UserStep {...this.props} stepNumber={USER_STEP_NUMBER} />
               <DatabaseConnectionStep
                 {...this.props}
@@ -146,11 +170,11 @@ export default class Setup extends Component {
                     />
                   </div>
                   <div className="pt4 pb2">
-                    <Link
-                      to="/"
+                    {/* We use <a> rather than <Link> because we want a full refresh in case locale changed. */}
+                    <a
+                      href="/"
                       className="Button Button--primary"
-                      onClick={this.completeSetup.bind(this)}
-                    >{t`Take me to Metabase`}</Link>
+                    >{t`Take me to Metabase`}</a>
                   </div>
                 </section>
               ) : null}

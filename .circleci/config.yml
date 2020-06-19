@@ -31,10 +31,15 @@ executors:
     docker:
       - image: metabase/ci-build:latest
 
+  # Java 11 tests also test Metabase with the at-rest encryption enabled. See
+  # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
+  # what this means.
   java-11:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:openjdk-11-lein-2.8.1
+        environment:
+          MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
 
   postgres-9-6:
     working_directory: /home/circleci/metabase/metabase/
@@ -70,11 +75,6 @@ executors:
           POSTGRES_HOST_AUTH_METHOD: trust
 
   mysql-5-7:
-    parameters:
-      # for testing the use of an at-rest encryption key. Optional.
-      encryption-key:
-        type: string
-        default: ""
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.8.1
@@ -85,7 +85,6 @@ executors:
           MB_DB_DBNAME: circle_test
           MB_DB_USER: root
           MB_MYSQL_TEST_USER: root
-          MB_ENCRYPTION_SECRET_KEY: << parameters.encryption-key >>
       - image: circleci/mysql:5.7.23
 
   mysql-latest:
@@ -170,6 +169,11 @@ executors:
           ACCEPT_EULA: Y
           SA_PASSWORD: 'P@ssw0rd'
 
+  fe-mongo:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/mongo:4.0
 
 
 ########################################################################################################################
@@ -193,8 +197,8 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - fe-deps-{{ checksum "yarn.lock" }}
-            - fe-deps-
+            - fe-deps-v2-{{ checksum "yarn.lock" }}
+            - fe-deps-v2-
 
   run-yarn-command:
     parameters:
@@ -231,6 +235,8 @@ commands:
         type: string
       dest:
         type: string
+      driver:
+        type: string
     steps:
       - run:
           name: Make plugins dir
@@ -238,6 +244,7 @@ commands:
       - run:
           name: Download JDBC driver JAR << parameters.dest >>
           command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
             wget --output-document=plugins/<< parameters.dest >> ${<< parameters.source >>}
           no_output_timeout: 5m
 
@@ -279,9 +286,16 @@ jobs:
             done;
             echo `md5sum yarn.lock` >> frontend-checksums.txt
             echo `md5sum webpack.config.js` >> frontend-checksums.txt
+      # As well as driver modules (database drivers)
+      - run:
+          name: Generate checksums of all driver module source files to use as Uberjar cache key
+          command: >
+            for file in `find ./modules -type f -name '*.clj' -or -name '*.yaml' | sort`;
+              do echo `md5sum $file` >> modules-checksums.txt;
+            done;
       - run:
           name: Save last git commit message
-          command: git log -1 --oneline > commit.txt
+          command: git log -1 > commit.txt
       - run:
           name: Remove .git directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/.git
@@ -332,7 +346,7 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - run: lein with-profile +include-all-drivers deps
+      - run: lein with-profile +include-all-drivers,+cloverage,+junit deps
       - save_cache:
           key: be-deps-v2-{{ checksum "project.clj" }}
           paths:
@@ -343,23 +357,25 @@ jobs:
       e:
         type: executor
         default: clojure
+      before-steps:
+        type: steps
+        default: []
       lein-command:
         type: string
-      store-results:
-        type: boolean
-        default: false
+      after-steps:
+        type: steps
+        default: []
     executor: << parameters.e >>
     steps:
       - attach-workspace
       - restore-be-deps-cache
+      - steps: << parameters.before-steps >>
       - run:
           command: lein with-profile +ci << parameters.lein-command >>
           no_output_timeout: 5m
-      - when:
-          condition: << parameters.store-results >>
-          steps:
-            - store_test_results:
-                path: /home/circleci/metabase/metabase/target/test
+      - steps: << parameters.after-steps >>
+      - store_test_results:
+          path: /home/circleci/metabase/metabase/target/junit
 
   be-linter-reflection-warnings:
     executor: clojure
@@ -404,7 +420,7 @@ jobs:
                   DRIVERS: h2,<< parameters.driver >>
                 command: >
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-                  lein with-profile +ci test
+                  lein with-profile +ci,+junit test
                 no_output_timeout: << parameters.timeout >>
       # This is exactly the same as without auto-retry but will try running the tests a second time if they fail
       - when:
@@ -416,8 +432,10 @@ jobs:
                   DRIVERS: h2,<< parameters.driver >>
                 command: >
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-                  lein with-profile +ci test || lein with-profile +ci test
+                  lein with-profile +ci,+junit test || lein with-profile +ci,+junit test
                 no_output_timeout: << parameters.timeout >>
+      - store_test_results:
+          path: /home/circleci/metabase/metabase/target/junit
 
   test-migrate-from-h2:
     parameters:
@@ -459,7 +477,7 @@ jobs:
           name: Save yarn checksum
           command: md5sum yarn.lock > yarn.lock.checksum
       - save_cache:
-          key: fe-deps-{{ checksum "yarn.lock" }}
+          key: fe-deps-v2-{{ checksum "yarn.lock" }}
           paths:
             - /home/circleci/.yarn
             - /home/circleci/.yarn-cache
@@ -528,22 +546,72 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
+      # restore already-built uberjar
       - restore_cache:
           keys:
-            - uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
+            - uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
+      # restore the local maven installation of Metabase which is needed for building drivers
+      - restore_cache:
+          keys:
+            - metabase-core-{{ checksum "./backend-checksums.txt" }}
+      # restore already-built drivers
+      - restore_cache:
+          keys:
+            - drivers-v3-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+            - drivers-v3-{{ checksum "./modules-checksums.txt" }}
+            - drivers-v3-
+      # restore already-built frontend
+      - restore_cache:
+          keys:
+            - frontend-{{ checksum "./frontend-checksums.txt" }}
+      - run:
+          name: Build frontend if needed
+          command: >
+            if [ ! -f './resources/frontend_client/index.html' ];
+              then ./bin/build version frontend;
+            fi
+          no_output_timeout: 5m
       - run:
           name: Build uberjar if needed
           command: >
             if [ ! -f './target/uberjar/metabase.jar' ];
-              then ./bin/build version frontend uberjar;
+              then ./bin/build version drivers uberjar;
             fi
-          no_output_timeout: 5m
+          no_output_timeout: 10m
       - store_artifacts:
           path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+      # Cache the built uberjar
       - save_cache:
-          key: uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
+          key: uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+      # Cache the maven installation of metabase-core
+      - save_cache:
+          key: metabase-core-{{ checksum "./backend-checksums.txt" }}
+          paths:
+            - /home/circleci/.m2/repository/metabase-core
+      # Cache the built drivers
+      - save_cache:
+          key: drivers-v3-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+          paths:
+            - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
+            - /home/circleci/metabase/metabase/modules/drivers/druid/target
+            - /home/circleci/metabase/metabase/modules/drivers/google/target
+            - /home/circleci/metabase/metabase/modules/drivers/googleanalytics/target
+            - /home/circleci/metabase/metabase/modules/drivers/mongo/target
+            - /home/circleci/metabase/metabase/modules/drivers/oracle/target
+            - /home/circleci/metabase/metabase/modules/drivers/presto/target
+            - /home/circleci/metabase/metabase/modules/drivers/redshift/target
+            - /home/circleci/metabase/metabase/modules/drivers/snowflake/target
+            - /home/circleci/metabase/metabase/modules/drivers/sparksql/target
+            - /home/circleci/metabase/metabase/modules/drivers/sqlite/target
+            - /home/circleci/metabase/metabase/modules/drivers/sqlserver/target
+            - /home/circleci/metabase/metabase/modules/drivers/vertica/target
+      # Cache the built frontend
+      - save_cache:
+          key: frontend-{{ checksum "./frontend-checksums.txt" }}
+          paths:
+            - /home/circleci/metabase/metabase/resources/frontend_client
 
   fe-tests-e2e:
     executor: clojure-and-node
@@ -560,11 +628,28 @@ jobs:
                 command: ./bin/build version
 
   fe-tests-cypress:
-    executor: clojure-and-node
+    parameters:
+      e:
+        type: executor
+        default: clojure-and-node
+      cypress-group:
+        type: string
+      only-single-database:
+        type: boolean
+        default: false
+      test-files-location:
+        type: string
+        default: ""
+      driver:
+        type: string
+        default: ""
+    executor: << parameters.e >>
+    environment:
+      CYPRESS_GROUP:  << parameters.cypress-group >>
     steps:
       - run-yarn-command:
           command-name: Run Cypress tests
-          command: run test-cypress-no-build
+          command: run test-cypress-no-build <<# parameters.only-single-database >> --testFiles << parameters.test-files-location >> <</ parameters.only-single-database >>
           before-steps:
             - restore_cache:
                 keys:
@@ -615,14 +700,14 @@ workflows:
           name: be-tests
           requires:
             - be-deps
-          lein-command: test
+          lein-command: with-profile +junit test
 
       - lein:
           name: be-tests-java-11
           requires:
             - be-deps
           e: java-11
-          lein-command: test
+          lein-command: with-profile +junit test
 
       - lein:
           name: be-linter-eastwood
@@ -647,6 +732,16 @@ workflows:
           requires:
             - be-deps
           lein-command: bikeshed
+
+      - lein:
+          name: be-linter-cloverage
+          requires:
+            - be-deps
+          lein-command: cloverage --codecov
+          after-steps:
+            - run:
+                name: Upload code coverage to codecov.io
+                command: bash <(curl -s https://codecov.io/bash)
 
       - be-linter-reflection-warnings:
           requires:
@@ -684,7 +779,6 @@ workflows:
             - be-tests
           e:
             name: mysql-5-7
-            encryption-key: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
           driver: mysql
 
       - test-driver:
@@ -722,6 +816,7 @@ workflows:
             - fetch-jdbc-driver:
                 source: ORACLE_JDBC_JAR
                 dest: ojdbc8.jar
+                driver: oracle
           driver: oracle
 
       - test-driver:
@@ -796,6 +891,7 @@ workflows:
             - fetch-jdbc-driver:
                 source: VERTICA_JDBC_JAR
                 dest: vertica-jdbc-7.1.2-0.jar
+                driver: vertica
           driver: vertica
           auto-retry: true
 
@@ -847,10 +943,42 @@ workflows:
           requires:
             - build-uberjar
             - fe-deps
+
       - fe-tests-cypress:
+          name: fe-tests-cypress-1
           requires:
             - build-uberjar
             - fe-deps
+          cypress-group: "default"
+      - fe-tests-cypress:
+          name: fe-tests-cypress-2
+          requires:
+            - build-uberjar
+            - fe-deps
+          cypress-group: "default"
+      - fe-tests-cypress:
+          name: fe-tests-cypress-3
+          requires:
+            - build-uberjar
+            - fe-deps
+          cypress-group: "default"
+      - fe-tests-cypress:
+          name: fe-tests-cypress-4
+          requires:
+            - build-uberjar
+            - fe-deps
+          cypress-group: "default"
+
+      - fe-tests-cypress:
+          name: fe-tests-cypress-mongo
+          requires:
+            - build-uberjar
+            - fe-deps
+          e: fe-mongo
+          cypress-group: "mongo"
+          driver: mongo
+          only-single-database: true
+          test-files-location: frontend/test/metabase-db/mongo
 
       - deploy-master:
           requires:
@@ -858,6 +986,7 @@ workflows:
             - verify-i18n-files
 
             - be-linter-bikeshed
+            - be-linter-cloverage
             - be-linter-docstring-checker
             - be-linter-eastwood
             - be-linter-namespace-decls

@@ -37,7 +37,7 @@
    row
 
    :else
-   (recur more last-row (update (vec row) index (partial + (nth last-row index))))))
+   (recur more last-row (update (vec row) index (partial (fnil + 0 0) (nth last-row index))))))
 
 (defn- cumulative-ags-xform [replaced-indecies rf]
   {:pre [(fn? rf)]}

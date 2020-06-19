@@ -1,4 +1,10 @@
-import { signInAsNormalUser, restore, popover } from "__support__/cypress";
+import {
+  signInAsNormalUser,
+  signInAsAdmin,
+  restore,
+  popover,
+  modal,
+} from "__support__/cypress";
 
 describe("scenarios > question > native", () => {
   before(restore);
@@ -149,5 +155,84 @@ describe("scenarios > question > native", () => {
     // run query again and see new result
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("18,760");
+  });
+
+  it("should let you create and use a snippet", () => {
+    signInAsAdmin();
+    cy.visit("/question/new");
+    cy.contains("Native query").click();
+
+    // type a query and highlight some of the text
+    cy.get(".ace_content").as("ace");
+    cy.get("@ace").type(
+      "select 'stuff'" + "{shift}{leftarrow}".repeat("'stuff'".length),
+    );
+
+    // add a snippet of that text
+    cy.get(".Icon-snippet").click();
+    cy.contains("Create a snippet").click();
+    modal()
+      .find("input[name=name]")
+      .type("stuff-snippet");
+    modal()
+      .contains("Save")
+      .click();
+
+    // SQL editor should get updated automatically
+    cy.get("@ace").contains("select {{snippet: stuff-snippet}}");
+
+    // run the query and check the displayed scalar
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.get(".ScalarValue").contains("stuff");
+  });
+
+  it("can load a question with a date filter (from issue metabase#12228)", () => {
+    cy.request("POST", "/api/card", {
+      name: "Test Question",
+      dataset_query: {
+        type: "native",
+        native: {
+          query: "select count(*) from orders where {{created_at}}",
+          "template-tags": {
+            created_at: {
+              id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
+              name: "created_at",
+              "display-name": "Created at",
+              type: "dimension",
+              dimension: ["field-id", 15],
+              "widget-type": "date/month-year",
+            },
+          },
+        },
+        database: 1,
+      },
+      display: "scalar",
+      description: null,
+      visualization_settings: {},
+      collection_id: null,
+      result_metadata: null,
+      metadata_checksum: null,
+    }).then(response => {
+      cy.visit(`/question/${response.body.id}?created_at=2020-01`);
+      cy.contains("580");
+    });
+  });
+
+  it("can save a question with no rows", () => {
+    cy.visit("/question/new");
+    cy.contains("Native query").click();
+    cy.get(".ace_content").type("select * from people where false");
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.contains("No results!");
+    cy.get(".Icon-contract").click();
+    cy.contains("Save").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Name").type("empty question");
+      cy.findByText("Save").click();
+    });
+
+    // confirm that the question saved and url updated
+    cy.location("pathname").should("match", /\/question\/\d+/);
   });
 });

@@ -114,9 +114,18 @@
 
 (deftest substitute-referenced-card-query-test
   (testing "Referenced card query substitution"
-    (let [query ["select * from " (param "#123")]]
-      (is (= ["select * from (select 1 `x`)" nil]
-             (substitute query {"#123" (i/->ReferencedCardQuery 123 "select 1 `x`")}))))))
+    (let [query ["SELECT * FROM " (param "#123")]]
+      (is (= ["SELECT * FROM (SELECT 1 `x`)" nil]
+             (substitute query {"#123" (i/->ReferencedCardQuery 123 "SELECT 1 `x`")}))))))
+
+
+;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
+
+(deftest substitute-native-query-snippets-test
+  (testing "Native query snippet substitution"
+    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
+      (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
+             (substitute query {"snippet:symbol_is_A" (i/->NativeQuerySnippet "symbol_is_A" "symbol = 'A'")}))))))
 
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------

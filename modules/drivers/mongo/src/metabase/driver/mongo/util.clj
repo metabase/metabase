@@ -1,9 +1,11 @@
 (ns metabase.driver.mongo.util
   "`*mongo-connection*`, `with-mongo-connection`, and other functions shared between several Mongo driver namespaces."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
             [metabase.models.database :refer [Database]]
             [metabase.util
              [i18n :refer [trs tru]]
@@ -61,14 +63,18 @@
   doesn't support `.serverSelectionTimeout` or `.sslEnabled`. `additional-options`, a String like
   `readPreference=nearest`, can be specified as well; when passed, these are parsed into a `MongoClientOptions` that
   serves as a starting point for the changes made below."
-  ^MongoClientOptions [& {:keys [ssl? additional-options]
-                          :or   {ssl? false}}]
-  (-> (client-options-for-url-params additional-options)
-      client-options->builder
-      (.description config/mb-app-id-string)
-      (.connectTimeout connection-timeout-ms)
-      (.serverSelectionTimeout connection-timeout-ms)
-      (.sslEnabled ssl?)))
+  ^MongoClientOptions [& {:keys [ssl? additional-options ssl-cert]
+                          :or   {ssl? false, ssl-cert ""}, :as details}]
+  (let [client-options (-> (client-options-for-url-params additional-options)
+                           client-options->builder
+                           (.description config/mb-app-id-string)
+                           (.connectTimeout connection-timeout-ms)
+                           (.serverSelectionTimeout connection-timeout-ms)
+                           (.sslEnabled ssl?))]
+    (if (not (str/blank? ssl-cert))
+      (-> client-options
+          (.socketFactory (driver.u/socket-factory-for-cert ssl-cert)))
+      client-options)))
 
 ;; The arglists metadata for mg/connect are actually *WRONG* -- the function additionally supports a 3-arg airity
 ;; where you can pass options and credentials, as we'd like to do. We need to go in and alter the metadata of this
@@ -83,11 +89,13 @@
    values for DATABASE, such as plain strings or the usual MB details map."
   [database]
   (cond
-    (integer? database)           (db/select-one [Database :details] :id database)
-    (string? database)            {:dbname database}
-    (:dbname (:details database)) (:details database) ; entire Database obj
-    (:dbname database)            database            ; connection details map only
-    :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:"
+    (integer? database)             (db/select-one [Database :details] :id database)
+    (string? database)              {:dbname database}
+    (:dbname (:details database))   (:details database) ; entire Database obj
+    (:dbname database)              database            ; connection details map only
+    (:conn-uri database)            database            ; connection URI has all the parameters
+    (:conn-uri (:details database)) (:details database)
+    :else                           (throw (Exception. (str "with-mongo-connection failed: bad connection details:"
                                                           (:details database))))))
 
 (defn- srv-conn-str
@@ -97,8 +105,8 @@
   (format "mongodb+srv://%s:%s@%s/%s" user pass host authdb))
 
 (defn- normalize-details [details]
-  (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass additional-options use-srv]
-         :or   {port 27017, pass "", ssl false, use-srv false}} details
+  (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass additional-options use-srv ssl-cert conn-uri]
+         :or   {port 27017, pass "", ssl false, use-srv false, ssl-cert ""}} details
         ;; ignore empty :user and :pass strings
         user             (when (seq user)
                            user)
@@ -115,7 +123,9 @@
      :dbname             dbname
      :ssl                ssl
      :additional-options additional-options
-     :srv?               use-srv}))
+     :conn-uri           conn-uri
+     :srv?               use-srv
+     :ssl-cert           ssl-cert}))
 
 (defn- fqdn?
   "A very simple way to check if a hostname is fully-qualified:
@@ -129,11 +139,11 @@
    replica list could easily provided instead of a single host.
    Using SRV automatically enables SSL, though we explicitly set SSL to true anyway.
    Docs to generate URI string: https://docs.mongodb.com/manual/reference/connection-string/#dns-seedlist-connection-format"
-  [{:keys [host port user authdb pass dbname ssl additional-options]}]
+  [{:keys [host port user authdb pass dbname ssl additional-options ssl-cert], :as details}]
   (if-not (fqdn? host)
     (throw (ex-info (tru "Using DNS SRV requires a FQDN for host")
                     {:host host}))
-    (let [conn-opts (connection-options-builder :ssl? ssl, :additional-options additional-options)
+    (let [conn-opts (connection-options-builder :ssl? ssl, :additional-options additional-options, :ssl-cert ssl-cert)
           authdb (if (seq authdb)
                    authdb
                    dbname)
@@ -145,21 +155,30 @@
   "Connection info for Mongo.  Returns options for the fallback method to connect
    to hostnames that are not FQDNs.  This works with 'localhost', but has been problematic with FQDNs.
    If you would like to provide a FQDN, use `srv-connection-info`"
-  [{:keys [host port user authdb pass dbname ssl additional-options]}]
+  [{:keys [host port user authdb pass dbname ssl additional-options ssl-cert], :as details}]
   (let [server-address                   (mg/server-address host port)
         credentials                      (when user
                                            (mcred/create user authdb pass))
-        ^MongoClientOptions$Builder opts (connection-options-builder :ssl? ssl, :additional-options additional-options)]
+        ^MongoClientOptions$Builder opts (connection-options-builder :ssl? ssl, :additional-options additional-options,
+                                                                     :ssl-cert ssl-cert)]
     {:type           :normal
      :server-address server-address
      :credentials    credentials
      :dbname         dbname
      :options        (-> opts .build)}))
 
-(defn- details->mongo-connection-info [{:keys [srv?], :as details}]
-  ((if srv?
-     srv-connection-info
-     normal-connection-info) details))
+(defn- conn-string-info
+  "Connection info for Mongo using a user-provided connection string."
+  [{:keys [conn-uri], :as details}]
+  {:type        :conn-string
+   :conn-string conn-uri})
+
+(defn- details->mongo-connection-info [{:keys [conn-uri srv?], :as details}]
+  (if (str/blank? conn-uri)
+      ((if srv?
+         srv-connection-info
+         normal-connection-info) details)
+      (conn-string-info details)))
 
 (defmulti ^:private connect
   "Connect to MongoDB using Mongo `connection-info`, return a tuple of `[mongo-client db]`, instances of `MongoClient`
@@ -190,6 +209,10 @@
                        (do-connect))]
     [mongo-client (mg/get-db mongo-client dbname)]))
 
+(defmethod connect :conn-string
+  [{:keys [conn-string dbname]}]
+  (let [mongo-client (mg/connect-via-uri conn-string)]
+    [(:conn mongo-client) (:db mongo-client)]))
 
 (defn -with-mongo-connection
   "Run `f` with a new connection (bound to `*mongo-connection*`) to `database`. Don't use this directly; use

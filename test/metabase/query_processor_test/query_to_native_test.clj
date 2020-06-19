@@ -60,16 +60,7 @@
                     s/Any  s/Any}
                    (query->native-with-user-perms
                     (mt/mbql-query venues)
-                    {:object-perms? false, :native-perms? true}))))
-    (testing "If you don't have have native query execution permissions for the DB it should throw an error"
-      (is (= {:error                "You do not have permissions to run this query."
-              :required-permissions (perms/adhoc-native-query-path (mt/id))
-              :actual-permissions   #{(perms/object-path (mt/id) "PUBLIC" (mt/id :venues))}
-              :permissions-error?   true
-              :type                 :missing-required-permissions}
-             (query->native-with-user-perms
-              (mt/mbql-query venues)
-              {:object-perms? true, :native-perms? false}))))))
+                    {:object-perms? false, :native-perms? true}))))))
 
 (deftest error-test
   (testing "If the query is bad in some way it should return a relevant error (?)"

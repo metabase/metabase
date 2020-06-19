@@ -231,6 +231,13 @@
       (update :special_type keyword)
       (update :fingerprint  walk/keywordize-keys)))
 
+(defn- normalize-native-query
+  "For native queries, normalize the top-level keys, and template tags, but nothing else."
+  [native-query]
+  (let [native-query (m/map-keys mbql.u/normalize-token native-query)]
+    (cond-> native-query
+      (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
+
 ;; TODO - why not make this a multimethod of some sort?
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
@@ -238,9 +245,7 @@
   defined below."
   {:type            mbql.u/normalize-token
    ;; don't normalize native queries
-   :native          {:query         identity
-                     :template-tags normalize-template-tags
-                     :params        identity}
+   :native          normalize-native-query
    :query           {:aggregation     normalize-ag-clause-tokens
                      :expressions     normalize-expressions-tokens
                      :order-by        normalize-order-by-tokens
@@ -617,7 +622,7 @@
     (remove-empty-clauses source-query [:query])))
 
 (def ^:private path->special-remove-empty-clauses-fn
-  {:native {:query identity}
+  {:native identity
    :query  {:source-query remove-empty-clauses-in-source-query
             :joins        {::sequence remove-empty-clauses-in-join}}})
 

@@ -44,7 +44,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
         : null;
   }
 
-  const recordName = query.table().displayName();
+  const recordName = query.table() && query.table().displayName();
   const inflectedTableName = recordName
     ? inflect(recordName, count)
     : ngettext(msgid`record`, `records`, count);

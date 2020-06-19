@@ -42,9 +42,9 @@
 (s/defn ^:private maybe-infer-special-type :- ResultColumnMetadata
   "Infer the special type and add it to the result metadata. If the inferred special type is nil, don't override the
   special type with a nil special type"
-  [result-metadata col]
+  [col]
   (update
-   result-metadata
+   col
    :special_type
    (fn [original-value]
      ;; If we already know the special type, becouse it is stored, don't classify again, but try to refine special
@@ -53,14 +53,14 @@
        (nil :type/Number) (classify-name/infer-special-type col)
        original-value))))
 
-(s/defn ^:private stored-column-metadata->result-column-metadata :- ResultColumnMetadata
-  "The metadata in the column of our resultsets come from the metadata we store in the `Field` associated with the
-  column. It is cheapest and easiest to just use that. This function takes what it can from the column metadata to
-  populate the ResultColumnMetadata"
+(s/defn ^:private col->ResultColumnMetadata :- ResultColumnMetadata
+  "Make sure a `column` as it comes back from a driver's initial results metadata matches the schema for valid results
+  column metadata, adding placeholder values and removing nil keys."
   [column]
   ;; HACK - not sure why we don't have display_name yet in some cases
   (merge
-   {:display_name (:name column)}
+   {:base_type    :type/*
+    :display_name (:name column)}
    (u/select-non-nil-keys column [:name :display_name :description :base_type :special_type :unit :fingerprint])))
 
 (defn insights-rf
@@ -70,9 +70,7 @@
   [{:keys [cols]}]
   (let [cols (for [col cols]
                (try
-                 (-> col
-                     stored-column-metadata->result-column-metadata
-                     (maybe-infer-special-type col))
+                 (maybe-infer-special-type (col->ResultColumnMetadata col))
                  (catch Throwable e
                    (log/error e (trs "Error generating insights for column:") col)
                    col)))]
@@ -90,4 +88,5 @@
                            (assoc metadata :fingerprint fingerprint)))
                        fingerprints
                        cols)
-        :insights insights}))))
+        :insights (when-not (instance? Throwable insights)
+                    insights)}))))

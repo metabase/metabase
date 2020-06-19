@@ -91,7 +91,6 @@
   (let [pulse-before-update (api/write-check Pulse id)]
     (check-card-read-permissions cards)
     (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
-
     (db/transaction
       ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
       ;; depending on what changed.
@@ -100,7 +99,7 @@
       (pulse/update-pulse!
        (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
                                           :archived])
-         :id id))))
+              :id id))))
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
@@ -196,7 +195,7 @@
   {:ok true})
 
 (api/defendpoint DELETE "/:id/subscription/email"
-  "For uses to remove themselves from a pulse subscription"
+  "For users to unsubscribe themselves from a pulse subscription."
   [id]
   (api/let-404 [pulse-id (db/select-one-id Pulse :id id)
                 pc-id    (db/select-one-id PulseChannel :pulse_id pulse-id :channel_type "email")

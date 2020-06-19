@@ -46,6 +46,8 @@ import {
   getQueryBuilderMode,
   getIsShowingTemplateTagsEditor,
   getIsRunning,
+  getNativeEditorCursorOffset,
+  getNativeEditorSelectedText,
 } from "./selectors";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
@@ -77,9 +79,11 @@ type UiControls = {
 
 const PREVIEW_RESULT_LIMIT = 10;
 
-const getTemplateTagCount = (question: Question) => {
+const getTemplateTagWithoutSnippetsCount = (question: Question) => {
   const query = question.query();
-  return query instanceof NativeQuery ? query.templateTags().length : 0;
+  return query instanceof NativeQuery
+    ? query.templateTagsWithoutSnippets().length
+    : 0;
 };
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
@@ -442,7 +446,7 @@ export const initializeQB = (location, params) => {
     let question = card && new Question(card, getMetadata(getState()));
     if (params.cardId) {
       // loading a saved question prevents auto-viz selection
-      question = question && question.setSelectedDisplay(question.display());
+      question = question && question.lockDisplay();
     }
 
     card = question && question.card();
@@ -499,6 +503,18 @@ export const setIsShowingTemplateTagsEditor = isShowingTemplateTagsEditor => ({
   isShowingTemplateTagsEditor,
 });
 
+export const TOGGLE_SNIPPET_SIDEBAR = "metabase/qb/TOGGLE_SNIPPET_SIDEBAR";
+export const toggleSnippetSidebar = createAction(TOGGLE_SNIPPET_SIDEBAR, () => {
+  MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Snippet Sidebar");
+});
+
+export const SET_IS_SHOWING_SNIPPET_SIDEBAR =
+  "metabase/qb/SET_IS_SHOWING_SNIPPET_SIDEBAR";
+export const setIsShowingSnippetSidebar = isShowingSnippetSidebar => ({
+  type: SET_IS_SHOWING_SNIPPET_SIDEBAR,
+  isShowingSnippetSidebar,
+});
+
 export const setIsPreviewing = isPreviewing => ({
   type: SET_UI_CONTROLS,
   payload: { isPreviewing },
@@ -508,6 +524,43 @@ export const setIsNativeEditorOpen = isNativeEditorOpen => ({
   type: SET_UI_CONTROLS,
   payload: { isNativeEditorOpen },
 });
+
+export const SET_NATIVE_EDITOR_SELECTED_RANGE =
+  "metabase/qb/SET_NATIVE_EDITOR_SELECTED_RANGE";
+export const setNativeEditorSelectedRange = createAction(
+  SET_NATIVE_EDITOR_SELECTED_RANGE,
+);
+
+export const SET_MODAL_SNIPPET = "metabase/qb/SET_MODAL_SNIPPET";
+export const setModalSnippet = createAction(SET_MODAL_SNIPPET);
+
+export const openSnippetModalWithSelectedText = () => (dispatch, getState) => {
+  const database_id = getQuestion(getState())
+    .query()
+    .databaseId();
+  const content = getNativeEditorSelectedText(getState());
+  dispatch(setModalSnippet({ database_id, content }));
+};
+
+export const closeSnippetModal = () => (dispatch, getState) => {
+  dispatch(setModalSnippet(null));
+};
+
+export const insertSnippet = snip => (dispatch, getState) => {
+  const name = snip.name;
+  const question = getQuestion(getState());
+  const query = question.query();
+  const nativeEditorCursorOffset = getNativeEditorCursorOffset(getState());
+  const nativeEditorSelectedText = getNativeEditorSelectedText(getState());
+  const selectionStart =
+    nativeEditorCursorOffset - (nativeEditorSelectedText || "").length;
+  const newText =
+    query.queryText().slice(0, selectionStart) +
+    `{{snippet: ${name}}}` +
+    query.queryText().slice(nativeEditorCursorOffset);
+  const datasetQuery = query.setQueryText(newText).datasetQuery();
+  dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
+};
 
 export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
@@ -541,9 +594,11 @@ export const updateCardVisualizationSettings = settings => async (
 ) => {
   const question = getQuestion(getState());
   await dispatch(
-    updateQuestion(question.updateSettings(settings), { run: "auto" }),
+    updateQuestion(question.updateSettings(settings), {
+      run: "auto",
+      shouldUpdateUrl: true,
+    }),
   );
-  dispatch(updateUrl(null, { dirty: true }));
 };
 
 export const replaceAllCardVisualizationSettings = settings => async (
@@ -552,9 +607,11 @@ export const replaceAllCardVisualizationSettings = settings => async (
 ) => {
   const question = getQuestion(getState());
   await dispatch(
-    updateQuestion(question.setSettings(settings), { run: "auto" }),
+    updateQuestion(question.setSettings(settings), {
+      run: "auto",
+      shouldUpdateUrl: true,
+    }),
   );
-  dispatch(updateUrl(null, { dirty: true }));
 };
 
 export const UPDATE_TEMPLATE_TAG = "metabase/qb/UPDATE_TEMPLATE_TAG";
@@ -697,7 +754,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
 export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
 export const updateQuestion = (
   newQuestion,
-  { doNotClearNameAndId = false, run = false } = {},
+  { doNotClearNameAndId = false, run = false, shouldUpdateUrl = false } = {},
 ) => {
   return async (dispatch, getState) => {
     const oldQuestion = getQuestion(getState());
@@ -726,9 +783,13 @@ export const updateQuestion = (
     // Replace the current question with a new one
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
+    if (shouldUpdateUrl) {
+      dispatch(updateUrl(null, { dirty: true }));
+    }
+
     // See if the template tags editor should be shown/hidden
-    const oldTagCount = getTemplateTagCount(oldQuestion);
-    const newTagCount = getTemplateTagCount(newQuestion);
+    const oldTagCount = getTemplateTagWithoutSnippetsCount(oldQuestion);
+    const newTagCount = getTemplateTagWithoutSnippetsCount(newQuestion);
     if (newTagCount > oldTagCount) {
       dispatch(setIsShowingTemplateTagsEditor(true));
     } else if (
@@ -805,12 +866,8 @@ export const apiCreateQuestion = question => {
     );
 
     // Saving a card, locks in the current display as though it had been
-    // selected in the UI. We also copy over `sensibleDisplays` since those were
-    // not persisted onto `createdQuestion`.
-    const card = createdQuestion
-      .setSensibleDisplays(question.sensibleDisplays())
-      .setSelectedDisplay(question.display())
-      .card();
+    // selected in the UI.
+    const card = createdQuestion.lockDisplay().card();
 
     dispatch.action(API_CREATE_QUESTION, card);
   };
@@ -936,12 +993,20 @@ export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
-    const card = question
-      .setSensibleDisplays(getSensibleDisplays(data))
-      .setDefaultDisplay()
-      .switchTableScalar(data)
-      .card();
-    dispatch.action(QUERY_COMPLETED, { card, queryResults });
+    const originalQuestion = getOriginalQuestion(getState());
+    const dirty =
+      !originalQuestion ||
+      (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+    if (dirty) {
+      // Only update the display if the question is new or has been changed.
+      // Otherwise, trust that the question was saved with the correct display.
+      question = question
+        // if we are going to trigger autoselection logic, check if the locked display no longer is "sensible".
+        .maybeUnlockDisplay(getSensibleDisplays(data))
+        .setDefaultDisplay()
+        .switchTableScalar(data);
+    }
+    dispatch.action(QUERY_COMPLETED, { card: question.card(), queryResults });
   };
 };
 

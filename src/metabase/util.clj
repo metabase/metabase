@@ -49,7 +49,7 @@
 
 ;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
 ;; for pprinting huge things like expanded queries
-(intern 'clojure.pprint '*print-right-margin* 200)
+(alter-var-root #'clojure.pprint/*print-right-margin* (constantly 200))
 
 (defmacro ignore-exceptions
   "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
@@ -595,6 +595,22 @@
     0
     (long (math/floor (/ (Math/log (math/abs x))
                          (Math/log 10))))))
+
+(defn update-when
+  "Like `clojure.core/update` but does not create a new key if it does not exist. Useful when you don't want to create
+  cruft."
+  [m k f & args]
+  (if (contains? m k)
+    (apply update m k f args)
+    m))
+
+(defn update-in-when
+  "Like `clojure.core/update-in` but does not create new keys if they do not exist. Useful when you don't want to create
+  cruft."
+  [m ks f & args]
+  (if (not= ::not-found (get-in m ks ::not-found))
+    (apply update-in m ks f args)
+    m))
 
 (defn index-of
   "Return index of the first element in `coll` for which `pred` reutrns true."

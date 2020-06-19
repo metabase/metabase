@@ -15,11 +15,9 @@
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
-            [metabase.test.data :as data]
             [metabase.test.data.interface :as tx]
             [taoensso.nippy :as nippy]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
+            [toucan.db :as db])
   (:import org.bson.types.ObjectId))
 
 ;; ## Constants + Helper Fns/Macros
@@ -33,32 +31,37 @@
 
 ;; ## Tests for connection functions
 (deftest can-connect-test?
-  (mt/test-driver :mongo
-    (doseq [{:keys [details expected message]} [{:details  {:host   "localhost"
-                                                            :port   3000
-                                                            :dbname "bad-db-name"}
-                                                 :expected false}
-                                                {:details  {}
-                                                 :expected false}
-                                                {:details  {:host   "localhost"
-                                                            :port   27017
-                                                            :dbname "metabase-test"}
-                                                 :expected true}
-                                                {:details  {:host   "localhost"
-                                                            :dbname "metabase-test"}
-                                                 :expected true
-                                                 :message  "should use default port 27017 if not specified"}
-                                                {:details  {:host   "123.4.5.6"
-                                                            :dbname "bad-db-name?connectTimeoutMS=50"}
-                                                 :expected false}
-                                                {:details  {:host   "localhost"
-                                                            :port   3000
-                                                            :dbname "bad-db-name?connectTimeoutMS=50"}
-                                                 :expected false}]]
-
-      (is (= expected
-             (driver.u/can-connect-with-details? :mongo details))
-          message))))
+  (mt/test-driver
+   :mongo
+   (doseq [{:keys [details expected message]} [{:details  {:host   "localhost"
+                                                           :port   3000
+                                                           :dbname "bad-db-name"}
+                                                :expected false}
+                                               {:details  {}
+                                                :expected false}
+                                               {:details  {:host   "localhost"
+                                                           :port   27017
+                                                           :dbname "metabase-test"}
+                                                :expected true}
+                                               {:details  {:host   "localhost"
+                                                           :dbname "metabase-test"}
+                                                :expected true
+                                                :message  "should use default port 27017 if not specified"}
+                                               {:details  {:host   "123.4.5.6"
+                                                           :dbname "bad-db-name?connectTimeoutMS=50"}
+                                                :expected false}
+                                               {:details  {:host   "localhost"
+                                                           :port   3000
+                                                           :dbname "bad-db-name?connectTimeoutMS=50"}
+                                                :expected false}
+                                               {:details  {:conn-uri "mongodb://localhost:27017/metabase-test"}
+                                                :expected true}
+                                               {:details  {:conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
+                                                :expected false}]]
+      (testing (str "connect with " details)
+        (is (= expected
+               (driver.u/can-connect-with-details? :mongo details))
+            message)))))
 
 (def ^:private native-query
   "[{\"$project\": {\"_id\": \"$_id\"}},
@@ -83,7 +86,7 @@
            (-> (qp/process-query {:native   {:query      native-query
                                              :collection "venues"}
                                   :type     :native
-                                  :database (data/id)})
+                                  :database (mt/id)})
                (m/dissoc-in [:data :results_metadata] [:data :insights]))))))
 
 ;; ## Tests for individual syncing functions
@@ -94,7 +97,7 @@
                       {:schema nil, :name "categories"}
                       {:schema nil, :name "users"}
                       {:schema nil, :name "venues"}}}
-           (driver/describe-database :mongo (data/db))))))
+           (driver/describe-database :mongo (mt/db))))))
 
 (deftest describe-table-test
   (mt/test-driver :mongo
@@ -119,7 +122,7 @@
                        :database-type "java.lang.Long"
                        :base-type     :type/Integer
                        :pk?           true}}}
-           (driver/describe-table :mongo (data/db) (Table (data/id :venues)))))))
+           (driver/describe-table :mongo (mt/db) (Table (mt/id :venues)))))))
 
 (deftest nested-columns-test
   (mt/test-driver :mongo
@@ -141,28 +144,28 @@
 
 (deftest all-num-columns-test
   (mt/test-driver :mongo
-    (data/dataset all-null-columns
+    (mt/dataset all-null-columns
       (is (= [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :special_type :type/PK}
               {:name "favorite_snack", :database_type "NULL",             :base_type :type/*,       :special_type nil}
               {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :special_type :type/Name}]
              (map
               (partial into {})
               (db/select [Field :name :database_type :base_type :special_type]
-                :table_id (data/id :bird_species)
+                :table_id (mt/id :bird_species)
                 {:order-by [:name]})))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :mongo
-    (driver/sync-in-context :mongo (data/db)
+    (driver/sync-in-context :mongo (mt/db)
       (fn []
         (is (= [[1 "Red Medicine"]
                 [2 "Stout Burgers & Beers"]
                 [3 "The Apple Pan"]
                 [4 "Wurstküche"]
                 [5 "Brite Spot Family Restaurant"]]
-               (vec (take 5 (metadata-queries/table-rows-sample (Table (data/id :venues))
-                              [(Field (data/id :venues :id))
-                               (Field (data/id :venues :name))])))))))))
+               (vec (take 5 (metadata-queries/table-rows-sample (Table (mt/id :venues))
+                              [(Field (mt/id :venues :id))
+                               (Field (mt/id :venues :name))])))))))))
 
 
 ;; ## Big-picture tests for the way data should look post-sync
@@ -173,7 +176,7 @@
             {:active true, :name "users"}
             {:active true, :name "venues"}]
            (for [field (db/select [Table :name :active]
-                         :db_id (data/id)
+                         :db_id (mt/id)
                          {:order-by [:name]})]
              (into {} field)))
         "Test that Tables got synced correctly")))
@@ -200,7 +203,7 @@
              (vec (for [table-name table-names]
                     (vec (for [field (db/select [Field :name :base_type :special_type]
                                        :active   true
-                                       :table_id (data/id table-name)
+                                       :table_id (mt/id table-name)
                                        {:order-by [:name]})]
                            (into {} field))))))))))
 
@@ -215,8 +218,8 @@
 (deftest bson-ids-test
   (mt/test-driver :mongo
     (is (= [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
-           (rows (data/dataset with-bson-ids
-                   (data/run-mbql-query birds
+           (rows (mt/dataset with-bson-ids
+                   (mt/run-mbql-query birds
                      {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]}))))
         "Check that we support Mongo BSON ID and can filter by it (#1367)")))
 
@@ -226,8 +229,8 @@
       (letfn [(rows-count [query]
                 (count (rows (qp/process-query {:native   query
                                                 :type     :native
-                                                :database (data/id)}))))]
-        (data/dataset with-bson-ids
+                                                :database (mt/id)}))))]
+        (mt/dataset with-bson-ids
           (is (= 1
                  (rows-count {:query      "[{\"$match\": {\"bird_id\": ObjectId(\"abcdefabcdefabcdefabcdef\")}}]"
                               :collection "birds"}))))
@@ -251,17 +254,17 @@
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (= true
-             (->> (magic/automagic-analysis (Field (data/id :venues :price)) {})
+             (->> (magic/automagic-analysis (Field (mt/id :venues :price)) {})
                   :ordered_cards
                   (mapcat (comp :breakout :query :dataset_query :card))
-                  (not-any? #{[:binning-strategy [:field-id (data/id :venues :price)] "default"]})))))))
+                  (not-any? #{[:binning-strategy [:field-id (mt/id :venues :price)] "default"]})))))))
 
 (deftest no-values-test
   (mt/test-driver :mongo
     (testing (str "if we query a something an there are no values for the Field, the query should still return "
                   "successfully! (#8929 and #8894)")
       ;; add a temporary Field that doesn't actually exist to test data categories
-      (tt/with-temp Field [_ {:name "parent_id", :table_id (data/id :categories)}]
+      (mt/with-temp Field [_ {:name "parent_id", :table_id (mt/id :categories)}]
         ;; ok, now run a basic MBQL query against categories Table. When implicit Field IDs get added the `parent_id`
         ;; Field will be included
         (testing (str "if the column does not come back in the results for a given document we should fill in the "
@@ -270,7 +273,7 @@
                          [2 "American" nil]
                          [3 "Artisan"  nil]]}
                  (->
-                  (data/run-mbql-query categories
+                  (mt/run-mbql-query categories
                     {:order-by [[:asc [:field-id $id]]]
                      :limit    3})
                   qp.t/data
@@ -287,12 +290,12 @@
       (is (= [[22]]
              (mt/rows
                (qp/process-query
-                 {:database (data/id)
-                  :type     :native
-                  :native   {:projections [:count]
-                             :query       [{"$project" {"price" "$price"}}
-                                           {"$match" {"price" {"$eq" 1}}}
-                                           {"$group" {"_id" nil, "count" {"$sum" 1}}}
-                                           {"$sort" {"_id" 1}}
-                                           {"$project" {"_id" false, "count" true}}]
-                             :collection  "venues"}})))))))
+                {:database (mt/id)
+                 :type     :native
+                 :native   {:projections [:count]
+                            :query       [{"$project" {"price" "$price"}}
+                                          {"$match" {"price" {"$eq" 1}}}
+                                          {"$group" {"_id" nil, "count" {"$sum" 1}}}
+                                          {"$sort" {"_id" 1}}
+                                          {"$project" {"_id" false, "count" true}}]
+                            :collection  "venues"}})))))))

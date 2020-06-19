@@ -1,6 +1,7 @@
 (ns metabase.driver.presto
   "Presto driver. See https://prestodb.io/docs/current/ for complete dox."
-  (:require [clj-http.client :as http]
+  (:require [buddy.core.codecs :as codecs]
+            [clj-http.client :as http]
             [clojure
              [set :as set]
              [string :as str]]
@@ -197,7 +198,7 @@
   (u/minutes->ms 2))
 
 (defn- execute-presto-query-for-sync
-  "Execute a Presto query for sync purposed."
+  "Execute a Presto query for metadata sync."
   [details query]
   (let [result-chan (a/promise-chan)]
     (execute-presto-query details query nil (fn [cols rows]
@@ -252,10 +253,6 @@
                      :database-type type
                      :base-type     (presto-type->base-type type)}))}))
 
-(defmethod sql.qp/->honeysql [:presto String]
-  [_ s]
-  (hx/literal (str/replace s "'" "''")))
-
 (defmethod sql.qp/->honeysql [:presto Boolean]
   [_ bool]
   (hsql/raw (if bool "TRUE" "FALSE")))
@@ -279,6 +276,19 @@
 (defmethod sql.qp/->honeysql [:presto :percentile]
   [driver [_ arg p]]
   (hsql/call :approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
+
+(def ^:private ^:dynamic *param-splice-style*
+  "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.
+  `:friendly` makes a best-effort attempt to escape strings and generate SQL that is nice to look at, but should not
+  be considered safe against all SQL injection -- use this for 'convert to SQL' functionality. `:paranoid` hex-encodes
+  strings so SQL injection is impossible; this isn't nice to look at, so use this for actually running a query."
+  :friendly)
+
+(defmethod unprepare/unprepare-value [:presto String]
+  [_ ^String s]
+  (case *param-splice-style*
+    :friendly (str \' (sql.u/escape-sql s :ansi) \')
+    :paranoid (format "from_utf8(from_hex('%s'))" (codecs/bytes->hex (.getBytes s "UTF-8")))))
 
 ;; See https://prestodb.io/docs/current/functions/datetime.html
 
@@ -305,8 +315,9 @@
    context
    respond]
   (let [sql     (str "-- "
-                     (qputil/query->remark outer-query) "\n"
-                     (unprepare/unprepare driver (cons sql params)))
+                     (qputil/query->remark :presto outer-query) "\n"
+                     (binding [*param-splice-style* :paranoid]
+                       (unprepare/unprepare driver (cons sql params))))
         details (merge (:details (qp.store/database))
                        settings)]
     (execute-presto-query details sql (context/canceled-chan context) respond)))
@@ -390,11 +401,12 @@
   [& args]
   (apply driver.common/current-db-time args))
 
-(defmethod driver/supports? [:presto :set-timezone]                    [_ _] true)
-(defmethod driver/supports? [:presto :basic-aggregations]              [_ _] true)
-(defmethod driver/supports? [:presto :standard-deviation-aggregations] [_ _] true)
-(defmethod driver/supports? [:presto :expressions]                     [_ _] true)
-(defmethod driver/supports? [:presto :native-parameters]               [_ _] true)
-(defmethod driver/supports? [:presto :expression-aggregations]         [_ _] true)
-(defmethod driver/supports? [:presto :binning]                         [_ _] true)
-(defmethod driver/supports? [:presto :foreign-keys]                    [_ _] true)
+(doseq [[feature supported?] {:set-timezone                    true
+                              :basic-aggregations              true
+                              :standard-deviation-aggregations true
+                              :expressions                     true
+                              :native-parameters               true
+                              :expression-aggregations         true
+                              :binning                         true
+                              :foreign-keys                    true}]
+  (defmethod driver/supports? [:presto feature] [_ _] supported?))

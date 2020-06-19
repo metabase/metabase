@@ -51,7 +51,13 @@
    (deferred-tru "Looks like your username is incorrect.")
 
    :username-or-password-incorrect
-   (deferred-tru "Looks like the username or password is incorrect.")})
+   (deferred-tru "Looks like the username or password is incorrect.")
+
+   :certificate-not-trusted
+   (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")
+
+   :requires-ssl
+   (deferred-tru "Server appears to require SSL - please enable SSL above")})
 
 ;; TODO - we should rename these from `default-*-details` to `default-*-connection-property`
 
@@ -59,11 +65,11 @@
   "Map of the db host details field, useful for `connection-properties` implementations"
   {:name         "host"
    :display-name (deferred-tru "Host")
-   :default      "localhost"})
+   :placeholder  "localhost"})
 
 (def default-port-details
   "Map of the db port details field, useful for `connection-properties` implementations. Implementations should assoc a
-  `:default` key."
+  `:placeholder` key."
   {:name         "port"
    :display-name (deferred-tru "Port")
    :type         :integer})
@@ -71,16 +77,16 @@
 (def default-user-details
   "Map of the db user details field, useful for `connection-properties` implementations"
   {:name         "user"
-   :display-name (deferred-tru "Database username")
+   :display-name (deferred-tru "Username")
    :placeholder  (deferred-tru "What username do you use to login to the database?")
    :required     true})
 
 (def default-password-details
   "Map of the db password details field, useful for `connection-properties` implementations"
   {:name         "password"
-   :display-name (deferred-tru "Database password")
+   :display-name (deferred-tru "Password")
    :type         :password
-   :placeholder  "*******"})
+   :placeholder  "••••••••"})
 
 (def default-dbname-details
   "Map of the db name details field, useful for `connection-properties` implementations"

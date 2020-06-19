@@ -6,15 +6,16 @@
              [driver :as driver]
              [test :as mt]]
             [metabase.mbql.normalize :as normalize]
-            [metabase.models.card :refer [Card]]
-            [metabase.query-processor.middleware.parameters :as parameters]
-            [metabase.test.data :as data]
-            [toucan.util.test :as tt])
+            [metabase.models
+             [card :refer [Card]]
+             [native-query-snippet :refer [NativeQuerySnippet]]]
+            [metabase.query-processor.middleware.parameters :as parameters])
   (:import clojure.lang.ExceptionInfo))
 
 (deftest move-top-level-params-to-inner-query-test
   (is (= {:type   :native
-          :native {:query "WOW", :parameters ["My Param"]}}
+          :native {:query "WOW", :parameters ["My Param"]}
+          :user-parameters ["My Param"]}
          (#'parameters/move-top-level-params-to-inner-query
           {:type :native, :native {:query "WOW"}, :parameters ["My Param"]}))))
 
@@ -24,21 +25,22 @@
 
 (deftest expand-mbql-top-level-params-test
   (testing "can we expand MBQL params if they are specified at the top level?"
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:aggregation [[:count]]
               :filter      [:= $price 1]})
            (substitute-params
-            (data/mbql-query venues
+            (mt/mbql-query venues
              {:aggregation [[:count]]
               :parameters  [{:name "price", :type :category, :target $price, :value 1}]}))))))
 
 (deftest expand-native-top-level-params-test
   (testing "can we expand native params if they are specified at the top level?"
-    (is (= (data/query nil
+    (is (= (mt/query nil
              {:type   :native
-              :native {:query "SELECT * FROM venues WHERE price = 1;", :params []}})
+              :native {:query "SELECT * FROM venues WHERE price = 1;", :params []}
+              :user-parameters [{:type :category, :target [:variable [:template-tag "price"]], :value "1"}]})
            (substitute-params
-            (data/query nil
+            (mt/query nil
               {:type       :native
                :native     {:query         "SELECT * FROM venues WHERE price = {{price}};"
                             :template-tags {"price" {:name "price", :display-name "Price", :type :number}}}
@@ -46,37 +48,37 @@
 
 (deftest expand-mbql-source-query-params-test
   (testing "can we expand MBQL params in a source query?"
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:source-query {:source-table $$venues
                              :filter       [:= $price 1]}
               :aggregation  [[:count]]})
            (substitute-params
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:source-query {:source-table $$venues
                               :parameters   [{:name "price", :type :category, :target $price, :value 1}]}
                :aggregation  [[:count]]}))))))
 
 (deftest expand-native-source-query-params-test
   (testing "can we expand native params if in a source query?"
-    (is (= (data/mbql-query nil
+    (is (= (mt/mbql-query nil
              {:source-query {:native "SELECT * FROM categories WHERE name = ?;"
                              :params ["BBQ"]}})
            (substitute-params
-            (data/mbql-query nil
+            (mt/mbql-query nil
               {:source-query {:native         "SELECT * FROM categories WHERE name = {{cat}};"
                               :template-tags {"cat" {:name "cat", :display-name "Category", :type :text}}
                               :parameters    [{:type "category", :target [:variable [:template-tag "cat"]], :value "BBQ"}]}}))))))
 
 (deftest expand-mbql-join-params-test
   (testing "can we expand MBQL params in a JOIN?"
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:aggregation [[:count]]
               :joins       [{:source-query {:source-table $$categories
                                             :filter       [:= $categories.name "BBQ"]}
                              :alias        "c"
                              :condition    [:= $category_id &c.categories.id]}]})
            (substitute-params
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:aggregation [[:count]]
                :joins       [{:source-table $$categories
                               :alias        "c"
@@ -85,14 +87,14 @@
 
 (deftest expand-native-join-params-test
   (testing "can we expand native params in a JOIN?"
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:aggregation [[:count]]
               :joins       [{:source-query {:native "SELECT * FROM categories WHERE name = ?;"
                                             :params ["BBQ"]}
                              :alias        "c"
                              :condition    [:= $category_id &c.*categories.id]}]})
            (substitute-params
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:aggregation [[:count]]
                :joins       [{:source-query {:native        "SELECT * FROM categories WHERE name = {{cat}};"
                                              :template-tags {"cat" {:name "cat", :display-name "Category", :type :text}}
@@ -103,7 +105,7 @@
 (deftest expand-multiple-mbql-params-test
   (testing "can we expand multiple sets of MBQL params?"
     (is (=
-         (data/mbql-query venues
+         (mt/mbql-query venues
            {:source-query {:source-table $$venues
                            :filter       [:= $price 1]}
             :aggregation  [[:count]]
@@ -112,7 +114,7 @@
                             :alias        "c"
                             :condition    [:= $category_id &c.categories.id]}]})
          (substitute-params
-          (data/mbql-query venues
+          (mt/mbql-query venues
             {:source-query {:source-table $$venues
                             :parameters   [{:name "price", :type :category, :target $price, :value 1}]}
              :aggregation  [[:count]]
@@ -125,7 +127,7 @@
   ;; (This is dumb. Hopefully no one is creating queries like this.  The `:parameters` should go in the source query
   ;; instead of in the join.)
   (testing "can we expand multiple sets of MBQL params with params in a join and the join's source query?"
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:aggregation [[:count]]
               :joins       [{:source-query {:source-table $$categories
                                             :filter       [:and
@@ -134,7 +136,7 @@
                              :alias        "c"
                              :condition    [:= $category_id &c.categories.id]}]})
            (substitute-params
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:aggregation [[:count]]
                :joins       [{:source-query {:source-table $$categories
                                              :parameters   [{:name "id", :type :category, :target $categories.id, :value 5}]}
@@ -155,47 +157,47 @@
 
 (deftest expand-multiple-referenced-cards-in-template-tags
   (testing "multiple sub-queries, referenced in template tags, are correctly substituted"
-    (tt/with-temp* [Card [card-1 {:dataset_query (data/native-query {:query "SELECT 1"})}]
-                    Card [card-2 {:dataset_query (data/native-query {:query "SELECT 2"})}]]
+    (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
+                    Card [card-2 {:dataset_query (mt/native-query {:query "SELECT 2"})}]]
       (let [card-1-id  (:id card-1)
             card-2-id  (:id card-2)]
-        (is (= (data/native-query
+        (is (= (mt/native-query
                 {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2" :params nil})
                (substitute-params
-                (data/native-query
+                (mt/native-query
                  {:query         (str "SELECT COUNT(*) FROM {{#" card-1-id "}} AS c1, {{#" card-2-id "}} AS c2")
                   :template-tags (card-template-tags [card-1-id card-2-id])})))))))
 
   (testing "multiple CTE queries, referenced in template tags, are correctly substituted"
-    (tt/with-temp* [Card [card-1 {:dataset_query (data/native-query {:query "SELECT 1"})}]
-                    Card [card-2 {:dataset_query (data/native-query {:query "SELECT 2"})}]]
+    (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
+                    Card [card-2 {:dataset_query (mt/native-query {:query "SELECT 2"})}]]
       (let [card-1-id  (:id card-1)
             card-2-id  (:id card-2)]
-        (is (= (data/native-query
+        (is (= (mt/native-query
                 {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2" :params nil})
                (substitute-params
-                (data/native-query
+                (mt/native-query
                  {:query         (str "WITH c1 AS {{#" card-1-id "}}, "
                                       "c2 AS {{#" card-2-id "}} SELECT COUNT(*) FROM c1, c2")
                   :template-tags (card-template-tags [card-1-id card-2-id])})))))))
 
   (testing "recursive native queries, referenced in template tags, are correctly substituted"
-    (tt/with-temp* [Card [card-1 {:dataset_query (data/native-query {:query "SELECT 1"})}]
-                    Card [card-2 {:dataset_query (data/native-query
+    (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
+                    Card [card-2 {:dataset_query (mt/native-query
                                                   {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
                                                    :template-tags (card-template-tags [(:id card-1)])})}]]
       (let [card-1-id  (:id card-1)
             card-2-id  (:id card-2)]
-        (is (= (data/native-query
+        (is (= (mt/native-query
                 {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2" :params nil})
                (substitute-params
-                (data/native-query
+                (mt/native-query
                  {:query         (str "SELECT COUNT(*) FROM {{#" card-2-id "}} AS c2")
                   :template-tags (card-template-tags [card-2-id])})))))))
 
   (testing "recursive native/MBQL queries, referenced in template tags, are correctly substituted"
-    (tt/with-temp* [Card [card-1 {:dataset_query (data/mbql-query venues)}]
-                    Card [card-2 {:dataset_query (data/native-query
+    (mt/with-temp* [Card [card-1 {:dataset_query (mt/mbql-query venues)}]
+                    Card [card-2 {:dataset_query (mt/native-query
                                                   {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
                                                    :template-tags (card-template-tags [(:id card-1)])})}]]
       (let [card-1-id  (:id card-1)
@@ -209,35 +211,80 @@
                                    "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
                                  "FROM \"PUBLIC\".\"VENUES\" "
                                  "LIMIT 1048576")]
-        (is (= (data/native-query
+        (is (= (mt/native-query
                 {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params nil})
                (substitute-params
-                (data/native-query
+                (mt/native-query
                  {:query         (str "SELECT COUNT(*) FROM {{#" card-2-id "}} AS c2")
                   :template-tags (card-template-tags [card-2-id])}))))))))
 
 (deftest referencing-cards-with-parameters-test
   (testing "referencing card with parameter and default value substitutes correctly"
-    (tt/with-temp Card [param-card {:dataset_query (data/native-query
+    (mt/with-temp Card [param-card {:dataset_query (mt/native-query
                                                     {:query "SELECT {{x}}"
                                                      :template-tags {"x"
                                                                      {:id "x", :name "x", :display-name "Number x",
                                                                       :type :number, :default "1", :required true}}})}]
-      (is (= (data/native-query
-              {:query (str "SELECT * FROM (SELECT 1) AS x") :params nil})
+      (is (= (mt/native-query
+              {:query "SELECT * FROM (SELECT 1) AS x" :params nil})
              (substitute-params
-              (data/native-query
+              (mt/native-query
                {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
                 :template-tags (card-template-tags [(:id param-card)])}))))))
 
   (testing "referencing card with parameter and NO default value, fails substitution"
-    (tt/with-temp Card [param-card {:dataset_query (data/native-query
+    (mt/with-temp Card [param-card {:dataset_query (mt/native-query
                                                     {:query "SELECT {{x}}"
                                                      :template-tags {"x"
                                                                      {:id "x", :name "x", :display-name "Number x",
                                                                       :type :number, :required false}}})}]
       (is (thrown? ExceptionInfo
             (substitute-params
-             (data/native-query
+             (mt/native-query
               {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
                :template-tags (card-template-tags [(:id param-card)])})))))))
+
+(defn- snippet-template-tag
+  [snippet-name]
+  (let [tag-name (str "snippet: " snippet-name)]
+    {:id           tag-name
+     :name         tag-name
+     :display-name snippet-name
+     :type         :snippet
+     :snippet-name snippet-name}))
+
+(defn- snippet-template-tags
+  [snippet-names]
+  (into {} (for [snippet-name snippet-names]
+             [(str "snippet: " snippet-name) (snippet-template-tag snippet-name)])))
+
+(deftest expand-multiple-snippets-test
+  (mt/with-temp* [NativeQuerySnippet [select-snippet {:content     "name, price"
+                                                      :creator_id  (mt/user->id :rasta)
+                                                      :database_id (mt/id)
+                                                      :description "Fields to SELECT"
+                                                      :name        "Venue fields"}]
+                  NativeQuerySnippet [where-snippet  {:content     "price > 2"
+                                                      :creator_id  (mt/user->id :rasta)
+                                                      :database_id (mt/id)
+                                                      :description "Meant for use in WHERE clause"
+                                                      :name        "Filter: expensive venues"}]
+                  Card [card {:dataset_query
+                              (mt/native-query
+                               {:query         (str "SELECT {{ snippet: Venue fields }} "
+                                                    "FROM venues "
+                                                    "WHERE {{ snippet: Filter: expensive venues }}")
+                                :template-tags (snippet-template-tags
+                                                ["Venue fields" "Filter: expensive venues"])})}]]
+    (testing "multiple snippets are correctly expanded in parent query"
+      (is (= (mt/native-query
+              {:query "SELECT name, price FROM venues WHERE price > 2", :params nil})
+             (substitute-params (:dataset_query card)))))
+
+    (testing "multiple snippets are expanded from saved sub-query"
+      (is (= (mt/native-query
+              {:query "SELECT * FROM (SELECT name, price FROM venues WHERE price > 2) AS x", :params nil})
+             (substitute-params
+              (mt/native-query
+               {:query         (str "SELECT * FROM {{#" (:id card) "}} AS x")
+                :template-tags (card-template-tags [(:id card)])})))))))

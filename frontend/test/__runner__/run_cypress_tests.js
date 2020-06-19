@@ -7,8 +7,13 @@ const BackendResource = require("./backend.js").BackendResource;
 
 const server = BackendResource.get({ dbKey: "" });
 
+// We currently accept two (optional) command line arguments
+// --open - Opens the Cypress test browser
+// --testFiles <path> - Specifies a different path for the integration folder
 const userArgs = process.argv.slice(2);
-const isOpenMode = userArgs[0] === "--open";
+const isOpenMode = userArgs.includes("--open");
+const testFiles = userArgs.includes("--testFiles");
+const testFilesLocation = userArgs[userArgs.indexOf("--testFiles") + 1];
 
 function readFile(fileName) {
   return new Promise(function(resolve, reject) {
@@ -28,6 +33,10 @@ const init = async () => {
         "If you are developing locally, prefer using `yarn test-cypress-open` instead.\n",
       ),
     );
+  }
+
+  if (testFiles) {
+    console.log(chalk.bold(`Running tests in '${testFilesLocation}'`));
   }
 
   try {
@@ -53,7 +62,15 @@ const init = async () => {
   console.log(chalk.bold("Starting backend"));
   await BackendResource.start(server);
 
+  console.log(chalk.bold("Generating snapshots"));
+  await generateSnapshots();
+
   console.log(chalk.bold("Starting Cypress"));
+  let commandLineConfig = `baseUrl=${server.host}`;
+  if (testFiles) {
+    commandLineConfig = `${commandLineConfig},integrationFolder=${testFilesLocation}`;
+  }
+
   const cypressProcess = spawn(
     "yarn",
     [
@@ -62,13 +79,17 @@ const init = async () => {
       "--config-file",
       process.env["CONFIG_FILE"],
       "--config",
-      `baseUrl=${server.host}`,
+      commandLineConfig,
       ...(process.env["CI"]
         ? [
             "--reporter",
             "junit",
             "--reporter-options",
             "mochaFile=cypress/results/results-[hash].xml",
+            "--record",
+            "--parallel",
+            "--group",
+            process.env["CYPRESS_GROUP"],
           ]
         : []),
     ],
@@ -98,3 +119,22 @@ launch();
 
 process.on("SIGTERM", cleanup);
 process.on("SIGINT", cleanup);
+
+async function generateSnapshots() {
+  const cypressProcess = spawn(
+    "yarn",
+    [
+      "cypress",
+      "run",
+      "--config-file",
+      "frontend/test/cypress-snapshots.json",
+      "--config",
+      `baseUrl=${server.host}`,
+    ],
+    { stdio: "inherit" },
+  );
+
+  return new Promise((resolve, reject) => {
+    cypressProcess.on("exit", resolve);
+  });
+}

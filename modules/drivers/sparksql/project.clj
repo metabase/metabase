@@ -1,4 +1,4 @@
-(defproject metabase/sparksql-driver "1.0.0"
+(defproject metabase/sparksql-driver "1.0.0-SNAPSHOT-1.2.2"
   :min-lein-version "2.5.0"
 
   :dependencies
@@ -18,12 +18,9 @@
                  org.eclipse.jetty/jetty-util
                  org.slf4j/slf4j-log4j12
                  org.tukaani/xz]]
-   ;; TODO - this is deprecated, seems like we'll want to upgrade to `org.apache.hive/hive-jdbc` in the future. Don't
-   ;; thing it works with Spark SQL atm however
-   [org.apache.hive/hive-jdbc "1.2.1"
+   [org.apache.hive/hive-jdbc "1.2.2"
     :exclusions
-    [#_com.google.guava/guava
-     commons-logging
+    [commons-logging
      org.apache.curator/curator-framework
      org.codehaus.jackson/jackson-jaxrs
      org.codehaus.jackson/jackson-xc

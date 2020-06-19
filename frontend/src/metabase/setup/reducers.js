@@ -3,6 +3,7 @@ import { handleActions } from "redux-actions";
 import {
   SET_ACTIVE_STEP,
   SET_USER_DETAILS,
+  SET_LANGUAGE_DETAILS,
   SET_DATABASE_DETAILS,
   SET_ALLOW_TRACKING,
   SUBMIT_SETUP,
@@ -13,6 +14,7 @@ export const activeStep = handleActions(
   {
     [SET_ACTIVE_STEP]: { next: (state, { payload }) => payload },
     [SET_USER_DETAILS]: { next: (state, { payload }) => payload.nextStep },
+    [SET_LANGUAGE_DETAILS]: { next: (state, { payload }) => payload.nextStep },
     [SET_DATABASE_DETAILS]: { next: (state, { payload }) => payload.nextStep },
   },
   0,
@@ -28,6 +30,13 @@ export const userDetails = handleActions(
 export const databaseDetails = handleActions(
   {
     [SET_DATABASE_DETAILS]: { next: (state, { payload }) => payload.details },
+  },
+  null,
+);
+
+export const languageDetails = handleActions(
+  {
+    [SET_LANGUAGE_DETAILS]: { next: (state, { payload }) => payload.details },
   },
   null,
 );

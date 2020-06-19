@@ -105,6 +105,7 @@
                                "FROM `test_data.venues` "
                                "GROUP BY `price` "
                                "ORDER BY `avg` ASC, `price` ASC")
+              :params     nil
               :table-name "venues"
               :mbql?      true}
              (qp/query->native
@@ -170,7 +171,7 @@
 ;; if I run a BigQuery query, does it get a remark added to it?
 (defn- query->native [query]
   (let [native-query (atom nil)]
-    (with-redefs [bigquery/process-native* (fn [_ _ sql]
+    (with-redefs [bigquery/process-native* (fn [_ _ sql _]
                                              (reset! native-query sql)
                                              (throw (Exception. "Done.")))]
       (u/ignore-exceptions
@@ -570,9 +571,11 @@
     (dorun (pmap (fn [[field & vs]]
                    (testing (format "\nfield = %s" field)
                      (dorun (pmap (fn [[unit expected]]
-                                    (testing (format "\nunit = %s" unit)
-                                      (is (= expected
-                                             (f field unit)))))
+                                    (let [result (f field unit)]
+                                      (locking f
+                                        (testing (format "\nunit = %s" unit)
+                                          (is (= expected
+                                                 result))))))
                                   (zipmap units vs)))))
                  (rest table)))))
 
@@ -604,3 +607,21 @@
     (testing "Make sure datetime breakouts like :minute-of-hour work correctly for different temporal types"
       (mt/dataset attempted-murders
         (test-table-with-fn breakout-test-table can-breakout?)))))
+
+(deftest string-escape-test
+  (mt/test-driver :bigquery
+    (testing "Make sure single quotes in parameters are escaped properly to prevent SQL injection\n"
+      #_(testing "MBQL query"
+        (is (= [[0]]
+               (mt/formatted-rows [int]
+                 (mt/run-mbql-query venues
+                   {:aggregation [[:count]]
+                    :filter      [:= $name "x\\\\' OR 1 = 1 -- "]})))))
+
+      (testing "native query"
+        (is (= [[0]]
+               (mt/formatted-rows [int]
+                 (qp/process-query
+                  (mt/native-query
+                    {:query  "SELECT count(*) AS `count` FROM `test_data.venues` WHERE `test_data.venues`.`name` = ?"
+                     :params ["x\\\\' OR 1 = 1 -- "]})))))))))

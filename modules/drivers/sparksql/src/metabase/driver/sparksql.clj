@@ -7,6 +7,7 @@
              [core :as hsql]
              [helpers :as h]]
             [metabase.driver :as driver]
+            [metabase.driver.hive-like :as hive-like]
             [metabase.driver.sql
              [query-processor :as sql.qp]
              [util :as sql.u]]
@@ -128,9 +129,10 @@
 (defmethod driver/execute-reducible-query :sparksql
   [driver {:keys [database settings], {sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
   (let [inner-query (-> (assoc inner-query
-                               :remark (qputil/query->remark outer-query)
+                               :remark (qputil/query->remark :sparksql outer-query)
                                :query  (if (seq params)
-                                         (unprepare/unprepare driver (cons sql params))
+                                         (binding [hive-like/*param-splice-style* :paranoid]
+                                           (unprepare/unprepare driver (cons sql params)))
                                          sql)
                                :max-rows (mbql.u/query->max-rows-limit outer-query))
                         (dissoc :params))
@@ -164,7 +166,6 @@
       (catch Throwable e
         (.close stmt)
         (throw e)))))
-
 
 (doseq [feature [:basic-aggregations
                  :binning

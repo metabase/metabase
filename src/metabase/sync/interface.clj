@@ -112,7 +112,7 @@
   {(s/optional-key :percent-json)   (s/maybe Percent)
    (s/optional-key :percent-url)    (s/maybe Percent)
    (s/optional-key :percent-email)  (s/maybe Percent)
-   (s/optional-key :average-length) s/Num})
+   (s/optional-key :average-length) (s/maybe s/Num)})
 
 (def TemporalFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Temporal`."

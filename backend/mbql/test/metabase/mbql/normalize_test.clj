@@ -9,63 +9,61 @@
 ;;; |                                                NORMALIZE TOKENS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Query type should get normalized
-(expect
-  {:type :native}
-  (#'normalize/normalize-tokens {:type "NATIVE"}))
+(deftest normalize-tokens-test
+  (doseq [[group query->expected]
+          {"Query type should get normalized"
+           {{:type "NATIVE"}
+            {:type :native}}
 
-;; native queries should NOT get normalized
-(expect
-  {:type :native, :native {:query "SELECT COUNT(*) FROM CANS;"}}
-  (#'normalize/normalize-tokens {:type "NATIVE", :native {"QUERY" "SELECT COUNT(*) FROM CANS;"}}))
+           "native queries should NOT get normalized"
+           {{:type "NATIVE", :native {"QUERY" "SELECT COUNT(*) FROM CANS;"}}
+            {:type :native, :native {:query "SELECT COUNT(*) FROM CANS;"}}
 
-(expect
-  {:native {:query {:NAME        "FAKE_QUERY"
-                    :description "Theoretical fake query in a JSON-based query lang"}}}
-  (#'normalize/normalize-tokens {:native {:query {:NAME        "FAKE_QUERY"
-                                                  :description "Theoretical fake query in a JSON-based query lang"}}}))
+            {:native {:query {:NAME        "FAKE_QUERY"
+                              :description "Theoretical fake query in a JSON-based query lang"}}}
+            {:native {:query {:NAME        "FAKE_QUERY"
+                              :description "Theoretical fake query in a JSON-based query lang"}}}}
 
-;; METRICS shouldn't get normalized in some kind of wacky way
-(expect
-  {:aggregation [:+ [:metric 10] 1]}
-  (#'normalize/normalize-tokens {:aggregation ["+" ["METRIC" 10] 1]}))
+           "METRICS shouldn't get normalized in some kind of wacky way"
+           {{:aggregation ["+" ["METRIC" 10] 1]}
+            {:aggregation [:+ [:metric 10] 1]}}
 
-;; Nor should SEGMENTS
-(expect
-  {:filter [:= [:+ [:segment 10] 1] 10]}
-  (#'normalize/normalize-tokens {:filter ["=" ["+" ["SEGMENT" 10] 1] 10]}))
+           "Nor should SEGMENTS"
+           {{:filter ["=" ["+" ["SEGMENT" 10] 1] 10]}
+            {:filter [:= [:+ [:segment 10] 1] 10]}}
 
-;; are expression names exempt from lisp-casing/lower-casing?
-(expect
-  {:query {:expressions {:sales_tax [:- [:field-id 10] [:field-id 20]]}}}
-  (#'normalize/normalize-tokens {"query" {"expressions" {:sales_tax ["-" ["field-id" 10] ["field-id" 20]]}}}))
+           "are expression names exempt from lisp-casing/lower-casing?"
+           {{"query" {"expressions" {:sales_tax ["-" ["field-id" 10] ["field-id" 20]]}}}
+            {:query {:expressions {:sales_tax [:- [:field-id 10] [:field-id 20]]}}}}
 
-;; expression references should be exempt too
-(expect
-  {:order-by [[:desc [:expression "SALES_TAX"]]]}
-  (#'normalize/normalize-tokens {:order-by [[:desc [:expression "SALES_TAX"]]]}) )
+           "expression references should be exempt too"
+           {{:order-by [[:desc [:expression "SALES_TAX"]]]}
+            {:order-by [[:desc [:expression "SALES_TAX"]]]}}
 
-;; ... but they should be converted to strings if passed in as a KW for some reason. Make sure we preserve namespace!
-(expect
-  {:order-by [[:desc [:expression "SALES/TAX"]]]}
-  (#'normalize/normalize-tokens {:order-by [[:desc ["expression" :SALES/TAX]]]}))
+           "... but they should be converted to strings if passed in as a KW for some reason. Make sure we preserve namespace!"
+           {{:order-by [[:desc ["expression" :SALES/TAX]]]}
+            {:order-by [[:desc [:expression "SALES/TAX"]]]}}
 
-;; field literals should be exempt too
-(expect
-  {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}
-  (#'normalize/normalize-tokens {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}) )
 
-;; ... but they should be converted to strings if passed in as a KW for some reason
-(expect
-  {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}
-  (#'normalize/normalize-tokens {:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]}))
+           "field literals should be exempt too"
+           {{:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}
+            {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}}
+
+
+           "... but they should be converted to strings if passed in as a KW for some reason"
+           {{:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]}
+            {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}}}]
+    (testing group
+      (doseq [[query expected] query->expected]
+        (is (= expected
+               (#'normalize/normalize-tokens query)))))))
 
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
 (expect
-  {:query {:aggregation :rows}}
-  (#'normalize/normalize-tokens {:query {"AGGREGATION" "ROWS"}}))
+ {:query {:aggregation :rows}}
+ (#'normalize/normalize-tokens {:query {"AGGREGATION" "ROWS"}}))
 
 (expect
   {:query {:aggregation [:rows]}}
@@ -427,6 +425,14 @@
           {:native {:query  "SELECT * FROM venues WHERE name = ?"
                     :params ["Red Medicine"]}}))
       ":native :params shouldn't get normalized."))
+
+(deftest normalize-projections-test
+  (testing "Native :projections shouldn't get normalized."
+    (is (= {:type   :native
+            :native {:projections ["_id" "name" "category_id" "latitude" "longitude" "price"]}}
+           (#'normalize/normalize-tokens
+            {:type   :native
+             :native {:projections ["_id" "name" "category_id" "latitude" "longitude" "price"]}})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1076,24 +1082,30 @@
                                                              "average-length" 15.63}}}}]}))
 
 (deftest normalize-nil-values-in-native-maps-test
-  (testing "nil values in native query maps (e.g. MongoDB queries) should not get removed during normalization"
-    (testing "keys in native query maps should not get normalized"
-      (let [native-query        {:projections [:count]
-                                 :query       [{"$project" {"price" "$price"}}
-                                               {"$match" {"price" {"$eq" 1}}}
-                                               {"$group" {"_id" nil, "count" {"$sum" 1}}}
-                                               {"$sort" {"_id" 1}}
-                                               {"$project" {"_id" false, "count" true}}]
-                                 :collection  "venues"}
-            native-source-query (set/rename-keys native-query {:query :native})]
-        (doseq [[message query] {"top-level native query"
-                                 {:native native-query}
+  (testing "nil values in native query maps (e.g. MongoDB queries) should not get removed during normalization.\n"
+    (letfn [(test-normalization [native-query]
+              (let [native-source-query (set/rename-keys native-query {:query :native})]
+                (doseq [[message query] {"top-level native query"
+                                         {:native native-query}
 
-                                 "native source query"
-                                 {:query {:source-query native-source-query}}
+                                         "native source query"
+                                         {:query {:source-query native-source-query}}
 
-                                 "native source query in join"
-                                 {:query {:joins [{:source-query native-source-query}]}}}]
-          (testing message
-            (is (= query
-                   (normalize/normalize query)))))))))
+                                         "native source query in join"
+                                         {:query {:joins [{:source-query native-source-query}]}}}]
+                  (testing (str "\n" message)
+                    (is (= query
+                           (normalize/normalize query)))))))]
+
+      (testing "Keys in native query maps should not get normalized"
+        (test-normalization
+         {:projections [:count]
+          :query       [{"$project" {"price" "$price"}}
+                        {"$match" {"price" {"$eq" 1}}}
+                        {"$group" {"_id" nil, "count" {"$sum" 1}}}
+                        {"$sort" {"_id" 1}}
+                        {"$project" {"_id" false, "count" true}}]
+          :collection  "venues"}))
+
+      (testing "`nil` values inside native :params shouldn't get removed"
+        (test-normalization {:query "SELECT ?" :params [nil]})))))

@@ -29,7 +29,7 @@
       (let [e1 (ex-info "1" {:level 1})
             e2 (ex-info "2" {:level 2, :type error-type/qp} e1)
             e3 (ex-info "3" {:level 3} e2)]
-        (is (= {:status     :failed,
+        (is (= {:status     :failed
                 :class      clojure.lang.ExceptionInfo
                 :error      "1"
                 :stacktrace true
@@ -134,17 +134,20 @@
     (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
                   "the query in the error response")
       (is (schema= {:native (s/eq nil), :preprocessed (s/pred map?), s/Any s/Any}
-                   (test-users/with-test-user :rasta
-                     (qp/process-userland-query
-                      (data/mbql-query venues {:fields [!month.id]}))))))
+                   (mt/suppress-output
+                     (test-users/with-test-user :rasta
+                       (qp/process-userland-query
+                        (data/mbql-query venues {:fields [!month.id]})))))))
 
     (testing "They should see it if they have ad-hoc native query perms"
       (perms/grant-native-readwrite-permissions! (group/all-users) (data/id))
+      ;; this is not actually a valid query
       (is (schema= {:native       (s/eq {:query  (str "SELECT parsedatetime(formatdatetime(\"PUBLIC\".\"VENUES\".\"ID\", 'yyyyMM'), 'yyyyMM') "
                                                       "AS \"ID\" FROM \"PUBLIC\".\"VENUES\" LIMIT 1048576")
                                          :params nil})
                     :preprocessed (s/pred map?)
                     s/Any         s/Any}
-                   (test-users/with-test-user :rasta
-                     (qp/process-userland-query
-                      (data/mbql-query venues {:fields [!month.id]}))))))))
+                   (mt/suppress-output
+                     (test-users/with-test-user :rasta
+                       (qp/process-userland-query
+                        (data/mbql-query venues {:fields [!month.id]})))))))))

@@ -62,7 +62,7 @@ export function isValidField(field) {
     (isAggregateField(field) && typeof field[1] === "number") ||
     (isJoinedField(field) &&
       typeof field[1] === "string" &&
-      isValidField(field[0])) ||
+      isValidField(field[2])) ||
     isFieldLiteral(field)
   );
 }
@@ -94,6 +94,9 @@ export function getFieldTargetId(field: FieldReference): ?FieldId {
     return getFieldTargetId(field[1]);
   } else if (isFieldLiteral(field)) {
     return field;
+  } else if (isJoinedField(field)) {
+    // $FlowFixMe
+    return getFieldTargetId(field[2]);
   }
   console.warn("Unknown field type: ", field);
 }

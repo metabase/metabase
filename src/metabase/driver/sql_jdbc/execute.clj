@@ -177,11 +177,11 @@
 
 (defn- set-object
   ([^PreparedStatement prepared-statement, ^Integer index, object]
-   (log/tracef "(set-object prepared-statement %d ^%s %s)" index (.getName (class object)) (pr-str object))
+   (log/tracef "(set-object prepared-statement %d ^%s %s)" index (some-> object class .getName) (pr-str object))
    (.setObject prepared-statement index object))
 
   ([^PreparedStatement prepared-statement, ^Integer index, object, ^Integer target-sql-type]
-   (log/tracef "(set-object prepared-statement %d ^%s %s java.sql.Types/%s)" index (.getName (class object))
+   (log/tracef "(set-object prepared-statement %d ^%s %s java.sql.Types/%s)" index (some-> object class .getName)
                (pr-str object) (.getName (JDBCType/valueOf target-sql-type)))
    (.setObject prepared-statement index object target-sql-type)))
 
@@ -379,7 +379,7 @@
   {:added "0.35.0", :arglists '([driver query context respond])}
   [driver {{sql :query, params :params} :native, :as outer-query} context respond]
   {:pre [(string? sql) (seq sql)]}
-  (let [remark   (qputil/query->remark outer-query)
+  (let [remark   (qputil/query->remark driver outer-query)
         sql      (str "-- " remark "\n" sql)
         max-rows (or (mbql.u/query->max-rows-limit outer-query)
                      qp.i/absolute-max-results)]

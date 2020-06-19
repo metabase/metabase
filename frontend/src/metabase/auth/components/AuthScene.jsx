@@ -3,10 +3,10 @@
 import React, { Component } from "react";
 
 import { connect } from "react-redux";
-import { PLUGIN_SHOW_AUTH_SCENE_SELECTOR } from "metabase/plugins";
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 const mapStateToProps = (state, props) => ({
-  showAuthScene: PLUGIN_SHOW_AUTH_SCENE_SELECTOR(state, props),
+  showAuthScene: PLUGIN_SELECTORS.getShowAuthScene(state, props),
 });
 
 class AuthScene extends Component {

@@ -100,6 +100,12 @@
                                 one-day))
         one-day))
 
+(defmethod sql.qp/->honeysql [:vertica :concat]
+  [driver [_ & args]]
+  (->> args
+       (map (partial sql.qp/->honeysql driver))
+       (reduce (partial hsql/call :concat))))
+
 (defmethod sql.qp/->honeysql [:vertica :regex-match-first]
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))

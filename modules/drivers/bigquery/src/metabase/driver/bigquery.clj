@@ -8,9 +8,9 @@
              [util :as u]]
             [metabase.driver.bigquery
              [common :as bigquery.common]
+             [params :as bigquery.params]
              [query-processor :as bigquery.qp]]
             [metabase.driver.google :as google]
-            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [error-type :as error-type]
              [store :as qp.store]
@@ -26,8 +26,6 @@
            java.util.Collections))
 
 (driver/register! :bigquery, :parent #{:google :sql})
-
-(defmethod driver/supports? [:bigquery :percentile-aggregations] [_ _] false)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -51,6 +49,11 @@
 (def ^:private ^{:arglists '([database])} ^Bigquery database->client
   (comp credential->client database->credential))
 
+(defn find-project-id
+  "Select the user specified project-id or the one from the credential, in the case of a service account"
+  [project-id ^GoogleCredential credential]
+  (or project-id
+      (.getServiceAccountProjectId credential)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      Sync                                                      |
@@ -64,7 +67,15 @@
    (list-tables database nil))
 
   ([{{:keys [project-id dataset-id]} :details, :as database}, ^String page-token-or-nil]
-   (list-tables (database->client database) project-id dataset-id page-token-or-nil))
+   ;; RAR 2020-May-11 - this gets messy, because this function is used to determine if we
+   ;; can connect to the database. If a service account JSON is being used, the project ID
+   ;; field isn't required in the admin page because it's embedded in that JSON. During the
+   ;; initial save, the database entry doesn't exist yet, so we haven't pulled the project ID
+   ;; from that JSON. In this case, we need to go look it up in the credentials.
+   ;; TODO: maybe handle this better in `driver/can-connect? :bigquery`
+   (let [db-client (database->client database)
+         proj-id (find-project-id project-id (database->credential database))]
+    (list-tables db-client proj-id dataset-id page-token-or-nil)))
 
   ([^Bigquery client, ^String project-id, ^String dataset-id, ^String page-token-or-nil]
    {:pre [client (seq project-id) (seq dataset-id)]}
@@ -92,7 +103,7 @@
 
 (s/defn get-table :- Table
   ([{{:keys [project-id dataset-id]} :details, :as database} table-id]
-   (get-table (database->client database) project-id dataset-id table-id))
+   (get-table (database->client database) (find-project-id project-id (database->credential database)) dataset-id table-id))
 
   ([client :- Bigquery, project-id :- su/NonBlankString, dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
    (google/execute (.get (.tables client) project-id dataset-id table-id))))
@@ -193,24 +204,25 @@
                (parser v)))))))))
 
 (defn- ^QueryResponse execute-bigquery
-  ([{{:keys [project-id]} :details, :as database} query-string]
-   (execute-bigquery (database->client database) project-id query-string))
+  ([{{:keys [project-id]} :details, :as database} sql parameters]
+   (execute-bigquery (database->client database) (find-project-id project-id (database->credential database)) sql parameters))
 
-  ([^Bigquery client, ^String project-id, ^String query-string]
-   {:pre [client (seq project-id) (seq query-string)]}
+  ([^Bigquery client ^String project-id ^String sql parameters]
+   {:pre [client (seq project-id) (seq sql)]}
    (let [request (doto (QueryRequest.)
                    (.setTimeoutMs (* query-timeout-seconds 1000))
                    ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
-                   (.setUseLegacySql (str/includes? (str/lower-case query-string) "#legacysql"))
-                   (.setQuery query-string))]
+                   (.setUseLegacySql (str/includes? (str/lower-case sql) "#legacysql"))
+                   (.setQuery sql)
+                   (bigquery.params/set-parameters! parameters))]
      (google/execute (.query (.jobs client) project-id request)))))
 
-(defn- process-native* [respond database query-string]
+(defn- process-native* [respond database sql parameters]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`
   (letfn [(thunk []
-            (post-process-native respond (execute-bigquery database query-string)))]
+            (post-process-native respond (execute-bigquery database sql parameters)))]
     (try
       (thunk)
       (catch Throwable e
@@ -224,19 +236,19 @@
 
 (defmethod driver/execute-reducible-query :bigquery
   ;; TODO - it doesn't actually cancel queries the way we'd expect
-  [driver {{sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query} _ respond]
+  [driver {{sql :query, :keys [params table-name mbql?]} :native, :as outer-query} _ respond]
   (let [database (qp.store/database)]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
-      (let [sql (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
-                                                                     (unprepare/unprepare driver (cons sql params))
-                                                                     sql))]
-        (process-native* respond database sql)))))
+      (let [sql (str "-- " (qputil/query->remark :bigquery outer-query) "\n" sql)]
+        (process-native* respond database sql params)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other Driver Method Impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/supports? [:bigquery :percentile-aggregations] [_ _] false)
 
 (defmethod driver/supports? [:bigquery :expressions] [_ _] false)
 

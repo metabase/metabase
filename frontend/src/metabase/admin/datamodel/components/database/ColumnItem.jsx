@@ -27,10 +27,7 @@ export default class Column extends Component {
   };
 
   updateField = properties => {
-    this.props.updateField({
-      ...this.props.field.getPlainObject(),
-      ...properties,
-    });
+    this.props.updateField({ ...this.props.field, ...properties });
   };
 
   handleChangeName = ({ target: { value: display_name } }) => {
@@ -62,7 +59,7 @@ export default class Column extends Component {
             />
             <div className="clearfix">
               <div className="flex flex-auto">
-                <div className="flex-auto pl1">
+                <div className="pl1 flex-auto">
                   <FieldVisibilityPicker
                     className="block"
                     field={field}
@@ -210,7 +207,7 @@ export class SpecialTypeAndTargetPicker extends Component {
     );
 
     return (
-      <div>
+      <div className={cx(selectSeparator ? "flex align-center" : null)}>
         <Select
           className={cx("TableEditor-field-special-type mt0", className)}
           value={field.special_type}
@@ -227,7 +224,11 @@ export class SpecialTypeAndTargetPicker extends Component {
         // handle a "secondary" input more elegantly
         showCurrencyTypeSelect && (
           <Select
-            className={cx("TableEditor-field-target inline-block", className)}
+            className={cx(
+              "TableEditor-field-target inline-block",
+              selectSeparator ? "mt0" : "mt1",
+              className,
+            )}
             value={
               (field.settings && field.settings.currency) ||
               getGlobalSettingsForColumn(field).currency ||
@@ -251,7 +252,11 @@ export class SpecialTypeAndTargetPicker extends Component {
         {showFKTargetSelect && selectSeparator}
         {showFKTargetSelect && (
           <Select
-            className={cx("TableEditor-field-target text-wrap", className)}
+            className={cx(
+              "TableEditor-field-target text-wrap",
+              selectSeparator ? "mt0" : "mt1",
+              className,
+            )}
             placeholder={t`Select a target`}
             searchProp="name"
             value={field.fk_target_field_id}

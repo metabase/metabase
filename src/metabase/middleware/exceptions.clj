@@ -4,7 +4,6 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.middleware.security :as mw.security]
-            [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [trs]])
   (:import java.sql.SQLException
            org.eclipse.jetty.io.EofException))
@@ -56,13 +55,13 @@
                      status-code
                      (str message)
 
-                     ;; Otherwise it's a 500. Return a body that includes exception & filtered
-                     ;; stacktrace for debugging purposes
+                     ;; Otherwise it's a 500. Return the full Exception for debugging purposes
                      :else
-                     (assoc other-info
-                            :message    message
-                            :type       (class e)
-                            :stacktrace (u/filtered-stacktrace e)))]
+                     (merge
+                      other-info
+                      (Throwable->map e)
+                      {:message message
+                       :type    (class e)}))]
 
     {:status  (or status-code 500)
      :headers (mw.security/security-headers)

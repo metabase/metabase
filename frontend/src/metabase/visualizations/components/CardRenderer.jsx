@@ -108,7 +108,6 @@ export default class CardRenderer extends Component {
       });
     } catch (err) {
       console.error(err);
-      this.props.onRenderError(err.message || err);
     }
   }
 

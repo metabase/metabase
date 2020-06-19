@@ -10,11 +10,15 @@
             [metabase.models
              [common :as common]
              [setting :as setting :refer [defsetting]]]
+            metabase.public-settings.metastore
             [metabase.util
-             [i18n :refer [available-locales-with-names deferred-tru set-locale trs tru]]
+             [i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
              [password :as password]]
             [toucan.db :as db])
   (:import java.util.UUID))
+
+;; These modules register settings but are otherwise unused. They still must be imported.
+(comment metabase.public-settings.metastore/keep-me)
 
 (defsetting check-for-updates
   (deferred-tru "Identify when new versions of Metabase are available.")
@@ -41,7 +45,7 @@
                 (or (setting/get-string :site-uuid)
                     (let [value (str (UUID/randomUUID))]
                       (setting/set-string! :site-uuid value)
-                     value))))
+                      value))))
 
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
@@ -51,12 +55,13 @@
             s
             (str "http://" s))]
     ;; check that the URL is valid
-    (assert (u/url? s)
-      (tru "Invalid site URL: {0}" s))
+    (assert (u/url? s) (tru "Invalid site URL: {0}" (pr-str s)))
     s))
 
+(declare redirect-all-requests-to-https)
+
 ;; This value is *guaranteed* to never have a trailing slash :D
-;; It will also prepend `http://` to the URL if there's not protocol when it comes in
+;; It will also prepend `http://` to the URL if there's no protocol when it comes in
 (defsetting site-url
   (deferred-tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
   :visibility :public
@@ -66,15 +71,24 @@
               (catch AssertionError e
                 (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
   :setter (fn [new-value]
-            (setting/set-string! :site-url (some-> new-value normalize-site-url))))
+            (let [new-value (some-> new-value normalize-site-url)
+                  https?    (some-> new-value (str/starts-with?  "https:" ))]
+              ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
+              (when-not https?
+                (redirect-all-requests-to-https false))
+              (setting/set-string! :site-url new-value))))
 
 (defsetting site-locale
-  (str  (deferred-tru "The default language for this Metabase instance.")
-        " "
-        (deferred-tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
-  :type      :string
-  :on-change (fn [_ new-value] (when new-value (set-locale new-value)))
-  :default   "en")
+  (str (deferred-tru "The language that should be used for Metabase's UI, system emails, pulses, and alerts.")
+       " "
+       (deferred-tru "This is also the default language for all users, which they can change from their own account settings."))
+  :default    "en"
+  :visibility :public
+  :setter     (fn [new-value]
+                (when new-value
+                  (when-not (i18n/available-locale? new-value)
+                    (throw (ex-info (tru "Invalid locale {0}" (pr-str new-value)) {:status-code 400}))))
+                (setting/set-string! :site-locale (some-> new-value i18n/normalized-locale-string))))
 
 (defsetting admin-email
   (deferred-tru "The email address users should be referred to if they encounter a problem.")
@@ -93,7 +107,7 @@
 
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
-  :default    "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+  :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
   :visibility :public)
 
 (defsetting enable-public-sharing
@@ -271,3 +285,17 @@
   :visibility :public
   :setter     :none
   :getter     (constantly config/mb-version-info))
+
+(defsetting redirect-all-requests-to-https
+  (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")
+  :visibility :public
+  :type       :boolean
+  :default    false
+  :setter     (fn [new-value]
+                ;; if we're trying to enable this setting, make sure `site-url` is actually an HTTPS URL.
+                (when (if (string? new-value)
+                        (setting/string->boolean new-value)
+                        new-value)
+                  (assert (some-> (site-url) (str/starts-with? "https:"))
+                          (tru "Cannot redirect requests to HTTPS unless `site-url` is HTTPS.")))
+                (setting/set-boolean! :redirect-all-requests-to-https new-value)))

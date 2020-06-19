@@ -159,7 +159,8 @@
   {(s/optional-key :database_type) (s/maybe su/NonBlankString)
    (s/optional-key :base_type)     (s/maybe su/FieldType)
    (s/optional-key :special_type)  (s/maybe su/FieldType)
-   (s/optional-key :unit)          (s/maybe DatetimeFieldUnit)})
+   (s/optional-key :unit)          (s/maybe DatetimeFieldUnit)
+   (s/optional-key :name)          (s/maybe su/NonBlankString)})
 
 ;; Arguments to filter clauses are automatically replaced with [:value <value> <type-info>] clauses by the
 ;; `wrap-value-literals` middleware. This is done to make it easier to implement query processors, because most driver
@@ -618,7 +619,7 @@
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev
   field-or-expression FieldOrExpressionDef)
 
-(defclause ^{:requires-features #{:standard-deviation-aggregations}} var
+(defclause ^{:requires-features #{:standard-deviation-aggregations}} [ag:var var]
   field-or-expression FieldOrExpressionDef)
 
 (defclause ^{:requires-features #{:percentile-aggregations}} median
@@ -641,7 +642,7 @@
   (s/if (partial is-clause? arithmetic-expressions)
     ArithmeticExpression
     (one-of count avg cum-count cum-sum distinct stddev sum min max metric share count-where
-            sum-where case median percentile var)))
+            sum-where case median percentile ag:var)))
 
 (def ^:private UnnamedAggregation
   (s/recursive #'UnnamedAggregation*))

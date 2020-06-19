@@ -76,7 +76,7 @@ This would return rows where `Created At` is between January 1, 2020 and March 3
 | Percentile         | `percentile(column, percentile-value)`         | Returns the value of the column at the percentile value.                                                                                                           | `percentile([Score], 0.9)`                                           |
 | Power              | `power(number, exponent)`                      | Raises a number to the power of the exponent value.                                                                                                                | `power([Length], 2)`                                                 |
 | Regex extract      | `regexextract(text, regular_expression)`       | Extracts matching substrings according to a regular expression.                                                                                                    | `regexextract( [Address], "[0-9]+" )`                                |
-| Replace            | `replace(text, position, length, new_text)`    | Replaces a part of the input text with new text.                                                                                                                   | `replace( [Order ID], 8, 3, [Updated Part of ID] )`                  |
+| Replace            | `replace(text, find, replace)`                 | Replaces a part of the input text with new text.                                                                                                                   | `replace( [Title], "Enormous", "Gigantic" )`                         |
 | Round              | `round(number)`                                | Rounds a decimal number either up or down to the nearest integer value.                                                                                            | `round([Temperature])`                                               |
 | Right trim         | `rtrim(text)`                                  | Removes trailing whitespace from a string of text.                                                                                                                 | `rtrim( [Comment] )`                                                 |
 | Share              | `share(condition)`                             | Returns the percent of rows in the data that match the condition, as a decimal.                                                                                    | `share( [Source] = "Goolge" )`                                       |
@@ -94,7 +94,7 @@ This would return rows where `Created At` is between January 1, 2020 and March 3
 
 Certain database types don't support some of the above functions:
 
-MySQL
+MySQL and SQL Server
 
 - median
 - percentile

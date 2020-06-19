@@ -11,6 +11,14 @@ describe("scenarios > setup", () => {
     cy.findByText("Welcome to Metabase");
     cy.findByText("Let's get started").click();
 
+    // ========
+    // Language
+    // ========
+
+    cy.findByText("What's your preferred language?");
+    cy.findByText("English").click();
+    cy.findByText("Next").click();
+
     // ====
     // User
     // ====
