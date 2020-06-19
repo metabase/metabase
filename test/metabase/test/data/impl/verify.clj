@@ -99,7 +99,8 @@
                                                                  :aggregation  [[:count]]}})
                                    :data
                                    :rows
-                                   ffirst)]
+                                   ffirst
+                                   int)]
         (log/debugf "Expected rows: %d. Actual rows: %d" expected-row-count actual-row-count)
         (when-not (= expected-row-count actual-row-count)
           (throw (ex-info (format "Incorrect number of rows loaded for Table %s.%s. Expected: %d. Actual: %d"

@@ -19,8 +19,7 @@
              [card :refer [Card]]
              [permissions :as perms]
              [permissions-group :as group]
-             [query-execution :refer [QueryExecution]]
-             [user :as user]]
+             [query-execution :refer [QueryExecution]]]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.test.data
              [dataset-definitions :as defs]
@@ -57,15 +56,6 @@
 (deftest basic-query-test
   (testing "POST /api/dataset"
     (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
-      ;; this test tends to fail randomly, not sure why. I think another test might be revoking permissions for the
-      ;; Test Database for All Users. If that's the case just complain loudly about it and fix it until we figure out
-      ;; who is responsible.
-      (when-not (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
-                                                 (perms/object-path (mt/id)))
-        (println (u/format-color 'red (str "WARNING: All Users group does not have permissions for the Test Data DB. "
-                                           "This means another test revoked these permissions without cleaning up after "
-                                           "itself. Don't do this!")))
-        (perms/grant-permissions! (group/all-users) (perms/object-path (mt/id))))
       (let [result ((mt/user->client :rasta) :post 202 "dataset" (mt/mbql-query checkins
                                                                    {:aggregation [[:count]]}))]
         (testing "\nAPI Response"

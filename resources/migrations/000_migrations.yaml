@@ -13,6 +13,14 @@ databaseChangeLog:
       name: quote_strategy
       value: LEGACY
       dbms: postgresql,h2
+  - property:
+      name: timestamp_type
+      value: timestamp with time zone
+      dbms: postgresql,h2
+  - property:
+      name: timestamp_type
+      value: timestamp(6)
+      dbms: mysql,mariadb
   - changeSet:
       id: '1'
       author: agilliland
@@ -6263,14 +6271,6 @@ databaseChangeLog:
 # query_cache.updated_at was originally converted to a timestamp in 161, but we used `timestamp` instead of
 # `timestamp(6)`. It is converted correctly here.
 
-  - property:
-      name: timestamp_type
-      value: timestamp with time zone
-      dbms: postgresql,h2
-  - property:
-      name: timestamp_type
-      value: timestamp(6)
-      dbms: mysql,mariadb
   - changeSet:
       id: 166
       author: camsaul
@@ -6360,3 +6360,16 @@ databaseChangeLog:
             tableName: native_query_snippet
             constraintName: idx_unique_name_database_id
             columnNames: name, database_id
+
+# Convert query execution from DATETIME to TIMESTAMP(6) so have normalize TZ
+# offset and so MySQL/MariaDB has better than second precision
+
+  - changeSet:
+      id: 168
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - modifyDataType:
+            tableName: query_execution
+            columnName: started_at
+            newDataType: ${timestamp_type}
