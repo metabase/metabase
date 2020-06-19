@@ -194,7 +194,7 @@
   background-color: var(--color-bg-white);
   border-radius: var(--default-border-radius);
   font-weight: 700;
-  min-width: 200px;
+  min-width: 104px;
 }
 
 .AdminSelect:hover {
