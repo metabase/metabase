@@ -66,6 +66,30 @@ describe("scenarios > question > notebook", () => {
     cy.contains("3");
   });
 
+  it("should allow post-join filters (metabase#12221)", () => {
+    cy.log("start a custom question with Orders");
+    cy.visit("/question/new");
+    cy.contains("Custom question").click();
+    cy.contains("Sample Dataset").click();
+    cy.contains("Orders").click();
+
+    cy.log("join to People table using default settings");
+    cy.get(".Icon-join_left_outer ").click();
+    cy.contains("People").click();
+    cy.contains("Orders + People");
+    cy.contains("Visualize").click();
+    cy.contains("Showing first 2,000");
+
+    cy.log("attempt to filter on the joined table");
+    cy.contains("Filter").click();
+    cy.contains("Email").click();
+    cy.contains("People – Email");
+    cy.get('[placeholder="Search by Email"]').type("wolf.");
+    cy.contains("wolf.dina@yahoo.com").click();
+    cy.contains("Add filter").click();
+    cy.contains("Showing 1 row");
+  });
+
   describe("nested", () => {
     it("should create a nested question with post-aggregation filter", () => {
       // start a custom question with orders

@@ -269,6 +269,9 @@ export default class NativeQuery extends AtomicQuery {
   templateTags(): TemplateTag[] {
     return Object.values(this.templateTagsMap());
   }
+  templateTagsWithoutSnippets(): TemplateTag[] {
+    return this.templateTags().filter(t => t.type !== "snippet");
+  }
   templateTagsMap(): TemplateTags {
     return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
   }
