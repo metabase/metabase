@@ -5,6 +5,7 @@ import {
   restore,
   popover,
   modal,
+  withSampleDataset,
 } from "__support__/cypress";
 
 const COUNT_ALL = "200";
@@ -23,31 +24,37 @@ describe("scenarios > public", () => {
   before(() => {
     restore();
     signInAsAdmin();
-    cy.request("POST", "/api/card", {
-      name: "sql param",
-      dataset_query: {
-        type: "native",
-        native: {
-          query: "select count(*) from products where {{c}}",
-          "template-tags": {
-            c: {
-              id: "e116f242-fbaa-1feb-7331-21ac59f021cc",
-              name: "c",
-              "display-name": "Category",
-              type: "dimension",
-              dimension: ["field-id", 6],
-              default: null,
-              "widget-type": "category",
+
+    // setup parameterized question
+    withSampleDataset(({ PRODUCTS }) =>
+      cy
+        .request("POST", "/api/card", {
+          name: "sql param",
+          dataset_query: {
+            type: "native",
+            native: {
+              query: "select count(*) from products where {{c}}",
+              "template-tags": {
+                c: {
+                  id: "e116f242-fbaa-1feb-7331-21ac59f021cc",
+                  name: "c",
+                  "display-name": "Category",
+                  type: "dimension",
+                  dimension: ["field-id", PRODUCTS.CATEGORY],
+                  default: null,
+                  "widget-type": "category",
+                },
+              },
             },
+            database: 1,
           },
-        },
-        database: 1,
-      },
-      display: "scalar",
-      visualization_settings: {},
-    }).then(({ body }) => {
-      questionId = body.id;
-    });
+          display: "scalar",
+          visualization_settings: {},
+        })
+        .then(({ body }) => {
+          questionId = body.id;
+        }),
+    );
   });
 
   beforeEach(() => {
