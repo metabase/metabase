@@ -4,7 +4,7 @@ To run the Metabase JAR-file you need to have Java Runtime Environment (JRE) ins
 
 ### Download Metabase
 
-If you haven't done so already the first thing you need to do is [Download Metabase](https://metabase.com/start/jar.html).  Simply save the JAR-file to a folder on your system where you wish to run Metabase.
+If you haven't done so already the first thing you need to do is [Download Metabase](https://metabase.com/start/jar.html). Simply save the JAR-file to a folder on your system where you wish to run Metabase.
 
 ### Verify Java is installed
 
@@ -30,7 +30,7 @@ Now that you have a working Java Runtime, you can now run the jar from a termina
 
     java -jar metabase.jar
 
-It's that simple.  This will start the Metabase application using all of the default settings.  You should see some log entries starting to run in your terminal window showing you the application progress as it starts up.  Once Metabase is fully started you'll see a confirmation such as:
+It's that simple. This will start the Metabase application using all of the default settings. You should see some log entries starting to run in your terminal window showing you the application progress as it starts up. Once Metabase is fully started you'll see a confirmation such as:
 
     ...
     06-19 10:29:34 INFO metabase.task :: Initializing task CheckForNewVersions
@@ -41,7 +41,7 @@ It's that simple.  This will start the Metabase application using all of the def
     06-19 10:29:34 INFO metabase.task :: Initializing task TaskHistoryCleanup
     06-19 10:29:34 INFO metabase.core :: Metabase Initialization COMPLETE
 
-At this point you're ready to go!  You can access your new Metabase server on port 3000, most likely at [http://localhost:3000](http://localhost:3000)
+At this point you're ready to go! You can access your new Metabase server on port 3000, most likely at [http://localhost:3000](http://localhost:3000)
 
 You can use another port than 3000 by setting the `MB_JETTY_PORT` environment variable before running the jar.
 
