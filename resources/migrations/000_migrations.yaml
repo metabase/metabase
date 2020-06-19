@@ -6258,6 +6258,9 @@ databaseChangeLog:
       author: walterl, camsaul
       comment: 'Added 0.36.0'
       changes:
+        # If an older version of this Table was created locally (during dev) drop it, we have an updated definition
+        - sql:
+            sql: drop table if exists native_query_snippet
         - createTable:
             tableName: native_query_snippet
             remarks: 'Query snippets (raw text) to be substituted in native queries'
