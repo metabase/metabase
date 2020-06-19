@@ -174,16 +174,14 @@ export default class NativeQueryEditor extends Component {
   }
 
   handleRightClick = event => {
-    // For some reason the click doesn't target the selection element directly.
-    // We check if it falls in the selections bounding rectangle to know if the selected text was clicked.
-    const selection = document.querySelector(".ace_selection");
-    if (!selection) {
-      return;
-    }
+    // Ace creates multiple selection elements which collectively cover the selected area.
+    const selections = Array.from(document.querySelectorAll(".ace_selection"));
 
     if (
       this.props.nativeEditorSelectedText &&
-      isEventOverElement(event, selection)
+      // For some reason the click doesn't target the selection element directly.
+      // We check if it falls in the selections bounding rectangle to know if the selected text was clicked.
+      selections.some(selection => isEventOverElement(event, selection))
     ) {
       event.preventDefault();
       this.setState({ isSelectedTextPopoverOpen: true });
