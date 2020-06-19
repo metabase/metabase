@@ -13,9 +13,9 @@ start Metabase as usual:
 
     MB_ENCRYPTION_SECRET_KEY="IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=" java -jar metabase.jar
 
-**Note** Single-quotes (`'`) and double-quotes (`"`) are interpreted differently for environment variable values on some versions of Linux, so when upgrading to a newer version of Linux, then it might be needed to wrap it in double-quotes, if single-quotes were used originally, so the single-quotes are interpreted literally. Ex. `MB_ENCRYPTION_SECRET_KEY='IYq...sM='` would be `MB_ENCRYPTION_SECRET_KEY="'IYq...sM='"`
+**Note** Some versions of Linux interpret single-quotes (`'`) and double-quotes (`"`) differently for environment variable values, so if you upgrade to a newer version of Linux, and the key originally used single-quotes, you might need to wrap the key in double-quotes, so that the single-quotes are interpreted literally. For example, `MB_ENCRYPTION_SECRET_KEY='IYq...sM='` would be `MB_ENCRYPTION_SECRET_KEY="'IYq...sM='"`
 
 Metabase will securely encrypt and store the connection details for any new Databases you add. (Connection details for existing databases will be encrypted as well if you save them in the admin panel).
 Existing databases with unencrypted details will continue to work normally.
 
-Take care not to lose this key because you can't decrypt connection details without it. If you lose (or change) it, you'll have to reset all of the connection details that have been encrypted with it in the Admin Panel.
+>Take care not to lose this key because you can't decrypt connection details without it. If you lose (or change) the key, you'll have to reset all of the connection details that have been encrypted with it in the Admin Panel.

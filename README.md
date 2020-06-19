@@ -33,7 +33,7 @@ For more information check out [metabase.com](https://metabase.com/)
 - MongoDB
 - MySQL
 - Oracle
-- Postgres
+- PostgreSQL
 - Presto
 - Snowflake
 - SparkSQL
@@ -55,9 +55,9 @@ To run Metabase via Docker, just type
 docker run -d -p 3000:3000 --name metabase metabase/metabase
 ```
 
-### JAR-file
+### JAR file
 
-To run Metabase via JAR-file, you will need to have a [Java Runtime Environment](https://www.metabase.com/docs/latest/operations-guide/java-versions.html) installed on your system.
+To run Metabase via a JAR file, you will need to have a [Java Runtime Environment](https://www.metabase.com/docs/latest/operations-guide/java-versions.html) installed on your system.
 
 As a quick check to see if your system already has Java installed and it's version details, try running this command from a terminal:
 
@@ -102,7 +102,7 @@ Then take a look at our [Contribution Guide](https://www.metabase.com/docs/lates
 
 # Internationalization
 
-We want Metabase to be available in as many languages as possible. See what translations are available and help contribute to internationalization using our project over at [POEditor](https://poeditor.com/join/project/ynjQmwSsGh). You can also check out our [policies on translations](https://www.metabase.com/docs/latest/faq/general/what-languages-can-be-used-with-metabase.html).
+We want Metabase to be available in as many languages as possible. See which translations are available and help contribute to internationalization using our project over at [POEditor](https://poeditor.com/join/project/ynjQmwSsGh). You can also check out our [policies on translations](https://www.metabase.com/docs/latest/faq/general/what-languages-can-be-used-with-metabase.html).
 
 # Extending and Deep Integrations
 

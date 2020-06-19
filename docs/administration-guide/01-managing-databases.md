@@ -18,7 +18,7 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 - [MongoDB (version 3.4 or higher)](databases/mongodb.md)
 - [MySQL (version 5.5.3 or higher, as well as MariaDB)](databases/mysql.md)
 - [Oracle](databases/oracle.md)
-- Postgres
+- PostgreSQL
 - Presto
 - Snowflake
 - SparkSQL
@@ -89,7 +89,7 @@ By default, Metabase will auto-run queries when you use the Summarize and Filter
 
 #### Scanning for field values
 
-When Metabase first connects to your database, it takes a look at the metadata of the fields in your tables and automatically assigns them a field type. Metabase also takes a sample of each table to look for URLs, JSON, encoded strings, etc. If a field is classified wrong, you can always manually edit it from the **Data Model** tab in the Admin Panel.
+When Metabase first connects to your database, it takes a look at the metadata of the columns in your tables and automatically assigns them a type. Metabase also takes a sample of each table to look for URLs, JSON, encoded strings, etc. You can manually edit table and column metadata in Metabase at any time from the **Data Model** tab in the **Admin Panel**.
 
 By default, Metabase also performs a more intensive daily sampling of each field's values and caches the distinct values in order to make checkbox and select filters work in dashboards and SQL/native questions. This process can slow down large databases, so if you have a particularly large database, you can turn on the option to choose when Metabase scans, and select one of three scan options in the Scheduling tab:
 
