@@ -57,21 +57,9 @@ docker run -d -p 3000:3000 --name metabase metabase/metabase
 
 ### JAR file
 
-To run Metabase via a JAR file, you will need to have a [Java Runtime Environment](https://www.metabase.com/docs/latest/operations-guide/java-versions.html) installed on your system.
+To run Metabase via a JAR file, you will need to have a Java Runtime Environment installed on your system.
 
-As a quick check to see if your system already has Java installed and it's version details, try running this command from a terminal:
-
-```
-java -version
-```
-
-You should see output similar to this:
-
-    openjdk version "11.0.7" 2020-04-14
-    OpenJDK Runtime Environment AdoptOpenJDK (build 11.0.7+10)
-    OpenJDK 64-Bit Server VM AdoptOpenJDK (build 11.0.7+10, mixed mode)
-
-If you did not see such output, but instead saw either an error or the Java release date is more than a few months old, then you need to install or update Java.
+We recommend the latest LTS version of JRE from [AdoptOpenJDK](https://adoptopenjdk.net/releases.html) with HotSpot JVM and x64 architecture, but other [Java versions](https://www.metabase.com/docs/latest/operations-guide/java-versions.html) might work too.
 
 Go to the [Metabase Download Page](https://metabase.com/start/jar.html) and download the latest release. Place the downloaded JAR-file into a newly created directory (as it will create some files when it is run), and run it with the following command:
 

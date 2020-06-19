@@ -25,7 +25,7 @@ The simplest way to filter a sandboxed table is to pick a column in the sandboxe
 
 #### Option 2: create a custom view of the table with a saved question
 
-If you’re trying to do something more custom or complex, Metabase also gives you the option of creating a custom view for a sandboxed table using a saved question. You can also use variables in a saved SQL/native question and map those to user attributes to do even more sophisticated filtering. As an example, you might have columns in your Orders table that you don’t want any of your users to see, so you could create a SQL-based saved question which only returns the columns you want them to see. That question could also have a variable in its `where` clause that you could map to a user attribute, like `where orders.user_id = {% raw %}{{user_id_attr_var}}{% endraw %}` to additionally filter the question based on each user’s user ID attribute.
+Metabase also gives you the option of creating a custom view for a sandboxed table using a saved question.  For example, you might have columns in your Orders table that you don’t want any of your users to see. You can create a SQL-based saved question that only returns the columns you want users to see. For even more surgical access controls, you can map those variables in a SQL question to user attributes, so even if users have access to a question, they can only see the data specified by that variable if they have that attribute. For example, if you only want users to see their order data, you could map a variable in the `where` clause of a question to a user attribute, like `where orders.user_id = {% raw %}{{user_id_attr_var}}{% endraw %}`, and the user would only have access to order information related to that user ID.
 
 ### An example setup
 

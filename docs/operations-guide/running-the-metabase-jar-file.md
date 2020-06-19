@@ -1,32 +1,18 @@
 # Running the Metabase JAR file
 
-To run the Metabase JAR file, you need to have Java Runtime Environment (JRE) installed on your system.
+To run Metabase via a JAR file, you will need to have a Java Runtime Environment (JRE) installed on your system.
+
+### Install Java JRE
+
+We recommend the latest LTS version of JRE from [AdoptOpenJDK](https://adoptopenjdk.net/releases.html) with HotSpot JVM and x64 architecture, but other [Java versions](./java-versions.md) are supported too.
 
 ### Download Metabase
 
-The first step is to [Download Metabase](https://metabase.com/start/jar.html). Simply save the JAR-file to a folder on your system where you wish to run Metabase.
-
-### Verify Java is installed
-
-As a quick check to see if your system already has Java installed and it's version details, try running this command from a terminal:
-
-```
-java -version
-```
-
-You should see output similar to this:
-
-    openjdk version "11.0.7" 2020-04-14
-    OpenJDK Runtime Environment AdoptOpenJDK (build 11.0.7+10)
-    OpenJDK 64-Bit Server VM AdoptOpenJDK (build 11.0.7+10, mixed mode)
-
-If you did not see such output, but instead saw either an error or the Java release date is more than a few months old, then you need to install or update Java.
-
-It is recommended to use the latest LTS version of JRE from [AdoptOpenJDK](https://adoptopenjdk.net/releases.html) with HotSpot JVM and x64 architecture, but other [Java versions](./java-versions.md) are supported.
+Go to the [Metabase Download Page](https://metabase.com/start/jar.html) and download the latest release. Place the downloaded JAR-file into a newly created directory (as it will create some files when it is run)
 
 ### Launching Metabase
 
-Now that you have a working Java Runtime, you can now run the jar from a terminal with:
+Now that you have a working Java, you can now run the jar from a terminal with:
 
     java -jar metabase.jar
 
