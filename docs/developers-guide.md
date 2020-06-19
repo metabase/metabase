@@ -24,10 +24,10 @@ If you have problems with your development environment, make sure that you are n
 
 These are the set of tools which are required in order to complete any build of the Metabase code. Follow the links to download and install them on your own before continuing.
 
-1. [Oracle JDK 8 (http://www.oracle.com/technetwork/java/javase/downloads/index.html)](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
-2. [Node.js (http://nodejs.org/)](http://nodejs.org/)
-3. [Yarn package manager for Node.js](https://yarnpkg.com/)
-4. [Leiningen (http://leiningen.org/)](http://leiningen.org/)
+1. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - latest LTS version of JDK - more about [Java versions](./operations-guide/java-versions.md)
+2. [Node.js (http://nodejs.org/)](http://nodejs.org/) - latest LTS release
+3. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x
+4. [Leiningen (http://leiningen.org/)](http://leiningen.org/) - latest release
 
 If you are developing on Windows, make sure to use Ubuntu on Windows and follow instructions for Ubuntu/Linux instead of installing ordinary Windows versions.
 
@@ -69,7 +69,7 @@ $ yarn
 
 Run your backend development server with
 
-    lein ring server
+    lein run
 
 Start the frontend build process with
 
@@ -219,12 +219,6 @@ Leiningen and your REPL are the main development tools for the backend. There ar
 And of course your Jetty development server is available via
 
     lein run
-
-To automatically load backend namespaces when files are changed, you can instead run with
-
-    lein ring server
-
-`lein ring server` takes significantly longer to launch than `lein run`, so if you aren't working on backend code we'd recommend sticking to launching with `lein run`.
 
 ### Building drivers
 

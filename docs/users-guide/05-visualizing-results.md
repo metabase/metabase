@@ -208,7 +208,7 @@ There's quite a bit you can do in this tab:
 
 There are three main things you can do here:
 
-- Change the scale for your axes. If you're looking at a time series chart, your x-axis can use a time series scale or an ordinal one. When using "Timeseries", it will always be displayed in ascending order, so oldest to latest, while "Ordinal" will display in the order the data is returned. Your y-axis can use a linear, power, or logarithmic scale.
+- Change the scale for your axes. If you're looking at a time series chart, your x-axis can use a time series scale or an ordinal one. When using "Timeseries", it will always be displayed in ascending order, so oldest to newest, while "Ordinal" will display in the order the data is returned. Your y-axis can use a linear, power, or logarithmic scale.
 - Hide or show the tick marks on your axes. You can also choose to rotate the tick marks on the x-axis to help them fit better.
 - Edit the range of your y-axis. Metabase sets an automatic range by default, but you can toggle that off and input a custom minimum and maximum value for the y-axis if you'd like.
 
