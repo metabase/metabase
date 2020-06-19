@@ -883,9 +883,10 @@ const TablePicker = ({
             {t`Is a question missing?`}
             <a
               href={MetabaseSettings.docsUrl(
-                "users-guide/04-asking-questions",
-                "source-data",
+                "users-guide/custom-questions",
+                "picking-your-starting-data",
               )}
+              target="_blank"
               className="block link"
             >{t`Learn more about nested queries`}</a>
           </div>
