@@ -59,20 +59,27 @@ export default class FormField extends Component {
       <div
         className={cx("Form-field", className, {
           "Form--fieldError": !!error,
-          "flex flex-reverse justify-end": horizontal,
+          flex: horizontal,
         })}
+        id={`formField-${name.replace(/\./g, "-")}`}
       >
         {(title || description) && (
-          <div className={cx({ ml2: horizontal })}>
+          <div>
             {title && (
-              <label className="Form-label" htmlFor={name} id={`${name}-label`}>
+              <label
+                className={cx("Form-label", { "mr-auto": horizontal })}
+                htmlFor={name}
+                id={`${name}-label`}
+              >
                 {title} {error && <span className="text-error">: {error}</span>}
               </label>
             )}
             {description && <div className="mb1">{description}</div>}
           </div>
         )}
-        <div className="flex-no-shrink">{children}</div>
+        <div className={cx("flex-no-shrink", { "ml-auto": horizontal })}>
+          {children}
+        </div>
       </div>
     );
   }
