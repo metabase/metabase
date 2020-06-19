@@ -555,7 +555,10 @@ export const insertSnippet = snip => (dispatch, getState) => {
     query.queryText().slice(0, selectionStart) +
     `{{snippet: ${name}}}` +
     query.queryText().slice(nativeEditorCursorOffset);
-  const datasetQuery = query.setQueryText(newText).datasetQuery();
+  const datasetQuery = query
+    .setQueryText(newText)
+    .updateSnippetsWithIds([snip])
+    .datasetQuery();
   dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
 };
 
