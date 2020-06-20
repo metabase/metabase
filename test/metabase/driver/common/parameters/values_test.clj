@@ -159,6 +159,18 @@
                       :widget-type  :date/all-options}
                      nil))))))
 
+(deftest field-filter-errors-test
+  (testing "error conditions for field filter (:dimension) parameters"
+    (testing "Should throw an Exception if Field does not exist"
+      (let [query (assoc (mt/native-query "SELECT * FROM table WHERE {{x}}")
+                         :template-tags {"x" {:name         "x"
+                                              :display-name "X"
+                                              :type         :dimension
+                                              :dimension    [:field-id Integer/MAX_VALUE]}})]
+        (is (thrown?
+             clojure.lang.ExceptionInfo
+             (values/query->params-map query)))))))
+
 (deftest card-query-test
   (testing "Card query template tag gets card's native query"
     (let [test-query "SELECT 1"]
@@ -261,6 +273,18 @@
                                                        :info {:executed-by (mt/user->id :rasta)
                                                               :card-id     (u/get-id card-2)})))))))))))
 
+(deftest card-query-errors-test
+  (testing "error conditions for :card parameters"
+    (testing "should throw an Exception if Card does not exist"
+      (let [query (assoc (mt/native-query "SELECT * FROM table WHERE {{x}}")
+                         :template-tags {"x" {:name         "x"
+                                              :display-name "X"
+                                              :type         :card
+                                              :card-id      Integer/MAX_VALUE}})]
+        (is (thrown?
+             clojure.lang.ExceptionInfo
+             (values/query->params-map query)))))))
+
 (deftest snippet-test
   (letfn [(query-with-snippet [& {:as snippet-properties}]
             (assoc (mt/native-query "SELECT * FROM {{expensive-venues}}")
@@ -284,10 +308,19 @@
       (mt/with-temp NativeQuerySnippet [{snippet-id :id} {:name    "expensive-venues"
                                                           :content "venues WHERE price = 4"}]
         (let [expected {"expensive-venues" (i/map->ReferencedQuerySnippet {:snippet-id snippet-id
-                                                                       :content    "venues WHERE price = 4"})}]
+                                                                           :content    "venues WHERE price = 4"})}]
           (is (= expected
                  (values/query->params-map (query-with-snippet :snippet-id snippet-id))))
 
           (testing "`:snippet-name` property in query shouldn't have to match `:name` of Snippet in DB"
             (is (= expected
                    (values/query->params-map (query-with-snippet :snippet-id snippet-id, :snippet-name "Old Name"))))))))))
+
+(deftest invalid-param-test
+  (testing "Should throw an Exception if we try to pass with a `:type` we don't understand"
+    (let [query (assoc (mt/native-query "SELECT * FROM table WHERE {{x}}")
+                       :template-tags {"x" {:name "x"
+                                            :type :writer}})]
+      (is (thrown?
+           clojure.lang.ExceptionInfo
+           (values/query->params-map query))))))
