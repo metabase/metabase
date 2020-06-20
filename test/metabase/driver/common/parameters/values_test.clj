@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase
              [driver :as driver]
-             [models :refer [Card Collection]]
+             [models :refer [Card Collection NativeQuerySnippet]]
              [query-processor :as qp]
              [test :as mt]
              [util :as u]]
@@ -11,9 +11,7 @@
             [metabase.models
              [field :refer [map->FieldInstance]]
              [permissions :as perms]
-             [permissions-group :as group]]
-            [metabase.test.data :as data]
-            [toucan.util.test :as tt])
+             [permissions-group :as group]])
   (:import clojure.lang.ExceptionInfo))
 
 (deftest variable-value-test
@@ -38,7 +36,7 @@
       (is (= {:field (map->FieldInstance
                       {:name         "DATE"
                        :parent_id    nil
-                       :table_id     (data/id :checkins)
+                       :table_id     (mt/id :checkins)
                        :base_type    :type/Date
                        :special_type nil})
               :value {:type  :date/range
@@ -47,7 +45,7 @@
                        {:name         "checkin_date"
                         :display-name "Checkin Date"
                         :type         :dimension
-                        :dimension    [:field-id (data/id :checkins :date)]}
+                        :dimension    [:field-id (mt/id :checkins :date)]}
                        [{:type   :date/range
                          :target [:dimension [:template-tag "checkin_date"]]
                          :value  "2015-04-01~2015-05-01"}])))))
@@ -77,7 +75,7 @@
     (is (= {:field (map->FieldInstance
                     {:name         "DATE"
                      :parent_id    nil
-                     :table_id     (data/id :checkins)
+                     :table_id     (mt/id :checkins)
                      :base_type    :type/Date
                      :special_type nil})
             :value i/no-value}
@@ -92,7 +90,7 @@
     (is (= {:field (map->FieldInstance
                     {:name         "ID"
                      :parent_id    nil
-                     :table_id     (data/id :checkins)
+                     :table_id     (mt/id :checkins)
                      :base_type    :type/BigInteger
                      :special_type :type/PK})
             :value {:type  :id
@@ -105,14 +103,14 @@
     (is (thrown? Exception
                  (into {} (#'values/value-for-tag
                            {:name      "checkin_date", :display-name "Checkin Date", :type "dimension", :required true,
-                            :dimension ["field-id" (data/id :checkins :date)]}
+                            :dimension ["field-id" (mt/id :checkins :date)]}
                            nil)))))
 
   (testing "required and default specified"
     (is (= {:field (map->FieldInstance
                     {:name         "DATE"
                      :parent_id    nil
-                     :table_id     (data/id :checkins)
+                     :table_id     (mt/id :checkins)
                      :base_type    :type/Date
                      :special_type nil})
             :value {:type  :dimension
@@ -131,7 +129,7 @@
     (is (= {:field (map->FieldInstance
                     {:name         "DATE"
                      :parent_id    nil
-                     :table_id     (data/id :checkins)
+                     :table_id     (mt/id :checkins)
                      :base_type    :type/Date
                      :special_type nil})
             :value [{:type  :date/range
@@ -147,12 +145,12 @@
     (is (= {:field (map->FieldInstance
                     {:name         "DATE"
                      :parent_id    nil
-                     :table_id     (data/id :checkins)
+                     :table_id     (mt/id :checkins)
                      :base_type    :type/Date
                      :special_type nil})
             :value {:type  :date/all-options
                     :value "past5days"}}
-           (into {} (#'values/field-filter-value-for-tag
+           (into {} (#'values/parse-tag
                      {:name         "checkin_date"
                       :display-name "Checkin Date"
                       :type         :dimension
@@ -178,8 +176,8 @@
   (testing "Card query template tag generates native query for MBQL query"
     (mt/with-everything-store
       (driver/with-driver :h2
-        (let [mbql-query   (data/mbql-query venues
-                             {:database (data/id)
+        (let [mbql-query   (mt/mbql-query venues
+                             {:database (mt/id)
                               :filter   [:< [:field-id $price] 3]})
               expected-sql (str "SELECT "
                                 "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
@@ -201,8 +199,8 @@
                     []))))))))
 
   (testing "Card query template tag wraps error in tag details"
-    (tt/with-temp Card [param-card {:dataset_query
-                                    (data/native-query
+    (mt/with-temp Card [param-card {:dataset_query
+                                    (mt/native-query
                                       {:query "SELECT {{x}}"
                                        :template-tags
                                        {"x"
@@ -210,8 +208,8 @@
                                          :type :number, :required false}}})}]
       (let [param-card-id  (:id param-card)
             param-card-tag (str "#" param-card-id)]
-        (tt/with-temp Card [card {:dataset_query
-                                  (data/native-query
+        (mt/with-temp Card [card {:dataset_query
+                                  (mt/native-query
                                     {:query (str "SELECT * FROM {{#" param-card-id "}} AS y")
                                      :template-tags
                                      {param-card-tag
@@ -262,3 +260,34 @@
                      (qp/process-userland-query (assoc (:dataset_query card-2)
                                                        :info {:executed-by (mt/user->id :rasta)
                                                               :card-id     (u/get-id card-2)})))))))))))
+
+(deftest snippet-test
+  (letfn [(query-with-snippet [& {:as snippet-properties}]
+            (assoc (mt/native-query "SELECT * FROM {{expensive-venues}}")
+                   :template-tags {"expensive-venues" (merge
+                                                       {:type         :snippet
+                                                        :name         "expensive-venues"
+                                                        :display-name "Expensive Venues"
+                                                        :snippet-name "expensive-venues"}
+                                                       snippet-properties)}))]
+    (testing "`:snippet-id` should be required"
+      (is (thrown?
+           clojure.lang.ExceptionInfo
+           (values/query->params-map (query-with-snippet)))))
+
+    (testing "If no such Snippet exists, it should throw an Exception"
+      (is (thrown?
+           clojure.lang.ExceptionInfo
+           (values/query->params-map (query-with-snippet :snippet-id Integer/MAX_VALUE)))))
+
+    (testing "Snippet parsing should work correctly for a valid Snippet"
+      (mt/with-temp NativeQuerySnippet [{snippet-id :id} {:name    "expensive-venues"
+                                                          :content "venues WHERE price = 4"}]
+        (let [expected {"expensive-venues" (i/map->ReferencedQuerySnippet {:snippet-id snippet-id
+                                                                       :content    "venues WHERE price = 4"})}]
+          (is (= expected
+                 (values/query->params-map (query-with-snippet :snippet-id snippet-id))))
+
+          (testing "`:snippet-name` property in query shouldn't have to match `:name` of Snippet in DB"
+            (is (= expected
+                   (values/query->params-map (query-with-snippet :snippet-id snippet-id, :snippet-name "Old Name"))))))))))
