@@ -21,14 +21,6 @@ databaseChangeLog:
       name: timestamp_type
       value: timestamp(6)
       dbms: mysql,mariadb
-  - property:
-      name: timestamp_default_value_computed
-      value: current_timestamp
-      dbms: postgresql,h2
-  - property:
-      name: timestamp_default_value_computed
-      value: current_timestamp(6)
-      dbms: mysql,mariadb
 
   - changeSet:
       id: '1'
@@ -6316,13 +6308,17 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: ${timestamp_type}
-                  defaultValueComputed: ${timestamp_default_value_computed}
+                  # it seems like defaultValueComputed actaully just ends
+                  # getting ignored anyway -- see
+                  # https://stackoverflow.com/questions/58816496/force-liquibase-to-current-timestamp-instead-of-now
+                  # We set a custom value for MySQL/MariaDB in MetabaseMySqlCreateTableSqlGenerator.java
+                  defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
-                  defaultValueComputed: ${timestamp_default_value_computed}
+                  defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
         # Needed to efficiently enforce the unique constraint on name and so we can lookup by name as well.
