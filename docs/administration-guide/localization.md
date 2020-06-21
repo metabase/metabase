@@ -1,6 +1,6 @@
 ## Localization
 
-The **Localization** settings allow you to set your defaults for your Metabase instance. Localization settings include options for:
+The **Localization** settings allow you to set global defaults for your Metabase instance. Localization settings include options for:
 
 - **Language**
 - **Date and time**
@@ -13,24 +13,20 @@ The **Localization** settings can be found in the **Admin Panel** under the **Se
 
 The default language for all users across the Metabase UI, system emails, pulses, and alerts. If a user would like to use a language different from this default, they can individually override this default language from their own account settings.
 
-[Languages Metabase supports](https://www.metabase.com/docs/latest/faq/general/what-languages-can-be-used-with-metabase.html).
+See a [list of languages Metabase supports](https://www.metabase.com/docs/latest/faq/general/what-languages-can-be-used-with-metabase.html).
 
-### Localization options
+### Localization settings
 
-#### Dates and Times
+**Dates and Times**
+* `Date style:` the way dates should be displayed in tables, axis labels, and tooltips.
+* `Date separators:` you can choose between slashes, dashes, and dots here.
+* `Abbreviate names of days and months:` whenever a date is displayed with the day of the week and/or the month written out, turning this setting on will display e.g. `January` as `Jan` or `Monday` as `Mon`.
+* `Time style:` this lets you choose between a 12-hour or 24-hour clock to display the time by default where applicable.
 
-- **Date style**. January 7, 2018
-- **Date separators**. `-`, `/`, or `.`
-- **Date abbreviation** January or Jan.
-- **Time style** 12-hour or 24-hour.
+**Numbers**
+* `Separator style:` some folks use commas to separate thousands places, and others use periods. Here's where you can indicate which camp you belong to.
 
-#### Numbers
-
-- **Separator style**. Comma or periods.
-
-#### Currency
-
-- **Unit of currency**. US Dollar.
-- **Currency label style**. Symbol ($), Code (USD), Name (US dollars).
-Name (US dollars)
-- **Where to display the unit of currency**. Column heading or in every cell.
+**Currency**
+* `Unit of currency:` if you do most of your business in a particular currency, you can specify that here.
+* `Currency label style:` whether you want to have your currencies labeled with a symbol, a code (like `USD`), or its full name.
+* `Where to display the unit of currency:` this pertains specifically to tables, and lets you choose if you want the currency labels to appear only in the column heading, or next to each value in the column.
