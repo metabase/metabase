@@ -42,6 +42,6 @@ To manually fix field or table names if they still look wrong, you can go to the
 
 ---
 
-## Next: setting formatting defaults for dates and numbers
+## Next: Formatting data
 
-Easily customize how numbers, dates, times, and currencies should be displayed in Metabase with [formatting settings](19-formatting-settings.md).
+Customize the default language for Metabase, as well as how numbers, dates, times, and currencies should be displayed in Metabase with [formatting settings](19-formatting-settings.md).
