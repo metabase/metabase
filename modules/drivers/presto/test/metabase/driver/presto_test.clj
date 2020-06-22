@@ -242,23 +242,25 @@
                         "WHERE \"default\".\"test_data_venues\".\"name\" = from_utf8(from_hex('776f77'))")
                    @the-sql))))))))
 
-(deftest determine-select-privilege
-  (mt/test-driver :presto
-    (testing "Do we correctly determine SELECT privilege"
-      (let [details (tx/dbdef->connection-details :presto :server nil)
-            exec!   (partial #'presto/execute-presto-query-for-sync details)]
-        (exec! (sql.tx/drop-table-if-exists-sql :presto {:database-name (:name (mt/db))} {:table-name "birds"}))
-        (exec! (sql.tx/create-table-sql :presto {:database-name (:name (mt/db))}
-                                        {:table-name        "birds"
-                                         ;; We will append ID automatically
-                                         :field-definitions []}))
-        (exec! (format "grant select on %s to %s"
-                       (sql.tx/qualify-and-quote :presto (:name (mt/db)) "birds")
-                       (:user details)))
-        (is (= #{{:table_name "birds" :table_schem "default"}}
-               (sql-jdbc.sync/accessible-tables-for-user :presto (mt/db) (:user details))))
-        (exec! (format "revoke select on %s from %s"
-                       (sql.tx/qualify-and-quote :presto (:name (mt/db)) "birds")
-                       (:user details)))
-        (is (empty? (#'presto/accessible-tables-for-user :presto (mt/db) (:user details))))
-        (exec! (sql.tx/drop-table-if-exists-sql :presto {:database-name (:name (mt/db))} {:table-name "birds"}))))))
+;; The adapter we're using does not support GRANTs :(
+;;
+;; (deftest determine-select-privilege
+;;   (mt/test-driver :presto
+;;     (testing "Do we correctly determine SELECT privilege"
+;;       (let [details (tx/dbdef->connection-details :presto :server nil)
+;;             exec!   (partial #'presto/execute-presto-query-for-sync details)]
+;;         (exec! (sql.tx/drop-table-if-exists-sql :presto {:database-name (:name (mt/db))} {:table-name "birds"}))
+;;         (exec! (sql.tx/create-table-sql :presto {:database-name (:name (mt/db))}
+;;                                         {:table-name        "birds"
+;;                                          ;; We will append ID automatically
+;;                                          :field-definitions []}))
+;;         (exec! (format "grant select on %s to %s"
+;;                        (sql.tx/qualify-and-quote :presto (:name (mt/db)) "birds")
+;;                        (:user details)))
+;;         (is (= #{{:table_name "birds" :table_schem "default"}}
+;;                (sql-jdbc.sync/accessible-tables-for-user :presto (mt/db) (:user details))))
+;;         (exec! (format "revoke select on %s from %s"
+;;                        (sql.tx/qualify-and-quote :presto (:name (mt/db)) "birds")
+;;                        (:user details)))
+;;         (is (empty? (#'presto/accessible-tables-for-user :presto (mt/db) (:user details))))
+;;         (exec! (sql.tx/drop-table-if-exists-sql :presto {:database-name (:name (mt/db))} {:table-name "birds"}))))))

@@ -218,5 +218,5 @@
               (catch java.sql.SQLSyntaxErrorException _)))
           (is (contains? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)
                          {:table_name "birds" :table_schem username}))
-          (jdbc/execute! spec [(format "revoke SELECT on \"%s\".\"birds\" from %s;" username)])
+          (jdbc/execute! spec [(format "revoke SELECT on \"%s\".\"birds\" from %s;" username username)])
           (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username))))))))
