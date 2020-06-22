@@ -5,7 +5,7 @@ declare var ace: any;
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { assocIn, updateIn } from "icepick";
+import { getIn, assocIn, updateIn } from "icepick";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -63,6 +63,7 @@ import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/
 
 import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
+import Snippets from "metabase/entities/snippets";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
@@ -331,6 +332,7 @@ export const initializeQB = (location, params) => {
     }
 
     let preserveParameters = false;
+    let snippetFetch;
     if (params.cardId || serializedCard) {
       // existing card being loaded
       try {
@@ -352,6 +354,15 @@ export const initializeQB = (location, params) => {
           if (cardIsEquivalent(card, originalCard)) {
             card = Utils.copy(originalCard);
           }
+        }
+
+        // if this card has any snippet tags, fetch snippets
+        if (
+          Object.values(
+            getIn(card, ["dataset_query", "native", "template-tags"]) || {},
+          ).filter(t => t.type === "snippet").length > 0
+        ) {
+          snippetFetch = dispatch(Snippets.actions.fetchList());
         }
 
         MetabaseAnalytics.trackEvent(
@@ -447,6 +458,14 @@ export const initializeQB = (location, params) => {
     if (params.cardId) {
       // loading a saved question prevents auto-viz selection
       question = question && question.lockDisplay();
+    }
+
+    if (question.isNative() && snippetFetch) {
+      await snippetFetch;
+      const snippets = Snippets.selectors.getList(getState());
+      question = question.setQuery(
+        question.query().updateQueryTextWithNewSnippetNames(snippets),
+      );
     }
 
     card = question && question.card();

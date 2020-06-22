@@ -622,6 +622,13 @@ export default class NativeQueryEditor extends Component {
           </Popover>
           {this.props.modalSnippet && (
             <SnippetModal
+              onSnippetUpdate={(newSnippet, oldSnippet) => {
+                if (newSnippet.name !== oldSnippet.name) {
+                  query
+                    .updateQueryTextWithNewSnippetNames([newSnippet])
+                    .update(this.props.setDatasetQuery);
+                }
+              }}
               snippet={this.props.modalSnippet}
               insertSnippet={this.props.insertSnippet}
               closeModal={this.props.closeSnippetModal}

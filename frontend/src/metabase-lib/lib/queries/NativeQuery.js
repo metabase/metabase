@@ -336,6 +336,38 @@ export default class NativeQuery extends AtomicQuery {
     return _this;
   }
 
+  updateQueryTextWithNewSnippetNames(snippets): NativeQuery {
+    const snippetTags = Object.entries(this.templateTagsMap()).filter(
+      ([name, tag]) => tag.type === "snippet",
+    );
+    if (snippetTags.length === 0) {
+      //no need to check if there are no snippet tags
+      return this;
+    }
+
+    const tagsBySnippetId = _.groupBy(
+      snippetTags,
+      ([name, tag]) => tag["snippet-id"],
+    );
+    let queryText = this.queryText();
+
+    for (const snippet of snippets) {
+      for (const [name, tag] of tagsBySnippetId[snippet.id] || []) {
+        if (tag["snippet-name"] === snippet.name) {
+          continue;
+        }
+        queryText = queryText.replace(
+          new RegExp(`\{\{\\s*${name}\\s*\}\}`, "g"),
+          `{{snippet: ${snippet.name}}}`,
+        );
+      }
+    }
+    if (queryText !== this.queryText()) {
+      return this.setQueryText(queryText).updateSnippetsWithIds(snippets);
+    }
+    return this;
+  }
+
   /**
    * special handling for NATIVE cards to automatically detect parameters ... {{varname}}
    */
