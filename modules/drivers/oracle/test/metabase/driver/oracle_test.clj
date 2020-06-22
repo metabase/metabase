@@ -210,13 +210,13 @@
     (testing "Do we correctly determine SELECT privilege"
       (let [details  (:details (data/db))
             spec     (sql-jdbc.conn/connection-details->spec :oracle details)]
-        (doseq [statement ["drop table birds;"
-                           "create table birds (id int);"
-                           (format "grant SELECT on birds to %s;" (:user details))]]
-          (try
-            (jdbc/execute! spec [statement])
-            (catch java.sql.SQLSyntaxErrorException _)))
-        (is (contains? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) (:user details))
-                       {:table_name "birds" :table_schem nil}))
-        (jdbc/execute! spec [(format "revoke SELECT on TABLE birds from %s;" (:user details))])
-        (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) (:user details))))))))
+        (with-temp-user [username]
+          (doseq [statement [(format "create table \"%s\".\"birds\" (id int);" username)
+                             (format "grant SELECT on \"%s\".\"birds\" to %s;" username username)]]
+            (try
+              (jdbc/execute! spec [statement])
+              (catch java.sql.SQLSyntaxErrorException _)))
+          (is (contains? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)
+                         {:table_name "birds" :table_schem username}))
+          (jdbc/execute! spec [(format "revoke SELECT on \"%s\".\"birds\" from %s;" username)])
+          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username))))))))
