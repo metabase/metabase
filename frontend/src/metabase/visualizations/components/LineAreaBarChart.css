@@ -18,12 +18,12 @@
 .LineAreaBarChart .dc-chart .axis text {
   font-size: 12px;
   font-family: "Lato", sans-serif;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .LineAreaBarChart .dc-chart .axis .domain,
 .LineAreaBarChart .dc-chart .axis .tick line {
-  stroke: var(--color-text-light);
+  stroke: #c7cfd46b;
 }
 
 .LineAreaBarChart .dc-chart .axis .tick text {

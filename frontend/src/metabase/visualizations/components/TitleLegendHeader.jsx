@@ -14,9 +14,7 @@ export const TitleLegendHeader = ({
   if (settings["card.title"]) {
     return (
       <div className="flex-no-shrink m1 flex align-center">
-        <h3 style={{ fontWeight: 900, fontSize: 14 }}>
-          {settings["card.title"]}
-        </h3>
+        <h3 style={{ fontSize: 14 }}>{settings["card.title"]}</h3>
         <div className="flex ml-auto">{actionButtons}</div>
       </div>
     );
@@ -24,4 +22,4 @@ export const TitleLegendHeader = ({
     // If the title isn't provided in settings, render nothing
     return null;
   }
-}
+};
