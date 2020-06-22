@@ -20,7 +20,7 @@ describe("scenarios > admin > permissions", () => {
       status: 500,
       response: "Server error",
     });
-    cy.contains("Save Changes").click();
+    cy.contains("Save changes").click();
     cy.contains("button", "Yes").click();
 
     // see error modal
