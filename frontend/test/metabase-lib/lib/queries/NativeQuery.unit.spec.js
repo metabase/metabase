@@ -223,7 +223,7 @@ describe("NativeQuery", () => {
         expect(type).toEqual("snippet");
       });
       it("should update query text with new snippet names", () => {
-        let q = makeQuery()
+        const q = makeQuery()
           .setQueryText("{{ snippet: foo }}")
           .updateSnippetsWithIds([{ id: 123, name: "foo" }])
           .updateQueryTextWithNewSnippetNames([{ id: 123, name: "bar" }]);

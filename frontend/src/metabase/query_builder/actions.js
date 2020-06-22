@@ -460,7 +460,7 @@ export const initializeQB = (location, params) => {
       question = question && question.lockDisplay();
     }
 
-    if (question.isNative() && snippetFetch) {
+    if (question && question.isNative() && snippetFetch) {
       await snippetFetch;
       const snippets = Snippets.selectors.getList(getState());
       question = question.setQuery(
