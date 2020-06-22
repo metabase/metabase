@@ -63,6 +63,7 @@ const HelpLink = ({ title, description, link }) => (
     <ExternalLink
       className="bordered border-brand-hover rounded transition-border flex p2 no-decoration"
       href={link}
+      target="_blank"
     >
       <div>
         <h3 className="text-brand">{title}</h3>
