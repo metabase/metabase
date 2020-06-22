@@ -211,12 +211,10 @@
       (let [details  (:details (data/db))
             spec     (sql-jdbc.conn/connection-details->spec :oracle details)]
         (with-temp-user [username]
-          (doseq [statement [(format "create table \"%s\".\"birds\" (id int);" username)
-                             (format "grant SELECT on \"%s\".\"birds\" to %s;" username username)]]
-            (try
-              (jdbc/execute! spec [statement])
-              (catch java.sql.SQLSyntaxErrorException _)))
+          (doseq [statement [(format "create table \"%s\".\"birds\" (id int)" username)
+                             (format "grant SELECT on \"%s\".\"birds\" to %s" username username)]]
+            (jdbc/execute! spec [statement]))
           (is (contains? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)
                          {:table_name "birds" :table_schem username}))
-          (jdbc/execute! spec [(format "revoke SELECT on \"%s\".\"birds\" from %s;" username username)])
+          (jdbc/execute! spec [(format "revoke SELECT on \"%s\".\"birds\" from %s" username username)])
           (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username))))))))
