@@ -36,7 +36,7 @@ describe("scenarios > public", () => {
               query: "select count(*) from products where {{c}}",
               "template-tags": {
                 c: {
-                  id: "e116f242-fbaa-1feb-7331-21ac59f021cc",
+                  id: "e126f242-fbaa-1feb-7331-21ac59f021cc",
                   name: "c",
                   "display-name": "Category",
                   type: "dimension",
