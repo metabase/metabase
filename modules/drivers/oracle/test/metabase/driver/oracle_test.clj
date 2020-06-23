@@ -211,10 +211,11 @@
       (let [details  (:details (data/db))
             spec     (sql-jdbc.conn/connection-details->spec :oracle details)]
         (with-temp-user [user]
-          (doseq [statement [(format "create table birds (id int)")
-                             (format "grant select on birds to %s" user)]]
+          (doseq [statement [(format "create table privileges_test (id int)")
+                             (format "grant select on privileges_test to %s" user)]]
             (jdbc/execute! spec [statement]))
           (is (= (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user)
-                 #{{:table_name "birds" :table_schem "CAM"}}))
-          (jdbc/execute! spec [(format "revoke SELECT on birds from %s" user)])
-          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user))))))))
+                 #{{:table_name "privileges_test" :table_schem "CAM"}}))
+          (jdbc/execute! spec [(format "revoke SELECT on privileges_test from %s" user)])
+          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user)))
+          (jdbc/execute! spec [(format "drop table privileges_test")]))))))

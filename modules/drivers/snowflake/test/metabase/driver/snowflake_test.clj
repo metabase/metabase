@@ -3,6 +3,7 @@
              [string :as str]
              [test :refer :all]]
             [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             [metabase
              [driver :as driver]
              [models :refer [Table]]
@@ -167,6 +168,12 @@
                                (format "create table %s (id integer);" table-qualified-name)
                                (format "grant SELECT on %s to %s;" table-qualified-name (:user details))]]
               (jdbc/execute! spec [statement]))
+            (log/warn (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
+              [(str "SELECT *"
+                    "FROM information_schema.table_privileges "
+                    )
+               ]
+              ))
             (is (= #{{:table_name "birds" :table_schem "PUBLIC"}}
                    (sql-jdbc.sync/accessible-tables-for-user :snowflake db (:user details))))
             (jdbc/execute! spec [(format "revoke SELECT on %s from %s;" table-qualified-name (:user details))])
