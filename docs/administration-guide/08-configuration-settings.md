@@ -12,6 +12,16 @@ How you’d like to refer to this instance of Metabase.
 
 The base URL of this Metabase instance. The base URL is used in emails to allow users to click through to their specific instance. Make sure to include http:// or https:// to make sure it’s reachable.
 
+### Redirect to HTTPS
+
+Force all traffic to use HTTPS via redirect, if the site can serve over HTTPS.
+
+_Default: disabled_.
+
+For example, if you are serving your Metabase application at "example.com", and you enable HTTPS redirect, when a user enters an address like "example.com/data" in their browser's address bar, the user will be automatically redirected to a secure connection at "https://example.com/data".
+
+> Note: if you have not set up HTTPS, Metabase will not let you enable HTTPS redirect. Instead, you'll get a warning saying "It looks like HTTPS is not properly configured."
+
 ### Email Address for Help Requests
 
 This email address will be displayed in various messages throughout Metabase when users encounter a scenario where they need assistance from an admin, such as a password reset request.
