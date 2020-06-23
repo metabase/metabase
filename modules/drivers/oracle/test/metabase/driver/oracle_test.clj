@@ -215,6 +215,20 @@
             (doseq [statement [(format "create table \"%s\".\"birds\" (id int)" owner)
                                (format "grant SELECT on \"%s\".\"birds\" to %s" owner user)]]
               (jdbc/execute! spec [statement]))
+            (log/warn (jdbc/query spec
+              [(str "SELECT table_name, table_schema AS table_schem "
+                    "FROM sys.all_tab_privs "
+                    "WHERE grantee=? "
+                    "AND privilege='SELECT'")
+               owner]
+              ))
+            (log/warn (jdbc/query spec
+              [(str "SELECT table_name, table_schema AS table_schem "
+                    "FROM sys.all_tab_privs "
+                    "WHERE grantee=? "
+                    "AND privilege='SELECT'")
+               user]
+              ))
             (is (= (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user)
                    #{{:table_name "birds" :table_schem owner}}))
             (jdbc/execute! spec [(format "revoke SELECT on \"%s\".\"birds\" from %s" owner user)])
