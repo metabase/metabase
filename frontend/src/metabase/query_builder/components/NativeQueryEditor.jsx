@@ -569,7 +569,10 @@ export default class NativeQueryEditor extends Component {
             isQB
             commitImmediately
           />
-          <div className="flex-align-right flex align-center text-medium pr1">
+          <div
+            className="flex-align-right flex align-center text-medium"
+            style={{ paddingRight: 4 }}
+          >
             <a
               className={cx(
                 "Query-label no-decoration flex align-center mx3 text-brand-hover transition-all",

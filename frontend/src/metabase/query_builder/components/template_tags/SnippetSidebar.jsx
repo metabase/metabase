@@ -118,7 +118,7 @@ export default class SnippetSidebar extends React.Component {
         ) : (
           <div>
             <div
-              className="flex align-center px2 border-bottom"
+              className="flex align-center pl3 pr2"
               style={{ paddingTop: 10, paddingBottom: 8 }}
             >
               <div className="flex-full">
@@ -243,7 +243,7 @@ class SnippetRow extends React.Component {
         )}
       >
         <div
-          className="cursor-pointer bg-light-hover text-bold flex align-center justify-between p2"
+          className="cursor-pointer bg-light-hover text-bold flex align-center justify-between py2 px3"
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
           <div
@@ -276,7 +276,7 @@ class SnippetRow extends React.Component {
           />
         </div>
         {isOpen && (
-          <div className="px2 pb2 pt1">
+          <div className="px3 pb2 pt1">
             {description && <p className="text-medium mt0">{description}</p>}
             <span
               onClick={
