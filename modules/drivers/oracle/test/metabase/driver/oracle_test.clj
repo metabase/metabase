@@ -2,7 +2,6 @@
   "Tests for specific behavior of the Oracle driver."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
             [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [metabase
@@ -215,13 +214,7 @@
           (doseq [statement [(format "create table birds (id int)")
                              (format "grant select on birds to %s" user)]]
             (jdbc/execute! spec [statement]))
-          (log/warn (jdbc/query spec
-                                [(str "select * "
-                                      "from sys.all_tab_privs "
-                                      )
-                                 ]
-                                ))
           (is (= (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user)
-                 #{{:table_name "birds" :table_schem nil}}))
+                 #{{:table_name "birds" :table_schem "CAM"}}))
           (jdbc/execute! spec [(format "revoke SELECT on birds from %s" user)])
           (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user))))))))
