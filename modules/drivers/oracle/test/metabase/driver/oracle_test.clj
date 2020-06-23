@@ -211,18 +211,17 @@
     (testing "Do we correctly determine SELECT privilege"
       (let [details  (:details (data/db))
             spec     (sql-jdbc.conn/connection-details->spec :oracle details)]
-        (with-temp-user [owner]
-          (with-temp-user [user]
-            (doseq [statement [(format "create table \"%s\".\"birds\" (id int)" owner)
-                               (format "grant SELECT on \"%s\".\"birds\" to %s" owner user)]]
-              (jdbc/execute! spec [statement]))
-            (log/warn (jdbc/query spec
-              [(str "SELECT table_name, table_schema AS table_schem "
-                    "FROM sys.all_tab_privs "
-                   )
-               ]
-              ))
-            (is (= (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user)
-                   #{{:table_name "birds" :table_schem owner}}))
-            (jdbc/execute! spec [(format "revoke SELECT on \"%s\".\"birds\" from %s" owner user)])
-            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user)))))))))
+        (with-temp-user [user]
+          (doseq [statement [(format "create table birds (id int)")
+                             (format "grant select on birds to %s" user)]]
+            (jdbc/execute! spec [statement]))
+          (log/warn (jdbc/query spec
+                                [(str "select * "
+                                      "from sys.all_tab_privs "
+                                      )
+                                 ]
+                                ))
+          (is (= (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user)
+                 #{{:table_name "birds" :table_schem nil}}))
+          (jdbc/execute! spec [(format "revoke SELECT on birds from %s" user)])
+          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user))))))))
