@@ -56,11 +56,15 @@ From the Snippet menu, you can:
 
 ### Editing snippets
 
-You can **edit** a snippet at any time by selecting the snippet from the snippet sidebar menu in the SQL editor. Click on the down arrow to the right of the snippet, then click on the **Edit** button. You can change the SQL code, snippet name, and snippet description.
+You can **edit** a snippet at any time by selecting the snippet from the snippet sidebar menu in the SQL editor. Click on the down arrow to the right of the snippet, then click **Edit**. You can change the SQL code, snippet name, and snippet description.
 
-Editing snippets are a great way to make changes to many questions at once. If, for example, you've saved the SQL code to pull user data from tables X, Y, and Z as the snippet `User Data`, but you need to change how that data is pulled (such as by adding data from another column or table), you can update the SQL code in the snippet, and all questions that use that snippet `User Data` will have the updated code. 
+Editing snippets is a great way to make changes to many questions at once. If, for example, you've saved the SQL code to pull user data from tables X, Y, and Z as the snippet `User Data`, but you need to change how that data is pulled (such as by adding data from another column or table), you can update the SQL code in the snippet, and all questions that use the snippet `User Data` will have the updated code. 
 
-> Caution: if you edit the snippet and include broken code, you will break every question that uses that snippet, so be sure to test your code before saving it to a snippet. With great power comes great responsibility.
+But with great power, comes great responsibility; there are two major caveats when editing snippets, both worthy of blockquote callouts:
+
+> **Caution when editing code in snippets**: if you edit the snippet and include broken code, you will break every question that uses that snippet, so be sure to test your code before saving it to an existing snippet.
+
+> **Caution when renaming snippets**: if you rename a snippet, any existing questions that refer to that original snippet name will break.
 
 ### Archived snippets
 
@@ -70,5 +74,5 @@ Archiving a snippet does not affect any existing queries that use the snippet, s
 
 You can access an archived snippet from the snippet sidebar menu by clicking on the archived button in the bottom left of the sidebar.
 
-You can archive and unarchive a snippet at any time.
+Although there is no way to delete a snippet (eternal snippets are a safety measure to prevent the inadvertent breaking of questions that use those snippets), you can archive and unarchive a snippet at any time.
 
