@@ -232,7 +232,7 @@
                    (sql-jdbc.sync/accessible-tables-for-user :mysql db "rasta")))
             (jdbc/execute! spec ["revoke all on `birds` from rasta;"])
             (is (empty? (sql-jdbc.sync/accessible-tables-for-user :mysql db "rasta")))
-            (doseq [statement ["create role if not exists 'birdwatcher';"
+            (doseq [statement ["create role if not exists birdwatcher;"
                                "grant all on `birds` to 'birdwatcher';"
                                "grant 'birdwatcher' to 'rasta';"]]
               (jdbc/execute! spec [statement]))

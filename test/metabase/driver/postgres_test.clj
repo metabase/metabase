@@ -166,15 +166,18 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "fdw_test"})]
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
                        [(str "CREATE EXTENSION IF NOT EXISTS postgres_fdw;
-                            CREATE SERVER foreign_server
+                              CREATE SERVER foreign_server
                                 FOREIGN DATA WRAPPER postgres_fdw
                                 OPTIONS (host '" (:host details) "', port '" (:port details) "', dbname 'fdw_test');
-                            CREATE TABLE public.local_table (data text);
-                            CREATE FOREIGN TABLE foreign_table (data text)
+                              CREATE TABLE public.local_table (data text);
+                              CREATE FOREIGN TABLE foreign_table (data text)
                                 SERVER foreign_server
                                 OPTIONS (schema_name 'public', table_name 'local_table');
-                            GRANT ALL ON public.local_table to PUBLIC;
-                            GRANT ALL ON foregin_table to PUBLIC;")])
+
+                              CREATE USER MAPPING FOR " (:user details) "
+                                SERVER foreign_server
+                                OPTIONS (user '" (:user details) "');
+                              GRANT ALL ON public.local_table to PUBLIC;")])
         (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
           (is (= {:tables (set (map default-table-result ["foreign_table" "local_table"]))}
                  (driver/describe-database :postgres database))))))))
