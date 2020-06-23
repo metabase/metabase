@@ -32,6 +32,7 @@ describe("smoketest > user", () => {
 
     cy.get(".Icon-bar");
     cy.findAllByText("Vendor is not empty");
+    cy.get("svg");
     cy.findByText("Visualization");
   });
 
@@ -220,7 +221,7 @@ describe("smoketest > user", () => {
     cy.findByText("ID");
     cy.get(".Icon-table2");
     cy.wait(1000).findByText("Demo Column");
-    cy.findByText("People").should("not.exist");
+    cy.findByText("Products").should("not.exist");
   });
 
   it("should be able to use all notebook editor functions", () => {
@@ -232,9 +233,9 @@ describe("smoketest > user", () => {
     cy.findByText("People").click(); // column selection happens automatcially
     cy.findByText("Visualize").click();
 
+    cy.findByText("User → ID");
     cy.findByText("Created At");
     cy.findByText("People");
-    cy.findByText("User → ID");
 
     // Setting Row limit
 
@@ -243,6 +244,11 @@ describe("smoketest > user", () => {
     cy.findByText("Row limit").click();
     cy.get("input[type='number']").type("10");
     cy.findByText("Visualize").click();
+
+    cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+      "have.length",
+      11,
+    );
 
     // Can view the SQL query
 

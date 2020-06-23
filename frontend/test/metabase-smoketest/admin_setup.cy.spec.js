@@ -599,14 +599,14 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Ask a question").click();
       cy.findByText("Native query");
 
-      // Cannot see Test Table or People table as no data user
-
+      // Cannot see Review table as no collection user
       signOut();
       signIn("nocollection");
       cy.visit("/");
 
-      cy.contains("A look at your People table").should("not.exist");
-      cy.contains("A look at your Test Table table").should("not.exist");
+      cy.wait(2000).findByText("Try these x-rays based on your data.");
+      cy.contains("A look at your Test Table table");
+      cy.contains("A look at your Review table").should("not.exist");
 
       // Cannot view our analytics as no collection user
 

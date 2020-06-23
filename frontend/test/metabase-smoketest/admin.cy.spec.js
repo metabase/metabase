@@ -136,10 +136,9 @@ describe("metabase-smoketest > admin", () => {
       );
 
       // *** When I select 'My personal collection' I get the error "Referential integrity constraint violation:"
-      cy.findByText("Our analytics").click();
-      cy.findByText("My personal collection").click();
+      // cy.findByText("Our analytics").click();
+      // cy.findByText("My personal collection").click();
       // cy.contains("My personal collection");
-
       cy.findAllByText("Save")
         .last()
         .click();
@@ -216,7 +215,7 @@ describe("metabase-smoketest > admin", () => {
         .click();
       cy.findByText("Done").click();
 
-      cy.get(".Icon-line");
+      cy.get(".Icon-line").should("have.length", 2);
 
       // Save question (not to a dashboard)
       cy.findByText("Save").click();
@@ -243,6 +242,7 @@ describe("metabase-smoketest > admin", () => {
       // Adding saved questions
       cy.get(".Header-buttonSection").click("left");
       cy.findByText("Order Totals by State").click();
+      cy.wait(2000).get(".Icon-string");
       cy.get(".Header-buttonSection").click("left");
       cy.findByText("Orders Over Time").click();
 
@@ -261,12 +261,8 @@ describe("metabase-smoketest > admin", () => {
       }).as("createUser");
 
       // Navigates through admin pages
-      cy.get(".Nav")
-        .children()
-        .last()
-        .children()
-        .last()
-        .click();
+      cy.visit("/");
+      cy.get(".Icon-gear").click();
       cy.findByText("Admin").click();
 
       cy.findByText("Metabase Admin");
@@ -296,13 +292,11 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Done").click();
 
       cy.findByText(new_user.username);
-      // ***});
 
       // ==============
       // == NEW USER ==
       // ==============
 
-      // ***it("should sign in as new user", () => {
       signOut();
       cy.get("@password").then(pass => {
         cy.visit("/");

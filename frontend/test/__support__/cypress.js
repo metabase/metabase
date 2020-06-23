@@ -68,7 +68,7 @@ export function main() {
   return cy.get("nav").next();
 }
 export function sidebar() {
-  return cy.get(".scrolly-y");
+  return cy.get(".scroll-y");
 }
 
 // Metabase utility functions for commonly-used patterns
