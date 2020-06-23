@@ -210,11 +210,12 @@
     (testing "Do we correctly determine SELECT privilege"
       (let [details  (:details (data/db))
             spec     (sql-jdbc.conn/connection-details->spec :oracle details)]
-        (with-temp-user [username]
-          (doseq [statement [(format "create table \"%s\".\"birds\" (id int)" username)
-                             (format "grant SELECT on \"%s\".\"birds\" to %s" username username)]]
-            (jdbc/execute! spec [statement]))
-          (is (contains? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username)
-                         {:table_name "birds" :table_schem username}))
-          (jdbc/execute! spec [(format "revoke SELECT on \"%s\".\"birds\" from %s" username username)])
-          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) username))))))))
+        (with-temp-user [owner]
+          (with-temp-user [user]
+            (doseq [statement [(format "create table \"%s\".\"birds\" (id int)" owner)
+                               (format "grant SELECT on \"%s\".\"birds\" to %s" owner user)]]
+              (jdbc/execute! spec [statement]))
+            (is (= (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user)
+                   #{{:table_name "birds" :table_schem owner}}))
+            (jdbc/execute! spec [(format "revoke SELECT on \"%s\".\"birds\" from %s" owner user)])
+            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user)))))))))
