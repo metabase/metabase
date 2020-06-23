@@ -436,6 +436,8 @@ export function generateQueryDescription(tableMetadata, query, options = {}) {
     limit: getLimitDescription,
   };
 
+  console.log("options", options);
+
   // these array gymnastics are needed to support JSX formatting
   const sections = options.sections
     .map(section =>
@@ -445,7 +447,11 @@ export function generateQueryDescription(tableMetadata, query, options = {}) {
     )
     .filter(s => s && s.length > 0);
 
+  console.log("f7u12");
+  console.log("sections", sections);
+
   const description = _.flatten(joinList(sections, ", "));
+  console.log("description", description);
   if (options.jsx) {
     return <span>{description}</span>;
   } else {

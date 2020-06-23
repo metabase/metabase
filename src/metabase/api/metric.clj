@@ -8,6 +8,7 @@
              [related :as related]
              [util :as u]]
             [metabase.api.common :as api]
+            [metabase.api.query-description :as qd]
             [metabase.mbql.normalize :as normalize]
             [metabase.models
              [interface :as mi]
@@ -58,13 +59,25 @@
       (for [metric metrics]
         (assoc metric :database_id (table-id->db-id (:table_id metric)))))))
 
+(defn- add-query-descriptions
+  [metrics]
+  (log/spy
+   :error
+   (when (seq metrics)
+     (for [metric metrics]
+       (let [table (Table (:table_id metric))]
+         (assoc metric
+                :query_description
+                (qd/generate-query-description table (:definition metric) {})))))))
+
 (api/defendpoint GET "/"
   "Fetch *all* `Metrics`."
   [id]
   (as-> (db/select Metric, :archived false, {:order-by [:%lower.name]}) metrics
     (hydrate metrics :creator)
     (add-db-ids metrics)
-    (filter mi/can-read? metrics)))
+    (filter mi/can-read? metrics)
+    (add-query-descriptions metrics)))
 
 (defn- write-check-and-update-metric!
   "Check whether current user has write permissions, then update Metric with values in `body`. Publishes appropriate
