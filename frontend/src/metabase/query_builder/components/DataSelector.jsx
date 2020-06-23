@@ -859,12 +859,14 @@ const TablePicker = ({
       },
     ];
     return (
-      <div>
+      <div style={{ width: 300, overflowY: "auto" }}>
         <AccordionList
           id="TablePicker"
           key="tablePicker"
           className="text-brand"
           sections={sections}
+          maxHeight={Infinity}
+          width={"100%"}
           searchable
           onChange={item => onChangeTable(item.table)}
           itemIsSelected={item =>
@@ -951,12 +953,14 @@ class FieldPicker extends Component {
     ];
 
     return (
-      <div style={{ width: 300 }}>
+      <div style={{ width: 300, overflowY: "auto" }}>
         <AccordionList
           id="FieldPicker"
           key="fieldPicker"
           className="text-brand"
           sections={sections}
+          maxHeight={Infinity}
+          width={"100%"}
           searchable
           onChange={item => onChangeField(item.field)}
           itemIsSelected={item =>
