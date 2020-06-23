@@ -13,6 +13,8 @@ import { open } from "metabase/lib/dom";
 import { defer } from "metabase/lib/promise";
 import { normalize, schema } from "normalizr";
 
+import Question from "metabase-lib/lib/Question";
+
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
@@ -167,7 +169,7 @@ export const addCardToDashboard = ({
   dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
   dispatch(fetchCardData(card, dashcard, { reload: true, clear: true }));
 
-  fetchDashCardEntities(dispatch, [dashcard]);
+  dispatch(loadMetadataForDashboard([dashcard]));
 };
 
 export const addDashCardToDashboard = function({
@@ -660,7 +662,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     }
 
     if (dashboardType === "normal" || dashboardType === "transient") {
-      fetchDashCardEntities(dispatch, result.ordered_cards);
+      dispatch(loadMetadataForDashboard(result.ordered_cards));
     }
 
     // copy over any virtual cards from the dashcard to the underlying card/question
@@ -1162,27 +1164,22 @@ const loadingDashCards = handleActions(
   { dashcardIds: [], loadingIds: [], startTime: null },
 );
 
-// This loads database metadata and nested questions for a list of dash cards.
-// We load the nested questions separately because the db metadata only includes real tables.
-function fetchDashCardEntities(dispatch, dashCards) {
-  const cards = _.chain(dashCards)
+const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
+  const metadata = getMetadata(getState());
+  _.chain(dashCards)
     .map(dc => [dc.card].concat(dc.series))
-    .flatten();
-
-  // fetch database metadata for every card
-  cards
-    .filter(card => getIn(card, ["dataset_query", "database"]))
-    .map(card => card.dataset_query.database)
-    .uniq()
-    .each(dbId => dispatch(fetchDatabaseMetadata(dbId)));
-
-  // fetch nested question tables
-  cards
-    .map(card => getIn(card, ["dataset_query", "query", "source-table"]))
-    .filter(tableId => /card__\d+/.test(tableId))
-    .uniq()
-    .each(id => dispatch(Tables.actions.fetchMetadata({ id })));
-}
+    .flatten()
+    .map(card => new Question(card, metadata).query().dependentMetadata())
+    .flatten()
+    .groupBy(dm => dm.type + dm.id)
+    .values()
+    .map(([foo]) => foo)
+    .forEach(({ type, id }) => {
+      if (type === "table") {
+        dispatch(Tables.actions.fetchMetadata({ id }));
+      }
+    });
+};
 
 export default combineReducers({
   dashboardId,
