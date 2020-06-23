@@ -168,7 +168,7 @@
                                (format "create table %s (id integer);" table-qualified-name)
                                (format "grant SELECT on %s to %s;" table-qualified-name (:user details))]]
               (jdbc/execute! spec [statement]))
-            (log/warn (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
+            (log/warn (jdbc/query spec
               [(str "SELECT *"
                     "FROM information_schema.table_privileges "
                     )

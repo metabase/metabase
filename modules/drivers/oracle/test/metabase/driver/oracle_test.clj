@@ -215,7 +215,7 @@
                              (format "grant select on privileges_test to %s" user)]]
             (jdbc/execute! spec [statement]))
           (is (= (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user)
-                 #{{:table_name "privileges_test" :table_schem "CAM"}}))
+                 #{{:table_name "PRIVILEGES_TEST" :table_schem "CAM"}}))
           (jdbc/execute! spec [(format "revoke SELECT on privileges_test from %s" user)])
           (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user)))
           (jdbc/execute! spec [(format "drop table privileges_test")]))))))
