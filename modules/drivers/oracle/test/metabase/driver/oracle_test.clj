@@ -219,16 +219,8 @@
             (log/warn (jdbc/query spec
               [(str "SELECT table_name, table_schema AS table_schem "
                     "FROM sys.all_tab_privs "
-                    "WHERE grantee=? "
-                    "AND privilege='SELECT'")
-               owner]
-              ))
-            (log/warn (jdbc/query spec
-              [(str "SELECT table_name, table_schema AS table_schem "
-                    "FROM sys.all_tab_privs "
-                    "WHERE grantee=? "
-                    "AND privilege='SELECT'")
-               user]
+                   )
+               ]
               ))
             (is (= (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user)
                    #{{:table_name "birds" :table_schem owner}}))
