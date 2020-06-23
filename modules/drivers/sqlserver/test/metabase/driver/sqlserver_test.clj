@@ -218,12 +218,20 @@
               spec    (sql-jdbc.conn/connection-details->spec :sqlserver details)]
           (mt/with-temp Database [db {:engine  :sqlserver
                                       :details details}]
-            (doseq [statement ["create user GUEST;"
+            (doseq [statement ["create user rasta;"
                                "drop table if exists \"birds\";"
                                "create table \"birds\" (id integer);"
-                               "grant all on \"birds\" to GUEST;"]]
+                               "grant all on \"birds\" to rasta;"]]
               (jdbc/execute! spec [statement]))
             (is (= #{{:table_name "birds" :table_schem "dbo"}}
-                   (sql-jdbc.sync/accessible-tables-for-user :sqlserver db "GUEST")))
-            (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
-            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :sqlserver db "GUEST")))))))))
+                   (sql-jdbc.sync/accessible-tables-for-user :sqlserver db "rasta")))
+            (jdbc/execute! spec ["revoke all on \"birds\" from rasta;"])
+            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :sqlserver db "rasta")))
+            (doseq [statement ["create role birdwatcher;"
+                               "grant all on birds to birdwatcher;"
+                               "grant birdwatcher to rasta;"]]
+              (jdbc/execute! spec [statement]))
+            (is (= #{{:table_name "birds" :table_schem "public"}}
+                   (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")))
+            (jdbc/execute! spec ["revoke all on birds from birdwatcher;"])
+            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")))))))))

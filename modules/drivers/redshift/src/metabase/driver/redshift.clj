@@ -173,7 +173,8 @@
                  (SELECT schemaname+'.'+tablename AS schema_qualified_table_name,
                     tablename AS table_name,
                     schemaname AS table_schem
-                  FROM pg_tables)
+                  FROM pg_tables
+                  WHERE schemaname <> 'pg_internal')
                SELECT table_name, table_schem
                FROM table_list
                WHERE has_table_privilege(?, schema_qualified_table_name, 'select')"

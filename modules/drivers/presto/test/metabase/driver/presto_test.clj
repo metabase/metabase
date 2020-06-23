@@ -254,12 +254,12 @@
 ;;                                         {:table-name        "birds"
 ;;                                          ;; We will append ID automatically
 ;;                                          :field-definitions []}))
-;;         (exec! (format "grant select on %s to %s"
+;;         (exec! (format "grant all on %s to %s"
 ;;                        (sql.tx/qualify-and-quote :presto (:name (mt/db)) "birds")
 ;;                        (:user details)))
 ;;         (is (= #{{:table_name "birds" :table_schem "default"}}
 ;;                (sql-jdbc.sync/accessible-tables-for-user :presto (mt/db) (:user details))))
-;;         (exec! (format "revoke select on %s from %s"
+;;         (exec! (format "revoke all on %s from %s"
 ;;                        (sql.tx/qualify-and-quote :presto (:name (mt/db)) "birds")
 ;;                        (:user details)))
 ;;         (is (empty? (#'presto/accessible-tables-for-user :presto (mt/db) (:user details))))
