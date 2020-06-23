@@ -172,7 +172,9 @@
                             CREATE TABLE public.local_table (data text);
                             CREATE FOREIGN TABLE foreign_table (data text)
                                 SERVER foreign_server
-                                OPTIONS (schema_name 'public', table_name 'local_table');")])
+                                OPTIONS (schema_name 'public', table_name 'local_table');
+                            GRANT ALL ON public.local_table to PUBLIC;
+                            GRANT ALL ON foregin_table to PUBLIC;")])
         (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
           (is (= {:tables (set (map default-table-result ["foreign_table" "local_table"]))}
                  (driver/describe-database :postgres database))))))))
@@ -193,7 +195,8 @@
             ;; populate the DB and create a view
             (exec! ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
                     "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Kanye Nest');"
-                    "CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"])
+                    "CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"
+                    "GRANT ALL ON angry_birds to PUBLIC;"])
             ;; now sync the DB
             (sync!)
             ;; drop the view
@@ -201,7 +204,8 @@
             ;; sync again
             (sync!)
             ;; recreate the view
-            (exec! ["CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"])
+            (exec! ["CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"
+                    "GRANT ALL ON angry_birds to PUBLIC;"])
             ;; sync one last time
             (sync!)
             ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!

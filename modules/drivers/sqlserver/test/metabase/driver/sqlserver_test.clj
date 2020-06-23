@@ -233,6 +233,6 @@
                                "alter role birdwatcher add member GUEST;"]]
               (jdbc/execute! spec [statement]))
             (is (= #{{:table_name "birds" :table_schem "public"}}
-                   (sql-jdbc.sync/accessible-tables-for-user :postgres db "GUEST")))
+                   (sql-jdbc.sync/accessible-tables-for-user :sqlserver db "GUEST")))
             (jdbc/execute! spec ["revoke all on birds from birdwatcher;"])
-            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :postgres db "GUEST")))))))))
+            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :sqlserver db "GUEST")))))))))
