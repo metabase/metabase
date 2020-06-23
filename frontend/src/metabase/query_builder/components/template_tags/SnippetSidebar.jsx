@@ -293,7 +293,10 @@ class SnippetRow extends React.Component {
               />
               {unarchiveSnippet ? t`Unarchive` : t`Edit`}
             </span>
-            <pre className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap overflow-x-scroll">
+            <pre
+              className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap overflow-scroll overflow-x-scroll"
+              style={{ maxHeight: 320 }}
+            >
               {content}
             </pre>
           </div>
