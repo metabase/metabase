@@ -2,6 +2,7 @@
   "Tests for specific behavior of the Oracle driver."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
+            [clojure.tools.logging :as log]
             [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [metabase
