@@ -1,5 +1,6 @@
 import path from "path";
 import { USERS, restore, signInAsAdmin, signOut } from "__support__/cypress";
+import { sidebar } from "../__support__/cypress";
 
 const admin = USERS.admin;
 const new_user = {
@@ -108,7 +109,7 @@ describe("metabase-smoketest > admin", () => {
         .type("5");
       cy.findByText("Days").click();
       cy.findByText("Years").click();
-      cy.get(".scroll-y")
+      sidebar()
         .findByText("Add filter")
         .click();
 
@@ -210,7 +211,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findAllByText("Summarize")
         .first()
         .click();
-      cy.get(".scroll-y")
+      sidebar()
         .contains("Created At")
         .click();
       cy.findByText("Done").click();

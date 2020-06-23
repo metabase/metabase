@@ -54,7 +54,7 @@ export function restore(name = "default") {
   cy.request("POST", `/api/testing/restore/${name}`);
 }
 
-// various Metabase-specific "scoping" functions like inside popover/modal/navbar/main content area
+// various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
 export function popover() {
   return cy.get(".PopoverContainer.PopoverContainer--open");
 }
@@ -66,6 +66,9 @@ export function nav() {
 }
 export function main() {
   return cy.get("nav").next();
+}
+export function sidebar() {
+  return cy.get(".scrolly-y");
 }
 
 // Metabase utility functions for commonly-used patterns

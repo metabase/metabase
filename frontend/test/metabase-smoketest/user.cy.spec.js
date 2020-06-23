@@ -1,4 +1,5 @@
 import { restore, signInAsNormalUser } from "__support__/cypress";
+import { sidebar } from "../__support__/cypress";
 
 describe("smoketest > user", () => {
   // Goal: user can use all the features of the simple question and notebook editor
@@ -304,7 +305,7 @@ describe("smoketest > user", () => {
     cy.findAllByText("Summarize")
       .first()
       .click();
-    cy.get(".scroll-y")
+    sidebar()
       .find(".Icon-close")
       .first()
       .click();
