@@ -40,11 +40,19 @@
   (when-let [breakouts (seq (:breakout query))]
     {:breakouts (deferred-trs
                   "Grouped by {0}"
-                  (str/join (deferred-trs " and, ") (map #(:display_name (Field %)) breakouts)))}))
+                  (str/join (deferred-trs " and ") (map #(:display_name (Field %)) breakouts)))}))
 
 (defn- get-filter-clause-description
   [metadata filters]
-  "")
+  (let [operator (first filters)]
+    (cond
+      (or (= operator :and)
+          (= operator :or)) (get-filter-clause-description metadata (drop 1 filters))
+
+      ;; TODO: segments
+      (= operator :segment) ""
+
+      :else (:display_name (Field (second (second filters)))))))
 
 (defn- get-filter-description
   [metadata query & options]
@@ -55,11 +63,20 @@
 
 (defn- get-order-by-description
   [metadata query & options]
-  {})
+  (when-let [order-by (:order-by query)]
+    (:order-by (deferred-trs
+                 "Sorted by {0}"
+                 (str/join (deferred-trs " and ") (map (fn [[direction field]]
+                                                         (str (:display_name (Field (second field)))
+                                                              " "
+                                                              (if (= :asc direction)
+                                                                (deferred-trs "ascending")
+                                                                (deferred-trs "descending")))) order-by))))))
 
 (defn- get-limit-description
   [metadata query & options]
-  {})
+  (when-let [limit (:limit query)]
+    {:limit (deferred-trs "{0} rows" limit)}))
 
 (def query-descriptor-functions
   [get-table-description
@@ -77,8 +94,7 @@
   Filtered by Total
   Filtered by Created At"
   [metadata query & options]
-  (log/spy :error query)
-  (log/spy :error
-           (apply merge
-                  (map (fn [f] (f metadata query options))
-                       query-descriptor-functions))))
+  (log/spy :error metadata)
+  (apply merge
+         (map (fn [f] (f metadata query options))
+              query-descriptor-functions)))
