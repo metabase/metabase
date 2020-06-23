@@ -91,11 +91,10 @@
             (is (contains? (sql-jdbc.sync/accessible-tables-for-user :redshift db "rasta") {:table_name "birds" :table_schem "public"}))
             (jdbc/execute! spec ["revoke all on \"birds\" from rasta;"])
             (is (not (contains? (sql-jdbc.sync/accessible-tables-for-user :redshift db "rasta") {:table_name "birds" :table_schem "public"})))
-            (doseq [statement ["create group birdwatcher;"
-                               "grant all on birds to birdwatcher;"
-                               "grant birdwatcher to rasta;"]]
+            (doseq [statement ["create group birdwatcher with user rasta;"
+                               "grant all on birds to group birdwatcher;"]]
               (jdbc/execute! spec [statement]))
             (is (= #{{:table_name "birds" :table_schem "public"}}
                    (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")))
-            (jdbc/execute! spec ["revoke all on birds from birdwatcher;"])
+            (jdbc/execute! spec ["revoke all on birds from group birdwatcher;"])
             (is (empty? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")))))))))
