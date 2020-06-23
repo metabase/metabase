@@ -6264,6 +6264,8 @@ databaseChangeLog:
                   defaultValue: database
                   constraints:
                     nullable: false
+        - sql:
+            sql: update metabase_field set database_position = id
 
 # Change field_values.updated_at and query_cache.updated_at from datetime to timestamp [with time zone] to get >
 # second resolution on MySQL.

@@ -2,6 +2,7 @@
   (:require [honeysql.core :as hsql]
             [metabase
              [db :as mdb]
+             [driver :as driver]
              [util :as u]]
             [metabase.models
              [database :refer [Database]]
@@ -39,7 +40,7 @@
 
 (defn- pre-insert [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
-                  :field_order  :database}]
+                  :field_order  (driver/default-field-order (-> table :db_id Database :engine))}]
     (merge defaults table)))
 
 (defn- pre-delete [{:keys [db_id schema id]}]
