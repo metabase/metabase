@@ -268,6 +268,7 @@ export default class LineAreaBarChart extends Component {
       onAddSeries,
       onEditSeries,
       onRemoveSeries,
+      classNameWidgets,
     } = this.props;
 
     const settings = this.getSettings();
@@ -297,12 +298,13 @@ export default class LineAreaBarChart extends Component {
           this.props.className,
         )}
       >
-        {hasTitle && (
+        {(hasTitle || actionButtons) && (
           <TitleLegendHeader
             series={series}
             settings={settings}
             onChangeCardAndRun={onChangeCardAndRun}
             actionButtons={actionButtons}
+            infoClassName={classNameWidgets}
           />
         )}
         <CardRenderer

@@ -115,4 +115,6 @@ export type VisualizationProps = {
   onRemoveSeries?: Function,
 
   onUpdateWarnings?: Function,
+
+  classNameWidgets?: string,
 };
