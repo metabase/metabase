@@ -86,10 +86,10 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Send test email").click();
 
-      
       // *** Will fail if test works correctly:
       cy.wait(2000)
-        .findByText("Sent!").should("not.exist");
+        .findByText("Sent!")
+        .should("not.exist");
 
       // *** Uncomment when test works correctly:
       // cy.findByText("Sent!");
