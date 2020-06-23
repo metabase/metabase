@@ -531,7 +531,8 @@
           (is (contains? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")
                          {:table_name "birds" :table_schem "public"}))
           (jdbc/execute! spec ["revoke all on \"birds\" from rasta;"])
-          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")))
+          (is (not (contains? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")
+                              {:table_name "birds" :table_schem "public"})))
           (doseq [statement ["create role birdwatcher;"
                              "grant all on birds to birdwatcher;"
                              "grant birdwatcher to rasta;"]]
@@ -539,4 +540,5 @@
           (is (contains? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")
                          {:table_name "birds" :table_schem "public"}))
           (jdbc/execute! spec ["revoke all on birds from birdwatcher;"])
-          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta"))))))))
+          (is (not (contains? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")
+                              {:table_name "birds" :table_schem "public"}))))))))

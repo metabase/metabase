@@ -230,7 +230,7 @@
             (doseq [statement ["drop role if exists birdwatcher;"
                                "create role birdwatcher;"
                                "grant all on birds to birdwatcher;"
-                               "grant birdwatcher to GUEST;"]]
+                               "alter role birdwatcher add member GUEST;"]]
               (jdbc/execute! spec [statement]))
             (is (= #{{:table_name "birds" :table_schem "public"}}
                    (sql-jdbc.sync/accessible-tables-for-user :postgres db "GUEST")))
