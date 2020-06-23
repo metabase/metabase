@@ -24,7 +24,7 @@ Questions asked using SQL can be saved, downloaded, or added to a dashboard just
 
 ### Using SQL filters
 
-If you or someone else wrote a SQL query that includes [variables](13-sql-parameters.md), your question might have filter widgets at the top of the screen. These let you modify and filter the SQL query before it's run, changing the results you might get.
+If you or someone else wrote a SQL query that includes [variables](13-sql-parameters.md), your question might have filter widgets at the top of the screen. These let you modify and filter the SQL query before it's run, changing the results you might get, like allowing users to update the `Category` filter in your query.
 
 ![SQL filter](images/SQL-filter-widget.png)
 
