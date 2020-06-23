@@ -7,6 +7,7 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
+import Button from "metabase/components/Button";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import { color } from "metabase/lib/colors";
@@ -243,11 +244,11 @@ class SnippetRow extends React.Component {
         )}
       >
         <div
-          className="cursor-pointer bg-light-hover text-bold flex align-center justify-between py2 px3"
+          className="cursor-pointer bg-light-hover text-bold flex align-center justify-between py2 px3 hover-parent hover--display"
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
           <div
-            className="flex text-brand-hover hover-parent hover--display"
+            className="flex text-brand-hover"
             onClick={
               unarchiveSnippet
                 ? () => this.setState({ isOpen: true })
@@ -278,27 +279,25 @@ class SnippetRow extends React.Component {
         {isOpen && (
           <div className="px3 pb2 pt1">
             {description && <p className="text-medium mt0">{description}</p>}
-            <span
-              onClick={
-                unarchiveSnippet
-                  ? unarchiveSnippet
-                  : () => setModalSnippet(snippet)
-              }
-              className="text-brand text-bold cursor-pointer bg-light-hover p1 rounded"
-            >
-              <Icon
-                name={unarchiveSnippet ? "unarchive" : "pencil"}
-                size={14}
-                className="mr1"
-              />
-              {unarchiveSnippet ? t`Unarchive` : t`Edit`}
-            </span>
             <pre
               className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap overflow-scroll overflow-x-scroll"
               style={{ maxHeight: 320 }}
             >
               {content}
             </pre>
+            <Button
+              onClick={
+                unarchiveSnippet
+                  ? unarchiveSnippet
+                  : () => setModalSnippet(snippet)
+              }
+              borderless
+              medium
+              className="text-brand text-white-hover bg-light bg-brand-hover mt1"
+              icon={unarchiveSnippet ? "unarchive" : "pencil"}
+            >
+              {unarchiveSnippet ? t`Unarchive` : t`Edit`}
+            </Button>
           </div>
         )}
       </div>
