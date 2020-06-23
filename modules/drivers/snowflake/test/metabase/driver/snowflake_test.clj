@@ -164,17 +164,18 @@
               table-qualified-name (format "\"%s\".\"PUBLIC\".\"birds\"" db-name)]
           (mt/with-temp Database [db {:engine  :snowflake
                                       :details details}]
-            (doseq [statement [(format "drop table if exists %s;" table-qualified-name)
-                               (format "create table %s (id integer);" table-qualified-name)
-                               (format "grant SELECT on %s to %s;" table-qualified-name (:user details))]]
-              (jdbc/execute! spec [statement]))
             (log/warn (jdbc/query spec
               [(str "SELECT *"
                     "FROM information_schema.table_privileges "
                     )
                ]
               ))
+            (doseq [statement [(format "drop table if exists %s;" table-qualified-name)
+                               (format "create table %s (id integer);" table-qualified-name)
+                               "create user if not exists rasta;"
+                               (format "grant SELECT on %s to %s;" table-qualified-name "rasta")]]
+              (jdbc/execute! spec [statement]))
             (is (= #{{:table_name "birds" :table_schem "PUBLIC"}}
-                   (sql-jdbc.sync/accessible-tables-for-user :snowflake db (:user details))))
-            (jdbc/execute! spec [(format "revoke SELECT on %s from %s;" table-qualified-name (:user details))])
-            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :snowflake db (:user details))))))))))
+                   (sql-jdbc.sync/accessible-tables-for-user :snowflake db "rasta")))
+            (jdbc/execute! spec [(format "revoke SELECT on %s from %s;" table-qualified-name "rasta")])
+            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :snowflake db "rasta")))))))))
