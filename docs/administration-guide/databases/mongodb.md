@@ -1,6 +1,6 @@
 # Working with MongoDB in Metabase
 
-This guide covers:
+This article covers:
 
  - Using a connection string.
  - General connectivity concerns.
@@ -43,15 +43,15 @@ click on **Paste a connection string**. The Metabase UI will update with a field
 
   1. Log into your [Atlas cluster](https://cloud.mongodb.com)
 
-  2. Select the cluster you want to connect to, and click "Connect".
+  2. Select the cluster you want to connect to, and click **Connect**.
 
      ![Your cluster screengrab](../images/mongo_1.png "Your cluster")
 
-  3. Click "Connect Your Application".
+  3. Click **Connect Your Application**.
 
      ![Connect screengrab](../images/mongo_2.png "Connect")
 
-  4. Select "Java" and "3.6 or later".
+  4. Select **Java** and **3.6 or later**.
 
      ![Java screengrab](../images/mongo_3.png "Java")
 
