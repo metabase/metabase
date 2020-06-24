@@ -7,11 +7,13 @@
              [related :as related]
              [util :as u]]
             [metabase.api.common :as api]
+            [metabase.api.query-description :as qd]
             [metabase.mbql.normalize :as normalize]
             [metabase.models
              [interface :as mi]
              [revision :as revision]
-             [segment :as segment :refer [Segment]]]
+             [segment :as segment :refer [Segment]]
+             [table :as table :refer [Table]]]
             [metabase.util
              [i18n :refer [trs]]
              [schema :as su]]
@@ -46,14 +48,25 @@
 (api/defendpoint GET "/:id"
   "Fetch `Segment` with ID."
   [id]
-  (hydrated-segment id))
+  (first (add-query-descriptions [(hydrated-segment id)])))
+
+(defn- add-query-descriptions
+  [segments] {:pre [(coll? segments)]}
+  (log/spy :error
+           (when (seq segments)
+             (for [segment segments]
+               (let [table (Table (:table_id segment))]
+                 (assoc segment
+                        :query_description
+                        (qd/generate-query-description table (:definition segment))))))))
 
 (api/defendpoint GET "/"
   "Fetch *all* `Segments`."
   []
   (as-> (db/select Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
-    (hydrate segments :creator)))
+    (hydrate segments :creator)
+    (add-query-descriptions segments)))
 
 
 (defn- write-check-and-update-segment!

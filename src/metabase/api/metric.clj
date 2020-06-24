@@ -49,7 +49,7 @@
 (api/defendpoint GET "/:id"
   "Fetch `Metric` with ID."
   [id]
-  (hydrated-metric id))
+  (first (add-query-descriptions [(hydrated-metric id)])))
 
 (defn- add-db-ids
   "Add `:database_id` fields to `metrics` by looking them up from their `:table_id`."
@@ -60,7 +60,7 @@
         (assoc metric :database_id (table-id->db-id (:table_id metric)))))))
 
 (defn- add-query-descriptions
-  [metrics]
+  [metrics] {:pre [(coll? metrics)]}
   (log/spy
    :error
    (when (seq metrics)
@@ -68,7 +68,7 @@
        (let [table (Table (:table_id metric))]
          (assoc metric
                 :query_description
-                (qd/generate-query-description table (:definition metric) {})))))))
+                (qd/generate-query-description table (:definition metric))))))))
 
 (api/defendpoint GET "/"
   "Fetch *all* `Metrics`."
