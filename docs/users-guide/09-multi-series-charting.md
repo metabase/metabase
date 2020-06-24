@@ -7,15 +7,11 @@ Data in isolation is rarely all that useful. One of the best ways to add context
 - New users per day vs. returning users per day.
 - Orders per day from a few different product lines.
 
-### In Metabase there are two main ways to get data side-by-side.
+### Two ways to display data side-by-side.
 
-1. Combining two existing saved questions that share a common dimension (like time) on a dashboard
+1. **Combining two existing saved questions** that share a common dimension (like time) on a dashboard. For example, let me see revenue over time and cost over time together.
 
-e.g. Let me see revenue over time and cost over time together.
-
-2. Asking a question that involves multiple dimensions in the query builder (or in SQL if you’re fancy).
-
-e.g. The count of users by region over time.
+2. **Asking a question that involves multiple dimensions** in the query builder (or in SQL, if you’re fancy). Example: the count of users by region over time.
 
 ### Combining two existing saved questions
 
@@ -23,11 +19,11 @@ If you already have two or more saved questions you’d like to compare, and the
 
 1. Add a question with a dimension like time or a category to a dashboard. In practice, these will usually be line charts or bar charts.
 
-2. While in edit mode on the dashboard, hovering on the card will show a “Edit data” button. Click this button to start adding series that you want to compare to the first series..
+2. While in edit mode on the dashboard, hovering over a card will display some editing options in the upper right of the question, including an option to **add a line**, as well as a **gear** icon. Click on the add a line option (the **+** with a line and the word "Add" next to it). 
 
-![multiseriestrigger](images/MultiSeriesTrigger.png)
+![add multi-series](images/multi-series-charts/add_series.png)
 
-3. In the Edit Data modal you’ll see the original question, and on the right you’ll see a list of compatible questions you can choose from. Check the box next to any questions you’d like to see side-by-side with the original, and Metabase will add it to the same chart.
+3. In the Edit Data modal, you’ll see the original question on the left, with a list of compatible questions you can choose from on the right. Search for a question(s) to add, and check the box next to each question you’d like to see side-by-side with the original. Metabase will add it to the same chart.
 
 ![multiseriesmodal1](images/MultiSeriesModal1.png)
 
@@ -39,7 +35,7 @@ To remove a series either uncheck the box, or click the x next to the title in t
 
 Once you have your chart looking how you’d like, hit done and your changes will be shown on the card in the dashboard. Depending on how dense your data is, at this point you might want to consider enlarging your chart to make sure the data is legible.
 
-![multiseriefinished](images/MultiSeriesFinished.png)
+![multiseriesfinished](images/MultiSeriesFinished.png)
 
 #### A quick note about SQL based questions.
 
@@ -70,7 +66,7 @@ It’s worth noting that at this time you won’t be able to add another saved q
 ### To recap:
 
 - Existing saved questions can be combined and displayed on dashboards when editing the dashboard.
-- Scalars can be combined to create bar charts and simple funnels
+- Scalars can be combined to create bar charts and simple funnels.
 - You can produce a multi-series visualization in the query builder by adding two dimensions to your query.
 
 Go forth and start letting your data get to know each other.
