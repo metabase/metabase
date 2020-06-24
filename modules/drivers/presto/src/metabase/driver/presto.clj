@@ -230,7 +230,9 @@
 
 (defmethod sql-jdbc.sync/simple-select-probe :presto
   [_ details schema table]
-  (->> (str/join "." (filter some? [schema name]))
+  (->> [schema table]
+       (filter some?)
+       (str/join "." )
        (format "SELECT 1 FROM %s LIMIT 1")
        (execute-presto-query-for-sync details)
        :rows))
@@ -238,7 +240,7 @@
 (defn- describe-schema [driver {{:keys [catalog user] :as details} :details :as db} {:keys [schema]}]
   (let [sql (str "SHOW TABLES FROM " (sql.u/quote-name driver :schema catalog schema))]
     (set (for [[table-name & _] (:rows (execute-presto-query-for-sync details sql))
-               :when (sql-jdbc.sync/user-has-select-privilege? driver details schema table-name)]
+               :when (sql-jdbc.sync/have-select-privilege? driver details schema table-name)]
            {:name   table-name
             :schema schema}))))
 
