@@ -166,21 +166,6 @@
     :OpenSourceSubProtocolOverride false}
    (dissoc opts :host :port :db)))
 
-(defmethod sql-jdbc.sync/accessible-tables-for-user :redshift
-  [driver db-or-id-or-spec user]
-  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-              ["WITH table_list AS
-                 (SELECT schemaname+'.'+tablename AS schema_qualified_table_name,
-                    tablename AS table_name,
-                    schemaname AS table_schem
-                  FROM pg_tables
-                  WHERE schemaname <> 'pg_internal')
-               SELECT table_name, table_schem
-               FROM table_list
-               WHERE has_table_privilege(?, schema_qualified_table_name, 'select')"
-               user]
-              {:result-set-fn set}))
-
 (prefer-method
  sql-jdbc.execute/read-column-thunk
  [::legacy/use-legacy-classes-for-read-and-set Types/TIMESTAMP]

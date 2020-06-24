@@ -75,32 +75,32 @@
 (deftest test-ssh-connection
   (testing "Gets an error when it can't connect to oracle via ssh tunnel"
     (mt/test-driver
-     :oracle
-     (is (thrown?
-          java.net.ConnectException
-          (try
-            (let [engine :oracle
-                  details {:ssl            false
-                           :password       "changeme"
-                           :tunnel-host    "localhost"
-                           :tunnel-pass    "BOGUS-BOGUS"
-                           :port           5432
-                           :dbname         "test"
-                           :host           "localhost"
-                           :tunnel-enabled true
-                           ;; we want to use a bogus port here on purpose -
-                           ;; so that locally, it gets a ConnectionRefused,
-                           ;; and in CI it does too. Apache's SSHD library
-                           ;; doesn't wrap every exception in an SshdException
-                           :tunnel-port    21212
-                           :tunnel-user    "bogus"}]
-              (tu.log/suppress-output
-               (driver.u/can-connect-with-details? engine details :throw-exceptions)))
-            (catch Throwable e
-              (loop [^Throwable e e]
-                (or (when (instance? java.net.ConnectException e)
-                      (throw e))
-                    (some-> (.getCause e) recur))))))))))
+        :oracle
+      (is (thrown?
+           java.net.ConnectException
+           (try
+             (let [engine :oracle
+                   details {:ssl            false
+                            :password       "changeme"
+                            :tunnel-host    "localhost"
+                            :tunnel-pass    "BOGUS-BOGUS"
+                            :port           5432
+                            :dbname         "test"
+                            :host           "localhost"
+                            :tunnel-enabled true
+                            ;; we want to use a bogus port here on purpose -
+                            ;; so that locally, it gets a ConnectionRefused,
+                            ;; and in CI it does too. Apache's SSHD library
+                            ;; doesn't wrap every exception in an SshdException
+                            :tunnel-port    21212
+                            :tunnel-user    "bogus"}]
+               (tu.log/suppress-output
+                 (driver.u/can-connect-with-details? engine details :throw-exceptions)))
+             (catch Throwable e
+               (loop [^Throwable e e]
+                 (or (when (instance? java.net.ConnectException e)
+                       (throw e))
+                     (some-> (.getCause e) recur))))))))))
 
 (expect-with-driver :oracle
   "UTC"
@@ -210,12 +210,12 @@
     (testing "Do we correctly determine SELECT privilege"
       (let [details  (:details (data/db))
             spec     (sql-jdbc.conn/connection-details->spec :oracle details)]
-        (with-temp-user [user]
-          (doseq [statement [(format "create table privileges_test (id int)")
-                             (format "grant all privileges on privileges_test to %s" user)]]
-            (jdbc/execute! spec [statement]))
-          (is (= (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user)
-                 #{{:table_name "PRIVILEGES_TEST" :table_schem "CAM"}}))
-          (jdbc/execute! spec [(format "revoke all privileges on privileges_test from %s" user)])
-          (is (empty? (sql-jdbc.sync/accessible-tables-for-user :oracle (mt/db) user)))
-          (jdbc/execute! spec [(format "drop table privileges_test")]))))))
+        (doseq [statement [(format "create table privileges_test (id int)")
+                           (format "grant all privileges on privileges_test to %s" (:user details))]]
+          (jdbc/execute! spec [statement]))
+        (is (#'sql-jdbc.sync/have-select-privilege? :oracle (mt/db) {:table_name  "birds"
+                                                                     :table_schem "CAM"}))
+        (jdbc/execute! spec [(format "revoke select on privileges_test from %s" (:user details))])
+        (is (not (#'sql-jdbc.sync/have-select-privilege? :oracle (mt/db) {:table_name  "birds"
+                                                                          :table_schem "CAM"})))
+        (jdbc/execute! spec [(format "drop table privileges_test")])))))

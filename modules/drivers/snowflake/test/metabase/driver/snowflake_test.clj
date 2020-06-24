@@ -166,10 +166,10 @@
                                       :details details}]
             (doseq [statement [(format "drop table if exists %s;" table-qualified-name)
                                (format "create table %s (id integer);" table-qualified-name)
-                               "create user if not exists rasta;"
-                               (format "grant ALL on %s to %s;" table-qualified-name "rasta")]]
+                               (format "grant ALL on %s to %s;" table-qualified-name (:user details))]]
               (jdbc/execute! spec [statement]))
-            (is (= #{{:table_name "birds" :table_schem "PUBLIC"}}
-                   (sql-jdbc.sync/accessible-tables-for-user :snowflake db "rasta")))
-            (jdbc/execute! spec [(format "revoke ALL on %s from %s;" table-qualified-name "rasta")])
-            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :snowflake db "rasta")))))))))
+            (is (#'sql-jdbc.sync/have-select-privilege? :snowflake db {:table_name  "birds"
+                                                                       :table_schem "PUBLIC"}))
+            (jdbc/execute! spec [(format "revoke select on %s from %s;" table-qualified-name (:user details))])
+            (is (#'sql-jdbc.sync/have-select-privilege? :snowflake db {:table_name  "birds"
+                                                                       :table_schem "PUBLIC"}))))))))

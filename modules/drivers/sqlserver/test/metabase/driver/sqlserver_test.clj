@@ -38,8 +38,8 @@
 
 (tx/defdataset ^:private genetic-data
   [["genetic-data"
-     [{:field-name "gene", :base-type {:native "VARCHAR(MAX)"}}]
-     [[a-gene]]]])
+    [{:field-name "gene", :base-type {:native "VARCHAR(MAX)"}}]
+    [[a-gene]]]])
 
 (datasets/expect-with-driver :sqlserver
   [[1 a-gene]]
@@ -88,10 +88,10 @@
             " ) \"source\" ") ; not sure why this generates an extra space before the closing paren, but it does
    :params nil}
   (qp/query->native
-    (data/mbql-query venues
-      {:source-query {:source-table $$venues
-                      :fields       [$name]
-                      :order-by     [[:asc $id]]}})))
+   (data/mbql-query venues
+     {:source-query {:source-table $$venues
+                     :fields       [$name]
+                     :order-by     [[:asc $id]]}})))
 
 ;; make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP clauses that may have
 ;; been set in the query
@@ -105,12 +105,12 @@
                " ) \"source\" ")
    :params nil}
   (qp/query->native
-    (data/mbql-query venues
-      {:source-query {:source-table $$venues
-                      :fields       [$name]
-                      :order-by     [[:asc $id]]
-                      :limit        20}
-       :limit        10})))
+   (data/mbql-query venues
+     {:source-query {:source-table $$venues
+                     :fields       [$name]
+                     :order-by     [[:asc $id]]
+                     :limit        20}
+      :limit        10})))
 
 ;; We don't need to add TOP clauses for top-level order by. Normally we always add one anyway because of the
 ;; max-results stuff, but make sure our impl doesn't add one when it's not in the source MBQL
@@ -127,11 +127,11 @@
   ;; in order to actually see how things would work without the implicit max-results limit added we'll preprocess
   ;; the query, strip off the `:limit` that got added, and then feed it back to the QP where we left off
   (let [preprocessed (-> (qp/query->preprocessed
-                           (data/mbql-query venues
-                             {:source-query {:source-table $$venues
-                                             :fields       [$name]
-                                             :order-by     [[:asc $id]]}
-                              :order-by     [[:asc $id]]}))
+                          (data/mbql-query venues
+                            {:source-query {:source-table $$venues
+                                            :fields       [$name]
+                                            :order-by     [[:asc $id]]}
+                             :order-by     [[:asc $id]]}))
                          (m/dissoc-in [:query :limit]))]
     (qp.test-util/with-everything-store
       (driver/mbql->native :sqlserver preprocessed))))
@@ -143,12 +143,12 @@
    ["The Apple Pan"]]
   (qp.test/rows
     (qp/process-query
-      (data/mbql-query venues
-        {:source-query {:source-table $$venues
-                        :fields       [$name]
-                        :order-by     [[:asc $id]]
-                        :limit        5}
-         :limit        3}))))
+     (data/mbql-query venues
+       {:source-query {:source-table $$venues
+                       :fields       [$name]
+                       :order-by     [[:asc $id]]
+                       :limit        5}
+        :limit        3}))))
 
 (deftest locale-bucketing-test
   (datasets/test-driver :sqlserver
@@ -218,21 +218,12 @@
               spec    (sql-jdbc.conn/connection-details->spec :sqlserver details)]
           (mt/with-temp Database [db {:engine  :sqlserver
                                       :details details}]
-            (doseq [statement ["create user GUEST;"
-                               "drop table if exists \"birds\";"
+            (doseq [statement ["drop table if exists \"birds\";"
                                "create table \"birds\" (id integer);"
-                               "grant all on \"birds\" to GUEST;"]]
+                               (format "grant all on \"birds\" to %s;" (:user details))]]
               (jdbc/execute! spec [statement]))
-            (is (= #{{:table_name "birds" :table_schem "dbo"}}
-                   (sql-jdbc.sync/accessible-tables-for-user :sqlserver db "GUEST")))
-            (jdbc/execute! spec ["revoke all on \"birds\" from GUEST;"])
-            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :sqlserver db "GUEST")))
-            (doseq [statement ["drop role if exists birdwatcher;"
-                               "create role birdwatcher;"
-                               "grant all on birds to birdwatcher;"
-                               "alter role birdwatcher add member GUEST;"]]
-              (jdbc/execute! spec [statement]))
-            (is (= #{{:table_name "birds" :table_schem "public"}}
-                   (sql-jdbc.sync/accessible-tables-for-user :sqlserver db "GUEST")))
-            (jdbc/execute! spec ["revoke all on birds from birdwatcher;"])
-            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :sqlserver db "GUEST")))))))))
+            (is (#'sql-jdbc.sync/have-select-privilege? :sqlserver db {:table_name  "birds"
+                                                                       :table_schem "dbo"}))
+            (jdbc/execute! spec [(format "revoke all on \"birds\" from %s;" (:user details))])
+            (is (not (#'sql-jdbc.sync/have-select-privilege? :sqlserver db {:table_name  "birds"
+                                                                            :table_schem "dbo"})))))))))

@@ -75,34 +75,17 @@
             spec    (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift :server nil))]
         (doseq [statement [(format "DROP DATABASE IF EXISTS \"%s\";" db-name)
                            (format "CREATE DATABASE \"%s\";" db-name)]]
-          (try
-            (jdbc/execute! spec [statement] {:transaction? false})
-            (catch java.sql.SQLException _)))
+          (jdbc/execute! spec [statement]))
         (let [details (mt/dbdef->connection-details :redshift :db {:database-name db-name})
               spec    (sql-jdbc.conn/connection-details->spec :redshift details)]
           (mt/with-temp Database [db {:engine  :redshift
                                       :details details}]
-            (doseq [statement ["drop user if exists rasta;"
-                               "create user rasta password DISABLE;"
-                               "drop table if exists \"birds\";"
+            (doseq [statement ["drop table if exists \"birds\";"
                                "create table \"birds\" (id int);"
-                               "grant all on \"birds\" to rasta;"]]
+                               (format "grant all on \"birds\" to %s;" (:user details))]]
               (jdbc/execute! spec [statement]))
-            (is (contains? (sql-jdbc.sync/accessible-tables-for-user :redshift db "rasta")
-                           {:table_name "birds" :table_schem "public"}))
-            (jdbc/execute! spec ["revoke all on \"birds\" from rasta;"])
-            (is (not (contains? (sql-jdbc.sync/accessible-tables-for-user :redshift db "rasta")
-                                {:table_name "birds" :table_schem "public"})))
-            (try
-              (doseq [statement ["revoke all on all tables in schema public from group birdwatcher;"
-                                 "drop group birdwatcher;"]]
-                (jdbc/execute! spec [statement]))
-              (catch java.sql.SQLException _))
-            (doseq [statement ["create group birdwatcher with user rasta;"
-                               "grant all on birds to group birdwatcher;"]]
-              (jdbc/execute! spec [statement]))
-            (is (contains? (sql-jdbc.sync/accessible-tables-for-user :redshift db "rasta")
-                           {:table_name "birds" :table_schem "public"}))
-            (jdbc/execute! spec ["revoke all on birds from group birdwatcher;"])
-            (is (not (contains? (sql-jdbc.sync/accessible-tables-for-user :redshift db "rasta")
-                                {:table_name "birds" :table_schem "public"})))))))))
+            (is (#'sql-jdbc.sync/have-select-privilege? :redshift db {:table_name  "birds"
+                                                                      :table_schem "public"}))
+            (jdbc/execute! spec [(format "revoke all on \"birds\" from rasta;" (:user details))])
+            (is (not (#'sql-jdbc.sync/have-select-privilege? :redshift db {:table_name  "birds"
+                                                                           :table_schem "public"})))))))))

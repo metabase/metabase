@@ -223,20 +223,12 @@
               spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
           (mt/with-temp Database [db {:engine  :mysql
                                       :details details}]
-            (doseq [statement ["create user if not exists rasta;"
-                               "drop table if exists `birds`;"
+            (doseq [statement ["drop table if exists `birds`;"
                                "create table `birds` (`id` integer);"
-                               "grant all on `birds` to 'rasta';"]]
+                               (format "grant all on `birds` to '%s';" (:user details))]]
               (jdbc/execute! spec [statement]))
-            (is (= #{{:table_name "birds" :table_schem db-name}}
-                   (sql-jdbc.sync/accessible-tables-for-user :mysql db "rasta")))
-            (jdbc/execute! spec ["revoke all on `birds` from rasta;"])
-            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :mysql db "rasta")))
-            (doseq [statement ["create role if not exists birdwatcher;"
-                               "grant all on `birds` to 'birdwatcher';"
-                               "grant 'birdwatcher' to 'rasta';"]]
-              (jdbc/execute! spec [statement]))
-            (is (= #{{:table_name "birds" :table_schem "public"}}
-                   (sql-jdbc.sync/accessible-tables-for-user :mysql db "rasta")))
-            (jdbc/execute! spec ["revoke all on `birds` from 'birdwatcher';"])
-            (is (empty? (sql-jdbc.sync/accessible-tables-for-user :mysql db "rasta")))))))))
+            (is (#'sql-jdbc.sync/have-select-privilege? :mysql db {:table_name  "birds"
+                                                                   :table_schem db-name}))
+            (jdbc/execute! spec [(format "revoke select on `birds` from %s;" (:user details))])
+            (is (not (#'sql-jdbc.sync/have-select-privilege? :mysql db {:table_name  "birds"
+                                                                        :table_schem db-name})))))))))

@@ -5,7 +5,9 @@
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util.honeysql-extensions :as hx])
@@ -120,31 +122,12 @@
                    :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]}
                   {:limit 1}))))
 
-(defn- filter-tables-with-select-privilege
-  "Remove tables for which we don't have SELECT privilege.
-
-   If no privileges are set (which is completely legal), querying the internal catalog (which is what `accessible-tables-for-user`
-   uses) will return no results. On a per-table level this is indistinguishable from not having the
-   SELECT privilege. However if we don't have access to any of the tables, it's more likely that no
-   privileges are set. In that case test the hypothesis by firing a simple SELECT against one of the
-   tables. If that goes through we in fact have access rights (and our hypothesis is correct), so go
-   ahead and return all the tables."
-  [driver db-or-id-or-spec user tables]
-  (let [accessible-tables (try
-                            (filter (comp (accessible-tables-for-user driver db-or-id-or-spec user)
-                                          #(select-keys % [:table_name :table_schem]))
-                                    tables)
-                            (catch Throwable _))]
-    (if (empty? accessible-tables)
-      (try
-        (log/warn (str (format "User %s doesn't appear to have SELECT privilege for any table in the database. "
-                               user)
-                       "This might be due to no GRANTs being set. Falling back to probing privileges with a simple SELECT statement."))
-        (let [[{:keys [table_name table_schem]} & _] tables]
-          (when (simple-select-probe driver db-or-id-or-spec table_schem table_name)
-            tables))
-        (catch Throwable _))
-      accessible-tables)))
+(defn have-select-privilege?
+  "Does  have SELECT privilege for given table."
+  [driver db-or-id-or-spec {:keys [table_name table_schem] :as table}]
+  (when (u/ignore-exceptions
+          (simple-select-probe driver db-or-id-or-spec table_schem table_name))
+    table))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -158,15 +141,15 @@
       (->> (set/difference all-schemas (excluded-schemas driver))
            (mapcat (fn [schema]
                      (db-tables metadata schema db-name-or-nil)))
-           (filter-tables-with-select-privilege driver db-or-id-or-spec (.getUserName metadata))))))
+           (filter (partial have-select-privilege? driver db-or-id-or-spec))))))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, db-or-id-or-spec, ^DatabaseMetaData metadata, & [db-name-or-nil]]
-  (->> (db-tables metadata nil db-name-or-nil)
-       (filter-tables-with-select-privilege driver db-or-id-or-spec (.getUserName metadata))
-       (remove (comp (partial contains? (excluded-schemas driver)) :table_schem))))
+  (filter (every-pred (partial have-select-privilege? driver db-or-id-or-spec)
+                      (comp (complement (partial contains? (excluded-schemas driver))) :table_schem))
+          (db-tables metadata nil db-name-or-nil)))
 
 (defn get-catalogs
   "Returns a set of all of the catalogs found via `metadata`"

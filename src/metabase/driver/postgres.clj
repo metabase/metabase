@@ -311,15 +311,6 @@
       db.spec/postgres
       (sql-jdbc.common/handle-additional-options details-map)))
 
-(defmethod sql-jdbc.sync/accessible-tables-for-user :postgres
-  [_ db-or-id-or-spec user]
-  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-              [(str "select table_name, table_schema as table_schem "
-                     "from information_schema.tables "
-                     "where HAS_TABLE_PRIVILEGE(?, concat(table_schema, '.', table_name), 'select')")
-               user]
-              {:result-set-fn set}))
-
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
   [_]
   "SET SESSION TIMEZONE TO %s;")

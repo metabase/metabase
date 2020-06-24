@@ -27,24 +27,14 @@
     (testing "Do we correctly determine SELECT privilege"
       (let [details (:details (mt/db))
             spec    (sql-jdbc.conn/connection-details->spec :vertica details)]
-        (doseq [statement ["drop user if exists rasta;"
-                           "create user rasta;"
-                           "drop table if exists birds;"
+        (doseq [statement ["drop table if exists birds;"
                            "create table birds (id integer);"
-                           "grant all on birds to rasta;"]]
+                           (format "grant all on birds to %s;" (:user details))]]
           (jdbc/execute! spec [statement]))
-        (is (= #{{:table_name "birds" :table_schem "public"}}
-               (sql-jdbc.sync/accessible-tables-for-user :vertica (mt/db) "rasta")))
-        (jdbc/execute! spec ["revoke all on birds from rasta;"])
-        (is (empty? (sql-jdbc.sync/accessible-tables-for-user :vertica (mt/db) "rasta")))
-        (doseq [statement ["drop role if exists birdwathcer;"
-                           "create role birdwatcher;"
-                           "grant all on birds to birdwatcher;"
-                           "grant birdwatcher to rasta;"]]
-          (jdbc/execute! spec [statement]))
-        (is (= #{{:table_name "birds" :table_schem "public"}}
-               (sql-jdbc.sync/accessible-tables-for-user :vertica (mt/db) "rasta")))
-        (jdbc/execute! spec ["revoke all on birds from birdwatcher;"])
-        (is (empty? (sql-jdbc.sync/accessible-tables-for-user :vertica (mt/db) "rasta")))
+        (is (#'sql-jdbc.sync/have-select-privilege? :vertica db {:table_name  "birds"
+                                                                 :table_schem "public"}))
+        (jdbc/execute! spec [(format "revoke select on birds from %s;" (:user details))])
+        (is (not (#'sql-jdbc.sync/have-select-privilege? :vertica db {:table_name  "birds"
+                                                                      :table_schem "public"})))
         ;; Cleanup
         (jdbc/execute! spec ["drop table birds;"])))))

@@ -19,6 +19,7 @@
              [query-processor :as sql.qp]
              [util :as sql.u]]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.query-processor
              [context :as context]
              [store :as qp.store]
@@ -227,46 +228,19 @@
         {:keys [rows]} (execute-presto-query-for-sync details sql)]
     (set (map first rows))))
 
-(defn- accessible-tables-for-user
-  [{:keys [user] :as details}]
-  (->> (execute-presto-query-for-sync details
-                                      (format "SELECT table_name AS name, table_schema AS schema
-                                               FROM information_schema.table_privileges
-                                               WHERE grantee='%s'
-                                               AND privilege_type='SELECT'" user))
-       :rows
-       set))
-
-(defn- filter-tables-with-select-privilege
-  "See `sql-jdbc.sync/filter-tables-with-select-privilege`. This is just a reimplementation that does not use JDBC."
-  [{:keys [user] :as details} tables]
-  (let [accessible-tables (try
-                            (filter (comp (accessible-tables-for-user details)
-                                          #(select-keys % [:name :schema]))
-                                    tables)
-                            (catch Throwable _))]
-    (if (empty? accessible-tables)
-      (try
-        (log/warn (str (format "User %s doesn't appear to have SELECT privilege for any table in the database. "
-                               user)
-                       "This might be due to no GRANTs being set. Falling back to probing privileges with a simple SELECT statement."))
-        (let [[{:keys [name schema]} & _] tables]
-          (when (->> (str/join "." (filter some? [schema name]))
-                     (format "SELECT 1 FROM %s LIMIT 1")
-                     (execute-presto-query-for-sync details)
-                     :rows
-                     not-empty)
-            tables))
-        (catch Throwable _))
-      accessible-tables)))
+(defmethod sql-jdbc.sync/simple-select-probe :presto
+  [_ details schema table]
+  (->> (str/join "." (filter some? [schema name]))
+       (format "SELECT 1 FROM %s LIMIT 1")
+       (execute-presto-query-for-sync details)
+       :rows))
 
 (defn- describe-schema [driver {{:keys [catalog user] :as details} :details :as db} {:keys [schema]}]
   (let [sql (str "SHOW TABLES FROM " (sql.u/quote-name driver :schema catalog schema))]
-    (->> (for [[table-name & _] (:rows (execute-presto-query-for-sync details sql))]
+    (set (for [[table-name & _] (:rows (execute-presto-query-for-sync details sql))
+               :when (sql-jdbc.sync/user-has-select-privilege? driver details schema table-name)]
            {:name   table-name
-            :schema schema})
-         (filter-tables-with-select-privilege details)
-         set)))
+            :schema schema}))))
 
 (def ^:private excluded-schemas #{"information_schema"})
 

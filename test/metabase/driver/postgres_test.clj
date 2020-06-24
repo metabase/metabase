@@ -529,23 +529,12 @@
         (drop-if-exists-and-create-db! db-name)
         (mt/with-temp Database [db {:engine  :postgres
                                     :details (assoc details :dbname db-name)}]
-          (doseq [statement ["drop user if exists rasta;"
-                             "create user rasta password 'guest';"
-                             "drop table if exists \"birds\";"
+          (doseq [statement ["drop table if exists \"birds\";"
                              "create table \"birds\" ();"
-                             "grant all on \"birds\" to rasta;"]]
+                             (format "grant all on \"birds\" to %s;" (:user details))]]
             (jdbc/execute! spec [statement]))
-          (is (contains? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")
-                         {:table_name "birds" :table_schem "public"}))
-          (jdbc/execute! spec ["revoke all on \"birds\" from rasta;"])
-          (is (not (contains? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")
-                              {:table_name "birds" :table_schem "public"})))
-          (doseq [statement ["create role birdwatcher;"
-                             "grant all on birds to birdwatcher;"
-                             "grant birdwatcher to rasta;"]]
-            (jdbc/execute! spec [statement]))
-          (is (contains? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")
-                         {:table_name "birds" :table_schem "public"}))
-          (jdbc/execute! spec ["revoke all on birds from birdwatcher;"])
-          (is (not (contains? (sql-jdbc.sync/accessible-tables-for-user :postgres db "rasta")
-                              {:table_name "birds" :table_schem "public"}))))))))
+          (is (#'sql-jdbc.sync/have-select-privilege? :postgres db {:table_name  "birds"
+                                                                    :table_schem "public"}))
+          (jdbc/execute! spec [(format "revoke select on \"birds\" from %s;" (:user details))])
+          (is (not (#'sql-jdbc.sync/have-select-privilege? :postgres db {:table_name  "birds"
+                                                                         :table_schem "public"}))))))))

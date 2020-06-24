@@ -81,16 +81,6 @@
                         (str "/" service-name)))}
    (dissoc details :host :port :sid :service-name)))
 
-(defmethod sql-jdbc.sync/accessible-tables-for-user :oracle
-  [_ db-or-id-or-spec user]
-  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-              [(str "SELECT table_name, table_schema AS table_schem "
-                    "FROM sys.all_tab_privs "
-                    "WHERE grantee=? "
-                    "AND privilege='SELECT'")
-               user]
-              {:result-set-fn set}))
-
 (defmethod driver/can-connect? :oracle
   [driver details]
   (let [connection (sql-jdbc.conn/connection-details->spec driver (ssh/include-ssh-tunnel details))]
