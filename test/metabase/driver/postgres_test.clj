@@ -535,7 +535,7 @@
           (doseq [statement ["drop table if exists \"birds\";"
                              "create table \"birds\" ();"
                              "drop user if exists rasta;"
-                             "create user if not exists rasta;"
+                             "create user rasta;"
                              "alter table birds owner to rasta;"
                              (format "grant all on \"birds\" to %s;" (:user details))]]
             (jdbc/execute! spec [statement]))
