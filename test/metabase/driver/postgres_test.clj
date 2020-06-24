@@ -538,6 +538,6 @@
             (jdbc/execute! spec [statement]))
           (is (#'sql-jdbc.sync/have-select-privilege? :postgres db {:table_name  "birds"
                                                                     :table_schem "public"}))
-          (jdbc/execute! spec [(format "revoke select on \"birds\" from %s;" (:user details))])
+          (jdbc/execute! spec [(format "revoke all on \"birds\" from %s;" (:user details))])
           (is (not (#'sql-jdbc.sync/have-select-privilege? :postgres db {:table_name  "birds"
                                                                          :table_schem "public"}))))))))

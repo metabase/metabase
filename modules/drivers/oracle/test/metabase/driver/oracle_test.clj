@@ -210,6 +210,8 @@
     (testing "Do we correctly determine SELECT privilege"
       (let [details  (:details (data/db))
             spec     (sql-jdbc.conn/connection-details->spec :oracle details)]
+        (u/ignore-exceptions
+          (jdbc/execute! spec [(format "drop table privileges_test")]))
         (doseq [statement [(format "create table privileges_test (id int)")
                            (format "grant all privileges on privileges_test to %s" (:user details))]]
           (jdbc/execute! spec [statement]))
@@ -217,5 +219,4 @@
                                                                      :table_schem "CAM"}))
         (jdbc/execute! spec [(format "revoke select on privileges_test from %s" (:user details))])
         (is (not (#'sql-jdbc.sync/have-select-privilege? :oracle (mt/db) {:table_name  "birds"
-                                                                          :table_schem "CAM"})))
-        (jdbc/execute! spec [(format "drop table privileges_test")])))))
+                                                                          :table_schem "CAM"})))))))

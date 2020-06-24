@@ -220,10 +220,10 @@
                                       :details details}]
             (doseq [statement ["drop table if exists \"birds\";"
                                "create table \"birds\" (id integer);"
-                               (format "grant all on \"birds\" to %s;" (:user details))]]
+                               (format "grant all on \"birds\" to dbo;")]]
               (jdbc/execute! spec [statement]))
             (is (#'sql-jdbc.sync/have-select-privilege? :sqlserver db {:table_name  "birds"
                                                                        :table_schem "dbo"}))
-            (jdbc/execute! spec [(format "revoke all on \"birds\" from %s;" (:user details))])
+            (jdbc/execute! spec [(format "revoke all on \"birds\" from dbo;")])
             (is (not (#'sql-jdbc.sync/have-select-privilege? :sqlserver db {:table_name  "birds"
                                                                             :table_schem "dbo"})))))))))

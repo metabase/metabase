@@ -75,7 +75,8 @@
             spec    (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift :server nil))]
         (doseq [statement [(format "DROP DATABASE IF EXISTS \"%s\";" db-name)
                            (format "CREATE DATABASE \"%s\";" db-name)]]
-          (jdbc/execute! spec [statement]))
+          (u/ignore-exceptions
+           (jdbc/execute! spec [statement])))
         (let [details (mt/dbdef->connection-details :redshift :db {:database-name db-name})
               spec    (sql-jdbc.conn/connection-details->spec :redshift details)]
           (mt/with-temp Database [db {:engine  :redshift

@@ -31,10 +31,10 @@
                            "create table birds (id integer);"
                            (format "grant all on birds to %s;" (:user details))]]
           (jdbc/execute! spec [statement]))
-        (is (#'sql-jdbc.sync/have-select-privilege? :vertica db {:table_name  "birds"
-                                                                 :table_schem "public"}))
+        (is (#'sql-jdbc.sync/have-select-privilege? :vertica (mt/db) {:table_name  "birds"
+                                                                      :table_schem "public"}))
         (jdbc/execute! spec [(format "revoke select on birds from %s;" (:user details))])
-        (is (not (#'sql-jdbc.sync/have-select-privilege? :vertica db {:table_name  "birds"
-                                                                      :table_schem "public"})))
+        (is (not (#'sql-jdbc.sync/have-select-privilege? :vertica (mt/db) {:table_name  "birds"
+                                                                           :table_schem "public"})))
         ;; Cleanup
         (jdbc/execute! spec ["drop table birds;"])))))

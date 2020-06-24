@@ -19,8 +19,8 @@
             [metabase.driver.sql
              [query-processor :as sql.qp]
              [util :as sql.u]]
-            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [context :as context]
              [store :as qp.store]

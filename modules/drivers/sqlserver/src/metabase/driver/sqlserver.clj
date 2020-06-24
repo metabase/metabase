@@ -1,7 +1,6 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
-  (:require [clojure.java.jdbc :as jdbc]
-            [honeysql.core :as hsql]
+  (:require [honeysql.core :as hsql]
             [java-time :as t]
             [metabase
              [config :as config]
