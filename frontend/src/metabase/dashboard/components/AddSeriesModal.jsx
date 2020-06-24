@@ -303,7 +303,7 @@ export default class AddSeriesModal extends Component {
           </div>
         </div>
         <div
-          className="border-left flex flex-column"
+          className="border-left flex flex-column scroll-y"
           style={{
             width: 370,
             backgroundColor: color("bg-light"),
@@ -331,7 +331,7 @@ export default class AddSeriesModal extends Component {
             noBackground
           >
             {() => (
-              <ul className="flex-full scroll-y scroll-show pr1">
+              <ul className="pr1">
                 {filteredCards.map(card => (
                   <li
                     key={card.id}
