@@ -11,7 +11,7 @@ Data in isolation is rarely all that useful. One of the best ways to add context
 
 1. **Combining two existing saved questions** that share a common dimension (like time) on a dashboard. For example, let me see revenue over time and cost over time together.
 
-2. **Asking a question that involves multiple dimensions** in the query builder (or in SQL, if you’re fancy). Example: the count of users by region over time.
+2. **Use the notebook editor to ask a question that involves multiple dimensions** in the query builder (or in SQL, if you’re fancy). Example: the count of users by region over time.
 
 ### Combining two existing saved questions
 
@@ -43,9 +43,9 @@ Metabase has less information about SQL-based questions, so we cannot guarantee 
 
 If you need to compare single numbers and get a sense of how they differ, Metabase also lets you turn multiple Number charts into a bar chart. To do this, follow the same process outlined above. While editing a dashboard, click “edit data” on the Number chart of your choice and then select the other saved question(s) you’d like to see represented on the bar chart. (At Metabase, we use this to create simple funnel visualizations.)
 
-### Creating a multi-series visualization in the query builder.
+### Using the notebook editor to create a multi-series visualization.
 
-If you’re creating a new question you can also view the result as a multi-series visualization. To do this you’ll need to summarize and add two groupings to your question.
+If you’re creating a new question, you can also view the result as a multi-series visualization by summarizing your data and grouping it into two or more groups.
 
 As an example, we might want to see which website or service is referring the most people to our website. (In the sample dataset that ships with Metabase this would involve using the `Source` and `Created At` columns of the `People` table.)
 
@@ -53,13 +53,15 @@ To do this we’d click the Summarize button, and then add `Source` and `Created
 
 Metabase will automatically display a multi-series line chart visualization of how each referrer has performed for us.
 
-![multiseriesquerybuilder](images/MultiSeriesQueryBuilder.png)
+![multi-series in the query builder](images/multi-series-charts/multi-series_query_builder.png)
 
-It’s worth noting that at this time you won’t be able to add another saved question to multi-series visualizations made in this fashion. Metabase can only visualize up to 20 values of a dimension at once, so you may need to filter the values if you're selecting a field that contains a lot of values like "State."
+> You won’t be able to add another saved question to multi-series visualizations made in this fashion. Metabase can only visualize up to 20 values of a dimension at once, so if you're selecting a field that contains a lot of values, you may need to filter the values.
 
-### Other multiple series tips
+### Tips for displaying multiple series
 
 - When displaying multiple series it’s important to keep legibility in mind. Combining many series can sometimes decrease the communication value of the data.
+
+
 
 ### To recap:
 
