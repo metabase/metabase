@@ -22,7 +22,7 @@ export type AccordionListSection = {
 type Props = {
   className?: string,
   maxHeight?: number,
-  width?: ?number,
+  width?: ?number | ?string,
 
   dimension?: ?Dimension,
   dimensions?: Dimension[],

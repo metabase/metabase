@@ -13,6 +13,7 @@
   "Schema for the expected output of `describe-database` for a Table."
   {:name                         su/NonBlankString
    :schema                       (s/maybe su/NonBlankString)
+   ;; `:description` in this case should be a column/remark on the Table, if there is one.
    (s/optional-key :description) (s/maybe su/NonBlankString)})
 
 (def DatabaseMetadata
@@ -25,6 +26,7 @@
   {:name                           su/NonBlankString
    :database-type                  (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
    :base-type                      su/FieldType
+   :database-position              su/IntGreaterThanOrEqualToZero
    (s/optional-key :special-type)  (s/maybe su/FieldType)
    (s/optional-key :field-comment) (s/maybe su/NonBlankString)
    (s/optional-key :pk?)           s/Bool

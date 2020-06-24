@@ -67,8 +67,8 @@ export default class ExpressionWidget extends Component {
                 className="link"
                 target="_blank"
                 href={MetabaseSettings.docsUrl(
-                  "users-guide/04-asking-questions",
-                  "creating-a-custom-field",
+                  "users-guide/custom-questions",
+                  "creating-custom-columns",
                 )}
               >{t`Learn more`}</a>
             </p>

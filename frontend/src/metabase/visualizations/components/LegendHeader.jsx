@@ -75,7 +75,6 @@ export default class LegendHeader extends Component {
         className={cx(
           styles.LegendHeader,
           "Card-title mx1 flex flex-no-shrink flex-row align-center",
-          { "text-brand-hover": !isBreakoutSeries },
         )}
       >
         {series.map((s, index) => [
@@ -84,6 +83,7 @@ export default class LegendHeader extends Component {
             title={titles[index]}
             description={description}
             color={colors[index % colors.length]}
+            className={cx({ "text-brand-hover": !isBreakoutSeries })}
             showDot={showDots}
             showTitle={showTitles}
             isMuted={

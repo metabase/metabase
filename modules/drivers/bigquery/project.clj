@@ -2,7 +2,7 @@
   :min-lein-version "2.5.0"
 
   :dependencies
-  [[com.google.apis/google-api-services-bigquery "v2-rev20200429-1.30.9"]]
+  [[com.google.apis/google-api-services-bigquery "v2-rev20200523-1.30.9"]]
 
   :profiles
   {:provided
