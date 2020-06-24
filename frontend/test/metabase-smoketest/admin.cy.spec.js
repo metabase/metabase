@@ -282,10 +282,6 @@ describe("metabase-smoketest > admin", () => {
       cy.findByLabelText("First name").type(new_user.first_name);
       cy.findByLabelText("Last name").type(new_user.last_name);
       cy.findByLabelText("Email").type(new_user.username);
-      cy.get(".ModalBody")
-        .find(".Icon-chevrondown")
-        .click();
-      cy.findByText("English").click();
       cy.findByText("Create").click();
 
       cy.wait("@createUser").then(xhr => {
