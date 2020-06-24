@@ -11,7 +11,7 @@ Data in isolation is rarely all that useful. One of the best ways to add context
 
 1. [**Use the notebook editor to ask a question that involves multiple dimensions**](#using-the-notebook-editor-to-create-a-multi-series-visualization) (or in SQL, if you’re fancy). Example: the count of users by region over time.
 
-2. [**Combining two existing saved questions**](#combining-two-saved-questions)that share a common dimension (like time) on a dashboard. For example, let me see revenue over time and cost over time together.
+2. [**Combine two saved questions**](#combining-two-saved-questions) that share a common dimension (like time) on a dashboard. For example, let me see revenue over time and cost over time together.
 
 ### Using the notebook editor to create a multi-series visualization
 
@@ -53,9 +53,9 @@ Once you have your chart looking how you’d like, hit done. Metabase will show 
 
 ### Combining Number charts
 
-If you need to compare single numbers to get a sense of how they differ, Metabase can turn multiple Number charts into a bar chart. 
+If you need to compare single numbers to get a sense of how they differ, Metabase can turn multiple number charts into a bar chart. 
 
-As above, while editing a dashboard, hover over a Number chart of your choice, and click on the icon with the **+** and bar chart icon to add a question. 
+As above, while editing a dashboard, hover over a number chart of your choice, and click on the icon with the **+** and bar chart icon to add a saved question. 
 
 ![Add bar chart](images/multi-series-charts/add_bar_chart.png)
 
@@ -63,16 +63,23 @@ Use the search bar to find other saved question(s) that you’d like to see repr
 
 ![From numbers to bar chart](images/multi-series-charts/numbers_to_bar_chart.png)
 
-### Tips for displaying multiple series
+### Multi-series charts, values, and legibility
 
-- When displaying multiple series, it’s important to keep legibility in mind. Combining many series can sometimes decrease the communication value of the data.
+When displaying multiple series, it’s important to keep legibility in mind. Combining many series can sometimes decrease the communication value of the data.
 
-### To recap:
+Metabase allows you to add values to multi-series charts, but go easy on this feature, especially on charts with lots of data points. Adding values to multiple series, each with many data points, can make charts more difficult to read.
 
-- Existing saved questions can be combined and displayed on dashboards when editing the dashboard.
-- You can produce a multi-series visualization in the notebook editor by adding two dimensions to your query.
+From the **Visualization -> Display** options, you can toggle a slider to **Show values on data points**. Metabase will do its best to fit as many values as can fit nicely. You can also force Metabase to (begrudgingly) show values for all data points, by setting the **Values to show** to **All**. 
 
-Go forth and start letting your data get to know each other.
+![add values to multi-series chart](images/multi-series-charts/add_values.gif)
+
+There is also an option to configure the formatting of the values: 
+
+- **Auto**. Metabase selects the appropriate style for you
+- **Compact**. Metabase abbreviates values, e.g., 1,000 becomes 1K.
+- **Full**. Values are displayed in their natural beauty.
+
+Now go forth and start letting your data get to know each other.
 
 ---
 
