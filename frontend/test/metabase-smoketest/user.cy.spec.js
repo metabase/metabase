@@ -271,7 +271,7 @@ describe("smoketest > user", () => {
     cy.findByText("Products").click();
 
     // Distinctions
-    // **** This test needs to be improved with variables that will change if the Sample data changes
+    // *** This test needs to be improved with variables that will change if the Sample data changes
 
     cy.findByText("Visualize").click();
 

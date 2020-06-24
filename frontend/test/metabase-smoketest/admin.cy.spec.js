@@ -140,7 +140,7 @@ describe("metabase-smoketest > admin", () => {
         "Bar graph illustrating where our customers come from",
       );
 
-      // *** When I select 'My personal collection' I get the error "Referential integrity constraint violation:"
+      // *** Cannot select 'My personal collection' (Issue #12718)
       // cy.findByText("Our analytics").click();
       // cy.findByText("My personal collection").click();
       // cy.contains("My personal collection");
@@ -367,7 +367,7 @@ describe("metabase-smoketest > admin", () => {
         cy.findAllByText("Our analytics")
           .last()
           .click();
-        // *** Saving into personal collection should work
+        // *** Won't save into personal collection (Issue #12718)
         // cy.findByText("My personal collection").click();
         cy.findAllByText("Save")
           .last()
@@ -387,7 +387,7 @@ describe("metabase-smoketest > admin", () => {
         cy.findAllByText("Our analytics")
           .last()
           .click();
-        // *** Also cannot select "My personal collection" here
+        // *** Won't save into personal collection (Issue #12718)
         cy.findByText("Create").click();
 
         cy.findByText("This dashboard is looking empty.");

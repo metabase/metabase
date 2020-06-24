@@ -61,8 +61,6 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should setup email", () => {
-      // *** Maybe switch to using something like maildev
-
       cy.findByText("Settings").click();
       cy.findByText("Email").click();
 
@@ -78,7 +76,7 @@ describe("smoketest > admin_setup", () => {
         "test@local.host",
       );
 
-      // *** Should not have to click here first
+      // *** Unnecessary click (Issue #12692)
       cy.findByPlaceholderText("smtp.yourservice.com").click();
 
       cy.findByText("Save changes").click();
@@ -162,7 +160,7 @@ describe("smoketest > admin_setup", () => {
 
       // Check member count
 
-      // *** Going to People and then to Groups should be unnecessary
+      // *** Unnecessary click (Issue #12693)
       cy.findAllByText("People")
         .last()
         .click();
@@ -212,7 +210,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText(new_user.first_name + " " + new_user.last_name);
       cy.findAllByText("2 other groups").should("have.length", 3);
 
-      // *** These 6 lines of code should be unnecessary.
+      // *** Unnecessary click (Issue #12693)
       cy.findAllByText("Groups")
         .first()
         .click();
