@@ -29,7 +29,7 @@ export default class ForgotPasswordApp extends Component {
 
     return (
       <div className="full-height flex flex-column flex-full md-layout-centered">
-        <div className="Login-wrapper wrapper Grid Grid--full md-Grid--1of2">
+        <div className="Login-wrapper wrapper Grid Grid--full md-Grid--1of2 relative z2">
           <div className="Grid-cell flex layout-centered text-brand">
             <LogoIcon className="Logo my4 sm-my0" height={65} />
           </div>
