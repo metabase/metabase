@@ -209,8 +209,6 @@ There's quite a bit you can do in this tab, but the options available will depen
 - **Add a trend line**. If you're looking at a time series chart, you can turn on a trend line to show where things are heading.
 - **Show values on data points**. The default setting will try and fit as many values on your chart as will fit nicely, but you can also force Metabase to show the values for each and every data point, which it will do begrudgingly. Showing values also works with multi-series charts, but be aware that the more data points you add, the more crowded with values the charts will become.
 
-![adding values to multi-series chart](images/visualizations/add_values.gif)
-
 **Axes**
 
 There are three main ways to configure axes:
