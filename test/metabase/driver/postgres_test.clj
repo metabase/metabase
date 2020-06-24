@@ -534,6 +534,9 @@
                                     :details (assoc details :dbname db-name)}]
           (doseq [statement ["drop table if exists \"birds\";"
                              "create table \"birds\" ();"
+                             "drop user if exists rasta;"
+                             "create user if not exists rasta;"
+                             "alter table birds owner to rasta;"
                              (format "grant all on \"birds\" to %s;" (:user details))]]
             (jdbc/execute! spec [statement]))
           (is (#'sql-jdbc.sync/have-select-privilege? :postgres db {:table_name  "birds"
