@@ -349,7 +349,6 @@ export default class NativeQuery extends AtomicQuery {
       .filter(tag => tag.type === "snippet")
       .groupBy(tag => tag["snippet-id"])
       .value();
-    console.log({ tagsBySnippetId });
 
     if (Object.keys(tagsBySnippetId).length === 0) {
       // no need to check if there are no tags
@@ -359,7 +358,6 @@ export default class NativeQuery extends AtomicQuery {
     let queryText = this.queryText();
     for (const snippet of snippets) {
       for (const tag of tagsBySnippetId[snippet.id] || []) {
-        console.log({ tag, snippet });
         if (tag["snippet-name"] !== snippet.name) {
           queryText = queryText.replace(
             new RegExp(`\{\{\\s*${tag.name}\\s*\}\}`, "g"),
