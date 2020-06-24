@@ -4,6 +4,7 @@
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
   (:require [clojure
+             data
              [test :refer :all]
              [walk :as walk]]
             [java-time :as t]
@@ -34,6 +35,7 @@
              [log :as tu.log]
              [timezone :as tu.tz]]
             [potemkin :as p]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
@@ -153,6 +155,7 @@
   doall-recursive
   is-uuid-string?
   metabase-logger
+  obj->json->obj
   postwalk-pred
   random-email
   random-name
@@ -277,3 +280,26 @@
        (into {} form)
        form))
    form))
+
+(def ^{:arglists '([toucan-model])} object-defaults
+  "Return the default values for columns in an instance of a `toucan-model`, excluding ones that differ between
+  instances such as `:id`, `:name`, or `:created_at`. Useful for writing tests and comparing objects from the
+  application DB. Example usage:
+
+    (deftest update-user-first-name-test
+      (mt/with-temp User [user]
+        (update-user-first-name! user \"Cam\")
+        (is (= (merge (mt/object-defaults User)
+                      (select-keys user [:id :last_name :created_at :updated_at])
+                      {:name \"Cam\"})
+               (mt/decrecordize (db/select-one User :id (:id user)))))))"
+  (comp
+   (memoize
+    (fn [toucan-model]
+      (with-temp* [toucan-model [x]
+                   toucan-model [y]]
+        (let [[_ _ things-in-both] (clojure.data/diff x y)]
+          things-in-both))))
+   (fn [toucan-model]
+     (initialize/initialize-if-needed! :db)
+     (db/resolve-model toucan-model))))

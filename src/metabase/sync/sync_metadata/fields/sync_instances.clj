@@ -43,15 +43,17 @@
   [table :- i/TableInstance, new-field-metadatas :- [i/TableMetadataField], parent-id :- common/ParentID]
   (when (seq new-field-metadatas)
     (db/insert-many! Field
-      (for [{:keys [database-type base-type field-comment], field-name :name :as field} new-field-metadatas]
-        {:table_id      (u/get-id table)
-         :name          field-name
-         :display_name  (humanization/name->human-readable-name field-name)
-         :database_type (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
-         :base_type     base-type
-         :special_type  (common/special-type field)
-         :parent_id     parent-id
-         :description   field-comment}))))
+      (for [{:keys [database-type base-type field-comment database-position], field-name :name :as field} new-field-metadatas]
+        {:table_id          (u/get-id table)
+         :name              field-name
+         :display_name      (humanization/name->human-readable-name field-name)
+         :database_type     (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
+         :base_type         base-type
+         :special_type      (common/special-type field)
+         :parent_id         parent-id
+         :description       field-comment
+         :position          database-position
+         :database_position database-position}))))
 
 (s/defn ^:private create-or-reactivate-fields! :- (s/maybe [i/FieldInstance])
   "Create (or reactivate) Metabase Field object(s) for any Fields in `new-field-metadatas`. Does *NOT* recursively

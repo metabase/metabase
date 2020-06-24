@@ -154,7 +154,10 @@ export default class ViewFilterPopover extends Component {
     const dimension = filter && filter.dimension();
     if (choosingField || !dimension) {
       return (
-        <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>
+        <div
+          className={className}
+          style={{ minWidth: MIN_WIDTH, overflowY: "auto", ...style }}
+        >
           {fieldPickerTitle && (
             <SidebarHeader className="mx1 my2" title={fieldPickerTitle} />
           )}
@@ -177,7 +180,7 @@ export default class ViewFilterPopover extends Component {
               // special case for segments
               this.handleCommitFilter(item.filter, item.query);
             }}
-            width={isSidebar ? null : MIN_WIDTH}
+            width={isSidebar ? null : "100%"}
             alwaysExpanded={isTopLevel || isSidebar}
           />
           {showCustom && (

@@ -875,12 +875,14 @@ const TablePicker = ({
       },
     ];
     return (
-      <div>
+      <div style={{ width: 300, overflowY: "auto" }}>
         <AccordionList
           id="TablePicker"
           key="tablePicker"
           className="text-brand"
           sections={sections}
+          maxHeight={Infinity}
+          width={"100%"}
           searchable
           onChange={item => onChangeTable(item.table)}
           itemIsSelected={item =>
@@ -899,9 +901,10 @@ const TablePicker = ({
             {t`Is a question missing?`}
             <a
               href={MetabaseSettings.docsUrl(
-                "users-guide/04-asking-questions",
-                "source-data",
+                "users-guide/custom-questions",
+                "picking-your-starting-data",
               )}
+              target="_blank"
               className="block link"
             >{t`Learn more about nested queries`}</a>
           </div>
@@ -966,12 +969,14 @@ class FieldPicker extends Component {
     ];
 
     return (
-      <div style={{ width: 300 }}>
+      <div style={{ width: 300, overflowY: "auto" }}>
         <AccordionList
           id="FieldPicker"
           key="fieldPicker"
           className="text-brand"
           sections={sections}
+          maxHeight={Infinity}
+          width={"100%"}
           searchable
           onChange={item => onChangeField(item.field)}
           itemIsSelected={item =>

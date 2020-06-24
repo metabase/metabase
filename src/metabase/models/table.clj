@@ -1,6 +1,8 @@
 (ns metabase.models.table
-  (:require [metabase
+  (:require [honeysql.core :as hsql]
+            [metabase
              [db :as mdb]
+             [driver :as driver]
              [util :as u]]
             [metabase.models
              [database :refer [Database]]
@@ -22,6 +24,14 @@
    (Basically any non-nil value is a reason for hiding the table.)"
   #{:hidden :technical :cruft})
 
+(def ^:const field-orderings
+  "Valid values for `Table.field_order`.
+  `:database`     - use the same order as in the table definition in the DB;
+  `:alphabetical` - order alphabetically by name;
+  `:custom`       - the user manually set the order in the data model
+  `:smart`        - Try to be smart and order like you'd usually want it: first PK, followed by `:type/Name`s, then `:type/Temporal`s, and from there on in alphabetical order."
+  #{:database :alphabetical :custom :smart})
+
 
 (models/defmodel Table :metabase_table)
 
@@ -29,7 +39,8 @@
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- pre-insert [table]
-  (let [defaults {:display_name (humanization/name->human-readable-name (:name table))}]
+  (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
+                  :field_order  (driver/default-field-order (-> table :db_id Database :engine))}]
     (merge defaults table)))
 
 (defn- pre-delete [{:keys [db_id schema id]}]
@@ -51,7 +62,8 @@
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:table])
           :types          (constantly {:entity_type     :keyword
-                                       :visibility_type :keyword})
+                                       :visibility_type :keyword
+                                       :field_order     :keyword})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-delete     pre-delete})
@@ -62,16 +74,61 @@
           :perms-objects-set perms-objects-set}))
 
 
+;;; ------------------------------------------------ Field ordering -------------------------------------------------
+
+(defn field-order-rule
+  "How should we order fields."
+  [_]
+  [[:position :asc] [:%lower.name :asc]])
+
+(defn update-field-positions!
+  "Update `:position` of field belonging to table `table` accordingly to `:field_order`"
+  [table]
+  (doall
+   (map-indexed (fn [new-position field]
+                  (db/update! Field (u/get-id field) :position new-position))
+                ;; Can't use `select-field` as that returns a set while we need an ordered list
+                (db/select [Field :id]
+                  :table_id  (u/get-id table)
+                  {:order-by (case (:field_order table)
+                               :custom       [[:custom_position :asc]]
+                               :smart        [[(hsql/call :case
+                                                 (mdb/isa :special_type :type/PK)       0
+                                                 (mdb/isa :special_type :type/Name)     1
+                                                 (mdb/isa :special_type :type/Temporal) 2
+                                                 :else                                  3)
+                                               :asc]
+                                              [:%lower.name :asc]]
+                               :database     [[:database_position :asc]]
+                               :alphabetical [[:%lower.name :asc]])}))))
+
+(defn- valid-field-order?
+  "Field ordering is valid if all the fields from a given table are present and only from that table."
+  [table field-ordering]
+  (= (db/select-ids Field :table_id (u/get-id table)) (set field-ordering)))
+
+(defn custom-order-fields!
+  "Set field order to `field-order`."
+  [table field-order]
+  {:pre [(valid-field-order? table field-order)]}
+  (db/update! Table (u/get-id table) :field_order :custom)
+  (doall
+   (map-indexed (fn [position field-id]
+                  (db/update! Field field-id {:position        position
+                                              :custom_position position}))
+                field-order)))
+
+
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(defn fields
+(defn ^:hydrate fields
   "Return the Fields belonging to a single `table`."
-  [{:keys [id]}]
+  [{:keys [id] :as table}]
   (db/select Field
     :table_id        id
     :active          true
     :visibility_type [:not= "retired"]
-    {:order-by [[:position :asc] [:name :asc]]}))
+    {:order-by (field-order-rule table)}))
 
 (defn metrics
   "Retrieve the Metrics for a single `table`."
@@ -86,11 +143,11 @@
 (defn field-values
   "Return the FieldValues for all Fields belonging to a single `table`."
   {:hydrate :field_values, :arglists '([table])}
-  [{:keys [id]}]
+  [{:keys [id] :as table}]
   (let [field-ids (db/select-ids Field
                     :table_id        id
                     :visibility_type "normal"
-                    {:order-by [[:position :asc] [:name :asc]]})]
+                    {:order-by (field-order-rule table)})]
     (when (seq field-ids)
       (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids]))))
 
@@ -131,7 +188,6 @@
 
 (defn with-fields
   "Efficiently hydrate the Fields for a collection of `tables`."
-  {:batched-hydrate :fields}
   [tables]
   (with-objects :fields
     (fn [table-ids]
@@ -139,7 +195,7 @@
         :active          true
         :table_id        [:in table-ids]
         :visibility_type [:not= "retired"]
-        {:order-by [[:position :asc] [:name :asc]]}))
+        {:order-by       (field-order-rule tables)}))
     tables))
 
 

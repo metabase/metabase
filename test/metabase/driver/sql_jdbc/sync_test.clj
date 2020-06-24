@@ -1,11 +1,12 @@
 (ns metabase.driver.sql-jdbc.sync-test
   (:require [clojure.java.jdbc :as jdbc]
-            [metabase.driver :as driver]
+            [clojure.test :refer :all]
+            [metabase
+             [driver :as driver]
+             [test :as mt]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
-             [sync :as sql-jdbc.sync]]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets])
+             [sync :as sql-jdbc.sync]])
   (:import java.sql.ResultSet))
 
 (defn- sql-jdbc-drivers-with-default-describe-database-impl
@@ -34,11 +35,12 @@
       ;; they would normally get closed
       (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec db)]
         (sql-jdbc.sync/describe-database driver conn)
-        (reduce + (for [rs @resultsets]
+        (reduce + (for [^ResultSet rs @resultsets]
                     (if (.isClosed rs) 0 1)))))))
 
-;; make sure that running the sync process doesn't leak cursors because it's not closing the ResultSets
-;; See issues #4389, #6028, and #6467 (Oracle) and #7609 (Redshift)
-(datasets/expect-with-drivers (sql-jdbc-drivers-with-default-describe-database-impl)
-  0
-  (describe-database-with-open-resultset-count driver/*driver* (data/db)))
+(deftest dont-leak-resultsets-test
+  (mt/test-drivers (sql-jdbc-drivers-with-default-describe-database-impl)
+    (testing (str "make sure that running the sync process doesn't leak cursors because it's not closing the ResultSets. "
+                  "See issues #4389, #6028, and #6467 (Oracle) and #7609 (Redshift)")
+      (is (= 0
+             (describe-database-with-open-resultset-count driver/*driver* (mt/db)))))))

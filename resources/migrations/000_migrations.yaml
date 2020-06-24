@@ -13,6 +13,14 @@ databaseChangeLog:
       name: quote_strategy
       value: LEGACY
       dbms: postgresql,h2
+  - property:
+      name: timestamp_type
+      value: timestamp with time zone
+      dbms: postgresql,h2
+  - property:
+      name: timestamp_type
+      value: timestamp(6)
+      dbms: mysql,mariadb
   - changeSet:
       id: '1'
       author: agilliland
@@ -6224,20 +6232,47 @@ databaseChangeLog:
               remarks: 'Preferred ISO locale (language/country) code, e.g "en" or "en-US", for this User. Overrides site default.'
               type: varchar(5)
 
+# Add Field `database_position` to keep the order in which fields are ordered in the DB, `custom_position` for custom
+# position; and Table `field_order` setting.
+
+  - changeSet:
+      id: 165
+      author: sb
+      comment: 'Added field_order to Table and database_position to Field'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_position
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: custom_position
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: field_order
+                  type: varchar(254)
+                  defaultValue: database
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: update metabase_field set database_position = id
+
 # Change field_values.updated_at and query_cache.updated_at from datetime to timestamp [with time zone] to get >
 # second resolution on MySQL.
 #
 # query_cache.updated_at was originally converted to a timestamp in 161, but we used `timestamp` instead of
 # `timestamp(6)`. It is converted correctly here.
 
-  - property:
-      name: timestamp_type
-      value: timestamp with time zone
-      dbms: postgresql,h2
-  - property:
-      name: timestamp_type
-      value: timestamp(6)
-      dbms: mysql,mariadb
   - changeSet:
       id: 166
       author: camsaul
@@ -6327,3 +6362,16 @@ databaseChangeLog:
             tableName: native_query_snippet
             constraintName: idx_unique_name_database_id
             columnNames: name, database_id
+
+# Convert query execution from DATETIME to TIMESTAMP(6) so have normalize TZ
+# offset and so MySQL/MariaDB has better than second precision
+
+  - changeSet:
+      id: 168
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - modifyDataType:
+            tableName: query_execution
+            columnName: started_at
+            newDataType: ${timestamp_type}

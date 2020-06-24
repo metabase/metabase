@@ -64,7 +64,7 @@
   metadata coming back from the DB/drivers is the same as last timw."
   [db-metadata :- #{i/TableMetadataField}]
   (->> db-metadata
-       (map (juxt :name :database-type :base-type :special-type :pk? :nested-fields :custom :field-comment))
+       (map (juxt :name :database-type :base-type :special-type :pk? :nested-fields :custom :field-comment :database-position))
        ;; We need a predictable sort order as the hash will be different if the order is different
        (sort-by first)
        sync-util/calculate-hash))

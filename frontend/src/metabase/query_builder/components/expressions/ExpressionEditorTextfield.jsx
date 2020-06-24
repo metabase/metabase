@@ -347,10 +347,7 @@ export default class ExpressionEditorTextfield extends React.Component {
               <a
                 className="link text-bold block my1"
                 target="_blank"
-                href={MetabaseSettings.docsUrl(
-                  "users-guide/04-asking-questions",
-                  "creating-a-custom-field",
-                )}
+                href={MetabaseSettings.docsUrl("users-guide/expressions")}
               >
                 <Icon name="reference" size={12} className="mr1" />
                 {t`Learn more`}
