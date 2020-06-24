@@ -188,14 +188,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByLabelText("First name").type(new_user.first_name);
       cy.findByLabelText("Last name").type(new_user.last_name);
       cy.findByLabelText("Email").type(new_user.username);
-      cy.get(".ModalBody")
-        .find(".Icon-chevrondown")
-        .first()
-        .click();
-      cy.findByText("English").click();
-      cy.findByText("Turkish").should("not.exist");
-      cy.wait(1000)
-        .findAllByText("Default")
+      cy.findAllByText("Default")
         .last()
         .click();
       cy.findAllByText("collection")
