@@ -1,5 +1,4 @@
-import { restore, signInAsNormalUser } from "__support__/cypress";
-import { sidebar } from "../__support__/cypress";
+import { restore, signInAsNormalUser, sidebar } from "__support__/cypress";
 
 describe("smoketest > user", () => {
   // Goal: user can use all the features of the simple question and notebook editor
