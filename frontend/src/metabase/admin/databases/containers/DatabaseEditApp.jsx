@@ -140,7 +140,7 @@ export default class DatabaseEditApp extends Component {
     const showTabs = editingExistingDatabase && letUserControlSchedulingSaved;
 
     return (
-      <div className="wrapper">
+      <Box px={[3, 4, 5]} mt={[1, 2, 3]}>
         <Breadcrumbs
           className="py4"
           crumbs={[
@@ -149,7 +149,7 @@ export default class DatabaseEditApp extends Component {
           ]}
         />
         <Flex pb={2}>
-          <Box style={{ maxWidth: 720 }}>
+          <Box w={620}>
             <div className="pt0">
               {showTabs && (
                 <div className="border-bottom mb2">
@@ -271,7 +271,7 @@ export default class DatabaseEditApp extends Component {
             </Box>
           )}
         </Flex>
-      </div>
+      </Box>
     );
   }
 }

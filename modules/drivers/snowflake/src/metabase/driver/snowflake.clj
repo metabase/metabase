@@ -219,13 +219,20 @@
 
 (defmethod driver/describe-database :snowflake
   [driver database]
-  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-    {:tables (set (for [table (sql-jdbc.sync/fast-active-tables driver database metadata (db-name database))]
-                    (let [remarks (:remarks table)]
-                      {:name        (:table_name table)
-                       :schema      (:table_schem table)
-                       :description (when-not (str/blank? remarks)
-                                      remarks)})))}))
+  ;; using the JDBC `.getTables` method seems to be pretty buggy -- it works sometimes but other times randomly
+  ;; returns nothing
+  (let [db-name          (db-name database)
+        excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
+    {:tables (set (for [table (jdbc/query
+                               (sql-jdbc.conn/db->pooled-connection-spec database)
+                               (format "SHOW TABLES IN DATABASE \"%s\"" db-name))
+                        :when (and (not (contains? excluded-schemas (:schema_name table)))
+                                   (sql-jdbc.sync/have-select-privilege? driver database
+                                                                         {:table_name  (:name table)
+                                                                          :table_schem (:schema_name table)}))]
+                    {:name        (:name table)
+                     :schema      (:schema_name table)
+                     :description (not-empty (:comment table))}))}))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
@@ -296,19 +303,21 @@
 
 ;; Like Vertica, Snowflake doesn't seem to be able to return a LocalTime/OffsetTime like everyone else, but it can
 ;; return a String that we can parse
-(defmethod sql-jdbc.execute/read-column [:snowflake Types/TIME]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [t (u.date/parse s)]
-      (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/TIME]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i (pr-str s) (pr-str t))
+        t))))
 
-(defmethod sql-jdbc.execute/read-column [:snowflake Types/TIME_WITH_TIMEZONE]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [t (u.date/parse s)]
-      (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/TIME_WITH_TIMEZONE]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i (pr-str s) (pr-str t))
+        t))))
 
 ;; TODO ­ would it make more sense to use functions like `timestamp_tz_from_parts` directly instead of JDBC parameters?
 

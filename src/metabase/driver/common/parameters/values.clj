@@ -13,7 +13,8 @@
             [metabase.driver.common.parameters :as i]
             [metabase.models
              [card :refer [Card]]
-             [field :refer [Field]]]
+             [field :refer [Field]]
+             [native-query-snippet :refer [NativeQuerySnippet]]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util
@@ -30,6 +31,7 @@
   (s/enum :number
           :dimension                    ; Field Filter
           :card
+          :snippet
           :text
           :date))
 
@@ -44,15 +46,17 @@
 (def ^:private TagParam
   "Schema for a tag parameter declaration, passed in as part of the `:template-tags` list."
   (s/named
-   {(s/optional-key :id)          su/NonBlankString ; this is used internally by the frontend
-    :name                         su/NonBlankString
-    :display-name                 su/NonBlankString
-    :type                         ParamType
-    (s/optional-key :dimension)   [s/Any]
-    (s/optional-key :card-id)     su/IntGreaterThanZero
-    (s/optional-key :widget-type) s/Keyword         ; type of the [default] value if `:type` itself is `dimension`
-    (s/optional-key :required)    s/Bool
-    (s/optional-key :default)     s/Any}
+   {(s/optional-key :id)           su/NonBlankString ; this is used internally by the frontend
+    :name                          su/NonBlankString
+    :display-name                  su/NonBlankString
+    :type                          ParamType
+    (s/optional-key :dimension)    [s/Any]
+    (s/optional-key :card-id)      su/IntGreaterThanZero
+    (s/optional-key :snippet-name) su/NonBlankString
+    (s/optional-key :database)     su/IntGreaterThanZero ; used by tags of `:type :snippet`
+    (s/optional-key :widget-type)  s/Keyword ; type of the [default] value if `:type` itself is `dimension`
+    (s/optional-key :required)     s/Bool
+    (s/optional-key :default)      s/Any}
    "valid template-tags tag"))
 
 (def ^:private ParsedParamValue
@@ -78,8 +82,8 @@
 ;;; FieldFilter Params (Field Filters) (e.g. WHERE {{x}})
 
 (defn- missing-required-param-exception [param-display-name]
-  (ex-info (str (deferred-tru "You''ll need to pick a value for ''{0}'' before this query can run."
-                              param-display-name))
+  (ex-info (tru "You''ll need to pick a value for ''{0}'' before this query can run."
+                param-display-name)
            {:type qp.error-type/missing-required-parameter}))
 
 (s/defn ^:private default-value-for-field-filter
@@ -125,23 +129,46 @@
                i/no-value)})))
 
 (s/defn ^:private card-query-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
-  "Returns the native query for the `:card-id` referenced by the given tag."
-  [tag :- TagParam, _params :- (s/maybe [i/ParamValue])]
+  "Returns the native query for the Card referenced by `(:card-id tag)`."
+  [tag :- TagParam, params :- (s/maybe [i/ParamValue])]
   (when-let [card-id (:card-id tag)]
     (when-let [query (db/select-one-field :dataset_query Card :id card-id)]
       (try
-       (i/map->ReferencedCardQuery
-        {:card-id card-id
-         :query   (:query (qp/query->native query))})
-       (catch ExceptionInfo e
-         (throw (ex-info
-                 (str (deferred-tru
-                        "The sub-query from referenced question #{0} failed with the following error: {1}"
-                        (str card-id) (.getMessage e)))
-                 (merge (ex-data e)
-                        {:card-query-error? true
-                         :card-id           card-id
-                         :tag               tag}))))))))
+        (i/map->ReferencedCardQuery
+         {:card-id card-id
+          :query   (:query (qp/query->native (assoc query :parameters params, :info {:card-id card-id})))})
+        (catch ExceptionInfo e
+          (throw (ex-info
+                  (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
+                       (str card-id) (.getMessage e))
+                  {:card-query-error? true
+                   :card-id           card-id
+                   :tag               tag}
+                  e)))))))
+
+(defn- validate-tag-snippet-db
+  [{database-id :database, :as tag} snippet]
+  (when (and snippet
+             (not= database-id (:database_id snippet)))
+    (throw (ex-info
+            (tru "Snippet \"{0}\" is associated with a different database and may not be used here."
+                 (:name snippet))
+            {:snippet-db-id (:database_id snippet)
+             :tag-db-id     database-id
+             :snippet       snippet
+             :tag           tag})))
+  snippet)
+
+(s/defn ^:private snippet-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
+  "Returns the query snippet for the NativeQuerySnippet referenced by `(:snippet-name tag)`"
+  [tag :- TagParam]
+  (when-let [snippet-name (:snippet-name tag)]
+    (if-let [snippet (validate-tag-snippet-db tag (db/select-one NativeQuerySnippet :name snippet-name))]
+      (i/map->NativeQuerySnippet
+       {:snippet-id (:id snippet)
+        :content    (:content snippet)})
+      (throw (ex-info (tru "Snippet \"{0}\" not found." snippet-name)
+                      {:snippet-name snippet-name, :tag tag})))))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
@@ -267,6 +294,7 @@
     (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
                                           (field-filter-value-for-tag tag params)
                                           (card-query-for-tag tag params)
+                                          (snippet-for-tag tag)
                                           (default-value-for-tag tag)
                                           i/no-value))
     (catch Throwable e

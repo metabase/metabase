@@ -1,4 +1,8 @@
-import { getIsResultDirty } from "metabase/query_builder/selectors";
+import {
+  getIsResultDirty,
+  getNativeEditorCursorOffset,
+  getNativeEditorSelectedText,
+} from "metabase/query_builder/selectors";
 import { state as sampleState } from "__support__/sample_dataset_fixture";
 
 describe("getIsResultDirty", () => {
@@ -90,6 +94,50 @@ describe("getIsResultDirty", () => {
         { "template-tags": { bar: {} } },
       );
       expect(getIsResultDirty(state)).toBe(true);
+    });
+
+    describe("native editor selection/cursor", () => {
+      function getState(start, end) {
+        return {
+          qb: {
+            card: {
+              dataset_query: {
+                database: 1,
+                type: "query",
+                native: { query: "1\n22\n333" },
+              },
+            },
+            uiControls: {
+              nativeEditorSelectedRange: { start, end },
+            },
+          },
+        };
+      }
+      [
+        [{ row: 0, column: 0 }, 0],
+        [{ row: 1, column: 1 }, 3],
+        [{ row: 2, column: 3 }, 8],
+      ].forEach(([position, offset]) =>
+        it(`should correctly determine the cursor offset for ${JSON.stringify(
+          position,
+        )}`, () => {
+          const state = getState(position, position);
+          expect(getNativeEditorCursorOffset(state)).toBe(offset);
+        }),
+      );
+
+      [
+        [{ row: 0, column: 0 }, { row: 0, column: 0 }, ""],
+        [{ row: 0, column: 0 }, { row: 2, column: 3 }, "1\n22\n333"],
+        [{ row: 1, column: 0 }, { row: 1, column: 2 }, "22"],
+      ].forEach(([start, end, text]) =>
+        it(`should correctly get selected text from ${JSON.stringify(
+          start,
+        )} to ${JSON.stringify(end)}`, () => {
+          const state = getState(start, end);
+          expect(getNativeEditorSelectedText(state)).toBe(text);
+        }),
+      );
     });
   });
 });

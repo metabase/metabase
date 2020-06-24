@@ -1,17 +1,15 @@
 (ns metabase.driver.sql-jdbc.sync-test
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer [deftest is testing]]
+            [clojure.test :refer :all]
             [metabase
              [driver :as driver]
-             [sync :as sync]]
+             [sync :as sync]
+             [test :as mt]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]]
             [metabase.models.table :refer [Table]]
-            [metabase.test.data :as data]
-            [metabase.test.data
-             [datasets :as datasets]
-             [one-off-dbs :as one-off-dbs]]
+            [metabase.test.data.one-off-dbs :as one-off-dbs]
             [toucan.db :as db])
   (:import java.sql.ResultSet))
 
@@ -41,14 +39,8 @@
       ;; they would normally get closed
       (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec db)]
         (sql-jdbc.sync/describe-database driver conn)
-        (reduce + (for [rs @resultsets]
+        (reduce + (for [^ResultSet rs @resultsets]
                     (if (.isClosed rs) 0 1)))))))
-
-;; make sure that running the sync process doesn't leak cursors because it's not closing the ResultSets
-;; See issues #4389, #6028, and #6467 (Oracle) and #7609 (Redshift)
-(datasets/expect-with-drivers (sql-jdbc-drivers-with-default-describe-database-impl)
-  0
-  (describe-database-with-open-resultset-count driver/*driver* (data/db)))
 
 (defn- count-active-tables-in-db
   [db-id]
@@ -62,10 +54,17 @@
                        "drop table if exists \"birds\";"
                        "create table \"birds\" ();"]]
       (jdbc/execute! one-off-dbs/*conn* [statement]))
-    (sync/sync-database! (data/db))
-    (is (= 1 (count-active-tables-in-db (data/id))))
+    (sync/sync-database! (mt/db))
+    (is (= 1 (count-active-tables-in-db (mt/id))))
     ;; We have to mock this as H2 doesn't have the notion of a user connecting to it
     (with-redefs [sql-jdbc.sync/have-select-privilege? (constantly false)]
-      (sync/sync-database! (data/db))
-      (is (= 0 (count-active-tables-in-db (data/id)))
+      (sync/sync-database! (mt/db))
+      (is (= 0 (count-active-tables-in-db (mt/id)))
           "We shouldn't sync tables for which we don't have select privilege"))))
+
+(deftest dont-leak-resultsets-test
+  (mt/test-drivers (sql-jdbc-drivers-with-default-describe-database-impl)
+    (testing (str "make sure that running the sync process doesn't leak cursors because it's not closing the ResultSets. "
+                  "See issues #4389, #6028, and #6467 (Oracle) and #7609 (Redshift)")
+      (is (= 0
+             (describe-database-with-open-resultset-count driver/*driver* (mt/db)))))))

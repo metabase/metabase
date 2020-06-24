@@ -1,4 +1,10 @@
-import { signInAsAdmin, signOut, restore, popover } from "__support__/cypress";
+import {
+  signInAsAdmin,
+  signOut,
+  restore,
+  popover,
+  withSampleDataset,
+} from "__support__/cypress";
 
 const METABASE_SECRET_KEY =
   "24134bd93e081773fb178e8e1abb4e8a973822f7e19c872bd92c8d5a122ef63f";
@@ -9,9 +15,6 @@ const QUESTION_JWT_TOKEN =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJxdWVzdGlvbiI6M30sInBhcmFtcyI6e30sImlhdCI6MTU3OTU1OTg3NH0.alV205oYgfyWuwLNQSLVgfHop1tpevX4C26Xal-bia8";
 const DASHBOARD_JWT_TOKEN =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjJ9LCJwYXJhbXMiOnt9LCJpYXQiOjE1Nzk1NjAxMTF9.LjOiTp4p2lV3b2VpSjcg0GuSaE2O0xhHwc59JDYcBJI";
-const ORDER_USER_ID_FIELD_ID = 9;
-const PEOPLE_NAME_FIELD_ID = 20;
-const PEOPLE_ID_FIELD_ID = 21;
 
 // NOTE: some overlap with parameters.cy.spec.js
 
@@ -22,26 +25,30 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     restore();
     signInAsAdmin();
 
-    createQuestion().then(res => {
-      questionId = res.body.id;
-      createDashboard().then(res => {
-        dashboardId = res.body.id;
-        addCardToDashboard({ dashboardId, questionId }).then(res => {
-          dashcardId = res.body.id;
-          mapParameters({ dashboardId, questionId, dashcardId });
+    withSampleDataset(SAMPLE_DATASET => {
+      cy.log(SAMPLE_DATASET);
+      const { ORDERS, PEOPLE } = SAMPLE_DATASET;
+      cy.request("POST", `/api/field/${ORDERS.USER_ID}/dimension`, {
+        type: "external",
+        name: "User ID",
+        human_readable_field_id: PEOPLE.NAME,
+      });
+
+      [ORDERS.USER_ID, PEOPLE.NAME, PEOPLE.ID].forEach(id =>
+        cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
+      );
+
+      createQuestion(SAMPLE_DATASET).then(res => {
+        questionId = res.body.id;
+        createDashboard().then(res => {
+          dashboardId = res.body.id;
+          addCardToDashboard({ dashboardId, questionId }).then(res => {
+            dashcardId = res.body.id;
+            mapParameters({ dashboardId, questionId, dashcardId });
+          });
         });
       });
     });
-    cy.request("POST", `/api/field/${ORDER_USER_ID_FIELD_ID}/dimension`, {
-      type: "external",
-      name: "User ID",
-      human_readable_field_id: PEOPLE_NAME_FIELD_ID,
-    });
-
-    [ORDER_USER_ID_FIELD_ID, PEOPLE_NAME_FIELD_ID, PEOPLE_ID_FIELD_ID].forEach(
-      id =>
-        cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
-    );
 
     cy.request("PUT", `/api/setting/embedding-secret-key`, {
       value: METABASE_SECRET_KEY,
@@ -197,7 +204,7 @@ function sharedParametersTests(visitUrl) {
   });
 }
 
-const createQuestion = () =>
+const createQuestion = ({ ORDERS, PEOPLE }) =>
   cy.request("PUT", "/api/card/3", {
     name: "Test Question",
     dataset_query: {
@@ -211,7 +218,7 @@ const createQuestion = () =>
             name: "id",
             display_name: "Id",
             type: "dimension",
-            dimension: ["field-id", 21],
+            dimension: ["field-id", PEOPLE.ID],
             "widget-type": "id",
             default: null,
           },
@@ -220,7 +227,7 @@ const createQuestion = () =>
             name: "name",
             display_name: "Name",
             type: "dimension",
-            dimension: ["field-id", 20],
+            dimension: ["field-id", PEOPLE.NAME],
             "widget-type": "category",
             default: null,
           },
@@ -229,7 +236,7 @@ const createQuestion = () =>
             name: "source",
             display_name: "Source",
             type: "dimension",
-            dimension: ["field-id", 24],
+            dimension: ["field-id", PEOPLE.SOURCE],
             "widget-type": "category",
             default: null,
           },
@@ -238,7 +245,7 @@ const createQuestion = () =>
             name: "user_id",
             display_name: "User",
             type: "dimension",
-            dimension: ["field-id", 9],
+            dimension: ["field-id", ORDERS.USER_ID],
             "widget-type": "id",
             default: null,
           },

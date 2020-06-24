@@ -20,6 +20,7 @@ export type Options = {
   raw?: { [key: string]: boolean },
   headers?: { [key: string]: string },
   hasBody?: boolean,
+  bodyParamName?: string,
 };
 
 const ONE_SECOND = 1000;
@@ -124,7 +125,9 @@ export class Api extends EventEmitter {
 
         let body;
         if (options.hasBody) {
-          body = JSON.stringify(data);
+          body = JSON.stringify(
+            options.bodyParamName != null ? data[options.bodyParamName] : data,
+          );
         } else {
           const qs = querystring.stringify(data);
           if (qs) {

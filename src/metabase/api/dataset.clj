@@ -16,7 +16,9 @@
             [metabase.query-processor
              [streaming :as qp.streaming]
              [util :as qputil]]
-            [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.middleware
+             [constraints :as qp.constraints]
+             [permissions :as qp.perms]]
             [metabase.util
              [i18n :refer [trs]]
              [schema :as su]]
@@ -104,12 +106,13 @@
   {:average (or
              (some (comp query/average-execution-time-ms qputil/query-hash)
                    [query
-                    (assoc query :constraints constraints/default-query-constraints)])
+                    (assoc query :constraints qp.constraints/default-query-constraints)])
              0)})
 
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
   [:as {query :body}]
+  (qp.perms/check-current-user-has-adhoc-native-query-perms query)
   (qp/query->native-with-spliced-params query))
 
 

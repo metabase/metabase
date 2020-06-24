@@ -20,25 +20,31 @@
 (deftest describe-table-test
   (is (= {:name   "VENUES"
           :schema "PUBLIC"
-          :fields #{{:name          "NAME",
-                     :database-type "VARCHAR"
-                     :base-type     :type/Text}
-                    {:name          "LATITUDE"
-                     :database-type "DOUBLE"
-                     :base-type     :type/Float}
-                    {:name          "LONGITUDE"
-                     :database-type "DOUBLE"
-                     :base-type     :type/Float}
-                    {:name          "PRICE"
-                     :database-type "INTEGER"
-                     :base-type     :type/Integer}
-                    {:name          "CATEGORY_ID"
-                     :database-type "INTEGER"
-                     :base-type     :type/Integer}
-                    {:name          "ID"
-                     :database-type "BIGINT"
-                     :base-type     :type/BigInteger
-                     :pk?           true}}}
+          :fields #{{:name              "ID"
+                     :database-type     "BIGINT"
+                     :base-type         :type/BigInteger
+                     :pk?               true
+                     :database-position 0}
+                    {:name              "NAME"
+                     :database-type     "VARCHAR"
+                     :base-type         :type/Text
+                     :database-position 1}
+                    {:name              "CATEGORY_ID"
+                     :database-type     "INTEGER"
+                     :base-type         :type/Integer
+                     :database-position 2}
+                    {:name              "LATITUDE"
+                     :database-type     "DOUBLE"
+                     :base-type         :type/Float
+                     :database-position 3}
+                    {:name              "LONGITUDE"
+                     :database-type     "DOUBLE"
+                     :base-type         :type/Float
+                     :database-position 4}
+                    {:name              "PRICE"
+                     :database-type     "INTEGER"
+                     :base-type         :type/Integer
+                     :database-position 5}}}
          (driver/describe-table :h2 (mt/db) (Table (mt/id :venues))))))
 
 (deftest describe-table-fks-test

@@ -23,7 +23,6 @@ export default class AreaChart extends LineAreaBarChart {
   static noun = t`area chart`;
 
   static settings = {
-    ...GRAPH_DATA_SETTINGS,
     ...LINE_SETTINGS,
     ...STACKABLE_SETTINGS,
     ...GRAPH_GOAL_SETTINGS,
@@ -31,6 +30,7 @@ export default class AreaChart extends LineAreaBarChart {
     ...GRAPH_AXIS_SETTINGS,
     ...PLUGIN_CHART_SETTINGS,
     ...GRAPH_DISPLAY_VALUES_SETTINGS,
+    ...GRAPH_DATA_SETTINGS,
   };
 
   static renderer = areaRenderer;

@@ -28,26 +28,31 @@
 (def ^:private sync-test-tables
   {"movie"  {:name   "movie"
              :schema "default"
-             :fields #{{:name          "id"
-                        :database-type "SERIAL"
-                        :base-type     :type/Integer
-                        :special-type  :type/PK}
-                       {:name          "title"
-                        :database-type "VARCHAR"
-                        :base-type     :type/Text
-                        :special-type  :type/Title}
-                       {:name          "studio"
-                        :database-type "VARCHAR"
-                        :base-type     :type/Text}}}
+             :fields #{{:name              "id"
+                        :database-type     "SERIAL"
+                        :base-type         :type/Integer
+                        :special-type      :type/PK
+                        :database-position 0}
+                       {:name              "title"
+                        :database-type     "VARCHAR"
+                        :base-type         :type/Text
+                        :special-type      :type/Title
+                        :database-position 1}
+                       {:name              "studio"
+                        :database-type     "VARCHAR"
+                        :base-type         :type/Text
+                        :database-position 2}}}
    "studio" {:name   "studio"
              :schema nil
-             :fields #{{:name          "studio"
-                        :database-type "VARCHAR"
-                        :base-type     :type/Text
-                        :special-type  :type/PK}
-                       {:name          "name"
-                        :database-type "VARCHAR"
-                        :base-type     :type/Text}}}})
+             :fields #{{:name              "studio"
+                        :database-type     "VARCHAR"
+                        :base-type         :type/Text
+                        :special-type      :type/PK
+                        :database-position 0}
+                       {:name              "name"
+                        :database-type     "VARCHAR"
+                        :base-type         :type/Text
+                        :database-position 1}}}})
 
 (driver/register! ::sync-test, :abstract? true)
 
@@ -103,7 +108,8 @@
    :show_in_getting_started false
    :updated_at              true
    :visibility_type         nil
-   :fields_hash             true})
+   :fields_hash             true
+   :field_order             :database})
 
 (def ^:private field-defaults
   {:active              true
@@ -119,6 +125,8 @@
    :parent_id           false
    :points_of_interest  nil
    :position            0
+   :database_position   0
+   :custom_position     0
    :preview_display     true
    :special_type        nil
    :table_id            true
@@ -135,11 +143,13 @@
 (def ^:private field:movie-id
   (merge
    field-defaults
-   {:name          "id"
-    :display_name  "ID"
-    :database_type "SERIAL"
-    :base_type     :type/Integer
-    :special_type  :type/PK}))
+   {:name              "id"
+    :display_name      "ID"
+    :database_type     "SERIAL"
+    :base_type         :type/Integer
+    :special_type      :type/PK
+    :database_position 0
+    :position          0}))
 
 (def ^:private field:movie-studio
   (merge
@@ -149,35 +159,43 @@
     :database_type      "VARCHAR"
     :base_type          :type/Text
     :fk_target_field_id true
-    :special_type       :type/FK}))
+    :special_type       :type/FK
+    :database_position  2
+    :position           2}))
 
 (def ^:private field:movie-title
   (merge
    field-defaults-with-fingerprint
-   {:name          "title"
-    :display_name  "Title"
-    :database_type "VARCHAR"
-    :base_type     :type/Text
-    :special_type  :type/Title}))
+   {:name              "title"
+    :display_name      "Title"
+    :database_type     "VARCHAR"
+    :base_type         :type/Text
+    :special_type      :type/Title
+    :database_position 1
+    :position          1}))
 
 (def ^:private field:studio-name
   (merge
    field-defaults-with-fingerprint
-   {:name          "name"
-    :display_name  "Name"
-    :database_type "VARCHAR"
-    :base_type     :type/Text
-    :special_type  :type/Name}))
+   {:name              "name"
+    :display_name      "Name"
+    :database_type     "VARCHAR"
+    :base_type         :type/Text
+    :special_type      :type/Name
+    :database_position 1
+    :position          1}))
 
 ;; `studio.studio`? huh?
 (def ^:private field:studio-studio
   (merge
    field-defaults
-   {:name          "studio"
-    :display_name  "Studio"
-    :database_type "VARCHAR"
-    :base_type     :type/Text
-    :special_type  :type/PK}))
+   {:name              "studio"
+    :display_name      "Studio"
+    :database_type     "VARCHAR"
+    :base_type         :type/Text
+    :special_type      :type/PK
+    :database_position 0
+    :position          0}))
 
 (deftest sync-database-test
   (mt/with-temp Database [db {:engine :metabase.sync-database-test/sync-test}]

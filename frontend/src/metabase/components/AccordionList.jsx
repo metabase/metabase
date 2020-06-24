@@ -382,7 +382,7 @@ export default class AccordionList extends Component {
     const defaultListStyle = {
       // HACK - Ensure the component can scroll
       // This is a temporary fix to handle cases where the parent component doesn’t pass in the correct `maxHeight`
-      overflowY: "scroll",
+      overflowY: "auto",
     };
 
     return (

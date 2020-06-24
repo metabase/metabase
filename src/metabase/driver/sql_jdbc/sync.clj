@@ -5,6 +5,7 @@
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -94,7 +95,8 @@
   ;; tablePattern "%" = match all tables
   (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
-    (vec (jdbc/metadata-result rs))))
+    (mapv #(select-keys % [:table_name :remarks :table_schem])
+          (jdbc/result-set-seq rs))))
 
 (defmulti accessible-tables-for-user
   "Return a predicate which checks if user `user` has SELECT privilege for a given table"
@@ -123,7 +125,7 @@
                   {:limit 1}))))
 
 (defn have-select-privilege?
-  "Does  have SELECT privilege for given table."
+  "Does have SELECT privilege for given table."
   [driver db-or-id-or-spec {:keys [table_name table_schem] :as table}]
   (when (u/ignore-exceptions
           (simple-select-probe driver db-or-id-or-spec table_schem table_name))
@@ -137,7 +139,7 @@
   vs 60)."
   [driver, db-or-id-or-spec, ^DatabaseMetaData metadata, & [db-name-or-nil]]
   (with-open [rs (.getSchemas metadata)]
-    (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))]
+    (let [all-schemas (set (map :table_schem (jdbc/result-set-seq rs)))]
       (->> (set/difference all-schemas (excluded-schemas driver))
            (mapcat (fn [schema]
                      (db-tables metadata schema db-name-or-nil)))
@@ -178,13 +180,14 @@
   [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name}, & [^String db-name-or-nil]]
   (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
     (set
-     (for [{database-type :type_name
-            column-name   :column_name
-            remarks       :remarks} (jdbc/metadata-result rs)]
+     (for [[idx {database-type :type_name
+                 column-name   :column_name
+                 remarks       :remarks}] (m/indexed (jdbc/metadata-result rs))]
        (merge
-        {:name          column-name
-         :database-type database-type
-         :base-type     (database-type->base-type-or-warn driver database-type)}
+        {:name              column-name
+         :database-type     database-type
+         :base-type         (database-type->base-type-or-warn driver database-type)
+         :database-position idx}
         (when (not (str/blank? remarks))
           {:field-comment remarks})
         (when-let [special-type (calculated-special-type driver column-name database-type)]

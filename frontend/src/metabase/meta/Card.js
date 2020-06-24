@@ -108,7 +108,7 @@ export function getTableMetadata(
   return null;
 }
 
-export function getTemplateTags(card: ?Card): Array<TemplateTag> {
+export function getTemplateTagsForParameters(card: ?Card): Array<TemplateTag> {
   const templateTags =
     card &&
     card.dataset_query &&
@@ -116,7 +116,10 @@ export function getTemplateTags(card: ?Card): Array<TemplateTag> {
     card.dataset_query.native["template-tags"]
       ? Object.values(card.dataset_query.native["template-tags"])
       : [];
-  return templateTags.filter(tag => tag.type !== "card");
+  return templateTags.filter(
+    // this should only return template tags that define a parameter of the card
+    tag => tag.type !== "card" && tag.type !== "snippet",
+  );
 }
 
 export function getParameters(card: ?Card): Parameter[] {
@@ -124,7 +127,7 @@ export function getParameters(card: ?Card): Parameter[] {
     return card.parameters;
   }
 
-  const tags: TemplateTag[] = getTemplateTags(card);
+  const tags: TemplateTag[] = getTemplateTagsForParameters(card);
   return getTemplateTagParameters(tags);
 }
 
