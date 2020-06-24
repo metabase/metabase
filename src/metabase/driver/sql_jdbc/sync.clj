@@ -5,6 +5,7 @@
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -94,7 +95,8 @@
   ;; tablePattern "%" = match all tables
   (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
-    (vec (jdbc/metadata-result rs))))
+    (mapv #(select-keys % [:table_name :remarks :table_schem])
+          (jdbc/result-set-seq rs))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -104,7 +106,7 @@
   vs 60)."
   [driver ^DatabaseMetaData metadata & [db-name-or-nil]]
   (with-open [rs (.getSchemas metadata)]
-    (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))
+    (let [all-schemas (set (map :table_schem (jdbc/result-set-seq rs)))
           schemas     (set/difference all-schemas (excluded-schemas driver))]
       (set (for [schema schemas
                  table  (get-tables metadata schema db-name-or-nil)]
@@ -153,13 +155,14 @@
   [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name}, & [^String db-name-or-nil]]
   (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
     (set
-     (for [{database-type :type_name
-            column-name   :column_name
-            remarks       :remarks} (jdbc/metadata-result rs)]
+     (for [[idx {database-type :type_name
+                 column-name   :column_name
+                 remarks       :remarks}] (m/indexed (jdbc/metadata-result rs))]
        (merge
-        {:name          column-name
-         :database-type database-type
-         :base-type     (database-type->base-type-or-warn driver database-type)}
+        {:name              column-name
+         :database-type     database-type
+         :base-type         (database-type->base-type-or-warn driver database-type)
+         :database-position idx}
         (when (not (str/blank? remarks))
           {:field-comment remarks})
         (when-let [special-type (calculated-special-type driver column-name database-type)]

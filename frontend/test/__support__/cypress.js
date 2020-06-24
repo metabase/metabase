@@ -88,3 +88,24 @@ export function typeAndBlurUsingLabel(label, value) {
 }
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
+
+export function withSampleDataset(f) {
+  cy.request("GET", "/api/database/1/metadata").then(({ body }) => {
+    const SAMPLE_DATASET = {};
+    for (const table of body.tables) {
+      const fields = {};
+      for (const field of table.fields) {
+        fields[field.name] = field.id;
+      }
+      SAMPLE_DATASET[table.name] = fields;
+      SAMPLE_DATASET[table.name + "_ID"] = table.id;
+    }
+    f(SAMPLE_DATASET);
+  });
+}
+
+export function visitAlias(alias) {
+  cy.get(alias).then(url => {
+    cy.visit(url);
+  });
+}

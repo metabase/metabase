@@ -220,18 +220,22 @@
 
 (defmethod format-rows-fns :categories
   [_]
+  ;; ID NAME
   [int identity])
 
 (defmethod format-rows-fns :checkins
   [_]
+  ;; ID DATE USER_ID VENUE_ID
   [int identity int int])
 
 (defmethod format-rows-fns :users
   [_]
+  ;; ID NAME LAST_LOGIN
   [int identity identity])
 
 (defmethod format-rows-fns :venues
   [_]
+  ;; ID NAME CATEGORY_ID LATITUDE LONGITUDE PRICE
   [int identity int 4.0 4.0 int])
 
 (defn- format-rows-fn

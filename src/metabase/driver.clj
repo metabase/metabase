@@ -330,7 +330,6 @@
 
   Example impl:
 
-
     (defmethod reducible-query :my-driver
       [_ query context respond]
       (with-open [results (run-query! query)]
@@ -595,3 +594,11 @@
   {:arglists '([driver inner-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti default-field-order
+  "Return how fields should be sorted by default for this database."
+  {:added "0.36.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod default-field-order ::driver [_] :database)
