@@ -4,7 +4,7 @@ While tables are useful for looking up information or finding specific numbers, 
 
 In Metabase, an answer to a question can be visualized in a number of ways:
 
-- [Number](#numbers)
+- [Numbers](#numbers)
 - [Trend](#trends)
 - [Progress bar](#progress-bars)
 - [Gauge](#gauges)
@@ -19,27 +19,31 @@ In Metabase, an answer to a question can be visualized in a number of ways:
 - [Funnel](#funnel)
 - [Map](#maps)
 
-To change how the answer to your question is displayed, click on the Visualization button in the bottom-right of the screen to open the visualization selection sidebar.
+To change how the answer to your question is displayed, click on the **Visualization** button in the bottom-right of the screen to open the visualization sidebar.
 
 ![Visualization options](images/VisualizeChoices.png)
 
-If a particular visualization doesn’t really make sense for your answer, that option will appear grayed-out in the sidebar. You can still select a grayed-out option, though you might need to open the chart options to make your selection work with your data.
+If a particular visualization doesn’t really make sense for your answer, that option will appear grayed out in the sidebar. You can still select a grayed-out option, though you might need to open the chart options to make your selection work with your data.
 
-Once a question is answered, you can save or download the answer, or add it to a dashboard or Pulse.
+Once a question returns results, you can save the question, download the results, or add the question to a **Dashboard** or **Pulse**.
 
 ## Visualization types and options
 
-Each visualization type has its own advanced options you can tweak. Just click the Settings button next to the Visualization button to see all your options. The options panel also automatically opens up whenever you pick a new visualization type. Here's an overview of what you can do:
+Each visualization type has its own advanced options you can tweak. Just click the **Settings** button next to the Visualization button to see all your options. The options panel also automatically opens up whenever you pick a new visualization type. Here's an overview of what you can do:
 
 ### Numbers
 
-This option is for displaying a single number, nice and big. The options for numbers include adding character prefixes or suffixes to it (so you can do things like put a currency symbol in front or a percent at the end), setting the number of decimal places you want to include, and multiplying your result by a number (like if you want to multiply a decimal by 100 to make it look like a percent). If you want to _divide_ by a number, then just multiply it by a decimal (e.g, if your result is `100`, but you want it to display as `1`, simply multiply it by 0.01).
+The Numbers option is for displaying a single number, nice and big. The options for numbers include:
+
+- **Adding character prefixes or suffixes** to it (so you can do things like put a currency symbol in front or a percent at the end),
+- **Setting the number of decimal places** you want to include, and
+- **Multiplying your result by a number** (like if you want to multiply a decimal by 100 to make it look like a percent). If you want to _divide_ by a number, then just multiply it by a decimal (e.g, if your result is `100`, but you want it to display as `1`, simply multiply it by 0.01).
 
 ![Number](images/visualizations/number.png)
 
 ### Trends
 
-The Trend visualization is great for displaying how a single number has changed over time. To use this visualization, you'll need to have a single number grouped by a Time field, like the Count of Orders by Created At. The Trend will show you the value of the number during the most recent period, and below that you'll see how much the number has increased or decreased compared to its value in the period before that. The period is determined by your group-by field: if you're grouping by Day, the Trend will show you the most recent day compared to the day before that.
+The Trend visualization is great for displaying how a single number has changed over time. To use this visualization, you'll need to have a single number grouped by a Time field, like the Count of Orders by Created At. The Trend will show you the value of the number during the most recent period, as well as how much the number has increased or decreased compared to its value in the previous period. The period is determined by your group-by field; if you're grouping by Day, the Trend will show you the most recent day compared to the day before that.
 
 ![Trend](images/visualizations/trend.png)
 
@@ -55,7 +59,7 @@ Progress bars are for comparing a single number to a goal value that you set. Op
 
 ### Gauges
 
-Ah, gauges: you either love 'em or you hate 'em. …Or you feel "meh" about them, I guess. Whatever the case, gauges allow you to show a single number and where its value falls within a set of colored ranges that you can specify. By default, when you choose the Gauge visualization, Metabase will create red, yellow, and green ranges for you.
+Ah, gauges: you either love 'em or you hate 'em. …Or you feel "meh" about them, I guess. Whatever the case, gauges allow you to show a single number in the context of a set of colored ranges that you can specify. By default, when you choose the Gauge visualization, Metabase will create red, yellow, and green ranges for you.
 
 ![Gauge](images/visualizations/gauge.png)
 
@@ -73,9 +77,9 @@ The Table option is good for looking at tabular data (duh), or for lists of thin
 
 Open up the settings for your table and you'll see the Columns tab, which displays all the columns currently being shown in the table. Below that you'll see a list of more columns from linked tables, if any, that you can add to the current table view.
 
-To hide a column, click the X icon on it; that'll send it down to the "More columns" area in case you want to bring it back. To add a linked column, just click the + icon on it, which will bring it to the "Visible columns" section. Click and drag any of the columns listed there to rearrange the order in which they appear. Another super easy way to rearrange columns without having to open up the visualization settings is to simply click and drag on a column's heading to move it where you'd like it to go.
+To hide a column, click the X icon on it; that'll send it down to the **More columns** area in case you want to bring it back. To add a linked column, just click the + icon on it, which will bring it to the **Visible columns** section. Click and drag any of the columns listed there to rearrange the order in which they appear. Another super easy way to rearrange columns without having to open up the visualization settings is to simply click and drag on a column's heading to move it where you'd like it to go.
 
-**Note:** changing these options doesn't change the actual table itself; it just creates a custom view of it that you can save as a "question" in Metabase and refer back to later, share with others, or add to a dashboard.
+> Changing these options doesn't change the actual table itself; these changes create a custom view of the table that you can save as a **question** in Metabase and refer back to later, share with others, or add to a dashboard.
 
 #### Column formatting options
 
@@ -119,14 +123,14 @@ Then click on the gear icon next to the column that you want to format. Dates, n
 
 #### Conditional table formatting
 
-Sometimes is helpful to highlight certain rows or columns in your tables when they meet a specific condition. You can set up conditional formatting rules by going to the visualization settings while looking at any table, then clicking on the `Formatting` tab.
+Sometimes is helpful to highlight certain rows or columns in your tables when they meet a specific condition. You can set up conditional formatting rules by going to the visualization settings while looking at any table, then clicking on the **Conditional Formatting** tab.
 
 ![Conditional formatting](images/visualizations/conditional-formatting.png)
 
 When you add a new rule, you'll first need to pick which column(s) should be affected. Your columns can be formatted in one of two ways:
 
-1. **Single color:** pick this if you want to highlight cells in the column if they're greater, less than, or equal to a specific number, or if they match or contain a certain word or phrase. You can optionally highlight the whole row of a cell that matches the condition you pick so that it's easier to spot as you scroll down your table.
-2. **Color range:** choose this option if you want to tint all the cells in the column from smallest to largest or vice a versa. This option is only available for numeric columns.
+- **Single color.** Pick single color if you want to highlight cells in the column if they're greater, less than, or equal to a specific number, or if they match or contain a certain word or phrase. You can optionally highlight the whole row of a cell that matches the condition you pick so that it's easier to spot as you scroll down your table.
+- **Color range.** Choose color range if you want to tint all the cells in the column from smallest to largest or vice a versa. This option is only available for numeric columns.
 
 You can set as many rules on a table as you want. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
 
@@ -138,7 +142,7 @@ If your table is a result that contains one numeric column and two grouping colu
 
 ### Line, bar, and area charts
 
-Line charts are best for displaying the trend of a number over time, especially when you have lots of x-axis values. Bar charts are great for displaying a number grouped by a category (e.g., the number of users you have by country), and they can also be useful for showing a number over time if you have a smaller number of x-axis values (like orders per month this year).
+Line charts are best for displaying the trend of a number over time, especially when you have lots of x-axis values. Bar charts are great for displaying a number grouped by a category (e.g., the number of users you have by country). Bar charts can also be useful for showing a number over time if you have a smaller number of x-axis values (like orders per month this year).
 
 ![Bar chart](images/visualizations/bar.png)
 
@@ -147,7 +151,8 @@ Area charts are useful when comparing the proportions of two metrics over time. 
 ![Stacked area chart](images/visualizations/area.png)
 
 **Trend lines**
-Another useful option for line, area, bar, and scatter charts is trend lines. If you have a question where you're grouping by a time field, open up the visualization settings and turn the `Show trend line` toggle on to display a trend line. Metabase will choose the best type of line to fit to the trend of your series. This will even work if you have multiple metrics selected in your summary. But it won't work if you have any groupings beyond the one time field.
+
+Trend lines are another useful option for line, area, bar, and scatter charts. If you have a question where you're grouping by a time field, open up the visualization settings and turn the `Show trend line` toggle on to display a trend line. Metabase will choose the best type of line to fit to the trend of your series. Trend lines will even work if you have multiple metrics selected in your summary. But trend lines won't work if you have any groupings beyond the one time field.
 
 ![Trend lines](images/visualizations/trend-lines.png)
 
@@ -157,15 +162,15 @@ Also called Combo Charts, the Line + Bar chart lets you combine bars and lines (
 
 ![Line + bar](images/visualizations/combo-chart.png)
 
-Metabase will pick one of your series to display as a line, and another to display as a bar by default. Open up the visualization settings to change which series are lines, bars, or areas, and to change other per-series settings like colors. Click the down arrow icon on the right of a series to see additional options:
+Metabase will pick one of your series to display as a line, and another to display as a bar by default. Open up the visualization settings to change which series are lines, bars, or areas, as well as to change per-series settings like colors. Click the down arrow icon on the right of a series to see additional options:
 
 ![Line + bar](images/visualizations/combo-chart-settings.png)
 
-To use a Line + Bar chart, you'll either need to have two or more metrics selected in the Summarize By section of your question, with one or two grouping columns, like this…
+To use a Line + Bar chart, you'll either need to have two or more metrics selected in the Summarize By section of your question, with one or two grouping columns, like this:
 
 ![Data for Line + Bar chart](images/visualizations/combo-chart-data-1.png)
 
-…or you'll need a question with a single metric and with two grouping columns, like this:
+Or you'll need a question with a single metric and two grouping columns, like this:
 
 ![Data for Line + Bar chart](images/visualizations/combo-chart-data-2.png)
 
@@ -195,14 +200,16 @@ Here's where you can choose the columns you want to plot on your x and y axes. T
 
 **Display**
 
-There's quite a bit you can do in this tab:
+There's quite a bit you can do in this tab, but the options available will depend on the data in your chart.
 
-- Set the colors and labels for the series on your chart.
-- Change the style of your lines for Line and Area charts, and choose whether or not to display dots on them.
-- Use the "Replace missing values with…" setting to change how your chart deals with missing values. You can use linear interpolation, or display those points as zero or as nothing.
-- Add a goal line. This can be used in conjunction with [alerts](15-alerts.md) to send an email or a Slack message when your metric cross this line.
-- If you're looking at a time series chart, you can turn on a trend line to show where things are heading.
-- Show values on data points. The default setting will try and fit as many values on your chart as will fit nicely, but you can also force Metabase to show the values for each and every data point, which it will do begrudgingly.
+- **Set the colors and labels** for the series on your chart.
+- **Change the style of your lines** for Line and Area charts, and choose whether or not to display dots on them.
+- **Specify how to handle missing values**. Use the "Replace missing values with…" setting to change how your chart deals with missing values. You can use linear interpolation, or display those points as zero or as nothing.
+- **Add a goal line**. Goal lines can be used in conjunction with [alerts](15-alerts.md) to send an email or a Slack message when your metric cross this line.
+- **Add a trend line**. If you're looking at a time series chart, you can turn on a trend line to show where things are heading.
+- **Show values on data points**. The default setting will try and fit as many values on your chart as will fit nicely, but you can also force Metabase to show the values for each and every data point, which it will do begrudgingly. Showing values also works with multi-series charts, but be aware that the more data points you add, the more crowded with values the charts will become.
+
+![adding values to multi-series chart](images/visualizations/add_values.gif)
 
 **Axes**
 
