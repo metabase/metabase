@@ -66,27 +66,24 @@
                                 :name    "contains a } character"})))))
 
   (testing "successful create returns new snippet's data"
-    (try
-      (let [snippet-input    {:name "test-snippet", :description "Just null", :content "NULL"}
-            snippet-from-api ((mt/user->client :crowberto) :post 200 (snippet-url) snippet-input)]
-        (is (schema= {:id          su/IntGreaterThanZero
-                      :name        (s/eq "test-snippet")
-                      :description (s/eq "Just null")
-                      :content     (s/eq "NULL")
-                      :creator_id  (s/eq (mt/user->id :crowberto))
-                      :archived    (s/eq false)
-                      :created_at  java.time.OffsetDateTime
-                      :updated_at  java.time.OffsetDateTime
-                      s/Keyword    s/Any}
-                     snippet-from-api)))
-      (finally
-        (db/delete! NativeQuerySnippet :name "test-snippet"))))
-
-  (testing "create fails for non-admin user"
-    (is (= "You don't have permissions to do that."
-           ((mt/user->client :rasta)
-            :post 403 (snippet-url)
-            {:name "test-snippet", :content "NULL"}))))
+    (doseq [[message user] {"admin user should be able to create" :crowberto
+                            "non-admin user should be able to create" :rasta}]
+      (testing message
+        (try
+          (let [snippet-input    {:name "test-snippet", :description "Just null", :content "NULL"}
+                snippet-from-api ((mt/user->client user) :post 200 (snippet-url) snippet-input)]
+            (is (schema= {:id          su/IntGreaterThanZero
+                          :name        (s/eq "test-snippet")
+                          :description (s/eq "Just null")
+                          :content     (s/eq "NULL")
+                          :creator_id  (s/eq (mt/user->id user))
+                          :archived    (s/eq false)
+                          :created_at  java.time.OffsetDateTime
+                          :updated_at  java.time.OffsetDateTime
+                          s/Keyword    s/Any}
+                         snippet-from-api)))
+          (finally
+            (db/delete! NativeQuerySnippet :name "test-snippet"))))))
 
   (testing "Attempting to create a Snippet with a name that's already in use should throw an error"
     (try
@@ -112,17 +109,14 @@
     (mt/with-temp NativeQuerySnippet [snippet {:content "-- SQL comment here"
                                                :name    "comment"}]
       (testing "update stores updated snippet"
-        (let [updated-desc    "Updated description."
-              updated-snippet ((mt/user->client :crowberto)
-                               :put 200 (snippet-url (:id snippet))
-                               {:description updated-desc})]
-          (is (= updated-desc (:description updated-snippet)))))
-
-      (testing "update fails for non-admin user"
-        (is (= "You don't have permissions to do that."
-               ((mt/user->client :rasta)
-                :put 403 (snippet-url (:id snippet))
-                {:description "This description shouldn't get updated due to permissions error."}))))
+        (doseq [[message user] {"admin user should be able to update" :crowberto
+                                "non-admin user should be able to update" :rasta}]
+          (testing message
+            (let [updated-desc    "Updated description."
+                  updated-snippet ((mt/user->client user)
+                                   :put 200 (snippet-url (:id snippet))
+                                   {:description updated-desc})]
+              (is (= updated-desc (:description updated-snippet)))))))
 
       (testing "Attempting to change Snippet's name to one that's already in use should throw an error"
         (mt/with-temp* [NativeQuerySnippet [_         {:name "test-snippet-1", :content "1"}]

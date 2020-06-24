@@ -45,7 +45,6 @@
   {content     s/Str
    description (s/maybe s/Str)
    name        snippet/NativeQuerySnippetName}
-  (api/check-superuser)
   (check-snippet-name-is-unique name)
   (api/check-500
    (db/insert! NativeQuerySnippet

@@ -28,11 +28,11 @@
   i/IObjectPermissions
   (merge
    i/IObjectPermissionsDefaults
-   {;; In Metabase CE, everyone can read all NativeQuerySnippets; only admins can create or edit them. In EE
-    ;; permissions are dictated by a 'folder' system similar to Collections (not yet implemented).
+   {;; In Metabase CE, anyone can read/edit/create NativeQuerySnippets. In EE permissions are dictated by a 'folder'
+    ;; system similar to Collections (not yet implemented).
     :can-read?   (constantly true)
-    :can-write?  i/superuser?
-    :can-create? i/superuser?}))
+    :can-write?  (constantly true)
+    :can-create? (constantly true)}))
 
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
