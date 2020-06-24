@@ -136,9 +136,11 @@ export default class DashCard extends Component {
           },
         )}
         style={
-          hideBackground
+          (hideBackground
             ? { border: 0, background: "transparent", boxShadow: "none" }
-            : null
+            : null,
+          // Make sure Text cards gets scrollbar
+          dashcard.card_id === null ? { overflowY: "auto" } : null)
         }
       >
         <Visualization

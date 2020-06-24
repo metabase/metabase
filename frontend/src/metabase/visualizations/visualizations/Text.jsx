@@ -151,7 +151,7 @@ export default class Text extends Component {
           {this.state.isShowingRenderedOutput ? (
             <ReactMarkdown
               className={cx(
-                "full flex-full flex flex-column text-card-markdown",
+                "full flex-full flex flex-column text-wrap text-card-markdown",
                 styles["text-card-markdown"],
                 getSettingsStyle(settings),
               )}
@@ -185,7 +185,7 @@ export default class Text extends Component {
         >
           <ReactMarkdown
             className={cx(
-              "full flex-full flex flex-column text-card-markdown",
+              "full flex-full flex flex-column text-wrap text-card-markdown",
               styles["text-card-markdown"],
               getSettingsStyle(settings),
             )}
