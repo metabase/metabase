@@ -23,23 +23,21 @@ If you already have two or more saved questions you’d like to compare, and the
 
 ![add multi-series](images/multi-series-charts/add_series.png)
 
-3. In the Edit Data modal, you’ll see the original question on the left, with a list of compatible questions you can choose from on the right. Search for a question(s) to add, and check the box next to each question you’d like to see side-by-side with the original. Metabase will add it to the same chart.
+3. In the Edit Data modal, you’ll see the original question on the left, with a list of compatible questions you can choose from on the right. Search question(s) to add, and check the box next to each question you’d like to see side-by-side with the original. Metabase will add the question(s) to the same chart.
 
-![multiseriesmodal1](images/MultiSeriesModal1.png)
+![multi-series edit modal](images/multi-series-charts/edit_modal.png)
 
-The X and Y axis will automatically update if necessary and Metabase will create a legend using the existing card titles to help you understand which question maps to which series on the chart. Repeat this process as many times as you need.
+If necessary, the X and Y axes will automatically update. Metabase will create a legend using the existing card titles to help you understand which question maps to which series on the chart. Repeat this process as many times as you need.
 
-To remove a series either uncheck the box, or click the x next to the title in the legend above the chart.
+![Edit modal with multi-series](images/multi-series-charts/edit_modal_multi-series.png)
 
-![multiseriesmodal2](images/MultiSeriesModal2.png)
+To remove a series, simply uncheck its box.
 
 Once you have your chart looking how you’d like, hit done and your changes will be shown on the card in the dashboard. Depending on how dense your data is, at this point you might want to consider enlarging your chart to make sure the data is legible.
 
-![multiseriesfinished](images/MultiSeriesFinished.png)
-
 #### A quick note about SQL based questions.
 
-Metabase has less information about SQL based questions, so we cannot guarantee if they can be added reliably. You'll see a little warning sign next to SQL questions to indicate this and when you try adding them just be aware it may not work.
+Metabase has less information about SQL-based questions, so we cannot guarantee if they can be added reliably. You'll see a little warning sign next to SQL questions to indicate this uncertainty, so be aware that adding these kinds of questions may not work.
 
 ### Combining Number charts
 
