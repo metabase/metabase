@@ -544,9 +544,7 @@ export default class NativeQueryEditor extends Component {
       toggleEditorText = null;
       toggleEditorIcon = "contract";
     } else {
-      toggleEditorText = query.hasWritePermission()
-        ? t`Open Editor`
-        : t`Show Query`;
+      toggleEditorText = t`Open Editor`;
       toggleEditorIcon = "expand";
     }
     const dragHandle = (
@@ -569,23 +567,25 @@ export default class NativeQueryEditor extends Component {
             isQB
             commitImmediately
           />
-          <div
-            className="flex-align-right flex align-center text-medium"
-            style={{ paddingRight: 4 }}
-          >
-            <a
-              className={cx(
-                "Query-label no-decoration flex align-center mx3 text-brand-hover transition-all",
-                { hide: readOnly },
-              )}
-              onClick={this.toggleEditor}
+          {query.hasWritePermission() && (
+            <div
+              className="flex-align-right flex align-center text-medium"
+              style={{ paddingRight: 4 }}
             >
-              <span className="mr1" style={{ minWidth: 70 }}>
-                {toggleEditorText}
-              </span>
-              <Icon name={toggleEditorIcon} size={18} />
-            </a>
-          </div>
+              <a
+                className={cx(
+                  "Query-label no-decoration flex align-center mx3 text-brand-hover transition-all",
+                  { hide: readOnly },
+                )}
+                onClick={this.toggleEditor}
+              >
+                <span className="mr1" style={{ minWidth: 70 }}>
+                  {toggleEditorText}
+                </span>
+                <Icon name={toggleEditorIcon} size={18} />
+              </a>
+            </div>
+          )}
         </div>
         <ResizableBox
           ref="resizeBox"
