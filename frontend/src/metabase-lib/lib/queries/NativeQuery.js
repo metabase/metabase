@@ -322,44 +322,50 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   updateSnippetsWithIds(snippets): NativeQuery {
-    const snippetTags = this.templateTags().filter(t => t.type === "snippet");
-    let _this = this; // swap out "this" as we update each template tag
+    const tagsBySnippetName = _.chain(this.templateTags())
+      .filter(tag => tag.type === "snippet" && tag["snippet-id"] == null)
+      .groupBy(tag => tag["snippet-name"])
+      .value();
+
+    if (Object.keys(tagsBySnippetName).length === 0) {
+      // no need to check if there are no tags
+      return this;
+    }
+
+    let query = this;
     for (const snippet of snippets) {
-      const tag = snippetTags.find(tag => tag["snippet-name"] === snippet.name);
-      if (tag) {
-        _this = _this.setTemplateTag(tag.name, {
+      for (const tag of tagsBySnippetName[snippet.name] || []) {
+        query = query.setTemplateTag(tag.name, {
           ...tag,
           "snippet-id": snippet.id,
         });
       }
     }
-    return _this;
+    return query;
   }
 
   updateQueryTextWithNewSnippetNames(snippets): NativeQuery {
-    const snippetTags = Object.entries(this.templateTagsMap()).filter(
-      ([name, tag]) => tag.type === "snippet",
-    );
-    if (snippetTags.length === 0) {
-      //no need to check if there are no snippet tags
+    const tagsBySnippetId = _.chain(this.templateTags())
+      .filter(tag => tag.type === "snippet")
+      .groupBy(tag => tag["snippet-id"])
+      .value();
+    console.log({ tagsBySnippetId });
+
+    if (Object.keys(tagsBySnippetId).length === 0) {
+      // no need to check if there are no tags
       return this;
     }
 
-    const tagsBySnippetId = _.groupBy(
-      snippetTags,
-      ([name, tag]) => tag["snippet-id"],
-    );
     let queryText = this.queryText();
-
     for (const snippet of snippets) {
-      for (const [name, tag] of tagsBySnippetId[snippet.id] || []) {
-        if (tag["snippet-name"] === snippet.name) {
-          continue;
+      for (const tag of tagsBySnippetId[snippet.id] || []) {
+        console.log({ tag, snippet });
+        if (tag["snippet-name"] !== snippet.name) {
+          queryText = queryText.replace(
+            new RegExp(`\{\{\\s*${tag.name}\\s*\}\}`, "g"),
+            `{{snippet: ${snippet.name}}}`,
+          );
         }
-        queryText = queryText.replace(
-          new RegExp(`\{\{\\s*${name}\\s*\}\}`, "g"),
-          `{{snippet: ${snippet.name}}}`,
-        );
       }
     }
     if (queryText !== this.queryText()) {

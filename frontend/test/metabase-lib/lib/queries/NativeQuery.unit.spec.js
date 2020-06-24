@@ -212,7 +212,7 @@ describe("NativeQuery", () => {
       );
       expect(q.canRun()).toBe(true);
     });
-    describe.only("snippet template tags", () => {
+    describe("snippet template tags", () => {
       it("should parse snippet tags", () => {
         const q = makeQuery().setQueryText("{{ snippet: foo }}");
         const [
@@ -228,6 +228,13 @@ describe("NativeQuery", () => {
           .updateSnippetsWithIds([{ id: 123, name: "foo" }])
           .updateQueryTextWithNewSnippetNames([{ id: 123, name: "bar" }]);
         expect(q.queryText()).toEqual("{{snippet: bar}}");
+      });
+      it("should update snippet names that differ on spacing", () => {
+        const q = makeQuery()
+          .setQueryText("{{ snippet: foo }} {{snippet:  foo  }}")
+          .updateSnippetsWithIds([{ id: 123, name: "foo" }])
+          .updateQueryTextWithNewSnippetNames([{ id: 123, name: "bar" }]);
+        expect(q.queryText()).toEqual("{{snippet: bar}} {{snippet: bar}}");
       });
     });
     describe("card template tags", () => {
