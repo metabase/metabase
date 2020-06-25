@@ -24,10 +24,9 @@ export default class SegmentItem extends Component {
   render() {
     const { segment, onRetire, table } = this.props;
 
-    const description = Q_DEPRECATED.generateQueryDescription(
-      table,
-      segment.definition,
-      { sections: ["filter"], jsx: true },
+    const description = Q_DEPRECATED.formatQueryDescription(
+      segment.query_description,
+      { sections: ["table", "filter"], jsx: true },
     );
 
     return (

@@ -45,11 +45,6 @@
   (-> (api/read-check (Segment id))
       (hydrate :creator)))
 
-(api/defendpoint GET "/:id"
-  "Fetch `Segment` with ID."
-  [id]
-  (first (add-query-descriptions [(hydrated-segment id)])))
-
 (defn- add-query-descriptions
   [segments] {:pre [(coll? segments)]}
   (log/spy :error
@@ -60,6 +55,11 @@
                         :query_description
                         (qd/generate-query-description table (:definition segment))))))))
 
+(api/defendpoint GET "/:id"
+  "Fetch `Segment` with ID."
+  [id]
+  (first (add-query-descriptions [(hydrated-segment id)])))
+
 (api/defendpoint GET "/"
   "Fetch *all* `Segments`."
   []
@@ -67,7 +67,6 @@
     (filter mi/can-read? segments)
     (hydrate segments :creator)
     (add-query-descriptions segments)))
-
 
 (defn- write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate

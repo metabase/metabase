@@ -13,83 +13,88 @@
 
 (defn- format-expression
   [metadata expr]
+  ;; TODO: ... this
   "")
 
 (defn- get-aggregation-description
   [metadata query]
-  ;; TODO: handle deprecated / unknown metrics
   (when-let [aggregations (:aggregation query)]
-    {:aggregations
+    {:aggregation
      (map
       (fn [aggregation]
         (cond
-          (:options aggregation) (or (:name aggregation)
-                                     (second aggregation))
+          (:options aggregation) {:type :aggregation
+                                  :arg  (or (:name aggregation)
+                                           (second aggregation))}
 
-          (= (first aggregation) :metric) (let [metric (Metric (second aggregation))]
-                                            (if (not (str/blank? (:name metric)))
-                                              (:name metric)
-                                              (deferred-trs "[Unknown Metric]")))
+          (= (first aggregation) :metric) {:type :metric
+                                           :arg  (let [metric (Metric (second aggregation))]
+                                                   (if (not (str/blank? (:name metric)))
+                                                     (:name metric)
+                                                     (deferred-trs "[Unknown Metric]")))}
 
           :else (let [field-name (fn [a] (:display_name (Field (second (second a)))))]
                   (case (first aggregation)
-                    :rows (deferred-trs "Raw data")
-                    :count (deferred-trs "Count")
-                    :cum-count (deferred-trs "Cumulative count")
-                    :avg (deferred-trs "Average of {0}" (field-name aggregation))
-                    :distinct (deferred-trs "Distinct values of {0}" (field-name aggregation))
-                    :stddev (deferred-trs "Standard deviation of {0}" (field-name aggregation))
-                    :sum (deferred-trs "Sum of {0}" (field-name aggregation))
-                    :cum-sum (deferred-trs "Cumulative sum of {0}" (field-name aggregation))
-                    :max (deferred-trs "Maximum of {0}" (field-name aggregation))
-                    :min (deferred-trs "minimum of {0}" (field-name aggregation))
-                    (format-expression metadata aggregation)))))
+                    :rows      {:type :rows}
+                    :count     {:type :count}
+                    :cum-count {:type :cum-count}
+                    :avg       {:type :avg :field (field-name aggregation)}
+                    :distinct  {:type :distinct :arg (field-name aggregation)}
+                    :stddev    {:type :stddev :arg (field-name aggregation)}
+                    :sum       {:type :sum :arg (field-name aggregation)}
+                    :cum-sum   {:type :cum-sum :arg (field-name aggregation)}
+                    :max       {:type :max :arg (field-name aggregation)}
+                    :min       {:type :min :arg (field-name aggregation)}
+                    {:type :expression :arg (format-expression metadata aggregation)}))))
       aggregations)}))
 
 (defn- get-breakout-description
   [metadata query]
   (when-let [breakouts (seq (:breakout query))]
-    {:breakouts (deferred-trs
-                  "Grouped by {0}"
-                  (str/join (deferred-trs " and ") (map #(:display_name (Field %)) breakouts)))}))
+    {:breakout (map #(:display_name (Field %)) breakouts)}))
 
 (defn- get-filter-clause-description
   [metadata filters]
-  (let [operator (first filters)]
-    (cond
-      (or (= operator :and)
-          (= operator :or)) (get-filter-clause-description metadata (drop 1 filters))
+  (log/spy :error filters)
+  (loop [filters filters
+         results []]
+    (if (empty? filters)
+      results
+      (let [element (first filters)
+            result (log/spy :error (if (or (= element :and)
+                                           (= element :or))
+                                     nil
 
-      (= operator :segment) (let [segment (Segment (second filters))]
-                              (if segment
-                                (:name segment)
-                                (deferred-trs "[Unknown Segment]")))
+                                     (let [operator (log/spy :error (first element))]
+                                       (if (= operator :segment)
+                                         {:segment (let [segment (Segment (second element))]
+                                                     (if segment
+                                                       (:name segment)
+                                                       (deferred-trs "[Unknown Segment]")))}
 
-      :else (:display_name (Field (second (second filters)))))))
+                                         {:field (:display_name (Field (second (second element))))}))))]
+
+        (recur (rest filters) (if result
+                                (conj results result)
+                                results))))))
 
 (defn- get-filter-description
   [metadata query]
   (when-let [filters (:filter query)]
-    {:filters (deferred-trs
-                "Filtered by {0}"
-                (get-filter-clause-description metadata (cons :and filters)))}))
+    {:filter (get-filter-clause-description metadata (if (= :and (first filters))
+                                                        filters
+                                                        (cons :and filters)))}))
 
 (defn- get-order-by-description
   [metadata query]
   (when-let [order-by (:order-by query)]
-    (:order-by (deferred-trs
-                 "Sorted by {0}"
-                 (str/join (deferred-trs " and ") (map (fn [[direction field]]
-                                                         (str (:display_name (Field (second field)))
-                                                              " "
-                                                              (if (= :asc direction)
-                                                                (deferred-trs "ascending")
-                                                                (deferred-trs "descending")))) order-by))))))
+    (:order-by (map (fn [[direction field]]
+                      {(:display_name (Field (second field))) direction}) order-by))))
 
 (defn- get-limit-description
   [metadata query]
   (when-let [limit (:limit query)]
-    {:limit (deferred-trs "{0} rows" limit)}))
+    {:limit limit}))
 
 (def query-descriptor-functions
   [get-table-description
@@ -100,12 +105,17 @@
    get-limit-description])
 
 (defn generate-query-description
-  "Generate a localized description of a given query.
+  "Analyze a query and return a data structure with the parts broken down for display
+  in the UI.
 
-  Examples:
+  Ex:
+  {
+    :table \"Orders\"
+    :filters [\"Created At\", \"Product ID\"]
+    :order-by [{\"Created At\" :asc}]
+  }
 
-  Filtered by Total, Order By Created At
-  Filtered by Created At"
+  This data structure allows the UI to format the strings appropriately (including JSX)"
   [metadata query]
   (log/spy :error metadata)
   (apply merge

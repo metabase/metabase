@@ -24,10 +24,10 @@ export default class MetricItem extends Component {
   render() {
     const { metric, onRetire, table } = this.props;
 
-    const description = Q_DEPRECATED.generateQueryDescription(
-      table,
+    const description = Q_DEPRECATED.formatQueryDescription(
+      metric.query_description,
       metric.definition,
-      { sections: ["aggregation", "filter"], jsx: true },
+      { sections: ["table", "aggregation", "filter"], jsx: true },
     );
 
     return (

@@ -409,6 +409,76 @@ export function getLimitDescription(tableMetadata, { limit }) {
   }
 }
 
+export function formatTableDescription({ table }, options = {}) {
+  return [inflection.pluralize(table)];
+}
+
+export function formatAggregationDescription({ aggregation }, options = {}) {
+  return [];
+}
+
+export function formatBreakoutDescription({ breakout }, options = {}) {
+  return [];
+}
+
+export function formatFilterDescription({ filter }, options = {}) {
+  return [];
+}
+
+export function formatOrderByDescription(parts, options = {}) {
+  return [];
+}
+
+export function formatLimitDescription({ limit }, options = {}) {
+  return [];
+}
+
+export function formatQueryDescription(parts, options = {}) {
+  console.log("parts", parts);
+  console.log("options", options);
+  if (!parts) {
+    return "";
+  }
+
+  options = {
+    jsx: false,
+    sections: [
+      "table",
+      "aggregation",
+      "breakout",
+      "filter",
+      "order-by",
+      "limit",
+    ],
+    ...options,
+  };
+
+  const sectionFns = {
+    table: formatTableDescription,
+    aggregation: formatAggregationDescription,
+    breakout: formatBreakoutDescription,
+    filter: formatFilterDescription,
+    "order-by": formatOrderByDescription,
+    limit: formatLimitDescription,
+  };
+
+  // these array gymnastics are needed to support JSX formatting
+  const sections = options.sections
+        .map(section =>
+             _.flatten(sectionFns[section](parts, options)).filter(
+               s => !!s,
+             ),
+            )
+        .filter(s => s && s.length > 0);
+
+  const description = _.flatten(joinList(sections, ", "));
+  if (options.jsx) {
+    return <span>{description}</span>;
+  } else {
+    return description.join("");
+  }
+}
+
 export function generateQueryDescription(tableMetadata, query, options = {}) {
   if (!tableMetadata) {
     return "";
