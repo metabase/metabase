@@ -10,7 +10,7 @@ For example, if you frequently perform queries that involve multiple tables, you
 
 Here's a simple query with a simple join using the **Sample Dataset** included with Metabase.
 
-```sql
+```
 select *
 from ORDERS
 left join PRODUCTS on PRODUCT_ID = PRODUCT_ID;
@@ -20,7 +20,7 @@ Let's save the join statement as a snippet to reuse in other queries.
 
 In the **SQL editor**:
  
-1. **Highlight a section of SQL** that you want to snip. In this case, we'll snip:
+1. **Highlight a section of SQL** that you want to snip. In this case, we'll snip the following SQL code:
 ```
 from ORDERS 
 left join PRODUCTS on PRODUCT_ID = PRODUCT_ID
@@ -43,28 +43,26 @@ When editing in the SQL editor, you can now start typing `{{snippet:` and Metaba
 
 ![Snippet sidebar and insertion](./images/sql-snippets/snippet_sidebar_and_insertion.gif)
 
-The SQL editor **sidebar** has a snippets menu to list available and archived snippets.
+The SQL editor **sidebar** has a **SQL Snippets** menu to list available and archived snippets.
 
 Click on the code icon on the right side of the SQL editor, below the **Data Reference** book icon (learn about your data) and the **Variables** χ icon. Metabase will slide out a sibebar menu that lists available snippets.
 
-From the Snippet menu, you can:
-
+From the SQL Snippets menu, you can:
 
 - **Preview snippets**. Click on the down arrow to the right of a snippet to see a preview of its SQL code. There's also an option to edit the snippet.
-
-- **Insert a snippet at point**: Click on a snippet to insert it into your query at the current cursor point.
+- **Insert a snippet at point**. Click on a snippet to insert it into your query at the current cursor point.
+- [**Edit a snippet**](#editing-snippets). You can change a snippet's name, description and code.
+- [**Archive and unarchive a snippet**](#archived-snippets). You can archive a snippet, which removes the snippet from the snippet menu and autocomplete options in the SQL editor.
 
 ### Editing snippets
 
-You can **edit** a snippet at any time by selecting the snippet from the snippet sidebar menu in the SQL editor. Click on the down arrow to the right of the snippet, then click **Edit**. You can change the SQL code, snippet name, and snippet description.
+You can **edit** a snippet at any time by selecting the snippet from the SQL Snippets sidebar menu in the SQL editor. Click on the down arrow to the right of the snippet, then click **Edit**. You can change the SQL code, snippet name, and snippet description.
 
 Editing snippets is a great way to make changes to many questions at once. If, for example, you've saved the SQL code to pull user data from tables X, Y, and Z as the snippet `User Data`, but you need to change how that data is pulled (such as by adding data from another column or table), you can update the SQL code in the snippet, and all questions that use the snippet `User Data` will have the updated code. 
 
-But with great power, comes great responsibility; there are two major caveats when editing snippets, both worthy of blockquote callouts:
+But with great power comes great responsibility; there is one major caveat when editing snippets:
 
-> **Caution when editing code in snippets**: if you edit the snippet and include broken code, you will break every question that uses that snippet, so be sure to test your code before saving it to an existing snippet.
-
-> **Caution when renaming snippets**: if you rename a snippet, any existing questions that refer to that original snippet name will break.
+> **Caution when editing code in SQL snippets**. If you edit the snippet and include broken code, you will break every question that uses that snippet, so be sure to test your code before saving it to an existing snippet.
 
 ### Archived snippets
 
@@ -74,5 +72,5 @@ Archiving a snippet does not affect any existing queries that use the snippet, s
 
 You can access an archived snippet from the snippet sidebar menu by clicking on the archived button in the bottom left of the sidebar.
 
-Although there is no way to delete a snippet (eternal snippets are a safety measure to prevent the inadvertent breaking of questions that use those snippets), you can archive and unarchive a snippet at any time.
+Although there is no way to delete a snippet, you can archive and unarchive a snippet at any time.
 
