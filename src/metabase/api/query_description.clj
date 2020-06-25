@@ -1,11 +1,12 @@
 (ns metabase.api.query-description
   "Functions for generating human friendly query descriptions"
-  (:require [clojure.tools.logging :as log]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.util.i18n :as ui18n :refer [deferred-trs]]
-            [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [metabase.models
+             [field :refer [Field]]
+             [metric :refer [Metric]]
+             [segment :refer [Segment]]]
+            [metabase.util.i18n :as ui18n :refer [deferred-trs]]))
 
 (defn- get-table-description
   [metadata query]

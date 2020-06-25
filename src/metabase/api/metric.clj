@@ -7,8 +7,9 @@
              [events :as events]
              [related :as related]
              [util :as u]]
-            [metabase.api.common :as api]
-            [metabase.api.query-description :as qd]
+            [metabase.api
+             [common :as api]
+             [query-description :as qd]]
             [metabase.mbql.normalize :as normalize]
             [metabase.models
              [interface :as mi]
