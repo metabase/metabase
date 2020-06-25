@@ -366,16 +366,17 @@ export const initializeQB = (location, params) => {
           let database = Databases.selectors.getObject(getState(), {
             entityId: dbId,
           });
-          // if we haven't already loaded this database, block on loading that now so we can check write permissions
+          // if we haven't already loaded this database, block on loading dbs now so we can check write permissions
           if (!database) {
-            await dispatch(Databases.actions.fetch({ id: dbId }));
+            await dispatch(Databases.actions.fetchList());
             database = Databases.selectors.getObject(getState(), {
               entityId: dbId,
             });
           }
 
+          // database could still be missing if the user doesn't have any permissions
           // if the user has native permissions against this db, fetch snippets
-          if (database.native_permissions === "write") {
+          if (database && database.native_permissions === "write") {
             snippetFetch = dispatch(Snippets.actions.fetchList());
           }
         }
