@@ -60,9 +60,11 @@ You can **edit** a snippet at any time by selecting the snippet from the SQL Sni
 
 Editing snippets is a great way to make changes to many questions at once. If, for example, you've saved the SQL code to pull user data from tables X, Y, and Z as the snippet `User Data`, but you need to change how that data is pulled (such as by adding data from another column or table), you can update the SQL code in the snippet, and all questions that use the snippet `User Data` will have the updated code. 
 
-But with great power comes great responsibility; there is one major caveat when editing snippets:
+**Editing a Snippet's name**. Changing a snippet's name will update the snippet's name in every question that uses that snippet. It won't break any existing questions (the underlying SQL remains unchanged), but be aware that other users may be caught off guard to discover you renamed a snippet they use frequently from "Orders and Products" to "All the things", or whatever.
 
-> **Caution when editing code in SQL snippets**. If you edit the snippet and include broken code, you will break every question that uses that snippet, so be sure to test your code before saving it to an existing snippet.
+**Editing a snippet's SQL**. Here's where we have to remind you that with great power comes great responsibility. There is one major caveat when editing snippets, worth of a callout:
+
+> **Caution when editing code in SQL snippets**. If you edit the snippet and include broken code, you will break every question that uses that snippet. Make sure to test your code before saving it to an existing snippet.
 
 ### Archived snippets
 
