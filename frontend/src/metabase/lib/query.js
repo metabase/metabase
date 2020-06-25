@@ -414,28 +414,96 @@ export function formatTableDescription({ table }, options = {}) {
 }
 
 export function formatAggregationDescription({ aggregation }, options = {}) {
-  return [];
+  return conjunctList(
+    aggregation.map(agg => {
+      switch(agg["type"]) {
+      case "aggregation":
+        return [agg["arg"]];
+      case "metric":
+        return [
+          options.jsx ? (
+            <span className="text-green text-bold">{agg["arg"]}</span>
+          ) : (
+            agg["arg"]
+          ),
+        ];
+        case "rows":
+          return [t`Raw data`];
+        case "count":
+          return [t`Count`];
+        case "cum-count":
+          return [t`Cumulative count`];
+        case "avg":
+          return [t`Average of `, agg["arg"],];
+        case "distinct":
+          return [t`Distinct values of `, agg["arg"],];
+        case "stddev":
+          return [t`Standard deviation of `, agg["arg"],];
+        case "sum":
+          return [t`Sum of `, agg["arg"],];
+        case "cum-sum":
+          return [t`Cumulative sum of `, agg["arg"],];
+        case "max":
+          return [t`Maximum of `, agg["arg"],];
+        case "min":
+          return [t`Minimum of `, agg["arg"],];
+      }
+    }));
 }
 
 export function formatBreakoutDescription({ breakout }, options = {}) {
-  return [];
+  if (breakout && breakout.length > 0) {
+    return [t`Grouped by `, joinList(breakout.map(b => b), " and ",)];
+  } else {
+    return [];
+  }
 }
 
 export function formatFilterDescription({ filter }, options = {}) {
-  return [];
+  if (filter && filter.length > 0) {
+    return [t`Filtered by `, joinList(filter.map(f => {
+      if (f["segment"] != null) {
+        return options.jsx ? (
+          <span className="text-purple text-bold">{f["segment"]}</span>
+        ) : (
+          f["segment"]
+        );
+      } else if (f["field"] != null) {
+        return f["field"];
+      }
+    }), ", ",)];
+  } else {
+    return [];
+  }
 }
 
 export function formatOrderByDescription(parts, options = {}) {
-  return [];
+  const orderBy = parts["order-by"];
+  if (orderBy && orderBy.length > 0) {
+    return [
+      t`Sorted by `,
+      joinList(
+        orderBy.map(
+          ([field, direction]) =>
+            field + " " + (direction === "asc" ? "ascending" : "descending"),
+        ),
+        " and ",
+      ),
+    ];
+  } else {
+    return [];
+  }
 }
 
 export function formatLimitDescription({ limit }, options = {}) {
-  return [];
+  if (limit != null) {
+    return [limit, " ", inflection.inflect("row", limit)];
+  } else {
+    return [];
+  }
 }
 
 export function formatQueryDescription(parts, options = {}) {
-  console.log("parts", parts);
-  console.log("options", options);
   if (!parts) {
     return "";
   }
