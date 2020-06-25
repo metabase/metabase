@@ -13,7 +13,7 @@ click on **Paste a connection string**. The Metabase UI will update with a field
 
 - **Use an SSH tunnel for database connections.** Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.
 - **Automatically run queries when doing simple filtering and summarizing.** When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries. 
-- **This is a large database, so let me choose when Metabase syncs and scans**. By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
+- **This is a large database, so let me choose when Metabase syncs and scans.** By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
 
 ## General connectivity concerns
 
@@ -23,14 +23,14 @@ click on **Paste a connection string**. The Metabase UI will update with a field
 
  - **Are you using self-signed certificates?** While Metabase doesn't support providing a self-signed cert through the Metabase UI, you can still use the command line to configure this. Just copy the existing store and add the self-signed cert:
 
-    ```bash
+    ```
     cp /usr/lib/jvm/default-jvm/jre/lib/security/cacerts ./cacerts.jks
     keytool -import -alias cacert -storepass changeit -keystore cacerts.jks -file my-cert.pem
     ```
 
     Then, start Metabase using the store:
 
-    ```bash
+    ```
     java -Djavax.net.ssl.trustStore=cacerts.jks -Djavax.net.ssl.trustStorePassword=changeit -jar metabase.jar
     ```
 
