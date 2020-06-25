@@ -90,6 +90,7 @@ export const uiControls = handleActions(
       next: (state, { payload }) => ({
         ...state,
         ...DEFAULT_UI_CONTROLS,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         ...payload.uiControls,
       }),
     },

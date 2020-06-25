@@ -11,8 +11,9 @@
             [java-time :as t]
             [metabase
              [driver :as driver]
-             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric Permissions
-                             PermissionsGroup Pulse PulseCard PulseChannel Revision Segment Table TaskHistory User]]
+             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric
+                             NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel Revision
+                             Segment Table TaskHistory User]]
              [task :as task]
              [util :as u]]
             [metabase.models
@@ -162,6 +163,10 @@
                                 :description "Lookin' for a blueberry"
                                 :name        "Toucans in the rainforest"
                                 :table_id    (data/id :checkins)})})
+
+(u/strict-extend (class NativeQuerySnippet)
+  tt/WithTempDefaults
+  {:with-temp-defaults (fn [_] {:creator_id (user-id :crowberto)})})
 
 (u/strict-extend (class PermissionsGroup)
   tt/WithTempDefaults

@@ -1,7 +1,5 @@
 (ns metabase.models.native-query-snippet
-  (:require [metabase.models
-             [interface :as i]
-             [permissions :as perms]]
+  (:require [metabase.models.interface :as i]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
@@ -20,11 +18,6 @@
       (when (not= creator_id (db/select-one-field :creator_id NativeQuerySnippet :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))))
 
-(defn- perms-objects-set
-  "Permissions to read or write a NativeQuerySnippet are the same as native query access."
-  [snippet _]
-  #{(perms/adhoc-native-query-path (:database_id snippet))})
-
 (u/strict-extend (class NativeQuerySnippet)
   models/IModel
   (merge
@@ -35,10 +28,11 @@
   i/IObjectPermissions
   (merge
    i/IObjectPermissionsDefaults
-   {:perms-objects-set perms-objects-set
-    :can-read?         (partial i/current-user-has-full-permissions? :write)
-    :can-write?        (partial i/current-user-has-full-permissions? :write)
-    :can-create?       (partial i/current-user-has-full-permissions? :write)}))
+   {;; In Metabase CE, anyone can read/edit/create NativeQuerySnippets. In EE permissions are dictated by a 'folder'
+    ;; system similar to Collections (not yet implemented).
+    :can-read?   (constantly true)
+    :can-write?  (constantly true)
+    :can-create? (constantly true)}))
 
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------

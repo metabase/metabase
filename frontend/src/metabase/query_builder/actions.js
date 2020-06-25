@@ -5,7 +5,7 @@ declare var ace: any;
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { assocIn, updateIn } from "icepick";
+import { getIn, assocIn, updateIn } from "icepick";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -63,6 +63,7 @@ import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/
 
 import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
+import Snippets from "metabase/entities/snippets";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
@@ -331,6 +332,7 @@ export const initializeQB = (location, params) => {
     }
 
     let preserveParameters = false;
+    let snippetFetch;
     if (params.cardId || serializedCard) {
       // existing card being loaded
       try {
@@ -351,6 +353,31 @@ export const initializeQB = (location, params) => {
           // if the cards are equal then show the original
           if (cardIsEquivalent(card, originalCard)) {
             card = Utils.copy(originalCard);
+          }
+        }
+
+        // if this card has any snippet tags we might need to fetch snippets pending permissions
+        if (
+          Object.values(
+            getIn(card, ["dataset_query", "native", "template-tags"]) || {},
+          ).filter(t => t.type === "snippet").length > 0
+        ) {
+          const dbId = card.database_id;
+          let database = Databases.selectors.getObject(getState(), {
+            entityId: dbId,
+          });
+          // if we haven't already loaded this database, block on loading dbs now so we can check write permissions
+          if (!database) {
+            await dispatch(Databases.actions.fetchList());
+            database = Databases.selectors.getObject(getState(), {
+              entityId: dbId,
+            });
+          }
+
+          // database could still be missing if the user doesn't have any permissions
+          // if the user has native permissions against this db, fetch snippets
+          if (database && database.native_permissions === "write") {
+            snippetFetch = dispatch(Snippets.actions.fetchList());
           }
         }
 
@@ -449,6 +476,14 @@ export const initializeQB = (location, params) => {
       question = question && question.lockDisplay();
     }
 
+    if (question && question.isNative() && snippetFetch) {
+      await snippetFetch;
+      const snippets = Snippets.selectors.getList(getState());
+      question = question.setQuery(
+        question.query().updateQueryTextWithNewSnippetNames(snippets),
+      );
+    }
+
     card = question && question.card();
 
     // Update the question to Redux state together with the initial state of UI controls
@@ -535,11 +570,8 @@ export const SET_MODAL_SNIPPET = "metabase/qb/SET_MODAL_SNIPPET";
 export const setModalSnippet = createAction(SET_MODAL_SNIPPET);
 
 export const openSnippetModalWithSelectedText = () => (dispatch, getState) => {
-  const database_id = getQuestion(getState())
-    .query()
-    .databaseId();
   const content = getNativeEditorSelectedText(getState());
-  dispatch(setModalSnippet({ database_id, content }));
+  dispatch(setModalSnippet({ content }));
 };
 
 export const closeSnippetModal = () => (dispatch, getState) => {
@@ -558,7 +590,10 @@ export const insertSnippet = snip => (dispatch, getState) => {
     query.queryText().slice(0, selectionStart) +
     `{{snippet: ${name}}}` +
     query.queryText().slice(nativeEditorCursorOffset);
-  const datasetQuery = query.setQueryText(newText).datasetQuery();
+  const datasetQuery = query
+    .setQueryText(newText)
+    .updateSnippetsWithIds([snip])
+    .datasetQuery();
   dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
 };
 
