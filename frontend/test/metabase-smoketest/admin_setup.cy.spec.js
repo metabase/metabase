@@ -867,9 +867,7 @@ describe("smoketest > admin_setup", () => {
       cy.visit("/collection/root");
 
       cy.findByText("My personal collection");
-      cy.findByText("test sub-collection");
-
-      cy.visit("/collection/6");
+      cy.findByText("test sub-collection").click();
 
       cy.wait(3000).findByText("This collection is empty, like a blank canvas");
       cy.findByText("Sorry, you don’t have permission to see that.").should(
