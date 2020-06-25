@@ -17,7 +17,6 @@ import Question from "metabase-lib/lib/Question";
 
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
-import Tables from "metabase/entities/tables";
 
 import {
   createParameter,
@@ -38,7 +37,11 @@ import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { createCard } from "metabase/lib/card";
 
-import { addParamValues, addFields } from "metabase/redux/metadata";
+import {
+  addParamValues,
+  addFields,
+  loadMetadataForQueries,
+} from "metabase/redux/metadata";
 import { push } from "react-router-redux";
 
 import {
@@ -1162,26 +1165,10 @@ const loadingDashCards = handleActions(
 
 const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
   const metadata = getMetadata(getState());
-  _.chain(dashCards)
-    .map(dc => [dc.card].concat(dc.series))
-    .flatten()
-    .map(card => new Question(card, metadata).query().dependentMetadata())
-    .flatten()
-    // these next three lines dedupe deps by (type, id)
-    .groupBy(dm => dm.type + dm.id)
-    .values()
-    .map(([foo]) => foo)
-    .forEach(({ type, id, foreignTables }) => {
-      if (type === "table") {
-        dispatch(
-          (foreignTables
-            ? Tables.actions.fetchMetadataAndForeignTables
-            : Tables.actions.fetchMetadata)({ id }),
-        );
-      } else {
-        console.warn(`loadMetadataForDashboard: type ${type} not implemented`);
-      }
-    });
+  const queries = dashCards
+    .flatMap(dc => [dc.card].concat(dc.series))
+    .map(card => new Question(card, metadata).query());
+  return dispatch(loadMetadataForQueries(queries));
 };
 
 export default combineReducers({
