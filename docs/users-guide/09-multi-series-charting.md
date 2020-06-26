@@ -7,7 +7,7 @@ Data in isolation is rarely all that useful. One of the best ways to add context
 - New users per day vs. returning users per day.
 - Orders per day from a few different product lines.
 
-### Two ways to display data side-by-side
+### Displaying data side-by-side
 
 1. [**Use the notebook editor to ask a question that involves multiple dimensions**](#using-the-notebook-editor-to-create-a-multi-series-visualization) (or in SQL, if you’re fancy). Example: the count of users by region over time.
 
