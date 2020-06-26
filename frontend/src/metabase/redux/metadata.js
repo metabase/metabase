@@ -338,7 +338,7 @@ export const loadMetadataForQueries = queries => dispatch =>
             : Tables.actions.fetchMetadata)({ id });
         } else {
           console.warn(
-            `loadMetadataForDashboard: type ${type} not implemented`,
+            `loadMetadataForQueries: type ${type} not implemented`,
           );
         }
       })
