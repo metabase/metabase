@@ -64,7 +64,7 @@ Editing snippets is a great way to make changes to many questions at once. If, f
 
 **Editing a snippet's SQL**. Here's where we have to remind you that with great power comes great responsibility. There is one major caveat when editing snippets, worthy of a callout:
 
-> **Caution when editing code in SQL snippets**. If you edit the snippet and include broken code, you will break every question that uses that snippet. Make sure to test your code before saving it to an existing snippet.
+> **Caution: if you edit a snippet and include broken code, you will break every question that uses that snippet.** Make sure to test your code before saving it to an existing snippet.
 
 ### Archived snippets
 
