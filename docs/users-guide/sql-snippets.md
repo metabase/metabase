@@ -2,7 +2,7 @@
 
 ![Highlight and save as snippet](./images/sql-snippets/highlight_and_save_as_snippet.gif)
 
-**SQL snippets** are reusable bits of SQL. Anyone with permissions to the [SQL editor](writing-sql.md) can create and edit snippets, and those snippets become available for all to take advantage of (provided they have permissions to the data, of course).
+**SQL snippets** are reusable bits of SQL or native queries. Anyone with permissions to the [SQL editor](writing-sql.md) can create and edit snippets, which are then available for all SQL authors.
 
 For example, if you frequently perform queries that involve multiple tables, you can save the SQL code that joins those tables as a snippet so that you (and others in your organization) can reuse that code in multiple questions.
 
@@ -75,4 +75,3 @@ Archiving a snippet does not affect any existing queries that use the snippet, s
 You can access an archived snippet from the snippet sidebar menu by clicking on the archived button in the bottom left of the sidebar.
 
 Although there is no way to delete a snippet, you can archive and unarchive a snippet at any time.
-
