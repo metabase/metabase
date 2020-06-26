@@ -158,7 +158,7 @@ If your table is a result that contains one numeric column and two grouping colu
 
 ### Combo charts: Line + Bar charts <a name="line-plus-bar-charts"></a>
 
-Also called **combo charts**, the line + bar chart lets you combine bars and lines (or areas) on the same chart.
+Combo charts let you combine bars and lines (or areas) on the same chart.
 
 ![Line + bar](images/visualizations/combo-chart.png)
 
