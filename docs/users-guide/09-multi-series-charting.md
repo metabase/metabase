@@ -7,25 +7,29 @@ Data in isolation is rarely all that useful. One of the best ways to add context
 - New users per day vs. returning users per day.
 - Orders per day from a few different product lines.
 
-### Displaying data side-by-side
+### Displaying data side by side
 
-1. [**Ask a question that involves multiple dimensions**](#using-the-notebook-editor-to-create-a-multi-series-visualization) with the Simple or Custom query builders (or in SQL, if you’re fancy). Example: the count of users by region over time.
+There are two main ways to visualize data side by side:
+
+1. [**Ask a question that involves multiple dimensions**](#ask-a-question-that-involves-multiple-dimensions) with the Simple or Custom query builders (or in SQL, if you’re fancy). Example: the count of users by region over time.
 
 2. [**Combine two saved questions**](#combining-two-saved-questions) that share a common dimension (like time) on a dashboard. For example, you could look at revenue over time and costs over time together.
 
-### Using the notebook editor to create a multi-series visualization
+### Ask a question that involves multiple dimensions 
 
 If you’re creating a new question, you can view the results as a multi-series visualization by summarizing your data and grouping it into two or more groups.
 
-As an example, we might want to see which website or service is referring the most people to our website. In the sample dataset that ships with Metabase this would involve using the `Source` and `Created At` columns of the **People** table.
+As an example, we might want to see which website or service is referring the most people to our website. In the **Sample Dataset** that ships with Metabase, you would group by the `Source` and `Created At` columns of the **People** table.
 
-To create the multi-series chart, we'd select the **People**, click on the **Summarize** button in the upper right, then add `Source` and `Created At` as groupings (the `count of rows` metric that we want is already selected by default). Be sure to click the plus button to the right of your selection, so Metabase knows to add the grouping. Otherwise, Metabase will switch to that grouping. [Learn more about asking questions](04-asking-questions.md).
+To create the multi-series chart, select the **People** table, click on the **Summarize** button in the upper right, then add `Source` and `Created At` as groupings (the `count of rows` metric that we want is selected by default). Be sure to click the plus button to the right of your selection, so Metabase knows to add the grouping; otherwise, Metabase will switch to that grouping. [Learn more about asking questions](04-asking-questions.md).
 
 Metabase will automatically display a multi-series line chart visualization of how each referrer has performed for us.
 
 ![multi-series in the query builder](images/multi-series-charts/multi-series_query_builder.png)
 
-> You won’t be able to add another saved question to multi-series visualizations made in this fashion. Metabase can only visualize up to 20 values of a dimension at once, so if you're selecting a field that contains a lot of values, you may need to filter the values.
+When composing a custom question in the notebook editor, you can do this by summarizing your data (e.g., counting the rows) and grouping that data into multiple groups (e.g. `Created At` by month and Product Category.)
+
+![Composing a multi-series question in the notebook editor](images/multi-series-charts/notebook_editor_multi-series.png)
 
 ### Combining two saved questions
 
@@ -37,7 +41,7 @@ If you already have two or more saved questions you’d like to compare, and the
 
 ![add multi-series](images/multi-series-charts/add_series.png)
 
-3. In the Edit Data modal, you’ll see the original question on the left, with a list of compatible questions you can choose from on the right. Search question(s) to add, and check the box next to each question you’d like to see side-by-side with the original. Metabase will add the question(s) to the same chart.
+3. In the Edit Data modal, you’ll see the original question on the left, with a list of compatible questions you can choose from on the right. Search question(s) to add, and check the box next to each question you’d like to see alongside with the original. Metabase will add the question(s) to the same chart.
 
 ![multi-series edit modal](images/multi-series-charts/edit_modal.png)
 
