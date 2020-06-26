@@ -4,4 +4,4 @@ The `Account` field requires only the alphanumeric account id. The suffixes indi
 
 The `Role` and `Schema` fields are optional. Specifying a role will override the database user's default role. So, if for example, the database user is `REPORTER` with default role `REPORTER` but also has access to role `REPORTERPRODUCT` then filling in `REPORTERPRODUCT` in the `Role` field will ensure that role is used instead of the user's default which is `REPORTER`. If no schema is passed, then all schema available to that user and role will be listed as folders in the Metabase UI.
 
-All other fields, excluding the password, must be entered in upper case.
+- **All other fields must be entered in upper case**. Excluding the password.
