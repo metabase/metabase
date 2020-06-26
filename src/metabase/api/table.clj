@@ -37,13 +37,9 @@
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
-  (for [table (-> (db/select Table, :active true, {:order-by [[:name :asc]]})
-                  (hydrate :db))
-        :when (mi/can-read? table)]
-    ;; if for some reason a Table doesn't have rows set then set it to 0 so UI doesn't barf.
-    ;; TODO - should that be part of `post-select` instead?
-    (update table :rows (fn [n]
-                          (or n 0)))))
+  (as-> (db/select Table, :active true, {:order-by [[:name :asc]]}) tables
+    (hydrate tables :db)
+    (filterv mi/can-read? tables)))
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
