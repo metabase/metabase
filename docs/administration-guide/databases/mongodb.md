@@ -2,14 +2,46 @@
 
 This article covers:
 
- - Using a connection string.
+ - Connecting to MongoDB.
  - General connectivity concerns.
  - Connecting to a MongoDB Atlas cluster.
 
-## Using a connection string
+## Connecting to MongoDB
+
+Go to Admin -> Databases, and click the **Add database** button. Select MongoDB from the dropdown.
+
+There are two ways to connect to MongDB, 1) using the [Metabase fields to input you connection details](#using-metabase-fields), or 2) by simply pasting your [connection string](#using-a-connection-string).
+
+### Using Metabase fields
+
+The default way to connect to Mongo is to fill out your connection details in the fields Metabase provides.
+
+- Host
+- Database name
+- Port
+- Username
+- Password
+- Authentication Database (Optional database to use when authenticating)
+- Additional Mongo connection string options
+
+Additional settings:
+
+- **Use DNS SRV when connecting** Using this option requires that provided host is a FQDN. If connecting to an Atlas cluster, you might need to enable this option. If you don't know what this means, leave this disabled.
+
+- **Use a secure connection (SSL)?**
+
+### Using a connection string
 
 If you'd prefer to connect to MongoDB using a [connection string](https://docs.mongodb.com/manual/reference/connection-string/),
-click on **Paste a connection string**. The Metabase UI will update with a field to paste your connection string, as well as present the following options:
+click on **Paste a connection string**. The Metabase UI will update with a field to paste your connection string.
+
+Metabase currently does NOT support the following connection string parameters:
+
+- `tlsCertificateKeyFile`
+- `tlsCertificateKeyFilePassword`
+- `tlsCAFile`
+
+### Settings common to both connection options
 
 - **Use an SSH tunnel for database connections.** Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.
 - **Automatically run queries when doing simple filtering and summarizing.** When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries. 
