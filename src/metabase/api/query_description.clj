@@ -1,7 +1,6 @@
 (ns metabase.api.query-description
   "Functions for generating human friendly query descriptions"
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [metabase.models
              [field :refer [Field]]
              [metric :refer [Metric]]
@@ -56,24 +55,23 @@
 
 (defn- get-filter-clause-description
   [metadata filters]
-  (log/spy :error filters)
   (loop [filters filters
          results []]
     (if (empty? filters)
       results
       (let [element (first filters)
-            result (log/spy :error (if (or (= element :and)
-                                           (= element :or))
-                                     nil
+            result (if (or (= element :and)
+                           (= element :or))
+                     nil
 
-                                     (let [operator (log/spy :error (first element))]
-                                       (if (= operator :segment)
-                                         {:segment (let [segment (Segment (second element))]
-                                                     (if segment
-                                                       (:name segment)
-                                                       (deferred-trs "[Unknown Segment]")))}
+                     (let [operator (first element)]
+                       (if (= operator :segment)
+                         {:segment (let [segment (Segment (second element))]
+                                     (if segment
+                                       (:name segment)
+                                       (deferred-trs "[Unknown Segment]")))}
 
-                                         {:field (:display_name (Field (second (second element))))}))))]
+                         {:field (:display_name (Field (second (second element))))})))]
 
         (recur (rest filters) (if result
                                 (conj results result)
@@ -97,7 +95,7 @@
   (when-let [limit (:limit query)]
     {:limit limit}))
 
-(def query-descriptor-functions
+(def ^:private query-descriptor-functions
   [get-table-description
    get-aggregation-description
    get-breakout-description
@@ -118,7 +116,8 @@
 
   This data structure allows the UI to format the strings appropriately (including JSX)"
   [metadata query]
-  (log/spy :error metadata)
+  ;; (log/spy :error metadata)
+  ;; (log/spy :error query)
   (apply merge
          (map (fn [f] (f metadata query))
               query-descriptor-functions)))

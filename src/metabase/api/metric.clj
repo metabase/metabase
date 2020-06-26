@@ -49,14 +49,12 @@
 
 (defn- add-query-descriptions
   [metrics] {:pre [(coll? metrics)]}
-  (log/spy
-   :error
-   (when (seq metrics)
-     (for [metric metrics]
-       (let [table (Table (:table_id metric))]
-         (assoc metric
-                :query_description
-                (qd/generate-query-description table (:definition metric))))))))
+  (when (seq metrics)
+    (for [metric metrics]
+      (let [table (Table (:table_id metric))]
+        (assoc metric
+               :query_description
+               (qd/generate-query-description table (:definition metric)))))))
 
 (api/defendpoint GET "/:id"
   "Fetch `Metric` with ID."
