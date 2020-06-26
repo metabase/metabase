@@ -337,9 +337,7 @@ export const loadMetadataForQueries = queries => dispatch =>
             ? Tables.actions.fetchMetadataAndForeignTables
             : Tables.actions.fetchMetadata)({ id });
         } else {
-          console.warn(
-            `loadMetadataForQueries: type ${type} not implemented`,
-          );
+          console.warn(`loadMetadataForQueries: type ${type} not implemented`);
         }
       })
       // unrecognized types would result in undefined, so we filter that out
