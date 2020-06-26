@@ -2,9 +2,10 @@
 
 This article covers:
 
- - Connecting to MongoDB.
- - General connectivity concerns.
- - Connecting to a MongoDB Atlas cluster.
+- [Connecting to MongoDB](#connecting-to-mongodb).
+- [Configuring SSL via the command line](#configuring-ssl-via-the-command-line).
+- [Connecting to a MongoDB Atlas cluster](#connecting-to-a-mongodb-atlas-cluster).
+- [General connectivity concerns](#general-connectivity-concerns).
 
 ## Connecting to MongoDB
 
