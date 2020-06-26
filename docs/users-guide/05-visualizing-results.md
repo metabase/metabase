@@ -11,7 +11,7 @@ In Metabase, an answer to a question can be visualized in a number of ways:
 - [Table](#tables)
 - [Line chart](#line-bar-and-area-charts)
 - [Bar chart](#line-bar-and-area-charts)
-- [Combo chart: line + bar chart](#line-plus-bar-charts)
+- [Combo chart](#line-plus-bar-charts)
 - [Row chart](#row-charts)
 - [Area chart](#line-bar-and-area-charts)
 - [Scatterplot or bubble chart](#scatterplots-and-bubble-charts)
