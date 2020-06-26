@@ -244,47 +244,41 @@
               {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
                :template-tags (card-template-tags [(:id param-card)])})))))))
 
-(defn- snippet-template-tag
-  [snippet-name]
-  (let [tag-name (str "snippet: " snippet-name)]
-    {:id           tag-name
-     :name         tag-name
-     :display-name snippet-name
-     :type         :snippet
-     :snippet-name snippet-name}))
-
 (defn- snippet-template-tags
-  [snippet-names]
-  (into {} (for [snippet-name snippet-names]
-             [(str "snippet: " snippet-name) (snippet-template-tag snippet-name)])))
+  [snippet-name->id]
+  (into {} (for [[snippet-name snippet-id] snippet-name->id]
+             [snippet-name {:name         snippet-name
+                            :display-name snippet-name
+                            :type         :snippet
+                            :snippet-name snippet-name
+                            :snippet-id   snippet-id}])))
 
 (deftest expand-multiple-snippets-test
   (mt/with-temp* [NativeQuerySnippet [select-snippet {:content     "name, price"
                                                       :creator_id  (mt/user->id :rasta)
-                                                      :database_id (mt/id)
                                                       :description "Fields to SELECT"
                                                       :name        "Venue fields"}]
                   NativeQuerySnippet [where-snippet  {:content     "price > 2"
                                                       :creator_id  (mt/user->id :rasta)
-                                                      :database_id (mt/id)
                                                       :description "Meant for use in WHERE clause"
                                                       :name        "Filter: expensive venues"}]
                   Card [card {:dataset_query
                               (mt/native-query
-                               {:query         (str "SELECT {{ snippet: Venue fields }} "
-                                                    "FROM venues "
-                                                    "WHERE {{ snippet: Filter: expensive venues }}")
-                                :template-tags (snippet-template-tags
-                                                ["Venue fields" "Filter: expensive venues"])})}]]
+                                {:query         (str "SELECT {{ Venue fields }} "
+                                                     "FROM venues "
+                                                     "WHERE {{ Filter: expensive venues }}")
+                                 :template-tags (snippet-template-tags
+                                                 {"Venue fields"             (:id select-snippet)
+                                                  "Filter: expensive venues" (:id where-snippet)})})}]]
     (testing "multiple snippets are correctly expanded in parent query"
       (is (= (mt/native-query
-              {:query "SELECT name, price FROM venues WHERE price > 2", :params nil})
+               {:query "SELECT name, price FROM venues WHERE price > 2", :params nil})
              (substitute-params (:dataset_query card)))))
 
     (testing "multiple snippets are expanded from saved sub-query"
       (is (= (mt/native-query
-              {:query "SELECT * FROM (SELECT name, price FROM venues WHERE price > 2) AS x", :params nil})
+               {:query "SELECT * FROM (SELECT name, price FROM venues WHERE price > 2) AS x", :params nil})
              (substitute-params
               (mt/native-query
-               {:query         (str "SELECT * FROM {{#" (:id card) "}} AS x")
-                :template-tags (card-template-tags [(:id card)])})))))))
+                {:query         (str "SELECT * FROM {{#" (:id card) "}} AS x")
+                 :template-tags (card-template-tags [(:id card)])})))))))

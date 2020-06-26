@@ -1,7 +1,5 @@
 /* @flow weak */
 
-import Query from "./Query";
-
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 
@@ -197,7 +195,7 @@ export default class NativeQuery extends AtomicQuery {
     return getIn(this.datasetQuery(), ["native", "query"]) || "";
   }
 
-  setQueryText(newQueryText: string): Query {
+  setQueryText(newQueryText: string): NativeQuery {
     return new NativeQuery(
       this._originalQuestion,
       chain(this._datasetQuery)
@@ -323,6 +321,57 @@ export default class NativeQuery extends AtomicQuery {
       .filter(variableFilter);
   }
 
+  updateSnippetsWithIds(snippets): NativeQuery {
+    const tagsBySnippetName = _.chain(this.templateTags())
+      .filter(tag => tag.type === "snippet" && tag["snippet-id"] == null)
+      .groupBy(tag => tag["snippet-name"])
+      .value();
+
+    if (Object.keys(tagsBySnippetName).length === 0) {
+      // no need to check if there are no tags
+      return this;
+    }
+
+    let query = this;
+    for (const snippet of snippets) {
+      for (const tag of tagsBySnippetName[snippet.name] || []) {
+        query = query.setTemplateTag(tag.name, {
+          ...tag,
+          "snippet-id": snippet.id,
+        });
+      }
+    }
+    return query;
+  }
+
+  updateQueryTextWithNewSnippetNames(snippets): NativeQuery {
+    const tagsBySnippetId = _.chain(this.templateTags())
+      .filter(tag => tag.type === "snippet")
+      .groupBy(tag => tag["snippet-id"])
+      .value();
+
+    if (Object.keys(tagsBySnippetId).length === 0) {
+      // no need to check if there are no tags
+      return this;
+    }
+
+    let queryText = this.queryText();
+    for (const snippet of snippets) {
+      for (const tag of tagsBySnippetId[snippet.id] || []) {
+        if (tag["snippet-name"] !== snippet.name) {
+          queryText = queryText.replace(
+            new RegExp(`\{\{\\s*${tag.name}\\s*\}\}`, "g"),
+            `{{snippet: ${snippet.name}}}`,
+          );
+        }
+      }
+    }
+    if (queryText !== this.queryText()) {
+      return this.setQueryText(queryText).updateSnippetsWithIds(snippets);
+    }
+    return this;
+  }
+
   /**
    * special handling for NATIVE cards to automatically detect parameters ... {{varname}}
    */
@@ -366,7 +415,7 @@ export default class NativeQuery extends AtomicQuery {
             newTag["card-id"] = cardTagCardId(newTag.name);
           } else if (isSnippetName(newTag.name)) {
             newTag.type = "snippet";
-            newTag.snippet_name = snippetNameFromTagName(newTag.name);
+            newTag["snippet-name"] = snippetNameFromTagName(newTag.name);
           }
           templateTags[newTag.name] = newTag;
           delete templateTags[oldTags[0]];
@@ -395,7 +444,7 @@ export default class NativeQuery extends AtomicQuery {
               // extract snippet name from snippet tag
               templateTags[tagName] = Object.assign(templateTags[tagName], {
                 type: "snippet",
-                snippet_name: snippetNameFromTagName(tagName),
+                "snippet-name": snippetNameFromTagName(tagName),
               });
             }
           }

@@ -14,7 +14,8 @@ export default createEntity({
         title: t`Enter some SQL here so you can reuse it later`,
         placeholder: t`AND canceled_at IS null\nAND account_type = 'PAID'`,
         type: "text",
-        className: "Form-input full text-code-plain",
+        className:
+          "Form-input full text-monospace text-normal text-small bg-light text-spaced",
         rows: 4,
         validate: validate.required().maxLength(10000),
       },
@@ -30,7 +31,6 @@ export default createEntity({
         placeholder: t`It's optional but oh, so helpful`,
         validate: validate.maxLength(500),
       },
-      { name: "database_id", hidden: true },
     ],
   },
 });

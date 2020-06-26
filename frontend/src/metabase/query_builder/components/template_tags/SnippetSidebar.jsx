@@ -7,6 +7,7 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
+import Button from "metabase/components/Button";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import { color } from "metabase/lib/colors";
@@ -14,10 +15,8 @@ import { color } from "metabase/lib/colors";
 import Snippets from "metabase/entities/snippets";
 
 import type { Snippet } from "metabase/meta/types/Snippet";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 type Props = {
-  query: NativeQuery,
   onClose: () => void,
   setModalSnippet: () => void,
   openSnippetModalWithSelectedText: () => void,
@@ -46,7 +45,6 @@ export default class SnippetSidebar extends React.Component {
   searchBox: ?HTMLInputElement;
 
   static propTypes = {
-    query: PropTypes.object.isRequired,
     onClose: PropTypes.func.isRequired,
     setModalSnippet: PropTypes.func.isRequired,
     openSnippetModalWithSelectedText: PropTypes.func.isRequired,
@@ -81,13 +79,12 @@ export default class SnippetSidebar extends React.Component {
   );
 
   render() {
-    const { query, snippets, openSnippetModalWithSelectedText } = this.props;
+    const { snippets, openSnippetModalWithSelectedText } = this.props;
     const { showSearch, searchString, showArchived } = this.state;
     const filteredSnippets = snippets.filter(
       snippet =>
-        (!showSearch ||
-          snippet.name.toLowerCase().includes(searchString.toLowerCase())) &&
-        query.databaseId() === snippet.database_id,
+        !showSearch ||
+        snippet.name.toLowerCase().includes(searchString.toLowerCase()),
     );
 
     if (showArchived) {
@@ -122,7 +119,7 @@ export default class SnippetSidebar extends React.Component {
         ) : (
           <div>
             <div
-              className="flex align-center px2 border-bottom"
+              className="flex align-center pl3 pr2"
               style={{ paddingTop: 10, paddingBottom: 8 }}
             >
               <div className="flex-full">
@@ -182,20 +179,16 @@ export default class SnippetSidebar extends React.Component {
                 />
               </div>
             </div>
-            {query.databaseId() == null ? (
-              <p className="text-body text-centered">{t`Select a database to see its snippets.`}</p>
-            ) : (
-              <div className="flex-full">
-                {filteredSnippets.map(snippet => (
-                  <SnippetRow
-                    key={snippet.id}
-                    snippet={snippet}
-                    insertSnippet={this.props.insertSnippet}
-                    setModalSnippet={this.props.setModalSnippet}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="flex-full">
+              {filteredSnippets.map(snippet => (
+                <SnippetRow
+                  key={snippet.id}
+                  snippet={snippet}
+                  insertSnippet={this.props.insertSnippet}
+                  setModalSnippet={this.props.setModalSnippet}
+                />
+              ))}
+            </div>
           </div>
         )}
       </SidebarContent>
@@ -251,11 +244,11 @@ class SnippetRow extends React.Component {
         )}
       >
         <div
-          className="cursor-pointer bg-light-hover text-bold flex align-center justify-between p2"
+          className="cursor-pointer bg-light-hover text-bold flex align-center justify-between py2 px3 hover-parent hover--display"
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
           <div
-            className="flex text-brand-hover hover-parent hover--display"
+            className="flex text-brand-hover"
             onClick={
               unarchiveSnippet
                 ? () => this.setState({ isOpen: true })
@@ -284,26 +277,27 @@ class SnippetRow extends React.Component {
           />
         </div>
         {isOpen && (
-          <div className="px2 pb2 pt1">
+          <div className="px3 pb2 pt1">
             {description && <p className="text-medium mt0">{description}</p>}
-            <span
+            <pre
+              className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap overflow-scroll overflow-x-scroll"
+              style={{ maxHeight: 320 }}
+            >
+              {content}
+            </pre>
+            <Button
               onClick={
                 unarchiveSnippet
                   ? unarchiveSnippet
                   : () => setModalSnippet(snippet)
               }
-              className="text-brand text-bold cursor-pointer bg-light-hover p1 rounded"
+              borderless
+              medium
+              className="text-brand text-white-hover bg-light bg-brand-hover mt1"
+              icon={unarchiveSnippet ? "unarchive" : "pencil"}
             >
-              <Icon
-                name={unarchiveSnippet ? "unarchive" : "pencil"}
-                size={14}
-                className="mr1"
-              />
               {unarchiveSnippet ? t`Unarchive` : t`Edit`}
-            </span>
-            <pre className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap overflow-x-scroll">
-              {content}
-            </pre>
+            </Button>
           </div>
         )}
       </div>

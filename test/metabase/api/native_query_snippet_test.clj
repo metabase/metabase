@@ -3,15 +3,13 @@
   (:require [clojure
              [string :as str]
              [test :refer :all]]
-            [metabase.models
-             [database :refer [Database]]
-             [native-query-snippet :refer [NativeQuerySnippet]]
-             [permissions :as perms]
-             [permissions-group :as group]]
-            [metabase.test :as mt])
-  (:import java.time.LocalDateTime))
+            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+            [metabase.test :as mt]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan.db :as db]))
 
-(def ^:private test-snippet-fields [:content :creator_id :database_id :description :name])
+(def ^:private test-snippet-fields [:content :creator_id :description :name])
 
 (defn- snippet-url
   [& [arg & _]]
@@ -23,116 +21,118 @@
   (str/starts-with? (or (get-in response [:errors :name]) "")
                     "Value does not match schema: "))
 
-;; GET /api/native-query-snippet
 (deftest list-snippets-api-test
-  (mt/with-temp* [Database           [db]
-                  NativeQuerySnippet [snippet-1 {:content     "1"
-                                                 :creator_id  (mt/user->id :rasta)
-                                                 :database_id (:id db)
-                                                 :description "Test snippet 1"
-                                                 :name        "snippet_1"}]
-                  NativeQuerySnippet [snippet-2 {:content     "2"
-                                                 :creator_id  (mt/user->id :rasta)
-                                                 :database_id (:id db)
-                                                 :description "Test snippet 2"
-                                                 :name        "snippet_2"}]]
-    (testing "list returns all snippets"
-      (let [snippets-from-api (->> ((mt/user->client :crowberto) :get 200 (snippet-url))
-                                   (map #(select-keys % test-snippet-fields))
-                                   set)]
-        (is (contains? snippets-from-api (select-keys snippet-1 test-snippet-fields)))
-        (is (contains? snippets-from-api (select-keys snippet-2 test-snippet-fields)))))
+  (testing "GET /api/native-query-snippet"
+    (mt/with-temp* [NativeQuerySnippet [snippet-1 {:content "1"
+                                                   :name    "snippet_1"}]
+                    NativeQuerySnippet [snippet-2 {:content "2"
+                                                   :name    "snippet_2"}]]
+      (testing "list returns all snippets. Should work for all users"
+        (doseq [test-user [:crowberto :rasta]]
+          (testing (format "test user = %s" test-user)
+            (let [snippets-from-api (->> ((mt/user->client test-user) :get 200 (snippet-url))
+                                         (map #(select-keys % test-snippet-fields))
+                                         set)]
+              (is (contains? snippets-from-api (select-keys snippet-1 test-snippet-fields)))
+              (is (contains? snippets-from-api (select-keys snippet-2 test-snippet-fields))))))))))
 
-    (testing "list fails for user without read permission"
-      (perms/revoke-permissions! (group/all-users) db)
-      (is (empty? ((mt/user->client :rasta) :get 200 (snippet-url)))))))
-
-;; GET /api/native-query-snippet/:id
 (deftest read-snippet-api-test
-  (mt/with-temp* [Database           [db]
-                  NativeQuerySnippet [snippet {:content     "-- SQL comment here"
-                                               :creator_id  (mt/user->id :rasta)
-                                               :database_id (:id db)
-                                               :description "SQL comment snippet"
-                                               :name        "comment"}]]
-    (testing "read returns all snippet fields"
-      (let [snippet-from-api ((mt/user->client :crowberto) :get 200 (snippet-url (:id snippet)))]
-        (is (= (select-keys snippet test-snippet-fields)
-               (select-keys snippet-from-api test-snippet-fields)))))
+  (testing "GET /api/native-query-snippet/:id"
+    (mt/with-temp NativeQuerySnippet [snippet {:content "-- SQL comment here"
+                                               :name    "comment"}]
+      (testing "all users should be able to see all snippets in CE"
+        (doseq [test-user [:crowberto :rasta]]
+          (testing (format "with test user %s" test-user)
+            (let [snippet-from-api ((mt/user->client test-user) :get 200 (snippet-url (:id snippet)))]
+              (is (= (select-keys snippet test-snippet-fields)
+                     (select-keys snippet-from-api test-snippet-fields))))))))))
 
-    (testing "read fails with 403 for user without read permissions"
-      (perms/revoke-permissions! (group/all-users) db)
-      (is (= "You don't have permissions to do that."
-             ((mt/user->client :rasta) :get 403 (str "native-query-snippet/" (:id snippet))))))))
-
-;; POST /api/native-query-snippet
 (deftest create-snippet-api-test
-  (mt/with-temp* [Database [db]]
+  (testing "POST /api/native-query-snippet"
     (testing "new snippet field validation"
       (is (= {:errors {:content "value must be a string."}}
              ((mt/user->client :rasta) :post 400 (snippet-url) {})))
 
-      (is (= {:errors {:database_id "value must be an integer greater than zero."}}
-             ((mt/user->client :rasta) :post 400 (snippet-url) {:content "NULL"})))
-
       (is (name-schema-error? ((mt/user->client :rasta)
                                :post 400 (snippet-url)
-                               {:content "NULL", :database_id (:id db)})))
+                               {:content "NULL"})))
 
       (is (name-schema-error? ((mt/user->client :rasta) :post 400 (snippet-url)
-                               {:content     "NULL"
-                                :database_id (:id db)
-                                :name        " starts with a space"})))
+                               {:content "NULL"
+                                :name    " starts with a space"})))
 
       (is (name-schema-error? ((mt/user->client :rasta) :post 400 (snippet-url)
-                               {:content     "NULL"
-                                :database_id (:id db)
-                                :name        "contains a } character"}))))
+                               {:content "NULL"
+                                :name    "contains a } character"})))))
 
-    (testing "successful create returns new snippet's data"
-      (let [snippet-input    {:name "test-snippet", :description "Just null", :content "NULL", :database_id (:id db)}
-            snippet-from-api ((mt/user->client :crowberto) :post 200 (snippet-url) snippet-input)]
-        (is (pos? (:id snippet-from-api)))
+  (testing "successful create returns new snippet's data"
+    (doseq [[message user] {"admin user should be able to create" :crowberto
+                            "non-admin user should be able to create" :rasta}]
+      (testing message
+        (try
+          (let [snippet-input    {:name "test-snippet", :description "Just null", :content "NULL"}
+                snippet-from-api ((mt/user->client user) :post 200 (snippet-url) snippet-input)]
+            (is (schema= {:id          su/IntGreaterThanZero
+                          :name        (s/eq "test-snippet")
+                          :description (s/eq "Just null")
+                          :content     (s/eq "NULL")
+                          :creator_id  (s/eq (mt/user->id user))
+                          :archived    (s/eq false)
+                          :created_at  java.time.OffsetDateTime
+                          :updated_at  java.time.OffsetDateTime
+                          s/Keyword    s/Any}
+                         snippet-from-api)))
+          (finally
+            (db/delete! NativeQuerySnippet :name "test-snippet"))))))
 
-        (doseq [k [:database_id :name :description :content]]
-          (testing k
-            (is (= (get snippet-input k)
-                   (get snippet-from-api k)))))
+  (testing "Attempting to create a Snippet with a name that's already in use should throw an error"
+    (try
+      (mt/with-temp NativeQuerySnippet [_ {:name "test-snippet-1", :content "1"}]
+        (is (= "A snippet with that name already exists. Please pick a different name."
+               ((mt/user->client :crowberto) :post 400 (snippet-url) {:name "test-snippet-1", :content "2"})))
+        (is (= 1
+               (db/count NativeQuerySnippet :name "test-snippet-1"))))
+      (finally
+        (db/delete! NativeQuerySnippet :name "test-snippet-1"))))
 
+  (testing "Shouldn't be able to specify non-default creator_id"
+    (try
+      (let [snippet ((mt/user->client :crowberto) :post 200 (snippet-url)
+                     {:name "test-snippet", :content "1", :creator_id (mt/user->id :rasta)})]
         (is (= (mt/user->id :crowberto)
-               (:creator_id snippet-from-api)))
+               (:creator_id snippet))))
+      (finally
+        (db/delete! NativeQuerySnippet :name "test-snippet")))))
 
-        (is (false? (:archived snippet-from-api)))
-
-        (doseq [k [:created_at :updated_at]]
-          (testing k
-            (is (instance? LocalDateTime (get snippet-from-api k)))))))
-
-    (testing "create fails for non-admin user"
-      (perms/revoke-permissions! (group/all-users) db)
-      (is (= "You don't have permissions to do that."
-             ((mt/user->client :rasta)
-              :post 403 (snippet-url)
-              {:name "test-snippet", :content "NULL", :database_id (:id db)}))))))
-
-;; PUT /api/native-query-snippet/:id
 (deftest update-snippet-api-test
-  (mt/with-temp* [Database           [db]
-                  NativeQuerySnippet [snippet {:content     "-- SQL comment here"
-                                               :creator_id  (mt/user->id :rasta)
-                                               :database_id (:id db)
-                                               :description "SQL comment snippet"
-                                               :name        "comment"}]]
-    (testing "update stores updated snippet"
-      (let [updated-desc    "Updated descripted."
-            updated-snippet ((mt/user->client :crowberto)
-                             :put 200 (snippet-url (:id snippet))
-                             {:description updated-desc})]
-        (is (= updated-desc (:description updated-snippet)))))
+  (testing "PUT /api/native-query-snippet/:id"
+    (mt/with-temp NativeQuerySnippet [snippet {:content "-- SQL comment here"
+                                               :name    "comment"}]
+      (testing "update stores updated snippet"
+        (doseq [[message user] {"admin user should be able to update" :crowberto
+                                "non-admin user should be able to update" :rasta}]
+          (testing message
+            (let [updated-desc    "Updated description."
+                  updated-snippet ((mt/user->client user)
+                                   :put 200 (snippet-url (:id snippet))
+                                   {:description updated-desc})]
+              (is (= updated-desc (:description updated-snippet)))))))
 
-    (testing "update fails for non-admin user"
-      (perms/revoke-permissions! (group/all-users) db)
-      (is (= "You don't have permissions to do that."
-             ((mt/user->client :rasta)
-              :put 403 (snippet-url (:id snippet))
-              {:description "This description shouldn't get updated due to permissions error."}))))))
+      (testing "Attempting to change Snippet's name to one that's already in use should throw an error"
+        (mt/with-temp* [NativeQuerySnippet [_         {:name "test-snippet-1", :content "1"}]
+                        NativeQuerySnippet [snippet-2 {:name "test-snippet-2", :content "2"}]]
+          (is (= "A snippet with that name already exists. Please pick a different name."
+                 ((mt/user->client :crowberto) :put 400 (snippet-url (:id snippet-2)) {:name "test-snippet-1"})))
+          (is (= 1
+                 (db/count NativeQuerySnippet :name "test-snippet-1")))
+
+          (testing "Passing in the existing name (no change) shouldn't cause an error"
+            (is (= {:id (:id snippet-2), :name "test-snippet-2"}
+                   (select-keys ((mt/user->client :crowberto) :put 200 (snippet-url (:id snippet-2)) {:name "test-snippet-2"})
+                                [:id :name]))))))
+
+      (testing "Shouldn't be able to change creator_id"
+        (mt/with-temp NativeQuerySnippet [snippet {:name "test-snippet", :content "1", :creator_id (mt/user->id :lucky)}]
+          ((mt/user->client :crowberto) :put 200 (snippet-url (:id snippet)) {:creator_id (mt/user->id :rasta)})
+          (is (= (mt/user->id :lucky)
+                 (db/select-one-field :creator_id NativeQuerySnippet :id (:id snippet)))))))))
