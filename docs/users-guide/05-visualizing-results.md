@@ -156,7 +156,7 @@ If your table is a result that contains one numeric column and two grouping colu
 
 ![Trend lines](images/visualizations/trend-lines.png)
 
-### Combo charts: Line + Bar charts <a name="line-plus-bar-charts"></a>
+### Combo charts <a name="line-plus-bar-charts"></a>
 
 Combo charts let you combine bars and lines (or areas) on the same chart.
 
