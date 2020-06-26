@@ -1,28 +1,28 @@
 # Scaling Metabase
 
+Metabase is scalable, battle-tested software used by over 20,000 companies. Metabase supports high availability via horizontal scaling, and high performance via vertical scaling, as well as a [hosted solution](https://www.metabase.com/hosting/) that takes operating Metabase off your plate.
+
 This article provides guidance on how to keep Metabase running smoothly in production as the number of users and data sources increases. 
 
-In short: Metabase is battle-tested software used by over 20,000 companies. Metabase supports high availability via horizontal scaling, and high performance via vertical scaling, as well as a [hosted solution](https://www.metabase.com/hosting/) that takes operating Metabase off your plate.
+We'll cover:
 
-In this article, we'll cover:
+- **Vertical scaling.** Running a single instance of Metabase with more cores and memory. Vertical scaling can help with Metabase application performance.
+- **Horizontal scaling.** Running multiple instances of Metabase. Horizontal scaling can help with high availability/reliability of your Metabase application.
+- **Metabase application best practices.** Tuning dashboards and questions to improve performance.
+- **Hosted Metabase.** Leave the scaling to Metabase so you can focus on your business.
 
-- **Vertical scaling**. Running a single instance of Metabase with more cores and memory. Vertical scaling can help with Metabase application performance.
-- **Horizontal scaling**. Running multiple instances of Metabase. Horizontal scaling can help with high availability/reliability of your Metabase application.
-- **Metabase application best practices**. Tuning dashboards and questions to improve performance.
-- **Hosted Metabase**. Leave the scaling to Metabase so you can focus on your business.
-
-We'll discuss scaling strategies at a high level, but you'll have to translate these strategies to your particular environment and usage. And if you don't want to spend the time dealing with scaling issues, consider Metabase's [hosted offering](https://www.metabase.com/hosting/).
+We'll discuss scaling strategies at a high level, but you'll have to translate these strategies to your particular environment and usage. And if you don't want to spend the time dealing with scaling the Metabase application, consider Metabase's [hosted offering](https://www.metabase.com/hosting/).
 
 ## Factors that impact Metabase performance and availability
 
-Metabase scales well (both vertically and horizontally), but Metabase is only one component of your data warehouse, and the overall performance of your system will depend on many factors. 
+Metabase scales well (both vertically and horizontally), but Metabase is only one component of your data warehouse, and the overall performance of your system will depend on the composition of your system and your usage patterns.
 
-Major factors that impact your experience using Metabase include the:
+Major factors that impact your experience using Metabase include:
 
-- number of databases connected to Metabase.
-- number of tables in each database.
-- efficiency of your data warehouse.
-- structure of your dashboards in Metabase.
+- the number of databases connected to Metabase.
+- the number of tables in each database.
+- the efficiency of your data warehouse.
+- the structure of your dashboards in Metabase.
 
 For example, it will not matter how many instances of Metabase you run if a question needs to grab records from thousands of tables in a database. That's just going to take a while. The solution in that case is either to re-evaluate your need for that data (do you really need all that info every time?), or to find ways to improve the performance of your database, such as reorganizing your data, or improving the indexing of your data.
 
@@ -30,25 +30,23 @@ But first, let's make sure our Metabase application is well-tuned to scale.
 
 ## Vertical scaling
 
-Vertical scaling is the brute force approach. Give Metabase more cores and memory, and it will have more resources available to do its work. If you are experiencing performance issues related to the application itself (i.e. unrelated to the breadth and magnitude of your databases), running Metabase on a more powerful machine can help improve performance.
+Vertical scaling is the brute force approach. Give Metabase more cores and memory, and it will have more resources available to do its work.
 
-Metabase is efficient out of the box. For example, for a starter Metabase instance on AWS, we recommend running Metabase using Elastic Beanstalk on a `t2.small` instance, and scaling up from there. That's a single core machine with 2 gigabytes of RAM. Machines with with 4-8 gigs of RAM should handle hundreds of users, and you can bump the number of cores and gigabytes of memory if needed.
+If you are experiencing performance issues related to the application itself (i.e. unrelated to the breadth and magnitude of your databases), running Metabase on a more powerful machine can help improve performance.
 
-### Tuning the Jetty HTTP server
-
-TODO: You can also configure the Jetty HTTP server to improve performance.
+Metabase is already efficient out of the box. For example, for a starter Metabase instance on AWS, we recommend running Metabase using Elastic Beanstalk on a `t2.small` instance, and scaling up from there. That's a single core machine with 2 gigabytes of RAM. Machines with with 4-8 gigs of RAM should handle hundreds of users, and you can bump the number of cores and gigabytes of memory if needed.
 
 ## Horizontal scaling (high availability)
 
-Horizontal scaling involves running multiple instances of Metabase and using a load balancer to direct traffic to the instances. The primary use cases for horizontal scaling is to improve reliability (some customers also use the phrase "high availability").
-
-When scaling horizontally, you must host the application database externally, using a relational database like PostgreSQL, so that all instances of Metabase can share a common database. We recommend using a managed database solution with high availability, such as [AWS's Relational Database Service (RDS)](https://aws.amazon.com/rds/), so your application database will always be available for your Metabase instances.
+Horizontal scaling involves running multiple instances of Metabase and using a load balancer to direct traffic to the instances. The primary use cases for horizontal scaling is to improve reliability (a.k.a. "high availability").
 
 Metabase is set up for horizontal scaling out of the box, so you don't need any special configuration to run multiple instances of Metabase. The user session data is stored in the external application database, so users don't have to worry about losing saved work if one machine goes down, and administrators don't have to deal with configuring sticky sessions to make sure users are connected to the right Metabase instance. The load balancer will route users to an available instance so users can keep right on working.
 
+When scaling horizontally, however, you must host the application database externally, using a relational database like PostgreSQL, so that all instances of Metabase can share a common database. Though you can manage your own application database, we recommend using a managed database solution with high availability, such as [AWS's Relational Database Service (RDS)](https://aws.amazon.com/rds/), [Google Cloud Platform's Cloud SQL](https://cloud.google.com/sql), [Microsoft Azure's SQL Database](https://azure.microsoft.com/en-us/services/sql-database/), or similar offering, so your application database will always be available for your Metabase instances. Managed database solutions are especially useful for Enterprise customers who take advantage of Metabase's [auditing functionality](https://www.metabase.com/docs/latest/enterprise-guide/audit.html).
+
 ### Time-based horizontal scaling
 
-Some customers adjust the number of Metabase instances based on the time of day. For example, customers will spin up multiple instances of Metabase in the morning to handle a burst of traffic when users log in and run their morning dashboards, then spin the extra Metabase instances down in the afternoon (or at night, or on the weekends) to save money on server costs.
+Some customers adjust the number of Metabase instances based on the time of day. For example, customers will spin up multiple instances of Metabase in the morning to handle a burst of traffic when users log in and run their morning dashboards, then spin the extra Metabase instances down in the afternoon (or at night, or on the weekends) to save money on cloud spend.
 
 ### Configuring the load balancer
 
@@ -96,34 +94,30 @@ Metabase's Enterprise Edition offers [auditing tools](https://www.metabase.com/d
 
 Sometimes people go overboard with dashboards, loading them up with 50 questions or more. When a dashboard with 50 questions loads, it sends 50 simultaneous requests to that database asking for data. And depending on the size of that database and the number of tables in that database, it can be quite some time before those records return to answer all of those questions.
 
+Encourage your users to keep their dashboards focused on telling a story about your data with just a handful of questions. Think essays, or short stories, not books.
+
 ### Update your browser
 
 Metabase is a web application, and can benefit from the latest and greatest versions of browsers like Firefox, Chrome, Edge, and Safari.
 
 ## Hosted Metabase
 
-Metabase now offers a hosted solution, where we handle scaling Metabase for you. You'll still have to ensure your data sources are performant, but with hosting, scaling the Metabase application will be one less thing you have to worry about.
+Metabase now offers a hosted solution, where we handle scaling Metabase for you. You'll still have to ensure your data sources are performant, but you'll no longer have to manage running the application.
 
 ## Supported deployments
 
 ### AWS Elastic Beanstalk
 
-Check out our guide to setting up Metabase Elastic Beanstalk. We use Elastic Beanstalk to host our internal Metabase application.
+Check out our [guide to setting up Metabase on Elastic Beanstalk](running-metabase-on-elastic-beanstalk.md). We use Elastic Beanstalk to host our internal Metabase application.
 
 ### Heroku
 
+See [running Metabase on Heroku](running-metabase-on-heroku.md).
+
 ### Docker & Kubernetes
+
+See [running Metabase on Kubernetes](running-metabase-on-kubernetes).
 
 ### Other cloud providers
 
 Google Cloud Platform, Microsoft Azure, Digital Ocean, and other cloud providers offer other great alternatives for hosting your Metabase application.
-
-# Notes (to Delete)
-
-Typically, customers will ask questions like:
-
-- How many users can Metabase support?
-- What configuration do I need to support X number of users?
-- How do I configure Metabase to support a certain scale of Metabase?
-
-We haven't done performance testing yet, so we cannot yet say things like, "If you have X number of users, and X databases, you should use this machine with this memory and number of cores."
