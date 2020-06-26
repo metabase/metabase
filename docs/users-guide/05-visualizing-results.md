@@ -166,7 +166,7 @@ Metabase will pick one of your series to display as a line, and another to displ
 
 ![Line + bar](images/visualizations/combo-chart-settings.png)
 
-To use a Line + Bar chart, you'll either need to have two or more metrics selected in the Summarize By section of your question, with one or two grouping columns, like this:
+To use a Combo chart you'll either need to have two or more metrics selected in the Summarize By section of your question, with one or two grouping columns, like this:
 
 ![Data for Line + Bar chart](images/visualizations/combo-chart-data-1.png)
 
