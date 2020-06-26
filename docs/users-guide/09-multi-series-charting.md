@@ -9,7 +9,7 @@ Data in isolation is rarely all that useful. One of the best ways to add context
 
 ### Displaying data side-by-side
 
-1. [**Use the notebook editor to ask a question that involves multiple dimensions**](#using-the-notebook-editor-to-create-a-multi-series-visualization) (or in SQL, if you’re fancy). Example: the count of users by region over time.
+1. [**Ask a question that involves multiple dimensions**](#using-the-notebook-editor-to-create-a-multi-series-visualization) with the Simple or Custom query builders (or in SQL, if you’re fancy). Example: the count of users by region over time.
 
 2. [**Combine two saved questions**](#combining-two-saved-questions) that share a common dimension (like time) on a dashboard. For example, you could look at revenue over time and costs over time together.
 
