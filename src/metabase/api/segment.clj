@@ -48,18 +48,17 @@
 
 (defn- add-query-descriptions
   [segments] {:pre [(coll? segments)]}
-  (log/spy :error
-           (when (seq segments)
-             (for [segment segments]
-               (let [table (Table (:table_id segment))]
-                 (assoc segment
-                        :query_description
-                        (qd/generate-query-description table (:definition segment))))))))
+  (when (seq segments)
+    (for [segment segments]
+      (let [table (Table (:table_id segment))]
+        (assoc segment
+               :query_description
+               (qd/generate-query-description table (:definition segment)))))))
 
 (api/defendpoint GET "/:id"
   "Fetch `Segment` with ID."
   [id]
-  (first (add-query-descriptions [(hydrated-segment id)])))
+  (first (log/spy :error (add-query-descriptions [(log/spy :error (hydrated-segment (log/spy :error id)))]))))
 
 (api/defendpoint GET "/"
   "Fetch *all* `Segments`."

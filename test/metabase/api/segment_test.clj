@@ -195,13 +195,14 @@
    :updated_at              true
    :archived                true
    :definition              nil}
-  (tt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Segment  [{:keys [id]} {:table_id table-id}]]
-    ((user->client :crowberto) :delete 204 (format "segment/%d" id) :revision_message "carryon")
-    ;; should still be able to fetch the archived segment
-    (segment-response
-     ((user->client :crowberto) :get 200 (format "segment/%d" id)))))
+  (-> (tt/with-temp* [Database [{database-id :id}]
+                      Table    [{table-id :id} {:db_id database-id}]
+                      Segment  [{:keys [id]} {:table_id table-id}]]
+        ((user->client :crowberto) :delete 204 (format "segment/%d" id) :revision_message "carryon")
+        ;; should still be able to fetch the archived segment
+        (segment-response
+         ((user->client :crowberto) :get 200 (format "segment/%d" id))))
+      (dissoc :query_description)))
 
 
 ;; ## GET /api/segment/:id
@@ -227,12 +228,13 @@
    :updated_at              true
    :archived                false
    :definition              {:filter ["=" ["field-id" 2] "cans"]}}
-  (tt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Segment  [{:keys [id]}   {:creator_id (user->id :crowberto)
-                                            :table_id   table-id
-                                            :definition {:filter [:= [:field-id 2] "cans"]}}]]
-    (segment-response ((user->client :rasta) :get 200 (format "segment/%d" id)))))
+  (-> (tt/with-temp* [Database [{database-id :id}]
+                      Table    [{table-id :id} {:db_id database-id}]
+                      Segment  [{:keys [id]}   {:creator_id (user->id :crowberto)
+                                                :table_id   table-id
+                                                :definition {:filter [:= [:field-id 2] "cans"]}}]]
+        (segment-response ((user->client :rasta) :get 200 (format "segment/%d" id))))
+      (dissoc :query_description)))
 
 
 ;; ## GET /api/segment/:id/revisions
@@ -381,7 +383,7 @@
                       Segment [_         {:archived true}]] ; inactive segments shouldn't show up
   (tu/mappify (hydrate [segment-1
                         segment-2] :creator))
-  ((user->client :rasta) :get 200 "segment/"))
+  (map #(dissoc % :query_description) ((user->client :rasta) :get 200 "segment/")))
 
 
 ;;; PUT /api/segment/id. Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?

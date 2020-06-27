@@ -55,34 +55,22 @@
 
 (defn- get-filter-clause-description
   [metadata filters]
-  (loop [filters filters
-         results []]
-    (if (empty? filters)
-      results
-      (let [element (first filters)
-            result (if (or (= element :and)
-                           (= element :or))
-                     nil
+  (let [elem (first filters)]
+    (cond
+      (or (= :and elem)
+          (= :or elem)) (map #(get-filter-clause-description metadata %) (drop 1 filters))
 
-                     (let [operator (first element)]
-                       (if (= operator :segment)
-                         {:segment (let [segment (Segment (second element))]
-                                     (if segment
-                                       (:name segment)
-                                       (deferred-trs "[Unknown Segment]")))}
+      (= :segment elem) {:segment (let [segment (Segment (second elem))]
+                                    (if segment
+                                      (:name segment)
+                                      (deferred-trs "[Unknown Segment]")))}
 
-                         {:field (:display_name (Field (second (second element))))})))]
-
-        (recur (rest filters) (if result
-                                (conj results result)
-                                results))))))
+      :else {:field (:display_name (Field (second (second filters))))})))
 
 (defn- get-filter-description
   [metadata query]
   (when-let [filters (:filter query)]
-    {:filter (get-filter-clause-description metadata (if (= :and (first filters))
-                                                        filters
-                                                        (cons :and filters)))}))
+    {:filter (get-filter-clause-description metadata [:and filters])}))
 
 (defn- get-order-by-description
   [metadata query]
@@ -116,8 +104,6 @@
 
   This data structure allows the UI to format the strings appropriately (including JSX)"
   [metadata query]
-  ;; (log/spy :error metadata)
-  ;; (log/spy :error query)
   (apply merge
          (map (fn [f] (f metadata query))
               query-descriptor-functions)))

@@ -3,9 +3,7 @@
             [metabase.api.query-description :as sut]
             [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
-            [metabase.test
-             [data :as data]
-             [fixtures :as fixtures]]))
+            [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -16,13 +14,13 @@
       (testing "without any arguments, just the table"
         (is (= {:table "Venues"}
                (sut/generate-query-description (Table (mt/id :venues))
-                                               (:query (data/mbql-query :venues))))))
+                                               (:query (mt/mbql-query :venues))))))
 
       (testing "with limit"
         (is (= {:table "Venues"
                 :limit 10}
                (sut/generate-query-description (Table (mt/id :venues))
-                                               (:query (data/mbql-query :venues
+                                               (:query (mt/mbql-query :venues
                                                          {:limit 10}))))))
 
       (testing "with cumulative sum of price"
@@ -30,5 +28,16 @@
                 :aggregation [{:type :cum-sum
                                :arg  "Price"}]}
                (sut/generate-query-description (Table (mt/id :venues))
-                                               (:query (data/mbql-query :venues
-                                                         {:aggregation [[:cum-sum $price]]})))))))))
+                                               (:query (mt/mbql-query :venues
+                                                         {:aggregation [[:cum-sum $price]]}))))))
+      (testing "with equality filter"
+        (is (= {:table "Venues"
+                :filter [{:field "Price"}]}
+               (sut/generate-query-description (Table (mt/id :venues))
+                                               (:query (mt/mbql-query :venues
+                                                         {:filter [:= [$price 1234]]})))
+               )
+            )
+        )
+
+      )))
