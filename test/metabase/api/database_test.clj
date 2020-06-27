@@ -59,7 +59,7 @@
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults Table))
              (select-keys table [:active :created_at :db_id :description :display_name :entity_name :entity_type
-                                 :fields_hash :id :name :rows :schema :updated_at :visibility_type]))
+                                 :fields_hash :id :name :schema :updated_at :visibility_type]))
       (update :entity_type #(when % (str "entity/" (name %))))
       (update :visibility_type #(when % (name %)))))
 
@@ -244,7 +244,6 @@
                                                  :database_position 1})]
                                 :segments     []
                                 :metrics      []
-                                :rows         nil
                                 :id           (mt/id :categories)
                                 :db_id        (mt/id)})]})
            (let [resp (mt/derecordize ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id))))]
