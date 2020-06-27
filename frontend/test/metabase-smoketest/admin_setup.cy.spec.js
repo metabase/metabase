@@ -343,40 +343,56 @@ describe("smoketest > admin_setup", () => {
       // Changing column name from Discount to Sale
 
       cy.wait(1000)
-        .get("input")
-        .eq(5)
-        .clear()
-        .wait(1)
-        .type("Sale");
-
+        .get("[value='Discount amount.'")
+        .parent()
+        .parent()
+        .within(() => {
+          cy.get("input")
+            .first()
+            .wait(1)
+            .clear()
+            .wait(1)
+            .type("Sale");
+        });
+          
       // Changing visibility of Created At column
-
-      cy.findAllByText("Everywhere")
-        .first()
-        .click();
-      cy.findByText("Do not include").click({ force: true });
+      
+      cy.wait(2000)
+        .get("[value='The date and time an order was submitted.']")
+        .parent()
+        .parent()
+        .within(() => {
+          cy.findByText("Everywhere").click();
+        });
+      cy.get(".ReactVirtualized__Grid__innerScrollContainer")
+        .findAllByText("Do not include")
+        .click() // ({ force: true });
 
       // Changing column formatting to display USD instead of $
-
-      cy.get(".Icon-gear")
-        .eq(-2)
-        .click();
+          
+      cy.get("[value='The total billed amount.']")
+        .parent()
+        .parent()
+        .within(() => {
+          cy.get(".Icon-gear")
+            .click();
+        });
 
       cy.findByText("Total – Field Settings");
       cy.findByText("Columns").should("not.exist");
-
+      
       cy.findByText("Formatting").click();
-
+      
       cy.findByText("Show a mini bar chart");
       cy.findByText("Everywhere").should("not.exist");
-
+      
       cy.findByText("Normal").click();
       cy.findByText("Currency").click({ force: true });
       cy.findByText("Code (USD)")
         .parent()
         .click();
       cy.findByText("In every table cell").click();
-
+      
       cy.findByText("Saved");
     });
 
@@ -438,9 +454,12 @@ describe("smoketest > admin_setup", () => {
       // Configure Key
 
       cy.findByText("Metrics");
-      cy.get(".Icon-gear")
-        .eq(6)
-        .click();
+      cy.get("[value='Product ID'")
+        .parent()
+        .parent()
+        .within(() => {
+          cy.get(".Icon-gear").click();
+        });
       cy.findByText("Plain input box").click();
       cy.findByText("Search box").click();
       cy.findByText("Use original value").click();
