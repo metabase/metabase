@@ -4,6 +4,7 @@
             [metabase
              [test :as mt]
              [util :as u]]
+            [metabase.api.permissions :as permissions-api]
             [metabase.models
              [database :refer [Database]]
              [permissions :as perms]
@@ -13,7 +14,10 @@
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
- ;; make sure test users are created first, otherwise we're possibly going to have some WEIRD results
+;; there are some issues where it doesn't look like the hydrate function for `member_count` is being added (?)
+(comment permissions-api/keep-me)
+
+;; make sure test users are created first, otherwise we're possibly going to have some WEIRD results
 (use-fixtures :once (fixtures/initialize :test-users))
 
 ;; GET /permissions/group
