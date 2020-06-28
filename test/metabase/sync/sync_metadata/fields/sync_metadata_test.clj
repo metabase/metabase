@@ -81,7 +81,7 @@
             {:name              "My Field"
              :database-type     "Integer"
              :base-type         :type/Integer
-             :special_type      nil
+             :special-type      nil
              :database-position 0}
             {:name              "My Field"
              :database-type     "Integer"

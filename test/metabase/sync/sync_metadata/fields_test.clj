@@ -10,11 +10,8 @@
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.sync.sync-metadata.fields.sync-instances :as sync-fields.sync-instances]
             [metabase.sync.util-test :as sync.util-test]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.test.data :as data]
             [metabase.test.data.one-off-dbs :as one-off-dbs]
             [toucan
              [db :as db]
@@ -126,7 +123,7 @@
        (do (db/update! Field (data/id :venues :id), :special_type nil)
            (get-special-type))
        ;; Calling sync-table! should set the special type again
-       (do (sync/sync-table! (data/id :venues))
+       (do (sync/sync-table! (Table (data/id :venues)))
            (get-special-type))
        ;; sync-table! should *not* change the special type of fields that are marked with a different type
        (do (db/update! Field (data/id :venues :id), :special_type :type/Latitude)
