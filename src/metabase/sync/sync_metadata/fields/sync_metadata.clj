@@ -38,14 +38,14 @@
         new-base-type?
         (not= old-base-type new-base-type)
 
+        ;; only sync comment if old value was blank so we don't overwrite user-set values
         new-special-type?
-        (not= old-special-type new-special-type)
+        (and (nil? old-special-type)
+             (not= old-special-type new-special-type))
 
-        ;; only sync comment if old Field description was blank
         new-comment?
         (and (str/blank? old-field-comment)
              (not (str/blank? new-field-comment)))
-
 
         new-database-position?
         (not= old-database-position new-database-position)
