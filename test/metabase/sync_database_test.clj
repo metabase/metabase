@@ -108,7 +108,6 @@
    :show_in_getting_started false
    :updated_at              true
    :visibility_type         nil
-   :fields_hash             true
    :field_order             :database})
 
 (def ^:private field-defaults

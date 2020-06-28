@@ -73,3 +73,19 @@
              :base-type         :type/Integer
              :id                1
              :database-position 0})))))
+
+(deftest dont-overwrite-special-type-test
+  (testing "We should not override non-nil `special_type`s"
+    (is (= []
+           (updates-that-will-be-performed
+            {:name              "My Field"
+             :database-type     "Integer"
+             :base-type         :type/Integer
+             :special_type      nil
+             :database-position 0}
+            {:name              "My Field"
+             :database-type     "Integer"
+             :base-type         :type/Integer
+             :special-type      :type/Price
+             :id                1
+             :database-position 0})))))
