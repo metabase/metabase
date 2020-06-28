@@ -3,7 +3,7 @@
 
   The basic idea here is to look at the metadata we get from calling `describe-table` on a connected database, then
   construct an identical set of metadata from what we have about that Table in the Metabase DB. Then we iterate over
-  both sets of Metadata and perform whatever steps are needed to make sure the things in the DB match the things t
+  both sets of Metadata and perform whatever steps are needed to make sure the things in the DB match the things that
   came back from `describe-table`. These steps are broken out into three main parts:
 
   * Fetch Metadata - logic is in `metabase.sync.sync-metadata.fields.fetch-metadata`. Construct a map of metadata from
