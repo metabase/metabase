@@ -38,7 +38,8 @@
 
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
-  (:require [metabase.sync
+  (:require [metabase.models.table :as table]
+            [metabase.sync
              [interface :as i]
              [util :as sync-util]]
             [metabase.sync.sync-metadata.fields
@@ -71,8 +72,9 @@
 
   ([database :- i/DatabaseInstance, table :- i/TableInstance]
    (sync-util/with-error-handling (trs "Error syncing Fields for Table ''{0}''" (sync-util/name-for-logging table))
-     {:total-fields   (count db-metadata)
-      :updated-fields (sync-and-update! table (fetch-metadata/db-metadata database table))})))
+     (let [db-metadata (fetch-metadata/db-metadata database table)]
+       {:total-fields   (count db-metadata)
+        :updated-fields (sync-and-update! table db-metadata)}))))
 
 
 (s/defn sync-fields! :- (s/maybe {:updated-fields su/IntGreaterThanOrEqualToZero

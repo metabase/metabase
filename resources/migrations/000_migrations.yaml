@@ -6376,3 +6376,15 @@ databaseChangeLog:
             tableName: query_execution
             columnName: started_at
             newDataType: ${timestamp_type}
+
+
+# Remove fields_hash from Table model
+
+  - changeSet:
+      id: 170
+      author: sb
+      comment: Added 0.36.0
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: fields_hash
