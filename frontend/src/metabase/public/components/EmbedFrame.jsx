@@ -61,12 +61,7 @@ export default class EmbedFrame extends Component {
     } = this.props;
     const { innerScroll } = this.state;
 
-    const showFooter =
-      !MetabaseSettings.hideEmbedBranding() ||
-      (actionButtons &&
-        actionButtons.props &&
-        actionButtons.props.children &&
-        actionButtons.props.children.length > 0);
+    const showFooter = !MetabaseSettings.hideEmbedBranding() || actionButtons;
 
     const { bordered, titled, theme, hide_parameters } = {
       ...DEFAULT_OPTIONS,
@@ -117,14 +112,11 @@ export default class EmbedFrame extends Component {
             {!MetabaseSettings.hideEmbedBranding() && (
               <LogoBadge dark={theme} />
             )}
-            {actionButtons &&
-              actionButtons.props &&
-              actionButtons.props.children &&
-              actionButtons.props.children.length > 0 && (
-                <div className="flex-align-right text-medium">
-                  {actionButtons}
-                </div>
-              )}
+            {actionButtons && (
+              <div className="flex-align-right text-medium">
+                {actionButtons}
+              </div>
+            )}
           </div>
         )}
       </div>
