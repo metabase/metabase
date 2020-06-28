@@ -8,6 +8,7 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import EmbedFrame from "../components/EmbedFrame";
+import title from "metabase/hoc/Title";
 
 import type { Card } from "metabase/meta/types/Card";
 import type { Dataset } from "metabase/meta/types/Dataset";
@@ -65,6 +66,7 @@ const mapDispatchToProps = {
   mapStateToProps,
   mapDispatchToProps,
 )
+@title(({ card }) => card && card.name)
 @ExplicitSize()
 export default class PublicQuestion extends Component {
   props: Props;
