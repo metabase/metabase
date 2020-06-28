@@ -63,7 +63,10 @@ export default class EmbedFrame extends Component {
 
     const showFooter =
       !MetabaseSettings.hideEmbedBranding() ||
-      (actionButtons && actionButtons.length > 0);
+      (actionButtons &&
+        actionButtons.props &&
+        actionButtons.props.children &&
+        actionButtons.props.children.length > 0);
 
     const { bordered, titled, theme, hide_parameters } = {
       ...DEFAULT_OPTIONS,
@@ -114,11 +117,14 @@ export default class EmbedFrame extends Component {
             {!MetabaseSettings.hideEmbedBranding() && (
               <LogoBadge dark={theme} />
             )}
-            {actionButtons && (
-              <div className="flex-align-right text-medium">
-                {actionButtons}
-              </div>
-            )}
+            {actionButtons &&
+              actionButtons.props &&
+              actionButtons.props.children &&
+              actionButtons.props.children.length > 0 && (
+                <div className="flex-align-right text-medium">
+                  {actionButtons}
+                </div>
+              )}
           </div>
         )}
       </div>
