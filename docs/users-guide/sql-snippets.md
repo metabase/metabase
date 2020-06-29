@@ -17,7 +17,7 @@ LEFT JOIN products AS p
 ON o.product_id = p.id
 ```
 
-Let's save the join statement as a snippet to reuse in other queries.
+Let's save everything after FROM as a snippet to reuse in other queries.
 
 In the **SQL editor**:
  
@@ -28,7 +28,7 @@ LEFT JOIN products AS p
 ON o.product_id = p.id
 ```
 
-2. **Right-click on the highlighted section**.
+2. **Right-click on the highlighted section.**
 3. **Select Save as snippet** to create a snippet. A modal will pop up with the SQL statement you highlighted. 
 4. **Edit, name, and describe your snippet**, then click the save button.
 
@@ -51,10 +51,11 @@ Click on the code icon on the right side of the SQL editor, below the **Data Ref
 
 From the SQL Snippets menu, you can:
 
-- **Preview snippets**. Click on the down arrow to the right of a snippet to see its description and a preview of its SQL code. There's also an option to edit the snippet.
-- **Insert a snippet**. Click on a snippet's name to insert it into your query at the cursor's current location.
-- [**Edit a snippet**](#editing-snippets). You can change a snippet's name, description and code.
-- [**Archive and unarchive a snippet**](#archived-snippets). From the Edit modal, you can archive a snippet, which removes the snippet from the snippet menu and autocomplete options in the SQL editor.
+- **Create a snippet.** Click on the `+` in the upper right of the SQL Snippet sidebar to create a new snippet.
+- **Preview snippets.** Click on the down arrow to the right of a snippet to see its description and a preview of its SQL code. There's also an option to edit the snippet.
+- **Insert a snippet.** Click on a snippet's name to insert it into your query at the cursor's current location.
+- [**Edit a snippet.**](#editing-snippets) You can change a snippet's name, description and code.
+- [**Archive and unarchive a snippet.**](#archived-snippets) From the Edit modal, you can archive a snippet, which removes the snippet from the snippet menu and autocomplete options in the SQL editor.
 
 ### Editing snippets
 
@@ -64,7 +65,7 @@ Editing snippets is a great way to make changes to many questions at once. If, f
 
 **Editing a snippet's name**. Changing a snippet's name will update the snippet's name in every question that uses that snippet. It won't break any existing questions (the underlying SQL remains unchanged), but be aware that other users may be caught off guard to discover you renamed a snippet they use frequently from "Orders and Products" to "All the things", or whatever.
 
-**Editing a snippet's SQL**. Here's where we have to remind you that with great power comes great responsibility. There is one major caveat when editing snippets, worthy of a callout:
+**Editing a snippet's SQL.** Here's where we have to remind you that with great power comes great responsibility. There is one major caveat when editing snippets, worthy of a callout:
 
 > **Caution: if you edit a snippet and include broken code, you will break every question that uses that snippet.** Make sure to test your code before saving it to an existing snippet.
 
