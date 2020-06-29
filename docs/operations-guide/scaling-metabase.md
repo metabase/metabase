@@ -98,19 +98,21 @@ You can [configure caching](14-caching.md) on questions to store their results. 
 
 ### Look for bottlenecks
 
-Metabase's Enterprise Edition offers [auditing tools](audit.md) for you to monitor the usage and performance of your application. You can, for example, see how many questions are being asked, by whom, and how long the questions took to run, which can help identify any bottlenecks that need attention.
+Metabase's Enterprise Edition offers [auditing tools](../enterprise-guide/audit.md) for you to monitor the usage and performance of your application. You can, for example, see how many questions are being asked, by whom, and how long the questions took to run, which can help identify any bottlenecks that need attention.
 
 ### Keep dashboards to 7 questions or fewer
 
 Sometimes people go overboard with dashboards, loading them up with 50 questions or more. When a dashboard with 50 questions loads, it sends 50 simultaneous requests asking for data. And depending on the size of that database and the number of tables in that database, it can be quite some time before those records return to answer all of those questions.
 
-7 is an arbitrary number, there will of course be times where adding a lot of questions to a dashboard makes sense. but in general encourage your users to keep their dashboards focused on telling a story about your data with just a handful of questions. Think essays, or short stories, not books.
+7 is, of course, an arbitrary number; you can create dashboards where adding a lot of questions makes sense. In general, though, encourage your users to keep their dashboards focused. Dashboards are meant to tell a story about your data, and you can tell a good story with just a handful of questions. If you find that one of your dashboards has accumulated a lot of questions, consider breaking it up into multiple dashboards that each focus on a set of related questions.
 
 ### Update your browser
 
 Metabase is a web application, and can benefit from the latest and greatest versions of browsers like Firefox, Chrome, Edge, and Safari.
 
 ## Supported deployments
+
+There are many ways to set up Metabase; here are some of our favorites:
 
 ### Hosted Metabase
 
@@ -130,4 +132,5 @@ See [running Metabase on Kubernetes](running-metabase-on-kubernetes).
 
 ### Other cloud providers
 
-Google Cloud Platform, Microsoft Azure, Digital Ocean, and other cloud providers offer other great alternatives for hosting your Metabase application.
+[Google Cloud Platform](https://cloud.google.com/), [Microsoft Azure](https://azure.microsoft.com/en-us/), [Digital Ocean](https://www.digitalocean.com/), and other cloud providers offer other great alternatives for hosting your Metabase application.
+
