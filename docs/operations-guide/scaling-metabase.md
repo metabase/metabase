@@ -1,17 +1,17 @@
 # Scaling Metabase
 
-Metabase is scalable, battle-tested software used by over 20,000 companies. Metabase supports high availability via horizontal scaling, and high performance via vertical scaling, as well as a [hosted solution](https://www.metabase.com/hosting/) that takes operating Metabase off your plate.
+Metabase is scalable, battle-tested software used by over 20,000 companies. Metabase supports **high availability via horizontal scaling, and high performance via vertical scaling. Metabase also offers a [hosted solution](https://www.metabase.com/hosting/) that takes operating Metabase off your plate.
 
-This article provides guidance on how to keep Metabase running smoothly in production as the number of users and data sources increases. 
+This article provides guidance on how to keep Metabase running smoothly in production as the numbers of users and data sources increase. 
 
 We'll cover:
 
-- **Vertical scaling.** Running a single instance of Metabase with more cores and memory. Vertical scaling can help with Metabase application performance.
-- **Horizontal scaling.** Running multiple instances of Metabase. Horizontal scaling can help with high availability/reliability of your Metabase application.
+- **Vertical scaling.** Running a single instance of Metabase with more cores and memory. Vertical scaling can improve Metabase application performance.
+- **Horizontal scaling.** Running multiple instances of Metabase. Horizontal scaling can improve availability/reliability of your Metabase application.
 - **Metabase application best practices.** Tuning dashboards and questions to improve performance.
-- **Hosted Metabase.** Leave the scaling to Metabase so you can focus on your business.
+- **Hosted Metabase.** Leave running the Metabase application to us so you can focus on your business.
 
-We'll discuss scaling strategies at a high level, but you'll have to translate these strategies to your particular environment and usage. And if you don't want to spend the time dealing with scaling the Metabase application, consider Metabase's [hosted offering](https://www.metabase.com/hosting/).
+We'll discuss scaling strategies at a high level, but because every system is different, you'll have to translate these strategies to your particular environment and usage.
 
 ## Factors that impact Metabase performance and availability
 
@@ -22,7 +22,7 @@ Major factors that impact your experience using Metabase include:
 - the number of databases connected to Metabase.
 - the number of tables in each database.
 - the efficiency of your data warehouse.
-- the structure of your dashboards in Metabase.
+- the number of questions in your dashboards.
 
 For example, it will not matter how many instances of Metabase you run if a question needs to grab records from thousands of tables in a database. That's just going to take a while. The solution in that case is either to re-evaluate your need for that data (do you really need all that info every time?), or to find ways to improve the performance of your database, such as reorganizing your data, or improving the indexing of your data.
 
@@ -30,9 +30,7 @@ But first, let's make sure our Metabase application is well-tuned to scale.
 
 ## Vertical scaling
 
-Vertical scaling is the brute force approach. Give Metabase more cores and memory, and it will have more resources available to do its work.
-
-If you are experiencing performance issues related to the application itself (i.e. unrelated to the breadth and magnitude of your databases), running Metabase on a more powerful machine can help improve performance.
+Vertical scaling is the brute force approach. Give Metabase more cores and memory, and it will have more resources available to do its work. If you are experiencing performance issues related to the application itself (i.e. unrelated to the breadth and magnitude of your databases), running Metabase on a more powerful machine can help improve performance.
 
 Metabase is already efficient out of the box. For example, for a starter Metabase instance on AWS, we recommend running Metabase using Elastic Beanstalk on a `t2.small` instance, and scaling up from there. That's a single core machine with 2 gigabytes of RAM. Machines with with 4-8 gigs of RAM should handle hundreds of users, and you can bump the number of cores and gigabytes of memory if needed.
 
@@ -54,29 +52,29 @@ Metabase's API has a health check endpoint `/api/health` that load balancers can
 
 ## Data warehouse
 
-Architecting a data warehouse is beyond the scope of this humble article, but your questions in Metabase will only be as fast as your databases can return data. If you have queries that are running for minutes at a time, that will impact your experience, regardless of how fast Metabase is.
+Architecting a data warehouse is beyond the scope of this humble article, but your questions in Metabase will only be as fast as your databases can return data. If you have queries that are running for minutes at a time, those query times will impact your experience, regardless of how fast Metabase is.
 
 ## Metabase application best practices
 
 Here are some strategies to get the most out of your Metabase application:
 
-- Use an external database to store you Metabase application data
-- Upgrade to the latest version of Metabase
-- Ask for only the data you need
-- Cache your queries
-- Audit your application
-- Keep dashboards to 7 questions or fewer
-- Update your browser
+- [Use an external database to store you Metabase application data](#use-an-external-database-to-store-your-metabase-application-data)
+- [Upgrade to the latest version of Metabase](#upgrade-to-the-latest-version-of-metabase)
+- [Only ask for the data you need](#only-ask-for-the-data-you-need)
+- [Cache your queries](#cache-your-queries)
+- [Audit your application](#audit-your-application)
+- [Keep dashboards to 7 questions or fewer](#keep-dashboards-to-7-questions-or-fewer)
+- [Update your browser](#update-your-browser)
 
-### Use an external database to store you Metabase application data
+### Use an external database to store your Metabase application data
 
 The application database stores all of your questions, dashboards, collections, permissions, and other data related to the Metabase application. We recommend you use an external database (like PostgreSQL or MySQL) to manage your application database. You can also use a managed relational database, like AWS RDS, which will auto-scale for your needs.
 
 ### Upgrade to the latest version of Metabase
 
-If you haven't already, we highly recommend you update to the latest Metabase version to get the latest performance improvements.
+If you haven't already, we highly recommend you update to the latest Metabase version to get the most recent performance improvements.
 
-### Ask for only the data you need
+### Only ask for the data you need
 
 In general, you should only query the data you need. If you set up a dashboard that you'll be viewing daily, you can reduce load times by limiting the number of records your queries return.
 
@@ -84,11 +82,11 @@ If you have many users running big queries, it won't matter that Metabase is fas
 
 ### Cache your queries
 
-You can [configure caching](https://www.metabase.com/docs/latest/administration-guide/14-caching.html on questions to store their results. Metabase will show users the timestamp for the results, and users can manually refresh the results if they want to rerun the query. Caching is a great way to save time (and money) for results that do not update frequently.
+You can [configure caching](https://www.metabase.com/docs/latest/administration-guide/14-caching.html) on questions to store their results. Metabase will show users the timestamp for the results, and users can manually refresh the results if they want to rerun the query. Caching is a great way to save time (and money) for results that do not update frequently.
 
 ### Audit your application
 
-Metabase's Enterprise Edition offers [auditing tools](https://www.metabase.com/docs/latest/enterprise-guide/audit.html) for you to monitor the usage and performance of your application. You can, for example, see how many questions are being asked, by whom, and how long the questions took to run.
+Metabase's Enterprise Edition offers [auditing tools](https://www.metabase.com/docs/latest/enterprise-guide/audit.html) for you to monitor the usage and performance of your application. You can, for example, see how many questions are being asked, by whom, and how long the questions took to run. 
 
 ### Keep dashboards to 7 questions or fewer
 
@@ -100,11 +98,11 @@ Encourage your users to keep their dashboards focused on telling a story about y
 
 Metabase is a web application, and can benefit from the latest and greatest versions of browsers like Firefox, Chrome, Edge, and Safari.
 
+## Supported deployments
+
 ## Hosted Metabase
 
 Metabase now offers a hosted solution, where we handle scaling Metabase for you. You'll still have to ensure your data sources are performant, but you'll no longer have to manage running the application.
-
-## Supported deployments
 
 ### AWS Elastic Beanstalk
 
