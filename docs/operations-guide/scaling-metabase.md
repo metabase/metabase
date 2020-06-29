@@ -1,17 +1,21 @@
 # Scaling Metabase
 
-Metabase is scalable, battle-tested software used by over 20,000 companies. Metabase supports **high availability via horizontal scaling, and high performance via vertical scaling. Metabase also offers a [hosted solution](https://www.metabase.com/hosting/) that takes operating Metabase off your plate.
+Metabase is scalable, battle-tested software used by tens of thousands of companies. It supports high availability via horizontal scaling, and high performance via vertical scaling. That, and it's efficient out of the box: a single core with 4 gigs of RAM can scale Metabase to hundreds of users, and there's no need to adjust your application configuration if you want to run Metabase on multiple machines.
+
+And if you don't want to deal with the care and feeding of your application: Metabase also offers a [hosted solution](https://www.metabase.com/hosting/) that takes operating Metabase off your plate so you can focus on your data.
 
 This article provides guidance on how to keep Metabase running smoothly in production as the numbers of users and data sources increase. 
 
 We'll cover:
 
-- **Vertical scaling.** Running a single instance of Metabase with more cores and memory. Vertical scaling can improve Metabase application performance.
-- **Horizontal scaling.** Running multiple instances of Metabase. Horizontal scaling can improve availability/reliability of your Metabase application.
-- **Metabase application best practices.** Tuning dashboards and questions to improve performance.
-- **Hosted Metabase.** Leave running the Metabase application to us so you can focus on your business.
+- [**Factors that impact Metabase performance and availability**](#factors-that-impact-metabase-performance-and-availability)
+- [**Vertical scaling.**](#vertical-scaling) Running a single instance of Metabase with more cores and memory. Vertical scaling can improve Metabase application performance.
+- [**Horizontal scaling.**](#horizontal-scaling) Running multiple instances of Metabase. Horizontal scaling can improve availability/reliability of your Metabase application.
+- [**Data warehouse.**](#data-warehouse)
+- [**Metabase application best practices.**](#metabase-application-best-practices) Tuning dashboards and questions to improve performance.
+- [**Hosted Metabase.**](#hosted-metabase) Leave running the Metabase application to us so you can focus on your business.
 
-We'll discuss scaling strategies at a high level, but because every system is different, you'll have to translate these strategies to your particular environment and usage.
+We'll discuss scaling strategies at a high level, but because each system is different, you'll have to translate these strategies to your particular environment and usage.
 
 ## Factors that impact Metabase performance and availability
 
@@ -34,7 +38,7 @@ Vertical scaling is the brute force approach. Give Metabase more cores and memor
 
 Metabase is already efficient out of the box. For example, for a starter Metabase instance on AWS, we recommend running Metabase using Elastic Beanstalk on a `t2.small` instance, and scaling up from there. That's a single core machine with 2 gigabytes of RAM. Machines with with 4-8 gigs of RAM should handle hundreds of users, and you can bump the number of cores and gigabytes of memory if needed.
 
-## Horizontal scaling (high availability)
+## Horizontal scaling
 
 Horizontal scaling involves running multiple instances of Metabase and using a load balancer to direct traffic to the instances. The primary use cases for horizontal scaling is to improve reliability (a.k.a. "high availability").
 
@@ -52,7 +56,13 @@ Metabase's API has a health check endpoint `/api/health` that load balancers can
 
 ## Data warehouse
 
-Architecting a data warehouse is beyond the scope of this humble article, but your questions in Metabase will only be as fast as your databases can return data. If you have queries that are running for minutes at a time, those query times will impact your experience, regardless of how fast Metabase is.
+Architecting a data warehouse is beyond the scope of this article, but your queries in Metabase will only be as fast as your databases can return data. If you have questions that ask for data that takes your database a long time to retrieve, those query times will impact your experience, regardless of how fast Metabase is.
+
+In general, there are three ways to improve data warehouse performance:
+
+- **Anticipate questions**. Structure your data in a way that anticipates usage patterns and reduces the number of joins. Use scheduled ETLs to create new tables that bring together frequently queried data from multiple sources.
+- **Tune your database.** Read up on the documentation for your database to learn how to improve its performance via indexing and caching.
+- **Improve the precision of your questions**. Filter your data with WHERE clauses, and add limits to your queries. You should also take advantage of Metabase's data exploration tools to understand your data so you can only grab the data relevant to the question you're trying to answer.
 
 ## Metabase application best practices
 
@@ -100,9 +110,9 @@ Metabase is a web application, and can benefit from the latest and greatest vers
 
 ## Supported deployments
 
-## Hosted Metabase
+### Hosted Metabase
 
-Metabase now offers a hosted solution, where we handle scaling Metabase for you. You'll still have to ensure your data sources are performant, but you'll no longer have to manage running the application.
+Metabase now offers a [hosted solution](https://www.metabase.com/hosting/), where we handle scaling Metabase for you. You'll still have to ensure your data sources are performant, but you'll no longer have to manage running the Metabase application.
 
 ### AWS Elastic Beanstalk
 
