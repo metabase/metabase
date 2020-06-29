@@ -2,25 +2,32 @@ import React from "react";
 import { t } from "ttag";
 
 import Segment from "metabase/entities/segments";
+import SegmentItem from "metabase/admin/datamodel/components/database/SegmentItem";
 
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
+import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
-import SegmentItem from "metabase/admin/datamodel/components/database/SegmentItem";
+import FilteredToUrlTable from "../hoc/FilteredToUrlTable";
 
-@Segment.loadList({
-  wrapped: true,
-  reload: true,
-})
+@Segment.loadList({ wrapped: true })
+@FilteredToUrlTable("segments")
 class SegmentListApp extends React.Component {
   render() {
-    const { segments } = this.props;
+    const { segments, tableId, setTableId } = this.props;
 
     return (
       <div className="px3">
         <div className="flex py2">
-          <Link to="/admin/datamodel/segment/create" className="ml-auto">
-            <Button primary>{t`New segment`}</Button>
+          <DatabaseSchemaAndTableDataSelector
+            selectedTableId={tableId}
+            setSourceTableFn={setTableId}
+          />
+          <Link
+            to={`/admin/datamodel/segment/create?table=${tableId}`}
+            className="ml-auto"
+          >
+            <Button primary disabled={tableId == null}>{t`New segment`}</Button>
           </Link>
         </div>
         <table className="AdminTable">
@@ -35,9 +42,7 @@ class SegmentListApp extends React.Component {
             {segments.map(segment => (
               <SegmentItem
                 key={segment.id}
-                onRetire={() =>
-                  Segment.actions.setArchived({ id: segment.id }, true)
-                }
+                onRetire={() => segment.setArchived(true)}
                 segment={segment}
                 // TODO - ideally we shouldn't need this
                 tableMetadata={{}}

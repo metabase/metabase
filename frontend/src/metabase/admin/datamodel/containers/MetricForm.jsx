@@ -55,11 +55,7 @@ import Table from "metabase-lib/lib/metadata/Table";
 )
 export default class MetricForm extends Component {
   renderActionButtons() {
-    const {
-      invalid,
-      handleSubmit,
-      table: { db_id: databaseId, id: tableId },
-    } = this.props;
+    const { invalid, handleSubmit, table } = this.props;
     return (
       <div>
         <button
@@ -70,7 +66,7 @@ export default class MetricForm extends Component {
           onClick={handleSubmit}
         >{t`Save changes`}</button>
         <Link
-          to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
+          to={`/admin/datamodel/metrics?table=${table.id}`}
           className="Button ml2"
         >{t`Cancel`}</Link>
       </div>

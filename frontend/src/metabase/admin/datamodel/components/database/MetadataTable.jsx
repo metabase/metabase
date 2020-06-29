@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import MetricsList from "./MetricsList";
 import ColumnsList from "./ColumnsList";
 import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";

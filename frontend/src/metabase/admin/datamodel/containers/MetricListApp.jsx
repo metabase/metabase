@@ -6,18 +6,27 @@ import MetricItem from "metabase/admin/datamodel/components/database/MetricItem"
 
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
+import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
-@Metrics.loadList({
-  wrapped: true,
-})
+import FilteredToUrlTable from "../hoc/FilteredToUrlTable";
+
+@Metrics.loadList({ wrapped: true })
+@FilteredToUrlTable("metrics")
 class MetricListApp extends React.Component {
   render() {
-    const { metrics } = this.props;
+    const { metrics, tableId, setTableId } = this.props;
     return (
       <div className="px3">
         <div className="flex py2">
-          <Link to="/admin/datamodel/segment/create" className="ml-auto">
-            <Button primary>{t`New metric`}</Button>
+          <DatabaseSchemaAndTableDataSelector
+            selectedTableId={tableId}
+            setSourceTableFn={setTableId}
+          />
+          <Link
+            to={`/admin/datamodel/metric/create?table=${tableId}`}
+            className="ml-auto"
+          >
+            <Button primary disabled={tableId == null}>{t`New metric`}</Button>
           </Link>
         </div>
         <table className="AdminTable">
@@ -32,9 +41,7 @@ class MetricListApp extends React.Component {
             {metrics.map(metric => (
               <MetricItem
                 key={metric.id}
-                onRetire={() =>
-                  Metrics.actions.setArchived({ id: metric.id }, true)
-                }
+                onRetire={() => metric.setArchived(true)}
                 metric={metric}
                 // TODO - ideally we shouldn't need this
                 tableMetadata={{}}

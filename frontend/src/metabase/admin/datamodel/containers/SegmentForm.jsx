@@ -81,7 +81,7 @@ export default class SegmentForm extends Component {
           onClick={handleSubmit}
         >{t`Save changes`}</button>
         <Link
-          to={"/admin/datamodel/database/" + table.db_id + "/table/" + table.id}
+          to={`/admin/datamodel/segments?table=${table.id}`}
           className="Button ml2"
         >{t`Cancel`}</Link>
       </div>
@@ -124,9 +124,7 @@ export default class SegmentForm extends Component {
                       [table.id]: Object.assign(
                         new Table(),
                         metadata.tables[table.id],
-                        {
-                          segments: [],
-                        },
+                        { segments: [] },
                       ),
                     },
                   })

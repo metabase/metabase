@@ -31,10 +31,8 @@ class UpdateMetricForm extends Component {
   onSubmit = async metric => {
     await this.props.updateMetric(metric);
     MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
-    const { id: tableId, db_id: databaseId } = this.props.table;
-    this.props.onChangeLocation(
-      `/admin/datamodel/database/${databaseId}/table/${tableId}`,
-    );
+    const tableId = this.props.table.id;
+    this.props.onChangeLocation(`/admin/datamodel/metrics?table=${tableId}`);
   };
 
   render() {
@@ -56,12 +54,10 @@ class UpdateMetricForm extends Component {
 @withTableMetadataLoaded
 class CreateMetricForm extends Component {
   onSubmit = async metric => {
-    const { id: tableId, db_id: databaseId } = this.props.table;
+    const tableId = this.props.table.id;
     await this.props.createMetric({ ...metric, table_id: tableId });
     MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
-    this.props.onChangeLocation(
-      `/admin/datamodel/database/${databaseId}/table/${tableId}`,
-    );
+    this.props.onChangeLocation(`/admin/datamodel/metrics?table=${tableId}`);
   };
 
   render() {
