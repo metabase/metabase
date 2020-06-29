@@ -5,7 +5,7 @@ import FieldList from "./FieldList";
 import FieldName from "./FieldName";
 import Popover from "metabase/components/Popover";
 
-import * as Q_DEPRECATED from "metabase/lib/query";
+import * as FieldRef from "metabase/lib/query/field_ref";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -41,7 +41,7 @@ export default class FieldWidget extends Component {
 
   setField(value) {
     this.props.setField(value);
-    if (Q_DEPRECATED.isValidField(value)) {
+    if (FieldRef.isValidField(value)) {
       this.toggle();
     }
   }

@@ -1,4 +1,4 @@
-import { isValidField } from "./query/field_ref";
+import * as FieldRef from "./query/field_ref";
 
 // these are aggregations that can't only be added via custom aggregations
 export const SPECIAL_AGGREGATIONS = new Set([
@@ -52,7 +52,7 @@ export function isStandard(aggregation) {
     !isMetric(aggregation) &&
     !isSpecial(aggregation) &&
     (aggregation.length === 1 ||
-      (aggregation.length === 2 && isValidField(aggregation[1])))
+      (aggregation.length === 2 && FieldRef.isValidField(aggregation[1])))
   );
 }
 export function isCustom(aggregation) {

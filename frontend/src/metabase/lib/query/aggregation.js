@@ -1,7 +1,7 @@
 /* @flow */
 
 import { noNullValues, add, update, remove, clear } from "./util";
-import { isValidField } from "./field_ref";
+import * as FieldRef from "./field_ref";
 import { STANDARD_AGGREGATIONS } from "metabase/lib/expressions";
 
 import _ from "underscore";
@@ -81,7 +81,7 @@ export function isStandard(aggregation: AggregationClause): boolean {
   return (
     Array.isArray(aggregation) &&
     STANDARD_AGGREGATIONS.has(aggregation[0]) &&
-    (aggregation[1] === undefined || isValidField(aggregation[1]))
+    (aggregation[1] === undefined || FieldRef.isValidField(aggregation[1]))
   );
 }
 

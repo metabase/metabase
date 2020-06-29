@@ -11,7 +11,7 @@ import { format as formatExpression } from "metabase/lib/expressions/format";
 import * as A_DEPRECATED from "./query_aggregation";
 
 import * as QUERY from "./query/query";
-import * as FIELD_REF from "./query/field_ref";
+import * as FieldRef from "./query/field_ref";
 export * from "./query/query";
 export * from "./query/field_ref";
 
@@ -122,24 +122,24 @@ export function cleanQuery(query) {
         const [direction, field] = s;
 
         // remove incomplete sorts
-        if (!FIELD_REF.isValidField(field) || direction == null) {
+        if (!FieldRef.isValidField(field) || direction == null) {
           return null;
         }
 
-        if (FIELD_REF.isAggregateField(field)) {
+        if (FieldRef.isAggregateField(field)) {
           // remove aggregation sort if we can't sort by this aggregation
           if (canSortByAggregateField(query, field[1])) {
             return s;
           }
         } else if (hasValidBreakout(query)) {
           const exactMatches = query.breakout.filter(b =>
-            FIELD_REF.isSameField(b, field, true),
+            FieldRef.isSameField(b, field, true),
           );
           if (exactMatches.length > 0) {
             return s;
           }
           const targetMatches = query.breakout.filter(b =>
-            FIELD_REF.isSameField(b, field, false),
+            FieldRef.isSameField(b, field, false),
           );
           if (targetMatches.length > 0) {
             // query processor expect the order-by clause to match the breakout's datetime-field unit or fk-> target,
@@ -244,7 +244,7 @@ export function formatField(fieldDef, options = {}) {
 
 export function getFieldName(tableMetadata, field, options) {
   try {
-    const target = FIELD_REF.getFieldTarget(field, tableMetadata);
+    const target = FieldRef.getFieldTarget(field, tableMetadata);
     const components = [];
     if (target.path) {
       for (const fieldDef of target.path) {
@@ -466,9 +466,9 @@ export function getAggregationField(aggregation) {
 }
 
 export function getQueryColumn(tableMetadata, field) {
-  const target = FIELD_REF.getFieldTarget(field, tableMetadata);
+  const target = FieldRef.getFieldTarget(field, tableMetadata);
   const column = { ...target.field };
-  if (FIELD_REF.isDatetimeField(field)) {
+  if (FieldRef.isDatetimeField(field)) {
     column.unit = getDatetimeFieldUnit(field);
   }
   return column;
