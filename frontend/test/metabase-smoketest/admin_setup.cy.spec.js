@@ -795,7 +795,7 @@ describe("smoketest > admin_setup", () => {
       cy.get(".Icon-eye");
     });
 
-    it("should no longer be able to access tables or questions that have been restricted as user", () => {
+    it("should be unable to access tables or questions that have been restricted as user", () => {
       cy.visit("/");
 
       // Normal user can still see everything
@@ -821,7 +821,7 @@ describe("smoketest > admin_setup", () => {
       cy.contains("A look at your Reviews table").should("not.exist");
     });
 
-    it("should no longer be able to change questions in Our analytics as no collection user", () => {
+    it("should be unable to change questions in Our analytics as no collection user", () => {
       cy.findByText("Browse all items").click();
 
       cy.findByText("Everything");
@@ -861,7 +861,7 @@ describe("smoketest > admin_setup", () => {
       // cy.findByText("Quantity").should("not.exist");
     });
 
-    it("should be able to add a sub collection as a user", () => {
+    it("should add a sub collection as a user", () => {
       cy.visit("/collection/root");
 
       cy.wait(3000)
@@ -882,7 +882,7 @@ describe("smoketest > admin_setup", () => {
       cy.get(".Icon-all");
     });
 
-    it("should be able to view collections I have access to, but not ones that I don't (even with URL) as user", () => {
+    it("should view collections I have access to, but not ones that I don't (even with URL) as user", () => {
       // Check access as normal user
 
       cy.visit("/collection/root");
@@ -941,7 +941,7 @@ describe("smoketest > admin_setup", () => {
       );
     });
 
-    it("should not be able to access question with URL, but no permissions", () => {
+    it("should be unable to access question with URL (if access not permitted)", () => {
       signOut();
       signIn("nocollection");
 
