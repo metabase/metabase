@@ -27,8 +27,8 @@
 
 - [Referencing your data model while writing SQL](12-data-model-reference.md)
 - [Creating SQL Templates](13-sql-parameters.md)
+- [Using SQL snippets to reuse and share code](sql-snippets.md)
 - [Getting automatic insights with X-rays](14-x-rays.md)
 - [Setting and getting alerts](15-alerts.md)
-- [SQL snippets](sql-snippets.md)
 
 Let's get started with an overview of [What Metabase does](01-what-is-metabase.md).
