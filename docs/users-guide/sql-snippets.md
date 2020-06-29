@@ -47,7 +47,7 @@ When writing in the SQL editor, you can now start typing `{{snippet:` and Metaba
 
 The SQL editor **sidebar** has a **SQL Snippets** menu to list available and archived snippets.
 
-Click on the code icon on the right side of the SQL editor, below the **Data Reference** book icon (learn about your data) and the **Variables** χ icon. Metabase will slide out a sibebar menu that lists available snippets.
+Click on the snippet icon on the right side of the SQL editor, below the Data Reference book icon and the Variables χ icon. Metabase will slide out a sidebar menu that lists available snippets.
 
 From the SQL Snippets menu, you can:
 
