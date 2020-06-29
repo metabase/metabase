@@ -96,7 +96,7 @@ If you have many users running queries that return a lot of records, it won't ma
 
 Take advantage of Metabase's data exploration tools to learn about your data and preview records in tables so you can dial in on only the records you need to answer your question.
 
-Be especially mindful when querying data across time or space. Do you really need to see data years back, or in all geohashes?
+Be especially mindful when querying data across time or space, as you can filter out a lot of unnecessary data by restricting your question to a shorter timespan or smaller area. Do you really need to see data years back, or in all geohashes?
 
 ### Cache your queries
 
