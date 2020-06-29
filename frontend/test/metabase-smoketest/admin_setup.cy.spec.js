@@ -5,6 +5,7 @@ import {
   signOut,
   signInAsNormalUser,
   signIn,
+  sidebar,
 } from "__support__/cypress";
 
 const new_user = {
@@ -806,6 +807,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Ask a question").click();
 
+      cy.findByText("Simple question");
       cy.findByText("Native query").should("not.exist");
 
       signOut();
@@ -817,9 +819,9 @@ describe("smoketest > admin_setup", () => {
       cy.contains("A look at your Test Table table");
       cy.contains("A look at your People table");
       cy.contains("A look at your Reviews table").should("not.exist");
+    });
 
-      // No collection user can view Our Analytics, but not make any changes
-
+    it("should no longer be able to change questions in Our analytics as no collection user", () => {
       cy.findByText("Browse all items").click();
 
       cy.findByText("Everything");
@@ -831,13 +833,13 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Orders").click();
       cy.findByText("Summarize").click();
       cy.wait(1000)
-        .get(".Icon-int")
+        .findAllByText("Quantity")
         .eq(1)
         .click();
       cy.findAllByText("Done").click();
 
-      cy.wait(1000).findByText("Quantity");
       cy.findByText("Product ID").should("not.exist");
+      cy.wait(1000).findByText("Quantity");
 
       cy.findAllByText("Save")
         .last()
