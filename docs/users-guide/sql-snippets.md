@@ -13,7 +13,8 @@ Here's a simple query with a simple join using the **Sample Dataset** included w
 ```
 select *
 from ORDERS
-left join PRODUCTS on PRODUCT_ID = PRODUCT_ID;
+left join PRODUCTS 
+on PRODUCT_ID = PRODUCTS.ID
 ```
 
 Let's save the join statement as a snippet to reuse in other queries.
@@ -22,8 +23,8 @@ In the **SQL editor**:
  
 1. **Highlight a section of SQL** that you want to snip. In this case, we'll snip the following SQL code:
 ```
-from ORDERS 
-left join PRODUCTS on PRODUCT_ID = PRODUCT_ID
+ORDERS left join PRODUCTS
+on PRODUCT_ID = PRODUCT_ID
 ```
 
 2. **Right-click on the highlighted section**.
@@ -34,7 +35,7 @@ In this case, we named the snippet "Orders and Products". The snippet will now b
 
 ```
 select * 
-{{snippet: Orders and Products}};
+from {{snippet: Orders and Products}};
 ```
 
 When editing in the SQL editor, you can now start typing `{{snippet:` and Metabase will present autocomplete options for available snippets.
