@@ -62,7 +62,7 @@ In general, there are three ways to improve data warehouse performance:
 
 - **Anticipate questions**. Structure your data in a way that anticipates usage patterns and reduces the number of joins. Use scheduled ETLs to create new tables that bring together frequently queried data from multiple sources.
 - **Tune your database.** Read up on the documentation for your database to learn how to improve its performance via indexing and caching.
-- **Improve the precision of your questions**. Filter your data with WHERE clauses, and add limits to your queries. You should also take advantage of Metabase's data exploration tools to understand your data so you can only grab the data relevant to the question you're trying to answer.
+- **Improve the precision of your questions**. Filter your data as much as you can, and add limits to your queries. You should also take advantage of Metabase's data exploration tools to understand your data so you can only grab the data relevant to the question you're trying to answer.
 
 ## Metabase application best practices
 
@@ -82,13 +82,15 @@ The application database stores all of your questions, dashboards, collections, 
 
 ### Upgrade to the latest version of Metabase
 
-If you haven't already, we highly recommend you update to the latest Metabase version to get the most recent performance improvements.
+If you haven't already, we recommend you update to the latest Metabase version to get the most recent performance improvements.
 
 ### Only ask for the data you need
 
 In general, you should only query the data you need. If you set up a dashboard that you'll be viewing daily, you can reduce load times by limiting the number of records your queries return.
 
-If you have many users running big queries, it won't matter that Metabase is fast: the users will get their data only as fast as your database(s) can return the requested records.
+If you have many users running queries that return a lot of records, it won't matter that Metabase is fast: the users will get their data only as fast as your database(s) can return the requested records.
+
+Take advantage of Metabase's data exploration tools to learn about your data and preview records in tables so you can dial in on only the records you need to answer your question.
 
 ### Cache your queries
 
