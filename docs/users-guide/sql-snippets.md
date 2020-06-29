@@ -11,10 +11,10 @@ For example, if you frequently perform queries that involve multiple tables, you
 Here's a simple query with a simple join using the **Sample Dataset** included with Metabase.
 
 ```
-select *
-from ORDERS
-left join PRODUCTS 
-on PRODUCT_ID = PRODUCTS.ID
+SELECT *
+FROM orders AS o
+LEFT JOIN products AS p 
+ON o.product_id = p.id
 ```
 
 Let's save the join statement as a snippet to reuse in other queries.
@@ -23,8 +23,9 @@ In the **SQL editor**:
  
 1. **Highlight a section of SQL** that you want to snip. In this case, we'll snip the following SQL code:
 ```
-ORDERS left join PRODUCTS
-on PRODUCT_ID = PRODUCT_ID
+orders AS o
+LEFT JOIN products AS p 
+ON o.product_id = p.idD
 ```
 
 2. **Right-click on the highlighted section**.
