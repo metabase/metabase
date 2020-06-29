@@ -23,7 +23,9 @@ export default function SidebarContent({
   children,
 }) {
   return (
-    <div className={cx(className, "flex flex-column justify-between")}>
+    <div
+      className={cx(className, "flex flex-column justify-between full-height")}
+    >
       <div className="scroll-y">
         {(title || onBack || icon) && (
           <SidebarHeader

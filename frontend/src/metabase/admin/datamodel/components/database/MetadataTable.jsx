@@ -144,7 +144,7 @@ export default class MetadataTable extends Component {
         <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>
           {this.props.idfields && (
             <ColumnsList
-              fields={table.fields}
+              table={table}
               updateField={this.props.updateField}
               idfields={this.props.idfields}
             />

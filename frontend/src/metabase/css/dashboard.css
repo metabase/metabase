@@ -55,9 +55,8 @@
   color: var(--color-text-white);
 }
 
-.Dashboard.Dashboard--night .Header-button,
-.Dashboard.Dashboard--night .Header-button svg {
-  color: color(var(--color-text-medium) alpha(-70%));
+.Dashboard.Dashboard--night .Header-button {
+  color: var(--color-text-medium);
 }
 
 .Dashboard.Dashboard--fullscreen .fullscreen-normal-text {
@@ -372,6 +371,7 @@
 
 .Dashboard text.value-label,
 .Dashboard text.value-label-outline,
+.Dashboard text.value-label-white,
 .Dashboard .LineAreaBarChart .dc-chart .axis text {
   font-size: 12px;
 }

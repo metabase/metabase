@@ -110,12 +110,12 @@ class Settings {
       tag = "latest";
     }
     if (page) {
-      page = `/${page}.html`;
+      page = `${page}.html`;
     }
     if (anchor) {
       anchor = `#${anchor}`;
     }
-    return `https://metabase.com/docs/${tag}${page}${anchor}`;
+    return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
   }
 
   newVersionAvailable() {

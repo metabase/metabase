@@ -218,10 +218,7 @@ export default class DashboardHeader extends Component {
           ref="addQuestionModal"
           triggerElement={
             <Tooltip tooltip={t`Add a question`}>
-              <span
-                data-metabase-event="Dashboard;Add Card Modal"
-                title={t`Add a question to this dashboard`}
-              >
+              <span data-metabase-event="Dashboard;Add Card Modal">
                 <Icon
                   className={cx("text-brand-hover cursor-pointer", {
                     "Icon--pulse": isEmpty,
@@ -253,7 +250,6 @@ export default class DashboardHeader extends Component {
               className={cx("text-brand-hover", {
                 "text-brand": this.state.modal === "parameters",
               })}
-              title={t`Parameters`}
               onClick={() => this.setState({ modal: "parameters" })}
             >
               <Icon name="funnel_add" size={16} />
@@ -277,7 +273,6 @@ export default class DashboardHeader extends Component {
           <a
             data-metabase-event="Dashboard;Add Text Box"
             key="add-text"
-            title={t`Add a text box`}
             className="text-brand-hover cursor-pointer"
             onClick={() => this.onAddTextBox()}
           >
@@ -304,7 +299,6 @@ export default class DashboardHeader extends Component {
           <a
             data-metabase-event="Dashboard;Edit"
             key="edit"
-            title={t`Edit Dashboard Layout`}
             className="text-brand-hover cursor-pointer"
             onClick={() => this.handleEdit(dashboard)}
           >

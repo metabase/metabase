@@ -20,7 +20,7 @@
 (p.types/defrecord+ FieldFilter [field value]
   PrettyPrintable
   (pretty [this]
-    (list 'map->FieldFilter (into {} this))))
+    `(map->FieldFilter ~(into {} this))))
 
 (defn FieldFilter?
   "Is `x` an instance of the `FieldFilter` record type?"
@@ -35,27 +35,28 @@
 (p.types/defrecord+ ReferencedCardQuery [card-id query]
   PrettyPrintable
   (pretty [this]
-    (list 'map->ReferencedCardQuery (into {} this))))
+    `(map->ReferencedCardQuery ~(into {} this))))
 
 (defn ReferencedCardQuery?
   "Is `x` an instance of the `ReferencedCardQuery` record type?"
   [x]
   (instance? ReferencedCardQuery x))
 
-;; An "NativeQuerySnippet" parameter expands to the partial query snippet stored in the referenced `NativeQuerySnippet`.
+;; A `ReferencedQuerySnippet` expands to the partial query snippet stored in the `NativeQuerySnippet` table in the
+;; application DB.
 ;;
-;; `snippet-id` is the ID of the `NativeQuerySnippet` instance from where the snippet content is loaded.
+;; `snippet-id` is the integer ID of the row in the application DB from where the snippet content is loaded.
 ;;
 ;; `content` is the raw query snippet which will be replaced, verbatim, for this template tag.
-(p.types/defrecord+ NativeQuerySnippet [snippet-id content]
+(p.types/defrecord+ ReferencedQuerySnippet [snippet-id content]
   PrettyPrintable
   (pretty [this]
-    (list 'map->NativeQuerySnippet (into {} this))))
+    `(map->ReferencedQuerySnippet ~(into {} this))))
 
-(defn NativeQuerySnippet?
-  "Is `x` an instance of the `NativeQuerySnippet` record type?"
+(defn ReferencedQuerySnippet?
+  "Is `x` an instance of the `ReferencedQuerySnippet` record type?"
   [x]
-  (instance? NativeQuerySnippet x))
+  (instance? ReferencedQuerySnippet x))
 
 ;; as in a literal date, defined by date-string S
 ;;
@@ -63,12 +64,12 @@
 (p.types/defrecord+ Date [^String s]
   PrettyPrintable
   (pretty [_]
-    (list 'Date. s)))
+    `(Date. ~s)))
 
 (p.types/defrecord+ DateRange [start end]
   PrettyPrintable
   (pretty [_]
-    (list 'DateRange. start end)))
+    `(DateRange. ~start ~end)))
 
 ;; List of numbers to faciliate things like using params in a SQL `IN` clause. This is supported by both regular
 ;; filter clauses (e.g. `IN ({{ids}})` and in field filters. Field filters also support sequences of values other than
@@ -79,7 +80,7 @@
 (p.types/defrecord+ CommaSeparatedNumbers [numbers]
   PrettyPrintable
   (pretty [_]
-    (list 'CommaSeperatedNumbers. numbers)))
+    `(CommaSeperatedNumbers. ~numbers)))
 
 (def no-value
   "Convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param
@@ -115,7 +116,7 @@
 (p.types/defrecord+ MultipleValues [values]
   PrettyPrintable
   (pretty [_]
-    (list 'MultipleValues. values)))
+    `(MultipleValues. ~values)))
 
 (p.types/defrecord+ Param [k]
   PrettyPrintable

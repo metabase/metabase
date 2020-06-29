@@ -872,11 +872,13 @@ export default function lineAreaBar(
   }
 
   // HACK: compositeChart + ordinal X axis shenanigans. See https://github.com/dc-js/dc.js/issues/678 and https://github.com/dc-js/dc.js/issues/662
-  const hasBar = _.any(
-    series,
-    single => getSeriesDisplay(settings, single) === "bar",
-  );
-  parent._rangeBandPadding(hasBar ? BAR_PADDING_RATIO : 1);
+  if (!isHistogram(props.settings)) {
+    const hasBar = _.any(
+      series,
+      single => getSeriesDisplay(settings, single) === "bar",
+    );
+    parent._rangeBandPadding(hasBar ? BAR_PADDING_RATIO : 1);
+  }
 
   applyXAxisSettings(parent, props.series, xAxisProps);
 
@@ -890,6 +892,8 @@ export default function lineAreaBar(
   lineAndBarOnRender(parent, {
     onGoalHover,
     isSplitAxis: yAxisProps.isSplit,
+    yAxisSplit: yAxisProps.yAxisSplit,
+    xInterval: xAxisProps.xInterval,
     isStacked: isStacked(parent.settings, datas),
     formatYValue: getYValueFormatter(parent, series, yAxisProps.yExtent),
     datas,

@@ -190,6 +190,12 @@
   line-height: 1.4em;
   white-space: pre-wrap;
 }
+.text-code-plain {
+  font-family: monospace;
+  color: var(--color-text-dark);
+  line-height: 1.4em;
+  white-space: pre-wrap;
+}
 
 .text-monospace,
 :local(.text-monospace) {

@@ -204,8 +204,9 @@
   [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions table-comment]}]
   (let [quot          #(sql.u/quote-name driver :field (tx/format-name driver %))
         pk-field-name (quot (pk-field-name driver))]
-    (format "CREATE TABLE %s (%s, %s %s, PRIMARY KEY (%s)) %s;"
+    (format "CREATE TABLE %s (%s %s, %s, PRIMARY KEY (%s)) %s;"
             (qualify-and-quote driver database-name table-name)
+            pk-field-name (pk-sql-type driver)
             (str/join
              ", "
              (for [{:keys [field-name base-type field-comment]} field-definitions]
@@ -216,7 +217,6 @@
                               (field-base-type->sql-type driver base-type)))
                     (when-let [comment (inline-column-comment-sql driver field-comment)]
                       (str " " comment)))))
-            pk-field-name (pk-sql-type driver)
             pk-field-name
             (or (inline-table-comment-sql driver table-comment) ""))))
 
@@ -259,13 +259,16 @@
 
 (defmethod tx/count-with-template-tag-query :sql/test-extensions
   [driver table field param-type]
+  ;; generate a SQL query like SELECT count(*) ... WHERE last_login = 1
+  ;; then replace 1 with a template tag like {{last_login}}
   (driver/with-driver driver
     (let [mbql-query      (data/mbql-query nil
                             {:source-table (data/id table)
                              :aggregation  [[:count]]
                              :filter       [:= [:field-id (data/id table field)] 1]})
           {:keys [query]} (qp/query->native mbql-query)
-          query           (str/replace query (re-pattern #"= .*") (format "= {{%s}}" (name field)))]
+          ;; preserve stuff like cast(1 AS datetime) in the resulting query
+          query           (str/replace query (re-pattern #"= (.*)(?:1)(.*)") (format "= $1{{%s}}$2" (name field)))]
       {:query query})))
 
 (defmethod tx/count-with-field-filter-query :sql/test-extensions

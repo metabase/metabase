@@ -14,9 +14,16 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [interface :as tx]]
+            [metabase.test.data.impl.verify :as verify]
             [metabase.test.initialize :as initialize]
             [metabase.test.util.timezone :as tu.tz]
+            [potemkin :as p]
             [toucan.db :as db]))
+
+(comment verify/keep-me)
+
+(p/import-vars
+ [verify verify-data-loaded-correctly])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          get-or-create-database!; db                                           |
@@ -77,7 +84,7 @@
   "Max amount of time to wait for sync to complete."
   (u/minutes->ms 5)) ; five minutes
 
-(defn- create-database! [driver {:keys [database-name], :as database-definition}]
+(defn- create-database! [driver {:keys [database-name table-definitions], :as database-definition}]
   {:pre [(seq database-name)]}
   (try
     ;; Create the database and load its data
@@ -90,24 +97,34 @@
                :name    database-name
                :engine  (name driver)
                :details (tx/dbdef->connection-details driver :db database-definition))]
-      ;; sync newly added DB
-      (u/with-timeout sync-timeout-ms
-        (u/profile (format "Sync %s Database %s" driver database-name)
-          (sync/sync-database! db)
-          ;; add extra metadata for fields
-          (try
-            (add-extra-metadata! database-definition db)
-            (catch Throwable e
-              (println "Error adding extra metadata:" e)))))
-      ;; make sure we're returing an up-to-date copy of the DB
-      (Database (u/get-id db)))
+      (try
+        ;; sync newly added DB
+        (u/with-timeout sync-timeout-ms
+          (u/profile (format "Sync %s Database %s" driver database-name)
+            (sync/sync-database! db)
+            (verify-data-loaded-correctly driver database-definition db)
+            ;; add extra metadata for fields
+            (try
+              (add-extra-metadata! database-definition db)
+              (catch Throwable e
+                (println "Error adding extra metadata:" e)))))
+        ;; make sure we're returing an up-to-date copy of the DB
+        (Database (u/get-id db))
+        (catch Throwable e
+          (db/delete! Database :id (u/get-id db))
+          (throw e))))
     (catch Throwable e
       (printf "Failed to create %s '%s' test database:\n" driver database-name)
       (println e)
-      (when config/is-test?
-        (System/exit -1)))))
+      (if config/is-test?
+        (System/exit -1)
+        (do
+          (println (u/format-color 'red "create-database! failed; destroying %s database %s" driver (pr-str database-name)))
+          (tx/destroy-db! driver database-definition)
+          (throw e))))))
 
-(defmethod get-or-create-database! :default [driver dbdef]
+(defmethod get-or-create-database! :default
+  [driver dbdef]
   (initialize/initialize-if-needed! :plugins :db)
   (let [dbdef (tx/get-dataset-definition dbdef)]
     (or
@@ -119,8 +136,7 @@
         ;; code may run inside of some other block that sets report timezone
         ;;
         ;; require/resolve used here to avoid circular refs
-        (require 'metabase.test.util)
-        ((resolve 'metabase.test.util/do-with-temporary-setting-value)
+        ((requiring-resolve 'metabase.test.util/do-with-temporary-setting-value)
          :report-timezone nil
          #(create-database! driver dbdef)))))))
 
@@ -150,18 +166,18 @@
   "Internal impl of `(data/id table)."
   [db-id table-name]
   {:pre [(integer? db-id) ((some-fn keyword? string?) table-name)]}
-  (let [table-id-for-name (partial db/select-one-id Table, :db_id db-id, :name)]
+  (let [table-name        (name table-name)
+        table-id-for-name (partial db/select-one-id Table, :db_id db-id, :name)]
     (or (table-id-for-name table-name)
         (table-id-for-name (let [db-name (db/select-one-field :name Database :id db-id)]
                              (tx/db-qualified-table-name db-name table-name)))
         (let [{driver :engine, db-name :name} (db/select-one [Database :engine :name] :id db-id)]
           (throw
-           (Exception. (format "No Table '%s' found for %s Database %d '%s'.\nFound: %s"
-                               table-name driver db-id db-name
+           (Exception. (format "No Table %s found for %s Database %d %s.\nFound: %s"
+                               (pr-str table-name) driver db-id (pr-str db-name)
                                (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true)))))))))
 
 (defn- the-field-id* [table-id field-name & {:keys [parent-id]}]
-  {:pre [((some-fn keyword? string?) field-name)]}
   (or (db/select-one-id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
       (let [{db-id :db_id, table-name :name} (db/select-one [Table :name :db_id] :id table-id)
             {driver :engine, db-name :name}  (db/select-one [Database :engine :name] :id db-id)
@@ -176,6 +192,11 @@
   "Internal impl of `(data/id table field)`."
   [table-id field-name & nested-field-names]
   {:pre [(integer? table-id)]}
+  (doseq [field-name (cons field-name nested-field-names)]
+    (assert ((some-fn keyword? string?) field-name)
+            (format "Expected keyword or string field name; got ^%s %s"
+                    (some-> field-name class .getCanonicalName)
+                    (pr-str field-name))))
   (loop [parent-id (the-field-id* table-id field-name), [nested-field-name & more] nested-field-names]
     (if-not nested-field-name
       parent-id
