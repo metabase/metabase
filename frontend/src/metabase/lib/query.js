@@ -8,9 +8,8 @@ import { isFK, TYPE } from "metabase/lib/types";
 import { stripId } from "metabase/lib/formatting";
 import { format as formatExpression } from "metabase/lib/expressions/format";
 
-import * as A_DEPRECATED from "./query_aggregation";
-
 import * as QUERY from "./query/query";
+import * as AGGREGATION from "./query/aggregation";
 import * as FieldRef from "./query/field_ref";
 export * from "./query/query";
 export * from "./query/field_ref";
@@ -274,15 +273,15 @@ export function getTableDescription(tableMetadata) {
 export function getAggregationDescription(tableMetadata, query, options) {
   return conjunctList(
     QUERY.getAggregations(query).map(aggregation => {
-      if (A_DEPRECATED.hasOptions(aggregation)) {
-        if (A_DEPRECATED.isNamed(aggregation)) {
-          return [A_DEPRECATED.getName(aggregation)];
+      if (AGGREGATION.hasOptions(aggregation)) {
+        if (AGGREGATION.isNamed(aggregation)) {
+          return [AGGREGATION.getName(aggregation)];
         }
-        aggregation = A_DEPRECATED.getContent(aggregation);
+        aggregation = AGGREGATION.getContent(aggregation);
       }
-      if (A_DEPRECATED.isMetric(aggregation)) {
+      if (AGGREGATION.isMetric(aggregation)) {
         const metric = _.findWhere(tableMetadata.metrics, {
-          id: A_DEPRECATED.getMetric(aggregation),
+          id: AGGREGATION.getMetric(aggregation),
         });
         const name = metric ? metric.name : "[Unknown Metric]";
         return [

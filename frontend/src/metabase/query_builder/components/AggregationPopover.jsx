@@ -12,7 +12,7 @@ import QueryDefinitionTooltip from "./QueryDefinitionTooltip";
 import ExpressionPopover from "./ExpressionPopover";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
-import * as A_DEPRECATED from "metabase/lib/query_aggregation";
+import * as AGGREGATION from "metabase/lib/query/aggregation";
 
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 
@@ -33,12 +33,12 @@ export default class AggregationPopover extends Component {
       choosingField:
         props.aggregation &&
         props.aggregation.length > 1 &&
-        A_DEPRECATED.isStandard(props.aggregation),
+        AGGREGATION.isStandard(props.aggregation),
       editingAggregation:
         props.aggregation &&
         props.aggregation.length > 1 &&
-        (A_DEPRECATED.isCustom(props.aggregation) ||
-          A_DEPRECATED.isNamed(props.aggregation)),
+        (AGGREGATION.isCustom(props.aggregation) ||
+          AGGREGATION.isNamed(props.aggregation)),
     };
   }
 
@@ -106,7 +106,7 @@ export default class AggregationPopover extends Component {
     if (dimension) {
       if (item.aggregation && item.aggregation.requiresField) {
         this.commitAggregation(
-          A_DEPRECATED.setField(item.value, dimension.mbql()),
+          AGGREGATION.setField(item.value, dimension.mbql()),
         );
       }
     } else if (item.custom) {
@@ -130,7 +130,7 @@ export default class AggregationPopover extends Component {
 
   onPickField = fieldId => {
     this.commitAggregation(
-      A_DEPRECATED.setField(this.state.aggregation, fieldId),
+      AGGREGATION.setField(this.state.aggregation, fieldId),
     );
   };
 
@@ -166,7 +166,7 @@ export default class AggregationPopover extends Component {
 
   itemIsSelected(item) {
     const { aggregation } = this.props;
-    return item.isSelected(A_DEPRECATED.getContent(aggregation));
+    return item.isSelected(AGGREGATION.getContent(aggregation));
   }
 
   renderItemExtra(item, itemIndex) {
@@ -224,16 +224,16 @@ export default class AggregationPopover extends Component {
     }
 
     const { choosingField, editingAggregation } = this.state;
-    const aggregation = A_DEPRECATED.getContent(this.state.aggregation);
+    const aggregation = AGGREGATION.getContent(this.state.aggregation);
 
     let selectedAggregation;
-    if (A_DEPRECATED.isMetric(aggregation)) {
+    if (AGGREGATION.isMetric(aggregation)) {
       selectedAggregation = _.findWhere(tableMetadata.metrics, {
-        id: A_DEPRECATED.getMetric(aggregation),
+        id: AGGREGATION.getMetric(aggregation),
       });
-    } else if (A_DEPRECATED.getOperator(aggregation)) {
+    } else if (AGGREGATION.getOperator(aggregation)) {
       selectedAggregation = _.findWhere(aggregationOperators, {
-        short: A_DEPRECATED.getOperator(aggregation),
+        short: AGGREGATION.getOperator(aggregation),
       });
     }
 
@@ -243,8 +243,8 @@ export default class AggregationPopover extends Component {
         : aggregation.name,
       value: [aggregation.short, ...aggregation.fields.map(field => null)],
       isSelected: agg =>
-        !A_DEPRECATED.isCustom(agg) &&
-        A_DEPRECATED.getAggregation(agg) === aggregation.short,
+        AGGREGATION.isStandard(agg) &&
+        AGGREGATION.getOperator(agg) === aggregation.short,
       aggregation: aggregation,
     }));
 
@@ -262,7 +262,7 @@ export default class AggregationPopover extends Component {
       name: metric.name,
       value: ["metric", metric.id],
       isSelected: aggregation =>
-        A_DEPRECATED.getMetric(aggregation) === metric.id,
+        AGGREGATION.getMetric(aggregation) === metric.id,
       metric: metric,
     }));
 
@@ -309,7 +309,7 @@ export default class AggregationPopover extends Component {
           {
             name: t`Custom…`,
             custom: true,
-            isSelected: agg => A_DEPRECATED.isCustom(agg),
+            isSelected: agg => AGGREGATION.isCustom(agg),
           },
         ];
       }
@@ -328,7 +328,7 @@ export default class AggregationPopover extends Component {
           startRule="aggregation"
           onChange={parsedExpression =>
             this.setState({
-              aggregation: A_DEPRECATED.setContent(
+              aggregation: AGGREGATION.setContent(
                 this.state.aggregation,
                 parsedExpression,
               ),
@@ -337,11 +337,11 @@ export default class AggregationPopover extends Component {
           }
           onBack={this.onClearAggregation}
           onDone={() => this.commitAggregation(this.state.aggregation)}
-          name={A_DEPRECATED.getName(this.state.aggregation)}
+          name={AGGREGATION.getName(this.state.aggregation)}
           onChangeName={name =>
             this.setState({
               aggregation: name
-                ? A_DEPRECATED.setName(aggregation, name)
+                ? AGGREGATION.setName(aggregation, name)
                 : aggregation,
             })
           }
