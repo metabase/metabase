@@ -5,7 +5,6 @@ import {
   signOut,
   signInAsNormalUser,
   signIn,
-  sidebar,
 } from "__support__/cypress";
 
 const new_user = {
