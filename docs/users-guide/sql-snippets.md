@@ -21,7 +21,7 @@ Let's save everything after FROM as a snippet to reuse in other queries.
 
 In the **SQL editor**:
  
-1. **Highlight a section of SQL** that you want to snip. In this case, we'll snip the following SQL code:
+1. **Highlight a section of SQL** that you want to save. In this case, we'll select the following SQL code:
 ```
 orders AS o
 LEFT JOIN products AS p 
