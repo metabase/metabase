@@ -9,11 +9,11 @@ We'll cover:
 - [**Factors that impact Metabase performance and availability.**](#factors-that-impact-metabase-performance-and-availability)
 - [**Vertical scaling.**](#vertical-scaling) Running a single instance of Metabase with more cores and memory. Vertical scaling can improve Metabase application performance.
 - [**Horizontal scaling.**](#horizontal-scaling) Running multiple instances of Metabase. Horizontal scaling can improve availability/reliability of your Metabase application.
-- [**Data warehouse.**](#data-warehouse) Way out-of-scope for this article, but we'll discuss some general strategies for data warehousekeeping.
-- [**Metabase application best practices.**](#metabase-application-best-practices) Tuning dashboards and questions to improve performance.
-- [**Hosted Metabase.**](#hosted-metabase) if you don't want to deal with the care and feeding of your application: Metabase also offers a [hosted solution](https://www.metabase.com/hosting/) that takes operating Metabase off your plate so you can focus on your data.
+- [**Data warehouse tuning.**](#data-warehouse-tuning) Way out-of-scope for this article, but we'll discuss some general strategies for data warehousekeeping.
+- [**Metabase application best practices.**](#metabase-application-best-practices) Tactics for improving the performance of questions and dashboards.
+- [**Hosted Metabase.**](#hosted-metabase) Let Metabase handle application operation for you. 
 
-Because the domain is so complex, and each system is different, we can only discuss scaling strategies at a high level, so you'll have to translate these strategies to your particular environment and usage.
+Each data system is different, so we can only discuss scaling strategies at a high level, but you should be able to translate these strategies to your particular environment and usage.
 
 ## Factors that impact Metabase performance and availability
 
@@ -42,7 +42,9 @@ Horizontal scaling involves running multiple instances of Metabase and using a l
 
 Metabase is set up for horizontal scaling out of the box, so you don't need any special configuration to run multiple instances of Metabase. The user session data is stored in the external application database, so users don't have to worry about losing saved work if one machine goes down, and administrators don't have to deal with configuring sticky sessions to make sure users are connected to the right Metabase instance. The load balancer will route users to an available instance so users can keep right on working.
 
-When scaling horizontally, however, you must use an external relational database like PostgreSQL to store your application data (all of your questions, dashboards, logs, and other Metabase data), so that all instances of Metabase can share a common database. Though you can maintain your own application database, we recommend using a managed database solution with high availability, such as [AWS's Relational Database Service (RDS)](https://aws.amazon.com/rds/), [Google Cloud Platform's Cloud SQL](https://cloud.google.com/sql), [Microsoft Azure's SQL Database](https://azure.microsoft.com/en-us/services/sql-database/), or similar offering, so your application database will always be available for your Metabase instances. Managed database solutions are especially useful for Enterprise customers who take advantage of Metabase's [auditing functionality](../enterprise-guide/audit.md).
+When scaling horizontally, however, you must use an external relational database like PostgreSQL to store your application data (all of your questions, dashboards, logs, and other Metabase data), so that all instances of Metabase can share a common database. We recommend an eternal database even if you only every run one instance of Metabase, so an external database is not an added cost for horizontal scaling. 
+
+Though you can maintain your own application database, we recommend using a managed database solution with high availability, such as [AWS's Relational Database Service (RDS)](https://aws.amazon.com/rds/), [Google Cloud Platform's Cloud SQL](https://cloud.google.com/sql), [Microsoft Azure's SQL Database](https://azure.microsoft.com/en-us/services/sql-database/), or similar offering, so your application database will always be available for your Metabase instances. Managed database solutions are especially useful for Enterprise customers who take advantage of Metabase's [auditing functionality](../enterprise-guide/audit.md).
 
 ### Time-based horizontal scaling
 
@@ -50,19 +52,21 @@ Some customers adjust the number of Metabase instances based on the time of day.
 
 ### Configuring the load balancer
 
-Setting up a load balancer is pretty straightforward. Metabase's API exposes a health check endpoint `/api/health` that load balancers can use to determine whether or not a Metabase instance is up and responding to requests. If the instance is healthy, the endpoint will return `{"status":"ok"}`.
+[Load balancers](https://en.wikipedia.org/wiki/Load_balancing_(computing)) direct traffic to multiple Metabase instances to ensure that each request gets the fastest response. If one instance of Metabase goes down temporarily, the load balancer will route user requests to another available instance.
+
+Setting up a load balancer with Metabase is pretty straightforward. Metabase's API exposes a health check endpoint `/api/health` that load balancers can use to determine whether a Metabase instance is up and responding to requests. If the instance is healthy, the endpoint will return `{"status":"ok"}`, and the load balancer will know to route the request to another instance.
 
 See our guide to [running Metabase on AWS Elastic Beanstalk](running-metabase-on-elastic-beanstalk.md) to see an example of setting up a load balancer to use the `/api/health` endpoint.
 
-## Data warehouse
+## Data warehouse tuning
 
-Architecting a data warehouse is beyond the scope of this article, but your queries in Metabase will only be as fast as your databases can return data. If you have questions that ask for data that takes your database a long time to retrieve, those query times will impact your experience, regardless of how fast Metabase is.
+Architecting a data warehouse is beyond the scope of this article, but you should know that your queries in Metabase will only be as fast as your databases can return data. If you have questions that ask for a lot of data that takes your database a long time to retrieve, those query times will impact your experience, regardless of how fast Metabase is.
 
-In general, there are three ways to improve data warehouse performance:
+Here are three ways you can improve data warehouse performance:
 
 - **Structure your data in a way that anticipates the questions your users will ask.** Identify your usage patterns and store your data in a way that make its easy to return results for questions common in your organization. Compose ETLs to create new tables that bring together frequently queried data from multiple sources.
-- **Tune your databases.** Read up on the documentation for your databases to learn how to improve their performance via indexing and caching.
-- **Improve the precision of your questions**. Filter your data as much as you can, and add limits to your queries when composing them. You should also take advantage of Metabase's data exploration tools (including record previews) so you only query data relevant to the question you're trying to answer.
+- **Tune your databases.** Read up on the documentation for your databases to learn how to improve their performance via indexing, caching, and other optimizations.
+- **Filter your data**. Encourage your users to filter data when asking questions. Users should also take advantage of Metabase's data exploration tools (including record previews) so they only query data relevant to the question they're trying to answer.
 
 ## Metabase application best practices
 
@@ -92,9 +96,11 @@ If you have many users running queries that return a lot of records, it won't ma
 
 Take advantage of Metabase's data exploration tools to learn about your data and preview records in tables so you can dial in on only the records you need to answer your question.
 
+Be especially mindful when querying data across time or space. Do you really need to see data years back, or in all geohashes?
+
 ### Cache your queries
 
-You can [configure caching](14-caching.md) on questions to store their results. Metabase will show users the timestamp for the results, and users can manually refresh the results if they want to rerun the query. Caching is a great way to save time (and money) for results that do not update frequently.
+You can [configure caching](../administration-guide/14-caching.md) on questions to store their results. Metabase will show users the timestamp for the results, and users can manually refresh the results if they want to rerun the query. Caching is suitable for results that do not update frequently.
 
 ### Look for bottlenecks
 
@@ -116,7 +122,7 @@ There are many ways to set up Metabase; here are some of our favorites:
 
 ### Hosted Metabase
 
-Metabase now offers a [hosted solution](https://www.metabase.com/hosting/), where we handle scaling Metabase for you. You'll still have to ensure your data sources are performant, but you'll no longer have to manage running the Metabase application.
+If you don't want to deal with the care and feeding of a Metabase application, Metabase now offers a [hosted solution](https://www.metabase.com/hosting/). You'll still have to ensure your data sources are performant, but you'll no longer have to manage running the Metabase application.
 
 ### AWS Elastic Beanstalk
 
