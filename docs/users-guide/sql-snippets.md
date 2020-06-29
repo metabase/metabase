@@ -8,7 +8,7 @@ For example, if you frequently perform queries that involve multiple tables, you
 
 ### How to create a snippet
 
-Here's a simple query with a simple join using the **Sample Dataset** included with Metabase.
+Here's a simple query with a join using the **Sample Dataset** included with Metabase.
 
 ```
 SELECT *
