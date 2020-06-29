@@ -52,7 +52,7 @@ Click on the code icon on the right side of the SQL editor, below the **Data Ref
 From the SQL Snippets menu, you can:
 
 - **Preview snippets**. Click on the down arrow to the right of a snippet to see a preview of its SQL code. There's also an option to edit the snippet.
-- **Insert a snippet at point**. Click on a snippet to insert it into your query at the current cursor point.
+- **Insert a snippet**. Click on a snippet's name to insert it into your query at the cursor's current location.
 - [**Edit a snippet**](#editing-snippets). You can change a snippet's name, description and code.
 - [**Archive and unarchive a snippet**](#archived-snippets). From the Edit modal, you can archive a snippet, which removes the snippet from the snippet menu and autocomplete options in the SQL editor.
 
