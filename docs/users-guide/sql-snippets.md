@@ -25,7 +25,7 @@ In the **SQL editor**:
 ```
 orders AS o
 LEFT JOIN products AS p 
-ON o.product_id = p.idD
+ON o.product_id = p.id
 ```
 
 2. **Right-click on the highlighted section**.
@@ -35,8 +35,8 @@ ON o.product_id = p.idD
 In this case, we named the snippet "Orders and Products". The snippet will now be available for anyone to use. Here's what the snippet looks like in the SQL editor:
 
 ```
-select * 
-from {{snippet: Orders and Products}};
+SELECT * 
+FROM {{snippet: Orders and Products}};
 ```
 
 When editing in the SQL editor, you can now start typing `{{snippet:` and Metabase will present autocomplete options for available snippets.
