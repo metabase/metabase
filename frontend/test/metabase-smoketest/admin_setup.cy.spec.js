@@ -355,9 +355,9 @@ describe("smoketest > admin_setup", () => {
             .wait(1)
             .type("Sale");
         });
-          
+
       // Changing visibility of Created At column
-      
+
       cy.wait(2000)
         .get("[value='The date and time an order was submitted.']")
         .parent()
@@ -367,33 +367,32 @@ describe("smoketest > admin_setup", () => {
         });
       cy.get(".ReactVirtualized__Grid__innerScrollContainer")
         .findAllByText("Do not include")
-        .click() // ({ force: true });
+        .click(); // ({ force: true });
 
       // Changing column formatting to display USD instead of $
-          
+
       cy.get("[value='The total billed amount.']")
         .parent()
         .parent()
         .within(() => {
-          cy.get(".Icon-gear")
-            .click();
+          cy.get(".Icon-gear").click();
         });
 
       cy.findByText("Total – Field Settings");
       cy.findByText("Columns").should("not.exist");
-      
+
       cy.findByText("Formatting").click();
-      
+
       cy.findByText("Show a mini bar chart");
       cy.findByText("Everywhere").should("not.exist");
-      
+
       cy.findByText("Normal").click();
       cy.findByText("Currency").click({ force: true });
       cy.findByText("Code (USD)")
         .parent()
         .click();
       cy.findByText("In every table cell").click();
-      
+
       cy.findByText("Saved");
     });
 
