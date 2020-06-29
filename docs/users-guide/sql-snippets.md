@@ -51,7 +51,7 @@ Click on the code icon on the right side of the SQL editor, below the **Data Ref
 
 From the SQL Snippets menu, you can:
 
-- **Create a snippet.** Click on the `+` in the upper right of the SQL Snippet sidebar to create a new snippet.
+- **Create a snippet.** Click on the `+` in the upper right of the SQL Snippets sidebar to create a new snippet.
 - **Preview snippets.** Click on the down arrow to the right of a snippet to see its description and a preview of its SQL code. There's also an option to edit the snippet.
 - **Insert a snippet.** Click on a snippet's name to insert it into your query at the cursor's current location.
 - [**Edit a snippet.**](#editing-snippets) You can change a snippet's name, description and code.
@@ -78,3 +78,7 @@ Archiving a snippet does not affect any existing queries that use the snippet, s
 You can access an archived snippet from the snippet sidebar menu by clicking on the archived button in the bottom left of the sidebar.
 
 Although there is no way to delete a snippet, you can archive and unarchive a snippet at any time.
+
+### Snippet permissions
+
+Any user who has SQL editor permissions to at least one of your connected databases will be able to view the snippets sidebar, and will be able to create, edit, and archive or unarchive any and all snippets — even snippets intended to be used with databases the user does NOT have SQL editing access to.
