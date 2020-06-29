@@ -39,7 +39,7 @@ SELECT *
 FROM {{snippet: Orders and Products}};
 ```
 
-When editing in the SQL editor, you can now start typing `{{snippet:` and Metabase will present autocomplete options for available snippets.
+When writing in the SQL editor, you can now start typing `{{snippet:` and Metabase will present autocomplete options for available snippets.
 
 ### Snippet menu
 
