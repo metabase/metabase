@@ -49,7 +49,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
   it("should update that metric", () => {
     cy.visit("/admin");
     cy.contains("Data Model").click();
-    cy.contains("Segments").click();
+    cy.contains("Metrics").click();
     cy.contains("Select a table").click();
     popover()
       .contains("Orders")
