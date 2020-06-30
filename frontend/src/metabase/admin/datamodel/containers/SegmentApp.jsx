@@ -3,15 +3,14 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-
-import SegmentForm from "./SegmentForm";
+import { getMetadata } from "metabase/selectors/metadata";
+import Segments from "metabase/entities/segments";
+import Tables from "metabase/entities/tables";
 
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";
 import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
-import { getMetadata } from "metabase/selectors/metadata";
-import Segments from "metabase/entities/segments";
-import Tables from "metabase/entities/tables";
+import SegmentForm from "../components/SegmentForm";
 
 const mapDispatchToProps = {
   updatePreviewSummary,
