@@ -29,7 +29,6 @@ export default class SegmentItem extends Component {
       segment.definition,
       { sections: ["filter"], jsx: true },
     );
-    console.log({ table, segment, description });
 
     return (
       <tr className="mt1 mb3">
