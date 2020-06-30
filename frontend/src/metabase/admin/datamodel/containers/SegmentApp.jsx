@@ -8,7 +8,7 @@ import SegmentForm from "./SegmentForm";
 
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";
-import withTableMetadataLoaded from "../withTableMetadataLoaded";
+import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
 import { getMetadata } from "metabase/selectors/metadata";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";

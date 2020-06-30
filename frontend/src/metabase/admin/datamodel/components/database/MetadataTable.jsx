@@ -6,7 +6,7 @@ import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
-import withTableMetadataLoaded from "metabase/admin/datamodel/withTableMetadataLoaded";
+import withTableMetadataLoaded from "metabase/admin/datamodel/hoc/withTableMetadataLoaded";
 
 import _ from "underscore";
 import cx from "classnames";

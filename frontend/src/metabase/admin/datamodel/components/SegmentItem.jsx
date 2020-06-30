@@ -1,21 +1,20 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import ObjectActionSelect from "../ObjectActionSelect";
-
 import Icon from "metabase/components/Icon";
+import ObjectActionSelect from "./ObjectActionSelect";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 
 export default class SegmentItem extends Component {
   static propTypes = {
-    onRetire: PropTypes.func.isRequired,
     segment: PropTypes.object.isRequired,
+    onRetire: PropTypes.func.isRequired,
     tableMetadata: PropTypes.object.isRequired,
   };
 
   render() {
-    const { onRetire, segment, tableMetadata } = this.props;
+    const { segment, onRetire, tableMetadata } = this.props;
 
     const description = Q_DEPRECATED.generateQueryDescription(
       tableMetadata,
