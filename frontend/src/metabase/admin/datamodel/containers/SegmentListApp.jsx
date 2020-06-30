@@ -43,8 +43,6 @@ class SegmentListApp extends React.Component {
                 key={segment.id}
                 onRetire={() => segment.setArchived(true)}
                 segment={segment}
-                // TODO - ideally we shouldn't need this
-                tableMetadata={{}}
               />
             ))}
           </tbody>

@@ -42,8 +42,6 @@ class MetricListApp extends React.Component {
                 key={metric.id}
                 onRetire={() => metric.setArchived(true)}
                 metric={metric}
-                // TODO - ideally we shouldn't need this
-                tableMetadata={{}}
               />
             ))}
           </tbody>

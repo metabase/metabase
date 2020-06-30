@@ -1,23 +1,31 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+import Tables from "metabase/entities/tables";
+
 import Icon from "metabase/components/Icon";
 import ObjectActionSelect from "./ObjectActionSelect";
+import withTableMetadataLoaded from "metabase/admin/datamodel/hoc/withTableMetadataLoaded";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 
+@Tables.load({
+  id: (state, props) => props.metric.table_id,
+  wrapped: true,
+})
+@withTableMetadataLoaded
 export default class MetricItem extends Component {
   static propTypes = {
     metric: PropTypes.object.isRequired,
     onRetire: PropTypes.func.isRequired,
-    tableMetadata: PropTypes.object.isRequired,
+    table: PropTypes.object.isRequired,
   };
 
   render() {
-    const { metric, onRetire, tableMetadata } = this.props;
+    const { metric, onRetire, table } = this.props;
 
     const description = Q_DEPRECATED.generateQueryDescription(
-      tableMetadata,
+      table,
       metric.definition,
       { sections: ["aggregation", "filter"], jsx: true },
     );
