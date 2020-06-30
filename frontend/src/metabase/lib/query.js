@@ -409,6 +409,59 @@ export function getLimitDescription(tableMetadata, { limit }) {
   }
 }
 
+
+export function generateQueryDescription(tableMetadata, query, options = {}) {
+  if (!tableMetadata) {
+    return "";
+  }
+
+  options = {
+    jsx: false,
+    sections: [
+      "table",
+      "aggregation",
+      "breakout",
+      "filter",
+      "order-by",
+      "limit",
+    ],
+    ...options,
+  };
+
+  const sectionFns = {
+    table: getTableDescription,
+    aggregation: getAggregationDescription,
+    breakout: getBreakoutDescription,
+    filter: getFilterDescription,
+    "order-by": getOrderByDescription,
+    limit: getLimitDescription,
+  };
+
+  // these array gymnastics are needed to support JSX formatting
+  const sections = options.sections
+    .map(section =>
+      _.flatten(sectionFns[section](tableMetadata, query, options)).filter(
+        s => !!s,
+      ),
+    )
+    .filter(s => s && s.length > 0);
+
+  const description = _.flatten(joinList(sections, ", "));
+  if (options.jsx) {
+    return <span>{description}</span>;
+  } else {
+    return description.join("");
+  }
+}
+
+// -----------------------------------------------------------------------------
+// These functions use the `query_description` field returned by the Segment and
+// Metric APIs. They're meant for cases where you do not have the full database
+// metadata available, and the server side will generate a data structure
+// containing all the applicable data for formatting a user-friendly description
+// of a query.
+// -----------------------------------------------------------------------------
+
 export function formatTableDescription({ table }, options = {}) {
   return [inflection.pluralize(table)];
 }
@@ -483,9 +536,8 @@ export function formatOrderByDescription(parts, options = {}) {
     return [
       t`Sorted by `,
       joinList(
-        orderBy.map(
-          ([field, direction]) =>
-            field + " " + (direction === "asc" ? "ascending" : "descending"),
+        orderBy.map(field =>
+            field["field"] + " " + (field["direction"] === "asc" ? "ascending" : "descending"),
         ),
         " and ",
       ),
@@ -538,50 +590,6 @@ export function formatQueryDescription(parts, options = {}) {
              ),
             )
         .filter(s => s && s.length > 0);
-
-  const description = _.flatten(joinList(sections, ", "));
-  if (options.jsx) {
-    return <span>{description}</span>;
-  } else {
-    return description.join("");
-  }
-}
-
-export function generateQueryDescription(tableMetadata, query, options = {}) {
-  if (!tableMetadata) {
-    return "";
-  }
-
-  options = {
-    jsx: false,
-    sections: [
-      "table",
-      "aggregation",
-      "breakout",
-      "filter",
-      "order-by",
-      "limit",
-    ],
-    ...options,
-  };
-
-  const sectionFns = {
-    table: getTableDescription,
-    aggregation: getAggregationDescription,
-    breakout: getBreakoutDescription,
-    filter: getFilterDescription,
-    "order-by": getOrderByDescription,
-    limit: getLimitDescription,
-  };
-
-  // these array gymnastics are needed to support JSX formatting
-  const sections = options.sections
-    .map(section =>
-      _.flatten(sectionFns[section](tableMetadata, query, options)).filter(
-        s => !!s,
-      ),
-    )
-    .filter(s => s && s.length > 0);
 
   const description = _.flatten(joinList(sections, ", "));
   if (options.jsx) {

@@ -1,52 +1,37 @@
 (ns metabase.api.query-description
   "Functions for generating human friendly query descriptions"
   (:require [clojure.string :as str]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [field :refer [Field]]
              [metric :refer [Metric]]
              [segment :refer [Segment]]]
-            [metabase.util.i18n :as ui18n :refer [deferred-trs]]))
+            [metabase.util.i18n :as ui18n :refer [deferred-tru]]))
 
 (defn- get-table-description
   [metadata query]
   {:table (:display_name metadata)})
 
-(defn- format-expression
-  [metadata expr]
-  ;; TODO: ... this
-  "")
-
 (defn- get-aggregation-description
   [metadata query]
-  (when-let [aggregations (:aggregation query)]
-    {:aggregation
-     (map
-      (fn [aggregation]
-        (cond
-          (:options aggregation) {:type :aggregation
-                                  :arg  (or (:name aggregation)
-                                           (second aggregation))}
-
-          (= (first aggregation) :metric) {:type :metric
-                                           :arg  (let [metric (Metric (second aggregation))]
-                                                   (if (not (str/blank? (:name metric)))
-                                                     (:name metric)
-                                                     (deferred-trs "[Unknown Metric]")))}
-
-          :else (let [field-name (fn [a] (:display_name (Field (second (second a)))))]
-                  (case (first aggregation)
-                    :rows      {:type :rows}
-                    :count     {:type :count}
-                    :cum-count {:type :cum-count}
-                    :avg       {:type :avg :field (field-name aggregation)}
-                    :distinct  {:type :distinct :arg (field-name aggregation)}
-                    :stddev    {:type :stddev :arg (field-name aggregation)}
-                    :sum       {:type :sum :arg (field-name aggregation)}
-                    :cum-sum   {:type :cum-sum :arg (field-name aggregation)}
-                    :max       {:type :max :arg (field-name aggregation)}
-                    :min       {:type :min :arg (field-name aggregation)}
-                    {:type :expression :arg (format-expression metadata aggregation)}))))
-      aggregations)}))
+  (let [field-name (fn [match] (:display_name (Field (mbql.u/field-clause->id-or-literal match))))]
+    (when-let [agg-matches (mbql.u/match query
+                             [:metric arg]    {:type :metric
+                                               :arg (let [metric (Metric arg)]
+                                                      (if (not (str/blank? (:name metric)))
+                                                        (:name metric)
+                                                        (deferred-tru "[Unknown Metric]")))}
+                             [:rows]          {:type :rows}
+                             [:count]         {:type :count}
+                             [:cum-count]     {:type :cum-count}
+                             [:avg arg]       {:type :avg :arg (field-name arg)}
+                             [:distinct arg]  {:type :distinct :arg (field-name arg)}
+                             [:stddev arg]    {:type :stddev :arg (field-name arg)}
+                             [:sum arg]       {:type :sum :arg (field-name arg)}
+                             [:cum-sum arg]   {:type :cum-sum :arg (field-name arg)}
+                             [:max arg]       {:type :max :arg (field-name arg)}
+                             [:min arg]       {:type :min :arg (field-name arg)})]
+      {:aggregation agg-matches})))
 
 (defn- get-breakout-description
   [metadata query]
@@ -54,29 +39,31 @@
     {:breakout (map #(:display_name (Field %)) breakouts)}))
 
 (defn- get-filter-clause-description
-  [metadata filters]
-  (let [elem (first filters)]
+  [metadata filt]
+  (let [typ (first filt)]
     (cond
-      (or (= :and elem)
-          (= :or elem)) (map #(get-filter-clause-description metadata %) (drop 1 filters))
+      (or (= :field-id typ)
+          (= :field-literal typ)) {:field (:display_name (Field (mbql.u/field-clause->id-or-literal filt)))}
 
-      (= :segment elem) {:segment (let [segment (Segment (second elem))]
-                                    (if segment
-                                      (:name segment)
-                                      (deferred-trs "[Unknown Segment]")))}
+      (= :segment typ) {:segment (let [segment (Segment (second filt))]
+                                   (if segment
+                                     (:name segment)
+                                     (deferred-tru "[Unknown Segment]")))}
 
-      :else {:field (:display_name (Field (second (second filters))))})))
+      :else nil)))
 
 (defn- get-filter-description
   [metadata query]
   (when-let [filters (:filter query)]
-    {:filter (get-filter-clause-description metadata [:and filters])}))
+    {:filter (map #(get-filter-clause-description metadata %)
+                  (mbql.u/match filters #{:field-id :field-literal :segment} &match))}))
 
 (defn- get-order-by-description
   [metadata query]
   (when-let [order-by (:order-by query)]
-    (:order-by (map (fn [[direction field]]
-                      {(:display_name (Field (second field))) direction}) order-by))))
+    {:order-by (map (fn [[direction field]]
+                      {:field (:display_name (Field (mbql.u/field-clause->id-or-literal field))) :direction direction})
+                    (mbql.u/match query #{:asc :desc} &match))}))
 
 (defn- get-limit-description
   [metadata query]
