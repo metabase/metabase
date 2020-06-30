@@ -32,60 +32,62 @@
 ;;; |                                                GET /collection                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; check that we can get a basic list of collections
-;; (for the purposes of test purposes remove the personal collections)
-(tt/expect-with-temp [Collection [collection]]
-  [{:parent_id nil, :effective_location nil, :effective_ancestors (), :can_write true, :name "Our analytics", :id "root"}
-   (assoc (into {} collection) :can_write true)]
-  (for [collection ((user->client :crowberto) :get 200 "collection")
-        :when (not (:personal_owner_id collection))]
-    collection))
+(deftest list-collections-test
+  (testing "GET /api/collection"
+    (testing "check that we can get a basic list of collections"
+      ;; (for the purposes of test purposes remove the personal collections)
+      (tt/with-temp Collection [collection]
+        (is (= [{:parent_id           nil
+                 :effective_location  nil
+                 :effective_ancestors []
+                 :can_write           true
+                 :name                "Our analytics"
+                 :id                  "root"}
+                (assoc (into {} collection) :can_write true)]
+               (for [collection ((user->client :crowberto) :get 200 "collection")
+                     :when      (not (:personal_owner_id collection))]
+                 collection)))))
 
-;; We should only see our own Personal Collections!
-(expect
-  ["Our analytics"
-   "Lucky Pigeon's Personal Collection"]
-  (map :name ((user->client :lucky) :get 200 "collection")))
+    (testing "We should only see our own Personal Collections!"
+      (is (= ["Our analytics"
+              "Lucky Pigeon's Personal Collection"]
+             (map :name ((user->client :lucky) :get 200 "collection"))))
 
-;; ...unless we are *admins*
-(expect
-  ["Our analytics"
-   "Crowberto Corv's Personal Collection"
-   "Lucky Pigeon's Personal Collection"
-   "Rasta Toucan's Personal Collection"
-   "Trash Bird's Personal Collection"]
-  (map :name ((user->client :crowberto) :get 200 "collection")))
+      (testing "...unless we are *admins*"
+        (is (= ["Our analytics"
+                "Crowberto Corv's Personal Collection"
+                "Lucky Pigeon's Personal Collection"
+                "Rasta Toucan's Personal Collection"
+                "Trash Bird's Personal Collection"]
+               (map :name ((user->client :crowberto) :get 200 "collection"))))))
 
-;; check that we don't see collections if we don't have permissions for them
-(expect
-  ["Our analytics"
-   "Collection 1"
-   "Rasta Toucan's Personal Collection"]
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
-                    Collection [collection-2 {:name "Collection 2"}]]
-      (perms/grant-collection-read-permissions! (group/all-users) collection-1)
-      (map :name ((user->client :rasta) :get 200 "collection")))))
+    (testing "check that we don't see collections if we don't have permissions for them"
+      (tu/with-non-admin-groups-no-root-collection-perms
+        (tt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
+                        Collection [collection-2 {:name "Collection 2"}]]
+          (perms/grant-collection-read-permissions! (group/all-users) collection-1)
+          (is (= ["Our analytics"
+                  "Collection 1"
+                  "Rasta Toucan's Personal Collection"]
+                 (map :name ((user->client :rasta) :get 200 "collection")))))))
 
-;; check that we don't see collections if they're archived
-(expect
-  ["Our analytics"
-   "Rasta Toucan's Personal Collection"
-   "Regular Collection"]
-  (tt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
-                  Collection [collection-2 {:name "Regular Collection"}]]
-    (perms/grant-collection-read-permissions! (group/all-users) collection-1)
-    (perms/grant-collection-read-permissions! (group/all-users) collection-2)
-    (map :name ((user->client :rasta) :get 200 "collection"))))
+    (testing "check that we don't see collections if they're archived"
+      (tt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
+                      Collection [collection-2 {:name "Regular Collection"}]]
+        (perms/grant-collection-read-permissions! (group/all-users) collection-1)
+        (perms/grant-collection-read-permissions! (group/all-users) collection-2)
+        (is (= ["Our analytics"
+                "Rasta Toucan's Personal Collection"
+                "Regular Collection"]
+               (map :name ((user->client :rasta) :get 200 "collection"))))))
 
-;; Check that if we pass `?archived=true` we instead see archived cards
-(expect
-  ["Archived Collection"]
-  (tt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
-                  Collection [collection-2 {:name "Regular Collection"}]]
-    (perms/grant-collection-read-permissions! (group/all-users) collection-1)
-    (perms/grant-collection-read-permissions! (group/all-users) collection-2)
-    (map :name ((user->client :rasta) :get 200 "collection" :archived :true))))
+    (testing "Check that if we pass `?archived=true` we instead see archived Collections"
+      (tt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
+                      Collection [collection-2 {:name "Regular Collection"}]]
+        (perms/grant-collection-read-permissions! (group/all-users) collection-1)
+        (perms/grant-collection-read-permissions! (group/all-users) collection-2)
+        (is (= ["Archived Collection"]
+               (map :name ((user->client :rasta) :get 200 "collection" :archived :true))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

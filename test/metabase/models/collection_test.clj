@@ -3,8 +3,11 @@
   (:require [clojure
              [string :as str]
              [test :refer :all]]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [medley.core :as m]
+            [metabase
+             [test :as mt]
+             [util :as u]]
             [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
             [metabase.models
              [card :refer [Card]]
@@ -19,7 +22,6 @@
              [fixtures :as fixtures]
              [util :as tu]]
             [metabase.test.data.users :as test-users]
-            [metabase.util :as u]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]
@@ -1711,3 +1713,66 @@
     (perms/grant-collection-readwrite-permissions! group c)
     (db/update! Collection (u/get-id b) :location (collection/children-location a))
     (group->perms [a b c] group)))
+
+(deftest valid-location-path?-test
+  (doseq [[path expected] {nil       false
+                           ""        false
+                           "/"       true
+                           "/1"      false
+                           "/1/"     true
+                           "/1/2/"   true
+                           "/1/1/"   false
+                           "/1/2/1/" false
+                           "/1/2/3/" true
+                           "/abc/"   false
+                           "1"       false
+                           "/1.0/"   false
+                           "/-1/"    false
+                           1         false
+                           1.0       false}]
+    (testing (pr-str path)
+      (is (= expected
+             (#'collection/valid-location-path? path))))))
+
+(deftest check-parent-collection-type-matches-test
+  (doseq [[parent-type child-type] [[nil "x"]
+                                    ["x" nil]
+                                    ["x" "y"]]]
+    (mt/with-temp Collection [parent-collection {:type parent-type}]
+      (testing (format "You should not be able to create a Collection of type %s inside a Collection of type %s"
+                       (pr-str child-type) (pr-str parent-type))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Collection must be of the same type as its parent"
+             (db/insert! Collection
+               {:location (format "/%d/" (:id parent-collection))
+                :color    "#F38630"
+                :name     "Child Collection"
+                :type     child-type}))))
+
+      (testing (format "You should not be able to move a Collection of type %s into a Collection of type %s"
+                       (pr-str child-type) (pr-str parent-type))
+        (mt/with-temp Collection [collection-2 {:type child-type}]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Collection must be of the same type as its parent"
+               (collection/move-collection! collection-2 (format "/%d/" (:id parent-collection)))))))
+
+      (testing (format "You should not be able to change the type of a Collection from %s to %s"
+                       (pr-str parent-type) (pr-str child-type))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You cannot change the type of a Collection once it has been created"
+             (db/update! Collection (:id parent-collection) :type child-type)))))))
+
+(deftest check-special-collection-type-cannot-be-personal-collection
+  (testing "You should not be able to create a Personal Collection with a non-nil `:type`."
+    (mt/with-temp User [{user-id :id}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Personal Collections cannot have a :type"
+           (db/insert! Collection
+             {:color             "#F38630"
+              :name              "Personal Collection"
+              :type              "x"
+              :personal_owner_id user-id}))))))

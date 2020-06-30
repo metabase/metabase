@@ -166,7 +166,9 @@
 
 (u/strict-extend (class NativeQuerySnippet)
   tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id (user-id :crowberto)})})
+  {:with-temp-defaults (fn [_] {:creator_id (user-id :crowberto)
+                                :name       (random-name)
+                                :content    "1 = 1"})})
 
 (u/strict-extend (class PermissionsGroup)
   tt/WithTempDefaults

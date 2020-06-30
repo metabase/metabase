@@ -45,7 +45,7 @@
   (when (or (not (string? hex-color))
             (not (re-matches hex-color-regex hex-color)))
     (throw (ex-info (tru "Invalid color")
-             {:status-code 400, :errors {:color (tru "must be a valid 6-character hex color code")}}))))
+                    {:status-code 400, :errors {:color (tru "must be a valid 6-character hex color code")}}))))
 
 (defn- slugify [collection-name]
   ;; double-check that someone isn't trying to use a blank string as the collection name
@@ -83,11 +83,12 @@
     (Integer/parseInt id-str)))
 
 (defn- valid-location-path? [s]
-  (and (string? s)
-       (seq s)
-       (or (= s "/")
-           (and (re-matches #"/(\d+/)*" s)
-                (apply distinct? (unchecked-location-path->ids s))))))
+  (boolean
+   (and (string? s)
+        (re-matches #"^/(\d+/)*$" s)
+        (let [ids (unchecked-location-path->ids s)]
+          (or (empty? ids)
+              (apply distinct? ids))))))
 
 (def LocationPath
   "Schema for a directory-style 'path' to the location of a Collection."
@@ -142,23 +143,32 @@
   ;; if setting/updating the `location` of this Collection make sure it matches the schema for valid location paths
   (when (contains? collection :location)
     (when-not (valid-location-path? location)
-      (throw
-       (ex-info (tru "Invalid Collection location: path is invalid.")
-         {:status-code 400
-          :errors      {:location (tru "Invalid Collection location: path is invalid.")}})))
+      (let [msg (tru "Invalid Collection location: path is invalid.")]
+        (throw (ex-info msg {:status-code 400, :errors {:location msg}}))))
     ;; if this is a Personal Collection it's only allowed to go in the Root Collection: you can't put it anywhere else!
     (when (contains? collection :personal_owner_id)
       (when-not (= location "/")
-        (throw
-         (ex-info (tru "You cannot move a Personal Collection.")
-           {:status-code 400
-            :errors      {:location (tru "You cannot move a Personal Collection.")}}))))
+        (let [msg (tru "You cannot move a Personal Collection.")]
+          (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))
     ;; Also make sure that all the IDs referenced in the Location path actually correspond to real Collections
     (when-not (all-ids-in-location-path-are-valid? location)
-      (throw
-       (ex-info (tru "Invalid Collection location: some or all ancestors do not exist.")
-         {:status-code 404
-          :errors      {:location (tru "Invalid Collection location: some or all ancestors do not exist.")}})))))
+      (let [msg (tru "Invalid Collection location: some or all ancestors do not exist.")]
+        (throw (ex-info msg {:status-code 404, :errors {:location msg}}))))))
+
+(defn- assert-valid-type
+  "Check that the type of this Collection is valid -- it must be of the same type as its parent Collection."
+  [{:keys [location], owner-id :personal_owner_id, collection-type :type, :as collection}]
+  {:pre [(contains? collection :type)]}
+  (when location
+    (when-let [parent-id (location-path->parent-id location)]
+      (let [parent-type (db/select-one-field :type Collection :id parent-id)]
+        (when-not (= (keyword collection-type) (keyword parent-type))
+          (let [msg (tru "Collection must be of the same type as its parent")]
+            (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
+  ;; non-default type Collections cannot be personal Collections
+  (when (and owner-id collection-type)
+    (let [msg (tru "Personal Collections cannot have a :type")]
+      (throw (ex-info msg {:status-code 400, :errors {:personal_owner_id msg}})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -172,13 +182,18 @@
 (p.types/defrecord+ ^:private RootCollection [])
 
 (u/strict-extend RootCollection
+  models/IModel
+  (merge
+   models/IModelDefaults
+   {:types {:type :keyword}})
+
   i/IObjectPermissions
   (merge
    i/IObjectPermissionsDefaults
    {:perms-objects-set (fn [this read-or-write]
                          #{((case read-or-write
-                               :read  perms/collection-read-path
-                               :write perms/collection-readwrite-path) this)})
+                              :read  perms/collection-read-path
+                              :write perms/collection-readwrite-path) this)})
     :can-read?         (partial i/current-user-has-full-permissions? :read)
     :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
@@ -613,6 +628,7 @@
 
 (defn- pre-insert [{collection-name :name, color :color, :as collection}]
   (assert-valid-location collection)
+  (assert-valid-type collection)
   (assert-valid-hex-color color)
   (assoc collection :slug (slugify collection-name)))
 
@@ -777,11 +793,17 @@
       (check-changes-allowed-for-personal-collection collection-before-updates collection-updates))
     ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)
-    ;; (3) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
+    ;; (3) make sure Collection type is valid
+    (when (contains? collection-updates :type)
+      (when (not= (:type collection-before-updates) (:type collection-updates))
+        (let [msg (tru "You cannot change the type of a Collection once it has been created.")]
+          (throw (ex-info msg {:status-code 400, :errors {:type msg}})))))
+    (assert-valid-type (merge (select-keys collection-before-updates [:type]) collection-updates))
+    ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
       (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates))
-    ;; (4) make sure hex color is valid
+    ;; (5) make sure hex color is valid
     (when (api/column-will-change? :color collection-before-updates collection-updates)
       (assert-valid-hex-color color))
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
