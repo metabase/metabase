@@ -81,7 +81,27 @@
       (mt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
                       Collection [collection-2 {:name "Regular Collection"}]]
         (is (= ["Archived Collection"]
-               (map :name ((mt/user->client :rasta) :get 200 "collection" :archived :true))))))))
+               (map :name ((mt/user->client :rasta) :get 200 "collection" :archived :true))))))
+
+    (testing "?type= parameter"
+      (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
+                      Collection [{coins-id  :id} {:name "Coin Collection", :type "currency"}]]
+        (letfn [(collection-names [collections]
+                  (->> collections
+                       (filter #(#{normal-id coins-id} (:id %)))
+                       (map :name)))]
+          (testing "shouldn't show Collections of a different `:type` by default"
+            (is (= ["Normal Collection"]
+                   (collection-names ((mt/user->client :rasta) :get 200 "collection")))))
+
+          (testing "By passing `:type` we should be able to see Collections of that `:type`"
+            (testing "?type=currency"
+              (is (= ["Coin Collection"]
+                     (collection-names ((mt/user->client :rasta) :get 200 "collection?type=currency")))))
+
+            (testing "?type=stamps"
+              (is (= []
+                     (collection-names ((mt/user->client :rasta) :get 200 "collection?type=stamps")))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -495,7 +515,27 @@
                  (api-get-root-collection-ancestors :archived true))))
         (testing "children"
           (is (= [(collection-item "A")]
-                 (api-get-root-collection-children :archived true))))))))
+                 (api-get-root-collection-children :archived true))))))
+
+    (testing "?type= parameter"
+      (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
+                      Collection [{coins-id :id} {:name "Coin Collection", :type "currency"}]]
+        (letfn [(collection-names [collections]
+                  (->> collections
+                       (filter #(= (:model %) "collection"))
+                       (filter #(#{normal-id coins-id} (:id %)))
+                       (map :name)))]
+          (testing "shouldn't show Collections of a different `:type` by default"
+            (is (= ["Normal Collection"]
+                   (collection-names ((mt/user->client :rasta) :get 200 "collection/root/items")))))
+
+          (testing "By passing `:type` we should be able to see Collections of that `:type`"
+            (testing "?type=currency"
+              (is (= ["Coin Collection"]
+                     (collection-names ((mt/user->client :rasta) :get 200 "collection/root/items?type=currency")))))
+            (testing "?type=stamps"
+              (is (= []
+                     (collection-names ((mt/user->client :rasta) :get 200 "collection/root/items?type=stamps")))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

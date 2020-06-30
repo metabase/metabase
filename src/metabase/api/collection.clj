@@ -1,5 +1,9 @@
 (ns metabase.api.collection
-  "/api/collection endpoints."
+  "`/api/collection` endpoints. By default, these endpoints operate on 'normal' Collections, which are the ones things
+  like Dashboards and Cards go in. Other types of Collections exist as well, such as `:snippet` Collections, (called
+  'Snippet folders' in the UI). Various types of Collections are best thought of as completely independent namespaces
+  or hierarchies. To use these endpoints for other types of Collections, you can pass the `?type=` parameter (e.g.
+  `?type=snippet`)."
   (:require [clojure.string :as str]
             [compojure.core :refer [GET POST PUT]]
             [metabase.api
@@ -27,11 +31,14 @@
 
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`."
-  [archived]
-  {archived (s/maybe su/BooleanString)}
+  [archived type]
+  {archived (s/maybe su/BooleanString)
+   type     (s/maybe su/NonBlankString)}
   (let [archived? (Boolean/parseBoolean archived)]
-    (as-> (db/select Collection :archived archived?
-                     {:order-by [[:%lower.name :asc]]}) collections
+    (as-> (db/select Collection
+            :archived archived?
+            :type type
+            {:order-by [[:%lower.name :asc]]}) collections
       (filter mi/can-read? collections)
       ;; include Root Collection at beginning or results if archived isn't `true`
       (if archived?
@@ -82,19 +89,21 @@
     :alert_condition nil))
 
 (defmethod fetch-collection-children :collection
-  [_ collection {:keys [archived?]}]
-  (-> (for [child-collection (collection/effective-children collection [:= :archived archived?])]
+  [_ collection {:keys [archived? collection-type]}]
+  (-> (for [child-collection (collection/effective-children collection
+                                                            [:= :archived archived?]
+                                                            [:= :type collection-type])]
         (assoc child-collection :model "collection"))
       (hydrate :can_write)))
 
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
-  [collection                                     :- collection/CollectionWithLocationAndIDOrRoot
+  [{collection-type :type, :as collection}        :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [model collections-only?], :as options} :- CollectionChildrenOptions]
   (->> (for [model-kw [:collection :card :dashboard :pulse]
-            ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
-            :when    (or (not model) (= model model-kw))
-            item     (fetch-collection-children model-kw collection options)]
+             ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
+             :when    (or (not model) (= model model-kw))
+             item     (fetch-collection-children model-kw collection (assoc options :collection-type collection-type))]
          (assoc item :model model-kw))
        ;; sorting by name should be fine for now.
        (sort-by (comp str/lower-case :name))))
@@ -152,17 +161,18 @@
 
   This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the
   top-level objects you're allowed to access."
-  [model archived]
+  [model archived type]
   {model    (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
-   archived (s/maybe su/BooleanString)}
+   archived (s/maybe su/BooleanString)
+   type     (s/maybe su/NonBlankString)}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (collection-items
-    collection/root-collection
-    {:model     (if (mi/can-read? collection/root-collection)
-                  (keyword model)
-                  :collection)
-     :archived? (Boolean/parseBoolean archived)}))
+   (assoc collection/root-collection :type type)
+   {:model     (if (mi/can-read? collection/root-collection)
+                 (keyword model)
+                 :collection)
+    :archived? (Boolean/parseBoolean archived)}))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
