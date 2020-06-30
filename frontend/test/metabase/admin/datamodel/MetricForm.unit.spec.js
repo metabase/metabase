@@ -5,7 +5,7 @@ import { render, cleanup } from "@testing-library/react";
 import { getStore } from "metabase/store";
 import normalReducers from "metabase/reducers-main";
 
-import MetricForm from "metabase/admin/datamodel/containers/MetricForm";
+import MetricForm from "metabase/admin/datamodel/components/MetricForm";
 
 import { metadata } from "__support__/sample_dataset_fixture";
 

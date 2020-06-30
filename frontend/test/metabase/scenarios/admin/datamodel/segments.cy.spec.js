@@ -17,7 +17,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       .click();
     cy.contains("New segment").click();
 
-    cy.url().should("match", /segment\/create\?table=2$/);
+    cy.url().should("match", /segment\/create\?table=\d+$/);
     cy.contains("Create Your Segment");
 
     // filter to orders with total under 100
@@ -39,14 +39,20 @@ describe("scenarios > admin > datamodel > segments", () => {
 
     // saving bounces you back and you see new segment in the list
     cy.contains("Save changes").click();
-    cy.url().should("match", /datamodel\/segments\?table=2$/);
+    cy.url().should("match", /datamodel\/segments\?table=\d+$/);
     cy.contains("orders <100");
     cy.contains("Filtered by Total");
   });
 
   it("should update that segment", () => {
-    // visit table's data model page and click to edit the segment
-    cy.visit("/admin/datamodel/segments?table=2");
+    cy.visit("/admin");
+    cy.contains("Data Model").click();
+    cy.contains("Segments").click();
+    cy.contains("Select a table").click();
+    popover()
+      .contains("Orders")
+      .click();
+
     cy.contains("orders <100")
       .parent()
       .parent()
@@ -85,7 +91,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     cy.contains("Save changes").click();
 
     // get redirected to previous page and see the new segment name
-    cy.url().should("match", /datamodel\/segments\?table=2$/);
+    cy.url().should("match", /datamodel\/segments\?table=\d+$/);
     cy.contains("orders >10");
 
     // clean up

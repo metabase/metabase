@@ -5,7 +5,7 @@ import { render, cleanup } from "@testing-library/react";
 import { getStore } from "metabase/store";
 import normalReducers from "metabase/reducers-main";
 
-import SegmentForm from "metabase/admin/datamodel/containers/SegmentForm";
+import SegmentForm from "metabase/admin/datamodel/components/SegmentForm";
 
 function renderForm(props) {
   const store = getStore(normalReducers);
