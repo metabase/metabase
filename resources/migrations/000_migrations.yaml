@@ -6397,7 +6397,7 @@ databaseChangeLog:
 # folders" which are just implemented as collections under the hood.
 
   - changeSet:
-      id: 170
+      id: 171
       author: camsaul
       comment: Added 1.36.0
       changes:
@@ -6421,7 +6421,7 @@ databaseChangeLog:
                   name: collection_id
 
   - changeSet:
-      id: 171
+      id: 172
       author: camsaul
       comment: Added 1.36.0
       changes:
