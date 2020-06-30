@@ -577,7 +577,7 @@
 
 (defn do-with-model-cleanup [model-seq f]
   (try
-    (testing (str (pr-str (cons 'with-model-cleanup model-seq)) "\n")
+    (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name model-seq))) "\n")
       (f))
     (finally
       (doseq [model model-seq]

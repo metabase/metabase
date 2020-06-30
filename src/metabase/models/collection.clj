@@ -628,7 +628,7 @@
 
 (defn- pre-insert [{collection-name :name, color :color, :as collection}]
   (assert-valid-location collection)
-  (assert-valid-type collection)
+  (assert-valid-type (merge {:type nil} collection))
   (assert-valid-hex-color color)
   (assoc collection :slug (slugify collection-name)))
 
