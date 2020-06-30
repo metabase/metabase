@@ -153,7 +153,7 @@ const Tables = createEntity({
     if (type === Segments.actionTypes.UPDATE) {
       const { table_id: tableId, archived, id: segmentId } = payload.segment;
       const table = state[tableId];
-      if (archived && table) {
+      if (archived && table && table.segments) {
         return {
           ...state,
           [tableId]: {
@@ -167,7 +167,7 @@ const Tables = createEntity({
     if (type === Metrics.actionTypes.UPDATE) {
       const { table_id: tableId, archived, id: metricId } = payload.metric;
       const table = state[tableId];
-      if (archived && table) {
+      if (archived && table && table.metrics) {
         return {
           ...state,
           [tableId]: {
