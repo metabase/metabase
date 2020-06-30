@@ -5,10 +5,10 @@ import { t } from "ttag";
 
 import Databases from "metabase/entities/databases";
 
+import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import SaveStatus from "metabase/components/SaveStatus";
 import Toggle from "metabase/components/Toggle";
 import Icon from "metabase/components/Icon";
-import Select from "metabase/components/Select";
 
 @withRouter
 @Databases.loadList()
@@ -69,15 +69,9 @@ export default class MetadataHeader extends Component {
     return (
       <div className="MetadataEditor-header flex align-center flex-no-shrink">
         <div className="MetadataEditor-headerSection py2 h2">
-          <Select
-            value={this.props.databaseId}
-            options={this.props.databases.map(db => ({
-              name: db.name,
-              value: db.id,
-            }))}
-            onChange={ev => {
-              this.props.selectDatabase(ev.target.value);
-            }}
+          <DatabaseDataSelector
+            selectedDatabaseId={this.props.databaseId}
+            setDatabaseFn={id => this.props.selectDatabase({ id })}
           />
         </div>
         <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
