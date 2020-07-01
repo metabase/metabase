@@ -2,12 +2,10 @@
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
             [metabase
+             [models :refer [Card Collection Dashboard DashboardCard]]
              [test :as mt]
              [util :as u]]
-            [metabase.models
-             [card :as card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]]
+            [metabase.models.card :as card]
             [metabase.test.util :as tu]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -156,3 +154,22 @@
       (is (= expected
              (#'card/extract-ids ids-type {:query {:fields [[:segment 1]
                                                             [:metric 2]]}}))))))
+
+(deftest validate-collection-type-test
+  (mt/with-temp Collection [{collection-id :id} {:type "currency"}]
+    (testing "Shouldn't be able to create a Card in a non-normal Collection"
+      (let [card-name (mt/random-name)]
+        (try
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Cards can only go in normal Collections"
+               (db/insert! Card (assoc (tt/with-temp-defaults Card) :collection_id collection-id, :name card-name))))
+          (finally
+            (db/delete! Card :name card-name)))))
+
+    (testing "Shouldn't be able to move a Card to a non-normal Collection"
+      (mt/with-temp Card [{card-id :id}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cards can only go in normal Collections"
+             (db/update! Card card-id {:collection_id collection-id})))))))
