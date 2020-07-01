@@ -409,7 +409,6 @@ export function getLimitDescription(tableMetadata, { limit }) {
   }
 }
 
-
 export function generateQueryDescription(tableMetadata, query, options = {}) {
   if (!tableMetadata) {
     return "";
@@ -469,17 +468,17 @@ export function formatTableDescription({ table }, options = {}) {
 export function formatAggregationDescription({ aggregation }, options = {}) {
   return conjunctList(
     aggregation.map(agg => {
-      switch(agg["type"]) {
-      case "aggregation":
-        return [agg["arg"]];
-      case "metric":
-        return [
-          options.jsx ? (
-            <span className="text-green text-bold">{agg["arg"]}</span>
-          ) : (
-            agg["arg"]
-          ),
-        ];
+      switch (agg["type"]) {
+        case "aggregation":
+          return [agg["arg"]];
+        case "metric":
+          return [
+            options.jsx ? (
+              <span className="text-green text-bold">{agg["arg"]}</span>
+            ) : (
+              agg["arg"]
+            ),
+          ];
         case "rows":
           return [t`Raw data`];
         case "count":
@@ -487,26 +486,27 @@ export function formatAggregationDescription({ aggregation }, options = {}) {
         case "cum-count":
           return [t`Cumulative count`];
         case "avg":
-          return [t`Average of `, agg["arg"],];
+          return [t`Average of `, agg["arg"]];
         case "distinct":
-          return [t`Distinct values of `, agg["arg"],];
+          return [t`Distinct values of `, agg["arg"]];
         case "stddev":
-          return [t`Standard deviation of `, agg["arg"],];
+          return [t`Standard deviation of `, agg["arg"]];
         case "sum":
-          return [t`Sum of `, agg["arg"],];
+          return [t`Sum of `, agg["arg"]];
         case "cum-sum":
-          return [t`Cumulative sum of `, agg["arg"],];
+          return [t`Cumulative sum of `, agg["arg"]];
         case "max":
-          return [t`Maximum of `, agg["arg"],];
+          return [t`Maximum of `, agg["arg"]];
         case "min":
-          return [t`Minimum of `, agg["arg"],];
+          return [t`Minimum of `, agg["arg"]];
       }
-    }));
+    }),
+  );
 }
 
 export function formatBreakoutDescription({ breakout }, options = {}) {
   if (breakout && breakout.length > 0) {
-    return [t`Grouped by `, joinList(breakout.map(b => b), " and ",)];
+    return [t`Grouped by `, joinList(breakout.map(b => b), " and ")];
   } else {
     return [];
   }
@@ -514,17 +514,23 @@ export function formatBreakoutDescription({ breakout }, options = {}) {
 
 export function formatFilterDescription({ filter }, options = {}) {
   if (filter && filter.length > 0) {
-    return [t`Filtered by `, joinList(filter.map(f => {
-      if (f["segment"] != null) {
-        return options.jsx ? (
-          <span className="text-purple text-bold">{f["segment"]}</span>
-        ) : (
-          f["segment"]
-        );
-      } else if (f["field"] != null) {
-        return f["field"];
-      }
-    }), ", ",)];
+    return [
+      t`Filtered by `,
+      joinList(
+        filter.map(f => {
+          if (f["segment"] != null) {
+            return options.jsx ? (
+              <span className="text-purple text-bold">{f["segment"]}</span>
+            ) : (
+              f["segment"]
+            );
+          } else if (f["field"] != null) {
+            return f["field"];
+          }
+        }),
+        ", ",
+      ),
+    ];
   } else {
     return [];
   }
@@ -536,8 +542,11 @@ export function formatOrderByDescription(parts, options = {}) {
     return [
       t`Sorted by `,
       joinList(
-        orderBy.map(field =>
-            field["field"] + " " + (field["direction"] === "asc" ? "ascending" : "descending"),
+        orderBy.map(
+          field =>
+            field["field"] +
+            " " +
+            (field["direction"] === "asc" ? "ascending" : "descending"),
         ),
         " and ",
       ),
@@ -584,12 +593,10 @@ export function formatQueryDescription(parts, options = {}) {
 
   // these array gymnastics are needed to support JSX formatting
   const sections = options.sections
-        .map(section =>
-             _.flatten(sectionFns[section](parts, options)).filter(
-               s => !!s,
-             ),
-            )
-        .filter(s => s && s.length > 0);
+    .map(section =>
+      _.flatten(sectionFns[section](parts, options)).filter(s => !!s),
+    )
+    .filter(s => s && s.length > 0);
 
   const description = _.flatten(joinList(sections, ", "));
   if (options.jsx) {
