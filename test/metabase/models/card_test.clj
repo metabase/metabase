@@ -162,7 +162,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Cards can only go in normal Collections"
+               #"A Card can only go in Collections of type nil"
                (db/insert! Card (assoc (tt/with-temp-defaults Card) :collection_id collection-id, :name card-name))))
           (finally
             (db/delete! Card :name card-name)))))
@@ -171,5 +171,5 @@
       (mt/with-temp Card [{card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Cards can only go in normal Collections"
+             #"A Card can only go in Collections of type nil"
              (db/update! Card card-id {:collection_id collection-id})))))))

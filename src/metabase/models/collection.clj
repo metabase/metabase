@@ -827,6 +827,7 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:collection])
+          :types          (constantly {:type :keyword})
           :pre-insert     pre-insert
           :post-insert    post-insert
           :pre-update     pre-update
@@ -952,7 +953,30 @@
         (assoc user :personal_collection_id (or (user-id->collection-id (u/get-id user))
                                                 (user->personal-collection-id (u/get-id user))))))))
 
-(defmulti valid-collection-types
-  "What types of Collection this model can go in. "
+(defmulti allowed-collection-types
+  "Set of Collection types instances of this model are allowed to go in. By default, only 'normal' (type = `nil`)
+  Collections."
   {:arglists '([model])}
-  (comp class db/resolve-model))
+  class)
+
+(defmethod allowed-collection-types :default
+  [_]
+  #{nil})
+
+(defn check-collection-type
+  "Check that object's `:collection_id` refers to a Collection that is one of the `allowed-types`, or throw an Exception.
+
+    ;; Cards can only go in 'normal' Collections (type = nil)
+    (check-collection-type card)"
+  [{collection-id :collection_id, :as object}]
+  (when collection-id
+    (let [collection-type (keyword (db/select-one-field :type 'Collection :id collection-id))
+          allowed-types   (allowed-collection-types object)]
+      (when-not (contains? allowed-types collection-type)
+        (let [msg (tru "A {0} can only go in Collections of type {1}"
+                   (name object)
+                   (str/join (format " %s " (tru "or")) (map pr-str allowed-types)))]
+          (throw (ex-info msg {:status-code     400
+                               :errors          {:collection_id msg}
+                               :allowed-types   allowed-types
+                               :collection-type collection-type})))))))

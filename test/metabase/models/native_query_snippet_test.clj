@@ -41,7 +41,7 @@
       (mt/with-temp Collection [{collection-id :id} {:type collection-type}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"NativeQuerySnippets can only go inside :snippet Collections"
+             #"A NativeQuerySnippet can only go in Collections of type :snippet"
              (db/insert! NativeQuerySnippet
                {:name          (mt/random-name)
                 :content       "1 = 1"
@@ -54,5 +54,5 @@
                       Collection         [{dest-collection-id :id}   {:type collection-type}]]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"NativeQuerySnippets can only go inside :snippet Collections"
+             #"A NativeQuerySnippet can only go in Collections of type :snippet"
              (db/update! NativeQuerySnippet snippet-id :collection_id dest-collection-id)))))))

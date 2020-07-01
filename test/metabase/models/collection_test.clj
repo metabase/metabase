@@ -42,14 +42,15 @@
 
 (deftest color-validation-test
   (testing "Collection colors should be validated when inserted into the DB"
-    (are [test-msg input] (is (thrown? Exception
-                                       (db/insert! Collection {:name "My Favorite Cards", :color input}))
-                              test-msg)
-      "Missing color"       nil
-      "Too short"           #"ABC"
-      "Invalid chars"       "#BCDEFG"
-      "Too long"            #"ABCDEFF"
-      "Missing hash prefix" "ABCDEF")))
+    (doseq [[input msg] {nil        "Missing color"
+                         "#ABC"     "Too short"
+                         "#BCDEFG"  "Invalid chars"
+                         "#ABCDEFF" "Too long"
+                         "ABCDEF"   "Missing hash prefix"}]
+      (testing msg
+        (is (thrown?
+             Exception
+             (db/insert! Collection {:name "My Favorite Cards", :color input})))))))
 
 ;; double-check that `with-temp-defaults` are working correctly for Collection
 (expect

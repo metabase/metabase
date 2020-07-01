@@ -1,9 +1,9 @@
 (ns metabase.models.native-query-snippet
   (:require [metabase.models
-             [collection :refer [Collection]]
+             [collection :as collection :refer [Collection]]
              [interface :as i]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -13,16 +13,13 @@
 
 (models/defmodel NativeQuerySnippet :native_query_snippet)
 
-(defn- assert-correct-collection-type [{collection-id :collection_id}]
-  (when collection-id
-    (let [collection-type (db/select-one-field :type Collection :id collection-id)]
-      (when-not (= (keyword collection-type) :snippet)
-        (let [msg (trs "NativeQuerySnippets can only go inside :snippet Collections.")]
-          (throw (ex-info msg {:status-code 400, :errors {:collection_id msg}})))))))
+(defmethod collection/allowed-collection-types (class NativeQuerySnippet)
+  [_]
+  #{:snippet})
 
 (defn- pre-insert [snippet]
   (u/prog1 snippet
-    (assert-correct-collection-type snippet)))
+    (collection/check-collection-type snippet)))
 
 (defn- pre-update [{:keys [creator_id id], :as updates}]
   (u/prog1 updates
@@ -30,7 +27,7 @@
     (when (contains? updates :creator_id)
       (when (not= creator_id (db/select-one-field :creator_id NativeQuerySnippet :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))
-    (assert-correct-collection-type updates)))
+    (collection/check-collection-type updates)))
 
 (defn- can-read-parent-collection?
   ([{collection-id :collection-id}]

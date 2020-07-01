@@ -11,6 +11,7 @@
              [normalize :as normalize]
              [util :as mbql.u]]
             [metabase.models
+             [collection :as collection]
              [dependency :as dependency]
              [field-values :as field-values]
              [interface :as i]
@@ -105,15 +106,6 @@
   (cond-> card
     (seq (:dataset_query card)) (update :dataset_query normalize/normalize)))
 
-(defn- check-collection-type
-  "Cards can only go in 'normal' (`:type = nil`) Collections. If creating/updating `:collection_id`, check that the
-  target Collection is of the correct type."
-  [{collection-id :collection_id}]
-  (when collection-id
-    (when-let [collection-type (db/select-one-field :type 'Collection :id collection-id)]
-      (let [msg (tru "Cards can only go in normal Collections.")]
-        (throw (ex-info msg {:status-code 400, :errors {:collection_id msg}}))))))
-
 (defn- pre-insert [{query :dataset_query, :as card}]
   ;; TODO - we usually check permissions to save/update stuff in the API layer rather than here in the Toucan
   ;; model-layer functions... Not saying one pattern is better than the other (although this one does make it harder
@@ -127,7 +119,7 @@
                                 (:database query))))))
     ;; make sure this Card doesn't have circular source query references
     (check-for-circular-source-query-references card)
-    (check-collection-type card)))
+    (collection/check-collection-type card)))
 
 (defn- post-insert [card]
   ;; if this Card has any native template tag parameters we need to update FieldValues for any Fields that are
@@ -162,7 +154,7 @@
     ;; make sure this Card doesn't have circular source query references if we're updating the query
     (when (:dataset_query card)
       (check-for-circular-source-query-references card))
-    (check-collection-type card)))
+    (collection/check-collection-type card)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
