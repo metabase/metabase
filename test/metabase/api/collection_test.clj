@@ -55,7 +55,7 @@
                 "Rasta Toucan's Personal Collection"
                 "Trash Bird's Personal Collection"]
                (->> ((mt/user->client :crowberto) :get 200 "collection")
-                    (filter :personal_owner_id)
+                    (filter #((set (map mt/user->id [:crowberto :lucky :rasta :trashbird])) (:personal_owner_id %)))
                     (map :name)
                     sort)))))
 
@@ -83,25 +83,25 @@
         (is (= ["Archived Collection"]
                (map :name ((mt/user->client :rasta) :get 200 "collection" :archived :true))))))
 
-    (testing "?type= parameter"
+    (testing "?namespace= parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
-                      Collection [{coins-id  :id} {:name "Coin Collection", :type "currency"}]]
+                      Collection [{coins-id  :id} {:name "Coin Collection", :namespace "currency"}]]
         (letfn [(collection-names [collections]
                   (->> collections
                        (filter #(#{normal-id coins-id} (:id %)))
                        (map :name)))]
-          (testing "shouldn't show Collections of a different `:type` by default"
+          (testing "shouldn't show Collections of a different `:namespace` by default"
             (is (= ["Normal Collection"]
                    (collection-names ((mt/user->client :rasta) :get 200 "collection")))))
 
-          (testing "By passing `:type` we should be able to see Collections of that `:type`"
-            (testing "?type=currency"
+          (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`"
+            (testing "?namespace=currency"
               (is (= ["Coin Collection"]
-                     (collection-names ((mt/user->client :rasta) :get 200 "collection?type=currency")))))
+                     (collection-names ((mt/user->client :rasta) :get 200 "collection?namespace=currency")))))
 
-            (testing "?type=stamps"
+            (testing "?namespace=stamps"
               (is (= []
-                     (collection-names ((mt/user->client :rasta) :get 200 "collection?type=stamps")))))))))))
+                     (collection-names ((mt/user->client :rasta) :get 200 "collection?namespace=stamps")))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -517,25 +517,25 @@
           (is (= [(collection-item "A")]
                  (api-get-root-collection-children :archived true))))))
 
-    (testing "?type= parameter"
+    (testing "?namespace= parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
-                      Collection [{coins-id :id} {:name "Coin Collection", :type "currency"}]]
+                      Collection [{coins-id :id} {:name "Coin Collection", :namespace "currency"}]]
         (letfn [(collection-names [collections]
                   (->> collections
                        (filter #(= (:model %) "collection"))
                        (filter #(#{normal-id coins-id} (:id %)))
                        (map :name)))]
-          (testing "shouldn't show Collections of a different `:type` by default"
+          (testing "shouldn't show Collections of a different `:namespace` by default"
             (is (= ["Normal Collection"]
                    (collection-names ((mt/user->client :rasta) :get 200 "collection/root/items")))))
 
-          (testing "By passing `:type` we should be able to see Collections of that `:type`"
-            (testing "?type=currency"
+          (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`"
+            (testing "?namespace=currency"
               (is (= ["Coin Collection"]
-                     (collection-names ((mt/user->client :rasta) :get 200 "collection/root/items?type=currency")))))
-            (testing "?type=stamps"
+                     (collection-names ((mt/user->client :rasta) :get 200 "collection/root/items?namespace=currency")))))
+            (testing "?namespace=stamps"
               (is (= []
-                     (collection-names ((mt/user->client :rasta) :get 200 "collection/root/items?type=stamps")))))))))))
+                     (collection-names ((mt/user->client :rasta) :get 200 "collection/root/items?namespace=stamps")))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

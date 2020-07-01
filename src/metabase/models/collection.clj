@@ -156,19 +156,20 @@
       (let [msg (tru "Invalid Collection location: some or all ancestors do not exist.")]
         (throw (ex-info msg {:status-code 404, :errors {:location msg}}))))))
 
-(defn- assert-valid-type
-  "Check that the type of this Collection is valid -- it must be of the same type as its parent Collection."
-  [{:keys [location], owner-id :personal_owner_id, collection-type :type, :as collection}]
-  {:pre [(contains? collection :type)]}
+(defn- assert-valid-namespace
+  "Check that the namespace of this Collection is valid -- it must belong to the same namespace as its parent
+  Collection."
+  [{:keys [location], owner-id :personal_owner_id, collection-namespace :namespace, :as collection}]
+  {:pre [(contains? collection :namespace)]}
   (when location
     (when-let [parent-id (location-path->parent-id location)]
-      (let [parent-type (db/select-one-field :type Collection :id parent-id)]
-        (when-not (= (keyword collection-type) (keyword parent-type))
-          (let [msg (tru "Collection must be of the same type as its parent")]
+      (let [parent-namespace (db/select-one-field :namespace Collection :id parent-id)]
+        (when-not (= (keyword collection-namespace) (keyword parent-namespace))
+          (let [msg (tru "Collection must be in the same namespace as its parent")]
             (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
-  ;; non-default type Collections cannot be personal Collections
-  (when (and owner-id collection-type)
-    (let [msg (tru "Personal Collections cannot have a :type")]
+  ;; non-default namespace Collections cannot be personal Collections
+  (when (and owner-id collection-namespace)
+    (let [msg (tru "Personal Collections must be in the default namespace")]
       (throw (ex-info msg {:status-code 400, :errors {:personal_owner_id msg}})))))
 
 (defn root-collection-with-ui-details
@@ -596,7 +597,7 @@
 
 (defn- pre-insert [{collection-name :name, color :color, :as collection}]
   (assert-valid-location collection)
-  (assert-valid-type (merge {:type nil} collection))
+  (assert-valid-namespace (merge {:namespace nil} collection))
   (assert-valid-hex-color color)
   (assoc collection :slug (slugify collection-name)))
 
@@ -761,12 +762,12 @@
       (check-changes-allowed-for-personal-collection collection-before-updates collection-updates))
     ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)
-    ;; (3) make sure Collection type is valid
-    (when (contains? collection-updates :type)
-      (when (not= (:type collection-before-updates) (:type collection-updates))
-        (let [msg (tru "You cannot change the type of a Collection once it has been created.")]
-          (throw (ex-info msg {:status-code 400, :errors {:type msg}})))))
-    (assert-valid-type (merge (select-keys collection-before-updates [:type]) collection-updates))
+    ;; (3) make sure Collection namespace is valid
+    (when (contains? collection-updates :namespace)
+      (when (not= (:namespace collection-before-updates) (:namespace collection-updates))
+        (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]
+          (throw (ex-info msg {:status-code 400, :errors {:namespace msg}})))))
+    (assert-valid-namespace (merge (select-keys collection-before-updates [:namespace]) collection-updates))
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
@@ -827,7 +828,7 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:collection])
-          :types          (constantly {:type :keyword})
+          :types          (constantly {:namespace :keyword})
           :pre-insert     pre-insert
           :post-insert    post-insert
           :pre-update     pre-update
@@ -953,30 +954,32 @@
         (assoc user :personal_collection_id (or (user-id->collection-id (u/get-id user))
                                                 (user->personal-collection-id (u/get-id user))))))))
 
-(defmulti allowed-collection-types
-  "Set of Collection types instances of this model are allowed to go in. By default, only 'normal' (type = `nil`)
-  Collections."
+(defmulti allowed-namespaces
+  "Set of Collection namespaces instances of this model are allowed to go in. By default, only the default
+  namespace (namespace = `nil`)."
   {:arglists '([model])}
   class)
 
-(defmethod allowed-collection-types :default
+(defmethod allowed-namespaces :default
   [_]
   #{nil})
 
-(defn check-collection-type
-  "Check that object's `:collection_id` refers to a Collection that is one of the `allowed-types`, or throw an Exception.
+(defn check-collection-namespace
+  "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
+  `allowed-namespaces`), or throw an Exception.
 
-    ;; Cards can only go in 'normal' Collections (type = nil)
-    (check-collection-type card)"
+    ;; Cards can only go in Collections in the default namespace (namespace = nil)
+    (check-collection-namespace card)"
   [{collection-id :collection_id, :as object}]
   (when collection-id
-    (let [collection-type (keyword (db/select-one-field :type 'Collection :id collection-id))
-          allowed-types   (allowed-collection-types object)]
-      (when-not (contains? allowed-types collection-type)
-        (let [msg (tru "A {0} can only go in Collections of type {1}"
-                   (name object)
-                   (str/join (format " %s " (tru "or")) (map pr-str allowed-types)))]
-          (throw (ex-info msg {:status-code     400
-                               :errors          {:collection_id msg}
-                               :allowed-types   allowed-types
-                               :collection-type collection-type})))))))
+    (let [collection-namespace (keyword (db/select-one-field :namespace 'Collection :id collection-id))
+          allowed-namespaces   (allowed-namespaces object)]
+      (when-not (contains? allowed-namespaces collection-namespace)
+        (let [msg (tru "A {0} can only go in Collections in the {1} namespace."
+                       (name object)
+                       (str/join (format " %s " (tru "or")) (map #(pr-str (or % (tru "default")))
+                                                                 allowed-namespaces)))]
+          (throw (ex-info msg {:status-code          400
+                               :errors               {:collection_id msg}
+                               :allowed-namespaces   allowed-namespaces
+                               :collection-namespace collection-namespace})))))))

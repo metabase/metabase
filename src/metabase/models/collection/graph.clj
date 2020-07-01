@@ -54,11 +54,11 @@
 (s/defn ^:private non-personal-collection-ids :- #{su/IntGreaterThanZero}
   "Return a set of IDs of all Collections that are neither Personal Collections nor descendants of Personal
   Collections (i.e., things that you can set Permissions for, and that should go in the graph.)"
-  [collection-type]
+  [collection-namespace]
   (let [personal-collection-ids (db/select-ids Collection :personal_owner_id [:not= nil])
         honeysql-form           (cond-> {:select [[:id :id]]
                                          :from   [Collection]
-                                         :where  [:= :type collection-type]}
+                                         :where  [:= :namespace collection-namespace]}
                                   (seq personal-collection-ids)
                                   (h/merge-where [:not-in :id (set personal-collection-ids)]))
         honeysql-form           (reduce
@@ -75,9 +75,9 @@
   ([]
    (graph nil))
 
-  ([collection-type]
+  ([collection-namespace]
    (let [group-id->perms (group-id->permissions-set)
-         collection-ids  (non-personal-collection-ids collection-type)]
+         collection-ids  (non-personal-collection-ids collection-namespace)]
      {:revision (collection-revision/latest-id)
       :groups   (into {} (for [group-id (db/select-ids PermissionsGroup)]
                            {group-id (group-permissions-graph (group-id->perms group-id) collection-ids)}))})))
@@ -118,14 +118,14 @@
       :user_id *current-user-id*)))
 
 (s/defn update-graph!
-  "Update the Collections permissions graph for Collections of `collection-type` (default `nil`, meaning 'normal'
-  Collections). This works just like the function of the same name in `metabase.models.permissions`, but for
+  "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
+  namespace). This works just like the function of the same name in `metabase.models.permissions`, but for
   Collections; refer to that function's extensive documentation to get a sense for how this works."
   ([new-graph]
    (update-graph! nil new-graph))
 
-  ([collection-type :- (s/maybe s/Keyword), new-graph :- PermissionsGraph]
-   (let [old-graph (graph collection-type)
+  ([collection-namespace :- (s/maybe s/Keyword), new-graph :- PermissionsGraph]
+   (let [old-graph (graph collection-namespace)
          [old new] (data/diff (:groups old-graph) (:groups new-graph))]
      (perms/log-permissions-changes old new)
      (perms/check-revision-numbers old-graph new-graph)

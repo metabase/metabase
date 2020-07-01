@@ -244,14 +244,14 @@
           (is (= (db/count 'DashboardCard :dashboard_id (:id saved-dashboard))
                  (-> dashboard :ordered_cards count))))))))
 
-(deftest validate-collection-type-test
-  (mt/with-temp Collection [{collection-id :id} {:type "currency"}]
+(deftest validate-collection-namespace-test
+  (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Dashboard in a non-normal Collection"
       (let [dashboard-name (mt/random-name)]
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Dashboard can only go in Collections of type nil"
+               #"A Dashboard can only go in Collections in the \"default\" namespace"
                (db/insert! Dashboard (assoc (tt/with-temp-defaults Dashboard) :collection_id collection-id, :name dashboard-name))))
           (finally
             (db/delete! Dashboard :name dashboard-name)))))
@@ -260,5 +260,5 @@
       (mt/with-temp Dashboard [{card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Dashboard can only go in Collections of type nil"
+             #"A Dashboard can only go in Collections in the \"default\" namespace"
              (db/update! Dashboard card-id {:collection_id collection-id})))))))

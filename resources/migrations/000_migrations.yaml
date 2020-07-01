@@ -6380,9 +6380,8 @@ databaseChangeLog:
             columnName: started_at
             newDataType: ${timestamp_type}
 
-# Remove `Table.rows`, which hasn't been used for years now. Older versions of
-# Metabase used to store the row count in this column but we disabled it a long
-# time ago for performance reasons. Now it's time to remove it entirely.
+# Remove `Table.rows`, which hasn't been used for years now. Older versions of Metabase used to store the row count in
+# this column but we disabled it a long time ago for performance reasons. Now it's time to remove it entirely.
 
   - changeSet:
       id: 169
@@ -6393,8 +6392,8 @@ databaseChangeLog:
             tableName: metabase_table
             columnName: rows
 
-# In EE, NativeQuerySnippets have a permissions system based on "snippet
-# folders" which are just implemented as collections under the hood.
+# In EE, NativeQuerySnippets have a permissions system based on "snippet folders" which are Collections under the
+# hood. However, these Collections live in a separate "namespace" -- a completely separate hierarchy of Collections.
 
   - changeSet:
       id: 171
@@ -6429,8 +6428,8 @@ databaseChangeLog:
             tableName: collection
             columns:
               - column:
-                  name: type
+                  name: namespace
                   type: varchar(254)
-                  remarks: 'Type of this collection if not a normal collection, e.g. "snippet" for snippet "folders"'
+                  remarks: 'The namespace (hierachy) this Collection belongs to. NULL means the Collection is in the default namespace.'
                   constraints:
                     nullable: true

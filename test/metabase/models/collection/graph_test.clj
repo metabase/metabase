@@ -11,16 +11,13 @@
              [permissions :as perms]
              [permissions-group :as group :refer [PermissionsGroup]]]
             [metabase.models.collection.graph :as graph]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :as tu]]
-            [metabase.test.data.users :as test-users]
+            [metabase.test.fixtures :as fixtures]
             [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
 (defn- lucky-collection-children-location []
-  (collection/children-location (collection/user->personal-collection (test-users/user->id :lucky))))
+  (collection/children-location (collection/user->personal-collection (mt/user->id :lucky))))
 
 (defn- replace-collection-ids
   "In Collection perms `graph`, replace instances of the ID of `collection-or-id` with `:COLLECTION`, making it possible
@@ -49,7 +46,7 @@
 
 (deftest basic-test
   (testing "Check that the basic graph works"
-    (tu/with-non-admin-groups-no-root-collection-perms
+    (mt/with-non-admin-groups-no-root-collection-perms
       (is (= {:revision 0
               :groups   {(u/get-id (group/all-users)) {:root :none}
                          (u/get-id (group/metabot))   {:root :none}
@@ -58,7 +55,7 @@
 
 (deftest new-collection-perms-test
   (testing "Creating a new Collection shouldn't give perms to anyone but admins"
-    (tu/with-non-admin-groups-no-root-collection-perms
+    (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp Collection [collection]
         (is (= {:revision 0
                 :groups   {(u/get-id (group/all-users)) {:root :none,  :COLLECTION :none}
@@ -68,7 +65,7 @@
 
 (deftest read-perms-test
   (testing "make sure read perms show up correctly"
-    (tu/with-non-admin-groups-no-root-collection-perms
+    (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp Collection [collection]
         (perms/grant-collection-read-permissions! (group/all-users) collection)
         (is (= {:revision 0
@@ -79,7 +76,7 @@
 
 (deftest grant-write-perms-for-new-collections-test
   (testing "make sure we can grant write perms for new collections (!)"
-    (tu/with-non-admin-groups-no-root-collection-perms
+    (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp Collection [collection]
         (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
         (is (=  {:revision 0
@@ -91,7 +88,7 @@
 (deftest non-magical-groups-test
   (testing "make sure a non-magical group will show up"
     (mt/with-temp PermissionsGroup [new-group]
-      (tu/with-non-admin-groups-no-root-collection-perms
+      (mt/with-non-admin-groups-no-root-collection-perms
         (is (=   {:revision 0
                   :groups   {(u/get-id (group/all-users)) {:root :none}
                              (u/get-id (group/metabot))   {:root :none}
@@ -102,7 +99,7 @@
 (deftest root-collection-read-perms-test
   (testing "How abut *read* permissions for the Root Collection?"
     (mt/with-temp PermissionsGroup [new-group]
-      (tu/with-non-admin-groups-no-root-collection-perms
+      (mt/with-non-admin-groups-no-root-collection-perms
         (perms/grant-collection-read-permissions! new-group collection/root-collection)
         (is (= {:revision 0
                 :groups   {(u/get-id (group/all-users)) {:root :none}
@@ -114,7 +111,7 @@
 (deftest root-collection-write-perms-test
   (testing "How about granting *write* permissions for the Root Collection?"
     (mt/with-temp PermissionsGroup [new-group]
-      (tu/with-non-admin-groups-no-root-collection-perms
+      (mt/with-non-admin-groups-no-root-collection-perms
         (perms/grant-collection-readwrite-permissions! new-group collection/root-collection)
         (is (= {:revision 0
                 :groups   {(u/get-id (group/all-users)) {:root :none}
@@ -127,8 +124,8 @@
   (testing "Can we do a no-op update?"
     ;; need to bind *current-user-id* or the Revision won't get updated
     (clear-graph-revisions!)
-    (tu/with-non-admin-groups-no-root-collection-perms
-      (binding [*current-user-id* (test-users/user->id :crowberto)]
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (binding [*current-user-id* (mt/user->id :crowberto)]
         (graph/update-graph! (graph :clear-revisions? true))
         (is (= {:revision 0
                 :groups   {(u/get-id (group/all-users)) {:root :none}
@@ -140,9 +137,9 @@
 (deftest grant-perms-test
   (testing "Can we give someone read perms via the graph?"
     (clear-graph-revisions!)
-    (tu/with-non-admin-groups-no-root-collection-perms
+    (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp Collection [collection]
-        (binding [*current-user-id* (test-users/user->id :crowberto)]
+        (binding [*current-user-id* (mt/user->id :crowberto)]
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/get-id (group/all-users)) (u/get-id collection)]
                                          :read))
@@ -153,9 +150,9 @@
                  (replace-collection-ids collection (graph))))))))
 
   (testing "can we give them *write* perms?"
-    (tu/with-non-admin-groups-no-root-collection-perms
+    (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp Collection [collection]
-        (binding [*current-user-id* (test-users/user->id :crowberto)]
+        (binding [*current-user-id* (mt/user->id :crowberto)]
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/get-id (group/all-users)) (u/get-id collection)]
                                          :write))
@@ -168,9 +165,9 @@
 (deftest revoke-perms-test
   (testing "can we *revoke* perms?"
     (clear-graph-revisions!)
-    (tu/with-non-admin-groups-no-root-collection-perms
+    (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp Collection [collection]
-        (binding [*current-user-id* (test-users/user->id :crowberto)]
+        (binding [*current-user-id* (mt/user->id :crowberto)]
           (perms/grant-collection-read-permissions! (group/all-users) collection)
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/get-id (group/all-users)) (u/get-id collection)]
@@ -185,8 +182,8 @@
   (testing "Can we grant *read* permissions for the Root Collection?"
     (mt/with-temp PermissionsGroup [new-group]
       (clear-graph-revisions!)
-      (tu/with-non-admin-groups-no-root-collection-perms
-        (binding [*current-user-id* (test-users/user->id :crowberto)]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (binding [*current-user-id* (mt/user->id :crowberto)]
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/get-id new-group) :root]
                                          :read))
@@ -200,8 +197,8 @@
   (testing "How about granting *write* permissions for the Root Collection?"
     (mt/with-temp PermissionsGroup [new-group]
       (clear-graph-revisions!)
-      (tu/with-non-admin-groups-no-root-collection-perms
-        (binding [*current-user-id* (test-users/user->id :crowberto)]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (binding [*current-user-id* (mt/user->id :crowberto)]
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/get-id new-group) :root]
                                          :write))
@@ -216,8 +213,8 @@
   (testing "can we *revoke* RootCollection perms?"
     (mt/with-temp PermissionsGroup [new-group]
       (clear-graph-revisions!)
-      (tu/with-non-admin-groups-no-root-collection-perms
-        (binding [*current-user-id* (test-users/user->id :crowberto)]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (binding [*current-user-id* (mt/user->id :crowberto)]
           (perms/grant-collection-readwrite-permissions! new-group collection/root-collection)
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/get-id new-group) :root]
@@ -231,7 +228,7 @@
 
 (deftest personal-collections-should-not-appear-test
   (testing "Make sure that personal Collections *do not* appear in the Collections graph"
-    (tu/with-non-admin-groups-no-root-collection-perms
+    (mt/with-non-admin-groups-no-root-collection-perms
       (is (= {:revision 0
               :groups   {(u/get-id (group/all-users)) {:root :none}
                          (u/get-id (group/metabot))   {:root :none}
@@ -240,7 +237,7 @@
 
   (testing "Make sure descendants of Personal Collections do not come back as part of the graph either..."
     (clear-graph-revisions!)
-    (tu/with-non-admin-groups-no-root-collection-perms
+    (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp Collection [_ {:location (lucky-collection-children-location)}]
         (is (= {:revision 0
                 :groups   {(u/get-id (group/all-users)) {:root :none}
@@ -251,8 +248,8 @@
 (deftest disallow-editing-personal-collections-test
   (testing "Make sure that if we try to be sneaky and edit a Personal Collection via the graph, an Exception is thrown"
     (clear-graph-revisions!)
-    (tu/with-non-admin-groups-no-root-collection-perms
-      (let [lucky-personal-collection-id (u/get-id (collection/user->personal-collection (test-users/user->id :lucky)))]
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (let [lucky-personal-collection-id (u/get-id (collection/user->personal-collection (mt/user->id :lucky)))]
         (is (thrown?
              Exception
              (graph/update-graph! (assoc-in (graph :clear-revisions? true)
@@ -268,7 +265,7 @@
 
   (testing "Make sure you can't be sneaky and edit descendants of Personal Collections either."
     (mt/with-temp Collection [collection {:location (lucky-collection-children-location)}]
-      (let [lucky-personal-collection-id (u/get-id (collection/user->personal-collection (test-users/user->id :lucky)))]
+      (let [lucky-personal-collection-id (u/get-id (collection/user->personal-collection (mt/user->id :lucky)))]
         (is (thrown?
              Exception
              (graph/update-graph! (assoc-in (graph :clear-revisions? true)
@@ -278,7 +275,7 @@
                                              (u/get-id collection)]
                                             :read))))))))
 
-(deftest collection-type-test
-  (testing "The permissions graph should be type-aware"
+(deftest collection-namespace-test
+  (testing "The permissions graph should be namespace-aware"
     ;; TODO
     ))

@@ -5,18 +5,16 @@
              [test :refer :all]]
             [expectations :refer [expect]]
             [metabase
+             [models :refer [Card Collection Dashboard Permissions PermissionsGroup Pulse User]]
              [test :as mt]
              [util :as u]]
             [metabase.api.common :refer [*current-user-permissions-set*]]
             [metabase.models
-             [card :refer [Card]]
-             [collection :as collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [permissions :as perms :refer [Permissions]]
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [pulse :refer [Pulse]]
-             [user :refer [User]]]
+             [collection :as collection]
+             [permissions :as perms]]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
@@ -52,65 +50,64 @@
              Exception
              (db/insert! Collection {:name "My Favorite Cards", :color input})))))))
 
-;; double-check that `with-temp-defaults` are working correctly for Collection
-(expect
-  :ok
-  (mt/with-temp* [Collection [_]]
-    :ok))
+(deftest with-temp-defaults-test
+  (testing "double-check that `with-temp-defaults` are working correctly for Collection"
+    (mt/with-temp Collection [collection]
+      (is (some? collection)))))
 
-;; test that duplicate names ARE allowed
-(expect
-  :ok
-  (mt/with-temp* [Collection [_ {:name "My Favorite Cards"}]
-                  Collection [_ {:name "My Favorite Cards"}]]
-    :ok))
+(deftest duplicate-names-test
+  (testing "test that duplicate names ARE allowed"
+    (mt/with-temp* [Collection [c1 {:name "My Favorite Cards"}]
+                    Collection [c2 {:name "My Favorite Cards"}]]
+      (is (some? c1))
+      (is (some? c2))
 
-;; Duplicate names should result in duplicate slugs...
-(expect
-  ["my_favorite_cards"
-   "my_favorite_cards"]
-  (mt/with-temp* [Collection [collection-1 {:name "My Favorite Cards"}]
-                  Collection [collection-2 {:name "My Favorite Cards"}]]
-    (map :slug [collection-1 collection-2])))
+      (testing "Duplicate names should result in duplicate slugs..."
+        (testing "Collection 1"
+          (is (= "my_favorite_cards"
+                 (:slug c1))))
+        (testing "Collection 2"
+          (is (= "my_favorite_cards"
+                 (:slug c2)))))))
 
+  (testing "things with different names that would cause the same slug SHOULD be allowed"
+    (mt/with-temp* [Collection [c1 {:name "My Favorite Cards"}]
+                    Collection [c2 {:name "my_favorite Cards"}]]
+      (is (some? c1))
+      (is (some? c2))
+      (is (= (:slug c1) (:slug c2))))))
 
-;; things with different names that would cause the same slug SHOULD be allowed
-(expect
-  :ok
-  (mt/with-temp* [Collection [_ {:name "My Favorite Cards"}]
-                  Collection [_ {:name "my_favorite Cards"}]]
-    :ok))
+(deftest archive-cards-test
+  (testing "check that archiving a Collection archives its Cards as well"
+    (mt/with-temp* [Collection [collection]
+                    Card       [card       {:collection_id (u/get-id collection)}]]
+      (db/update! Collection (u/get-id collection)
+        :archived true)
+      (is (= true
+             (db/select-one-field :archived Card :id (u/get-id card))))))
 
-;; check that archiving a collection archives its cards as well
-(expect
-  true
-  (mt/with-temp* [Collection [collection]
-                  Card       [card       {:collection_id (u/get-id collection)}]]
-    (db/update! Collection (u/get-id collection)
-      :archived true)
-    (db/select-one-field :archived Card :id (u/get-id card))))
+  (testing "check that unarchiving a Collection unarchives its Cards as well"
+    (mt/with-temp* [Collection [collection {:archived true}]
+                    Card       [card       {:collection_id (u/get-id collection), :archived true}]]
+      (db/update! Collection (u/get-id collection)
+        :archived false)
+      (is (= false
+             (db/select-one-field :archived Card :id (u/get-id card)))))))
 
-;; check that unarchiving a collection unarchives its cards as well
-(expect
-  false
-  (mt/with-temp* [Collection [collection {:archived true}]
-                  Card       [card       {:collection_id (u/get-id collection), :archived true}]]
-    (db/update! Collection (u/get-id collection)
-      :archived false)
-    (db/select-one-field :archived Card :id (u/get-id card))))
+(deftest validate-name-test
+  (testing "check that collections' names cannot be blank"
+    (is (thrown?
+         Exception
+         (mt/with-temp Collection [collection {:name ""}]
+           collection))))
 
-;; check that collections' names cannot be blank
-(expect
-  Exception
-  (mt/with-temp Collection [collection {:name ""}]
-    collection))
+  (testing "check we can't change the name of a Collection to a blank string"
+    (mt/with-temp Collection [collection]
+      (is (thrown?
+           Exception
+           (db/update! Collection (u/get-id collection)
+             :name ""))))))
 
-;; check we can't change the name of a Collection to a blank string
-(expect
-  Exception
-  (mt/with-temp Collection [collection]
-    (db/update! Collection (u/get-id collection)
-      :name "")))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Nested Collections Helper Fns & Macros                                     |
@@ -988,179 +985,125 @@
   (with-collection-hierarchy [collections]
     (collection-locations (vals collections) :archived false)))
 
-;; Test that we can archive a Collection with no descendants!
-;;
-;;    +-> B                        +-> B
-;;    |                            |
-;; A -+-> C -+-> D -> E   ===>  A -+-> C -+-> D
-;;           |                            |
-;;           +-> F -> G                   +-> F -> G
-(expect
-  {"A" {"B" {}
-        "C" {"D" {}
-             "F" {"G" {}}}}}
-  (with-collection-hierarchy [{:keys [e], :as collections}]
-    (db/update! Collection (u/get-id e) :archived true)
-    (collection-locations (vals collections) :archived false)))
-
-;; Test that we can archive a Collection *with* descendants
-;;
-;;    +-> B                        +-> B
-;;    |                            |
-;; A -+-> C -+-> D -> E   ===>  A -+
-;;           |
-;;           +-> F -> G
-(expect
-  {"A" {"B" {}}}
-  (with-collection-hierarchy [{:keys [c], :as collections}]
-    (db/update! Collection (u/get-id c) :archived true)
-    (collection-locations (vals collections) :archived false)))
-
-;; Test that we can unarchive a Collection with no descendants
-;;
-;;    +-> B                        +-> B
-;;    |                            |
-;; A -+-> C -+-> D        ===>  A -+-> C -+-> D -> E
-;;           |                            |
-;;           +-> F -> G                   +-> F -> G
-(expect
-  {"A" {"B" {}
-        "C" {"D" {"E" {}}
-             "F" {"G" {}}}}}
-  (with-collection-hierarchy [{:keys [e], :as collections}]
-    (db/update! Collection (u/get-id e) :archived true)
-    (db/update! Collection (u/get-id e) :archived false)
-    (collection-locations (vals collections) :archived false)))
-
-
-;; Test that we can unarchive a Collection *with* descendants
-;;
-;;    +-> B                        +-> B
-;;    |                            |
-;; A -+                   ===>  A -+-> C -+-> D -> E
-;;                                        |
-;;                                        +-> F -> G
-(expect
-  {"A" {"B" {}
-        "C" {"D" {"E" {}}
-             "F" {"G" {}}}}}
-  (with-collection-hierarchy [{:keys [c], :as collections}]
-    (db/update! Collection (u/get-id c) :archived true)
-    (db/update! Collection (u/get-id c) :archived false)
-    (collection-locations (vals collections) :archived false)))
-
-;; Test that archiving applies to Cards
-;; Card is in E; archiving E should cause Card to be archived
-(expect
-  (with-collection-hierarchy [{:keys [e], :as collections}]
-    (mt/with-temp Card [card {:collection_id (u/get-id e)}]
+(deftest nested-collections-archiving-test
+  (testing "Test that we can archive a Collection with no descendants!"
+    ;;    +-> B                        +-> B
+    ;;    |                            |
+    ;; A -+-> C -+-> D -> E   ===>  A -+-> C -+-> D
+    ;;           |                            |
+    ;;           +-> F -> G                   +-> F -> G
+    (with-collection-hierarchy [{:keys [e], :as collections}]
       (db/update! Collection (u/get-id e) :archived true)
-      (db/select-one-field :archived Card :id (u/get-id card)))))
+      (is (= {"A" {"B" {}
+                   "C" {"D" {}
+                        "F" {"G" {}}}}}
+             (collection-locations (vals collections) :archived false)))))
 
-;; Test that archiving applies to Cards belonging to descendant Collections
-;; Card is in E, a descendant of C; archiving C should cause Card to be archived
-(expect
-  (with-collection-hierarchy [{:keys [c e], :as collections}]
-    (mt/with-temp Card [card {:collection_id (u/get-id e)}]
+  (testing "Test that we can archive a Collection *with* descendants"
+    ;;    +-> B                        +-> B
+    ;;    |                            |
+    ;; A -+-> C -+-> D -> E   ===>  A -+
+    ;;           |
+    ;;           +-> F -> G
+    (with-collection-hierarchy [{:keys [c], :as collections}]
       (db/update! Collection (u/get-id c) :archived true)
-      (db/select-one-field :archived Card :id (u/get-id card)))))
+      (is (= {"A" {"B" {}}}
+             (collection-locations (vals collections) :archived false))))))
 
-;; Test that archiving applies to Dashboards
-;; Dashboard is in E; archiving E should cause Dashboard to be archived
-(expect
-  (with-collection-hierarchy [{:keys [e], :as collections}]
-    (mt/with-temp Dashboard [dashboard {:collection_id (u/get-id e)}]
+(deftest nested-collection-unarchiving-test
+  (testing "Test that we can unarchive a Collection with no descendants"
+    ;;    +-> B                        +-> B
+    ;;    |                            |
+    ;; A -+-> C -+-> D        ===>  A -+-> C -+-> D -> E
+    ;;           |                            |
+    ;;           +-> F -> G                   +-> F -> G
+    (with-collection-hierarchy [{:keys [e], :as collections}]
       (db/update! Collection (u/get-id e) :archived true)
-      (db/select-one-field :archived Dashboard :id (u/get-id dashboard)))))
-
-;; Test that archiving applies to Dashboards belonging to descendant Collections
-;; Dashboard is in E, a descendant of C; archiving C should cause Dashboard to be archived
-(expect
-  (with-collection-hierarchy [{:keys [c e], :as collections}]
-    (mt/with-temp Dashboard [dashboard {:collection_id (u/get-id e)}]
-      (db/update! Collection (u/get-id c) :archived true)
-      (db/select-one-field :archived Dashboard :id (u/get-id dashboard)))))
-
-;; Test that archiving Collections applies to Pulses
-;; Pulse is in E; archiving E should cause Pulse to be archived
-(expect
-  (with-collection-hierarchy [{:keys [e], :as collections}]
-    (mt/with-temp Pulse [pulse {:collection_id (u/get-id e)}]
-      (db/update! Collection (u/get-id e) :archived true)
-      (db/select-one-field :archived Pulse :id (u/get-id pulse)))))
-
-;; Test that archiving works on Pulses belonging to descendant Collections
-;; Pulse is in E, a descendant of C; archiving C should cause Pulse to be archived
-(expect
-  (with-collection-hierarchy [{:keys [c e], :as collections}]
-    (mt/with-temp Pulse [pulse {:collection_id (u/get-id e)}]
-      (db/update! Collection (u/get-id c) :archived true)
-      (db/select-one-field :archived Pulse :id (u/get-id pulse)))))
-
-;; Test that unarchiving applies to Cards
-;; Card is in E; unarchiving E should cause Card to be unarchived
-(expect
-  false
-  (with-collection-hierarchy [{:keys [e], :as collections}]
-    (db/update! Collection (u/get-id e) :archived true)
-    (mt/with-temp Card [card {:collection_id (u/get-id e), :archived true}]
       (db/update! Collection (u/get-id e) :archived false)
-      (db/select-one-field :archived Card :id (u/get-id card)))))
+      (is (= {"A" {"B" {}
+                   "C" {"D" {"E" {}}
+                        "F" {"G" {}}}}}
+             (collection-locations (vals collections) :archived false)))))
 
-;; Test that unarchiving applies to Cards belonging to descendant Collections
-;; Card is in E, a descendant of C; unarchiving C should cause Card to be unarchived
-(expect
-  false
-  (with-collection-hierarchy [{:keys [c e], :as collections}]
-    (db/update! Collection (u/get-id c) :archived true)
-    (mt/with-temp Card [card {:collection_id (u/get-id e), :archived true}]
+  (testing "Test that we can unarchive a Collection *with* descendants"
+    ;;    +-> B                        +-> B
+    ;;    |                            |
+    ;; A -+                   ===>  A -+-> C -+-> D -> E
+    ;;                                        |
+    ;;                                        +-> F -> G
+    (with-collection-hierarchy [{:keys [c], :as collections}]
+      (db/update! Collection (u/get-id c) :archived true)
       (db/update! Collection (u/get-id c) :archived false)
-      (db/select-one-field :archived Card :id (u/get-id card)))))
+      (is (= {"A" {"B" {}
+                   "C" {"D" {"E" {}}
+                        "F" {"G" {}}}}}
+             (collection-locations (vals collections) :archived false))))))
 
-;; Test that unarchiving applies to Dashboards
-;; Dashboard is in E; unarchiving E should cause Dashboard to be unarchived
-(expect
-  false
-  (with-collection-hierarchy [{:keys [e], :as collections}]
-    (db/update! Collection (u/get-id e) :archived true)
-    (mt/with-temp Dashboard [dashboard {:collection_id (u/get-id e), :archived true}]
-      (db/update! Collection (u/get-id e) :archived false)
-      (db/select-one-field :archived Dashboard :id (u/get-id dashboard)))))
+(deftest nested-collection-archiving-objects-test
+  (doseq [model [Card Dashboard Pulse]]
+    (testing (format "Test that archiving applies to %ss" (name model))
+      ;; object is in E; archiving E should cause object to be archived
+      (with-collection-hierarchy [{:keys [e], :as collections}]
+        (mt/with-temp model [object {:collection_id (u/get-id e)}]
+          (db/update! Collection (u/get-id e) :archived true)
+          (is (= true
+                 (db/select-one-field :archived model :id (u/get-id object)))))))
 
-;; Test that unarchiving applies to Dashboards belonging to descendant Collections
-;; Dashboard is in E, a descendant of C; unarchiving C should cause Dashboard to be unarchived
-(expect
-  false
-  (with-collection-hierarchy [{:keys [c e], :as collections}]
-    (db/update! Collection (u/get-id c) :archived true)
-    (mt/with-temp Dashboard [dashboard {:collection_id (u/get-id e), :archived true}]
-      (db/update! Collection (u/get-id c) :archived false)
-      (db/select-one-field :archived Dashboard :id (u/get-id dashboard)))))
+    (testing (format "Test that archiving applies to %ss belonging to descendant Collections" (name model))
+      ;; object is in E, a descendant of C; archiving C should cause object to be archived
+      (with-collection-hierarchy [{:keys [c e], :as collections}]
+        (mt/with-temp model [object {:collection_id (u/get-id e)}]
+          (db/update! Collection (u/get-id c) :archived true)
+          (is (= true
+                 (db/select-one-field :archived model :id (u/get-id object)))))))))
 
-;; Test that we cannot archive a Collection at the same time we are moving it
-(expect
-  Exception
-  (with-collection-hierarchy [{:keys [c], :as collections}]
-    (db/update! Collection (u/get-id c), :archived true, :location "/")))
+(deftest nested-collection-unarchiving-objects-test
+  (doseq [model [Card Dashboard Pulse]]
+    (testing (format "Test that unarchiving applies to %ss" (name model))
+      ;; object is in E; unarchiving E should cause object to be unarchived
+      (with-collection-hierarchy [{:keys [e], :as collections}]
+        (db/update! Collection (u/get-id e) :archived true)
+        (mt/with-temp model [object {:collection_id (u/get-id e), :archived true}]
+          (db/update! Collection (u/get-id e) :archived false)
+          (is (= false
+                 (db/select-one-field :archived model :id (u/get-id object)))))))
 
-;; Test that we cannot unarchive a Collection at the same time we are moving it
-(expect
-  Exception
-  (with-collection-hierarchy [{:keys [c], :as collections}]
-    (db/update! Collection (u/get-id c), :archived true)
-    (db/update! Collection (u/get-id c), :archived false, :location "/")))
+    (testing (format "Test that unarchiving applies to %ss belonging to descendant Collections" (name model))
+      ;; object is in E, a descendant of C; unarchiving C should cause object to be unarchived
+      (with-collection-hierarchy [{:keys [c e], :as collections}]
+        (db/update! Collection (u/get-id c) :archived true)
+        (mt/with-temp model [object {:collection_id (u/get-id e), :archived true}]
+          (db/update! Collection (u/get-id c) :archived false)
+          (is (= false
+                 (db/select-one-field :archived model :id (u/get-id object)))))))))
 
-;; Passing in a value of archived that is the same as the value in the DB shouldn't affect anything however!
-(expect
-  (with-collection-hierarchy [{:keys [c], :as collections}]
-    (db/update! Collection (u/get-id c), :archived false, :location "/")))
+(deftest archive-while-moving-test
+  (testing "Test that we cannot archive a Collection at the same time we are moving it"
+    (with-collection-hierarchy [{:keys [c], :as collections}]
+      (is (thrown?
+           Exception
+           (db/update! Collection (u/get-id c), :archived true, :location "/")))))
 
-;; Check that attempting to unarchive a Card that's not archived doesn't affect arcived descendants
-(expect
-  (with-collection-hierarchy [{:keys [c e], :as collections}]
-    (db/update! Collection (u/get-id e), :archived true)
-    (db/update! Collection (u/get-id c), :archived false)
-    (db/select-one-field :archived Collection :id (u/get-id e))))
+  (testing "Test that we cannot unarchive a Collection at the same time we are moving it"
+    (with-collection-hierarchy [{:keys [c], :as collections}]
+      (db/update! Collection (u/get-id c), :archived true)
+      (is (thrown?
+           Exception
+           (db/update! Collection (u/get-id c), :archived false, :location "/")))))
+
+  (testing "Passing in a value of archived that is the same as the value in the DB shouldn't affect anything however!"
+    (with-collection-hierarchy [{:keys [c], :as collections}]
+      (db/update! Collection (u/get-id c), :archived false, :location "/")
+      (is (= "/"
+             (db/select-one-field :location Collection :id (u/get-id c)))))))
+
+(deftest archive-noop-shouldnt-affect-descendants-test
+  (testing "Check that attempting to unarchive a Card that's not archived doesn't affect archived descendants"
+    (with-collection-hierarchy [{:keys [c e], :as collections}]
+      (db/update! Collection (u/get-id e), :archived true)
+      (db/update! Collection (u/get-id c), :archived false)
+      (is (= true
+             (db/select-one-field :archived Collection :id (u/get-id e)))))))
 
 ;; TODO - can you unarchive a Card that is inside an archived Collection??
 
@@ -1275,34 +1218,35 @@
 ;;; |                                              Personal Collections                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Make sure we're not allowed to *unarchive* a Personal Collection
-(expect
-  Exception
-  (mt/with-temp User [my-cool-user]
-    (let [personal-collection (collection/user->personal-collection my-cool-user)]
-      (db/update! Collection (u/get-id personal-collection) :archived true))))
+(deftest personal-collections-restrictions-test
+  (testing "Make sure we're not allowed to *unarchive* a Personal Collection"
+    (mt/with-temp User [my-cool-user]
+      (let [personal-collection (collection/user->personal-collection my-cool-user)]
+        (is (thrown?
+             Exception
+             (db/update! Collection (u/get-id personal-collection) :archived true))))))
 
-;; Make sure we're not allowed to *move* a Personal Collection
-(expect
-  Exception
-  (mt/with-temp* [User       [my-cool-user]
-                  Collection [some-other-collection]]
-    (let [personal-collection (collection/user->personal-collection my-cool-user)]
-      (db/update! Collection (u/get-id personal-collection) :location (collection/location-path some-other-collection)))))
+  (testing "Make sure we're not allowed to *move* a Personal Collection"
+    (mt/with-temp* [User       [my-cool-user]
+                    Collection [some-other-collection]]
+      (let [personal-collection (collection/user->personal-collection my-cool-user)]
+        (is (thrown?
+             Exception
+             (db/update! Collection (u/get-id personal-collection)
+               :location (collection/location-path some-other-collection)))))))
 
-;; Make sure we're not allowed to change the owner of a Personal Collection
-(expect
-  Exception
-  (mt/with-temp User [my-cool-user]
-    (let [personal-collection (collection/user->personal-collection my-cool-user)]
-      (db/update! Collection (u/get-id personal-collection) :personal_owner_id (mt/user->id :crowberto)))))
+  (testing "Make sure we're not allowed to change the owner of a Personal Collection"
+    (mt/with-temp User [my-cool-user]
+      (let [personal-collection (collection/user->personal-collection my-cool-user)]
+        (is (thrown?
+             Exception
+             (db/update! Collection (u/get-id personal-collection) :personal_owner_id (mt/user->id :crowberto)))))))
 
-;; Does hydrating `:personal_collection_id` force creation of Personal Collections?
-(expect
-  (mt/with-temp User [temp-user]
-    (-> (hydrate temp-user :personal_collection_id)
-        :personal_collection_id
-        integer?)))
+  (testing "Does hydrating `:personal_collection_id` force creation of Personal Collections?"
+    (mt/with-temp User [temp-user]
+      (is (schema= {:personal_collection_id su/IntGreaterThanZero
+                    s/Keyword               s/Any}
+                   (hydrate temp-user :personal_collection_id))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1321,13 +1265,13 @@
 ;;                           ===>
 ;; Root Collection                  Root Collection > A
 (expect
-  #{"/collection/root/read/"
-    "/collection/A/read/"}
-  (mt/with-temp* [PermissionsGroup [group]
-                  Collection       [a {:name "A", :location (lucky-collection-children-location)}]]
-    (perms/grant-collection-read-permissions! group collection/root-collection)
-    (db/update! Collection (u/get-id a) :location (collection/children-location collection/root-collection))
-    (group->perms [a] group)))
+ #{"/collection/root/read/"
+   "/collection/A/read/"}
+ (mt/with-temp* [PermissionsGroup [group]
+                 Collection       [a {:name "A", :location (lucky-collection-children-location)}]]
+   (perms/grant-collection-read-permissions! group collection/root-collection)
+   (db/update! Collection (u/get-id a) :location (collection/children-location collection/root-collection))
+   (group->perms [a] group)))
 
 ;; When moving a Collection from a *descendant* of a Personal Collection to the Root Collection, we should create
 ;; perms entries that match the Root Collection's entries for any groups that have Root Collection perms.
@@ -1494,45 +1438,45 @@
       (is (= expected
              (#'collection/valid-location-path? path))))))
 
-(deftest check-parent-collection-type-matches-test
-  (doseq [[parent-type child-type] [[nil "x"]
-                                    ["x" nil]
-                                    ["x" "y"]]]
-    (mt/with-temp Collection [parent-collection {:type parent-type}]
-      (testing (format "You should not be able to create a Collection of type %s inside a Collection of type %s"
-                       (pr-str child-type) (pr-str parent-type))
+(deftest check-parent-collection-namespace-matches-test
+  (doseq [[parent-namespace child-namespace] [[nil "x"]
+                                              ["x" nil]
+                                              ["x" "y"]]]
+    (mt/with-temp Collection [parent-collection {:namespace parent-namespace}]
+      (testing (format "You should not be able to create a Collection in namespace %s inside a Collection in namespace %s"
+                       (pr-str child-namespace) (pr-str parent-namespace))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Collection must be of the same type as its parent"
+             #"Collection must be in the same namespace as its parent"
              (db/insert! Collection
-               {:location (format "/%d/" (:id parent-collection))
-                :color    "#F38630"
-                :name     "Child Collection"
-                :type     child-type}))))
+               {:location  (format "/%d/" (:id parent-collection))
+                :color     "#F38630"
+                :name      "Child Collection"
+                :namespace child-namespace}))))
 
-      (testing (format "You should not be able to move a Collection of type %s into a Collection of type %s"
-                       (pr-str child-type) (pr-str parent-type))
-        (mt/with-temp Collection [collection-2 {:type child-type}]
+      (testing (format "You should not be able to move a Collection of namespace %s into a Collection of namespace %s"
+                       (pr-str child-namespace) (pr-str parent-namespace))
+        (mt/with-temp Collection [collection-2 {:namespace child-namespace}]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Collection must be of the same type as its parent"
+               #"Collection must be in the same namespace as its parent"
                (collection/move-collection! collection-2 (format "/%d/" (:id parent-collection)))))))
 
-      (testing (format "You should not be able to change the type of a Collection from %s to %s"
-                       (pr-str parent-type) (pr-str child-type))
+      (testing (format "You should not be able to change the namespace of a Collection from %s to %s"
+                       (pr-str parent-namespace) (pr-str child-namespace))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"You cannot change the type of a Collection once it has been created"
-             (db/update! Collection (:id parent-collection) :type child-type)))))))
+             #"You cannot move a Collection to a different namespace once it has been created"
+             (db/update! Collection (:id parent-collection) :namespace child-namespace)))))))
 
-(deftest check-special-collection-type-cannot-be-personal-collection
-  (testing "You should not be able to create a Personal Collection with a non-nil `:type`."
+(deftest check-special-collection-namespace-cannot-be-personal-collection
+  (testing "You should not be able to create a Personal Collection with a non-nil `:namespace`."
     (mt/with-temp User [{user-id :id}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Personal Collections cannot have a :type"
+           #"Personal Collections must be in the default namespace"
            (db/insert! Collection
              {:color             "#F38630"
               :name              "Personal Collection"
-              :type              "x"
+              :namespace         "x"
               :personal_owner_id user-id}))))))

@@ -1,9 +1,9 @@
 (ns metabase.api.collection
-  "`/api/collection` endpoints. By default, these endpoints operate on 'normal' Collections, which are the ones things
-  like Dashboards and Cards go in. Other types of Collections exist as well, such as `:snippet` Collections, (called
-  'Snippet folders' in the UI). Various types of Collections are best thought of as completely independent namespaces
-  or hierarchies. To use these endpoints for other types of Collections, you can pass the `?type=` parameter (e.g.
-  `?type=snippet`)."
+  "`/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
+  the one that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
+  `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
+  To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
+  `?namespace=snippet`)."
   (:require [clojure.string :as str]
             [compojure.core :refer [GET POST PUT]]
             [metabase.api
@@ -34,13 +34,13 @@
 
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`."
-  [archived type]
-  {archived (s/maybe su/BooleanString)
-   type     (s/maybe su/NonBlankString)}
+  [archived namespace]
+  {archived  (s/maybe su/BooleanString)
+   namespace (s/maybe su/NonBlankString)}
   (let [archived? (Boolean/parseBoolean archived)]
     (as-> (db/select Collection
             :archived archived?
-            :type type
+            :namespace namespace
             {:order-by [[:%lower.name :asc]]}) collections
       (filter mi/can-read? collections)
       ;; include Root Collection at beginning or results if archived isn't `true`
@@ -92,21 +92,21 @@
     :alert_condition nil))
 
 (defmethod fetch-collection-children :collection
-  [_ collection {:keys [archived? collection-type]}]
+  [_ collection {:keys [archived? collection-namespace]}]
   (-> (for [child-collection (collection/effective-children collection
                                                             [:= :archived archived?]
-                                                            [:= :type collection-type])]
+                                                            [:= :namespace collection-namespace])]
         (assoc child-collection :model "collection"))
       (hydrate :can_write)))
 
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
-  [{collection-type :type, :as collection}        :- collection/CollectionWithLocationAndIDOrRoot
+  [{collection-namespace :namespace, :as collection}        :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [model collections-only?], :as options} :- CollectionChildrenOptions]
   (->> (for [model-kw [:collection :card :dashboard :pulse]
              ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
              :when    (or (not model) (= model model-kw))
-             item     (fetch-collection-children model-kw collection (assoc options :collection-type collection-type))]
+             item     (fetch-collection-children model-kw collection (assoc options :collection-namespace collection-namespace))]
          (assoc item :model model-kw))
        ;; sorting by name should be fine for now.
        (sort-by (comp str/lower-case :name))))
@@ -163,15 +163,18 @@
   location of `/`.
 
   This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the
-  top-level objects you're allowed to access."
-  [model archived type]
-  {model    (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
-   archived (s/maybe su/BooleanString)
-   type     (s/maybe su/NonBlankString)}
+  top-level objects you're allowed to access.
+
+  By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
+  `snippets`, you can pass the `?namespace=` parameter."
+  [model archived namespace]
+  {model     (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
+   archived  (s/maybe su/BooleanString)
+   namespace (s/maybe su/NonBlankString)}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (collection-items
-   (assoc collection/root-collection :type type)
+   (assoc collection/root-collection :namespace namespace)
    {:model     (if (mi/can-read? collection/root-collection)
                  (keyword model)
                  :collection)

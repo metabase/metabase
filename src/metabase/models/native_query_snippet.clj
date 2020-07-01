@@ -13,13 +13,13 @@
 
 (models/defmodel NativeQuerySnippet :native_query_snippet)
 
-(defmethod collection/allowed-collection-types (class NativeQuerySnippet)
+(defmethod collection/allowed-namespaces (class NativeQuerySnippet)
   [_]
-  #{:snippet})
+  #{:snippets})
 
 (defn- pre-insert [snippet]
   (u/prog1 snippet
-    (collection/check-collection-type snippet)))
+    (collection/check-collection-namespace snippet)))
 
 (defn- pre-update [{:keys [creator_id id], :as updates}]
   (u/prog1 updates
@@ -27,7 +27,7 @@
     (when (contains? updates :creator_id)
       (when (not= creator_id (db/select-one-field :creator_id NativeQuerySnippet :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))
-    (collection/check-collection-type updates)))
+    (collection/check-collection-namespace updates)))
 
 (defn- can-read-parent-collection?
   ([{collection-id :collection-id}]
@@ -57,9 +57,9 @@
   i/IObjectPermissions
   (merge
    i/IObjectPermissionsDefaults
-   ;; Snippets can go in a `:snippet` Collection (called a "folder" in the UI) in Metabase EE. In Metabase CE,
-   ;; snippets cannot go in a Collection. If a Snippet is not in a Collection, anyone can read or write it. If a
-   ;; snippet *is* in a Collection, you need normal Collection permissions to read/write it.
+   ;; Snippets can go in Collections in the `:snippets` namespace (these are called "folders" in the UI) in Metabase
+   ;; EE. In Metabase CE, snippets cannot go in a Collection. If a Snippet is not in a Collection, anyone can read or
+   ;; write it. If a snippet *is* in a Collection, you need normal Collection permissions to read/write it.
    {:can-read?   can-read-parent-collection?
     :can-write?  can-write-parent-collection?
     :can-create? can-write-parent-collection?}))

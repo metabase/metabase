@@ -155,14 +155,14 @@
              (#'card/extract-ids ids-type {:query {:fields [[:segment 1]
                                                             [:metric 2]]}}))))))
 
-(deftest validate-collection-type-test
-  (mt/with-temp Collection [{collection-id :id} {:type "currency"}]
+(deftest validate-collection-namespace-test
+  (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Card in a non-normal Collection"
       (let [card-name (mt/random-name)]
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Card can only go in Collections of type nil"
+               #"A Card can only go in Collections in the \"default\" namespace"
                (db/insert! Card (assoc (tt/with-temp-defaults Card) :collection_id collection-id, :name card-name))))
           (finally
             (db/delete! Card :name card-name)))))
@@ -171,5 +171,5 @@
       (mt/with-temp Card [{card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Card can only go in Collections of type nil"
+             #"A Card can only go in Collections in the \"default\" namespace"
              (db/update! Card card-id {:collection_id collection-id})))))))
