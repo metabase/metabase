@@ -385,6 +385,10 @@
                         segment-2] :creator))
   (map #(dissoc % :query_description) ((user->client :rasta) :get 200 "segment/")))
 
+(expect
+  []
+  ((user->client :rasta) :get 200 "segment/"))
+
 
 ;;; PUT /api/segment/id. Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?
 (expect

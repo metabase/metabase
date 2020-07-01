@@ -48,7 +48,7 @@
 
 (defn- add-query-descriptions
   [segments] {:pre [(coll? segments)]}
-  (when (seq segments)
+  (when (some? segments)
     (for [segment segments]
       (let [table (Table (:table_id segment))]
         (assoc segment

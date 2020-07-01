@@ -406,6 +406,10 @@
                        :creator))
   (map #(dissoc % :query_description) ((user->client :rasta) :get 200 "metric/")))
 
+(expect
+  []
+  ((user->client :rasta) :get 200 "metric/"))
+
 ;; Test related/recommended entities
 (expect
   #{:table :metrics :segments}

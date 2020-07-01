@@ -49,7 +49,7 @@
 
 (defn- add-query-descriptions
   [metrics] {:pre [(coll? metrics)]}
-  (when (seq metrics)
+  (when (some? metrics)
     (for [metric metrics]
       (let [table (Table (:table_id metric))]
         (assoc metric
