@@ -277,3 +277,8 @@
                                              lucky-personal-collection-id
                                              (u/get-id collection)]
                                             :read))))))))
+
+(deftest collection-type-test
+  (testing "The permissions graph should be type-aware"
+    ;; TODO
+    ))

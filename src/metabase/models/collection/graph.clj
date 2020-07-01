@@ -1,10 +1,12 @@
 (ns metabase.models.collection.graph
   (:require [clojure.data :as data]
+            [honeysql.helpers :as h]
             [metabase.api.common :as api :refer [*current-user-id*]]
             [metabase.models
              [collection :as collection :refer [Collection]]
              [collection-revision :as collection-revision :refer [CollectionRevision]]
-             [permissions :as perms :refer [Permissions]]]
+             [permissions :as perms :refer [Permissions]]
+             [permissions-group :refer [PermissionsGroup]]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -52,31 +54,33 @@
 (s/defn ^:private non-personal-collection-ids :- #{su/IntGreaterThanZero}
   "Return a set of IDs of all Collections that are neither Personal Collections nor descendants of Personal
   Collections (i.e., things that you can set Permissions for, and that should go in the graph.)"
-  []
-  (->> (db/query
-        (merge
-         {:select [[:id :id]]
-          :from   [Collection]}
-         (when-let [personal-collection-ids (seq (db/select-ids Collection :personal_owner_id [:not= nil]))]
-           {:where (apply
-                    vector
-                    :and
-                    [:not-in :id personal-collection-ids]
-                    (for [id personal-collection-ids]
-                      [:not [:like :location (format "/%d/%%" id)]]))})))
-       (map :id)
-       set))
+  [collection-type]
+  (let [personal-collection-ids (db/select-ids Collection :personal_owner_id [:not= nil])
+        honeysql-form           (cond-> {:select [[:id :id]]
+                                         :from   [Collection]
+                                         :where  [:= :type collection-type]}
+                                  (seq personal-collection-ids)
+                                  (h/merge-where [:not-in :id (set personal-collection-ids)]))
+        honeysql-form           (reduce
+                                 (fn [honeysql-form collection-id]
+                                   (h/merge-where honeysql-form [:not [:like :location (format "/%d/%%" collection-id)]]))
+                                 honeysql-form
+                                 personal-collection-ids)]
+    (set (map :id (db/query honeysql-form)))))
 
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
   works just like the function of the same name in `metabase.models.permissions`; see also the documentation for that
   function."
-  []
-  (let [group-id->perms (group-id->permissions-set)
-        collection-ids  (non-personal-collection-ids)]
-    {:revision (collection-revision/latest-id)
-     :groups   (into {} (for [group-id (db/select-ids 'PermissionsGroup)]
-                          {group-id (group-permissions-graph (group-id->perms group-id) collection-ids)}))}))
+  ([]
+   (graph nil))
+
+  ([collection-type]
+   (let [group-id->perms (group-id->permissions-set)
+         collection-ids  (non-personal-collection-ids collection-type)]
+     {:revision (collection-revision/latest-id)
+      :groups   (into {} (for [group-id (db/select-ids PermissionsGroup)]
+                           {group-id (group-permissions-graph (group-id->perms group-id) collection-ids)}))})))
 
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
@@ -114,11 +118,14 @@
       :user_id *current-user-id*)))
 
 (s/defn update-graph!
-  "Update the collections permissions graph. This works just like the function of the same name in
-  `metabase.models.permissions`, but for `Collections`; refer to that function's extensive documentation to get a
-  sense for how this works."
-  ([new-graph :- PermissionsGraph]
-   (let [old-graph (graph)
+  "Update the Collections permissions graph for Collections of `collection-type` (default `nil`, meaning 'normal'
+  Collections). This works just like the function of the same name in `metabase.models.permissions`, but for
+  Collections; refer to that function's extensive documentation to get a sense for how this works."
+  ([new-graph]
+   (update-graph! nil new-graph))
+
+  ([collection-type :- (s/maybe s/Keyword), new-graph :- PermissionsGraph]
+   (let [old-graph (graph collection-type)
          [old new] (data/diff (:groups old-graph) (:groups new-graph))]
      (perms/log-permissions-changes old new)
      (perms/check-revision-numbers old-graph new-graph)
@@ -126,8 +133,4 @@
        (db/transaction
          (doseq [[group-id changes] new]
            (update-group-permissions! group-id changes))
-         (save-perms-revision! (:revision old-graph) old new)))))
-  ;; The following arity is provided soley for convenience for tests/REPL usage
-  ([ks new-value]
-   {:pre [(sequential? ks)]}
-   (update-graph! (assoc-in (graph) (cons :groups ks) new-value))))
+         (save-perms-revision! (:revision old-graph) old new))))))
