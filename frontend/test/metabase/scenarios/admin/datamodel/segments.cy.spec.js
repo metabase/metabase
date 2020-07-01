@@ -14,7 +14,8 @@ describe("scenarios > admin > datamodel > segments", () => {
     cy.contains("Select a table").click();
     popover()
       .contains("Orders")
-      .click();
+      .click({ force: true }); // this shouldn't be needed, but there were issues with reordering as loads happeend
+
     cy.contains("New segment").click();
 
     cy.url().should("match", /segment\/create\?table=\d+$/);
@@ -51,7 +52,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     cy.contains("Select a table").click();
     popover()
       .contains("Orders")
-      .click();
+      .click({ force: true });
 
     cy.contains("orders <100")
       .parent()

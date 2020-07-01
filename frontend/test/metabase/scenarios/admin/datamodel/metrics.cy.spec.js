@@ -14,7 +14,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
     cy.contains("Select a table").click();
     popover()
       .contains("Orders")
-      .click();
+      .click({ force: true }); // this shouldn't be needed, but there were issues with reordering as loads happeend
+
     cy.contains("New metric").click();
 
     cy.url().should("match", /metric\/create\?table=\d+$/);
@@ -53,7 +54,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
     cy.contains("Select a table").click();
     popover()
       .contains("Orders")
-      .click();
+      .click({ force: true });
 
     cy.contains("orders <100")
       .parent()
