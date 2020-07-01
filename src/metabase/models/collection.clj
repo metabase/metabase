@@ -956,7 +956,3 @@
   "What types of Collection this model can go in. "
   {:arglists '([model])}
   (comp class db/resolve-model))
-
-(defmethod valid-collection-types :default
-  [_]
-  nil)

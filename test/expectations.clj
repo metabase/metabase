@@ -137,7 +137,7 @@
     ;; expecting it.
     (when-not (env/env :drivers)
       (t/testing "Don't write any new tests using expect!"
-        (t/is (<= total-expect-forms 1602))
+        (t/is (<= total-expect-forms 1601))
         (t/is (<= total-namespaces-using-expect 107))))))
 
 (defmacro ^:deprecated expect
