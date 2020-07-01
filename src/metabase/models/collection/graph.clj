@@ -88,7 +88,7 @@
   ([]
    (graph nil))
 
-  ([collection-namespace]
+  ([collection-namespace :- (s/maybe su/KeywordOrString)]
    (let [group-id->perms (group-id->permissions-set)
          collection-ids  (non-personal-collection-ids collection-namespace)]
      {:revision (collection-revision/latest-id)
@@ -140,7 +140,7 @@
   ([new-graph]
    (update-graph! nil new-graph))
 
-  ([collection-namespace :- (s/maybe s/Keyword), new-graph :- PermissionsGraph]
+  ([collection-namespace :- (s/maybe su/KeywordOrString), new-graph :- PermissionsGraph]
    (let [old-graph          (graph collection-namespace)
          ;; fetch the *entire* graph before making any updates. We'll record this in the perms revision.
          entire-graph       (graph ::all)

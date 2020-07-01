@@ -21,17 +21,20 @@
 (defn- lucky-collection-children-location []
   (collection/children-location (collection/user->personal-collection (mt/user->id :lucky))))
 
-(defn- replace-collection-ids
+(defn replace-collection-ids
   "In Collection perms `graph`, replace instances of the ID of `collection-or-id` with `:COLLECTION`, making it possible
   to write tests that don't need to know its actual numeric ID."
   ([collection-or-id graph]
    (replace-collection-ids collection-or-id graph :COLLECTION))
 
   ([collection-or-id graph replacement-key]
-   (update graph :groups (partial m/map-vals (partial m/map-keys (fn [collection-id]
-                                                                   (if (= collection-id (u/get-id collection-or-id))
-                                                                     replacement-key
-                                                                     collection-id)))))))
+   (let [id      (u/get-id collection-or-id)
+         ;; match variations that pop up depending on whether the map was serialized to JSON. 100, :100, or "100"
+         id-keys #{id (str id) (keyword (str id))}]
+     (update graph :groups (partial m/map-vals (partial m/map-keys (fn [collection-id]
+                                                                     (if (id-keys collection-id)
+                                                                       replacement-key
+                                                                       collection-id))))))))
 
 (defn- clear-graph-revisions! []
   (db/delete! CollectionRevision))
@@ -343,9 +346,7 @@
           (mt/with-test-user :crowberto
             (testing "Should be able to update the graph for the default namespace.\n"
               (let [before (graph/graph ::graph/all)]
-                (graph/update-graph! (-> (graph/graph)
-                                         (assoc-in [:groups group-id default-ab] :write)
-                                         (assoc-in [:groups group-id currency-ab] :write)))
+                (graph/update-graph! (assoc (graph/graph) :groups {group-id {default-ab :write, currency-ab :write}}))
                 (is (= {"Default A" :read, "Default A -> B" :write}
                        (nice-graph (graph/graph))))
 
@@ -364,9 +365,7 @@
 
             (testing "Should be able to update the graph for a non-default namespace.\n"
               (let [before (graph/graph ::graph/all)]
-                (graph/update-graph! :currency (-> (graph/graph)
-                                                   (assoc-in [:groups group-id default-a] :write)
-                                                   (assoc-in [:groups group-id currency-a] :write)))
+                (graph/update-graph! :currency (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}))
                 (is (= {"Currency A" :write, "Currency A -> B" :read}
                        (nice-graph (graph/graph :currency))))
 

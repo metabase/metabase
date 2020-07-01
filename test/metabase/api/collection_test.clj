@@ -4,20 +4,17 @@
              [string :as str]
              [test :refer :all]]
             [metabase
+             [models :refer [Card Collection Dashboard PermissionsGroup PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient]]
              [test :as mt]
              [util :as u]]
             [metabase.models
-             [card :refer [Card]]
-             [collection :as collection :refer [Collection]]
+             [collection :as collection]
              [collection-test :as collection-test]
-             [dashboard :refer [Dashboard]]
              [permissions :as perms]
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]
-             [pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [pulse-channel :refer [PulseChannel]]
-             [pulse-channel-recipient :refer [PulseChannelRecipient]]]
+             [permissions-group :as group]]
+            [metabase.models.collection
+             [graph :as graph]
+             [graph-test :as graph.test]]
             [metabase.test.fixtures :as fixtures]
             [toucan.db :as db]))
 
@@ -740,3 +737,64 @@
                 (is (= "You don't have permissions to do that."
                        ((mt/user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
                         {:parent_id (u/get-id collection-c)})))))))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                            GET /api/collection/graph and PUT /api/collection/graph                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest graph-test
+  (mt/with-temp* [Collection [{default-a :id}   {:location "/"}]
+                  Collection [{default-ab :id}  {:location (format "/%d/" default-a)}]
+                  Collection [{currency-a :id}  {:namespace "currency", :location "/"}]
+                  Collection [{currency-ab :id} {:namespace "currency", :location (format "/%d/" currency-a)}]
+                  PermissionsGroup [{group-id :id}]]
+    (letfn [(nice-graph [graph]
+              (let [id->alias {default-a   "Default A"
+                               default-ab  "Default A -> B"
+                               currency-a  "Currency A"
+                               currency-ab "Currency A -> B"}]
+                (transduce
+                 identity
+                 (fn
+                   ([graph]
+                    (-> (get-in graph [:groups (keyword (str group-id))])
+                        (select-keys (vals id->alias))))
+                   ([graph [collection-id k]]
+                    (graph.test/replace-collection-ids collection-id graph k)))
+                 graph
+                 id->alias)))]
+      (doseq [collection [default-a default-ab currency-a currency-ab]]
+        (perms/grant-collection-read-permissions! group-id collection))
+      (testing "GET /api/collection/graph\n"
+        (testing "Should be able to fetch the permissions graph for the default namespace"
+          (is (= {"Default A" "read", "Default A -> B" "read"}
+                 (nice-graph ((mt/user->client :crowberto) :get 200 "collection/graph")))))
+
+        (testing "Should be able to fetch the permissions graph for a non-default namespace"
+          (is (= {"Currency A" "read", "Currency A -> B" "read"}
+                 (nice-graph ((mt/user->client :crowberto) :get 200 "collection/graph?namespace=currency")))))
+
+        (testing "have to be a superuser"
+          (is (= "You don't have permissions to do that."
+                 ((mt/user->client :rasta) :get 403 "collection/graph")))))
+
+      (testing "PUT /api/collection/graph\n"
+        (testing "Should be able to update the graph for the default namespace.\n"
+          (testing "Should ignore updates to Collections outside of the namespace"
+            (let [response ((mt/user->client :crowberto) :put 200 "collection/graph"
+                            (assoc (graph/graph) :groups {group-id {default-ab :write, currency-ab :write}}))]
+              (is (= {"Default A" "read", "Default A -> B" "write"}
+                     (nice-graph response))))))
+
+        (testing "Should be able to update the graph for a non-default namespace.\n"
+          (testing "Should ignore updates to Collections outside of the namespace"
+            (let [response ((mt/user->client :crowberto) :put 200 "collection/graph?namespace=currency"
+                            (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}))]
+              (is (= {"Currency A" "write", "Currency A -> B" "read"}
+                     (nice-graph response))))))
+
+        (testing "have to be a superuser"
+          (is (= "You don't have permissions to do that."
+                 ((mt/user->client :rasta) :put 403 "collection/graph?namespace=currency"
+                  (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}})))))))))

@@ -286,9 +286,10 @@
 
 (api/defendpoint GET "/graph"
   "Fetch a graph of all Collection Permissions."
-  []
+  [namespace]
+  {namespace (s/maybe su/NonBlankString)}
   (api/check-superuser)
-  (collection.graph/graph))
+  (collection.graph/graph namespace))
 
 (defn- ->int [id] (Integer/parseInt (name id)))
 
@@ -311,11 +312,12 @@
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph."
-  [:as {body :body}]
-  {body su/Map}
+  [namespace :as {body :body}]
+  {body      su/Map
+   namespace (s/maybe su/NonBlankString)}
   (api/check-superuser)
-  (collection.graph/update-graph! (dejsonify-graph body))
-  (collection.graph/graph))
+  (collection.graph/update-graph! namespace (dejsonify-graph body))
+  (collection.graph/graph namespace))
 
 
 (api/define-routes)
