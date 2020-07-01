@@ -4,14 +4,20 @@ Many settings in Metabase can be viewed and modified in the Admin Panel, or set 
 
 Setting environment variables can be done in various ways depending on how Metabase is being run.
 
-JAR (Note that on Windows, use `set` instead of `export`):
+JAR file:
 
 ```
+# Mac, Linux and other Unix-based systems
 export MB_SITE_NAME="Awesome Company"
+# Windows Powershell
+$env:MB_SITE_NAME="Awesome Company"
+# Windows batch/cmd
+set MB_SITE_NAME="Awesome Company"
+
 java -jar metabase.jar
 ```
 
-JAR alternative (declared with `-D` prepending the variable):
+Or set it as Java property, which works the same across all systems:
 
 ```
 java -DMB_SITE_NAME="Awesome Company" -jar metabase.jar
@@ -20,7 +26,7 @@ java -DMB_SITE_NAME="Awesome Company" -jar metabase.jar
 Docker:
 
 ```
-docker run -d -p 3000:3000 -e 'MB_SITE_NAME=Awesome Company' --name metabase metabase/metabase
+docker run -d -p 3000:3000 -e MB_SITE_NAME="Awesome Company" --name metabase metabase/metabase
 ```
 
 ---
@@ -30,11 +36,13 @@ docker run -d -p 3000:3000 -e 'MB_SITE_NAME=Awesome Company' --name metabase met
 Type: integer<br>
 Default: `20160`
 
-Session expiration, defined in seconds (default is 2 weeks), which will log out users after the defined period and require re-authentication.
+Session expiration, defined in minutes (default is 2 weeks), which will log out users after the defined period and require re-authentication.
 
 Note: This setting is not an idle/inactivity timeout. If you set this to 15 minutes, your users have to login (or re-authenticate) again every 15 minutes.
 
-Use [MB_SESSION_COOKIES](#MB_SESSION_COOKIES) to only expire sessions, when browser is closed.
+Use [MB_SESSION_COOKIES](#MB_SESSION_COOKIES) to also expire sessions, when browser is closed.
+
+Also see the [Changing session expiration](changing-session-expiration.md) documentation page.
 
 #### `MB_ADMIN_EMAIL`
 
@@ -410,9 +418,9 @@ Use daemon threads.
 #### `MB_JETTY_HOST`
 
 Type: string<br>
-Default: `null`
+Default: `localhost` for JAR, `0.0.0.0` for Docker
 
-Configure a host either as a host name or IP address to identify a specific network interface on which to listen. If not set or set to `"0.0.0.0"`, Metabase listens on all network interfaces. It will listen on the port specified in [MB_JETTY_PORT](#MB_JETTY_PORT).
+Configure a host either as a host name or IP address to identify a specific network interface on which to listen. If set to `"0.0.0.0"`, Metabase listens on all network interfaces. It will listen on the port specified in [MB_JETTY_PORT](#MB_JETTY_PORT).
 
 #### `MB_JETTY_JOIN`
 
@@ -420,6 +428,14 @@ Type: boolean<br>
 Default: `true`
 
 Blocks the thread until server ends.
+
+#### `MB_JETTY_MAX_REQUEST_HEADER_SIZE`
+
+Type: integer<br>
+Default: `8192`<br>
+Since: 0.36.0
+
+Maximum size of a request header, in bytes. Increase this value if you are experiencing errors like "Request Header Fields Too Large".
 
 #### `MB_JETTY_MAXIDLETIME`
 
@@ -631,7 +647,7 @@ User lookup filter. The placeholder `{login}` will be replaced by the user suppl
 #### `MB_MAP_TILE_SERVER_URL`
 
 Type: string<br>
-Default: `"http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"`
+Default: `"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"`
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
 
@@ -718,6 +734,14 @@ Default: `10`
 
 To determine how long each saved question's cached result should stick around, we take the query's average execution time and multiply that by whatever you input here. So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes.
 
+#### `MB_REDIRECT_ALL_REQUESTS_TO_HTTPS`
+
+Type: boolean<br>
+Default: `false`<br>
+Since: 0.36.0
+
+Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS. Related [MB_SITE_URL](#MB_SITE_URL)
+
 #### `MB_REPORT_TIMEZONE`
 
 Type: string<br>
@@ -730,7 +754,9 @@ Connection timezone to use when executing queries. Defaults to system timezone.
 Type: boolean<br>
 Default: `null`
 
-When set to `true`, the user login sessions will not expire until the browser is closed. When not set, or set to `false`, the user login sessions will expire after the amount of seconds defined in [MAX_SESSION_AGE](#MAX_SESSION_AGE) (by default 2 weeks).
+When set to `true`, the user login session will expire, when the browser is closed. The user login session will always expire after the amount of time defined in [MAX_SESSION_AGE](#MAX_SESSION_AGE) (by default 2 weeks).
+
+Also see the [Changing session expiration](changing-session-expiration.md) documentation page.
 
 #### `MB_SETUP_TOKEN`
 
