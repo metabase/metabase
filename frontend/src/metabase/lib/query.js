@@ -409,6 +409,7 @@ export function getLimitDescription(tableMetadata, { limit }) {
   }
 }
 
+
 export function generateQueryDescription(tableMetadata, query, options = {}) {
   if (!tableMetadata) {
     return "";
@@ -444,6 +445,151 @@ export function generateQueryDescription(tableMetadata, query, options = {}) {
       ),
     )
     .filter(s => s && s.length > 0);
+
+  const description = _.flatten(joinList(sections, ", "));
+  if (options.jsx) {
+    return <span>{description}</span>;
+  } else {
+    return description.join("");
+  }
+}
+
+// -----------------------------------------------------------------------------
+// These functions use the `query_description` field returned by the Segment and
+// Metric APIs. They're meant for cases where you do not have the full database
+// metadata available, and the server side will generate a data structure
+// containing all the applicable data for formatting a user-friendly description
+// of a query.
+// -----------------------------------------------------------------------------
+
+export function formatTableDescription({ table }, options = {}) {
+  return [inflection.pluralize(table)];
+}
+
+export function formatAggregationDescription({ aggregation }, options = {}) {
+  return conjunctList(
+    aggregation.map(agg => {
+      switch(agg["type"]) {
+      case "aggregation":
+        return [agg["arg"]];
+      case "metric":
+        return [
+          options.jsx ? (
+            <span className="text-green text-bold">{agg["arg"]}</span>
+          ) : (
+            agg["arg"]
+          ),
+        ];
+        case "rows":
+          return [t`Raw data`];
+        case "count":
+          return [t`Count`];
+        case "cum-count":
+          return [t`Cumulative count`];
+        case "avg":
+          return [t`Average of `, agg["arg"],];
+        case "distinct":
+          return [t`Distinct values of `, agg["arg"],];
+        case "stddev":
+          return [t`Standard deviation of `, agg["arg"],];
+        case "sum":
+          return [t`Sum of `, agg["arg"],];
+        case "cum-sum":
+          return [t`Cumulative sum of `, agg["arg"],];
+        case "max":
+          return [t`Maximum of `, agg["arg"],];
+        case "min":
+          return [t`Minimum of `, agg["arg"],];
+      }
+    }));
+}
+
+export function formatBreakoutDescription({ breakout }, options = {}) {
+  if (breakout && breakout.length > 0) {
+    return [t`Grouped by `, joinList(breakout.map(b => b), " and ",)];
+  } else {
+    return [];
+  }
+}
+
+export function formatFilterDescription({ filter }, options = {}) {
+  if (filter && filter.length > 0) {
+    return [t`Filtered by `, joinList(filter.map(f => {
+      if (f["segment"] != null) {
+        return options.jsx ? (
+          <span className="text-purple text-bold">{f["segment"]}</span>
+        ) : (
+          f["segment"]
+        );
+      } else if (f["field"] != null) {
+        return f["field"];
+      }
+    }), ", ",)];
+  } else {
+    return [];
+  }
+}
+
+export function formatOrderByDescription(parts, options = {}) {
+  const orderBy = parts["order-by"];
+  if (orderBy && orderBy.length > 0) {
+    return [
+      t`Sorted by `,
+      joinList(
+        orderBy.map(field =>
+            field["field"] + " " + (field["direction"] === "asc" ? "ascending" : "descending"),
+        ),
+        " and ",
+      ),
+    ];
+  } else {
+    return [];
+  }
+}
+
+export function formatLimitDescription({ limit }, options = {}) {
+  if (limit != null) {
+    return [limit, " ", inflection.inflect("row", limit)];
+  } else {
+    return [];
+  }
+}
+
+export function formatQueryDescription(parts, options = {}) {
+  if (!parts) {
+    return "";
+  }
+
+  options = {
+    jsx: false,
+    sections: [
+      "table",
+      "aggregation",
+      "breakout",
+      "filter",
+      "order-by",
+      "limit",
+    ],
+    ...options,
+  };
+
+  const sectionFns = {
+    table: formatTableDescription,
+    aggregation: formatAggregationDescription,
+    breakout: formatBreakoutDescription,
+    filter: formatFilterDescription,
+    "order-by": formatOrderByDescription,
+    limit: formatLimitDescription,
+  };
+
+  // these array gymnastics are needed to support JSX formatting
+  const sections = options.sections
+        .map(section =>
+             _.flatten(sectionFns[section](parts, options)).filter(
+               s => !!s,
+             ),
+            )
+        .filter(s => s && s.length > 0);
 
   const description = _.flatten(joinList(sections, ", "));
   if (options.jsx) {
