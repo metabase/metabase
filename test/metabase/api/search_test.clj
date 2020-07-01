@@ -312,3 +312,13 @@
         (perms/revoke-permissions! (group/all-users) db-id)
         (is (= []
                (search-request :rasta :q (:name table))))))))
+
+(deftest collection-namespaces-test
+  (testing "Search should only return Collections in the 'default' namespace"
+    (mt/with-temp* [Collection [c1 {:name "Normal Collection"}]
+                    Collection [c2 {:name "Coin Collection", :namespace "currency"}]]
+      (is (= ["Normal Collection"]
+             (->> (search-request :crowberto :q "Collection")
+                  (filter #(and (= (:model %) "collection")
+                                (#{"Normal Collection" "Coin Collection"} (:name %))))
+                  (map :name)))))))
