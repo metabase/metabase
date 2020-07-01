@@ -144,14 +144,14 @@
    (let [old-graph          (graph collection-namespace)
          ;; fetch the *entire* graph before making any updates. We'll record this in the perms revision.
          entire-graph       (graph ::all)
-         old                (:groups old-graph)
-         new                (:groups new-graph)
+         old-perms          (:groups old-graph)
+         new-perms          (:groups new-graph)
          ;; filter out any groups not in the old graph
-         new                (select-keys new (keys old))
+         new-perms          (select-keys new-perms (keys old-perms))
          ;; filter out any collections not in the old graph
-         new                (into {} (for [[group-id collection-id->perms] new]
-                                  [group-id (select-keys collection-id->perms (keys (get old group-id)))]))
-         [diff-old changes] (data/diff old new)]
+         new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
+                                       [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
+         [diff-old changes] (data/diff old-perms new-perms)]
      (perms/log-permissions-changes diff-old changes)
      (perms/check-revision-numbers old-graph new-graph)
      (when (seq changes)
