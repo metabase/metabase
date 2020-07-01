@@ -5,7 +5,7 @@
              [test :refer :all]]
             [expectations :refer [expect]]
             [metabase
-             [models :refer [Card Collection Dashboard Permissions PermissionsGroup Pulse User]]
+             [models :refer [Card Collection Dashboard NativeQuerySnippet Permissions PermissionsGroup Pulse User]]
              [test :as mt]
              [util :as u]]
             [metabase.api.common :refer [*current-user-permissions-set*]]
@@ -113,15 +113,15 @@
 ;;; |                                     Nested Collections Helper Fns & Macros                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn do-with-collection-hierarchy [a-fn]
+(defn do-with-collection-hierarchy [options a-fn]
   (mt/with-non-admin-groups-no-root-collection-perms
-    (mt/with-temp* [Collection [a {:name "A"}]
-                    Collection [b {:name "B", :location (collection/location-path a)}]
-                    Collection [c {:name "C", :location (collection/location-path a)}]
-                    Collection [d {:name "D", :location (collection/location-path a c)}]
-                    Collection [e {:name "E", :location (collection/location-path a c d)}]
-                    Collection [f {:name "F", :location (collection/location-path a c)}]
-                    Collection [g {:name "G", :location (collection/location-path a c f)}]]
+    (mt/with-temp* [Collection [a (merge options {:name "A"})]
+                    Collection [b (merge options {:name "B", :location (collection/location-path a)})]
+                    Collection [c (merge options {:name "C", :location (collection/location-path a)})]
+                    Collection [d (merge options {:name "D", :location (collection/location-path a c)})]
+                    Collection [e (merge options {:name "E", :location (collection/location-path a c d)})]
+                    Collection [f (merge options {:name "F", :location (collection/location-path a c)})]
+                    Collection [g (merge options {:name "G", :location (collection/location-path a c f)})]]
       (a-fn {:a a, :b b, :c c, :d d, :e e, :f f, :g g}))))
 
 (defmacro with-collection-hierarchy
@@ -138,8 +138,8 @@
      (with-collection-hierarchy [{:keys [a b c]}]
        ...)"
   {:style/indent 1}
-  [[collections-binding] & body]
-  `(do-with-collection-hierarchy (fn [~collections-binding] ~@body)))
+  [[collections-binding options] & body]
+  `(do-with-collection-hierarchy ~options (fn [~collections-binding] ~@body)))
 
 (defmacro with-current-user-perms-for-collections
   "Run `body` with the current User permissions for `collections-or-ids`.
@@ -703,173 +703,166 @@
 
 ;;; ---------------------------------------------- Perms for Archiving -----------------------------------------------
 
-;; To Archive A, you should need *write* perms for A and all of its descendants, and also the Root Collection...
-(expect
-  #{"/collection/root/"
-    "/collection/A/"
-    "/collection/B/"
-    "/collection/C/"
-    "/collection/D/"
-    "/collection/E/"
-    "/collection/F/"
-    "/collection/G/"}
-  (with-collection-hierarchy [{:keys [a], :as collections}]
-    (->> (collection/perms-for-archiving a)
-         (perms-path-ids->names collections))))
+(deftest perms-for-archiving-test
+  (with-collection-hierarchy [{:keys [a b c d], :as collections}]
+    (testing "To Archive A, you should need *write* perms for A and all of its descendants, and also the Root Collection..."
+      (is (= #{"/collection/root/"
+               "/collection/A/"
+               "/collection/B/"
+               "/collection/C/"
+               "/collection/D/"
+               "/collection/E/"
+               "/collection/F/"
+               "/collection/G/"}
+             (->> (collection/perms-for-archiving a)
+                  (perms-path-ids->names collections)))))
 
-;; Now let's move down a level. To archive B, you should need permissions for A and B, since B doesn't
-;; have any descendants
-(expect
-  #{"/collection/A/"
-    "/collection/B/"}
-  (with-collection-hierarchy [{:keys [b], :as collections}]
-    (->> (collection/perms-for-archiving b)
-         (perms-path-ids->names collections))))
+    (testing (str "Now let's move down a level. To archive B, you should need permissions for A and B, since B doesn't "
+                  "have any descendants")
+      (is (= #{"/collection/A/"
+               "/collection/B/"}
+             (->> (collection/perms-for-archiving b)
+                  (perms-path-ids->names collections)))))
 
-;; but for C, you should need perms for A (parent); C; and D, E, F, and G (descendants)
-(expect
-  #{"/collection/A/"
-    "/collection/C/"
-    "/collection/D/"
-    "/collection/E/"
-    "/collection/F/"
-    "/collection/G/"}
-  (with-collection-hierarchy [{:keys [c], :as collections}]
-    (->> (collection/perms-for-archiving c)
-         (perms-path-ids->names collections))))
+    (testing "but for C, you should need perms for A (parent); C; and D, E, F, and G (descendants)"
+      (is (= #{"/collection/A/"
+               "/collection/C/"
+               "/collection/D/"
+               "/collection/E/"
+               "/collection/F/"
+               "/collection/G/"}
+             (->> (collection/perms-for-archiving c)
+                  (perms-path-ids->names collections)))))
 
-;; For D you should need C (parent), D, and E (descendant)
-(expect
-  #{"/collection/C/"
-    "/collection/D/"
-    "/collection/E/"}
-  (with-collection-hierarchy [{:keys [d], :as collections}]
-    (->> (collection/perms-for-archiving d)
-         (perms-path-ids->names collections))))
+    (testing "For D you should need C (parent), D, and E (descendant)"
+      (is (= #{"/collection/C/"
+               "/collection/D/"
+               "/collection/E/"}
+             (->> (collection/perms-for-archiving d)
+                  (perms-path-ids->names collections)))))))
 
-;; If you try to calculate permissions to archive the Root Collection, throw an Exception! Because you can't do
-;; that...
-(expect
-  Exception
-  (collection/perms-for-archiving collection/root-collection))
+(deftest perms-for-archiving-exceptions-test
+  (testing "If you try to calculate permissions to archive the Root Collection, throw an Exception!"
+    (is (thrown?
+         Exception
+         (collection/perms-for-archiving collection/root-collection))))
 
-;; Let's make sure we get an Exception when we try to archive a Personal Collection
-(expect
-  Exception
-  (collection/perms-for-archiving (collection/user->personal-collection (mt/fetch-user :lucky))))
+  (testing "Let's make sure we get an Exception when we try to archive a Personal Collection"
+    (is (thrown?
+         Exception
+         (collection/perms-for-archiving (collection/user->personal-collection (mt/fetch-user :lucky))))))
 
-;; also you should get an Exception if you try to pull a fast one on use and pass in some sort of invalid input...
-(expect Exception (collection/perms-for-archiving nil))
-(expect Exception (collection/perms-for-archiving {}))
-(expect Exception (collection/perms-for-archiving 1))
+  (testing "invalid input"
+    (doseq [input [nil {} 1]]
+      (testing (format "input = %s" (pr-str input))
+        (is (thrown?
+             Exception
+             (collection/perms-for-archiving input)))))))
 
 
 ;;; ------------------------------------------------ Perms for Moving ------------------------------------------------
 
 ;; `*` marks the things that require permissions in charts below!
 
-;; If we want to move B into C, we should need perms for A, B, and C. B because it is being moved; C we are moving
-;; something into it, A because we are moving something out of it
-;;
-;;    +-> B                              +-> B*
-;;    |                                  |
-;; A -+-> C -+-> D -> E  ===>  A* -> C* -+-> D -> E
-;;           |                           |
-;;           +-> F -> G                  +-> F -> G
-
-(expect
-  #{"/collection/A/"
-    "/collection/B/"
-    "/collection/C/"}
+(deftest perms-for-moving-test
   (with-collection-hierarchy [{:keys [b c], :as collections}]
-    (->> (collection/perms-for-moving b c)
-         (perms-path-ids->names collections))))
+    (testing "If we want to move B into C, we should need perms for A, B, and C."
+      ;; B because it is being moved; C we are moving
+      ;; something into it, A because we are moving something out of it
+      ;;
+      ;;    +-> B                              +-> B*
+      ;;    |                                  |
+      ;; A -+-> C -+-> D -> E  ===>  A* -> C* -+-> D -> E
+      ;;           |                           |
+      ;;           +-> F -> G                  +-> F -> G
 
-;; Ok, now let's try moving something with descendants. If we move C into B, we need perms for C and all its
-;; descendants, and B, since it's the new parent; and A, the old parent
-;;
-;;    +-> B
-;;    |
-;; A -+-> C -+-> D -> E  ===>  A* -> B* -> C* -+-> D* -> E*
-;;           |                                 |
-;;           +-> F -> G                        +-> F* -> G*
-(expect
-  #{"/collection/A/"
-    "/collection/B/"
-    "/collection/C/"
-    "/collection/D/"
-    "/collection/E/"
-    "/collection/F/"
-    "/collection/G/"}
-  (with-collection-hierarchy [{:keys [b c], :as collections}]
-    (->> (collection/perms-for-moving c b)
-         (perms-path-ids->names collections))))
+      (is (= #{"/collection/A/"
+               "/collection/B/"
+               "/collection/C/"}
+             (->> (collection/perms-for-moving b c)
+                  (perms-path-ids->names collections)))))
 
-;; Ok, now how about moving B into the Root Collection?
-;;
-;;    +-> B                    B* [and Root*]
-;;    |
-;; A -+-> C -+-> D -> E  ===>  A* -> C -+-> D -> E
-;;           |                          |
-;;           +-> F -> G                 +-> F -> G
-(expect
-  #{"/collection/root/"
-    "/collection/A/"
-    "/collection/B/"}
-  (with-collection-hierarchy [{:keys [b], :as collections}]
-    (->> (collection/perms-for-moving b collection/root-collection)
-         (perms-path-ids->names collections))))
+    (testing "Ok, now let's try moving something with descendants."
+      ;; If we move C into B, we need perms for C and all its
+      ;; descendants, and B, since it's the new parent; and A, the old parent
+      ;;
+      ;;    +-> B
+      ;;    |
+      ;; A -+-> C -+-> D -> E  ===>  A* -> B* -> C* -+-> D* -> E*
+      ;;           |                                 |
+      ;;           +-> F -> G                        +-> F* -> G*
+      (is (= #{"/collection/A/"
+               "/collection/B/"
+               "/collection/C/"
+               "/collection/D/"
+               "/collection/E/"
+               "/collection/F/"
+               "/collection/G/"}
+             (->> (collection/perms-for-moving c b)
+                  (perms-path-ids->names collections)))))
 
-;; How about moving C into the Root Collection?
-;;
-;;    +-> B                    A* -> B
-;;    |
-;; A -+-> C -+-> D -> E  ===>  C* -+-> D* -> E* [and Root*]
-;;           |                     |
-;;           +-> F -> G            +-> F* -> G*
-(expect
-  #{"/collection/root/"
-    "/collection/A/"
-    "/collection/C/"
-    "/collection/D/"
-    "/collection/E/"
-    "/collection/F/"
-    "/collection/G/"}
-  (with-collection-hierarchy [{:keys [c], :as collections}]
-    (->> (collection/perms-for-moving c collection/root-collection)
-         (perms-path-ids->names collections))))
+    (testing "Ok, now how about moving B into the Root Collection?"
+      ;;    +-> B                    B* [and Root*]
+      ;;    |
+      ;; A -+-> C -+-> D -> E  ===>  A* -> C -+-> D -> E
+      ;;           |                          |
+      ;;           +-> F -> G                 +-> F -> G
+      (is (= #{"/collection/root/"
+               "/collection/A/"
+               "/collection/B/"}
+             (->> (collection/perms-for-moving b collection/root-collection)
+                  (perms-path-ids->names collections)))))
 
-;; If you try to calculate permissions to move or archive the Root Collection, throw an Exception! Because you can't
-;; do that...
-(expect
-  Exception
-  (with-collection-hierarchy [{:keys [a]}]
-    (collection/perms-for-moving collection/root-collection a)))
+    (testing "How about moving C into the Root Collection?"
+      ;;    +-> B                    A* -> B
+      ;;    |
+      ;; A -+-> C -+-> D -> E  ===>  C* -+-> D* -> E* [and Root*]
+      ;;           |                     |
+      ;;           +-> F -> G            +-> F* -> G*
+      (is (= #{"/collection/root/"
+               "/collection/A/"
+               "/collection/C/"
+               "/collection/D/"
+               "/collection/E/"
+               "/collection/F/"
+               "/collection/G/"}
+             (->> (collection/perms-for-moving c collection/root-collection)
+                  (perms-path-ids->names collections)))))))
 
-;; You should also see an Exception if you try to move a Collection into itself or into one its descendants...
-(expect
-  Exception
-  (with-collection-hierarchy [{:keys [b]}]
-    (collection/perms-for-moving b b)))
+(deftest perms-for-moving-exceptions-test
+  (with-collection-hierarchy [{:keys [a b], :as collections}]
+    (testing "If you try to calculate permissions to move or archive the Root Collection, throw an Exception!"
+      (is (thrown?
+           Exception
+           (collection/perms-for-moving collection/root-collection a))))
 
-(expect
-  Exception
-  (with-collection-hierarchy [{:keys [a b]}]
-    (collection/perms-for-moving a b)))
+    (testing "You should also see an Exception if you try to move a Collection into itself or into one its descendants..."
+      (testing "B -> B"
+        (is (thrown?
+             Exception
+             (collection/perms-for-moving b b))))
 
-;; Let's make sure we get an Exception when we try to *move* a Collection
-(expect
-  Exception
-  (with-collection-hierarchy [{:keys [a]}]
-    (collection/perms-for-moving (collection/user->personal-collection (mt/fetch-user :lucky)) a)))
+      (testing "A -> B"
+        (is (thrown?
+             Exception
+             (collection/perms-for-moving a b)))))
 
-;; also you should get an Exception if you try to pull a fast one on use and pass in some sort of invalid input...
-(expect Exception (collection/perms-for-moving {:location "/"} nil))
-(expect Exception (collection/perms-for-moving {:location "/"} {}))
-(expect Exception (collection/perms-for-moving {:location "/"} 1))
-(expect Exception (collection/perms-for-moving nil {:location "/"}))
-(expect Exception (collection/perms-for-moving {}  {:location "/"}))
-(expect Exception (collection/perms-for-moving 1   {:location "/"}))
+    (testing "Let's make sure we get an Exception when we try to *move* a Personal Collection"
+      (is (thrown?
+           Exception
+           (collection/perms-for-moving (collection/user->personal-collection (mt/fetch-user :lucky)) a)))))
+
+  (testing "invalid input"
+    (doseq [[collection new-parent] [[{:location "/"} nil]
+                                     [{:location "/"} {}]
+                                     [{:location "/"} 1]
+                                     [nil {:location "/"}]
+                                     [{}  {:location "/"}]
+                                     [1   {:location "/"}]]]
+      (testing (pr-str (list 'perms-for-moving collection new-parent))
+        (is (thrown?
+             Exception
+             (collection/perms-for-moving collection new-parent)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1040,10 +1033,11 @@
              (collection-locations (vals collections) :archived false))))))
 
 (deftest nested-collection-archiving-objects-test
-  (doseq [model [Card Dashboard Pulse]]
+  (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
     (testing (format "Test that archiving applies to %ss" (name model))
       ;; object is in E; archiving E should cause object to be archived
-      (with-collection-hierarchy [{:keys [e], :as collections}]
+      (with-collection-hierarchy [{:keys [e], :as collections} (when (= model NativeQuerySnippet)
+                                                                 {:namespace "snippets"})]
         (mt/with-temp model [object {:collection_id (u/get-id e)}]
           (db/update! Collection (u/get-id e) :archived true)
           (is (= true
@@ -1051,17 +1045,19 @@
 
     (testing (format "Test that archiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; archiving C should cause object to be archived
-      (with-collection-hierarchy [{:keys [c e], :as collections}]
+      (with-collection-hierarchy [{:keys [c e], :as collections} (when (= model NativeQuerySnippet)
+                                                                   {:namespace "snippets"})]
         (mt/with-temp model [object {:collection_id (u/get-id e)}]
           (db/update! Collection (u/get-id c) :archived true)
           (is (= true
                  (db/select-one-field :archived model :id (u/get-id object)))))))))
 
 (deftest nested-collection-unarchiving-objects-test
-  (doseq [model [Card Dashboard Pulse]]
+  (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
     (testing (format "Test that unarchiving applies to %ss" (name model))
       ;; object is in E; unarchiving E should cause object to be unarchived
-      (with-collection-hierarchy [{:keys [e], :as collections}]
+      (with-collection-hierarchy [{:keys [e], :as collections} (when (= model NativeQuerySnippet)
+                                                                 {:namespace "snippets"})]
         (db/update! Collection (u/get-id e) :archived true)
         (mt/with-temp model [object {:collection_id (u/get-id e), :archived true}]
           (db/update! Collection (u/get-id e) :archived false)
@@ -1070,7 +1066,8 @@
 
     (testing (format "Test that unarchiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; unarchiving C should cause object to be unarchived
-      (with-collection-hierarchy [{:keys [c e], :as collections}]
+      (with-collection-hierarchy [{:keys [c e], :as collections} (when (= model NativeQuerySnippet)
+                                                                   {:namespace "snippets"})]
         (db/update! Collection (u/get-id c) :archived true)
         (mt/with-temp model [object {:collection_id (u/get-id e), :archived true}]
           (db/update! Collection (u/get-id c) :archived false)

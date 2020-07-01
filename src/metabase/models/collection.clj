@@ -544,7 +544,7 @@
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived false}
         :archived true)
-      (doseq [model '[Card Dashboard Pulse]]
+      (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
         (db/update-where! model {:collection_id [:in affected-collection-ids]
                                  :archived      false}
           :archived true)))))
@@ -558,7 +558,7 @@
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived true}
         :archived false)
-      (doseq [model '[Card Dashboard Pulse]]
+      (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
         (db/update-where! model {:collection_id [:in affected-collection-ids]
                                  :archived      true}
           :archived false)))))
