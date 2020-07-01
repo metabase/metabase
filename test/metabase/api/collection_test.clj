@@ -4,8 +4,7 @@
              [string :as str]
              [test :refer :all]]
             [metabase
-             [models :refer [Card Collection Dashboard NativeQuerySnippet PermissionsGroup PermissionsGroupMembership
-                             Pulse PulseCard PulseChannel PulseChannelRecipient]]
+             [models :refer [Card Collection Dashboard NativeQuerySnippet PermissionsGroup PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient]]
              [test :as mt]
              [util :as u]]
             [metabase.models
@@ -17,6 +16,7 @@
              [graph :as graph]
              [graph-test :as graph.test]]
             [metabase.test.fixtures :as fixtures]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
@@ -538,19 +538,19 @@
           (is (= [(collection-item "A")]
                  (api-get-root-collection-children :archived true))))))
 
-    (testing "?namespace= parameter"
+    (testing "\n?namespace= parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
-                      Collection [{coins-id :id} {:name "Coin Collection", :namespace "currency"}]]
-        (letfn [(collection-names [collections]
-                  (->> collections
-                       (filter #(= (:model %) "collection"))
-                       (filter #(#{normal-id coins-id} (:id %)))
+                      Collection [{coins-id :id}  {:name "Coin Collection", :namespace "currency"}]]
+        (letfn [(collection-names [items]
+                  (->> items
+                       (filter #(and (= (:model %) "collection")
+                                     (#{normal-id coins-id} (:id %))))
                        (map :name)))]
-          (testing "shouldn't show Collections of a different `:namespace` by default"
+          (testing "should only show Collections in the 'default' namespace by default"
             (is (= ["Normal Collection"]
                    (collection-names ((mt/user->client :rasta) :get 200 "collection/root/items")))))
 
-          (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`"
+          (testing "By passing `:namespace` we should be able to see Collections in that `:namespace`"
             (testing "?namespace=currency"
               (is (= ["Coin Collection"]
                      (collection-names ((mt/user->client :rasta) :get 200 "collection/root/items?namespace=currency")))))
@@ -599,7 +599,7 @@
 
 (deftest create-collection-test
   (testing "POST /api/collection"
-    (testing "test that we can create a new collection (POST /api/collection)"
+    (testing "\ntest that we can create a new collection"
       (mt/with-model-cleanup [Collection]
         (is (= (merge
                 (mt/object-defaults Collection)
@@ -613,13 +613,13 @@
                     {:name "Stamp Collection", :color "#123456"})
                    (dissoc :id))))))
 
-    (testing "test that non-admins aren't allowed to create a collection in the root collection"
+    (testing "\ntest that non-admins aren't allowed to create a collection in the root collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (is (= "You don't have permissions to do that."
                ((mt/user->client :rasta) :post 403 "collection"
                 {:name "Stamp Collection", :color "#123456"})))))
 
-    (testing "Can a non-admin user with Root Collection perms add a new collection to the Root Collection? (#8949)"
+    (testing "\nCan a non-admin user with Root Collection perms add a new collection to the Root Collection? (#8949)"
       (mt/with-model-cleanup [Collection]
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp* [PermissionsGroup           [group]
@@ -635,7 +635,7 @@
                             {:name "Stamp Collection", :color "#123456"})
                            :id)))))))
 
-    (testing "Can I create a Collection as a child of an existing collection?"
+    (testing "\nCan I create a Collection as a child of an existing collection?"
       (mt/with-model-cleanup [Collection]
         (with-collection-hierarchy [a c d]
           (is (= (merge
@@ -652,7 +652,21 @@
                        :description "Collection of basketball cards including limited-edition holographic Draymond Green"
                        :parent_id   (u/get-id d)})
                      (update :location collection-test/location-path-ids->names)
-                     (update :id integer?)))))))))
+                     (update :id integer?)))))))
+
+    (testing "\nShould be able to create a Collection in a different namespace"
+      (let [collection-name (mt/random-name)]
+        (try
+          (is (schema= {:name      (s/eq collection-name)
+                        :namespace (s/eq "snippets")
+                        s/Keyword  s/Any}
+                       ((mt/user->client :crowberto) :post 200 "collection"
+                        {:name       collection-name
+                         :color      "#f38630"
+                         :descrption "My SQL Snippets"
+                         :namespace  "snippets"})))
+          (finally
+            (db/delete! Collection :name collection-name)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUT /api/collection/:id                                             |

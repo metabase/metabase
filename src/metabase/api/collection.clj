@@ -128,7 +128,8 @@
              :when    (or (not model) (= model model-kw))
              :let     [toucan-model       (model-name->toucan-model model-kw)
                        allowed-namespaces (collection/allowed-namespaces toucan-model)]
-             :when    (contains? allowed-namespaces (keyword collection-namespace))
+             :when    (or (= model-kw :collection)
+                          (contains? allowed-namespaces (keyword collection-namespace)))
              item     (fetch-collection-children model-kw collection (assoc options :collection-namespace collection-namespace))]
          (assoc item :model model-kw))
        ;; sorting by name should be fine for now.
@@ -140,12 +141,6 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
-
-(s/defn ^:private collection-items
-  "Return items in the Collection, restricted by `children-options`.
-  Works for either a normal Collection or the Root Collection."
-  [collection :- collection/CollectionWithLocationAndIDOrRoot, children-options :- CollectionChildrenOptions]
-  (collection-children collection children-options))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
@@ -160,7 +155,7 @@
   [id model archived]
   {model    (s/maybe (apply s/enum valid-model-param-values))
    archived (s/maybe su/BooleanString)}
-  (collection-items
+  (collection-children
     (api/read-check Collection id)
     {:model     (keyword model)
      :archived? (Boolean/parseBoolean archived)}))
@@ -196,7 +191,7 @@
    namespace (s/maybe su/NonBlankString)}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
-  (collection-items
+  (collection-children
    (assoc collection/root-collection :namespace namespace)
    {:model     (if (mi/can-read? collection/root-collection)
                  (keyword model)
@@ -216,11 +211,12 @@
 
 (api/defendpoint POST "/"
   "Create a new Collection."
-  [:as {{:keys [name color description parent_id]} :body}]
+  [:as {{:keys [name color description parent_id namespace]} :body}]
   {name        su/NonBlankString
    color       collection/hex-color-regex
    description (s/maybe su/NonBlankString)
-   parent_id   (s/maybe su/IntGreaterThanZero)}
+   parent_id   (s/maybe su/IntGreaterThanZero)
+   namespace   (s/maybe su/NonBlankString)}
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id)
   ;; Now create the new Collection :)
@@ -228,7 +224,8 @@
     (merge
      {:name        name
       :color       color
-      :description description}
+      :description description
+      :namespace   namespace}
      (when parent_id
        {:location (collection/children-location (db/select-one [Collection :location :id] :id parent_id))}))))
 
