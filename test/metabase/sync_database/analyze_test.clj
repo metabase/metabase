@@ -17,9 +17,6 @@
 
 (defn- classified-special-type [values]
   (let [field (field/map->FieldInstance {:base_type :type/Text})]
-    (println "RESULT =" (classify-text-fingerprint/infer-special-type
-                         field
-                         (transduce identity (fingerprinters/fingerprinter field) values)))
     (:special_type (classify-text-fingerprint/infer-special-type
                     field
                     (transduce identity (fingerprinters/fingerprinter field) values)))))

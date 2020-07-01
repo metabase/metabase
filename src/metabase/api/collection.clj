@@ -16,6 +16,9 @@
              [interface :as mi]
              [permissions :as perms]
              [pulse :as pulse :refer [Pulse]]]
+            [metabase.models.collection
+             [graph :as collection.graph]
+             [root :as collection.root]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -45,9 +48,9 @@
         collections
         (cons (root-collection) collections))
       (hydrate collections :can_write)
-      ;; remove the :metabase.models.collection/is-root? tag since FE doesn't need it
+      ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
       (for [collection collections]
-        (dissoc collection ::collection/is-root?)))))
+        (dissoc collection ::collection.root/is-root?)))))
 
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -148,7 +151,7 @@
 (api/defendpoint GET "/root"
   "Return the 'Root' Collection object with standard details added"
   []
-  (dissoc (root-collection) ::collection/is-root?))
+  (dissoc (root-collection) ::collection.root/is-root?))
 
 (api/defendpoint GET "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
@@ -282,8 +285,7 @@
   "Fetch a graph of all Collection Permissions."
   []
   (api/check-superuser)
-  (collection/graph))
-
+  (collection.graph/graph))
 
 (defn- ->int [id] (Integer/parseInt (name id)))
 
@@ -309,8 +311,8 @@
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
-  (collection/update-graph! (dejsonify-graph body))
-  (collection/graph))
+  (collection.graph/update-graph! (dejsonify-graph body))
+  (collection.graph/graph))
 
 
 (api/define-routes)

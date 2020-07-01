@@ -217,7 +217,7 @@
     :can_write           true
     :name                "Lucky Pigeon's Personal Collection"
     :personal_owner_id   (mt/user->id :lucky)
-    :effective_ancestors [{:metabase.models.collection/is-root? true, :name "Our analytics", :id "root", :can_write true}]
+    :effective_ancestors [{:metabase.models.collection.root/is-root? true, :name "Our analytics", :id "root", :can_write true}]
     :effective_location  "/"
     :parent_id           nil
     :id                  (u/get-id (collection/user->personal-collection (mt/user->id :lucky)))
@@ -421,7 +421,7 @@
           (with-some-children-of-collection nil
             (mt/with-temp* [PermissionsGroup           [group]
                             PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
-              (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection/is-root? true}))
+              (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
               (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
                       (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
                       (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
