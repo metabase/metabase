@@ -95,7 +95,6 @@
   "Schema for a directory-style 'path' to the location of a Collection."
   (s/pred valid-location-path?))
 
-
 (s/defn location-path :- LocationPath
   "Build a 'location path' from a sequence of `collections-or-ids`.
 

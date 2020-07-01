@@ -14,6 +14,7 @@
              [collection :as collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [interface :as mi]
+             [native-query-snippet :refer [NativeQuerySnippet]]
              [permissions :as perms]
              [pulse :as pulse :refer [Pulse]]]
             [metabase.models.collection
@@ -55,10 +56,14 @@
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
+(def ^:private valid-model-param-values
+  "Valid values for the `?model=` param accepted by endpoints in this namespace."
+  #{"card" "collection" "dashboard" "pulse" "snippet"})
+
 (def ^:private CollectionChildrenOptions
   {:archived? s/Bool
    ;; when specified, only return results of this type.
-   :model     (s/maybe (s/enum :card :dashboard :pulse :collection))})
+   :model     (s/maybe (apply s/enum (map keyword valid-model-param-values)))})
 
 (defmulti ^:private fetch-collection-children
   "Functions for fetching the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -73,39 +78,57 @@
 (defmethod fetch-collection-children :card
   [_ collection {:keys [archived?]}]
   (-> (db/select [Card :id :name :description :collection_position :display]
+        ;; use `:id` here so if it's the root collection we get `id = nil` (no ID)
         :collection_id (:id collection)
-        :archived      archived?)
+        :archived      (boolean archived?))
       (hydrate :favorite)))
 
 (defmethod fetch-collection-children :dashboard
   [_ collection {:keys [archived?]}]
   (db/select [Dashboard :id :name :description :collection_position]
     :collection_id (:id collection)
-    :archived      archived?))
+    :archived      (boolean archived?)))
 
 (defmethod fetch-collection-children :pulse
   [_ collection {:keys [archived?]}]
   (db/select [Pulse :id :name :collection_position]
     :collection_id   (:id collection)
-    :archived        archived?
+    :archived        (boolean archived?)
     ;; exclude Alerts
     :alert_condition nil))
+
+(defmethod fetch-collection-children :snippet
+  [_ collection {:keys [archived?]}]
+  (db/select [NativeQuerySnippet :id :name]
+    :collection_id (:id collection)
+    :archived      (boolean archived?)))
 
 (defmethod fetch-collection-children :collection
   [_ collection {:keys [archived? collection-namespace]}]
   (-> (for [child-collection (collection/effective-children collection
                                                             [:= :archived archived?]
-                                                            [:= :namespace collection-namespace])]
+                                                            [:= :namespace (u/qualified-name collection-namespace)])]
         (assoc child-collection :model "collection"))
       (hydrate :can_write)))
 
+(defn- model-name->toucan-model [model-name]
+  (case (keyword model-name)
+    :collection Collection
+    :card       Card
+    :dashboard  Dashboard
+    :pulse      Pulse
+    :snippet    NativeQuerySnippet))
+
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
-  [{collection-namespace :namespace, :as collection}        :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [model collections-only?], :as options} :- CollectionChildrenOptions]
-  (->> (for [model-kw [:collection :card :dashboard :pulse]
+  [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
+   {:keys [model collections-only?], :as options}    :- CollectionChildrenOptions]
+  (->> (for [model-kw [:collection :card :dashboard :pulse :snippet]
              ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
              :when    (or (not model) (= model model-kw))
+             :let     [toucan-model       (model-name->toucan-model model-kw)
+                       allowed-namespaces (collection/allowed-namespaces toucan-model)]
+             :when    (contains? allowed-namespaces (keyword collection-namespace))
              item     (fetch-collection-children model-kw collection (assoc options :collection-namespace collection-namespace))]
          (assoc item :model model-kw))
        ;; sorting by name should be fine for now.
@@ -135,7 +158,7 @@
   *  `model` - only include objects of a specific `model`. If unspecified, returns objects of all models
   *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`."
   [id model archived]
-  {model    (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
+  {model    (s/maybe (apply s/enum valid-model-param-values))
    archived (s/maybe su/BooleanString)}
   (collection-items
     (api/read-check Collection id)
@@ -168,7 +191,7 @@
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
   [model archived namespace]
-  {model     (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
+  {model     (s/maybe (apply s/enum valid-model-param-values))
    archived  (s/maybe su/BooleanString)
    namespace (s/maybe su/NonBlankString)}
   ;; Return collection contents, including Collections that have an effective location of being in the Root

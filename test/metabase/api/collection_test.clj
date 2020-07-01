@@ -4,7 +4,8 @@
              [string :as str]
              [test :refer :all]]
             [metabase
-             [models :refer [Card Collection Dashboard PermissionsGroup PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient]]
+             [models :refer [Card Collection Dashboard NativeQuerySnippet PermissionsGroup PermissionsGroupMembership
+                             Pulse PulseCard PulseChannel PulseChannelRecipient]]
              [test :as mt]
              [util :as u]]
             [metabase.models
@@ -120,7 +121,7 @@
                  ((mt/user->client :rasta) :get 403 (str "collection/" (u/get-id collection))))))))))
 
 
-;;; ----------------------------------------- Cards, Dashboards, and Pulses ------------------------------------------
+;;; ------------------------------------------------ Collection Items ------------------------------------------------
 
 (defn- do-with-some-children-of-collection [collection-or-id-or-nil f]
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -202,6 +203,29 @@
           (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
                  (mt/boolean-ids-and-timestamps
                   ((mt/user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "/items?archived=true"))))))))))
+
+(deftest snippet-collection-items-test
+  (testing "GET /api/collection/:id/items"
+    (testing "Native query snippets should come back when fetching the items in a Collection in the `:snippets` namespace"
+      (mt/with-temp* [Collection         [{collection-id :id} {:namespace "snippets", :name "My Snippet Collection"}]
+                      NativeQuerySnippet [{snippet-id :id}    {:collection_id collection-id, :name "My Snippet"}]
+                      NativeQuerySnippet [{archived-id :id}   {:collection_id collection-id, :name "Archived Snippet", :archived true}]]
+        (is (= [{:id    snippet-id
+                 :name  "My Snippet"
+                 :model "snippet"}]
+               ((mt/user->client :rasta) :get 200 (format "collection/%d/items" collection-id))))
+
+        (testing "\nShould be able to fetch archived Snippets"
+          (is (= [{:id    archived-id
+                   :name  "Archived Snippet"
+                   :model "snippet"}]
+                 ((mt/user->client :rasta) :get 200 (format "collection/%d/items?archived=true" collection-id)))))
+
+        (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
+          (is (= [{:id    snippet-id
+                   :name  "My Snippet"
+                   :model "snippet"}]
+                 ((mt/user->client :rasta) :get 200 (format "collection/%d/items?model=snippet" collection-id)))))))))
 
 
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
@@ -533,6 +557,40 @@
             (testing "?namespace=stamps"
               (is (= []
                      (collection-names ((mt/user->client :rasta) :get 200 "collection/root/items?namespace=stamps")))))))))))
+
+(deftest root-collection-snippets-test
+  (testing "GET /api/collection/root/items?namespace=snippets"
+    (testing "\nNative query snippets should come back when fetching the items in the root Collection of the `:snippets` namespace"
+      (mt/with-temp* [NativeQuerySnippet [{snippet-id :id}   {:name "My Snippet"}]
+                      NativeQuerySnippet [{archived-id :id}  {:name "Archived Snippet", :archived true}]
+                      Dashboard          [{dashboard-id :id} {:name "My Dashboard"}]]
+        (letfn [(only-test-items [results]
+                  (if (sequential? results)
+                    (filter #(#{snippet-id archived-id dashboard-id} (:id %)) results)
+                    results))
+                (only-test-item-names [results]
+                  (let [items (only-test-items results)]
+                    (if (sequential? items)
+                      (map :name items)
+                      items)))]
+          (is (= [{:id    snippet-id
+                   :name  "My Snippet"
+                   :model "snippet"}]
+                 (only-test-items ((mt/user->client :rasta) :get 200 "collection/root/items?namespace=snippets"))))
+
+          (testing "\nSnippets should not come back for the default namespace"
+            (is (= ["My Dashboard"]
+                   (only-test-item-names ((mt/user->client :rasta) :get 200 "collection/root/items")))))
+
+          (testing "\nShould be able to fetch archived Snippets"
+            (is (= ["Archived Snippet"]
+                   (only-test-item-names ((mt/user->client :rasta) :get 200
+                                                 "collection/root/items?namespace=snippets&archived=true")))))
+
+          (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
+            (is (= ["My Snippet"]
+                   (only-test-item-names ((mt/user->client :rasta) :get 200
+                                          "collection/root/items?namespace=snippets&model=snippet"))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
