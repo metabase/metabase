@@ -179,7 +179,6 @@
          :name (tru "Our analytics")
          :id   "root"))
 
-
 (def ^:private CollectionWithLocationOrRoot
   (s/cond-pre
    RootCollection
@@ -496,7 +495,6 @@
                ===>
     D                D > B > C
 
-
   To move or archive B, you would need write permissions for A, B, C, and D:
 
   *  A, because we're moving something out of it
@@ -626,8 +624,8 @@
 
 (defn- copy-parent-permissions!
   "When creating a new Collection, we shall copy the Permissions entries for its parent. That way, Groups who can see
-  its parent can see it; and Groups who can 'curate' its parent can 'curate' it, as a default state. (Of course,
-  admins can change these permissions after the fact.)
+  its parent can see it; and Groups who can 'curate' (write) its parent can 'curate' it, as a default state. (Of
+  course, admins can change these permissions after the fact.)
 
   This does *not* apply to Collections that are created inside a Personal Collection or one of its descendants.
   Descendants of Personal Collections, like Personal Collections themselves, cannot have permissions entries in the

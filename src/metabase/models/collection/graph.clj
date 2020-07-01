@@ -7,6 +7,7 @@
              [collection-revision :as collection-revision :refer [CollectionRevision]]
              [permissions :as perms :refer [Permissions]]
              [permissions-group :refer [PermissionsGroup]]]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -54,11 +55,13 @@
 (s/defn ^:private non-personal-collection-ids :- #{su/IntGreaterThanZero}
   "Return a set of IDs of all Collections that are neither Personal Collections nor descendants of Personal
   Collections (i.e., things that you can set Permissions for, and that should go in the graph.)"
-  [collection-namespace]
+  [collection-namespace :- (s/maybe su/KeywordOrString)]
   (let [personal-collection-ids (db/select-ids Collection :personal_owner_id [:not= nil])
         honeysql-form           (cond-> {:select [[:id :id]]
                                          :from   [Collection]
-                                         :where  [:= :namespace collection-namespace]}
+                                         :where  (if (= collection-namespace ::all)
+                                                   [:= 1 1]
+                                                   [:= :namespace (u/qualified-name collection-namespace)])}
                                   (seq personal-collection-ids)
                                   (h/merge-where [:not-in :id (set personal-collection-ids)]))
         honeysql-form           (reduce
@@ -71,7 +74,17 @@
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
   works just like the function of the same name in `metabase.models.permissions`; see also the documentation for that
-  function."
+  function.
+
+  The graph is restricted to a given namespace by the optional `collection-namespace` param; by default, `nil`, which
+  restricts it to the 'default' namespace containing normal Card/Dashboard/Pulse Collections. Pass `::all` to get a
+  combined graph of all namespaces, for the purposes of recording graph revisions.
+
+  Note: All Collections are returned at the same level of the 'graph', regardless of how the Collection hierarchy is
+  structured. Collections do not inherit permissions from ancestor Collections in the same way data permissions are
+  inherited (e.g. full `:read` perms for a Database implies `:read` perms for all its schemas); a 'child' object (e.g.
+  schema) *cannot* have more restrictive permissions than its parent (e.g. Database). Child Collections *can* have
+  more restrictive permissions than their parent."
   ([]
    (graph nil))
 
@@ -105,16 +118,19 @@
     (update-collection-permissions! group-id collection-id new-perms)))
 
 (defn- save-perms-revision!
-  "Save changes made to the collection permissions graph for logging/auditing purposes.
-   This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage)."
-  [current-revision old new]
+  "Save changes made to the collection permissions graph for logging/auditing purposes. This doesn't do anything if
+  `*current-user-id*` is unset (e.g. for testing or REPL usage).
+
+  *  `before-graph`-- the entire graph as it existed before the revision.
+  *  `changes` -- set of changes applied in this revision."
+  [current-revision before-graph changes]
   (when *current-user-id*
     ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
     ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
     (db/insert! CollectionRevision
       :id     (inc current-revision)
-      :before  old
-      :after   new
+      :before  before-graph
+      :after   changes
       :user_id *current-user-id*)))
 
 (s/defn update-graph!
@@ -125,12 +141,21 @@
    (update-graph! nil new-graph))
 
   ([collection-namespace :- (s/maybe s/Keyword), new-graph :- PermissionsGraph]
-   (let [old-graph (graph collection-namespace)
-         [old new] (data/diff (:groups old-graph) (:groups new-graph))]
-     (perms/log-permissions-changes old new)
+   (let [old-graph          (graph collection-namespace)
+         ;; fetch the *entire* graph before making any updates. We'll record this in the perms revision.
+         entire-graph       (graph ::all)
+         old                (:groups old-graph)
+         new                (:groups new-graph)
+         ;; filter out any groups not in the old graph
+         new                (select-keys new (keys old))
+         ;; filter out any collections not in the old graph
+         new                (into {} (for [[group-id collection-id->perms] new]
+                                  [group-id (select-keys collection-id->perms (keys (get old group-id)))]))
+         [diff-old changes] (data/diff old new)]
+     (perms/log-permissions-changes diff-old changes)
      (perms/check-revision-numbers old-graph new-graph)
-     (when (seq new)
+     (when (seq changes)
        (db/transaction
-         (doseq [[group-id changes] new]
+         (doseq [[group-id changes] changes]
            (update-group-permissions! group-id changes))
-         (save-perms-revision! (:revision old-graph) old new))))))
+         (save-perms-revision! (:revision old-graph) entire-graph changes))))))
