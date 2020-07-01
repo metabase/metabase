@@ -522,6 +522,78 @@ Default: `null`
 
 Password for Java TrustStore file.
 
+#### `MB_JWT_ATTRIBUTE_EMAIL`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"email"`
+
+Key to retrieve the JWT user's email address.
+
+#### `MB_JWT_ATTRIBUTE_FIRSTNAME`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"first_name"`
+
+Key to retrieve the JWT user's first name.
+
+#### `MB_JWT_ATTRIBUTE_GROUPS`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"groups"`
+
+Key to retrieve the JWT user's groups.
+
+#### `MB_JWT_ATTRIBUTE_LASTNAME`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"groups"`
+
+Key to retrieve the JWT user's last name.
+
+#### `MB_JWT_ENABLED`
+
+Only available in Enterprise Edition<br>
+Type: boolean<br>
+Default: `false`
+
+When set to `true`, will enable JWT authentication with the options configured in the `MB_JWT_*` variables.
+
+#### `MB_JWT_GROUP_MAPPINGS`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"{}"`
+
+JSON object containing JWT to Metabase group mappings. Should be in the form: `'{"groupName": [1, 2, 3]}'` where keys are JWT groups and values are lists of Metabase groups IDs.
+
+#### `MB_JWT_GROUP_SYNC`
+
+Only available in Enterprise Edition<br>
+Type: boolean<br>
+Default: `false`
+
+Enable group membership synchronization with JWT.
+
+#### `MB_JWT_IDENTITY_PROVIDER_URI`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `null`
+
+URL of JWT based login page.
+
+#### `MB_JWT_SHARED_SECRET`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `null`
+
+String used to seed the private key used to validate JWT messages.
+
 #### `MB_LANDING_PAGE`
 
 Only available in Enterprise Edition<br>
@@ -563,7 +635,7 @@ The Distinguished Name to bind as (if any). This user will be used to lookup inf
 Type: boolean<br>
 Default: `false`
 
-Enable LDAP authentication.
+When set to `true`, will enable LDAP authentication with the options configured in the `MB_LDAP_*` variables.
 
 #### `MB_LDAP_GROUP_BASE`
 
@@ -748,6 +820,118 @@ Type: string<br>
 Default: `null`
 
 Connection timezone to use when executing queries. Defaults to system timezone.
+
+#### `MB_SAML_APPLICATION_NAME`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"Metabase"`
+
+This application name will be used for requests to the Identity Provider.
+
+#### `MB_SAML_ATTRIBUTE_EMAIL`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"`
+
+SAML attribute for the user's email address.
+
+#### `MB_SAML_ATTRIBUTE_FIRSTNAME`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"`
+
+SAML attribute for the user's first name.
+
+#### `MB_SAML_ATTRIBUTE_GROUP`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"member_of"`
+
+SAML attribute for group syncing.
+
+#### `MB_SAML_ATTRIBUTE_LASTNAME`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname"`
+
+SAML attribute for the user's last name.
+
+#### `MB_SAML_ENABLED`
+
+Only available in Enterprise Edition<br>
+Type: boolean<br>
+Default: `false`
+
+When set to `true`, will enable SAML authentication with the options configured in the `MB_SAML_*` variables.
+
+#### `MB_SAML_GROUP_MAPPINGS`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"{}"`
+
+JSON object containing SAML to Metabase group mappings. Should be in the form: `'{"groupName": [1, 2, 3]}'` where keys are SAML groups and values are lists of Metabase groups IDs.
+
+#### `MB_SAML_GROUP_SYNC`
+
+Only available in Enterprise Edition<br>
+Type: boolean<br>
+Default: `false`
+
+Enable group membership synchronization with SAML.
+
+#### `MB_SAML_IDENTITY_PROVIDER_CERTIFICATE`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `null`
+
+Encoded certificate for the identity provider, provided as the content, not a file path.
+
+#### `MB_SAML_IDENTITY_PROVIDER_URI`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `null`
+
+This is the URL where your users go to log in to your identity provider. Depending on which IdP you're using, this usually looks like `https://your-org-name.okta.com`.
+
+#### `MB_SAML_KEYSTORE_ALIAS`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"metabase"`
+
+Alias for the key that Metabase should use for signing SAML requests.
+
+#### `MB_SAML_KEYSTORE_PASSWORD`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"changeit"`
+
+Password for opening the KeyStore.
+
+#### `MB_SAML_KEYSTORE_PATH`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `null`
+
+Absolute path to the KeyStore file to use for signing SAML requests.
+
+#### `MB_SEND_NEW_SSO_USER_ADMIN_EMAIL`
+
+Only available in Enterprise Edition<br>
+Type: boolean<br>
+Default: `true`
+
+Send email notifications to users in Admin group, when a new SSO users is created on Metabase.
 
 #### `MB_SESSION_COOKIES`
 
