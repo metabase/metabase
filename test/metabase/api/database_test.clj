@@ -244,7 +244,6 @@
                                                  :database_position 1})]
                                 :segments     []
                                 :metrics      []
-                                :rows         nil
                                 :id           (mt/id :categories)
                                 :db_id        (mt/id)})]})
            (let [resp (mt/derecordize ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id))))]

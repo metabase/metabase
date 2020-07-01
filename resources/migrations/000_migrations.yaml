@@ -6240,6 +6240,9 @@ databaseChangeLog:
       id: 165
       author: sb
       comment: 'Added field_order to Table and database_position to Field'
+      validCheckSum:
+        - 8:474a357368a665d5e0701b9eb5f313f9
+        - 8:8848644da9dd9e40924ae71ac4c7c370
       changes:
         - addColumn:
             tableName: metabase_field
@@ -6377,8 +6380,21 @@ databaseChangeLog:
             columnName: started_at
             newDataType: ${timestamp_type}
 
+# Remove `Table.rows`, which hasn't been used for years now. Older versions of
+# Metabase used to store the row count in this column but we disabled it a long
+# time ago for performance reasons. Now it's time to remove it entirely.
 
-# Remove fields_hash from Table model
+  - changeSet:
+      id: 169
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: rows
+
+# Remove fields_hash from Table model, as we no longer skip sync steps if metadata
+# hash hasn't changed.
 
   - changeSet:
       id: 170

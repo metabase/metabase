@@ -93,55 +93,38 @@
                                              (update :fingerprint_version (complement zero?))))))
                tu/boolean-ids-and-timestamps)))
 
-(def ^:private table-defaults
-  {:active                  true
-   :caveats                 nil
-   :created_at              true
-   :db_id                   true
-   :description             nil
-   :entity_name             nil
-   :entity_type             :entity/GenericTable
-   :id                      true
-   :points_of_interest      nil
-   :rows                    nil
-   :schema                  nil
-   :show_in_getting_started false
-   :updated_at              true
-   :visibility_type         nil
-   :field_order             :database})
+(defn- table-defaults []
+  (merge
+   (mt/object-defaults Table)
+   {:created_at  true
+    :db_id       true
+    :entity_type :entity/GenericTable
+    :id          true
+    :updated_at  true}))
 
-(def ^:private field-defaults
-  {:active              true
-   :caveats             nil
-   :created_at          true
-   :description         nil
-   :fingerprint         false
-   :fingerprint_version false
-   :fk_target_field_id  false
-   :has_field_values    nil
-   :id                  true
-   :last_analyzed       false
-   :parent_id           false
-   :points_of_interest  nil
-   :position            0
-   :database_position   0
-   :custom_position     0
-   :preview_display     true
-   :special_type        nil
-   :table_id            true
-   :updated_at          true
-   :visibility_type     :normal
-   :settings            nil})
+(defn- field-defaults []
+  (merge
+   (mt/object-defaults Field)
+   {:created_at          true
+    :fingerprint         false
+    :fingerprint_version false
+    :fk_target_field_id  false
+    :id                  true
+    :last_analyzed       false
+    :parent_id           false
+    :position            0
+    :table_id            true
+    :updated_at          true}))
 
-(def ^:private field-defaults-with-fingerprint
-  (assoc field-defaults
+(defn- field-defaults-with-fingerprint []
+  (assoc (field-defaults)
     :last_analyzed       true
     :fingerprint_version true
     :fingerprint         true))
 
 (def ^:private field:movie-id
   (merge
-   field-defaults
+   (field-defaults)
    {:name              "id"
     :display_name      "ID"
     :database_type     "SERIAL"
@@ -150,9 +133,9 @@
     :database_position 0
     :position          0}))
 
-(def ^:private field:movie-studio
+(defn- field:movie-studio []
   (merge
-   field-defaults-with-fingerprint
+   (field-defaults-with-fingerprint)
    {:name               "studio"
     :display_name       "Studio"
     :database_type      "VARCHAR"
@@ -162,9 +145,9 @@
     :database_position  2
     :position           2}))
 
-(def ^:private field:movie-title
+(defn- field:movie-title []
   (merge
-   field-defaults-with-fingerprint
+   (field-defaults-with-fingerprint)
    {:name              "title"
     :display_name      "Title"
     :database_type     "VARCHAR"
@@ -173,9 +156,9 @@
     :database_position 1
     :position          1}))
 
-(def ^:private field:studio-name
+(defn- field:studio-name []
   (merge
-   field-defaults-with-fingerprint
+   (field-defaults-with-fingerprint)
    {:name              "name"
     :display_name      "Name"
     :database_type     "VARCHAR"
@@ -185,9 +168,9 @@
     :position          1}))
 
 ;; `studio.studio`? huh?
-(def ^:private field:studio-studio
+(defn- field:studio-studio []
   (merge
-   field-defaults
+   (field-defaults)
    {:name              "studio"
     :display_name      "Studio"
     :database_type     "VARCHAR"
@@ -201,29 +184,34 @@
     (sync/sync-database! db)
     (sync/sync-database! db)
     (let [[movie studio] (mapv table-details (db/select Table :db_id (u/get-id db) {:order-by [:name]}))]
-      (is (= (merge table-defaults {:schema       "default"
-                                    :name         "movie"
-                                    :display_name "Movie"
-                                    :fields       [field:movie-id field:movie-studio field:movie-title]})
-             movie))
-      (is (= (merge table-defaults {:name         "studio"
-                                    :display_name "Studio"
-                                    :fields       [field:studio-name field:studio-studio]})
-             studio)))))
-
+      (testing "`movie` Table"
+        (is (= (merge
+                (table-defaults)
+                {:schema       "default"
+                 :name         "movie"
+                 :display_name "Movie"
+                 :fields       [field:movie-id (field:movie-studio) (field:movie-title)]})
+               movie)))
+      (testing "`studio` Table"
+        (is (= (merge
+                (table-defaults)
+                {:name         "studio"
+                 :display_name "Studio"
+                 :fields       [(field:studio-name) (field:studio-studio)]})
+               studio))))))
 
 (deftest sync-table-test
   (mt/with-temp* [Database [db {:engine :metabase.sync-database-test/sync-test}]
                   Table    [table {:name "movie", :schema "default", :db_id (u/get-id db)}]]
     (sync/sync-table! table)
     (is (= (merge
-            table-defaults
+            (table-defaults)
             {:schema       "default"
              :name         "movie"
              :display_name "Movie"
              :fields       [field:movie-id
-                            (assoc field:movie-studio :fk_target_field_id false :special_type nil)
-                            field:movie-title]})
+                            (assoc (field:movie-studio) :fk_target_field_id false :special_type nil)
+                            (field:movie-title)]})
            (table-details (Table (:id table)))))))
 
 

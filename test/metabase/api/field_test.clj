@@ -45,7 +45,6 @@
                                      :schema                  "PUBLIC"
                                      :name                    "USERS"
                                      :display_name            "Users"
-                                     :rows                    nil
                                      :entity_name             nil
                                      :active                  true
                                      :id                      (mt/id :users)

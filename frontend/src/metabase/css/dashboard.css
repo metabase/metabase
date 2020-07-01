@@ -55,9 +55,8 @@
   color: var(--color-text-white);
 }
 
-.Dashboard.Dashboard--night .Header-button,
-.Dashboard.Dashboard--night .Header-button svg {
-  color: color(var(--color-text-medium) alpha(-70%));
+.Dashboard.Dashboard--night .Header-button {
+  color: var(--color-text-medium);
 }
 
 .Dashboard.Dashboard--fullscreen .fullscreen-normal-text {
