@@ -17,8 +17,6 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
 
 import cx from "classnames";
 
-import type { TableId } from "metabase/meta/types/Table";
-import type { DatabaseId } from "metabase/meta/types/Database";
 import type { DatasetQuery } from "metabase/meta/types/Card";
 import type { Children } from "react";
 
