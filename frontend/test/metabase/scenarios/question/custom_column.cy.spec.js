@@ -1,8 +1,8 @@
-const {
+import {
   restore,
   signInAsNormalUser,
   popover,
-} = require("../../../__support__/cypress");
+} from "../../../__support__/cypress";
 
 function firstCell(contain_assertion, value) {
   cy.get(".TableInteractive-cellWrapper")
