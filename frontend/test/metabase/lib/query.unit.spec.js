@@ -3,11 +3,6 @@ import * as Q_DEPRECATED from "metabase/lib/query";
 import { ORDERS } from "__support__/sample_dataset_fixture";
 import Utils from "metabase/lib/utils";
 
-const mockTableMetadata = {
-  display_name: "Order",
-  fields: [{ id: 1, display_name: "Total" }],
-};
-
 describe("Legacy Q_DEPRECATED library", () => {
   describe("createQuery", () => {
     it("should provide a structured query with no args", () => {
@@ -317,30 +312,5 @@ describe("isValidField", () => {
     expect(
       Q_DEPRECATED.isValidField(["fk->", ["field-id", 1], ["field-id", 2]]),
     ).toBe(true);
-  });
-});
-
-describe("generateQueryDescription", () => {
-  it("should work with multiple aggregations", () => {
-    expect(
-      Q_DEPRECATED.generateQueryDescription(mockTableMetadata, {
-        "source-table": ORDERS.id,
-        aggregation: [["count"], ["sum", ["field-id", 1]]],
-      }),
-    ).toEqual("Orders, Count and Sum of Total");
-  });
-  it("should work with named aggregations", () => {
-    expect(
-      Q_DEPRECATED.generateQueryDescription(mockTableMetadata, {
-        "source-table": ORDERS.id,
-        aggregation: [
-          [
-            "aggregation-options",
-            ["sum", ["field-id", 1]],
-            { "display-name": "Revenue" },
-          ],
-        ],
-      }),
-    ).toEqual("Orders, Revenue");
   });
 });

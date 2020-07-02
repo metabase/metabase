@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import ObjectActionSelect from "../ObjectActionSelect";
 
-import * as Q_DEPRECATED from "metabase/lib/query";
+import { generateQueryDescription } from "metabase/lib/query/description";
 
 export default class MetricItem extends Component {
   static propTypes = {
@@ -15,7 +15,7 @@ export default class MetricItem extends Component {
   render() {
     const { metric, onRetire, tableMetadata } = this.props;
 
-    const description = Q_DEPRECATED.generateQueryDescription(
+    const description = generateQueryDescription(
       tableMetadata,
       metric.definition,
       { sections: ["aggregation", "filter"], jsx: true },
