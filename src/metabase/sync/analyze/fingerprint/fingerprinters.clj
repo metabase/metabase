@@ -17,6 +17,7 @@
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram
            com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
+           [java.time.chrono ChronoLocalDateTime ChronoZonedDateTime]
            java.time.temporal.Temporal))
 
 (defn col-wise
@@ -157,12 +158,14 @@
               {:type {~(first field-type) fingerprint#}})))
          (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
 
+(declare ->temporal)
+
 (defn- earliest
   ([] nil)
   ([acc]
    (some-> acc u.date/format))
   ([acc t]
-   (if (and t acc (t/before? t acc))
+   (if (and t acc (t/before? t (->temporal acc)))
      t
      (or acc t))))
 
@@ -171,7 +174,7 @@
   ([acc]
    (some-> acc u.date/format))
   ([acc t]
-   (if (and t acc (t/after? t acc))
+   (if (and t acc (t/after? t (->temporal acc)))
      t
      (or acc t))))
 
@@ -185,6 +188,15 @@
   String   (->temporal [this] (u.date/parse this))
   Long     (->temporal [this] (t/instant this))
   Integer  (->temporal [this] (t/instant this))
+  ;; this is challenging, because ChronoLocalDate requires a ZoneOffset
+  ;; to work with. Ideally, we would use the database's ZoneOffset, but
+  ;; we don't have access to that here. Use the JVM's systemDefault to
+  ;; convert this.
+  ChronoLocalDateTime (->temporal [this] (.toInstant this
+                                                 (.. (java.time.ZoneId/systemDefault)
+                                                     (getRules)
+                                                     (getOffset (java.time.Instant/now)))))
+  ChronoZonedDateTime (->temporal [this] (.toInstant this))
   Temporal (->temporal [this] this))
 
 (deffingerprinter :type/DateTime
