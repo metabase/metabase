@@ -1,13 +1,19 @@
 (ns metabase.models.native-query-snippet
   (:require [metabase.models
-             [collection :as collection :refer [Collection]]
+             [collection :as collection]
              [interface :as i]]
+            [metabase.models.native-query-snippet.permissions :as snippet.perms]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
              [models :as models]]))
+
+;; Load the EE implementation of snippet permissions, if they exist (if we're running with EE code available).
+(u/ignore-exceptions
+  (classloader/require 'metabase-enterprise.enhancements.models.native-query-snippet.permissions))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -29,23 +35,6 @@
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))
     (collection/check-collection-namespace updates)))
 
-(defn- can-read-parent-collection?
-  ([{collection-id :collection-id}]
-   (or (not collection-id)
-       (i/can-read? Collection collection-id)))
-
-  ([_ snippet-id]
-   (can-read-parent-collection? (db/select-one [NativeQuerySnippet :collection_id] :id (u/get-id snippet-id)))))
-
-(defn- can-write-parent-collection?
-  ([{collection-id :collection-id}]
-   (or (not collection-id)
-       (i/can-write? Collection collection-id)))
-
-  ([_ snippet-id]
-   (can-write-parent-collection? (db/select-one [NativeQuerySnippet :collection_id] :id (u/get-id snippet-id)))))
-
-
 (u/strict-extend (class NativeQuerySnippet)
   models/IModel
   (merge
@@ -57,12 +46,9 @@
   i/IObjectPermissions
   (merge
    i/IObjectPermissionsDefaults
-   ;; Snippets can go in Collections in the `:snippets` namespace (these are called "folders" in the UI) in Metabase
-   ;; EE. In Metabase CE, snippets cannot go in a Collection. If a Snippet is not in a Collection, anyone can read or
-   ;; write it. If a snippet *is* in a Collection, you need normal Collection permissions to read/write it.
-   {:can-read?   can-read-parent-collection?
-    :can-write?  can-write-parent-collection?
-    :can-create? can-write-parent-collection?}))
+   {:can-read?   snippet.perms/can-read?
+    :can-write?  snippet.perms/can-write?
+    :can-create? snippet.perms/can-create?}))
 
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
