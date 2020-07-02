@@ -26,7 +26,10 @@ const FilteredToUrlTable = propName => ComposedComponent =>
         const { [propName]: items, otherProps } = this.props;
         const { tableId } = this.state;
         const props = {
-          [propName]: items.filter(item => item.table_id === tableId),
+          [propName]:
+            tableId == null
+              ? items
+              : items.filter(item => item.table_id === tableId),
           tableId,
           setTableId: this.setTableId,
           ...otherProps,

@@ -3,13 +3,10 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { getMetadata } from "metabase/selectors/metadata";
 import Metrics from "metabase/entities/metrics";
-import Tables from "metabase/entities/tables";
 
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";
-import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
 import MetricForm from "../components/MetricForm";
 
 const mapDispatchToProps = {
@@ -20,19 +17,15 @@ const mapDispatchToProps = {
 };
 
 const mapStateToProps = (state, props) => ({
-  metadata: getMetadata(state),
   previewSummary: getPreviewSummary(state),
 });
 
 @Metrics.load({ id: (state, props) => parseInt(props.params.id) })
-@Tables.load({ id: (state, props) => props.metric.table_id, wrapped: true })
-@withTableMetadataLoaded
 class UpdateMetricForm extends Component {
   onSubmit = async metric => {
     await this.props.updateMetric(metric);
     MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
-    const tableId = this.props.table.id;
-    this.props.onChangeLocation(`/admin/datamodel/metrics?table=${tableId}`);
+    this.props.onChangeLocation(`/admin/datamodel/metrics`);
   };
 
   render() {
@@ -47,17 +40,14 @@ class UpdateMetricForm extends Component {
   }
 }
 
-@Tables.load({
-  id: (state, props) => parseInt(props.location.query.table),
-  wrapped: true,
-})
-@withTableMetadataLoaded
 class CreateMetricForm extends Component {
   onSubmit = async metric => {
-    const tableId = this.props.table.id;
-    await this.props.createMetric({ ...metric, table_id: tableId });
+    await this.props.createMetric({
+      ...metric,
+      table_id: metric.definition["source-table"],
+    });
     MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
-    this.props.onChangeLocation(`/admin/datamodel/metrics?table=${tableId}`);
+    this.props.onChangeLocation(`/admin/datamodel/metrics`);
   };
 
   render() {

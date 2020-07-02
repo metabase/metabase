@@ -21,11 +21,8 @@ class MetricListApp extends React.Component {
             selectedTableId={tableId}
             setSourceTableFn={setTableId}
           />
-          <Link
-            to={`/admin/datamodel/metric/create?table=${tableId}`}
-            className="ml-auto"
-          >
-            <Button primary disabled={tableId == null}>{t`New metric`}</Button>
+          <Link to={`/admin/datamodel/metric/create`} className="ml-auto">
+            <Button primary>{t`New metric`}</Button>
           </Link>
         </div>
         <table className="AdminTable">

@@ -22,11 +22,8 @@ class SegmentListApp extends React.Component {
             selectedTableId={tableId}
             setSourceTableFn={setTableId}
           />
-          <Link
-            to={`/admin/datamodel/segment/create?table=${tableId}`}
-            className="ml-auto"
-          >
-            <Button primary disabled={tableId == null}>{t`New segment`}</Button>
+          <Link to={`/admin/datamodel/segment/create`} className="ml-auto">
+            <Button primary>{t`New segment`}</Button>
           </Link>
         </div>
         <table className="AdminTable">

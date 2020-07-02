@@ -11,14 +11,13 @@ describe("scenarios > admin > datamodel > metrics", () => {
     cy.visit("/admin");
     cy.contains("Data Model").click();
     cy.contains("Metrics").click();
+    cy.contains("New metric").click();
     cy.contains("Select a table").click();
     popover()
       .contains("Orders")
       .click({ force: true }); // this shouldn't be needed, but there were issues with reordering as loads happeend
 
-    cy.contains("New metric").click();
-
-    cy.url().should("match", /metric\/create\?table=\d+$/);
+    cy.url().should("match", /metric\/create$/);
     cy.contains("Create Your Metric");
 
     // filter to orders with total under 100
@@ -42,7 +41,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
     // saving bounces you back and you see new metric in the list
     cy.contains("Save changes").click();
-    cy.url().should("match", /datamodel\/metrics\?table=\d+$/);
+    cy.url().should("match", /datamodel\/metrics$/);
     cy.contains("orders <100");
     cy.contains("Count, Filtered by Total");
   });
@@ -51,10 +50,6 @@ describe("scenarios > admin > datamodel > metrics", () => {
     cy.visit("/admin");
     cy.contains("Data Model").click();
     cy.contains("Metrics").click();
-    cy.contains("Select a table").click();
-    popover()
-      .contains("Orders")
-      .click({ force: true });
 
     cy.contains("orders <100")
       .parent()
@@ -94,7 +89,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
     cy.contains("Save changes").click();
 
     // get redirected to previous page and see the new metric name
-    cy.url().should("match", /datamodel\/metrics\?table=\d+$/);
+    cy.url().should("match", /datamodel\/metrics$/);
     cy.contains("orders >10");
 
     // clean up

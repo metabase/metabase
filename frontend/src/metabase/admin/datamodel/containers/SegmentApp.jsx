@@ -3,13 +3,10 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { getMetadata } from "metabase/selectors/metadata";
 import Segments from "metabase/entities/segments";
-import Tables from "metabase/entities/tables";
 
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";
-import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
 import SegmentForm from "../components/SegmentForm";
 
 const mapDispatchToProps = {
@@ -20,19 +17,15 @@ const mapDispatchToProps = {
 };
 
 const mapStateToProps = (state, props) => ({
-  metadata: getMetadata(state, props),
   previewSummary: getPreviewSummary(state),
 });
 
 @Segments.load({ id: (state, props) => parseInt(props.params.id) })
-@Tables.load({ id: (state, props) => props.segment.table_id, wrapped: true })
-@withTableMetadataLoaded
 class UpdateSegmentForm extends Component {
   onSubmit = async segment => {
     await this.props.updateSegment(segment);
     MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
-    const tableId = this.props.table.id;
-    this.props.onChangeLocation(`/admin/datamodel/segments?table=${tableId}`);
+    this.props.onChangeLocation(`/admin/datamodel/segments`);
   };
 
   render() {
@@ -47,17 +40,14 @@ class UpdateSegmentForm extends Component {
   }
 }
 
-@Tables.load({
-  id: (state, props) => parseInt(props.location.query.table),
-  wrapped: true,
-})
-@withTableMetadataLoaded
 class CreateSegmentForm extends Component {
   onSubmit = async segment => {
-    const tableId = this.props.table.id;
-    await this.props.createSegment({ ...segment, table_id: tableId });
+    await this.props.createSegment({
+      ...segment,
+      table_id: segment.definition["source-table"],
+    });
     MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
-    this.props.onChangeLocation(`/admin/datamodel/segments?table=${tableId}`);
+    this.props.onChangeLocation(`/admin/datamodel/segments`);
   };
 
   render() {

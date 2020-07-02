@@ -9,9 +9,9 @@ export default ComposedComponent => {
       }
     }
 
-    componentDidUpdate({ table: { id: prevId } = {} }) {
-      const { table: { id: currId } = {} } = this.props;
-      if (currId !== prevId) {
+    componentDidUpdate({ table: prevTable }) {
+      const { table } = this.props;
+      if (table != null && table.id !== (prevTable || {}).id) {
         this.fetch();
       }
     }
