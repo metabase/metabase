@@ -1,6 +1,6 @@
 import _ from "underscore";
 import Utils from "metabase/lib/utils";
-import { isFK, TYPE } from "metabase/lib/types";
+import { isFK } from "metabase/lib/types";
 
 import * as QUERY from "./query/query";
 import * as FieldRef from "./query/field_ref";
@@ -37,28 +37,6 @@ export function createQuery(type = "query", databaseId, tableId) {
 
   return dataset_query;
 }
-
-const METRIC_NAME_BY_AGGREGATION = {
-  count: "count",
-  "cum-count": "count",
-  sum: "sum",
-  "cum-sum": "sum",
-  distinct: "count",
-  avg: "avg",
-  min: "min",
-  max: "max",
-};
-
-const METRIC_TYPE_BY_AGGREGATION = {
-  count: TYPE.Integer,
-  "cum-count": TYPE.Integer,
-  sum: TYPE.Float,
-  "cum-sum": TYPE.Float,
-  distinct: TYPE.Integer,
-  avg: TYPE.Float,
-  min: TYPE.Float,
-  max: TYPE.Float,
-};
 
 const SORTABLE_AGGREGATION_TYPES = new Set([
   "avg",
@@ -227,46 +205,4 @@ export function getFieldOptions(
   }
 
   return results;
-}
-
-export function getDatetimeFieldUnit(field) {
-  return field && field[3];
-}
-
-export function getAggregationType(aggregation) {
-  return aggregation && aggregation[0];
-}
-
-export function getAggregationField(aggregation) {
-  return aggregation && aggregation[1];
-}
-
-export function getQueryColumn(tableMetadata, field) {
-  const target = FieldRef.getFieldTarget(field, tableMetadata);
-  const column = { ...target.field };
-  if (FieldRef.isDatetimeField(field)) {
-    column.unit = getDatetimeFieldUnit(field);
-  }
-  return column;
-}
-
-export function getQueryColumns(tableMetadata, query) {
-  const columns = QUERY.getBreakouts(query).map(b =>
-    getQueryColumn(tableMetadata, b),
-  );
-  if (QUERY.isBareRows(query)) {
-    if (columns.length === 0) {
-      return null;
-    }
-  } else {
-    for (const aggregation of QUERY.getAggregations(query)) {
-      const type = getAggregationType(aggregation);
-      columns.push({
-        name: METRIC_NAME_BY_AGGREGATION[type],
-        base_type: METRIC_TYPE_BY_AGGREGATION[type],
-        special_type: TYPE.Number,
-      });
-    }
-  }
-  return columns;
 }
