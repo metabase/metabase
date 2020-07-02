@@ -58,6 +58,10 @@
                    ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead of
                    ;; `db`. If we run across `dbname`, correct our behavior
                    (set/rename-keys {:dbname :db})
+                   ;; see https://github.com/metabase/metabase/issues/9511
+                   (update :warehouse str/upper-case)
+                   (update :schema str/upper-case)
+                   (update :db str/upper-case)
                    (dissoc :host :port :timezone)))
         (sql-jdbc.common/handle-additional-options opts))))
 
