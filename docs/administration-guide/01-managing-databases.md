@@ -24,7 +24,7 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 - Presto
 - Google Analytics
 - SparkSQL
-- Snowflake
+- [Snowflake](databases/snowflake.md)
 
 Don't see the database you need here? Take a look at our [Community Drivers](../developers-guide-drivers.md) page to see if somebody else has built one or how to get started building your own.
 
