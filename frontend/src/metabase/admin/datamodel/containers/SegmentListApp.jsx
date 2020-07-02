@@ -7,21 +7,17 @@ import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable"
 
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
-import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
 @Segment.loadList({ wrapped: true })
 @FilteredToUrlTable("segments")
 class SegmentListApp extends React.Component {
   render() {
-    const { segments, tableId, setTableId } = this.props;
+    const { segments, tableSelector } = this.props;
 
     return (
       <div className="px3">
         <div className="flex py2">
-          <DatabaseSchemaAndTableDataSelector
-            selectedTableId={tableId}
-            setSourceTableFn={setTableId}
-          />
+          {tableSelector}
           <Link to={`/admin/datamodel/segment/create`} className="ml-auto">
             <Button primary>{t`New segment`}</Button>
           </Link>

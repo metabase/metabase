@@ -1,6 +1,13 @@
 import React from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import cx from "classnames";
+import { t } from "ttag";
+
+import Tables from "metabase/entities/tables";
+import Icon from "metabase/components/Icon";
+import FieldSet from "metabase/components/FieldSet";
+import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
 const FilteredToUrlTable = propName => ComposedComponent =>
   connect(
@@ -18,7 +25,7 @@ const FilteredToUrlTable = propName => ComposedComponent =>
         this.setState({ tableId });
         this.props.push({
           ...this.props.location,
-          query: { table: tableId },
+          query: tableId == null ? {} : { table: tableId },
         });
       };
 
@@ -30,8 +37,9 @@ const FilteredToUrlTable = propName => ComposedComponent =>
             tableId == null
               ? items
               : items.filter(item => item.table_id === tableId),
-          tableId,
-          setTableId: this.setTableId,
+          tableSelector: (
+            <TableSelector tableId={tableId} setTableId={this.setTableId} />
+          ),
           ...otherProps,
         };
         return <ComposedComponent {...props} />;
@@ -40,3 +48,46 @@ const FilteredToUrlTable = propName => ComposedComponent =>
   );
 
 export default FilteredToUrlTable;
+
+@Tables.load({
+  id: (state, props) => props.tableId,
+  loadingAndErrorWrapper: false,
+})
+class TableSelector extends React.Component {
+  render() {
+    const { table, tableId, setTableId } = this.props;
+    return (
+      <FieldSet
+        noPadding
+        className={cx("p0", { "border-brand": tableId != null })}
+      >
+        <div className="p2" style={{ width: 200 }}>
+          <DatabaseSchemaAndTableDataSelector
+            selectedTableId={tableId}
+            setSourceTableFn={setTableId}
+            triggerElement={
+              tableId == null ? (
+                <span className="flex align-center justify-between flex-full text-medium">
+                  {t`Filter by table`}
+                  <Icon name="chevrondown" size={12} />
+                </span>
+              ) : (
+                <span className="flex align-center justify-between flex-full text-brand">
+                  {table && table.displayName()}
+                  <Icon
+                    name="close"
+                    onClick={e => {
+                      e.stopPropagation();
+                      setTableId(null);
+                    }}
+                    size={12}
+                  />
+                </span>
+              )
+            }
+          />
+        </div>
+      </FieldSet>
+    );
+  }
+}

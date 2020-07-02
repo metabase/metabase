@@ -7,20 +7,17 @@ import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable"
 
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
-import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
 @Metrics.loadList({ wrapped: true })
 @FilteredToUrlTable("metrics")
 class MetricListApp extends React.Component {
   render() {
-    const { metrics, tableId, setTableId } = this.props;
+    const { metrics, tableSelector } = this.props;
+
     return (
       <div className="px3">
         <div className="flex py2">
-          <DatabaseSchemaAndTableDataSelector
-            selectedTableId={tableId}
-            setSourceTableFn={setTableId}
-          />
+          {tableSelector}
           <Link to={`/admin/datamodel/metric/create`} className="ml-auto">
             <Button primary>{t`New metric`}</Button>
           </Link>
