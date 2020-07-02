@@ -6380,9 +6380,8 @@ databaseChangeLog:
             columnName: started_at
             newDataType: ${timestamp_type}
 
-# Remove `Table.rows`, which hasn't been used for years now. Older versions of
-# Metabase used to store the row count in this column but we disabled it a long
-# time ago for performance reasons. Now it's time to remove it entirely.
+# Remove `Table.rows`, which hasn't been used for years now. Older versions of Metabase used to store the row count in
+# this column but we disabled it a long time ago for performance reasons. Now it's time to remove it entirely.
 
   - changeSet:
       id: 169
@@ -6404,3 +6403,45 @@ databaseChangeLog:
         - dropColumn:
             tableName: metabase_table
             columnName: fields_hash
+
+# In EE, NativeQuerySnippets have a permissions system based on "snippet folders" which are Collections under the
+# hood. However, these Collections live in a separate "namespace" -- a completely separate hierarchy of Collections.
+
+  - changeSet:
+      id: 171
+      author: camsaul
+      comment: Added 1.36.0
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: 'ID of the Snippet Folder (Collection) this Snippet is in, if any'
+                  constraints:
+                    nullable: true
+                    references: collection(id)
+                    foreignKeyName: fk_snippet_collection_id
+                    deleteCascade: true
+        - createIndex:
+            tableName: native_query_snippet
+            indexName: idx_snippet_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: 172
+      author: camsaul
+      comment: Added 1.36.0
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: namespace
+                  type: varchar(254)
+                  remarks: 'The namespace (hierachy) this Collection belongs to. NULL means the Collection is in the default namespace.'
+                  constraints:
+                    nullable: true

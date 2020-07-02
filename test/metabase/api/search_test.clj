@@ -154,7 +154,7 @@
       (with-search-items-in-root-collection "test"
         (mt/with-temp* [PermissionsGroup           [group]
                         PermissionsGroupMembership [_ {:user_id (test-users/user->id :rasta), :group_id (u/get-id group)}]]
-          (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection/is-root? true}))
+          (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
           (is (= (remove (comp #{"collection"} :model) (default-search-results))
                  (search-request :rasta :q "test")))))))
 
@@ -180,7 +180,7 @@
         (with-search-items-in-root-collection "test2"
           (mt/with-temp* [PermissionsGroup           [group]
                           PermissionsGroupMembership [_ {:user_id (test-users/user->id :rasta), :group_id (u/get-id group)}]]
-            (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection/is-root? true}))
+            (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
             (perms/grant-collection-read-permissions! group collection)
             (is (= (sorted-results
                     (into
@@ -312,3 +312,13 @@
         (perms/revoke-permissions! (group/all-users) db-id)
         (is (= []
                (search-request :rasta :q (:name table))))))))
+
+(deftest collection-namespaces-test
+  (testing "Search should only return Collections in the 'default' namespace"
+    (mt/with-temp* [Collection [c1 {:name "Normal Collection"}]
+                    Collection [c2 {:name "Coin Collection", :namespace "currency"}]]
+      (is (= ["Normal Collection"]
+             (->> (search-request :crowberto :q "Collection")
+                  (filter #(and (= (:model %) "collection")
+                                (#{"Normal Collection" "Coin Collection"} (:name %))))
+                  (map :name)))))))

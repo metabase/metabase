@@ -260,7 +260,9 @@
         collection-filter-clause (coll/visible-collection-ids->honeysql-filter-clause
                                   collection-id-column
                                   visible-collections)
-        honeysql-query           (h/merge-where honeysql-query collection-filter-clause)]
+        honeysql-query           (-> honeysql-query
+                                     (h/merge-where collection-filter-clause)
+                                     (h/merge-where [:= :collection.namespace nil]))]
     ;; add a JOIN against Collection *unless* the source table is already Collection
     (cond-> honeysql-query
       (not= collection-id-column :collection.id)
