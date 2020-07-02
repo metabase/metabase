@@ -84,11 +84,15 @@ export function hasValidAggregation(ac: ?AggregationClause): boolean {
 
 // AGGREGATION TYPES
 
+// NOTE: these only differentiate between "standard", "metric", and "custom", but do not validate the aggregation
+
 export function isStandard(aggregation: any): boolean {
   return (
     Array.isArray(aggregation) &&
     STANDARD_AGGREGATIONS.has(aggregation[0]) &&
-    (aggregation[1] === undefined || FieldRef.isValidField(aggregation[1]))
+    // this is needed to differentiate between "standard" aggregations with simple fields (or no field) and custom expressions,
+    // the latter would cause the aggregation to be considered "custom"
+    (aggregation[1] == null || FieldRef.isValidField(aggregation[1]))
   );
 }
 

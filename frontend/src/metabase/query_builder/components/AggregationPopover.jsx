@@ -231,7 +231,7 @@ export default class AggregationPopover extends Component {
       selectedAggregation = _.findWhere(tableMetadata.metrics, {
         id: AGGREGATION.getMetric(aggregation),
       });
-    } else if (AGGREGATION.getOperator(aggregation)) {
+    } else if (AGGREGATION.isStandard(aggregation)) {
       selectedAggregation = _.findWhere(aggregationOperators, {
         short: AGGREGATION.getOperator(aggregation),
       });
