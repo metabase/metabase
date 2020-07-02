@@ -49,7 +49,7 @@ const AggregationName = ({
     }
     aggregation = AGGREGATION.getContent(aggregation);
   }
-  return AGGREGATION.isCustom(aggregation) ? (
+  return AGGREGATION.isCustom(aggregation) && !isRows(aggregation) ? (
     <CustomAggregation
       query={query}
       aggregation={aggregation}
@@ -136,5 +136,7 @@ const StandardAggregation = ({
     return <span>{t`Invalid`}</span>;
   }
 };
+
+const isRows = aggregation => aggregation && aggregation[0] === "rows";
 
 export default AggregationName;
