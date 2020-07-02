@@ -44,8 +44,6 @@
       ;; do the initial sync
       (sync-fields/sync-fields-for-table! table)
       (let [transactions-table-id (u/get-id (db/select-one-id Table :db_id (u/get-id db), :name "transactions"))]
-        ;; Give the Table a new Hash, and delete `toucan.details.age`
-        (db/update! Table transactions-table-id :fields_hash "something new")
         (db/delete! Field :table_id transactions-table-id, :name "age")
         ;; ok, resync the Table. `toucan.details.age` should be recreated, but only one. We should *not* have a
         ;; `toucan.age` Field as well, which was happening before the bugfix in this PR

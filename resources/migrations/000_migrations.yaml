@@ -6392,6 +6392,18 @@ databaseChangeLog:
             tableName: metabase_table
             columnName: rows
 
+# Remove fields_hash from Table model, as we no longer skip sync steps if metadata
+# hash hasn't changed.
+
+  - changeSet:
+      id: 170
+      author: sb
+      comment: Added 0.36.0
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: fields_hash
+
 # In EE, NativeQuerySnippets have a permissions system based on "snippet folders" which are Collections under the
 # hood. However, these Collections live in a separate "namespace" -- a completely separate hierarchy of Collections.
 
