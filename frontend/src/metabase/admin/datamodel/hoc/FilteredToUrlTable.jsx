@@ -67,12 +67,12 @@ class TableSelector extends React.Component {
             setSourceTableFn={setTableId}
             triggerElement={
               tableId == null ? (
-                <span className="flex align-center justify-between flex-full text-medium">
+                <span className="flex align-center justify-between flex-full text-medium text-bold">
                   {t`Filter by table`}
                   <Icon name="chevrondown" size={12} />
                 </span>
               ) : (
-                <span className="flex align-center justify-between flex-full text-brand">
+                <span className="flex align-center justify-between flex-full text-brand text-bold">
                   {table && table.displayName()}
                   <Icon
                     name="close"
