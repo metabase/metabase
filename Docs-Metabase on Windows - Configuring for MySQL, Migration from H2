@@ -1,0 +1,25 @@
+**1. How to configure Metabase application database to be MySQL (instead of the default H2)**
+
+1.1 Go to MySQL Command line :- Create database metabase;
+1.2 Go to cmd :-
+java -jar -DMB_DB_TYPE=mysql -DMB_DB_DBNAME=metabase -DMB_DB_PORT=3306 -DMB_DB_USER=xxx -DMB_DB_PASS=yyy metabase.jar
+
+**Note**
+Should always use above command to start metabase. If we use java -jar metabase.jar, the default H2 database will get created
+
+**2. Assume we already have worked with H2 for some time. Now want to migrate this work to MySQL**
+
+2.1 Go to MySQL Command line :- Create database metabase;
+2.2 Go to cmd :-
+java -jar -DMB_DB_TYPE=mysql -DMB_DB_DBNAME=metabase -DMB_DB_PORT=3306 -DMB_DB_USER=xxx -DMB_DB_PASS=yyy metabase.jar load-from-h2 ./metabase.db
+
+(this assumes that the metabase.db file is in same path as metabase jar file)
+
+2.3 In above step, after migration, metabase shuts down. To restart, use following
+java -jar -DMB_DB_TYPE=mysql -DMB_DB_DBNAME=metabase -DMB_DB_PORT=3306 -DMB_DB_USER=xxx -DMB_DB_PASS=yyy metabase.jar
+
+2.4 Remove metabase.db.mv and metabase.db.trace files from the folder and keep in another location as backup
+
+**3. Details of how to view the Metabase metadata are already covered nicely in following links**
+https://discourse.metabase.com/t/copy-dashboards-and-questions-from-one-server-to-another/2739
+https://discourse.metabase.com/t/metabase-metadata-sql/3688
