@@ -1,5 +1,6 @@
 (ns metabase.driver.snowflake-test
   (:require [clojure
+             [set :as set]
              [string :as str]
              [test :refer :all]]
             [metabase
@@ -12,65 +13,74 @@
              [sql :as sql.tx]]
             [metabase.test.data.sql.ddl :as ddl]))
 
-;; make sure we didn't break the code that is used to generate DDL statements when we add new test datasets
+;;
 (deftest ddl-statements-test
-  (is (= "DROP DATABASE IF EXISTS \"test-data\"; CREATE DATABASE \"test-data\";"
-         (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition dataset-defs/test-data))))
-  (is (= (map
-          #(str/replace % #"\s+" " ")
-          ["DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"users\";"
-           "CREATE TABLE \"test-data\".\"PUBLIC\".\"users\" (\"name\" TEXT, \"last_login\" TIMESTAMP_LTZ, \"password\"
-           TEXT, \"id\" INTEGER AUTOINCREMENT, PRIMARY KEY (\"id\")) ;"
-           "DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"categories\";"
-           "CREATE TABLE \"test-data\".\"PUBLIC\".\"categories\" (\"name\" TEXT, \"id\" INTEGER AUTOINCREMENT, PRIMARY
-           KEY (\"id\")) ;"
-           "DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"venues\";"
-           "CREATE TABLE \"test-data\".\"PUBLIC\".\"venues\" (\"name\" TEXT, \"latitude\" FLOAT, \"longitude\" FLOAT,
-           \"price\" INTEGER, \"category_id\" INTEGER, \"id\" INTEGER AUTOINCREMENT, PRIMARY KEY (\"id\")) ;"
-           "DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"checkins\";"
-           "CREATE TABLE \"test-data\".\"PUBLIC\".\"checkins\" (\"user_id\" INTEGER, \"venue_id\" INTEGER, \"date\"
-           DATE, \"id\" INTEGER AUTOINCREMENT, PRIMARY KEY (\"id\")) ;"
-           "ALTER TABLE \"test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"tegory_id_categories_927642602\" FOREIGN
-           KEY (\"category_id\") REFERENCES \"test-data\".\"PUBLIC\".\"categories\" (\"id\");"
-           "ALTER TABLE \"test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_-815717481\"
-           FOREIGN KEY (\"user_id\") REFERENCES \"test-data\".\"PUBLIC\".\"users\" (\"id\");"
-           "ALTER TABLE \"test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ns_venue_id_venues_-1854903846\"
-           FOREIGN KEY (\"venue_id\") REFERENCES \"test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
-         (ddl/create-db-ddl-statements :snowflake (mt/get-dataset-definition dataset-defs/test-data)))))
+  (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
+    (testing "Create DB DDL statements"
+      (is (= "DROP DATABASE IF EXISTS \"v2_test-data\"; CREATE DATABASE \"v2_test-data\";"
+             (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition dataset-defs/test-data)))))
+
+    (testing "Create Table DDL statements"
+      (is (= (map
+              #(str/replace % #"\s+" " ")
+              ["DROP TABLE IF EXISTS \"v2_test-data\".\"PUBLIC\".\"users\";"
+               "CREATE TABLE \"v2_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                \"last_login\" TIMESTAMP_LTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
+               "DROP TABLE IF EXISTS \"v2_test-data\".\"PUBLIC\".\"categories\";"
+               "CREATE TABLE \"v2_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                PRIMARY KEY (\"id\")) ;"
+               "DROP TABLE IF EXISTS \"v2_test-data\".\"PUBLIC\".\"venues\";"
+               "CREATE TABLE \"v2_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                \"category_id\" INTEGER, \"latitude\" FLOAT, \"longitude\" FLOAT, \"price\" INTEGER, PRIMARY KEY (\"id\")) ;"
+               "DROP TABLE IF EXISTS \"v2_test-data\".\"PUBLIC\".\"checkins\";"
+               "CREATE TABLE \"v2_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
+                \"user_id\" INTEGER, \"venue_id\" INTEGER, PRIMARY KEY (\"id\")) ;"
+               "ALTER TABLE \"v2_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"gory_id_categories_-1524018980\"
+                FOREIGN KEY (\"category_id\") REFERENCES \"v2_test-data\".\"PUBLIC\".\"categories\" (\"id\");"
+               "ALTER TABLE \"v2_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_-230440067\"
+                FOREIGN KEY (\"user_id\") REFERENCES \"v2_test-data\".\"PUBLIC\".\"users\" (\"id\");"
+               "ALTER TABLE \"v2_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"kins_venue_id_venues_621212269\"
+                FOREIGN KEY (\"venue_id\") REFERENCES \"v2_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
+             (ddl/create-db-ddl-statements :snowflake (-> (mt/get-dataset-definition dataset-defs/test-data)
+                                                          (update :database-name #(str "v2_" %)))))))))
 
 ;; TODO -- disabled because these are randomly failing, will figure out when I'm back from vacation. I think it's a
 ;; bug in the JDBC driver -- Cam
-#_(deftest describe-database-test
-    (mt/test-driver :snowflake
-      (testing "describe-database"
-        (let [expected {:tables
-                        #{{:name "users",      :schema "PUBLIC", :description nil}
-                          {:name "venues",     :schema "PUBLIC", :description nil}
-                          {:name "checkins",   :schema "PUBLIC", :description nil}
-                          {:name "categories", :schema "PUBLIC", :description nil}}}]
-          (testing "should work with normal details"
-            (is (= expected
-                   (driver/describe-database :snowflake (mt/db)))))
-          (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
-            (is (= expected
-                   (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname})))))
-          (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
-            (is (thrown? Exception
-                         (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
-          (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
-            (is (= expected
-                   (driver/describe-database :snowflake (assoc (mt/db) :name "ABC")))))))))
+(deftest describe-database-test
+  (mt/test-driver :snowflake
+    (testing "describe-database"
+      (let [expected {:tables
+                      #{{:name "users",      :schema "PUBLIC", :description nil}
+                        {:name "venues",     :schema "PUBLIC", :description nil}
+                        {:name "checkins",   :schema "PUBLIC", :description nil}
+                        {:name "categories", :schema "PUBLIC", :description nil}}}]
+        (testing "should work with normal details"
+          (is (= expected
+                 (driver/describe-database :snowflake (mt/db)))))
+        (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
+          (is (= expected
+                 (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname})))))
+        (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
+          (is (thrown? Exception
+                       (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
+        (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
+          (is (= expected
+                 (driver/describe-database :snowflake (assoc (mt/db) :name "ABC")))))))))
 
 (deftest describe-table-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
       (is (= {:name   "categories"
               :schema "PUBLIC"
-              :fields #{{:name          "id"
-                         :database-type "NUMBER"
-                         :base-type     :type/Number
-                         :pk?           true}
-                        {:name "name", :database-type "VARCHAR", :base-type :type/Text}}}
+              :fields #{{:name              "id"
+                         :database-type     "NUMBER"
+                         :base-type         :type/Number
+                         :pk?               true
+                         :database-position 0}
+                        {:name              "name"
+                         :database-type     "VARCHAR"
+                         :base-type         :type/Text
+                         :database-position 1}}}
              (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (Table (mt/id :categories))))))))
 
 (deftest describe-table-fks-test
@@ -124,7 +134,7 @@
                      {:database   (mt/id)
                       :type       :native
                       :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
-                                                       "FROM \"test-data\".\"PUBLIC\".\"users\" "
+                                                       "FROM \"v2_test-data\".\"PUBLIC\".\"users\" "
                                                        "WHERE date_trunc('day', CAST(\"last_login\" AS timestamp))"
                                                        "    = date_trunc('day', CAST({{filter_date}} AS timestamp))")
                                    :template-tags {:filter_date {:name         "filter_date"

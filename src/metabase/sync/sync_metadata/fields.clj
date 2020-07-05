@@ -38,8 +38,7 @@
 
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
-  (:require [clojure.tools.logging :as log]
-            [metabase.models.table :as table :refer [Table]]
+  (:require [metabase.models.table :as table]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
@@ -47,27 +46,14 @@
              [fetch-metadata :as fetch-metadata]
              [sync-instances :as sync-instances]
              [sync-metadata :as sync-metadata]]
-            [metabase.util :as u]
             [metabase.util
              [i18n :refer [trs]]
              [schema :as su]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+            [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(s/defn ^:private calculate-table-hash :- su/NonBlankString
-  "Calculate a hash of the `db-field-metadata` (metadata about the Fields in a given Table); this hash is saved after
-  sync is completed; if it is the same next time we attempt to sync a Table, we can skip the Table entirely; since the
-  metadata coming back from the DB/drivers is the same as last timw."
-  [db-metadata :- #{i/TableMetadataField}]
-  (->> db-metadata
-       (map (juxt :name :database-type :base-type :special-type :pk? :nested-fields :custom :field-comment))
-       ;; We need a predictable sort order as the hash will be different if the order is different
-       (sort-by first)
-       sync-util/calculate-hash))
 
 (s/defn ^:private sync-and-update! :- su/IntGreaterThanOrEqualToZero
   "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
@@ -79,29 +65,16 @@
      ;; `sync-instances`
      (sync-metadata/update-metadata! table db-metadata (fetch-metadata/our-metadata table))))
 
-
 (s/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."
   ([table :- i/TableInstance]
    (sync-fields-for-table! (table/database table) table))
 
-  ([database :- i/DatabaseInstance, {old-hash :fields_hash, :as table} :- i/TableInstance]
+  ([database :- i/DatabaseInstance, table :- i/TableInstance]
    (sync-util/with-error-handling (trs "Error syncing Fields for Table ''{0}''" (sync-util/name-for-logging table))
-     (let [db-metadata   (fetch-metadata/db-metadata database table)
-           total-fields  (count db-metadata)
-           ;; hash the metadata about Fields in the Table; if it mashes the hash from last time we synced then we know
-           ;; there's nothing to do here and we can skip iterating over the Fields
-           new-hash      (calculate-table-hash db-metadata)
-           hash-changed? (or (not old-hash) (not= new-hash old-hash))]
-       ;; if hash is unchanged we can skip the rest of the sync process
-       (if hash-changed?
-          ;; Now that Fields sync has completed successfully, save updated hash in the application DB...
-         (db/update! Table (u/get-id table) :fields_hash new-hash)
-         (log/debug (trs "Hash of {0} matches stored hash, skipping Fields sync" (sync-util/name-for-logging table))))
-       {:total-fields   total-fields
-        :updated-fields (or (when hash-changed?
-                              (sync-and-update! table db-metadata))
-                            0)}))))
+     (let [db-metadata (fetch-metadata/db-metadata database table)]
+       {:total-fields   (count db-metadata)
+        :updated-fields (sync-and-update! table db-metadata)}))))
 
 
 (s/defn sync-fields! :- (s/maybe {:updated-fields su/IntGreaterThanOrEqualToZero

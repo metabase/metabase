@@ -23,5 +23,5 @@
   "Return the ID of the newest `CollectionRevision`, or zero if none have been made yet.
    (This is used by the collection graph update logic that checks for changes since the original graph was fetched)."
   []
-  (or (db/select-one-id CollectionRevision {:order-by [[:id :desc]]})
+  (or (:id (db/select-one [CollectionRevision [:%max.id :id]]))
       0))

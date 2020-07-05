@@ -31,6 +31,14 @@
                               :type/Time           "TIME"}]
   (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
+(defn- qualified-db-name
+  "Prepend `database-name` with a version number so we can create new versions without breaking existing tests."
+  [database-name]
+  ;; try not to qualify the database name twice!
+  (if (str/starts-with? database-name "v2_")
+    database-name
+    (str "v2_" database-name)))
+
 (defmethod tx/dbdef->connection-details :snowflake
   [_ context {:keys [database-name]}]
   (merge
@@ -43,7 +51,7 @@
    ;; Snowflake JDBC driver ignores this, but we do use it in the `query-db-name` function in
    ;; `metabase.driver.snowflake`
    (when (= context :db)
-     {:db database-name})))
+     {:db (qualified-db-name database-name)})))
 
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
 (defmethod sql.tx/qualified-name-components :snowflake
@@ -53,7 +61,7 @@
 
 (defmethod sql.tx/create-db-sql :snowflake
   [driver {:keys [database-name]}]
-  (let [db (sql.tx/qualify-and-quote driver database-name)]
+  (let [db (sql.tx/qualify-and-quote driver (qualified-db-name database-name))]
     (format "DROP DATABASE IF EXISTS %s; CREATE DATABASE %s;" db db)))
 
 (defn- no-db-connection-spec
@@ -76,26 +84,37 @@
     @datasets)
 
   (defn- add-existing-dataset! [database-name]
-    (swap! datasets conj database-name)))
+    (swap! datasets conj database-name))
+
+  (defn- remove-existing-dataset! [database-name]
+    (swap! datasets disj database-name)))
 
 (defmethod tx/create-db! :snowflake
-  [driver {:keys [database-name] :as db-def} & options]
-  ;; ok, now check if already created. If already created, no-op
-  (when-not (contains? (existing-datasets) database-name)
-    ;; if not created, create the DB...
-    (try
-      ;; call the default impl for SQL JDBC drivers
-      (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)
-      ;; and add it to the set of DBs that have been created
-      (add-existing-dataset! database-name)
-      ;; if creating the DB failed, DROP it so we don't get stuck with a DB full of bad data and skip trying to
-      ;; load it next time around
-      (catch Throwable e
-        (let [drop-db-sql (format "DROP DATABASE \"%s\";" database-name)]
-          (println "Creating DB failed:" e)
-          (println "Executing" drop-db-sql)
-          (jdbc/execute! (no-db-connection-spec) [drop-db-sql]))
-        (throw e)))))
+  [driver db-def & options]
+  (let [{:keys [database-name], :as db-def} (update db-def :database-name qualified-db-name)]
+    ;; ok, now check if already created. If already created, no-op
+    (when-not (contains? (existing-datasets) database-name)
+      (println (format "Creating new Snowflake database %s..." (pr-str database-name)))
+      ;; if not created, create the DB...
+      (try
+        ;; call the default impl for SQL JDBC drivers
+        (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)
+        ;; and add it to the set of DBs that have been created
+        (add-existing-dataset! database-name)
+        ;; if creating the DB failed, DROP it so we don't get stuck with a DB full of bad data and skip trying to
+        ;; load it next time around
+        (catch Throwable e
+          (let [drop-db-sql (format "DROP DATABASE \"%s\";" database-name)]
+            (println "Creating DB failed:" e)
+            (println "[Snowflake]" drop-db-sql)
+            (jdbc/execute! (no-db-connection-spec) [drop-db-sql]))
+          (throw e))))))
+
+(defmethod tx/destroy-db! :snowflake
+  [_ {:keys [database-name]}]
+  (let [database-name (qualified-db-name database-name)]
+    (jdbc/execute! (no-db-connection-spec) [(format "DROP DATABASE \"%s\";" database-name)])
+    (remove-existing-dataset! database-name)))
 
 ;; For reasons I don't understand the Snowflake JDBC driver doesn't seem to work when trying to use parameterized
 ;; INSERT statements, even though the documentation suggests it should. Just go ahead and deparameterize all the

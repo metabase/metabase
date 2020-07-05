@@ -14,7 +14,8 @@ const ViewSection = ({
 }) => (
   <Flex
     align={align}
-    px={[1, 3]}
+    pl={[1, 3]}
+    pr={[1, 2]}
     style={style}
     {...props}
     className={className}

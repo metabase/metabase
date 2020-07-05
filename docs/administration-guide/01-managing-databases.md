@@ -20,7 +20,7 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 - [Oracle](databases/oracle.md)
 - PostgreSQL
 - Presto
-- Snowflake
+- [Snowflake](databases/snowflake.md)
 - SparkSQL
 - SQL Server
 - SQLite

@@ -77,16 +77,16 @@
 (def default-user-details
   "Map of the db user details field, useful for `connection-properties` implementations"
   {:name         "user"
-   :display-name (deferred-tru "Database username")
+   :display-name (deferred-tru "Username")
    :placeholder  (deferred-tru "What username do you use to login to the database?")
    :required     true})
 
 (def default-password-details
   "Map of the db password details field, useful for `connection-properties` implementations"
   {:name         "password"
-   :display-name (deferred-tru "Database password")
+   :display-name (deferred-tru "Password")
    :type         :password
-   :placeholder  "*******"})
+   :placeholder  "••••••••"})
 
 (def default-dbname-details
   "Map of the db name details field, useful for `connection-properties` implementations"

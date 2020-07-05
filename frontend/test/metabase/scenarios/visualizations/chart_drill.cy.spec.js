@@ -1,54 +1,64 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { signInAsAdmin, restore, withSampleDataset } from "__support__/cypress";
 
 describe("scenarios > visualizations > chart drill", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
   it("should allow brush date filter", () => {
-    cy.request("POST", "/api/card", {
-      name: "Orders by Product → Created At (month) and Product → Category",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": 2,
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "datetime-field",
-              ["fk->", ["field-id", 11], ["field-id", 7]],
-              "month",
+    withSampleDataset(({ ORDERS, PRODUCTS }) => {
+      cy.request("POST", "/api/card", {
+        name: "Orders by Product → Created At (month) and Product → Category",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": 2,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "datetime-field",
+                [
+                  "fk->",
+                  ["field-id", ORDERS.PRODUCT_ID],
+                  ["field-id", PRODUCTS.CREATED_AT],
+                ],
+                "month",
+              ],
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.CATEGORY],
+              ],
             ],
-            ["fk->", ["field-id", 11], ["field-id", 6]],
-          ],
+          },
+          type: "query",
         },
-        type: "query",
-      },
-      display: "line",
-      visualization_settings: {},
-    }).then(response => {
-      cy.visit(`/question/${response.body.id}`);
+        display: "line",
+        visualization_settings: {},
+      }).then(response => {
+        cy.visit(`/question/${response.body.id}`);
 
-      // wait for chart to expand and display legend/labels
-      cy.contains("Loading..."); // this gives more time to load
-      cy.contains("Gadget");
-      cy.contains("January, 2017");
-      cy.wait(100); // wait longer to avoid grabbing the svg before a chart redraw
+        // wait for chart to expand and display legend/labels
+        cy.contains("Loading..."); // this gives more time to load
+        cy.contains("Gadget");
+        cy.contains("January, 2017");
+        cy.wait(100); // wait longer to avoid grabbing the svg before a chart redraw
 
-      // drag across to filter
-      cy.get(".dc-chart svg")
-        .trigger("mousedown", 100, 200)
-        .trigger("mousemove", 200, 200)
-        .trigger("mouseup", 200, 200);
+        // drag across to filter
+        cy.get(".dc-chart svg")
+          .trigger("mousedown", 100, 200)
+          .trigger("mousemove", 200, 200)
+          .trigger("mouseup", 200, 200);
 
-      // new filter applied
-      cy.contains("Created At between May, 2016 July, 2016");
-      // more granular axis labels
-      cy.contains("June, 2016");
-      // confirm that product category is still broken out
-      cy.contains("Gadget");
-      cy.contains("Doohickey");
-      cy.contains("Gizmo");
-      cy.contains("Widget");
+        // new filter applied
+        cy.contains("Created At between May, 2016 July, 2016");
+        // more granular axis labels
+        cy.contains("June, 2016");
+        // confirm that product category is still broken out
+        cy.contains("Gadget");
+        cy.contains("Doohickey");
+        cy.contains("Gizmo");
+        cy.contains("Widget");
+      });
     });
   });
 

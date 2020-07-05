@@ -4,6 +4,7 @@ import { t, jt } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/components/ExternalLink";
 import getFieldsForBigQuery from "./big-query-fields";
+import getFieldsForMongo from "./mongo-fields";
 
 import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
@@ -170,11 +171,15 @@ function getAuthCodeEnableAPILink(engine, details) {
   }
 }
 
-function getFieldsForEngine(engine, details) {
+function getFieldsForEngine(engine, details, id) {
   let info = (MetabaseSettings.get("engines") || {})[engine];
   if (engine === "bigquery") {
     // BigQuery has special logic to switch out forms depending on what style of authenication we use.
     info = getFieldsForBigQuery(details);
+  }
+  if (engine === "mongo") {
+    // Mongo has special logic to switch between a connection URI and broken out fields
+    info = getFieldsForMongo(details, info, id);
   }
   if (info) {
     const fields = [];
@@ -227,6 +232,7 @@ function getFieldsForEngine(engine, details) {
             : value,
         horizontal: field.type === "boolean",
         initial: field.default,
+        readOnly: field.readOnly || false,
         ...(overrides && overrides(engine, details)),
       });
     }
@@ -245,7 +251,7 @@ const ENGINE_OPTIONS = Object.entries(MetabaseSettings.get("engines") || {})
 
 const forms = {
   details: {
-    fields: ({ engine, details = {} } = {}) => [
+    fields: ({ id, engine, details = {} } = {}) => [
       {
         name: "engine",
         title: t`Database type`,
@@ -260,7 +266,7 @@ const forms = {
         validate: value => !value && t`required`,
         hidden: !engine,
       },
-      ...(getFieldsForEngine(engine, details) || []),
+      ...(getFieldsForEngine(engine, details, id) || []),
       {
         name: "auto_run_queries",
         type: "boolean",

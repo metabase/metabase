@@ -13,6 +13,15 @@ databaseChangeLog:
       name: quote_strategy
       value: LEGACY
       dbms: postgresql,h2
+  - property:
+      name: timestamp_type
+      value: timestamp with time zone
+      dbms: postgresql,h2
+  - property:
+      name: timestamp_type
+      value: timestamp(6)
+      dbms: mysql,mariadb
+
   - changeSet:
       id: '1'
       author: agilliland
@@ -6224,20 +6233,50 @@ databaseChangeLog:
               remarks: 'Preferred ISO locale (language/country) code, e.g "en" or "en-US", for this User. Overrides site default.'
               type: varchar(5)
 
+# Add Field `database_position` to keep the order in which fields are ordered in the DB, `custom_position` for custom
+# position; and Table `field_order` setting.
+
+  - changeSet:
+      id: 165
+      author: sb
+      comment: 'Added field_order to Table and database_position to Field'
+      validCheckSum:
+        - 8:474a357368a665d5e0701b9eb5f313f9
+        - 8:8848644da9dd9e40924ae71ac4c7c370
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_position
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: custom_position
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: field_order
+                  type: varchar(254)
+                  defaultValue: database
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: update metabase_field set database_position = id
+
 # Change field_values.updated_at and query_cache.updated_at from datetime to timestamp [with time zone] to get >
 # second resolution on MySQL.
 #
 # query_cache.updated_at was originally converted to a timestamp in 161, but we used `timestamp` instead of
 # `timestamp(6)`. It is converted correctly here.
 
-  - property:
-      name: timestamp_type
-      value: timestamp with time zone
-      dbms: postgresql,h2
-  - property:
-      name: timestamp_type
-      value: timestamp(6)
-      dbms: mysql,mariadb
   - changeSet:
       id: 166
       author: camsaul
@@ -6255,12 +6294,15 @@ databaseChangeLog:
 # Create the native query snippets table, intended to store snippets and their metadata
   - changeSet:
       id: 167
-      author: walterl
+      author: walterl, camsaul
       comment: 'Added 0.36.0'
       changes:
+        # If an older version of this Table was created locally (during dev) drop it, we have an updated definition
+        - sql:
+            sql: drop table if exists native_query_snippet
         - createTable:
             tableName: native_query_snippet
-            remarks: 'Query snippets to be substituted in native queries'
+            remarks: 'Query snippets (raw text) to be substituted in native queries'
             columns:
               - column:
                   name: id
@@ -6270,19 +6312,12 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: database_id
-                  type: integer
-                  constraints:
-                    nullable: false
-                    references: metabase_database(id)
-                    foreignKeyName: fk_snippet_database_id
-                    deleteCascade: true
-              - column:
                   name: name
                   type: VARCHAR(254)
                   remarks: 'Name of the query snippet'
                   constraints:
                     nullable: false
+                    unique: true
               - column:
                   name: description
                   type: text
@@ -6299,8 +6334,9 @@ databaseChangeLog:
                     nullable: false
                     references: core_user(id)
                     foreignKeyName: fk_snippet_creator_id
-                    deferrable: false
-                    initiallyDeferred: false
+                    # This primarily affects tests because under normal
+                    # circumstances we don't delete Users, we just archive them
+                    deleteCascade: true
               - column:
                   name: archived
                   type: boolean
@@ -6309,21 +6345,103 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: created_at
-                  type: datetime
+                  type: ${timestamp_type}
+                  # it seems like defaultValueComputed actaully just ends
+                  # getting ignored anyway -- see
+                  # https://stackoverflow.com/questions/58816496/force-liquibase-to-current-timestamp-instead-of-now
+                  # We set a custom value for MySQL/MariaDB in MetabaseMySqlCreateTableSqlGenerator.java
+                  defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
-                  type: datetime
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+        # Needed to efficiently enforce the unique constraint on name and so we can lookup by name as well.
         - createIndex:
             tableName: native_query_snippet
-            indexName: idx_snippet_database_id
+            indexName: idx_snippet_name
             columns:
               - column:
-                  name: database_id
-        - addUniqueConstraint:
+                  name: name
+
+# Convert query execution from DATETIME to TIMESTAMP(6) so have normalize TZ
+# offset and so MySQL/MariaDB has better than second precision
+
+  - changeSet:
+      id: 168
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - modifyDataType:
+            tableName: query_execution
+            columnName: started_at
+            newDataType: ${timestamp_type}
+
+# Remove `Table.rows`, which hasn't been used for years now. Older versions of Metabase used to store the row count in
+# this column but we disabled it a long time ago for performance reasons. Now it's time to remove it entirely.
+
+  - changeSet:
+      id: 169
+      author: camsaul
+      comment: Added 0.36.0
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: rows
+
+# Remove fields_hash from Table model, as we no longer skip sync steps if metadata
+# hash hasn't changed.
+
+  - changeSet:
+      id: 170
+      author: sb
+      comment: Added 0.36.0
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: fields_hash
+
+# In EE, NativeQuerySnippets have a permissions system based on "snippet folders" which are Collections under the
+# hood. However, these Collections live in a separate "namespace" -- a completely separate hierarchy of Collections.
+
+  - changeSet:
+      id: 171
+      author: camsaul
+      comment: Added 1.36.0
+      changes:
+        - addColumn:
             tableName: native_query_snippet
-            constraintName: idx_unique_name_database_id
-            columnNames: name, database_id
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: 'ID of the Snippet Folder (Collection) this Snippet is in, if any'
+                  constraints:
+                    nullable: true
+                    references: collection(id)
+                    foreignKeyName: fk_snippet_collection_id
+                    deleteCascade: true
+        - createIndex:
+            tableName: native_query_snippet
+            indexName: idx_snippet_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: 172
+      author: camsaul
+      comment: Added 1.36.0
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: namespace
+                  type: varchar(254)
+                  remarks: 'The namespace (hierachy) this Collection belongs to. NULL means the Collection is in the default namespace.'
+                  constraints:
+                    nullable: true

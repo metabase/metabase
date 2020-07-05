@@ -8,6 +8,7 @@ const FormSelectWidget = ({ placeholder, options = [], field }) => (
     {...field}
     // react-redux expects to be raw value
     onChange={e => field.onChange(e.target.value)}
+    buttonProps={{ style: { minWidth: 200 } }}
   >
     {options.map(({ name, value }) => (
       <Option key={value} value={value}>

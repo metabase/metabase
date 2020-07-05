@@ -28,13 +28,13 @@
              [db :as db]
              [hydrate :as hydrate]]))
 
-(use-fixtures :once (fixtures/initialize :plugins))
+(use-fixtures :once (fixtures/initialize :db :plugins))
 
 ;; HELPER FNS
 
 (driver/register! ::test-driver
-                  :parent :sql-jdbc
-                  :abstract? true)
+  :parent :sql-jdbc
+  :abstract? true)
 
 (defmethod driver/connection-properties ::test-driver
   [_]
@@ -44,21 +44,6 @@
   [_ _]
   true)
 
-(def ^:private default-db-details
-  {:engine                      "h2"
-   :name                        "test-data"
-   :is_sample                   false
-   :is_full_sync                true
-   :is_on_demand                false
-   :description                 nil
-   :caveats                     nil
-   :points_of_interest          nil
-   :cache_field_values_schedule "0 50 0 * * ? *"
-   :metadata_sync_schedule      "0 50 * * * ? *"
-   :options                     nil
-   :timezone                    nil
-   :auto_run_queries            true})
-
 (defn- db-details
   "Return default column values for a database (either the test database, via `(mt/db)`, or optionally passed in)."
   ([]
@@ -66,29 +51,16 @@
 
   ([{driver :engine, :as db}]
    (merge
-    default-db-details
+    (mt/object-defaults Database)
     (select-keys db [:created_at :id :details :updated_at :timezone :name])
     {:engine   (u/qualified-name (:engine db))
      :features (map u/qualified-name (driver.u/features driver))})))
 
-(def ^:private default-table-details
-  {:description             nil
-   :entity_name             nil
-   :entity_type             "entity/GenericTable"
-   :caveats                 nil
-   :points_of_interest      nil
-   :visibility_type         nil
-   :active                  true
-   :show_in_getting_started false})
-
 (defn- table-details [table]
-  (-> default-table-details
-      (merge
-       (select-keys table [:active :created_at :db_id :description :display_name :entity_name :entity_type :fields_hash
-                           :id :name :rows :schema :updated_at :visibility_type]))
-      (update :entity_type (fn [entity-type]
-                             (when entity-type
-                               (str "entity/" (name entity-type)))))
+  (-> (merge (mt/obj->json->obj (mt/object-defaults Table))
+             (select-keys table [:active :created_at :db_id :description :display_name :entity_name :entity_type
+                                 :id :name :rows :schema :updated_at :visibility_type]))
+      (update :entity_type #(when % (str "entity/" (name %))))
       (update :visibility_type #(when % (name %)))))
 
 (defn- expected-tables [db-or-id]
@@ -96,23 +68,14 @@
                        :db_id (u/get-id db-or-id), :active true
                        {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 
-(def ^:private default-field-details
-  {:description        nil
-   :caveats            nil
-   :points_of_interest nil
-   :active             true
-   :position           0
-   :target             nil
-   :preview_display    true
-   :parent_id          nil
-   :settings           nil})
-
 (defn- field-details [field]
-  (merge
-   default-field-details
-   (select-keys
-    field
-    [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id :position])))
+  (mt/derecordize
+   (merge
+    (mt/object-defaults Field)
+    {:target nil}
+    (select-keys
+     field
+     [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id :position]))))
 
 (defn- add-schedules [db]
   (assoc db :schedules {:cache_field_values {:schedule_day   nil
@@ -186,7 +149,7 @@
   (testing "POST /api/database"
     (testing "Check that we can create a Database"
       (is (schema= (merge
-                    (m/map-vals s/eq default-db-details)
+                    (m/map-vals s/eq (mt/object-defaults Database))
                     {:created_at java.time.temporal.Temporal
                      :engine     (s/eq ::test-driver)
                      :id         su/IntGreaterThanZero
@@ -245,43 +208,45 @@
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge default-db-details
+    (is (= (merge (dissoc (mt/object-defaults Database) :details)
                   (select-keys (mt/db) [:created_at :id :updated_at :timezone])
                   {:engine   "h2"
                    :name     "test-data"
                    :features (map u/qualified-name (driver.u/features :h2))
                    :tables   [(merge
-                               default-table-details
-                               (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :categories))
+                               (mt/obj->json->obj (mt/object-defaults Table))
+                               (db/select-one [Table :created_at :updated_at] :id (mt/id :categories))
                                {:schema       "PUBLIC"
                                 :name         "CATEGORIES"
                                 :display_name "Categories"
+                                :entity_type  "entity/GenericTable"
                                 :fields       [(merge
                                                 (field-details (Field (mt/id :categories :id)))
-                                                {:table_id         (mt/id :categories)
-                                                 :special_type     "type/PK"
-                                                 :name             "ID"
-                                                 :display_name     "ID"
-                                                 :database_type    "BIGINT"
-                                                 :base_type        "type/BigInteger"
-                                                 :visibility_type  "normal"
-                                                 :has_field_values "none"})
+                                                {:table_id          (mt/id :categories)
+                                                 :special_type      "type/PK"
+                                                 :name              "ID"
+                                                 :display_name      "ID"
+                                                 :database_type     "BIGINT"
+                                                 :base_type         "type/BigInteger"
+                                                 :visibility_type   "normal"
+                                                 :has_field_values  "none"
+                                                 :database_position 0})
                                                (merge
                                                 (field-details (Field (mt/id :categories :name)))
-                                                {:table_id         (mt/id :categories)
-                                                 :special_type     "type/Name"
-                                                 :name             "NAME"
-                                                 :display_name     "Name"
-                                                 :database_type    "VARCHAR"
-                                                 :base_type        "type/Text"
-                                                 :visibility_type  "normal"
-                                                 :has_field_values "list"})]
+                                                {:table_id          (mt/id :categories)
+                                                 :special_type      "type/Name"
+                                                 :name              "NAME"
+                                                 :display_name      "Name"
+                                                 :database_type     "VARCHAR"
+                                                 :base_type         "type/Text"
+                                                 :visibility_type   "normal"
+                                                 :has_field_values  "list"
+                                                 :database_position 1})]
                                 :segments     []
                                 :metrics      []
-                                :rows         nil
                                 :id           (mt/id :categories)
                                 :db_id        (mt/id)})]})
-           (let [resp ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id)))]
+           (let [resp (mt/derecordize ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
 
 (deftest fetch-database-metadata-include-hidden-test

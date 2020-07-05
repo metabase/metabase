@@ -1,7 +1,9 @@
 (ns metabase.models.native-query-snippet
   (:require [metabase.models
-             [interface :as i]
-             [permissions :as perms]]
+             [collection :as collection]
+             [interface :as i]]
+            [metabase.models.native-query-snippet.permissions :as snippet.perms]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
@@ -9,36 +11,44 @@
              [db :as db]
              [models :as models]]))
 
+;; Load the EE implementation of snippet permissions, if they exist (if we're running with EE code available).
+(u/ignore-exceptions
+  (classloader/require 'metabase-enterprise.enhancements.models.native-query-snippet.permissions))
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel NativeQuerySnippet :native_query_snippet)
+
+(defmethod collection/allowed-namespaces (class NativeQuerySnippet)
+  [_]
+  #{:snippets})
+
+(defn- pre-insert [snippet]
+  (u/prog1 snippet
+    (collection/check-collection-namespace snippet)))
 
 (defn- pre-update [{:keys [creator_id id], :as updates}]
   (u/prog1 updates
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? updates :creator_id)
       (when (not= creator_id (db/select-one-field :creator_id NativeQuerySnippet :id id))
-        (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))))
-
-(defn- perms-objects-set
-  "Permissions to read or write a NativeQuerySnippet are the same as native query access."
-  [snippet _]
-  #{(perms/adhoc-native-query-path (:database_id snippet))})
+        (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))
+    (collection/check-collection-namespace updates)))
 
 (u/strict-extend (class NativeQuerySnippet)
   models/IModel
   (merge
    models/IModelDefaults
    {:properties (constantly {:timestamped? true})
+    :pre-insert pre-insert
     :pre-update pre-update})
 
   i/IObjectPermissions
   (merge
    i/IObjectPermissionsDefaults
-   {:perms-objects-set perms-objects-set
-    :can-read?         (partial i/current-user-has-full-permissions? :write)
-    :can-write?        (partial i/current-user-has-full-permissions? :write)
-    :can-create?       (partial i/current-user-has-full-permissions? :write)}))
+   {:can-read?   snippet.perms/can-read?
+    :can-write?  snippet.perms/can-write?
+    :can-create? snippet.perms/can-create?}))
 
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------

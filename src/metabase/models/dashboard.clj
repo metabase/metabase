@@ -55,9 +55,14 @@
   (db/delete! DashboardCard :dashboard_id (u/get-id dashboard)))
 
 (defn- pre-insert [dashboard]
-  (let [defaults {:parameters []}]
-    (merge defaults dashboard)))
+  (let [defaults  {:parameters []}
+        dashboard (merge defaults dashboard)]
+    (u/prog1 dashboard
+      (collection/check-collection-namespace (map->DashboardInstance dashboard)))))
 
+(defn- pre-update [dashboard]
+  (u/prog1 dashboard
+    (collection/check-collection-namespace dashboard)))
 
 (u/strict-extend (class Dashboard)
   models/IModel
@@ -66,6 +71,7 @@
           :types       (constantly {:parameters :json, :embedding_params :json})
           :pre-delete  pre-delete
           :pre-insert  pre-insert
+          :pre-update  pre-update
           :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
   ;; You can read/write a Dashboard if you can read/write its parent Collection

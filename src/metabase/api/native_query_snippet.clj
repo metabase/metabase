@@ -1,12 +1,15 @@
 (ns metabase.api.native-query-snippet
   "Native query snippet (/api/native-query-snippet) endpoints."
-  (:require [compojure.core :refer [GET POST PUT]]
+  (:require [clojure.data :as data]
+            [compojure.core :refer [GET POST PUT]]
             [metabase.api.common :as api]
             [metabase.models
              [interface :as mi]
              [native-query-snippet :as snippet :refer [NativeQuerySnippet]]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -31,21 +34,24 @@
   [id]
   (hydrated-native-query-snippet id))
 
+(defn- check-snippet-name-is-unique [snippet-name]
+  (when (db/exists? NativeQuerySnippet :name snippet-name)
+    (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
+                    {:status-code 400}))))
+
 (api/defendpoint POST "/"
   "Create a new `NativeQuerySnippet`."
-  [:as {{:keys [content database_id description name]} :body}]
+  [:as {{:keys [content description name]} :body}]
   {content     s/Str
-   database_id su/IntGreaterThanZero
    description (s/maybe s/Str)
    name        snippet/NativeQuerySnippetName}
-  (api/check-superuser)
+  (check-snippet-name-is-unique name)
   (api/check-500
    (db/insert! NativeQuerySnippet
-               {:content     content
-                :creator_id  api/*current-user-id*
-                :database_id database_id
-                :description description
-                :name        name})))
+     {:content     content
+      :creator_id  api/*current-user-id*
+      :description description
+      :name        name})))
 
 (defn- write-check-and-update-snippet!
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
@@ -55,9 +61,10 @@
         body-fields (u/select-keys-when body
                       :present #{:description}
                       :non-nil #{:archived :content :name})
-        changes     (when-not (= body-fields (select-keys snippet (keys body-fields)))
-                      body-fields)]
-    (when changes
+        [changes]   (data/diff body-fields snippet)]
+    (when (seq changes)
+      (when-let [new-name (:name changes)]
+        (check-snippet-name-is-unique new-name))
       (db/update! NativeQuerySnippet id changes))
     (hydrated-native-query-snippet id)))
 
