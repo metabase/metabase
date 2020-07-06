@@ -22,6 +22,9 @@
 
 (driver/register! :vertica, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
 
+(defmethod driver/supports? [:vertica :percentile-aggregations] [_ _] false)
+
+
 (defmethod sql-jdbc.sync/database-type->base-type :vertica
   [_ database-type]
   ({:Boolean                   :type/Boolean
