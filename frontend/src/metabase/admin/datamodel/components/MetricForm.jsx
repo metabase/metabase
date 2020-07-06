@@ -1,5 +1,7 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
+import { reduxForm } from "redux-form";
+import cx from "classnames";
 
 import FormLabel from "../components/FormLabel";
 import FormInput from "../components/FormInput";
@@ -8,15 +10,7 @@ import FieldSet from "metabase/components/FieldSet";
 import PartialQueryBuilder from "../components/PartialQueryBuilder";
 import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
-
-import { reduxForm } from "redux-form";
-
 import * as Q_DEPRECATED from "metabase/lib/query";
-
-import cx from "classnames";
-import Question from "metabase-lib/lib/Question";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import Table from "metabase-lib/lib/metadata/Table";
 
 @reduxForm(
   {
@@ -55,11 +49,7 @@ import Table from "metabase-lib/lib/metadata/Table";
 )
 export default class MetricForm extends Component {
   renderActionButtons() {
-    const {
-      invalid,
-      handleSubmit,
-      table: { db_id: databaseId, id: tableId },
-    } = this.props;
+    const { invalid, handleSubmit } = this.props;
     return (
       <div>
         <button
@@ -70,64 +60,16 @@ export default class MetricForm extends Component {
           onClick={handleSubmit}
         >{t`Save changes`}</button>
         <Link
-          to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
+          to={`/admin/datamodel/metrics`}
           className="Button ml2"
         >{t`Cancel`}</Link>
       </div>
     );
   }
 
-  componentDidMount() {
-    if (!this.props.fields.definition.value) {
-      this.setDefaultQuery();
-    }
-  }
-  componentDidUpdate() {
-    if (!this.props.fields.definition.value) {
-      this.setDefaultQuery();
-    }
-  }
-
-  setDefaultQuery() {
-    const {
-      fields: {
-        definition: { onChange },
-      },
-      metadata,
-      table: { id: tableId, db_id: databaseId },
-      updatePreviewSummary,
-    } = this.props;
-
-    if (!metadata) {
-      // we need metadata to generate a default question
-      return;
-    }
-
-    const query = Question.create({ databaseId, tableId, metadata }).query();
-    const table = query.table();
-    let queryWithFilters;
-    if (table.entity_type === "entity/GoogleAnalyticsTable") {
-      const dateField = table.fields.find(f => f.name === "ga:date");
-      if (dateField) {
-        queryWithFilters = query
-          .filter(["time-interval", ["field-id", dateField.id], -365, "day"])
-          .aggregate(["metric", "ga:users"]);
-      }
-    } else {
-      queryWithFilters = query.aggregate(["count"]);
-    }
-
-    if (queryWithFilters) {
-      onChange(queryWithFilters.query());
-      updatePreviewSummary(queryWithFilters.datasetQuery());
-    }
-  }
-
   render() {
     const {
       fields: { id, name, description, definition, revision_message },
-      metadata,
-      table,
       handleSubmit,
       previewSummary,
       updatePreviewSummary,
@@ -142,47 +84,24 @@ export default class MetricForm extends Component {
             title={isNewRecord ? t`Create Your Metric` : t`Edit Your Metric`}
             description={
               isNewRecord
-                ? t`You can create saved metrics to add a named metric option to this table. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating "Average Price" for an Orders table.`
+                ? t`You can create saved metrics to add a named metric option. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating "Average Price" for an Orders table.`
                 : t`Make changes to your metric and leave an explanatory note.`
             }
           >
-            {metadata && table && (
-              <PartialQueryBuilder
-                features={{
-                  filter: true,
-                  aggregation: true,
-                }}
-                metadata={
-                  metadata.tables &&
-                  metadata.tables[table.id].fields &&
-                  Object.assign(new Metadata(), metadata, {
-                    tables: {
-                      ...metadata.tables,
-                      [table.id]: Object.assign(
-                        new Table(),
-                        metadata.tables[table.id],
-                        {
-                          aggregation_operators: (
-                            table.aggregation_operators || []
-                          ).filter(a => a.short !== "rows"),
-                          metrics: (table.metrics || []).filter(
-                            m => m.googleAnalyics,
-                          ),
-                        },
-                      ),
-                    },
-                  })
-                }
-                tableMetadata={table}
-                previewSummary={
-                  previewSummary == null
-                    ? ""
-                    : t`Result: ` + formatValue(previewSummary)
-                }
-                updatePreviewSummary={updatePreviewSummary}
-                {...definition}
-              />
-            )}
+            <PartialQueryBuilder
+              features={{
+                filter: true,
+                aggregation: true,
+              }}
+              previewSummary={
+                previewSummary == null
+                  ? ""
+                  : t`Result: ` + formatValue(previewSummary)
+              }
+              updatePreviewSummary={updatePreviewSummary}
+              canChangeTable={isNewRecord}
+              {...definition}
+            />
           </FormLabel>
           <div style={{ maxWidth: "575px" }}>
             <FormLabel

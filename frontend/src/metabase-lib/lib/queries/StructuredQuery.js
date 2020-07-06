@@ -816,9 +816,14 @@ export default class StructuredQuery extends AtomicQuery {
     return [].concat(...queries.map(q => q.filters()));
   }
 
-  filterFieldOptionSections(filter?: ?(Filter | FilterWrapper)) {
+  filterFieldOptionSections(
+    filter?: ?(Filter | FilterWrapper),
+    { includeSegments = true } = {},
+  ) {
     const filterDimensionOptions = this.filterDimensionOptions();
-    const filterSegmentOptions = this.filterSegmentOptions(filter);
+    const filterSegmentOptions = includeSegments
+      ? this.filterSegmentOptions(filter)
+      : [];
     return filterDimensionOptions.sections({
       extraItems: filterSegmentOptions.map(segment => ({
         name: segment.name,

@@ -1,32 +1,83 @@
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
-
-import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
-import { t } from "ttag";
-import * as Urls from "metabase/lib/urls";
-
 import cx from "classnames";
+import { t } from "ttag";
+import _ from "underscore";
 
 import Question from "metabase-lib/lib/Question";
 
+import { getMetadata } from "metabase/selectors/metadata";
+import Tables from "metabase/entities/tables";
+import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
+import * as Urls from "metabase/lib/urls";
+
+import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
+
+@Tables.load({
+  id: (state, props) => props.value && props.value["source-table"],
+  wrapped: true,
+})
+@withTableMetadataLoaded
+@connect((state, props) => ({ metadata: getMetadata(state) }))
 export default class PartialQueryBuilder extends Component {
   static propTypes = {
     onChange: PropTypes.func.isRequired,
-    tableMetadata: PropTypes.object.isRequired,
+    table: PropTypes.object.isRequired,
     updatePreviewSummary: PropTypes.func.isRequired,
     previewSummary: PropTypes.string,
   };
 
   componentDidMount() {
-    const { value, tableMetadata } = this.props;
-    this.props.updatePreviewSummary({
-      type: "query",
-      database: tableMetadata.db_id,
-      query: {
-        ...value,
-        "source-table": tableMetadata.id,
-      },
-    });
+    const { value, table } = this.props;
+    if (table && value != null) {
+      this.props.updatePreviewSummary({
+        type: "query",
+        database: table.db_id,
+        query: {
+          ...value,
+          "source-table": table.id,
+        },
+      });
+    } else {
+      this.maybeSetDefaultQuery();
+    }
+  }
+
+  componentDidUpdate() {
+    this.maybeSetDefaultQuery();
+  }
+
+  maybeSetDefaultQuery() {
+    const { metadata, table, value } = this.props;
+    if (value != null && !_.isEqual(Object.keys(value), ["source-table"])) {
+      // only set the query if it doesn't already have an aggregation or filter
+      return;
+    }
+
+    if (!metadata || !table) {
+      // we need metadata and a table to generate a default question
+      return;
+    }
+
+    const { id: tableId, db_id: databaseId } = table;
+    const query = Question.create({ databaseId, tableId, metadata }).query();
+    // const table = query.table();
+    let queryWithFilters;
+    if (table.entity_type === "entity/GoogleAnalyticsTable") {
+      const dateField = table.fields.find(f => f.name === "ga:date");
+      if (dateField) {
+        queryWithFilters = query
+          .filter(["time-interval", ["field-id", dateField.id], -365, "day"])
+          .aggregate(["metric", "ga:users"]);
+      }
+    } else {
+      queryWithFilters = query.aggregate(["count"]);
+    }
+
+    if (queryWithFilters) {
+      this.setDatasetQuery(queryWithFilters.datasetQuery());
+    }
   }
 
   setDatasetQuery = datasetQuery => {
@@ -35,27 +86,21 @@ export default class PartialQueryBuilder extends Component {
   };
 
   render() {
-    const {
-      features,
-      value,
-      metadata,
-      tableMetadata,
-      previewSummary,
-    } = this.props;
+    const { features, value, metadata, table, previewSummary } = this.props;
 
-    const datasetQuery = {
-      type: "query",
-      database: tableMetadata.db_id,
-      query: {
-        ...value,
-        "source-table": tableMetadata.id,
-      },
-    };
+    const datasetQuery = table
+      ? {
+          type: "query",
+          database: table.db_id,
+          query: value,
+        }
+      : {
+          type: "query",
+          query: {},
+        };
 
     const query = new Question(
-      {
-        dataset_query: datasetQuery,
-      },
+      { dataset_query: datasetQuery },
       metadata,
     ).query();
 
@@ -69,12 +114,10 @@ export default class PartialQueryBuilder extends Component {
         <GuiQueryEditor
           features={features}
           query={query}
-          databases={tableMetadata && [tableMetadata.db]}
-          setDatabaseFn={null}
-          setSourceTableFn={null}
           setDatasetQuery={this.setDatasetQuery}
           isShowingDataReference={false}
           supportMultipleAggregations={false}
+          canChangeTable={this.props.canChangeTable}
         >
           <div className="flex align-center mx2 my2">
             <span className="text-bold px3">{previewSummary}</span>

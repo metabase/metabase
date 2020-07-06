@@ -55,6 +55,7 @@ export default class AggregationWidget extends Component {
           query={query}
           aggregation={aggregation}
           onChangeAggregation={this.handleChangeAggregation}
+          showMetrics={this.props.showMetrics}
         />
       </Popover>
     );
