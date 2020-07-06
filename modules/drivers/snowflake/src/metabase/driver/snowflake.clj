@@ -37,7 +37,8 @@
   [_ {:keys [account regionid], :as opts}]
   (let [host (if regionid
                (str account "." regionid)
-               account)]
+               account)
+        upcase-not-nil (fn [s] (when s (str/upper-case s)))]
     ;; it appears to be the case that their JDBC driver ignores `db` -- see my bug report at
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
     (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
@@ -59,9 +60,9 @@
                    ;; `db`. If we run across `dbname`, correct our behavior
                    (set/rename-keys {:dbname :db})
                    ;; see https://github.com/metabase/metabase/issues/9511
-                   (update :warehouse str/upper-case)
-                   (update :schema str/upper-case)
-                   (update :db str/upper-case)
+                   (update :warehouse upcase-not-nil)
+                   (update :schema upcase-not-nil)
+                   (update :db upcase-not-nil)
                    (dissoc :host :port :timezone)))
         (sql-jdbc.common/handle-additional-options opts))))
 
