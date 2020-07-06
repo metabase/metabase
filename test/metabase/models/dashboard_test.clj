@@ -1,5 +1,9 @@
 (ns metabase.models.dashboard-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
+            [metabase
+             [test :as mt]
+             [util :as u]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.models
@@ -17,7 +21,6 @@
              [data :refer :all]
              [util :as tu]]
             [metabase.test.data.users :as users]
-            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -167,18 +170,18 @@
          (update (serialize-dashboard (Dashboard dashboard-id)) :cards check-ids)]))))
 
 
-;; test that a Dashboard's :public_uuid comes back if public sharing is enabled...
-(expect
-  (tu/with-temporary-setting-values [enable-public-sharing true]
-    (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
-      (boolean (:public_uuid dashboard)))))
+(deftest public-sharing-test
+  (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
+    (tu/with-temporary-setting-values [enable-public-sharing true]
+      (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
+        (is (schema= u/uuid-regex
+                     (:public_uuid dashboard)))))
 
-;; ...but if public sharing is *disabled* it should come back as `nil`
-(expect
-  nil
-  (tu/with-temporary-setting-values [enable-public-sharing false]
-    (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
-      (:public_uuid dashboard))))
+    (testing "...but if public sharing is *disabled* it should come back as `nil`"
+      (tu/with-temporary-setting-values [enable-public-sharing false]
+        (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
+          (is (= nil
+                 (:public_uuid dashboard))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -226,23 +229,36 @@
     (binding [api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]
       (mi/can-write? dash))))
 
+(deftest transient-dashboards-test
+  (testing "test that we save a transient dashboard"
+    (tu/with-model-cleanup ['Card 'Dashboard 'DashboardCard 'Collection]
+      (binding [api/*current-user-id*              (users/user->id :rasta)
+                api/*current-user-permissions-set* (-> :rasta
+                                                       users/user->id
+                                                       user/permissions-set
+                                                       atom)]
+        (let [dashboard                  (magic/automagic-analysis (Table (id :venues)) {})
+              rastas-personal-collection (db/select-one-field :id 'Collection
+                                           :personal_owner_id api/*current-user-id*)
+              saved-dashboard            (save-transient-dashboard! dashboard rastas-personal-collection)]
+          (is (= (db/count 'DashboardCard :dashboard_id (:id saved-dashboard))
+                 (-> dashboard :ordered_cards count))))))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           Transient Dashboard Tests                                            |
-;;; +----------------------------------------------------------------------------------------------------------------+
+(deftest validate-collection-namespace-test
+  (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]
+    (testing "Shouldn't be able to create a Dashboard in a non-normal Collection"
+      (let [dashboard-name (mt/random-name)]
+        (try
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"A Dashboard can only go in Collections in the \"default\" namespace"
+               (db/insert! Dashboard (assoc (tt/with-temp-defaults Dashboard) :collection_id collection-id, :name dashboard-name))))
+          (finally
+            (db/delete! Dashboard :name dashboard-name)))))
 
-;; test that we save a transient dashboard
-(expect
-  (tu/with-model-cleanup ['Card 'Dashboard 'DashboardCard 'Collection]
-    (binding [api/*current-user-id*              (users/user->id :rasta)
-              api/*current-user-permissions-set* (-> :rasta
-                                                     users/user->id
-                                                     user/permissions-set
-                                                     atom)]
-      (let [dashboard                  (magic/automagic-analysis (Table (id :venues)) {})
-            rastas-personal-collection (db/select-one-field :id 'Collection
-                                         :personal_owner_id api/*current-user-id*)]
-        (->> (save-transient-dashboard! dashboard rastas-personal-collection)
-             :id
-             (db/count 'DashboardCard :dashboard_id)
-             (= (-> dashboard :ordered_cards count)))))))
+    (testing "Shouldn't be able to move a Dashboard to a non-normal Collection"
+      (mt/with-temp Dashboard [{card-id :id}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"A Dashboard can only go in Collections in the \"default\" namespace"
+             (db/update! Dashboard card-id {:collection_id collection-id})))))))

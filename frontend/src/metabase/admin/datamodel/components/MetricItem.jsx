@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
 import ObjectActionSelect from "./ObjectActionSelect";
 
-import * as Q_DEPRECATED from "metabase/lib/query";
+import { formatQueryDescription } from "metabase/lib/query/description";
 
 export default class MetricItem extends Component {
   static propTypes = {
@@ -15,11 +15,10 @@ export default class MetricItem extends Component {
   render() {
     const { metric, onRetire } = this.props;
 
-    const description = Q_DEPRECATED.formatQueryDescription(
-      metric.query_description,
-      metric.definition,
-      { sections: ["table", "aggregation", "filter"], jsx: true },
-    );
+    const description = formatQueryDescription(metric.query_description, {
+      sections: ["table", "aggregation", "filter"],
+      jsx: true,
+    });
 
     return (
       <tr className="mt1 mb3">

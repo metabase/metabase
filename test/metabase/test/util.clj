@@ -92,7 +92,7 @@
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
                 (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
-                           :fields_hash :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
+                           :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
                          #(str/ends-with? % "_id")
                          #(str/ends-with? % "_at")))
     data))
@@ -166,7 +166,9 @@
 
 (u/strict-extend (class NativeQuerySnippet)
   tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id (user-id :crowberto)})})
+  {:with-temp-defaults (fn [_] {:creator_id (user-id :crowberto)
+                                :name       (random-name)
+                                :content    "1 = 1"})})
 
 (u/strict-extend (class PermissionsGroup)
   tt/WithTempDefaults
@@ -575,7 +577,7 @@
 
 (defn do-with-model-cleanup [model-seq f]
   (try
-    (testing (str (pr-str (cons 'with-model-cleanup model-seq)) "\n")
+    (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name model-seq))) "\n")
       (f))
     (finally
       (doseq [model model-seq]

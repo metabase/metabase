@@ -37,7 +37,7 @@
                 {:table_id         (mt/id :users)
                  :table            (merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
-                                    (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :users))
+                                    (db/select-one [Table :created_at :updated_at] :id (mt/id :users))
                                     {:description             nil
                                      :entity_type             "entity/UserTable"
                                      :visibility_type         nil
@@ -45,7 +45,6 @@
                                      :schema                  "PUBLIC"
                                      :name                    "USERS"
                                      :display_name            "Users"
-                                     :rows                    nil
                                      :entity_name             nil
                                      :active                  true
                                      :id                      (mt/id :users)

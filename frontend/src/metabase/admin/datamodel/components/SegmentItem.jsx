@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
 import ObjectActionSelect from "./ObjectActionSelect";
 
-import * as Q_DEPRECATED from "metabase/lib/query";
+import { formatQueryDescription } from "metabase/lib/query/description";
 
 export default class SegmentItem extends Component {
   static propTypes = {
@@ -15,10 +15,10 @@ export default class SegmentItem extends Component {
   render() {
     const { segment, onRetire } = this.props;
 
-    const description = Q_DEPRECATED.formatQueryDescription(
-      segment.query_description,
-      { sections: ["table", "filter"], jsx: true },
-    );
+    const description = formatQueryDescription(segment.query_description, {
+      sections: ["filter"],
+      jsx: true,
+    });
 
     return (
       <tr className="mt1 mb3">
