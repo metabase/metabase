@@ -1,32 +1,35 @@
-import { signInAsAdmin, restore, openOrdersTable, popover, signIn } from "__support__/cypress";
+import {
+  signInAsAdmin,
+  restore,
+  openOrdersTable,
+  popover,
+  signIn,
+} from "__support__/cypress";
 
 function filterByVendor() {
   cy.findAllByText("VENDOR")
     .first()
-    .click()
-  popover()
-    .within(() => {
-      cy.findByPlaceholderText("Search by Vendor")
-        .type("b")
-      cy.findByText("Balistreri-Muller").click()
-      cy.findByText("Add filter").click()
-    })
+    .click();
+  popover().within(() => {
+    cy.findByPlaceholderText("Search by Vendor").type("b");
+    cy.findByText("Balistreri-Muller").click();
+    cy.findByText("Add filter").click();
+  });
   cy.get(".RunButton")
     .first()
-    .click()
+    .click();
 }
 function filterByCategory() {
   cy.findAllByText("CATEGORY")
     .first()
-    .click()
-  popover()
-    .within(() => {
-    cy.findByText("Widget").click()
-    cy.findByText("Add filter").click()
-  })
+    .click();
+  popover().within(() => {
+    cy.findByText("Widget").click();
+    cy.findByText("Add filter").click();
+  });
   cy.get(".RunButton")
     .last()
-    .click()
+    .click();
 }
 
 describe("scenarios > question > view", () => {
@@ -105,15 +108,15 @@ describe("scenarios > question > view", () => {
   describe("apply filters without data permissions", () => {
     before(() => {
       // All users upgraded to collection view access
-      signInAsAdmin()
-      cy.visit("/admin/permissions/collections")
+      signInAsAdmin();
+      cy.visit("/admin/permissions/collections");
       cy.get(".Icon-close")
         .first()
-        .click()
-      cy.findByText("View collection").click()
-      cy.findByText("Save Changes").click()
-      cy.findByText("Yes").click()
-      
+        .click();
+      cy.findByText("View collection").click();
+      cy.findByText("Save Changes").click();
+      cy.findByText("Yes").click();
+
       // Native query saved in dasbhoard
       cy.request("POST", "/api/dashboard", {
         name: "Dashboard",
@@ -140,82 +143,78 @@ describe("scenarios > question > view", () => {
                 type: "dimension",
                 dimension: ["field-id", 3],
                 "widget-type": "id",
-              }
+              },
             },
           },
           database: 1,
         },
         display: "table",
         visualization_settings: {},
-      })
+      });
       cy.request("POST", "/api/dashboard/2/cards", {
         id: 2,
-        cardId: 4
-      });    
+        cardId: 4,
+      });
     });
 
-    it("should give everyone view permissions", () => {
+    it("should give everyone view permissions", () => {});
 
-    });
-      
-      
     it("should show filters by list for Category", () => {
-      cy.visit("/question/4")
+      cy.visit("/question/4");
 
       cy.findAllByText("CATEGORY")
         .first()
-        .click()
-      popover()
-        .within(() => {
-          cy.findByPlaceholderText("Search the list");
-          cy.findByPlaceholderText("Search by Category").should("not.exist");
-        });
+        .click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Search the list");
+        cy.findByPlaceholderText("Search by Category").should("not.exist");
+      });
     });
 
     it("should show filters by search for Vendor", () => {
-      cy.visit("/question/4")
+      cy.visit("/question/4");
 
       cy.findAllByText("VENDOR")
         .first()
-        .click()
-      popover()
-        .within(() => {
-          cy.findByPlaceholderText("Search by Vendor");
-          cy.findByText("Search the list").should("not.exist")
-        })
+        .click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Search by Vendor");
+        cy.findByText("Search the list").should("not.exist");
+      });
     });
 
     it("should be able to filter Q by Category as no data user (from Q link)", () => {
-      signIn("nodata")
+      signIn("nodata");
       cy.visit("/question/4");
 
       // Filter by category and vendor
-      filterByCategory()
-      filterByVendor()
+      filterByCategory();
+      filterByVendor();
 
-      cy.findAllByText("Widget")
-      cy.findByText("Gizmo").should("not.exist")
+      cy.findAllByText("Widget");
+      cy.findByText("Gizmo").should("not.exist");
     });
 
     it("should be able to filter Q by Vendor as user (from Dashboard)", () => {
       // Navigate to Q from Dashboard
-      signIn("nodata")
-      cy.visit("/dashboard/2")
-      cy.findByText("Question").click()
-      
-      // Filter by category and vendor
-      filterByCategory()
-      filterByVendor()
+      signIn("nodata");
+      cy.visit("/dashboard/2");
+      cy.findByText("Question").click();
 
-      cy.get(".TableInteractive-cellWrapper--firstColumn")
-        .should("have.length", 2)
-      cy.get(".CardVisualization")
-        .within(() => {
-          cy.findByText("Widget");
-          cy.findByText("Balistreri-Muller");
-          cy.findByText("Gizmo").should("not.exist");
-          cy.findByText("McClure-Lockman").should("not.exist");
-        })
+      // Filter by category and vendor
+      filterByCategory();
+      filterByVendor();
+
+      cy.get(".TableInteractive-cellWrapper--firstColumn").should(
+        "have.length",
+        2,
+      );
+      cy.get(".CardVisualization").within(() => {
+        cy.findByText("Widget");
+        cy.findByText("Balistreri-Muller");
+        cy.findByText("Gizmo").should("not.exist");
+        cy.findByText("McClure-Lockman").should("not.exist");
+      });
     });
   });
 });
