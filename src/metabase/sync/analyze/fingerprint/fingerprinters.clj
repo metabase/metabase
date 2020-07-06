@@ -165,7 +165,7 @@
   ([acc]
    (some-> acc u.date/format))
   ([acc t]
-   (if (and t acc (t/before? t (->temporal acc)))
+   (if (and t acc (t/before? t acc))
      t
      (or acc t))))
 
@@ -174,7 +174,7 @@
   ([acc]
    (some-> acc u.date/format))
   ([acc t]
-   (if (and t acc (t/after? t (->temporal acc)))
+   (if (and t acc (t/after? t acc))
      t
      (or acc t))))
 
@@ -185,9 +185,9 @@
 
 (extend-protocol ITemporalCoerceable
   nil      (->temporal [_]    nil)
-  String   (->temporal [this] (u.date/parse this))
-  Long     (->temporal [this] (t/instant this))
-  Integer  (->temporal [this] (t/instant this))
+  String   (->temporal [this] (->temporal (u.date/parse this)))
+  Long     (->temporal [this] (->temporal (t/instant this)))
+  Integer  (->temporal [this] (->temporal (t/instant this)))
   ;; this is challenging, because ChronoLocalDate requires a ZoneOffset
   ;; to work with. Ideally, we would use the database's ZoneOffset, but
   ;; we don't have access to that here. Use the JVM's systemDefault to
