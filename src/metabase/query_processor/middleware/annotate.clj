@@ -82,7 +82,6 @@
            (let [col-name (name col-name)]
              (merge
               {:display_name (u/qualified-name col-name)
-               :base_type    base-type
                :source       :native}
               ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
               ;; for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank names in MBQL
@@ -464,7 +463,12 @@
 (defn- cols-for-source-query
   [{:keys [source-metadata], {native-source-query :native, :as source-query} :source-query} results]
   (if native-source-query
-    (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
+    (->> results
+         :cols
+         (map :base_type)
+         (assoc results :base-types)
+         (column-info {:type :native})
+         (maybe-merge-source-metadata source-metadata))
     (mbql-cols source-query results)))
 
 (s/defn mbql-cols
@@ -555,7 +559,7 @@
                         (f/constant-fingerprinter driver-base-type)
                         driver.common/values->base-type))))
 
-(defn- add-column-info-xform [{query-type :type, :as query} metadata rf]
+(defn- add-column-info-xform [query metadata rf]
   (qp.reducible/combine-additional-reducing-fns
    rf
    [(base-type-inferer metadata)
