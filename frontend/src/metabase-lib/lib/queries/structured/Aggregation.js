@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import { TYPE } from "metabase/lib/types";
 
-import { isStandard, isMetric, isCustom } from "metabase/lib/query/aggregation";
+import * as AGGREGATION from "metabase/lib/query/aggregation";
 
 import type { Aggregation as AggregationObject } from "metabase/meta/types/Query";
 import type StructuredQuery from "../StructuredQuery";
@@ -160,21 +160,21 @@ export default class Aggregation extends MBQLClause {
    * Returns true if this is a "standard" metric
    */
   isStandard(): boolean {
-    return isStandard(this);
+    return AGGREGATION.isStandard(this);
   }
 
   /**
    * Returns true if this is a metric
    */
   isMetric(): boolean {
-    return isMetric(this);
+    return AGGREGATION.isMetric(this);
   }
 
   /**
    * Returns true if this is custom expression created with the expression editor
    */
   isCustom(): boolean {
-    return isCustom(this);
+    return AGGREGATION.isCustom(this);
   }
 
   // STANDARD AGGREGATION

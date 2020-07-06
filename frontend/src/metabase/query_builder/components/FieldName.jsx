@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import Clearable from "./Clearable";
 
-import * as Q_DEPRECATED from "metabase/lib/query";
+import * as FieldRef from "metabase/lib/query/field_ref";
 
 import Dimension from "metabase-lib/lib/Dimension";
 
@@ -28,8 +28,7 @@ export default class FieldName extends Component {
     const matchingField = _.find(
       tableMetadata.fields,
       field =>
-        Q_DEPRECATED.isFieldLiteral(field.id) &&
-        field.id[1] === fieldLiteral[1],
+        FieldRef.isFieldLiteral(field.id) && field.id[1] === fieldLiteral[1],
     ); // check whether names of field literals match
 
     return (matchingField && matchingField.display_name) || fieldLiteral[1];
@@ -50,7 +49,7 @@ export default class FieldName extends Component {
         : Dimension.parseMBQL(field, tableMetadata && tableMetadata.metadata);
       if (dimension) {
         parts = <span key="field">{dimension.render()}</span>;
-      } else if (Q_DEPRECATED.isFieldLiteral(field)) {
+      } else if (FieldRef.isFieldLiteral(field)) {
         // TODO Atte Keinänen 6/23/17: Move nested queries logic to Dimension subclasses
         // if the Field in question is a field literal, e.g. ["field-literal", <name>, <type>] just use name as-is
         parts.push(
@@ -59,8 +58,8 @@ export default class FieldName extends Component {
           </span>,
         );
       } else if (
-        Q_DEPRECATED.isLocalField(field) &&
-        Q_DEPRECATED.isFieldLiteral(field[1])
+        FieldRef.isLocalField(field) &&
+        FieldRef.isFieldLiteral(field[1])
       ) {
         // otherwise if for some weird reason we wound up with a Field Literal inside a field ID,
         // e.g. ["field-id", ["field-literal", <name>, <type>], still just use the name as-is
@@ -79,7 +78,7 @@ export default class FieldName extends Component {
     const content = (
       <span
         className={cx(className, {
-          selected: Q_DEPRECATED.isValidField(field),
+          selected: FieldRef.isValidField(field),
           "cursor-pointer": this.props.onClick,
         })}
         onClick={this.props.onClick}

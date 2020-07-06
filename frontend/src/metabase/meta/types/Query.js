@@ -101,6 +101,16 @@ export type Aggregation =
   | MaxAgg
   | MetricAgg;
 
+export type AggregationWithOptions = [
+  "aggregation-options",
+  Aggregation,
+  AggregationOptions,
+];
+
+export type AggregationOptions = {
+  "display-name"?: string,
+};
+
 type CountAgg = ["count"];
 
 type CountFieldAgg = ["count", ConcreteField];

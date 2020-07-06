@@ -19,7 +19,6 @@ import type {
   Field,
   FieldsClause,
 } from "metabase/meta/types/Query";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
 
 import * as A from "./aggregation";
 import * as B from "./breakout";
@@ -70,9 +69,6 @@ export const removeBreakout = (query: SQ, index: number) =>
   setBreakoutClause(query, B.removeBreakout(query.breakout, index));
 export const clearBreakouts = (query: SQ) =>
   setBreakoutClause(query, B.clearBreakouts(query.breakout));
-
-export const getBreakoutFields = (query: SQ, tableMetadata: TableMetadata) =>
-  B.getBreakoutFields(query.breakout, tableMetadata);
 
 // FILTER
 

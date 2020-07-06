@@ -1,12 +1,19 @@
 /* @flow */
 
 import { noNullValues, add, update, remove, clear } from "./util";
-import { isValidField } from "./field_ref";
+import * as FieldRef from "./field_ref";
 import { STANDARD_AGGREGATIONS } from "metabase/lib/expressions";
 
 import _ from "underscore";
 
-import type { AggregationClause, Aggregation } from "metabase/meta/types/Query";
+import type {
+  AggregationClause,
+  Aggregation,
+  AggregationWithOptions,
+  AggregationOptions,
+  ConcreteField,
+} from "metabase/meta/types/Query";
+import type { MetricId } from "metabase/meta/types/Metric";
 
 // returns canonical list of Aggregations, i.e. with deprecated "rows" removed
 export function getAggregations(
@@ -77,18 +84,95 @@ export function hasValidAggregation(ac: ?AggregationClause): boolean {
 
 // AGGREGATION TYPES
 
-export function isStandard(aggregation: AggregationClause): boolean {
+// NOTE: these only differentiate between "standard", "metric", and "custom", but do not validate the aggregation
+
+export function isStandard(aggregation: any): boolean {
   return (
     Array.isArray(aggregation) &&
     STANDARD_AGGREGATIONS.has(aggregation[0]) &&
-    (aggregation[1] === undefined || isValidField(aggregation[1]))
+    // this is needed to differentiate between "standard" aggregations with simple fields (or no field) and custom expressions,
+    // the latter would cause the aggregation to be considered "custom"
+    (aggregation[1] == null || FieldRef.isValidField(aggregation[1]))
   );
 }
 
-export function isMetric(aggregation: AggregationClause): boolean {
+export function isMetric(aggregation: any): boolean {
   return Array.isArray(aggregation) && aggregation[0] === "metric";
 }
 
-export function isCustom(aggregation: AggregationClause): boolean {
+export function isCustom(aggregation: any): boolean {
   return !isStandard(aggregation) && !isMetric(aggregation);
+}
+
+// AGGREGATION OPTIONS / NAMED AGGREGATIONS
+
+export function hasOptions(aggregation: any): boolean {
+  return Array.isArray(aggregation) && aggregation[0] === "aggregation-options";
+}
+export function getOptions(aggregation: any): AggregationOptions {
+  return hasOptions(aggregation) ? aggregation[2] : {};
+}
+export function getContent(aggregation: any): Aggregation {
+  return hasOptions(aggregation) ? aggregation[1] : aggregation;
+}
+export function isNamed(aggregation: any): boolean {
+  return !!getName(aggregation);
+}
+export function getName(aggregation: any): ?string {
+  return getOptions(aggregation)["display-name"];
+}
+export function setName(
+  aggregation: any,
+  name: string,
+): AggregationWithOptions {
+  return [
+    "aggregation-options",
+    getContent(aggregation),
+    { "display-name": name, ...getOptions(aggregation) },
+  ];
+}
+export function setContent(
+  aggregation: any,
+  content: Aggregation,
+): AggregationWithOptions {
+  return ["aggregation-options", content, getOptions(aggregation)];
+}
+
+// METRIC
+export function getMetric(aggregation: any): ?MetricId {
+  if (isMetric(aggregation)) {
+    return aggregation[1];
+  } else {
+    return null;
+  }
+}
+
+// STANDARD
+
+// get the operator from a standard aggregation clause
+export function getOperator(aggregation: any) {
+  if (isStandard(aggregation)) {
+    return aggregation[0];
+  } else {
+    return null;
+  }
+}
+
+// get the fieldId from a standard aggregation clause
+export function getField(aggregation: any): ?ConcreteField {
+  if (isStandard(aggregation)) {
+    return aggregation[1];
+  } else {
+    return null;
+  }
+}
+
+// set the fieldId on a standard aggregation clause
+export function setField(aggregation: any, fieldRef: ConcreteField) {
+  if (isStandard(aggregation)) {
+    return [aggregation[0], fieldRef];
+  } else {
+    // TODO: is there a better failure response than just returning the aggregation unmodified??
+    return aggregation;
+  }
 }

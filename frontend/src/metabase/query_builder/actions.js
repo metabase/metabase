@@ -1120,7 +1120,6 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
     const newCard = startNewCard("query", card.dataset_query.database);
 
     newCard.dataset_query.query["source-table"] = fk.origin.table.id;
-    newCard.dataset_query.query.aggregation = ["rows"];
     newCard.dataset_query.query.filter = [
       "and",
       ["=", fk.origin.id, originValue],
