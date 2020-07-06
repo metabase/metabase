@@ -8,7 +8,7 @@
   ;; we want to test h2 and postgres, because h2 doesn't
   ;; support overriding the timezone for a session / report
   (mt/test-drivers #{:h2 :postgres}
-    (doseq [tz ["US/Pacific" nil]]
+    (doseq [tz ["UTC" nil]]
       (mt/with-temporary-setting-values [report-timezone tz]
         (mt/with-database-timezone-id "UTC"
           (mt/with-everything-store
