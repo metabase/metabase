@@ -1477,3 +1477,26 @@
               :name              "Personal Collection"
               :namespace         "x"
               :personal_owner_id user-id}))))))
+
+(deftest check-collection-namespace-test
+  (testing "check-collection-namespace"
+    (testing "Should succeed if namespace is allowed"
+      (mt/with-temp* [Card       [{card-id :id}]
+                      Collection [{collection-id :id}]]
+        (is (= nil
+               (collection/check-collection-namespace Card collection-id)))))
+
+    (testing "Should throw exception if namespace is not allowed"
+      (mt/with-temp* [Card       [{card-id :id}]
+                      Collection [{collection-id :id} {:namespace "x"}]]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"A Card can only go in Collections in the \"default\" namespace"
+             (collection/check-collection-namespace Card collection-id)))))
+
+    (testing "Should throw exception if Collection does not exist"
+      (mt/with-temp Card [{card-id :id}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Collection does not exist"
+             (collection/check-collection-namespace Card Integer/MAX_VALUE)))))))
