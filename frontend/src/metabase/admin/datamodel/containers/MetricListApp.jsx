@@ -40,6 +40,11 @@ class MetricListApp extends React.Component {
             ))}
           </tbody>
         </table>
+        {metrics.length === 0 && (
+          <div className="flex layout-centered m4 text-medium">
+            {t`Create metrics to add them to the Summarize dropdown in the query builder`}
+          </div>
+        )}
       </div>
     );
   }
