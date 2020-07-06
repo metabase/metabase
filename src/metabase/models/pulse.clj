@@ -47,11 +47,11 @@
 
 (defn- pre-insert [notification]
   (u/prog1 notification
-    (collection/check-collection-namespace notification)))
+    (collection/check-collection-namespace Pulse (:collection_id notification))))
 
 (defn- pre-update [updates]
   (u/prog1 updates
-    (collection/check-collection-namespace updates)))
+    (collection/check-collection-namespace Pulse (:collection_id updates))))
 
 (defn- alert->card
   "Return the Card associated with an Alert, fetching it if needed, for permissions-checking purposes."

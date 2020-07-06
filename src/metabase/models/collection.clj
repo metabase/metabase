@@ -966,14 +966,18 @@
   `allowed-namespaces`), or throw an Exception.
 
     ;; Cards can only go in Collections in the default namespace (namespace = nil)
-    (check-collection-namespace card)"
-  [{collection-id :collection_id, :as object}]
+    (check-collection-namespace Card new-collection-id)"
+  [model collection-id]
   (when collection-id
-    (let [collection-namespace (keyword (db/select-one-field :namespace 'Collection :id collection-id))
-          allowed-namespaces   (allowed-namespaces object)]
+    (let [collection           (or (db/select-one [Collection :namespace] :id collection-id)
+                                   (let [msg (tru "Collection does not exist.")]
+                                     (throw (ex-info msg {:status-code 404
+                                                          :errors      {:collection_id msg}}))))
+          collection-namespace (keyword (:namespace collection))
+          allowed-namespaces   (allowed-namespaces model)]
       (when-not (contains? allowed-namespaces collection-namespace)
         (let [msg (tru "A {0} can only go in Collections in the {1} namespace."
-                       (name object)
+                       (name model)
                        (str/join (format " %s " (tru "or")) (map #(pr-str (or % (tru "default")))
                                                                  allowed-namespaces)))]
           (throw (ex-info msg {:status-code          400
