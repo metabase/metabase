@@ -8,6 +8,7 @@
              [math :as math]]
             [medley.core :as m]
             [metabase.models.field :as field]
+            [metabase.query-processor.timezone :as qp.tz]
             [metabase.sync.analyze.classifiers.name :as classify.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
@@ -193,9 +194,12 @@
   ;; we don't have access to that here. Use the JVM's systemDefault to
   ;; convert this.
   ChronoLocalDateTime (->temporal [this] (.toInstant this
-                                                 (.. (java.time.ZoneId/systemDefault)
-                                                     (getRules)
-                                                     (getOffset (java.time.Instant/now)))))
+                                                     (.. (if-let [tz (or (qp.tz/report-timezone-id-if-supported)
+                                                                         (qp.tz/database-timezone-id))]
+                                                           (java.time.ZoneId/of tz)
+                                                           (java.time.ZoneId/systemDefault))
+                                                         (getRules)
+                                                         (getOffset (java.time.Instant/now)))))
   ChronoZonedDateTime (->temporal [this] (.toInstant this))
   Temporal (->temporal [this] this))
 
