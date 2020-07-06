@@ -1,6 +1,6 @@
 # Scaling Metabase
 
-Metabase is scalable, battle-tested software used by tens of thousands of companies. It supports high availability via horizontal scaling, and high performance via vertical scaling. Plus it's efficient out of the box: a single core machine with 4 gigs of RAM can scale Metabase to hundreds of users.
+Metabase is scalable, battle-tested software used by tens of thousands of companies. It supports high availability via horizontal scaling, and high performance via vertical scaling. Plus, it's efficient out of the box: a single core machine with 4 gigs of RAM can scale Metabase to hundreds of users.
 
 This article provides guidance on how to keep Metabase running smoothly in production as the numbers of users and data sources increase. 
 
@@ -72,13 +72,24 @@ Here are three ways you can improve data warehouse performance:
 
 Here are some strategies to get the most out of your Metabase application:
 
+- [Only ask for the data you need](#only-ask-for-the-data-you-need)
 - [Use an external database to store you Metabase application data](#use-an-external-database-to-store-your-metabase-application-data)
 - [Upgrade to the latest version of Metabase](#upgrade-to-the-latest-version-of-metabase)
-- [Only ask for the data you need](#only-ask-for-the-data-you-need)
 - [Cache your queries](#cache-your-queries)
 - [Look for bottlenecks](#look-for-bottlenecks)
-- [Keep dashboards to 7 questions or fewer](#keep-dashboards-to-7-questions-or-fewer)
 - [Update your browser](#update-your-browser)
+
+### Only ask for the data you need
+
+If you have many users running a lot of queries that return a lot of records, it won't matter that Metabase is fast: the users will get their data only as fast as your data warehouse can return the requested records.
+
+And sometimes people go overboard with dashboards, loading them up with 50 questions or more. When a dashboard with 50 questions loads, it sends 50 simultaneous requests asking for data. And depending on the size of that database and the number of tables in that database, it can be quite some time before those records return. 
+
+But that's not the whole story. Metabase does not get slower simply because you put more questions in your dashboard. If your questions don't pull a lot of data, or your data warehouse can return results in under a second, 50 questions will load quickly.
+
+In general, however, encourage your users to keep their dashboards focused. Dashboards are meant to tell a story about your data, and you can tell a good story with just a handful of questions (or even a single question). Take advantage of Metabase's data exploration tools to learn about your data and preview records in tables so you can dial in on only the records you need to answer your questions.
+
+So make sure each question is necessary to complete the dashboard, and be especially mindful when querying data across time or space, as you can filter out a lot of unnecessary data by restricting your question to a shorter timespan or smaller area.
 
 ### Use an external database to store your Metabase application data
 
@@ -88,16 +99,6 @@ The application database stores all of your questions, dashboards, collections, 
 
 If you haven't already, we recommend you update to the latest Metabase version to get the most recent performance improvements.
 
-### Only ask for the data you need
-
-In general, you should only query the data you need. If you set up a dashboard that you'll be viewing daily, you can reduce load times by limiting the number of records your queries return.
-
-If you have many users running queries that return a lot of records, it won't matter that Metabase is fast: the users will get their data only as fast as your database(s) can return the requested records.
-
-Take advantage of Metabase's data exploration tools to learn about your data and preview records in tables so you can dial in on only the records you need to answer your question.
-
-Be especially mindful when querying data across time or space, as you can filter out a lot of unnecessary data by restricting your question to a shorter timespan or smaller area. Do you really need to see data years back, or in all geohashes?
-
 ### Cache your queries
 
 You can [configure caching](../administration-guide/14-caching.md) on questions to store their results. Metabase will show users the timestamp for the results, and users can manually refresh the results if they want to rerun the query. Caching is suitable for results that do not update frequently.
@@ -105,12 +106,6 @@ You can [configure caching](../administration-guide/14-caching.md) on questions 
 ### Look for bottlenecks
 
 Metabase's Enterprise Edition offers [auditing tools](../enterprise-guide/audit.md) for you to monitor the usage and performance of your application. You can, for example, see how many questions are being asked, by whom, and how long the questions took to run, which can help identify any bottlenecks that need attention.
-
-### Keep dashboards to 7 questions or fewer
-
-Sometimes people go overboard with dashboards, loading them up with 50 questions or more. When a dashboard with 50 questions loads, it sends 50 simultaneous requests asking for data. And depending on the size of that database and the number of tables in that database, it can be quite some time before those records return to answer all of those questions.
-
-7 is, of course, an arbitrary number; you can create dashboards where adding a lot of questions makes sense. In general, though, encourage your users to keep their dashboards focused. Dashboards are meant to tell a story about your data, and you can tell a good story with just a handful of questions. If you find that one of your dashboards has accumulated a lot of questions, consider breaking it up into multiple dashboards that each focus on a set of related questions.
 
 ### Update your browser
 
