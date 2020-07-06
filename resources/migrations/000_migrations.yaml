@@ -6387,6 +6387,7 @@ databaseChangeLog:
       id: 169
       author: camsaul
       comment: Added 0.36.0
+      objectQuotingStrategy: ${quote_strategy}
       changes:
         - dropColumn:
             tableName: metabase_table
