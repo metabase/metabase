@@ -26,7 +26,7 @@ Major factors that impact your experience using Metabase include:
 - The efficiency of your data warehouse.
 - The number of questions in your dashboards.
 
-For example, it won't matter how many instances of Metabase you run if a question needs to grab records from thousands of tables in a database. That's just going to take a while. The solution in that case is either to re-evaluate your need for that data (do you really need all that info every time?), or to find ways to improve the performance of your database, such as reorganizing, indexing, or caching your data.
+For example, it won't matter how many instances of Metabase you run if a question needs to run a query that takes 30 minutes to run. That's just going to take a while. The solution in that case is either to re-evaluate your need for that data (do you really need all that info every time?), or to find ways to improve the performance of your database, such as reorganizing, indexing, or caching your data.
 
 But first, let's make sure our Metabase application is well-tuned to scale.
 
@@ -139,4 +139,3 @@ See [running Metabase on Kubernetes](running-metabase-on-kubernetes).
 ### Other cloud providers
 
 [Google Cloud Platform](https://cloud.google.com/), [Microsoft Azure](https://azure.microsoft.com/en-us/), [Digital Ocean](https://www.digitalocean.com/), and other cloud providers offer other great alternatives for hosting your Metabase application.
-
