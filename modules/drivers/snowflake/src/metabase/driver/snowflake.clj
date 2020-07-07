@@ -286,7 +286,8 @@
   (and ((get-method driver/can-connect? :sql-jdbc) driver details)
        (let [spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)
              sql  (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
-         (jdbc/query spec sql))))
+         (jdbc/query spec sql)
+         true)))
 
 (defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
   [_ t]
