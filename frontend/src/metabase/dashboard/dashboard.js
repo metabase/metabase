@@ -30,8 +30,8 @@ import type {
   DashboardWithCards,
   DashCard,
   DashCardId,
-} from "metabase/meta/types/Dashboard";
-import type { CardId } from "metabase/meta/types/Card";
+} from "metabase-types/types/Dashboard";
+import type { CardId } from "metabase-types/types/Card";
 
 import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";

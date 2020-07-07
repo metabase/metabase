@@ -14,7 +14,7 @@ import { color } from "metabase/lib/colors";
 
 import Snippets from "metabase/entities/snippets";
 
-import type { Snippet } from "metabase/meta/types/Snippet";
+import type { Snippet } from "metabase-types/types/Snippet";
 
 type Props = {
   onClose: () => void,

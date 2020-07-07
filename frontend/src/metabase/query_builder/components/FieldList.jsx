@@ -7,7 +7,10 @@ import DimensionList from "./DimensionList";
 import Dimension from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
-import type { StructuredQuery, ConcreteField } from "metabase/meta/types/Query";
+import type {
+  StructuredQuery,
+  ConcreteField,
+} from "metabase-types/types/Query";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
 // import type { Section } from "metabase/components/AccordionList";
