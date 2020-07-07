@@ -231,14 +231,15 @@ export default class AggregationPopover extends Component {
 
     // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
     // retired metric then we include it in the list to maintain continuity
-    const metrics =
-      showMetrics && tableMetadata.metrics
-        ? tableMetadata.metrics.filter(
-            metric =>
-              !metric.archived ||
-              (selectedAggregation && selectedAggregation.id === metric.id),
-          )
-        : [];
+    const metrics = tableMetadata.metrics
+      ? tableMetadata.metrics.filter(metric =>
+          showMetrics
+            ? !metric.archived ||
+              (selectedAggregation && selectedAggregation.id === metric.id)
+            : // GA metrics are more like columns, so they should be displayed even when showMetrics is false
+              metric.googleAnalyics,
+        )
+      : [];
     const metricItems = metrics.map(metric => ({
       name: metric.name,
       value: ["metric", metric.id],

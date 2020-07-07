@@ -109,6 +109,7 @@ describe("metabase-smoketest > admin", () => {
         .last()
         .click();
       cy.get("input[type='text']")
+        .wait(1)
         .clear()
         .wait(1)
         .type("5");

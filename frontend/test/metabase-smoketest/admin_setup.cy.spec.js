@@ -343,24 +343,39 @@ describe("smoketest > admin_setup", () => {
       // Changing column name from Discount to Sale
 
       cy.wait(1000)
-        .get("input")
-        .eq(5)
-        .clear()
-        .wait(1)
-        .type("Sale");
+        .get("[value='Discount amount.'")
+        .parent()
+        .parent()
+        .within(() => {
+          cy.get("input")
+            .first()
+            .wait(1)
+            .clear()
+            .wait(1)
+            .type("Sale");
+        });
 
       // Changing visibility of Created At column
 
-      cy.findAllByText("Everywhere")
-        .first()
-        .click();
-      cy.findByText("Do not include").click({ force: true });
+      cy.wait(2000)
+        .get("[value='The date and time an order was submitted.']")
+        .parent()
+        .parent()
+        .within(() => {
+          cy.findByText("Everywhere").click();
+        });
+      cy.get(".ReactVirtualized__Grid__innerScrollContainer")
+        .findAllByText("Do not include")
+        .click(); // ({ force: true });
 
       // Changing column formatting to display USD instead of $
 
-      cy.get(".Icon-gear")
-        .eq(-2)
-        .click();
+      cy.get("[value='The total billed amount.']")
+        .parent()
+        .parent()
+        .within(() => {
+          cy.get(".Icon-gear").click();
+        });
 
       cy.findByText("Total – Field Settings");
       cy.findByText("Columns").should("not.exist");
@@ -438,9 +453,12 @@ describe("smoketest > admin_setup", () => {
       // Configure Key
 
       cy.findByText("Metrics");
-      cy.get(".Icon-gear")
-        .eq(6)
-        .click();
+      cy.get("[value='Product ID'")
+        .parent()
+        .parent()
+        .within(() => {
+          cy.get(".Icon-gear").click();
+        });
       cy.findByText("Plain input box").click();
       cy.findByText("Search box").click();
       cy.findByText("Use original value").click();
@@ -775,7 +793,7 @@ describe("smoketest > admin_setup", () => {
       cy.get(".Icon-eye");
     });
 
-    it("should no longer be able to access tables or questions that have been restricted as user", () => {
+    it("should be unable to access tables or questions that have been restricted as user", () => {
       cy.visit("/");
 
       // Normal user can still see everything
@@ -787,6 +805,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Ask a question").click();
 
+      cy.findByText("Simple question");
       cy.findByText("Native query").should("not.exist");
 
       signOut();
@@ -798,9 +817,9 @@ describe("smoketest > admin_setup", () => {
       cy.contains("A look at your Test Table table");
       cy.contains("A look at your People table");
       cy.contains("A look at your Reviews table").should("not.exist");
+    });
 
-      // No collection user can view Our Analytics, but not make any changes
-
+    it("should be unable to change questions in Our analytics as no collection user", () => {
       cy.findByText("Browse all items").click();
 
       cy.findByText("Everything");
@@ -812,13 +831,13 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Orders").click();
       cy.findByText("Summarize").click();
       cy.wait(1000)
-        .get(".Icon-int")
+        .findAllByText("Quantity")
         .eq(1)
         .click();
       cy.findAllByText("Done").click();
 
-      cy.wait(1000).findByText("Quantity");
       cy.findByText("Product ID").should("not.exist");
+      cy.wait(1000).findByText("Quantity");
 
       cy.findAllByText("Save")
         .last()
@@ -840,7 +859,7 @@ describe("smoketest > admin_setup", () => {
       // cy.findByText("Quantity").should("not.exist");
     });
 
-    it("should be able to add a sub collection as a user", () => {
+    it("should add a sub collection as a user", () => {
       cy.visit("/collection/root");
 
       cy.wait(3000)
@@ -861,7 +880,7 @@ describe("smoketest > admin_setup", () => {
       cy.get(".Icon-all");
     });
 
-    it("should be able to view collections I have access to, but not ones that I don't (even with URL) as user", () => {
+    it("should view collections I have access to, but not ones that I don't (even with URL) as user", () => {
       // Check access as normal user
 
       cy.visit("/collection/root");
@@ -920,7 +939,7 @@ describe("smoketest > admin_setup", () => {
       );
     });
 
-    it("should not be able to access question with URL, but no permissions", () => {
+    it("should be unable to access question with URL (if access not permitted)", () => {
       signOut();
       signIn("nocollection");
 
