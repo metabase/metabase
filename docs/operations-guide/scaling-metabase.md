@@ -26,13 +26,13 @@ Major factors that impact your experience using Metabase include:
 - The efficiency of your data warehouse.
 - The number of questions in your dashboards.
 
-For example, it won't matter how many instances of Metabase you run if a question needs to run a query that takes 30 minutes to run. That's just going to take a while. The solution in that case is either to re-evaluate your need for that data (do you really need all that info every time?), or to find ways to improve the performance of your database, such as reorganizing, indexing, or caching your data.
+For example, it won't matter how many instances of Metabase you run if a question needs to run a query that takes 30 minutes to run. That's just going to take 30 minutes. The solution in that case is either to re-evaluate your need for that data (do you really need all that info every time?), or to find ways to improve the performance of your database, such as reorganizing, indexing, or caching your data.
 
 But first, let's make sure our Metabase application is well-tuned to scale.
 
 ## Vertical scaling
 
-Vertical scaling is the brute force approach. Give Metabase more cores and memory, and it will have more resources available to do its work. If you are experiencing performance issues related to the application itself (i.e. unrelated to the breadth and magnitude of your databases), running Metabase on a more powerful machine can help improve performance.
+Vertical scaling is the brute force approach. Give Metabase more cores and memory, and it will have more resources available to do its work. If you are experiencing performance issues related to the application itself (i.e. unrelated to the breadth and magnitude of your databases), running Metabase on a more powerful machine can improve performance.
 
 Metabase is already efficient out of the box. For example, for a starter Metabase instance on AWS, we recommend running Metabase using Elastic Beanstalk on a `t2.small` instance, and scaling up from there. That's a single core machine with 2 gigabytes of RAM. Machines with with 4-8 gigs of RAM should handle hundreds of users, and you can bump the number of cores and gigabytes of memory if needed.
 
@@ -87,17 +87,17 @@ And sometimes people go overboard with dashboards, loading them up with 50 quest
 
 But that's not the whole story. Metabase does not get slower simply because you put more questions in your dashboard. If your questions don't pull a lot of data, or your data warehouse can return results in under a second, 50 questions will load quickly.
 
-In general, however, encourage your users to keep their dashboards focused. Dashboards are meant to tell a story about your data, and you can tell a good story with just a handful of questions (or even a single question). Take advantage of Metabase's data exploration tools to learn about your data and preview records in tables so you can dial in on only the records you need to answer your questions.
+In general, however, encourage your users to keep their dashboards focused. Dashboards are meant to tell a story about your data, and you can tell a good story with just a handful of questions (or even a single question). Take advantage of Metabase's data exploration tools to learn about your data (such as the ability to preview records in tables) so you can dial in on only the records you need to answer your questions.
 
-So make sure each question is necessary to complete the dashboard, and be especially mindful when querying data across time or space, as you can filter out a lot of unnecessary data by restricting your question to a shorter timespan or smaller area.
+So make sure each question is necessary to complete the dashboard, and be especially mindful when querying data across time or space, as you can filter out a lot of unnecessary data by restricting your question to a shorter timespan or a smaller area.
 
-### Use an external database to store your Metabase application data
+### Use a managed external database to store your Metabase application data
 
-The application database stores all of your questions, dashboards, collections, permissions, and other data related to the Metabase application. We recommend you use an external database (like PostgreSQL or MySQL) to manage your application database. You can also use a managed relational database, like AWS RDS, which will auto-scale for your needs.
+The application database stores all of your questions, dashboards, collections, permissions, and other data related to the Metabase application. You can use an external database (like PostgreSQL or MySQL) to manage your application database, but we recommend a managed solution like [AWS RDS](https://aws.amazon.com/rds/), which will auto-scale for your needs, and give you one less thing to worry about.
 
 ### Upgrade to the latest version of Metabase
 
-If you haven't already, we recommend you update to the latest Metabase version to get the most recent performance improvements.
+If you haven't already, we recommend you [upgrade to the latest Metabase version](upgrading-metabase) to get the most recent performance improvements.
 
 ### Cache your queries
 
@@ -134,3 +134,9 @@ See [running Metabase on Kubernetes](running-metabase-on-kubernetes).
 ### Other cloud providers
 
 [Google Cloud Platform](https://cloud.google.com/), [Microsoft Azure](https://azure.microsoft.com/en-us/), [Digital Ocean](https://www.digitalocean.com/), and other cloud providers offer other great alternatives for hosting your Metabase application.
+
+## Reach out to the community
+
+If you have questions about scaling, chances are someone's already had the same question. Check out the [Metabase discussion forum](https://discourse.metabase.com/) and search for your issue. If you can't find a solution, submit a question of your own.
+
+For official support from the Metabase team, visit our [support page](https://www.metabase.com/support/).
