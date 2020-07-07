@@ -972,10 +972,10 @@ export default class StructuredQuery extends AtomicQuery {
     );
   }
 
-  addSort(orderBy: OrderBy) {
+  addSort(orderBy: OrderBy | OrderByWrapper) {
     return this._updateQuery(Q.addOrderBy, arguments);
   }
-  updateSort(index: number, orderBy: OrderBy) {
+  updateSort(index: number, orderBy: OrderBy | OrderByWrapper) {
     return this._updateQuery(Q.updateOrderBy, arguments);
   }
   removeSort(index: number) {

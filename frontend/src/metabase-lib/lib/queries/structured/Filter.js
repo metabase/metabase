@@ -241,7 +241,6 @@ export default class Filter extends MBQLClause {
 
       const operatorName = operator && operator.name;
 
-      // $FlowFixMe
       const filter: Filter = this.set(
         this.isFieldFilter()
           ? [this[0], dimension.mbql(), ...this.slice(2)]
