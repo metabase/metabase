@@ -4,6 +4,8 @@ import { isFK } from "metabase/lib/types";
 
 import * as QUERY from "./query/query";
 import * as FieldRef from "./query/field_ref";
+import { SORTABLE_AGGREGATION_TYPES } from "./query/aggregation";
+
 export * from "./query/query";
 export * from "./query/field_ref";
 
@@ -37,16 +39,6 @@ export function createQuery(type = "query", databaseId, tableId) {
 
   return dataset_query;
 }
-
-const SORTABLE_AGGREGATION_TYPES = new Set([
-  "avg",
-  "count",
-  "distinct",
-  "stddev",
-  "sum",
-  "min",
-  "max",
-]);
 
 export function isStructured(dataset_query) {
   return dataset_query && dataset_query.type === "query";
