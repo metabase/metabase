@@ -2,7 +2,6 @@ import React from "react";
 import { connect } from "react-redux";
 
 import FilterList from "./FilterList";
-import AggregationName from "./AggregationName";
 import { getMetadata } from "metabase/selectors/metadata";
 
 function QueryDefinition({ className, object, metadata }) {
@@ -15,9 +14,7 @@ function QueryDefinition({ className, object, metadata }) {
   const filters = query.filters();
   return (
     <div className={className} style={{ pointerEvents: "none" }}>
-      {aggregations.map(aggregation => (
-        <AggregationName aggregation={aggregation} />
-      ))}
+      {aggregations.map(aggregation => aggregation.displayName())}
       {filters.length > 0 && (
         <FilterList filters={filters} maxDisplayValues={Infinity} />
       )}

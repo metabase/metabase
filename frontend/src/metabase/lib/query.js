@@ -1,6 +1,5 @@
 import _ from "underscore";
 import Utils from "metabase/lib/utils";
-import { isFK } from "metabase/lib/types";
 
 import * as QUERY from "./query/query";
 import * as FieldRef from "./query/field_ref";

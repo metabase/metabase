@@ -180,7 +180,7 @@ describe("scenarios > admin > datamodel > table", () => {
 
       cy.url().should("include", "/admin/datamodel/metric/create?table=2");
 
-      cy.contains("Count of rows").click();
+      cy.contains("Count").click();
       cy.contains("Sum of").click();
       cy.contains("Subtotal").click();
       cy.contains("Result: 1448188");

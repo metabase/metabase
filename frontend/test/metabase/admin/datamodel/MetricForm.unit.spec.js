@@ -38,7 +38,7 @@ describe("MetricForm", () => {
   it("should render count as the default aggregation", () => {
     const updatePreviewSummary = jest.fn();
     const { getByText } = renderForm({ metadata, updatePreviewSummary });
-    getByText("Count of rows");
+    getByText("Count");
     const [{ query }] = updatePreviewSummary.mock.calls[1];
     expect(query.aggregation).toEqual([["count"]]);
   });

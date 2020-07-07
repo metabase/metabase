@@ -11,8 +11,6 @@ import Icon from "metabase/components/Icon";
 import QueryDefinition from "metabase/query_builder/components/QueryDefinition";
 import { fetchTableMetadata } from "metabase/redux/metadata";
 
-import type Metadata from "metabase-lib/lib/metadata/Metadata";
-
 const mapDispatchToProps = {
   fetchTableMetadata,
 };

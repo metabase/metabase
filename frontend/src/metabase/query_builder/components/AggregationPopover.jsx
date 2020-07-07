@@ -11,7 +11,6 @@ import FieldList from "./FieldList";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip";
 import ExpressionPopover from "./ExpressionPopover";
 
-import * as Q_DEPRECATED from "metabase/lib/query";
 import * as AGGREGATION from "metabase/lib/query/aggregation";
 
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
@@ -54,7 +53,6 @@ export default class AggregationPopover extends Component {
 
     // DEPRECATED: replaced with `query`
     tableMetadata: PropTypes.object,
-    customFields: PropTypes.object,
     datasetQuery: PropTypes.object,
 
     aggregationOperators: PropTypes.array,
@@ -155,15 +153,6 @@ export default class AggregationPopover extends Component {
     ).filter(agg => showRawData || agg.short !== "rows");
   }
 
-  _getCustomFields() {
-    const { customFields, datasetQuery, query } = this.props;
-    return (
-      customFields ||
-      (datasetQuery && Q_DEPRECATED.getExpressions(datasetQuery.query)) ||
-      (query && query.expressions())
-    );
-  }
-
   itemIsSelected(item) {
     const { aggregation } = this.props;
     return item.isSelected(AGGREGATION.getContent(aggregation));
@@ -205,7 +194,6 @@ export default class AggregationPopover extends Component {
     } = this.props;
 
     const tableMetadata = this._getTableMetadata();
-    const customFields = this._getCustomFields();
     const aggregationOperators = this._getAvailableAggregations();
 
     if (dimension) {
@@ -363,7 +351,6 @@ export default class AggregationPopover extends Component {
             table={tableMetadata}
             field={fieldId}
             fieldOptions={query.aggregationFieldOptions(agg)}
-            customFieldOptions={customFields}
             onFieldChange={this.onPickField}
             enableSubDimensions={false}
           />
