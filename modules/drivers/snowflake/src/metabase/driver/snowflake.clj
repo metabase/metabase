@@ -28,10 +28,19 @@
              [i18n :refer [tru]]])
   (:import [java.sql ResultSet Types]
            [java.time OffsetDateTime ZonedDateTime]
-           metabase.util.honeysql_extensions.Identifier
-           net.snowflake.client.jdbc.SnowflakeSQLException))
+           metabase.util.honeysql_extensions.Identifier))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/humanize-connection-error-message :snowflake
+  [_ message]
+  (log/spy :error (type message))
+  (condp re-matches message
+    #"(?s).*Object does not exist.*$"
+    (driver.common/connection-error-messages :database-name-incorrect)
+
+    #"(?s).*" ; default - the Snowflake errors have a \n in them
+    message))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account regionid], :as opts}]
@@ -62,7 +71,6 @@
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
                    (update :schema upcase-not-nil)
-                   (update :db upcase-not-nil)
                    (dissoc :host :port :timezone)))
         (sql-jdbc.common/handle-additional-options opts))))
 
@@ -278,12 +286,7 @@
   (and ((get-method driver/can-connect? :sql-jdbc) driver details)
        (let [spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)
              sql  (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
-         (try
-           (jdbc/query spec sql)
-           true
-           (catch SnowflakeSQLException e
-             (log/error e (tru "Snowflake Database does not exist."))
-             false)))))
+         (jdbc/query spec sql))))
 
 (defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
   [_ t]
