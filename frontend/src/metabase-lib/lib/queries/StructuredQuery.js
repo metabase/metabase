@@ -5,7 +5,6 @@
  */
 
 import * as Q from "metabase/lib/query/query";
-import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,
@@ -59,7 +58,6 @@ import OrderByWrapper from "./structured/OrderBy";
 
 import Table from "../metadata/Table";
 import Field from "../metadata/Field";
-import { augmentDatabase } from "metabase/lib/table";
 
 import { TYPE } from "metabase/lib/types";
 
@@ -303,12 +301,12 @@ export default class StructuredQuery extends AtomicQuery {
   table(): Table {
     const sourceQuery = this.sourceQuery();
     if (sourceQuery) {
-      const table = new Table({
+      return new Table({
         name: "",
         display_name: "",
         db: sourceQuery.database(),
         fields: sourceQuery.columns().map(
-          (column, index) =>
+          column =>
             new Field({
               ...column,
               id: ["field-literal", column.name, column.base_type],
@@ -320,10 +318,6 @@ export default class StructuredQuery extends AtomicQuery {
         segments: [],
         metrics: [],
       });
-      // HACK: ugh various parts of the UI still expect this stuff
-      addValidOperatorsToFields(table);
-      augmentDatabase({ tables: [table] });
-      return table;
     } else {
       return this.metadata().table(this.sourceTableId());
     }
@@ -634,7 +628,7 @@ export default class StructuredQuery extends AtomicQuery {
    */
   aggregationFieldOptions(agg: string | AggregationOperator): DimensionOptions {
     const aggregation: AggregationOperator =
-      typeof agg === "string" ? this.table().aggregation(agg) : agg;
+      typeof agg === "string" ? this.table().aggregationOperator(agg) : agg;
     if (aggregation) {
       const fieldOptions = this.fieldOptions(field => {
         return (

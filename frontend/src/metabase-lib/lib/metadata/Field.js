@@ -5,6 +5,8 @@ import Table from "./Table";
 
 import moment from "moment";
 
+import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+
 import Dimension from "../Dimension";
 
 import { formatField, stripId } from "metabase/lib/formatting";
@@ -187,27 +189,65 @@ export default class Field extends Base {
     return d && d.field();
   }
 
-  filterOperator(operatorName) {
-    if (this.filter_operators_lookup) {
-      return this.filter_operators_lookup[operatorName];
-    } else {
-      return this.filterOperators().find(o => o.name === operatorName);
-    }
-  }
+  // FILTERS
 
+  @memoize
   filterOperators() {
-    return this.filter_operators || getFilterOperators(this, this.table);
+    return getFilterOperators(this, this.table);
   }
 
+  @memoize
+  filterOperatorsLookup() {
+    return createLookupByProperty(this.filterOperators(), "name");
+  }
+
+  filterOperator(operatorName) {
+    return this.filterOperatorsLookup()[operatorName];
+  }
+
+  // @deprecated: use filterOperators
+  get filter_operators() {
+    return this.filterOperators();
+  }
+  // @deprecated: use filterOperatorsLookup
+  get filter_operators_lookup() {
+    return this.filterOperatorsLookup();
+  }
+
+  // AGGREGATIONS
+
+  @memoize
   aggregationOperators() {
     return this.table
-      ? this.table.aggregation_operators.filter(
-          aggregation =>
-            aggregation.validFieldsFilters[0] &&
-            aggregation.validFieldsFilters[0]([this]).length === 1,
-        )
+      ? this.table
+          .aggregationOperators()
+          .filter(
+            aggregation =>
+              aggregation.validFieldsFilters[0] &&
+              aggregation.validFieldsFilters[0]([this]).length === 1,
+          )
       : null;
   }
+
+  @memoize
+  aggregationOperatorsLookup() {
+    return createLookupByProperty(this.aggregationOperators(), "short");
+  }
+
+  aggregationOperator(short) {
+    return this.aggregationOperatorsLookup()[short];
+  }
+
+  // @deprecated: use aggregationOperators
+  get aggregation_operators() {
+    return this.aggregationOperators();
+  }
+  // @deprecated: use aggregationOperatorsLookup
+  get aggregation_operators_lookup() {
+    return this.aggregationOperatorsLookup();
+  }
+
+  // BREAKOUTS
 
   /**
    * Returns a default breakout MBQL clause for this field
@@ -239,6 +279,8 @@ export default class Field extends Base {
       return "day";
     }
   }
+
+  // REMAPPINGS
 
   /**
    * Returns the remapped field, if any

@@ -8,18 +8,19 @@ import Database from "./Database";
 import Schema from "./Schema";
 import Field from "./Field";
 
+import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+
 import type { SchemaName } from "metabase/meta/types/Table";
 import type { FieldMetadata } from "metabase/meta/types/Metadata";
 
 import { singularize } from "metabase/lib/formatting";
+import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";
 
 import Dimension from "../Dimension";
 
 import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 type EntityType = string; // TODO: move somewhere central
-
-import _ from "underscore";
 
 /** This is the primary way people interact with tables */
 export default class Table extends Base {
@@ -91,11 +92,41 @@ export default class Table extends Base {
     return this.fields.filter(field => field.isDate());
   }
 
+  // AGGREGATIONS
+
+  @memoize
   aggregationOperators() {
-    return this.aggregation_operators || [];
+    return getAggregationOperatorsWithFields(this);
   }
 
-  aggregation(agg) {
-    return _.findWhere(this.aggregationOperators(), { short: agg });
+  @memoize
+  aggregationOperatorsLookup() {
+    return createLookupByProperty(this.aggregationOperators(), "short");
+  }
+
+  aggregationOperator(short) {
+    return this.aggregation_operators_lookup[short];
+  }
+
+  // @deprecated: use aggregationOperators
+  get aggregation_operators() {
+    return this.aggregationOperators();
+  }
+
+  // @deprecated: use aggregationOperatorsLookup
+  get aggregation_operators_lookup() {
+    return this.aggregationOperatorsLookup();
+  }
+
+  // FIELDS
+
+  @memoize
+  fieldsLookup() {
+    return createLookupByProperty(this.fields, "id");
+  }
+
+  // @deprecated: use fieldsLookup
+  get fields_lookup() {
+    return this.fieldsLookup();
   }
 }
