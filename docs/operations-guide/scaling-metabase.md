@@ -1,4 +1,5 @@
 # Scaling Metabase
+![Metabase setup diagram](./images/metabase-setup-diagram.png)
 
 Metabase is scalable, battle-tested software used by tens of thousands of companies. It supports high availability via horizontal scaling, and high performance via vertical scaling. Plus, it's efficient out of the box: a single core machine with 4 gigs of RAM can scale Metabase to hundreds of users.
 
