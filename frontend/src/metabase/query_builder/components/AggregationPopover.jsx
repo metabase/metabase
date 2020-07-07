@@ -187,14 +187,7 @@ export default class AggregationPopover extends Component {
     return (
       <div className="p1">
         <Tooltip
-          tooltip={
-            <QueryDefinitionTooltip
-              type="metric"
-              object={metric}
-              tableMetadata={this._getTableMetadata()}
-              customFields={this._getCustomFields()}
-            />
-          }
+          tooltip={<QueryDefinitionTooltip type="metric" object={metric} />}
         >
           <span className="QuestionTooltipTarget" />
         </Tooltip>

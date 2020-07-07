@@ -123,10 +123,6 @@ const StandardAggregation = ({
           <FieldName
             field={fieldId}
             tableMetadata={tableMetadata}
-            fieldOptions={Q_DEPRECATED.getFieldOptions(
-              tableMetadata.fields,
-              true,
-            )}
             customFieldOptions={customFields}
           />
         )}

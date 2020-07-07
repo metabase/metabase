@@ -17,7 +17,6 @@ export default class SortWidget extends Component {
   static propTypes = {
     sort: PropTypes.array.isRequired,
     fieldOptions: PropTypes.object.isRequired,
-    customFieldOptions: PropTypes.object,
     tableName: PropTypes.string,
     updateOrderBy: PropTypes.func.isRequired,
     removeOrderBy: PropTypes.func.isRequired,

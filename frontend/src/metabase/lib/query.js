@@ -141,7 +141,7 @@ export function cleanQuery(query) {
   return query;
 }
 
-export function hasValidBreakout(query) {
+function hasValidBreakout(query) {
   return (
     query &&
     query.breakout &&
@@ -150,7 +150,7 @@ export function hasValidBreakout(query) {
   );
 }
 
-export function canSortByAggregateField(query, index) {
+function canSortByAggregateField(query, index) {
   if (!hasValidBreakout(query)) {
     return false;
   }
@@ -160,41 +160,4 @@ export function canSortByAggregateField(query, index) {
     aggregations[index][0] &&
     SORTABLE_AGGREGATION_TYPES.has(aggregations[index][0])
   );
-}
-
-export function getFieldOptions(
-  fields,
-  includeJoins = false,
-  filterFn = _.identity,
-  usedFields = {},
-) {
-  const results = {
-    count: 0,
-    fields: null,
-    fks: [],
-  };
-  // filter based on filterFn, then remove fks if they'll be duplicated in the joins fields
-  results.fields = filterFn(fields).filter(
-    f => !usedFields[f.id] && (!isFK(f.special_type) || !includeJoins),
-  );
-  results.count += results.fields.length;
-  if (includeJoins) {
-    results.fks = fields
-      .filter(f => isFK(f.special_type) && f.target)
-      .map(joinField => {
-        const targetFields = filterFn(joinField.target.table.fields).filter(
-          f =>
-            (!Array.isArray(f.id) || f.id[0] !== "aggregation") &&
-            !usedFields[f.id],
-        );
-        results.count += targetFields.length;
-        return {
-          field: joinField,
-          fields: targetFields,
-        };
-      })
-      .filter(r => r.fields.length > 0);
-  }
-
-  return results;
 }
