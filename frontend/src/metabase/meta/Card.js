@@ -103,7 +103,7 @@ export function getTableMetadata(
 ): ?TableMetadata {
   const query = getQuery(card);
   if (query && query["source-table"] != null) {
-    return metadata.tables[query["source-table"]] || null;
+    return metadata.table(query["source-table"]) || null;
   }
   return null;
 }

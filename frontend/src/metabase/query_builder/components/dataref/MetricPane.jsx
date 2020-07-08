@@ -50,7 +50,7 @@ export default class MetricPane extends Component {
 
   newCard() {
     const { metric, metadata } = this.props;
-    const table = metadata && metadata.tables[metric.table_id];
+    const table = metadata && metadata.table(metric.table_id);
 
     if (table) {
       const card = createCard();

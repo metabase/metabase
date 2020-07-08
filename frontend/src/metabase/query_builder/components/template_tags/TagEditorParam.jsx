@@ -83,7 +83,7 @@ export default class TagEditorParam extends Component {
     const { tag, onUpdate, metadata } = this.props;
     const dimension = ["field-id", fieldId];
     if (!_.isEqual(tag.dimension !== dimension)) {
-      const field = metadata.fields[dimension[1]];
+      const field = metadata.field(dimension[1]);
       if (!field) {
         return;
       }
@@ -111,7 +111,7 @@ export default class TagEditorParam extends Component {
       table,
       fieldMetadataLoaded = false;
     if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
-      const field = metadata.fields[tag.dimension[1]];
+      const field = metadata.field(tag.dimension[1]);
 
       if (field) {
         widgetOptions = parameterOptionsForField(field);

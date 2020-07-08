@@ -195,8 +195,8 @@ export default class FieldApp extends React.Component {
       params: { section },
     } = this.props;
 
-    const db = metadata.databases[databaseId];
-    const table = metadata.tables[tableId];
+    const db = metadata.database(databaseId);
+    const table = metadata.table(tableId);
 
     const isLoading = !field || !table || !idfields;
 

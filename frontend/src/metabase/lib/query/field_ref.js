@@ -128,21 +128,7 @@ export function getFieldTarget(field, tableDef, path = []) {
       metadata: tableDef.metadata,
       // TODO: we need to do something better here because filtering depends on knowing a sensible type for the field
       base_type: TYPE.Float,
-      // filter_operators_lookup: {},
-      // filter_operators: [],
-      active: true,
-      fk_target_field_id: null,
-      parent_id: null,
-      preview_display: true,
-      special_type: null,
-      target: null,
-      visibility_type: "normal",
     });
-    // fieldDef.filter_operators = getFilterOperators(fieldDef, tableDef);
-    // fieldDef.filter_operators_lookup = createLookupByProperty(
-    //   fieldDef.filter_operators,
-    //   "name",
-    // );
 
     return {
       table: tableDef,

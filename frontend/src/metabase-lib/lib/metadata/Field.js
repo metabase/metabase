@@ -50,7 +50,7 @@ export default class Field extends Base {
   name_field: ?Field;
 
   parent() {
-    return this.metadata ? this.metadata.fields[this.parent_id] : null;
+    return this.metadata ? this.metadata.field(this.parent_id) : null;
   }
 
   path() {
@@ -289,7 +289,7 @@ export default class Field extends Base {
     const displayFieldId =
       this.dimensions && this.dimensions.human_readable_field_id;
     if (displayFieldId != null) {
-      return this.metadata.fields[displayFieldId];
+      return this.metadata.field(displayFieldId);
     }
     // this enables "implicit" remappings from type/PK to type/Name on the same table,
     // used in FieldValuesWidget, but not table/object detail listings

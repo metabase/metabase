@@ -473,7 +473,7 @@ export class FieldIDDimension extends FieldDimension {
 
   field() {
     return (
-      (this._metadata && this._metadata.fields[this._args[0]]) ||
+      (this._metadata && this._metadata.field(this._args[0])) ||
       new Field({ id: this._args[0] })
     );
   }
