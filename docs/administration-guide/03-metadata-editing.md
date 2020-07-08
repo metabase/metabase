@@ -10,7 +10,7 @@ The **Data Model** section of the **Admin Panel** contains settings to edit meta
 
 ### What is metadata?
 
-Metadata is data about other data. It's information that tells you about the data found in your database. For example, we could label a **column** that looks like just a bunch of numbers with the label “latitude,” which would give that **column** additional meaning and context.
+Metadata is data about other data. It's information that tells you about the data found in your database. For example, we could label a **column** that looks like just a bunch of numbers with the label "latitude", which would give that **column** additional meaning and context.
 
 Metabase allows you to annotate the data in your database. Annotations can give Metabase a better understanding of what the data actually means, which allows Metabase to make more intelligent decisions when processing and displaying that data.
 
@@ -32,13 +32,13 @@ For table Metadata, you can:
 
 You can set tables to be **Queryable** or **Hidden**. Setting table visibility can be especially useful if you have a lot of tables in your database but your users will only be interested in a subset of those tables. Table visibility can help keep your Metabase instance tidy by hiding unnecessary tables out of the user interface. 
 
-> Visibility settings are distinct from **permissions**. Users can still query hidden tables using the **SQL editor**. See [**permissions**](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html) for controlling access to data.
+Visibility settings are distinct from **permissions**. Users can still query hidden tables using the **SQL editor**. See [**permissions**](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html) for controlling access to data.
 
 **Queryable tables** can be selected from the **notebook editor**, and all of the data in the table can be displayed (unless certain columns are excluded — more on that below).
 
 **Hidden tables** can’t be selected from the **notebook editor**, and their data can’t be accessed anywhere in Metabase except in the **Admin Panel** and the **SQL Editor**.
 
-![TODO image/gif of hidden tables toggle]()
+![TODO image/gif of hidden tables toggle](./images/hide-unhide-tables.gif)
 
 #### Table name and description
 
