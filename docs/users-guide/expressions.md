@@ -94,7 +94,7 @@ This would return rows where `Created At` is between January 1, 2020 and March 3
 
 Certain database types don't support some of the above functions:
 
-**BigQuery**: `median` and `percentile`
+**BigQuery**: `abs`, `ceil`, `floor`, `median`, `percentile` and `round`
 
 **H2**: `median`, `percentile` and `regexextract`
 
