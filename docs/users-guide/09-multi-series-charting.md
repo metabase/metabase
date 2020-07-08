@@ -27,9 +27,12 @@ Metabase will automatically display a multi-series line chart visualization of h
 
 ![multi-series in the query builder](images/multi-series-charts/multi-series_query_builder.png)
 
-When composing a custom question in the notebook editor, you can do this by summarizing your data (e.g., counting the rows) and grouping that data into multiple groups (e.g. `Created At` by month and Product Category.)
+You can also create a multi-series chart by composing a custom question in the notebook editor. All you need to do is summarize your data (e.g., count the rows) and group that data into multiple groups (e.g. `Created At` by month and Product Category).
 
 ![Composing a multi-series question in the notebook editor](images/multi-series-charts/notebook_editor_multi-series.png)
+
+Note: you won’t be able to add another saved question to multi-series visualizations made in this fashion. Metabase can visualize up to 100 distinct values of a dimension at once, so if you're selecting a field that contains a lot of values, you might need to filter the values.
+
 
 ### Combining two saved questions
 
