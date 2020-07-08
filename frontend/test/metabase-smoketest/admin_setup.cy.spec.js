@@ -60,7 +60,7 @@ describe("smoketest > admin_setup", () => {
       // cy.findByText("Save").click();
     });
 
-    it("should setup email", () => {
+    it.skip("should setup email", () => {
       cy.findByText("Settings").click();
       cy.findByText("Email").click();
 
@@ -96,7 +96,7 @@ describe("smoketest > admin_setup", () => {
       // );
     });
 
-    it("should setup Slack", () => {
+    it.skip("should setup Slack", () => {
       cy.findByText("Slack").click();
 
       cy.findByText("Answers sent right to your Slack #channels");
@@ -906,6 +906,7 @@ describe("smoketest > admin_setup", () => {
         .clear()
         .wait(1)
         .type("q for sub-collection");
+      cy.findByText("q for sub-collection");
       cy.findByText("Robert Tableton's Personal Collection").click();
 
       cy.findByText("My personal collection");
