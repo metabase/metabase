@@ -58,11 +58,11 @@
   (let [defaults  {:parameters []}
         dashboard (merge defaults dashboard)]
     (u/prog1 dashboard
-      (collection/check-collection-namespace (map->DashboardInstance dashboard)))))
+      (collection/check-collection-namespace Dashboard (:collection_id dashboard)))))
 
 (defn- pre-update [dashboard]
   (u/prog1 dashboard
-    (collection/check-collection-namespace dashboard)))
+    (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 
 (u/strict-extend (class Dashboard)
   models/IModel

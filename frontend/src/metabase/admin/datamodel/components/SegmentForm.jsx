@@ -12,8 +12,6 @@ import { formatValue } from "metabase/lib/formatting";
 import { reduxForm } from "redux-form";
 
 import cx from "classnames";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import Table from "metabase-lib/lib/metadata/Table";
 
 @reduxForm(
   {
@@ -70,7 +68,7 @@ export default class SegmentForm extends Component {
   }
 
   renderActionButtons() {
-    const { invalid, handleSubmit, table } = this.props;
+    const { invalid, handleSubmit } = this.props;
     return (
       <div>
         <button
@@ -81,7 +79,7 @@ export default class SegmentForm extends Component {
           onClick={handleSubmit}
         >{t`Save changes`}</button>
         <Link
-          to={"/admin/datamodel/database/" + table.db_id + "/table/" + table.id}
+          to={`/admin/datamodel/segments`}
           className="Button ml2"
         >{t`Cancel`}</Link>
       </div>
@@ -91,8 +89,6 @@ export default class SegmentForm extends Component {
   render() {
     const {
       fields: { id, name, description, definition, revision_message },
-      metadata,
-      table,
       handleSubmit,
       previewSummary,
     } = this.props;
@@ -106,41 +102,23 @@ export default class SegmentForm extends Component {
             title={isNewRecord ? t`Create Your Segment` : t`Edit Your Segment`}
             description={
               isNewRecord
-                ? t`Select and add filters to create your new segment for the ${table.display_name} table`
+                ? t`Select and add filters to create your new segment.`
                 : t`Make changes to your segment and leave an explanatory note.`
             }
           >
-            {metadata && table && (
-              <PartialQueryBuilder
-                features={{
-                  filter: true,
-                }}
-                metadata={
-                  metadata.tables &&
-                  metadata.tables[table.id].fields &&
-                  Object.assign(new Metadata(), metadata, {
-                    tables: {
-                      ...metadata.tables,
-                      [table.id]: Object.assign(
-                        new Table(),
-                        metadata.tables[table.id],
-                        {
-                          segments: [],
-                        },
-                      ),
-                    },
-                  })
-                }
-                tableMetadata={table}
-                previewSummary={
-                  previewSummary == null
-                    ? ""
-                    : formatValue(previewSummary) + " rows"
-                }
-                updatePreviewSummary={this.updatePreviewSummary.bind(this)}
-                {...definition}
-              />
-            )}
+            <PartialQueryBuilder
+              features={{
+                filter: true,
+              }}
+              previewSummary={
+                previewSummary == null
+                  ? ""
+                  : formatValue(previewSummary) + " rows"
+              }
+              updatePreviewSummary={this.updatePreviewSummary.bind(this)}
+              canChangeTable={isNewRecord}
+              {...definition}
+            />
           </FormLabel>
           <div style={{ maxWidth: "575px" }}>
             <FormLabel

@@ -1,4 +1,4 @@
-import { restore, signInAsAdmin } from "__support__/cypress";
+import { restore, signInAsAdmin, popover, modal } from "__support__/cypress";
 
 describe("scenarios > admin > datamodel > segments", () => {
   before(restore);
@@ -10,16 +10,14 @@ describe("scenarios > admin > datamodel > segments", () => {
   it("should create a segment", () => {
     cy.visit("/admin");
     cy.contains("Data Model").click();
-    cy.contains("Orders").click();
+    cy.contains("Segments").click();
+    cy.contains("New segment").click();
+    cy.contains("Select a table").click();
+    popover()
+      .contains("Orders")
+      .click({ force: true }); // this shouldn't be needed, but there were issues with reordering as loads happeend
 
-    // empty state displays message
-    cy.contains(
-      "Create segments to add them to the Filter dropdown in the query builder",
-    );
-
-    // redirected to segment form
-    cy.contains("Add a Segment").click();
-    cy.url().should("match", /segment\/create\?table=2$/);
+    cy.url().should("match", /segment\/create$/);
     cy.contains("Create Your Segment");
 
     // filter to orders with total under 100
@@ -28,7 +26,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     cy.contains("Equal to").click();
     cy.contains("Less than").click();
     cy.get('[placeholder="Enter a number"]').type("100");
-    cy.get(".PopoverBody")
+    popover()
       .contains("Add filter")
       .click();
 
@@ -41,15 +39,18 @@ describe("scenarios > admin > datamodel > segments", () => {
 
     // saving bounces you back and you see new segment in the list
     cy.contains("Save changes").click();
-    cy.url().should("match", /datamodel\/database\/1\/table\/2$/);
+    cy.url().should("match", /datamodel\/segments$/);
     cy.contains("orders <100");
     cy.contains("Filtered by Total");
   });
 
   it("should update that segment", () => {
-    // visit table's data model page and click to edit the segment
-    cy.visit("/admin/datamodel/database/1/table/2");
+    cy.visit("/admin");
+    cy.contains("Data Model").click();
+    cy.contains("Segments").click();
+
     cy.contains("orders <100")
+      .parent()
       .parent()
       .find(".Icon-ellipsis")
       .click();
@@ -59,14 +60,16 @@ describe("scenarios > admin > datamodel > segments", () => {
     cy.url().should("match", /segment\/1$/);
     cy.contains("Edit Your Segment");
     cy.contains(/Total\s+is less than/).click();
-    cy.get(".PopoverBody")
+    popover()
       .contains("Less than")
       .click();
-    cy.get(".PopoverBody")
+    popover()
       .contains("Greater than")
       .click();
-    cy.get(".PopoverBody input").type("{SelectAll}10");
-    cy.get(".PopoverBody")
+    popover()
+      .find("input")
+      .type("{SelectAll}10");
+    popover()
       .contains("Update filter")
       .click();
 
@@ -84,17 +87,20 @@ describe("scenarios > admin > datamodel > segments", () => {
     cy.contains("Save changes").click();
 
     // get redirected to previous page and see the new segment name
-    cy.url().should("match", /datamodel\/database\/1\/table\/2$/);
+    cy.url().should("match", /datamodel\/segments$/);
     cy.contains("orders >10");
 
     // clean up
     cy.contains("orders >10")
       .parent()
+      .parent()
       .find(".Icon-ellipsis")
       .click();
     cy.contains("Retire Segment").click();
-    cy.get(".ModalBody textarea").type("delete it");
-    cy.get(".ModalBody")
+    modal()
+      .find("textarea")
+      .type("delete it");
+    modal()
       .contains("button", "Retire")
       .click();
   });

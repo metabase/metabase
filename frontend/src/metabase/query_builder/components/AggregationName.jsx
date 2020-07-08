@@ -6,7 +6,7 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
-import * as A_DEPRECATED from "metabase/lib/query_aggregation";
+import * as AGGREGATION from "metabase/lib/query/aggregation";
 
 import { getAggregationOperator } from "metabase/lib/schema_metadata";
 import { format } from "metabase/lib/expressions/format";
@@ -41,15 +41,15 @@ const AggregationName = ({
   if (!tableMetadata) {
     return null;
   }
-  if (A_DEPRECATED.hasOptions(aggregation)) {
-    if (A_DEPRECATED.isNamed(aggregation)) {
+  if (AGGREGATION.hasOptions(aggregation)) {
+    if (AGGREGATION.isNamed(aggregation)) {
       return (
         <NamedAggregation aggregation={aggregation} className={className} />
       );
     }
-    aggregation = A_DEPRECATED.getContent(aggregation);
+    aggregation = AGGREGATION.getContent(aggregation);
   }
-  return A_DEPRECATED.isCustom(aggregation) ? (
+  return AGGREGATION.isCustom(aggregation) && !isRows(aggregation) ? (
     <CustomAggregation
       query={query}
       aggregation={aggregation}
@@ -57,7 +57,7 @@ const AggregationName = ({
       customFields={customFields}
       className={className}
     />
-  ) : A_DEPRECATED.isMetric(aggregation) ? (
+  ) : AGGREGATION.isMetric(aggregation) ? (
     <MetricAggregation
       aggregation={aggregation}
       tableMetadata={tableMetadata}
@@ -74,7 +74,7 @@ const AggregationName = ({
 };
 
 const NamedAggregation = ({ aggregation, className }) => (
-  <span className={className}>{A_DEPRECATED.getName(aggregation)}</span>
+  <span className={className}>{AGGREGATION.getName(aggregation)}</span>
 );
 
 const CustomAggregation = ({ aggregation, query, className }) => (
@@ -84,7 +84,7 @@ const CustomAggregation = ({ aggregation, query, className }) => (
 );
 
 const MetricAggregation = ({ aggregation, tableMetadata, className }) => {
-  const metricId = A_DEPRECATED.getMetric(aggregation);
+  const metricId = AGGREGATION.getMetric(aggregation);
   const selectedMetric = _.findWhere(tableMetadata.metrics, { id: metricId });
   if (selectedMetric) {
     return (
@@ -103,10 +103,10 @@ const StandardAggregation = ({
   customFields,
   className,
 }) => {
-  const fieldId = A_DEPRECATED.getField(aggregation);
+  const fieldId = AGGREGATION.getField(aggregation);
 
   const selectedAggregation = getAggregationOperator(
-    A_DEPRECATED.getOperator(aggregation),
+    AGGREGATION.getOperator(aggregation),
   );
   // if this table doesn't support the selected aggregation, prompt the user to select a different one
   if (
@@ -136,5 +136,7 @@ const StandardAggregation = ({
     return <span>{t`Invalid`}</span>;
   }
 };
+
+const isRows = aggregation => aggregation && aggregation[0] === "rows";
 
 export default AggregationName;

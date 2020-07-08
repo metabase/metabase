@@ -8,6 +8,8 @@ import ModalContent from "metabase/components/ModalContent";
 import Radio from "metabase/components/Radio";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
+import { generateQueryDescription } from "metabase/lib/query/description";
+
 import validate from "metabase/lib/validate";
 
 import { t } from "ttag";
@@ -76,10 +78,7 @@ export default class SaveQuestionModal extends Component {
     const initialValues = {
       name:
         card.name || isStructured
-          ? Q_DEPRECATED.generateQueryDescription(
-              tableMetadata,
-              card.dataset_query.query,
-            )
+          ? generateQueryDescription(tableMetadata, card.dataset_query.query)
           : "",
       description: card.description || "",
       collection_id:
