@@ -17,7 +17,7 @@ There are two main ways to visualize data side by side:
 
 ### Ask a question that involves multiple dimensions 
 
-If you’re creating a new question, you can view the results as a multi-series visualization by summarizing your data and grouping it into two or more groups.
+If you’re creating a new question, you can view the results as a multi-series visualization by summarizing your data and grouping it into two groups.
 
 As an example, we might want to see which website or service is referring the most people to our website. In the **Sample Dataset** that ships with Metabase, you would group by the `Source` and `Created At` columns of the **People** table.
 
@@ -77,7 +77,9 @@ From the **Visualization -> Display** options, you can toggle a slider to **Show
 
 ![add values to multi-series chart](images/multi-series-charts/add_values.gif)
 
-There is also an option to configure the formatting of the values: 
+You can also toggle values for each individual series. If you have three series, for example, you can show values on one, two, or all three series. In the **Display** tab, click on the down arrow to the right of a series to expand its details, and toggle the **Show values for this series** slider to show or hide its values. You can also toggle on values for the whole chart, then selectively hide values for individual series until you have your chart looking just right.
+
+Additionally, there is an option to configure the formatting of the values: 
 
 - **Auto**. Metabase selects the appropriate style for you
 - **Compact**. Metabase abbreviates values, e.g., 1,000 becomes 1K.
