@@ -61,7 +61,7 @@ To run Metabase via a JAR file, you will need to have a Java Runtime Environment
 
 We recommend the latest LTS version of JRE from [AdoptOpenJDK](https://adoptopenjdk.net/releases.html) with HotSpot JVM and x64 architecture, but other [Java versions](https://www.metabase.com/docs/latest/operations-guide/java-versions.html) might work too.
 
-Go to the [Metabase Download Page](https://metabase.com/start/jar.html) and download the latest release. Place the downloaded JAR-file into a newly created directory (as it will create some files when it is run), and run it with the following command:
+Go to the [Metabase download page](https://metabase.com/start/jar.html) and download the latest release. Place the downloaded JAR file into a newly created directory (as it will create some files when it is run), and run it with the following command:
 
 ```
 java -jar metabase.jar
