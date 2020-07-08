@@ -81,7 +81,11 @@
 (defsetting site-locale
   (str (deferred-tru "The default language for all users across the Metabase UI, system emails, pulses, and alerts.")
        " "
+<<<<<<< HEAD
        (deferred-tru "Users can individually override this default language from their own account settings."))
+=======
+       (deferred-tru "Users can override this default language from their own account settings."))
+>>>>>>> rephrase to fix formatting error
   :default    "en"
   :visibility :public
   :setter     (fn [new-value]
