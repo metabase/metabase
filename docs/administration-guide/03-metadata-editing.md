@@ -7,11 +7,11 @@ The **Data Model** section of the **Admin Panel** contains settings to edit meta
 - **Segments**
 - **Metrics**
 
-This page focuses on editing table and column metadata; another page covers [segments and metrics](administration-guide/07-segments-and-metrics.md).
+This page focuses on editing table and column metadata; another page covers [segments and metrics](07-segments-and-metrics.md).
 
 ### What is metadata?
 
-Metadata is data about other data. It's information that tells you about the data found in your database. For example, we could label a **column** that looks like just a bunch of numbers with the label "latitude", which would give that **column** additional meaning and context.
+Metadata is data about other data. It's information that tells you about the data found in your database. For example, we could label a column that looks like just a bunch of numbers with the label "latitude", which would give that column additional meaning and context.
 
 Metabase allows you to annotate the data in your database. Annotations can give Metabase a better understanding of what the data actually means, which allows Metabase to make more intelligent decisions when processing and displaying that data.
 
@@ -39,13 +39,15 @@ Visibility settings are distinct from **permissions**. Users can still query hid
 
 **Hidden tables** can’t be selected from the **notebook editor**, and their data can’t be accessed anywhere in Metabase except in the **Admin Panel** and the **SQL Editor**.
 
+Here's a gif showing how to hide and unhide tables:
+
 ![Hide and unhide tables](./images/hide-unhide-tables.gif)
 
 #### Table name and description
 
 You can change the **name** and **description** of your tables. Note that the underlying database won’t be affected; changes will only update the name of the table in Metabase.
 
-Add descriptions to tables to let people know the type of data a table contains and how it can be used. Descriptions are displayed when browsing data (click on the book icon), as well as in the data model reference panel in the SQL Editor, which you can open by clicking on the book icon to the right of the editing panel.
+You can add descriptions to tables to let people know the type of data a table contains. Descriptions are displayed when browsing data (click on the book icon), as well as in the Data Model Reference Panel in the SQL Editor, which you can open by clicking on the book icon to the right of the editing panel.
 
 ![Learn about your data in the SQL editor](./images/learn-about-your-data-sql-editor.png)
 
@@ -56,7 +58,7 @@ If you ever want to see the original underlying schema for a given table, just c
 
 ### Metadata for columns
 
-You can edit metadata for **columns**. Metabase automatically attempts to classify your columns and assign them a type. If Metabase misclassified any columns, you can correct those inaccurate classifications here.
+Metabase automatically attempts to classify your columns and assign them a type, but you can also edit the metadata yourself. If Metabase misclassified any columns, you can correct those inaccurate classifications here.
 
 For each column, you can edit its: 
 
@@ -67,7 +69,7 @@ For each column, you can edit its:
 
 ### Columns vs fields
 
-First, a note about **columns** and **fields**, as these terms can be used interchangeably.
+A note about **columns** and **fields**, as these terms can be used interchangeably:
 
 - A **field** is an element for storing data (e.g., the `PRODUCT_ID` field stores identification codes for products). 
 
@@ -77,21 +79,21 @@ In Metabase (and elsewhere) you'll often see these two terms used interchangeabl
 
 #### Column name
 
-To change how the column name is displayed, click on the name of the column. For example, if your ORM produces table names like “auth.user", you can replace this with “User” to make the column more readable. This name change only affects how Metabase displays the column; the change does not affect the database itself.
+To change how the column name is displayed, click on the name of the column. For example, if your ORM produces table names like "auth.user", you can replace this with "User" to make the column more readable. This name change only affects how Metabase displays the column; the change does not affect the database itself.
 
-#### Description
+#### Column description
 
 You can include a human-readable summary of a column, its source, and use cases. Any caveats about interpretation can go here as well. Descriptions are particularly useful when columns have values that are abbreviated or coded in a particular format.
 
-#### Visibility
+#### Column visibility
 
-By default, users can see every column in a table. 
+By default, users can see every column in a table, but you can select other visibility options: 
 
 - **Only in Detail Views**. Sets the visibility to display only when viewing a single **column** record. Useful if you have really long data in certain **columns**, like descriptions or biographies. By default, any column with an average length of longer than 50 characters is assigned this setting.
 
 - **Do Not Include**. This column won't be visible or selectable in questions created with the **notebook editor** (the GUI editor). Useful if you have sensitive or irrelevant columns.
 
-> For the **SQL editor**, **Do Not Include** settings only affect visibility in the **data reference** section. Though columns will not be visible in the **data reference** section, users will still be able to query these columns.
+For the **SQL editor**, **Do Not Include** settings only affect visibility in the **data reference** section. Though columns will not be visible in the **data reference** section, users will still be able to query these columns.
 
 #### Types
 
@@ -183,9 +185,9 @@ Metabase will automatically try to pick the best kind of filter interface for ea
 
 You can manually change the user interface for the filter to:
 
-- drop down list
-- search box
-- plain input box
+- Search box
+- A list of all values
+- Plain input box
 
 ![Filter options](./images/filter-options.png)
 
@@ -197,7 +199,7 @@ You can re-order the way Metabase presents columns in menus and other interfaces
 
 ![Reordering columns](./images/column-reorder.gif)
 
-You can also select from several pre-set options:
+You can also select from several options:
 
 - **Database.** (Default) The order of columns as they appear in the database.
 - **Alphabetical.** A, B, C... however the alphabet works.
