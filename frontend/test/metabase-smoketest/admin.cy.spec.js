@@ -161,6 +161,7 @@ describe("metabase-smoketest > admin", () => {
     });
 
     it("should add a simple JOINed question as admin", () => {
+      cy.visit("/");
       cy.findByText("Ask a question");
 
       cy.findByText("Ask a question").click();

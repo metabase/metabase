@@ -905,8 +905,8 @@ describe("smoketest > admin_setup", () => {
       cy.findByLabelText("Name")
         .clear()
         .wait(1)
-        .type("q for sub-collection");
-      cy.findByText("q for sub-collection");
+        .type("sub-collection question");
+      cy.findByText("sub-collection question");
       cy.findByText("Robert Tableton's Personal Collection").click();
 
       cy.findByText("My personal collection");
@@ -922,11 +922,10 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Sorry, you don’t have permission to see that.").should(
         "not.exist",
       );
-      cy.findByText("q for sub-collection");
+      cy.findByText("sub-collection question");
 
       // Check access as no collection user
 
-      signOut();
       signIn("nocollection");
       cy.visit("/");
 
@@ -941,11 +940,10 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should be unable to access question with URL (if access not permitted)", () => {
-      signOut();
       signIn("nocollection");
 
       cy.visit("/question/4");
-      cy.findByText("q for sub-collection").should("not.exist");
+      cy.findByText("sub-collection question").should("not.exist");
       cy.findByText("Sorry, you don’t have permission to see that.");
     });
 
