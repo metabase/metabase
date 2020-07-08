@@ -73,11 +73,11 @@ When displaying multiple series, it’s important to keep legibility in mind. Co
 
 Metabase allows you to add values to multi-series charts, but go easy on this feature, especially on charts with lots of data points. Adding values to multiple series, each with many data points, can make charts more difficult to read.
 
-From the **Visualization -> Display** options, you can toggle a slider to **Show values on data points**. Metabase will do its best to fit as many values as can fit nicely. You can also force Metabase to (begrudgingly) show values for all data points, by setting the **Values to show** to **All**. 
+From the **Visualization -> Display** options, you can toggle the option: **Show values on data points**. Metabase will do its best to fit as many values as can fit nicely. You can also force Metabase to (begrudgingly) show values for all data points, by setting the **Values to show** to **All**. 
 
 ![add values to multi-series chart](images/multi-series-charts/add_values.gif)
 
-You can also toggle values for each individual series. If you have three series, for example, you can show values on one, two, or all three series. In the **Display** tab, click on the down arrow to the right of a series to expand its details, and toggle the **Show values for this series** slider to show or hide its values. You can also toggle on values for the whole chart, then selectively hide values for individual series until you have your chart looking just right.
+You can also toggle values for each individual series. If you have three series, for example, you can show values on one, two, or all three series. In the **Display** tab, click on the down arrow to the right of a series to expand its details, and toggle **Show values for this series** to show or hide its values. You can also toggle values for the whole chart, then selectively hide values for individual series until you have your chart looking just right.
 
 Additionally, there is an option to configure the formatting of the values: 
 
