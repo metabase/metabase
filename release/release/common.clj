@@ -23,10 +23,6 @@
 (def ^String uberjar-path
   (str root-directory "/target/uberjar/metabase.jar"))
 
-(def ^String ^:deprecated artifacts-directory
-  "e.g. /Users/cam/metabase/osx-artifacts"
-  (str root-directory "/data"))
-
 (defonce ^:private build-options
   (atom nil))
 
@@ -156,12 +152,6 @@
     (step (format "Creating directory %s..." dir)
       (.mkdirs (File. dir))))
   dir)
-
-(defn ^:deprecated artifact
-  "Return the full path of a file in the build artifacts directory."
-  ^String [filename]
-  (create-directory-unless-exists! artifacts-directory)
-  (str artifacts-directory "/" filename))
 
 (defn delete-file!
   "Delete a file or directory if it exists."
