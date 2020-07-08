@@ -10,7 +10,11 @@ The **Data Model** section of the **Admin Panel** contains settings to edit meta
 
 ### What is metadata?
 
+<<<<<<< HEAD
 Metadata is data about other data. It's information that tells you about the data found in your database. For example, we could label a **column** that looks like just a bunch of numbers with the label "latitude", which would give that **column** additional meaning and context.
+=======
+Metadata is data about other data. It's information that tells you about the data found in your database. For example, we could label a **column** that looks like just a bunch of numbers with the label “latitude,” which would give that **column** additional meaning and context.
+>>>>>>> a89227239dffae7a4a2cf210764dff029e84bd74
 
 Metabase allows you to annotate the data in your database. Annotations can give Metabase a better understanding of what the data actually means, which allows Metabase to make more intelligent decisions when processing and displaying that data.
 
@@ -32,13 +36,21 @@ For table Metadata, you can:
 
 You can set tables to be **Queryable** or **Hidden**. Setting table visibility can be especially useful if you have a lot of tables in your database but your users will only be interested in a subset of those tables. Table visibility can help keep your Metabase instance tidy by hiding unnecessary tables out of the user interface. 
 
+<<<<<<< HEAD
 Visibility settings are distinct from **permissions**. Users can still query hidden tables using the **SQL editor**. See [**permissions**](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html) for controlling access to data.
+=======
+> Visibility settings are distinct from **permissions**. Users can still query hidden tables using the **SQL editor**. See [**permissions**](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html) for controlling access to data.
+>>>>>>> a89227239dffae7a4a2cf210764dff029e84bd74
 
 **Queryable tables** can be selected from the **notebook editor**, and all of the data in the table can be displayed (unless certain columns are excluded — more on that below).
 
 **Hidden tables** can’t be selected from the **notebook editor**, and their data can’t be accessed anywhere in Metabase except in the **Admin Panel** and the **SQL Editor**.
 
+<<<<<<< HEAD
 ![Hide and unhide tables](./images/hide-unhide-tables.gif)
+=======
+![TODO image/gif of hidden tables toggle]()
+>>>>>>> a89227239dffae7a4a2cf210764dff029e84bd74
 
 #### Table name and description
 
@@ -79,7 +91,11 @@ By default, users can see every **column** in a table.
 
 #### Types
 
+<<<<<<< HEAD
 A **column's** **type** dictates how Metabase displays its data, as well as the column's special functionality, if any. For example, by marking columns in a table as **Latitude** and **Longitude**, Metabase can use the columns to create pin and heat maps. Similarly, marking a column as a **URL** allows users to click on the link to visit the URL.
+=======
+A **column’s** **type** dictates how Metabase displays its data, as well as the column's special functionality, if any. For example, by marking columns in a table as **Latitude** and **Longitude**, Metabase can use the columns to create pin and heat maps. Similarly, marking a column as a **URL** allows users to click on the link to visit the URL.
+>>>>>>> a89227239dffae7a4a2cf210764dff029e84bd74
 
 You can also designate a column as the table's **primary key** or **foreign key**.
 
@@ -179,7 +195,11 @@ Metabase will default to the column order native to the database.
 
 You can re-order the way Metabase presents columns in menus and other interfaces (without affecting the database) by clicking on the grab bar to the right of each column, and dragging the column to a new position in the order.
 
+<<<<<<< HEAD
 ![Reordering columns](./images/column-reorder.gif)
+=======
+![TODO gif of reorder]()
+>>>>>>> a89227239dffae7a4a2cf210764dff029e84bd74
 
 ---
 
