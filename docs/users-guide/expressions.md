@@ -106,6 +106,6 @@ Certain database types don't support some of the above functions:
 
 **Vertica**: `median` and `percentile`
 
-Additionally, **Presto** only provide _approximate_ results for `median` and `percentile`.
+Additionally, **Presto** only provides _approximate_ results for `median` and `percentile`.
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
