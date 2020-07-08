@@ -38,7 +38,7 @@ Visibility settings are distinct from **permissions**. Users can still query hid
 
 **Hidden tables** can’t be selected from the **notebook editor**, and their data can’t be accessed anywhere in Metabase except in the **Admin Panel** and the **SQL Editor**.
 
-![TODO image/gif of hidden tables toggle](./images/hide-unhide-tables.gif)
+![Hide and unhide tables](./images/hide-unhide-tables.gif)
 
 #### Table name and description
 
@@ -79,7 +79,7 @@ By default, users can see every **column** in a table.
 
 #### Types
 
-A **column’s** **type** dictates how Metabase displays its data, as well as the column's special functionality, if any. For example, by marking columns in a table as **Latitude** and **Longitude**, Metabase can use the columns to create pin and heat maps. Similarly, marking a column as a **URL** allows users to click on the link to visit the URL.
+A **column's** **type** dictates how Metabase displays its data, as well as the column's special functionality, if any. For example, by marking columns in a table as **Latitude** and **Longitude**, Metabase can use the columns to create pin and heat maps. Similarly, marking a column as a **URL** allows users to click on the link to visit the URL.
 
 You can also designate a column as the table's **primary key** or **foreign key**.
 
@@ -153,11 +153,11 @@ To remap column values, click on the gear icon to the right of a field's Type dr
 
 `Visibility` and `Type` are the same as on the main Data Model page, but `Display values` lets you choose to swap out a field's values with something else.
 
-Foreign key remapping lets you swap out a foreign key's values with the values of any other field in the connected table. In this example, we're swapping out the `Product ID` field's values with the values in the `Title` field in the Product table:
+**Foreign key remapping** lets you swap out a foreign key's values with the values of any other field in the connected table. In this example, we're swapping out the `Product ID` field's values with the values in the `Title` field in the Product table:
 
 ![Remapping form](./images/remapping/fk-mapping.png)
 
-Another option is custom remapping, which is currently only possible for numeric fields. This lets you map every number that occurs in this field to either a different numeric value or even to a text value, like in this example:
+Another option is **custom remapping**, which is currently only possible for numeric fields. This lets you map every number that occurs in this field to either a different numeric value or even to a text value, like in this example:
 
 ![Remapping form](./images/remapping/custom-mapping.png)
 
@@ -179,7 +179,7 @@ Metabase will default to the column order native to the database.
 
 You can re-order the way Metabase presents columns in menus and other interfaces (without affecting the database) by clicking on the grab bar to the right of each column, and dragging the column to a new position in the order.
 
-![TODO gif of reorder]()
+![Reordering columns](./images/column-reorder.gif)
 
 ---
 
