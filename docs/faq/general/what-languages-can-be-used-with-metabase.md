@@ -21,11 +21,11 @@ The available languages as of the 0.35 release are:
 - Russian
 - Slovak
 - Spanish
+- Turkish
 
 Some translations were previously available in Metabase, but have been removed as they are no longer complete:
 
 - Norwegian Bokmål
-- Turkish
 - Ukrainian
 - Vietnamese
 
