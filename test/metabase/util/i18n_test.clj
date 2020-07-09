@@ -61,14 +61,36 @@
     (testing "not enough args"
       (is (thrown?
            clojure.lang.Compiler$CompilerException
-           (walk/macroexpand-all `(i18n/trs "{0} {1}" 0)))))
+           (walk/macroexpand-all `(i18n/trs "{0} {1}" 0))))
+      (is (thrown-with-msg?
+           AssertionError
+           #"expects 2 args, got 1"
+           (#'i18n/validate-number-of-args "{0} {1}" [0]))))
 
     (testing "too many args"
       (is (thrown?
            clojure.lang.Compiler$CompilerException
-           (walk/macroexpand-all `(i18n/trs "{0} {1}" 0 1 2)))))
+           (walk/macroexpand-all `(i18n/trs "{0} {1}" 0 1 2))))
+      (is (thrown-with-msg?
+           AssertionError
+           #"expects 2 args, got 3"
+           (#'i18n/validate-number-of-args "{0} {1}" [0 1 2]))))
 
     (testing "Missing format specifiers (e.g. {1} but no {0})"
-      (is (thrown?
-           clojure.lang.Compiler$CompilerException
-           (walk/macroexpand-all `(i18n/trs "{1}" 0)))))))
+      (testing "num args match num specifiers"
+        (is (thrown?
+             clojure.lang.Compiler$CompilerException
+             (walk/macroexpand-all `(i18n/trs "{1}" 0))))
+        (is (thrown-with-msg?
+             AssertionError
+             #"missing some \{\} placeholders\. Expected \{0\}, \{1\}"
+             (#'i18n/validate-number-of-args "{1}" [0]))))
+
+      (testing "num args match num specifiers if none were missing"
+        (is (thrown?
+             clojure.lang.Compiler$CompilerException
+             (walk/macroexpand-all `(i18n/trs "{1}" 0 1))))
+        (is (thrown-with-msg?
+             AssertionError
+             #"missing some \{\} placeholders\. Expected \{0\}, \{1\}"
+             (#'i18n/validate-number-of-args "{1}" [0 1])))))))
