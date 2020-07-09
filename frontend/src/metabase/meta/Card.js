@@ -26,7 +26,8 @@ import type {
   ParameterMapping,
   ParameterValues,
 } from "metabase-types/types/Parameter";
-import type { Metadata, TableMetadata } from "metabase-types/types/Metadata";
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import type Table from "metabase-lib/lib/metadata/Table";
 
 declare class Object {
   static values<T>(object: { [key: string]: T }): Array<T>;
@@ -97,10 +98,7 @@ export function getQuery(card: Card): ?StructuredQuery {
   }
 }
 
-export function getTableMetadata(
-  card: Card,
-  metadata: Metadata,
-): ?TableMetadata {
+export function getTableMetadata(card: Card, metadata: Metadata): ?Table {
   const query = getQuery(card);
   if (query && query["source-table"] != null) {
     return metadata.table(query["source-table"]) || null;

@@ -28,10 +28,7 @@ import type {
   DatasetQuery,
   StructuredDatasetQuery,
 } from "metabase-types/types/Card";
-import type {
-  TableMetadata,
-  AggregationOperator,
-} from "metabase-types/types/Metadata";
+import type { AggregationOperator } from "metabase-types/types/Metadata";
 
 import Dimension, {
   FKDimension,
@@ -321,13 +318,6 @@ export default class StructuredQuery extends AtomicQuery {
     } else {
       return this.metadata().table(this.sourceTableId());
     }
-  }
-
-  /**
-   * @deprecated Alias of `table()`. Use only when partially porting old code that uses @type {TableMetadata} object.
-   */
-  tableMetadata(): ?TableMetadata {
-    return this.table();
   }
 
   /**

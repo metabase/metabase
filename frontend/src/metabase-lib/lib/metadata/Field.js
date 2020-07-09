@@ -206,10 +206,12 @@ export default class Field extends Base {
   }
 
   // @deprecated: use filterOperators
+  // $FlowFixMe: known to not have side-effects
   get filter_operators() {
     return this.filterOperators();
   }
   // @deprecated: use filterOperatorsLookup
+  // $FlowFixMe: known to not have side-effects
   get filter_operators_lookup() {
     return this.filterOperatorsLookup();
   }
@@ -239,10 +241,12 @@ export default class Field extends Base {
   }
 
   // @deprecated: use aggregationOperators
+  // $FlowFixMe: known to not have side-effects
   get aggregation_operators() {
     return this.aggregationOperators();
   }
   // @deprecated: use aggregationOperatorsLookup
+  // $FlowFixMe: known to not have side-effects
   get aggregation_operators_lookup() {
     return this.aggregationOperatorsLookup();
   }

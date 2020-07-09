@@ -16,12 +16,10 @@ import type {
   Card as CardObject,
   DatasetQuery,
 } from "metabase-types/types/Card";
-import type { TableMetadata } from "metabase-types/types/Metadata";
 import TimeseriesGroupingWidget from "metabase/modes/components/TimeseriesGroupingWidget";
 
 type Props = {
   lastRunCard: CardObject,
-  tableMetadata: TableMetadata,
   setDatasetQuery: (datasetQuery: DatasetQuery) => void,
   runQuestionQuery: () => void,
 };

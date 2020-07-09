@@ -11,7 +11,6 @@ import Field from "./Field";
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
 
 import type { SchemaName } from "metabase-types/types/Table";
-import type { FieldMetadata } from "metabase-types/types/Metadata";
 
 import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";
@@ -32,7 +31,7 @@ export default class Table extends Base {
   // @deprecated: use schema.name (all tables should have a schema object, in theory)
   schema_name: ?SchemaName;
 
-  fields: FieldMetadata[];
+  fields: Field[];
 
   entity_type: ?EntityType;
 
@@ -109,11 +108,13 @@ export default class Table extends Base {
   }
 
   // @deprecated: use aggregationOperators
+  // $FlowFixMe: known to not have side-effects
   get aggregation_operators() {
     return this.aggregationOperators();
   }
 
   // @deprecated: use aggregationOperatorsLookup
+  // $FlowFixMe: known to not have side-effects
   get aggregation_operators_lookup() {
     return this.aggregationOperatorsLookup();
   }
@@ -126,6 +127,7 @@ export default class Table extends Base {
   }
 
   // @deprecated: use fieldsLookup
+  // $FlowFixMe: known to not have side-effects
   get fields_lookup() {
     return this.fieldsLookup();
   }
