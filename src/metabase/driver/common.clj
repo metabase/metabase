@@ -281,18 +281,20 @@
       (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
       :type/*)))
 
-(defn- values->class->count [values]
-  (reduce
-   (fn [class->count klass]
-     (update class->count klass (fnil inc 0)))
-   {}
-   ;; take (up to) the first 100 non-nil values out of the first 1000 values
-   (eduction (map class) (take 100) (filter some?) (take 1000) values)))
+(def ^:private column-info-sample-size
+  "Number of result rows to sample when when determining base type."
+  100)
 
-(defn- values->most-common-class [values]
-  (ffirst (reverse (sort-by second (values->class->count values)))))
-
-(defn values->base-type
-  "Given a sequence of `values`, return the most common base type."
-  [values]
-  (-> values values->most-common-class class->base-type))
+(def values->base-type
+  "Transducer that given a sequence of `values`, returns the most common base type."
+  ((comp (filter some?) (take column-info-sample-size) (map class))
+   (fn
+     ([] (java.util.HashMap. {:type/* 1}))
+     ([^java.util.HashMap freqs klass]
+      (.put freqs klass (inc (.getOrDefault freqs klass 0)))
+      freqs)
+     ([freqs]
+      (->> freqs
+           (apply max-key val)
+           key
+           class->base-type)))))
