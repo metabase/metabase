@@ -62,7 +62,8 @@ describe("scenarios > visualizations > chart drill", () => {
     });
   });
 
-  it("should drill through a nested query", () => {
+  // this test was very flaky
+  it.skip("should drill through a nested query", () => {
     // There's a slight hiccup in the UI with nested questions when we Summarize by City below.
     // Because there's only 5 rows, it automatically switches to the chart, but issues another
     // dataset request. So we wait for the dataset to load.
