@@ -80,7 +80,7 @@ export function getGlobalSettingsForColumn(column: Column) {
   const customFormatting = MetabaseSettings.get("custom-formatting");
   // NOTE: the order of these doesn't matter as long as there's no overlap between settings
   for (const [type, globalSettings] of Object.entries(customFormatting || {})) {
-    if (isa(column.special_type, type)) {
+    if (isa(column.special_type || column.base_type, type)) {
       // $FlowFixMe
       Object.assign(settings, globalSettings);
     }

@@ -566,7 +566,10 @@
                       Dashboard          [{dashboard-id :id} {:name "My Dashboard"}]]
         (letfn [(only-test-items [results]
                   (if (sequential? results)
-                    (filter #(#{snippet-id archived-id dashboard-id} (:id %)) results)
+                    (filter #(#{["snippet" snippet-id]
+                                ["snippet" archived-id]
+                                ["dashboard" dashboard-id]} ((juxt :model :id) %))
+                            results)
                     results))
                 (only-test-item-names [results]
                   (let [items (only-test-items results)]
@@ -585,7 +588,7 @@
           (testing "\nShould be able to fetch archived Snippets"
             (is (= ["Archived Snippet"]
                    (only-test-item-names ((mt/user->client :rasta) :get 200
-                                                 "collection/root/items?namespace=snippets&archived=true")))))
+                                          "collection/root/items?namespace=snippets&archived=true")))))
 
           (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
             (is (= ["My Snippet"]
