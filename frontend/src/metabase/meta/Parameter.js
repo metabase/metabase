@@ -1,12 +1,12 @@
 /* @flow */
 
-import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { DatasetQuery } from "metabase-types/types/Card";
 import type {
   TemplateTag,
   LocalFieldReference,
   ForeignFieldReference,
   FieldFilter,
-} from "metabase/meta/types/Query";
+} from "metabase-types/types/Query";
 import type {
   Parameter,
   ParameterInstance,
@@ -15,9 +15,9 @@ import type {
   ParameterValueOrArray,
   ParameterValues,
   ParameterType,
-} from "metabase/meta/types/Parameter";
-import type { FieldId } from "metabase/meta/types/Field";
-import type { Metadata } from "metabase/meta/types/Metadata";
+} from "metabase-types/types/Parameter";
+import type { FieldId } from "metabase-types/types/Field";
+import type { Metadata } from "metabase-types/types/Metadata";
 
 import moment from "moment";
 

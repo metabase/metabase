@@ -51,8 +51,8 @@ export default function SortStep({
 
 import FieldList from "metabase/query_builder/components/FieldList";
 
-import type { OrderBy } from "metabase/meta/types/Query";
-import type { FieldOptions } from "metabase/meta/types/Metadata";
+import type { OrderBy } from "metabase-types/types/Query";
+import type { FieldOptions } from "metabase-types/types/Metadata";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 type Props = {

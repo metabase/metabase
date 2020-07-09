@@ -10,8 +10,8 @@ import Field from "./Field";
 
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
 
-import type { SchemaName } from "metabase/meta/types/Table";
-import type { FieldMetadata } from "metabase/meta/types/Metadata";
+import type { SchemaName } from "metabase-types/types/Table";
+import type { FieldMetadata } from "metabase-types/types/Metadata";
 
 import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";

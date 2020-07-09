@@ -10,12 +10,12 @@ import * as AGGREGATION from "metabase/lib/query/aggregation";
 
 import { AggregationDimension } from "../../Dimension";
 
-import type { Aggregation as AggregationObject } from "metabase/meta/types/Query";
+import type { Aggregation as AggregationObject } from "metabase-types/types/Query";
 import type StructuredQuery from "../StructuredQuery";
 import type Dimension from "../../Dimension";
-import type { AggregationOperator } from "metabase/meta/types/Metadata";
-import type { MetricId } from "metabase/meta/types/Metric";
-import type { FieldId } from "metabase/meta/types/Field";
+import type { AggregationOperator } from "metabase-types/types/Metadata";
+import type { MetricId } from "metabase-types/types/Metric";
+import type { FieldId } from "metabase-types/types/Field";
 
 const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);
 

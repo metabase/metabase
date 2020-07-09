@@ -36,7 +36,7 @@ import {
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
 
-import type { FieldValues } from "metabase/meta/types/Field";
+import type { FieldValues } from "metabase-types/types/Field";
 
 /**
  * Wrapper class for field metadata objects. Belongs to a Table.

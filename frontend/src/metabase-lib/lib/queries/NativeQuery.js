@@ -20,9 +20,9 @@ import type Question from "metabase-lib/lib/Question";
 import type {
   DatasetQuery,
   NativeDatasetQuery,
-} from "metabase/meta/types/Card";
-import type { TemplateTags, TemplateTag } from "metabase/meta/types/Query";
-import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
+} from "metabase-types/types/Card";
+import type { TemplateTags, TemplateTag } from "metabase-types/types/Query";
+import type { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 

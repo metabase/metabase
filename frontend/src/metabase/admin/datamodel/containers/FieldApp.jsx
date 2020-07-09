@@ -47,10 +47,10 @@ import { has_field_values_options } from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { isCurrency } from "metabase/lib/schema_metadata";
 
-import type { ColumnSettings as ColumnSettingsType } from "metabase/meta/types/Dataset";
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { TableId } from "metabase/meta/types/Table";
-import type { FieldId } from "metabase/meta/types/Field";
+import type { ColumnSettings as ColumnSettingsType } from "metabase-types/types/Dataset";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { TableId } from "metabase-types/types/Table";
+import type { FieldId } from "metabase-types/types/Field";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";

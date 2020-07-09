@@ -12,8 +12,8 @@ import type {
   AggregationWithOptions,
   AggregationOptions,
   ConcreteField,
-} from "metabase/meta/types/Query";
-import type { MetricId } from "metabase/meta/types/Metric";
+} from "metabase-types/types/Query";
+import type { MetricId } from "metabase-types/types/Metric";
 
 export const SORTABLE_AGGREGATION_TYPES = new Set([
   "avg",

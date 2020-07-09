@@ -36,9 +36,9 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import cx from "classnames";
 import _ from "underscore";
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
-import type { FieldId, Field } from "metabase/meta/types/Field";
+import type { VisualizationProps } from "metabase-types/types/Visualization";
+import type { TableMetadata } from "metabase-types/types/Metadata";
+import type { FieldId, Field } from "metabase-types/types/Field";
 
 type ForeignKeyId = number;
 type ForeignKey = {

@@ -23,15 +23,15 @@ import type {
   Filter,
   LimitClause,
   OrderBy,
-} from "metabase/meta/types/Query";
+} from "metabase-types/types/Query";
 import type {
   DatasetQuery,
   StructuredDatasetQuery,
-} from "metabase/meta/types/Card";
+} from "metabase-types/types/Card";
 import type {
   TableMetadata,
   AggregationOperator,
-} from "metabase/meta/types/Metadata";
+} from "metabase-types/types/Metadata";
 
 import Dimension, {
   FKDimension,
@@ -42,11 +42,11 @@ import Dimension, {
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 import type Segment from "../metadata/Segment";
-import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
+import type { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import type Database from "../metadata/Database";
 import type Question from "../Question";
-import type { TableId } from "metabase/meta/types/Table";
-import type { Column } from "metabase/meta/types/Dataset";
+import type { TableId } from "metabase-types/types/Table";
+import type { Column } from "metabase-types/types/Dataset";
 
 import AtomicQuery from "./AtomicQuery";
 

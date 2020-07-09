@@ -21,6 +21,7 @@ const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
+const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 
@@ -103,6 +104,7 @@ const config = (module.exports = {
       fonts: FONTS_PATH,
       metabase: SRC_PATH,
       "metabase-lib": LIB_SRC_PATH,
+      "metabase-types": TYPES_SRC_PATH,
       __support__: TEST_SUPPORT_PATH,
       style: SRC_PATH + "/css/core/index",
       ace: __dirname + "/node_modules/ace-builds/src-min-noconflict",
