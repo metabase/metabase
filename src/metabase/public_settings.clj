@@ -155,7 +155,8 @@
                        (str
                         (tru "Failed setting `query-caching-max-kb` to {0}." new-value)
                         " "
-                        (tru "Values greater than {0} are not allowed." global-max-caching-kb)))))
+                        (tru "Values greater than {0} ({1}) are not allowed."
+                             global-max-caching-kb (u/format-bytes (* global-max-caching-kb 1024)))))))
              (setting/set-integer! :query-caching-max-kb new-value)))
 
 (defsetting query-caching-max-ttl
