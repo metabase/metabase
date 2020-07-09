@@ -1,5 +1,7 @@
 (ns metabase.util.i18n-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure
+             [test :refer :all]
+             [walk :as walk]]
             [metabase.test :as mt]
             [metabase.util.i18n :as i18n]))
 
@@ -53,3 +55,20 @@
          (i18n/localized-string? (i18n/deferred-trs "WOW"))))
   (is (= false
          (i18n/localized-string? "WOW"))))
+
+(deftest validate-number-of-args-test
+  (testing "`trs` and `tru` should validate that the are being called with the correct number of args\n"
+    (testing "not enough args"
+      (is (thrown?
+           clojure.lang.Compiler$CompilerException
+           (walk/macroexpand-all `(i18n/trs "{0} {1}" 0)))))
+
+    (testing "too many args"
+      (is (thrown?
+           clojure.lang.Compiler$CompilerException
+           (walk/macroexpand-all `(i18n/trs "{0} {1}" 0 1 2)))))
+
+    (testing "Missing format specifiers (e.g. {1} but no {0})"
+      (is (thrown?
+           clojure.lang.Compiler$CompilerException
+           (walk/macroexpand-all `(i18n/trs "{1}" 0)))))))
