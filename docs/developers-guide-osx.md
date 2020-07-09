@@ -42,7 +42,7 @@ The following steps need to be done before building the Mac App:
     cp /path/to/metabase.jar OSX/Resources/metabase.jar
     ```
 
-    Every time you want to build a new version of the Mac App, you can simple update the bundled uberjar the same way.
+    Every time you want to build a new version of the Mac App, you can simply update the bundled uberjar the same way. I usually download the new JAR from `downloads.metabase.com` after it's up and copy that one into place.
 
 At this point, you should try opening up the Xcode project and building the Mac App in Xcode by clicking the run button. The app should build and launch at this point. If it doesn't, ask Cam for help!
 
