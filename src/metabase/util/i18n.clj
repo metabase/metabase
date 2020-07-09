@@ -65,10 +65,7 @@
     (apply translate-user-locale format-string args))
   schema.core.Schema
   (explain [this]
-    (str this))
-  clojure.lang.Util$EquivPred
-  (equiv [this other]
-    (= (.toString this) (.toString other))))
+    (str this)))
 
 (p.types/defrecord+ SiteLocalizedString [format-string args]
   Object
@@ -76,10 +73,7 @@
     (apply translate-site-locale format-string args))
   s/Schema
   (explain [this]
-    (str this))
-  clojure.lang.Util$EquivPred
-  (equiv [this other]
-    (= (.toString this) (.toString other))))
+    (str this)))
 
 (defn- localized-to-json
   "Write a UserLocalizedString or SiteLocalizedString to the `json-generator`. This is intended for
