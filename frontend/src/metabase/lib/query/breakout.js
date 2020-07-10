@@ -1,6 +1,6 @@
 /* @flow */
 
-import type { Breakout, BreakoutClause } from "metabase/meta/types/Query";
+import type { Breakout, BreakoutClause } from "metabase-types/types/Query";
 
 import { add, update, remove, clear } from "./util";
 

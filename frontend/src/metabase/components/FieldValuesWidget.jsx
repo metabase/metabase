@@ -19,8 +19,8 @@ import { stripId } from "metabase/lib/formatting";
 import Fields from "metabase/entities/fields";
 
 import type Field from "metabase-lib/lib/metadata/Field";
-import type { FieldId } from "metabase/meta/types/Field";
-import type { Value } from "metabase/meta/types/Dataset";
+import type { FieldId } from "metabase-types/types/Field";
+import type { Value } from "metabase-types/types/Dataset";
 import type { FormattingOptions } from "metabase/lib/formatting";
 import type { LayoutRendererProps } from "metabase/components/TokenField";
 

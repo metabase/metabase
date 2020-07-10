@@ -3,7 +3,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { Series } from "metabase/meta/types/Visualization";
+import type { Series } from "metabase-types/types/Visualization";
 
 const visualizations = new Map();
 const aliases = new Map();
