@@ -8,15 +8,13 @@ import Database from "./Database";
 import Schema from "./Schema";
 import Field from "./Field";
 
-import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
-
-import type { SchemaName } from "metabase-types/types/Table";
+import Dimension from "../Dimension";
 
 import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";
+import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
 
-import Dimension from "../Dimension";
-
+import type { SchemaName } from "metabase-types/types/Table";
 import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 type EntityType = string; // TODO: move somewhere central

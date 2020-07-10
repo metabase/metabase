@@ -17,7 +17,7 @@ import type {
   ParameterType,
 } from "metabase-types/types/Parameter";
 import type { FieldId } from "metabase-types/types/Field";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
 import moment from "moment";
 

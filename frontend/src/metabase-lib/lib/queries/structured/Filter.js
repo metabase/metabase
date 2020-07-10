@@ -224,7 +224,7 @@ export default class Filter extends MBQLClause {
   setDimension(
     fieldRef: ?Field,
     { useDefaultOperator = false }: { useDefaultOperator?: boolean } = {},
-  ) {
+  ): Filter {
     if (!fieldRef) {
       return this.set([]);
     }
