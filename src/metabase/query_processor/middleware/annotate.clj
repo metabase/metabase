@@ -566,8 +566,8 @@
                                                           (assoc col :base_type base-type)))
                             base-types)]
        (rf (cond-> result
-             (map? result) (assoc :data {:cols (merged-column-info query metadata)
-                                         :rows truncated-rows})))))))
+             (map? result) (update :data merge {:cols (merged-column-info query metadata)
+                                                :rows truncated-rows})))))))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
