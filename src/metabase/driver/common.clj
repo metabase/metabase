@@ -290,7 +290,7 @@
   "Transducer that given a sequence of `values`, returns the most common base type."
   ((comp (filter some?) (take column-info-sample-size) (map class))
    (fn
-     ([] (java.util.HashMap. {:type/* 1}))
+     ([] (java.util.HashMap. {:type/* -1}))
      ([^java.util.HashMap freqs klass]
       (.put freqs klass (inc (.getOrDefault freqs klass 0)))
       freqs)
