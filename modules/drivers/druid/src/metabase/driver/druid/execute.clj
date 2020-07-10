@@ -125,7 +125,7 @@
   (vec (remove #(re-find #"^___" (name %)) columns)))
 
 (defn- reduce-results
-  [{{:keys [query query-type mbql?]} :native, :as outer-query} {:keys [projections], :as result} respond]
+  [{{:keys [query mbql?]} :native, :as outer-query} {:keys [projections], :as result} respond]
   (let [col-names          (if mbql?
                              (->> projections
                                   remove-bonus-keys
