@@ -1,5 +1,7 @@
 (ns metabase.util.i18n-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure
+             [test :refer :all]
+             [walk :as walk]]
             [metabase.test :as mt]
             [metabase.util.i18n :as i18n]))
 
@@ -53,3 +55,42 @@
          (i18n/localized-string? (i18n/deferred-trs "WOW"))))
   (is (= false
          (i18n/localized-string? "WOW"))))
+
+(deftest validate-number-of-args-test
+  (testing "`trs` and `tru` should validate that the are being called with the correct number of args\n"
+    (testing "not enough args"
+      (is (thrown?
+           clojure.lang.Compiler$CompilerException
+           (walk/macroexpand-all `(i18n/trs "{0} {1}" 0))))
+      (is (thrown-with-msg?
+           AssertionError
+           #"expects 2 args, got 1"
+           (#'i18n/validate-number-of-args "{0} {1}" [0]))))
+
+    (testing "too many args"
+      (is (thrown?
+           clojure.lang.Compiler$CompilerException
+           (walk/macroexpand-all `(i18n/trs "{0} {1}" 0 1 2))))
+      (is (thrown-with-msg?
+           AssertionError
+           #"expects 2 args, got 3"
+           (#'i18n/validate-number-of-args "{0} {1}" [0 1 2]))))
+
+    (testing "Missing format specifiers (e.g. {1} but no {0})"
+      (testing "num args match num specifiers"
+        (is (thrown?
+             clojure.lang.Compiler$CompilerException
+             (walk/macroexpand-all `(i18n/trs "{1}" 0))))
+        (is (thrown-with-msg?
+             AssertionError
+             #"missing some \{\} placeholders\. Expected \{0\}, \{1\}"
+             (#'i18n/validate-number-of-args "{1}" [0]))))
+
+      (testing "num args match num specifiers if none were missing"
+        (is (thrown?
+             clojure.lang.Compiler$CompilerException
+             (walk/macroexpand-all `(i18n/trs "{1}" 0 1))))
+        (is (thrown-with-msg?
+             AssertionError
+             #"missing some \{\} placeholders\. Expected \{0\}, \{1\}"
+             (#'i18n/validate-number-of-args "{1}" [0 1])))))))

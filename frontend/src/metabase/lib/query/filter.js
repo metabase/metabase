@@ -8,7 +8,7 @@ import type {
   FilterClause,
   Filter,
   FilterOptions,
-} from "metabase/meta/types/Query";
+} from "metabase-types/types/Query";
 
 // returns canonical list of Filters
 export function getFilters(filter: ?FilterClause): Filter[] {

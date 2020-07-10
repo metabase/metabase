@@ -148,7 +148,7 @@
   "Return the permissions path for *readwrite* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
   (str "/collection/"
-       (if (get collection-or-id :metabase.models.collection/is-root?)
+       (if (get collection-or-id :metabase.models.collection.root/is-root?)
          "root"
          (u/get-id collection-or-id))
        "/"))
@@ -245,7 +245,7 @@
     ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
     ;; Collection
     #{(path-fn (or (:collection_id this)
-                   {:metabase.models.collection/is-root? true}))}))
+                   {:metabase.models.collection.root/is-root? true}))}))
 
 (def IObjectPermissionsForParentCollection
   "Implementation of `IObjectPermissions` for objects that have a `collection_id`, and thus, a parent Collection.
@@ -500,7 +500,7 @@
   be given some sort of access."
   [collection-or-id :- MapOrID]
   ;; don't apply this check to the Root Collection, because it's never personal
-  (when-not (:metabase.models.collection/is-root? collection-or-id)
+  (when-not (:metabase.models.collection.root/is-root? collection-or-id)
     ;; ok, once we've confirmed this isn't the Root Collection, see if it's in the DB with a personal_owner_id
     (let [collection (if (map? collection-or-id)
                        collection-or-id
