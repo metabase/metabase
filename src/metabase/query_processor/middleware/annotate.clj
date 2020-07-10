@@ -78,7 +78,7 @@
   [_ {:keys [cols rows]}]
   (check-driver-native-columns cols rows)
   (let [unique-name-fn (mbql.u/unique-name-generator)]
-    (vec (for [[{col-name :name, base-type :base_type, :as driver-col-metadata}] cols]
+    (vec (for [{col-name :name, base-type :base_type, :as driver-col-metadata} cols]
            (let [col-name (name col-name)]
              (merge
               {:display_name (u/qualified-name col-name)
@@ -555,14 +555,16 @@
                         (f/constant-fingerprinter driver-base-type)
                         driver.common/values->base-type))))
 
-(defn- add-column-info-xform [query metadata rf]
+(defn- add-column-info-xform
+  [query metadata rf]
   (qp.reducible/combine-additional-reducing-fns
    rf
    [(base-type-inferer metadata)
     ((take 1) conj)]
    (fn combine [result base-types truncated-rows]
-     (let [metadata (update metadata :cols #(map (fn [col base-type]
-                                                   (assoc col :base_type base-type)) % base-types))]
+     (let [metadata (update metadata :cols (partial map (fn [col base-type]
+                                                          (assoc col :base_type base-type)))
+                            base-types)]
        (rf (cond-> result
              (map? result) (assoc :data {:cols (merged-column-info query metadata)
                                          :rows truncated-rows})))))))
