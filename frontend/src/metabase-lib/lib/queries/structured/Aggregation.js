@@ -138,14 +138,14 @@ export default class Aggregation extends MBQLClause {
       return this.aggregation().isValid();
     } else if (this.isStandard() && this.dimension()) {
       const dimension = this.dimension();
-      const aggregation = this.query()
+      const aggregationOperator = this.query()
         .table()
-        .aggregation(this[0]);
+        .aggregationOperator(this[0]);
       return (
-        aggregation &&
-        (!aggregation.requiresField ||
+        aggregationOperator &&
+        (!aggregationOperator.requiresField ||
           this.query()
-            .aggregationFieldOptions(aggregation)
+            .aggregationFieldOptions(aggregationOperator)
             .hasDimension(dimension))
       );
     } else if (this.isMetric()) {

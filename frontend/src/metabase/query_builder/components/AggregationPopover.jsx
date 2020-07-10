@@ -139,11 +139,6 @@ export default class AggregationPopover extends Component {
     });
   };
 
-  _getTableMetadata() {
-    const { query, tableMetadata } = this.props;
-    return tableMetadata || query.tableMetadata();
-  }
-
   _getAvailableAggregations() {
     const { aggregationOperators, query, dimension, showRawData } = this.props;
     return (
@@ -193,14 +188,14 @@ export default class AggregationPopover extends Component {
       alwaysExpanded,
     } = this.props;
 
-    const tableMetadata = this._getTableMetadata();
+    const table = query.table();
     const aggregationOperators = this._getAvailableAggregations();
 
     if (dimension) {
       showCustom = false;
       showMetrics = false;
     }
-    if (tableMetadata.db.features.indexOf("expression-aggregations") < 0) {
+    if (table.database.hasFeature("expression-aggregations")) {
       showCustom = false;
     }
 
@@ -209,7 +204,7 @@ export default class AggregationPopover extends Component {
 
     let selectedAggregation;
     if (AGGREGATION.isMetric(aggregation)) {
-      selectedAggregation = _.findWhere(tableMetadata.metrics, {
+      selectedAggregation = _.findWhere(table.metrics, {
         id: AGGREGATION.getMetric(aggregation),
       });
     } else if (AGGREGATION.isStandard(aggregation)) {
@@ -231,8 +226,8 @@ export default class AggregationPopover extends Component {
 
     // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
     // retired metric then we include it in the list to maintain continuity
-    const metrics = tableMetadata.metrics
-      ? tableMetadata.metrics.filter(metric =>
+    const metrics = table.metrics
+      ? table.metrics.filter(metric =>
           showMetrics
             ? !metric.archived ||
               (selectedAggregation && selectedAggregation.id === metric.id)
@@ -349,7 +344,7 @@ export default class AggregationPopover extends Component {
             className={"text-green"}
             width={this.props.width}
             maxHeight={this.props.maxHeight - (this.state.headerHeight || 0)}
-            table={tableMetadata}
+            query={query}
             field={fieldId}
             fieldOptions={query.aggregationFieldOptions(agg)}
             onFieldChange={this.onPickField}

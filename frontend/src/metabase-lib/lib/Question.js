@@ -627,16 +627,6 @@ export default class Question {
     }
   }
 
-  // deprecated
-  tableMetadata(): ?Table {
-    const query = this.query();
-    if (query instanceof StructuredQuery) {
-      return query.table();
-    } else {
-      return null;
-    }
-  }
-
   @memoize
   mode(): ?Mode {
     return Mode.forQuestion(this);
