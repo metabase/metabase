@@ -147,53 +147,6 @@ describe("scenarios > admin > datamodel > table", () => {
       testSelect("@user_id", "People → ID", "Products → ID");
     });
 
-    it("should allow creating segments", () => {
-      visitAlias("@ORDERS_URL");
-
-      cy.contains("Add a Segment").click();
-
-      cy.url().should("include", "/admin/datamodel/segment/create?table=2");
-
-      cy.contains("Add filters to narrow your answer").click();
-      cy.contains("Product ID").click();
-      cy.get(`input[placeholder="Enter an ID"]`)
-        .type("1")
-        .blur();
-      cy.contains("button", "Add filter").click();
-      cy.contains("93 rows");
-      cy.get(`input[placeholder^="Something descriptive"]`).type(
-        "User 1's Orders",
-      );
-      cy.get(`textarea[placeholder^="This is a good place"]`).type(
-        "Segment containing only user 1's orders",
-      );
-      cy.contains("button", "Save changes").click();
-
-      cy.url().should("include", "/admin/datamodel/database/1/table/2");
-      cy.contains("User 1's Orders");
-    });
-
-    it("should allow creating metrics", () => {
-      visitAlias("@ORDERS_URL");
-
-      cy.contains("Add a Metric").click();
-
-      cy.url().should("include", "/admin/datamodel/metric/create?table=2");
-
-      cy.contains("Count of rows").click();
-      cy.contains("Sum of").click();
-      cy.contains("Subtotal").click();
-      cy.contains("Result: 1448188");
-      cy.get(`input[placeholder^="Something descriptive"]`).type("Revenue");
-      cy.get(`textarea[placeholder^="This is a good place"]`).type(
-        "Total revenue",
-      );
-      cy.contains("button", "Save changes").click();
-
-      cy.url().should("include", "/admin/datamodel/database/1/table/2");
-      cy.contains("Revenue");
-    });
-
     it("should allow sorting columns", () => {
       visitAlias("@ORDERS_URL");
       cy.contains("Column order:").click();

@@ -14,7 +14,7 @@ import { performAction } from "metabase/visualizations/lib/action";
 import type {
   ClickObject,
   ClickAction,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 import _ from "underscore";
 

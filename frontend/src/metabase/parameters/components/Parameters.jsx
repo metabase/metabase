@@ -12,15 +12,15 @@ import { getMetadata } from "metabase/selectors/metadata";
 import querystring from "querystring";
 import cx from "classnames";
 
-import type { QueryParams } from "metabase/meta/types";
+import type { QueryParams } from "metabase-types/types";
 import type {
   ParameterId,
   Parameter,
   ParameterValues,
   ParameterValueOrArray,
-} from "metabase/meta/types/Parameter";
+} from "metabase-types/types/Parameter";
 
-import type { DashboardWithCards } from "metabase/meta/types/Dashboard";
+import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 import Dimension from "metabase-lib/lib/Dimension";
 import type Field from "metabase-lib/lib/metadata/Field";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
