@@ -1,7 +1,7 @@
 /* @flow */
 
-import type { DatasetData, Column } from "metabase/meta/types/Dataset";
-import type { ClickObject } from "metabase/meta/types/Visualization";
+import type { DatasetData, Column } from "metabase-types/types/Dataset";
+import type { ClickObject } from "metabase-types/types/Visualization";
 import { isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 
 export function getTableCellClickedObject(

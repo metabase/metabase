@@ -12,8 +12,8 @@ import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
 import { t, ngettext, msgid } from "ttag";
 
-import type { Filter as FilterObject } from "metabase/meta/types/Query";
-import type { Value as ValueType } from "metabase/meta/types/Dataset";
+import type { Filter as FilterObject } from "metabase-types/types/Query";
+import type { Value as ValueType } from "metabase-types/types/Dataset";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import FilterWrapper from "metabase-lib/lib/queries/structured/Filter";
 

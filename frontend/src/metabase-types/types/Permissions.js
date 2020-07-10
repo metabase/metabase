@@ -1,7 +1,7 @@
 /* @flow */
 
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { SchemaName, TableId } from "metabase/meta/types/Table";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { SchemaName, TableId } from "metabase-types/types/Table";
 
 export type GroupId = number;
 

@@ -24,9 +24,9 @@ import _ from "underscore";
 import type {
   Card as CardObject,
   StructuredDatasetQuery,
-} from "metabase/meta/types/Card";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
-import type { FieldFilter } from "metabase/meta/types/Query";
+} from "metabase-types/types/Card";
+import type { TableMetadata } from "metabase-types/types/Metadata";
+import type { FieldFilter } from "metabase-types/types/Query";
 
 type Props = {
   className?: string,

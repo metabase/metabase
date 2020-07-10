@@ -9,7 +9,7 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
 
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { TableMetadata } from "metabase-types/types/Metadata";
 
 type Props = {
   query: StructuredQuery,
