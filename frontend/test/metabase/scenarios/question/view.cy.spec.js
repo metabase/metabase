@@ -30,7 +30,7 @@ describe("scenarios > question > view", () => {
       cy.get("@sidebar")
         .contains("Created At")
         .click();
-      cy.findByText("Done").click()
+      cy.findByText("Done").click();
 
       cy.contains("Count by Created At: Day");
 
