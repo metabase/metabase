@@ -9,7 +9,7 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 function getFiltersForColumn(column) {
   if (

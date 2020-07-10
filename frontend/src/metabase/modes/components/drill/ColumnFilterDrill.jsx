@@ -12,7 +12,7 @@ import type {
   ClickAction,
   ClickActionProps,
   ClickActionPopoverProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 export default function QuickFilterDrill({
   question,

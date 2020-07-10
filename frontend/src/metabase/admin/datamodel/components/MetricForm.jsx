@@ -10,7 +10,8 @@ import FieldSet from "metabase/components/FieldSet";
 import PartialQueryBuilder from "../components/PartialQueryBuilder";
 import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
-import * as Q_DEPRECATED from "metabase/lib/query";
+
+import * as Q from "metabase/lib/query/query";
 
 @reduxForm(
   {
@@ -38,7 +39,7 @@ import * as Q_DEPRECATED from "metabase/lib/query";
         }
       }
       const aggregations =
-        values.definition && Q_DEPRECATED.getAggregations(values.definition);
+        values.definition && Q.getAggregations(values.definition);
       if (!aggregations || aggregations.length === 0) {
         errors.definition = t`Aggregation is required`;
       }

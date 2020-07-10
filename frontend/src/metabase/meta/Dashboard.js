@@ -4,14 +4,14 @@ import Question from "metabase-lib/lib/Question";
 
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Field from "metabase-lib/lib/metadata/Field";
-import type { TemplateTag } from "./types/Query";
-import type { Card } from "./types/Card";
+import type { TemplateTag } from "metabase-types/types/Query";
+import type { Card } from "metabase-types/types/Card";
 import type {
   ParameterOption,
   Parameter,
   ParameterType,
   ParameterMappingUIOption,
-} from "./types/Parameter";
+} from "metabase-types/types/Parameter";
 
 import Dimension, {
   FKDimension,

@@ -8,7 +8,6 @@
              [math :as math]]
             [medley.core :as m]
             [metabase.models.field :as field]
-            [metabase.query-processor.timezone :as qp.tz]
             [metabase.sync.analyze.classifiers.name :as classify.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
@@ -19,7 +18,8 @@
   (:import com.bigml.histogram.Histogram
            com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
            [java.time.chrono ChronoLocalDateTime ChronoZonedDateTime]
-           java.time.temporal.Temporal))
+           java.time.temporal.Temporal
+           java.time.ZoneOffset))
 
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
@@ -189,17 +189,7 @@
   String   (->temporal [this] (->temporal (u.date/parse this)))
   Long     (->temporal [this] (->temporal (t/instant this)))
   Integer  (->temporal [this] (->temporal (t/instant this)))
-  ;; this is challenging, because ChronoLocalDate requires a ZoneOffset
-  ;; to work with. Ideally, we would use the database's ZoneOffset, but
-  ;; we don't have access to that here. Use the JVM's systemDefault to
-  ;; convert this.
-  ChronoLocalDateTime (->temporal [this] (.toInstant this
-                                                     (.. (if-let [tz (or (qp.tz/report-timezone-id-if-supported)
-                                                                         (qp.tz/database-timezone-id))]
-                                                           (java.time.ZoneId/of tz)
-                                                           (java.time.ZoneId/systemDefault))
-                                                         (getRules)
-                                                         (getOffset (java.time.Instant/now)))))
+  ChronoLocalDateTime (->temporal [this] (.toInstant this (ZoneOffset/UTC)))
   ChronoZonedDateTime (->temporal [this] (.toInstant this))
   Temporal (->temporal [this] this))
 

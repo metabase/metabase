@@ -11,14 +11,14 @@ import * as Dashboard from "metabase/meta/Dashboard";
 
 import { getParameterTargetFieldId } from "metabase/meta/Parameter";
 
-import type { CardId, Card } from "metabase/meta/types/Card";
-import type { DashCardId } from "metabase/meta/types/Dashboard";
+import type { CardId, Card } from "metabase-types/types/Card";
+import type { DashCardId } from "metabase-types/types/Dashboard";
 import type {
   ParameterId,
   Parameter,
   ParameterMapping,
   ParameterMappingUIOption,
-} from "metabase/meta/types/Parameter";
+} from "metabase-types/types/Parameter";
 
 export type AugmentedParameterMapping = ParameterMapping & {
   dashcard_id: DashCardId,

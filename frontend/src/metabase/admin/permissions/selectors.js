@@ -44,12 +44,12 @@ import Group from "metabase/entities/groups";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { SchemaName } from "metabase/meta/types/Table";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { SchemaName } from "metabase-types/types/Table";
 import type {
   Group as GroupType,
   GroupsPermissions,
-} from "metabase/meta/types/Permissions";
+} from "metabase-types/types/Permissions";
 
 const getPermissions = state => state.admin.permissions.permissions;
 const getOriginalPermissions = state =>
