@@ -1165,9 +1165,13 @@ const loadingDashCards = handleActions(
 
 const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
   const metadata = getMetadata(getState());
+
+  // the flatmap here can cause nulls to be added to the list of cards, filter them.
   const queries = dashCards
     .flatMap(dc => [dc.card].concat(dc.series))
+    .filter(dc => dc != null)
     .map(card => new Question(card, metadata).query());
+
   return dispatch(loadMetadataForQueries(queries));
 };
 
