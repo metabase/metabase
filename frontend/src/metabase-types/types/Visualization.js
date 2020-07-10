@@ -1,8 +1,8 @@
 /* @flow */
 
-import type { DatasetData, Column, Row } from "metabase/meta/types/Dataset";
-import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
-import type { ReduxAction } from "metabase/meta/types/redux";
+import type { DatasetData, Column, Row } from "metabase-types/types/Dataset";
+import type { Card, VisualizationSettings } from "metabase-types/types/Card";
+import type { ReduxAction } from "metabase-types/types/redux";
 import Question from "metabase-lib/lib/Question";
 
 export type ActionCreator = (props: ClickActionProps) => ClickAction[];

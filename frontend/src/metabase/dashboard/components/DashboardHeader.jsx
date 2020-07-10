@@ -22,18 +22,18 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
 
-import type { LocationDescriptor, QueryParams } from "metabase/meta/types";
-import type { CardId } from "metabase/meta/types/Card";
+import type { LocationDescriptor, QueryParams } from "metabase-types/types";
+import type { CardId } from "metabase-types/types/Card";
 import type {
   Parameter,
   ParameterId,
   ParameterOption,
-} from "metabase/meta/types/Parameter";
+} from "metabase-types/types/Parameter";
 import type {
   DashboardWithCards,
   DashboardId,
   DashCardId,
-} from "metabase/meta/types/Dashboard";
+} from "metabase-types/types/Dashboard";
 import { Link } from "react-router";
 
 type Props = {

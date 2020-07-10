@@ -25,7 +25,7 @@
 
 (defn- pre-insert [snippet]
   (u/prog1 snippet
-    (collection/check-collection-namespace snippet)))
+    (collection/check-collection-namespace NativeQuerySnippet (:collection_id snippet))))
 
 (defn- pre-update [{:keys [creator_id id], :as updates}]
   (u/prog1 updates
@@ -33,7 +33,7 @@
     (when (contains? updates :creator_id)
       (when (not= creator_id (db/select-one-field :creator_id NativeQuerySnippet :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))
-    (collection/check-collection-namespace updates)))
+    (collection/check-collection-namespace NativeQuerySnippet (:collection_id updates))))
 
 (u/strict-extend (class NativeQuerySnippet)
   models/IModel

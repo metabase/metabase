@@ -12,7 +12,7 @@ import cx from "classnames";
 import type {
   ParameterMappingUIOption,
   ParameterTarget,
-} from "metabase/meta/types/Parameter";
+} from "metabase-types/types/Parameter";
 
 type Props = {
   target: ?ParameterTarget,

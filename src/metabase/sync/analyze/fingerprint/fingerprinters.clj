@@ -17,7 +17,9 @@
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram
            com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
-           java.time.temporal.Temporal))
+           [java.time.chrono ChronoLocalDateTime ChronoZonedDateTime]
+           java.time.temporal.Temporal
+           java.time.ZoneOffset))
 
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
@@ -157,6 +159,8 @@
               {:type {~(first field-type) fingerprint#}})))
          (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
 
+(declare ->temporal)
+
 (defn- earliest
   ([] nil)
   ([acc]
@@ -182,9 +186,11 @@
 
 (extend-protocol ITemporalCoerceable
   nil      (->temporal [_]    nil)
-  String   (->temporal [this] (u.date/parse this))
-  Long     (->temporal [this] (t/instant this))
-  Integer  (->temporal [this] (t/instant this))
+  String   (->temporal [this] (->temporal (u.date/parse this)))
+  Long     (->temporal [this] (->temporal (t/instant this)))
+  Integer  (->temporal [this] (->temporal (t/instant this)))
+  ChronoLocalDateTime (->temporal [this] (.toInstant this (ZoneOffset/UTC)))
+  ChronoZonedDateTime (->temporal [this] (.toInstant this))
   Temporal (->temporal [this] this))
 
 (deffingerprinter :type/DateTime

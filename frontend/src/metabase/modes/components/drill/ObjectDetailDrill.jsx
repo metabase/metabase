@@ -5,7 +5,7 @@ import { t } from "ttag";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   if (

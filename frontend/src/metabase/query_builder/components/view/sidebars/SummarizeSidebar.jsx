@@ -10,7 +10,6 @@ import { color, alpha } from "metabase/lib/colors";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
-import AggregationName from "metabase/query_builder/components/AggregationName";
 
 import DimensionList from "metabase/query_builder/components/DimensionList";
 
@@ -96,7 +95,7 @@ const SummarizeAggregation = ({ className, aggregation, index, query }) => {
         triggerClasses="flex-full"
         triggerElement={
           <AggregationToken color={color("summarize")}>
-            <AggregationName className="ml1" aggregation={aggregation} />
+            <span className="ml1">{aggregation.displayName()}</span>
             {aggregation.canRemove() && (
               <Icon
                 className="flex ml-auto faded fade-in-hover"

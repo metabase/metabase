@@ -8,8 +8,8 @@ import Database from "./Database";
 import Schema from "./Schema";
 import Field from "./Field";
 
-import type { SchemaName } from "metabase/meta/types/Table";
-import type { FieldMetadata } from "metabase/meta/types/Metadata";
+import type { SchemaName } from "metabase-types/types/Table";
+import type { FieldMetadata } from "metabase-types/types/Metadata";
 
 import { singularize } from "metabase/lib/formatting";
 

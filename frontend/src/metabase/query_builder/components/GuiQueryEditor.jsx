@@ -13,13 +13,11 @@ import FilterPopover from "./filters/FilterPopover";
 import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
 import cx from "classnames";
 
-import type { TableId } from "metabase/meta/types/Table";
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { DatasetQuery } from "metabase/meta/types/Card";
-import type { DatabaseMetadata } from "metabase/meta/types/Metadata";
+import type { DatasetQuery } from "metabase-types/types/Card";
 import type { Children } from "react";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -39,13 +37,9 @@ type Props = {
 
   query: StructuredQuery,
 
-  databases: DatabaseMetadata[],
-
   supportMultipleAggregations?: boolean,
 
-  setDatabaseFn?: (id: DatabaseId) => void,
-  setSourceTableFn?: (id: TableId) => void,
-  setDatasetQuery?: (datasetQuery: DatasetQuery) => void,
+  setDatasetQuery: (datasetQuery: DatasetQuery) => void,
 
   isShowingDataReference?: boolean,
 };
@@ -61,11 +55,8 @@ export default class GuiQueryEditor extends React.Component {
   };
 
   static propTypes = {
-    databases: PropTypes.array,
     isShowingDataReference: PropTypes.bool.isRequired,
     setDatasetQuery: PropTypes.func.isRequired,
-    setDatabaseFn: PropTypes.func,
-    setSourceTableFn: PropTypes.func,
     features: PropTypes.object,
     supportMultipleAggregations: PropTypes.bool,
   };
@@ -175,6 +166,7 @@ export default class GuiQueryEditor extends React.Component {
                 query.filter(filter).update(setDatasetQuery)
               }
               onClose={() => this.refs.filterPopover.close()}
+              showCustom={false}
             />
           </PopoverWithTrigger>
         </div>
@@ -224,6 +216,7 @@ export default class GuiQueryEditor extends React.Component {
                     .update(setDatasetQuery)
                 : query.removeAggregation(index).update(setDatasetQuery)
             }
+            showMetrics={false}
             showRawData
           >
             {this.renderAdd(null)}
@@ -309,7 +302,7 @@ export default class GuiQueryEditor extends React.Component {
   }
 
   renderDataSection() {
-    const table = this.props.query.table();
+    const { query, setDatasetQuery } = this.props;
 
     return (
       <div
@@ -318,9 +311,18 @@ export default class GuiQueryEditor extends React.Component {
         }
       >
         <span className="GuiBuilder-section-label Query-label">{t`Data`}</span>
-        <span className="flex align-center px2 py2 text-bold text-grey">
-          {table && table.displayName()}
-        </span>
+        {this.props.canChangeTable ? (
+          <DatabaseSchemaAndTableDataSelector
+            selectedTableId={query.tableId()}
+            setSourceTableFn={tableId =>
+              setDatasetQuery(query.setSourceTableId(tableId).datasetQuery())
+            }
+          />
+        ) : (
+          <span className="flex align-center px2 py2 text-bold text-grey">
+            {query.table() && query.table().displayName()}
+          </span>
+        )}
       </div>
     );
   }
@@ -399,11 +401,6 @@ export default class GuiQueryEditor extends React.Component {
   }
 
   render() {
-    const { query } = this.props;
-    if (query.readOnly()) {
-      return <div className="border-bottom border-medium" />;
-    }
-
     return (
       <div
         className={cx("GuiBuilder rounded shadowed", {

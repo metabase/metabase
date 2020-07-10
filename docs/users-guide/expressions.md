@@ -94,21 +94,18 @@ This would return rows where `Created At` is between January 1, 2020 and March 3
 
 Certain database types don't support some of the above functions:
 
-MySQL and SQL Server
+**BigQuery**: `abs`, `ceil`, `floor`, `median`, `percentile` and `round`
 
-- median
-- percentile
+**H2**: `median`, `percentile` and `regexextract`
 
-SQLite
+**MySQL**: `median`, `percentile` and `regexextract`
 
-- log
-- median
-- percentile
-- power
-- standardDeviation
-- sqrt
-- variance
+**SQL Server**: `median`, `percentile` and `regexextract`
 
-Additionally, **Vertica**, **BigQuery**, and **Presto** only provide _approximate_ results for median and percentile.
+**SQLite**: `log`, `median`, `percentile`, `power`, `regexextract`, `standardDeviation`, `sqrt` and `variance`
+
+**Vertica**: `median` and `percentile`
+
+Additionally, **Presto** only provides _approximate_ results for `median` and `percentile`.
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.

@@ -8,8 +8,8 @@ import Schema from "./Schema";
 
 import { generateSchemaId } from "metabase/schema";
 
-import type { SchemaName } from "metabase/meta/types/Table";
-import type { DatabaseFeature } from "metabase/meta/types/Database";
+import type { SchemaName } from "metabase-types/types/Table";
+import type { DatabaseFeature } from "metabase-types/types/Database";
 
 type VirtualDatabaseFeature = "join";
 

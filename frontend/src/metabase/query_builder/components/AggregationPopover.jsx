@@ -11,7 +11,6 @@ import FieldList from "./FieldList";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip";
 import ExpressionPopover from "./ExpressionPopover";
 
-import * as Q_DEPRECATED from "metabase/lib/query";
 import * as AGGREGATION from "metabase/lib/query/aggregation";
 
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
@@ -54,7 +53,6 @@ export default class AggregationPopover extends Component {
 
     // DEPRECATED: replaced with `query`
     tableMetadata: PropTypes.object,
-    customFields: PropTypes.object,
     datasetQuery: PropTypes.object,
 
     aggregationOperators: PropTypes.array,
@@ -155,15 +153,6 @@ export default class AggregationPopover extends Component {
     ).filter(agg => showRawData || agg.short !== "rows");
   }
 
-  _getCustomFields() {
-    const { customFields, datasetQuery, query } = this.props;
-    return (
-      customFields ||
-      (datasetQuery && Q_DEPRECATED.getExpressions(datasetQuery.query)) ||
-      (query && query.expressions())
-    );
-  }
-
   itemIsSelected(item) {
     const { aggregation } = this.props;
     return item.isSelected(AGGREGATION.getContent(aggregation));
@@ -187,14 +176,7 @@ export default class AggregationPopover extends Component {
     return (
       <div className="p1">
         <Tooltip
-          tooltip={
-            <QueryDefinitionTooltip
-              type="metric"
-              object={metric}
-              tableMetadata={this._getTableMetadata()}
-              customFields={this._getCustomFields()}
-            />
-          }
+          tooltip={<QueryDefinitionTooltip type="metric" object={metric} />}
         >
           <span className="QuestionTooltipTarget" />
         </Tooltip>
@@ -212,7 +194,6 @@ export default class AggregationPopover extends Component {
     } = this.props;
 
     const tableMetadata = this._getTableMetadata();
-    const customFields = this._getCustomFields();
     const aggregationOperators = this._getAvailableAggregations();
 
     if (dimension) {
@@ -250,14 +231,15 @@ export default class AggregationPopover extends Component {
 
     // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
     // retired metric then we include it in the list to maintain continuity
-    const metrics =
-      showMetrics && tableMetadata.metrics
-        ? tableMetadata.metrics.filter(
-            metric =>
-              !metric.archived ||
-              (selectedAggregation && selectedAggregation.id === metric.id),
-          )
-        : [];
+    const metrics = tableMetadata.metrics
+      ? tableMetadata.metrics.filter(metric =>
+          showMetrics
+            ? !metric.archived ||
+              (selectedAggregation && selectedAggregation.id === metric.id)
+            : // GA metrics are more like columns, so they should be displayed even when showMetrics is false
+              metric.googleAnalyics,
+        )
+      : [];
     const metricItems = metrics.map(metric => ({
       name: metric.name,
       value: ["metric", metric.id],
@@ -370,7 +352,6 @@ export default class AggregationPopover extends Component {
             table={tableMetadata}
             field={fieldId}
             fieldOptions={query.aggregationFieldOptions(agg)}
-            customFieldOptions={customFields}
             onFieldChange={this.onPickField}
             enableSubDimensions={false}
           />

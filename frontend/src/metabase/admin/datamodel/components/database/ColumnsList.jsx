@@ -92,9 +92,10 @@ export default class ColumnsList extends Component {
     const { fieldOrder } = this.state;
     return (
       <div id="ColumnsList" className="my3">
-        <div className="flex align-baseline justify-between">
-          <h2 className="px1 text-orange">{t`Columns`}</h2>
-          <ColumnOrderDropdown table={table} />
+        <div className="flex">
+          <div className="flex-align-right">
+            <ColumnOrderDropdown table={table} />
+          </div>
         </div>
         <div className="text-uppercase text-medium py1">
           <div
