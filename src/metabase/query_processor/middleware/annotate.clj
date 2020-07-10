@@ -545,7 +545,7 @@
   (deduplicate-cols-names
    (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
 
-(defn- base-type-inferer
+(defn base-type-inferer
   "Native queries don't have the type information from the original `Field` objects used in the query.
   If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
   of rows and infer the base type based on the classes of the values"
