@@ -331,15 +331,13 @@
                 :offset         -45.27
                 :last-change    -0.46
                 :last-value     13
-                :col            "count"
-                :slope          0.0
-                :best-fit       [:* 0.0 [:pow :x 4.02]]}
-               (->> query
-                    qp/process-query
-                    :data
-                    :insights
-                    first
-                    (tu/round-all-decimals 2))))))))
+                :col            "count"}
+               (tu/round-all-decimals 2 (-> query
+                                            qp/process-query
+                                            :data
+                                            :insights
+                                            first
+                                            (dissoc :best-fit :slope)))))))))
 
 (deftest export-test
   (testing "Should be able to cache results streaming as an alternate download format, e.g. csv"
