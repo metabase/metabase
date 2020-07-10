@@ -8,6 +8,8 @@ import { TYPE } from "metabase/lib/types";
 
 import * as AGGREGATION from "metabase/lib/query/aggregation";
 
+import { AggregationDimension } from "../../Dimension";
+
 import type { Aggregation as AggregationObject } from "metabase/meta/types/Query";
 import type StructuredQuery from "../StructuredQuery";
 import type Dimension from "../../Dimension";
@@ -264,5 +266,20 @@ export default class Aggregation extends MBQLClause {
     } else {
       return this;
     }
+  }
+
+  // MISC
+
+  aggregationDimension() {
+    return new AggregationDimension(
+      null,
+      [this._index],
+      this._query.metadata(),
+      this._query,
+    );
+  }
+
+  isSortable() {
+    return AGGREGATION.isSortable(this);
   }
 }

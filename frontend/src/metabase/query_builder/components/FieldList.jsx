@@ -8,7 +8,6 @@ import Dimension from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 import type { StructuredQuery, ConcreteField } from "metabase/meta/types/Query";
-import type Table from "metabase-lib/lib/metadata/Table";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
 // import type { Section } from "metabase/components/AccordionList";
@@ -27,7 +26,6 @@ type Props = {
   // HACK: for segments
   onFilterChange?: (filter: any) => void,
 
-  table?: Table,
   // query should be included otherwise FieldList may not display field-literal display name correctly
   query?: StructuredQuery,
   metadata?: Metadata,
@@ -63,7 +61,6 @@ export default class FieldList extends Component {
   _updateSections({
     fieldOptions = { dimensions: [], fks: [] },
     segmentOptions = [],
-    table = null,
   } = {}) {
     const sections = new DimensionOptions(fieldOptions).sections({
       extraItems: segmentOptions.map(segment => ({

@@ -2,7 +2,6 @@
 
 import React from "react";
 
-import FieldName from "./FieldName";
 import Value from "metabase/components/Value";
 
 import Dimension from "metabase-lib/lib/Dimension";
@@ -100,7 +99,7 @@ export const OperatorFilter = ({
       ));
   }
   return children({
-    field: <FieldName field={field} tableMetadata={dimension.field().table} />,
+    field: dimension.displayName(),
     operator: operator && operator.moreVerboseName,
     values: formattedValues,
   });

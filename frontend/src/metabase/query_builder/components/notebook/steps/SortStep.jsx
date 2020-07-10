@@ -3,7 +3,6 @@ import React from "react";
 import Icon from "metabase/components/Icon";
 
 import ClauseStep from "./ClauseStep";
-import FieldName from "metabase/query_builder/components/FieldName";
 
 export default function SortStep({
   color,
@@ -30,7 +29,7 @@ export default function SortStep({
             name={sort[0] === "asc" ? "arrow_up" : "arrow_down"}
             className="text-white mr1"
           />
-          <SortName sort={sort} query={query} />
+          <span>{sort.dimension().displayName()}</span>
         </span>
       )}
       renderPopover={(sort, index) => (
@@ -49,10 +48,6 @@ export default function SortStep({
     />
   );
 }
-
-const SortName = ({ sort, query }) => (
-  <FieldName field={sort && sort[1]} query={query} />
-);
 
 import FieldList from "metabase/query_builder/components/FieldList";
 

@@ -11,6 +11,8 @@ import Field from "./Field";
 import Segment from "./Segment";
 import Metric from "./Metric";
 
+import Question from "../Question";
+
 import type { DatabaseId } from "metabase/meta/types/Database";
 import type { TableId } from "metabase/meta/types/Table";
 import type { FieldId } from "metabase/meta/types/Field";
@@ -76,5 +78,9 @@ export default class Metadata extends Base {
 
   field(fieldId): ?Field {
     return (fieldId != null && this.fields[fieldId]) || null;
+  }
+
+  question(card) {
+    return new Question(card, this);
   }
 }
