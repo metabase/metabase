@@ -17,7 +17,7 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
 
 import cx from "classnames";
 
-import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { DatasetQuery } from "metabase-types/types/Card";
 import type { Children } from "react";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";

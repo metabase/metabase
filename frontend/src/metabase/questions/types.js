@@ -1,6 +1,6 @@
 /* flow */
 
-import type { Collection } from "metabase/meta/types/Collection";
+import type { Collection } from "metabase-types/types/Collection";
 
 export type Entity = {
   id: number,

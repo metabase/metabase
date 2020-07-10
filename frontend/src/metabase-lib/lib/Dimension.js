@@ -14,9 +14,9 @@ import type {
   DatetimeField,
   ExpressionReference,
   DatetimeUnit,
-} from "metabase/meta/types/Query";
+} from "metabase-types/types/Query";
 
-import type { IconName } from "metabase/meta/types";
+import type { IconName } from "metabase-types/types";
 
 /**
  * A dimension option returned by the query_metadata API

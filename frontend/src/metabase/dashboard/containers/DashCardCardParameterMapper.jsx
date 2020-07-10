@@ -24,15 +24,15 @@ import { setParameterMapping } from "../dashboard";
 import cx from "classnames";
 import { getIn } from "icepick";
 
-import type { Card } from "metabase/meta/types/Card";
-import type { DashCard } from "metabase/meta/types/Dashboard";
+import type { Card } from "metabase-types/types/Card";
+import type { DashCard } from "metabase-types/types/Dashboard";
 import type {
   Parameter,
   ParameterId,
   ParameterMappingUIOption,
   ParameterTarget,
-} from "metabase/meta/types/Parameter";
-import type { DatabaseId } from "metabase/meta/types/Database";
+} from "metabase-types/types/Parameter";
+import type { DatabaseId } from "metabase-types/types/Database";
 
 import type { MappingsByParameter } from "../selectors";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";

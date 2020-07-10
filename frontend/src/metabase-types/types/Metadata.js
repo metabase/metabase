@@ -2,11 +2,11 @@
 
 // Legacy "tableMetadata" etc
 
-import type { Database, DatabaseId } from "metabase/meta/types/Database";
-import type { Table, TableId } from "metabase/meta/types/Table";
-import type { Field, FieldId } from "metabase/meta/types/Field";
-import type { Segment, SegmentId } from "metabase/meta/types/Segment";
-import type { Metric, MetricId } from "metabase/meta/types/Metric";
+import type { Database, DatabaseId } from "metabase-types/types/Database";
+import type { Table, TableId } from "metabase-types/types/Table";
+import type { Field, FieldId } from "metabase-types/types/Field";
+import type { Segment, SegmentId } from "metabase-types/types/Segment";
+import type { Metric, MetricId } from "metabase-types/types/Metric";
 
 export type Metadata = {
   databases: { [id: DatabaseId]: DatabaseMetadata },

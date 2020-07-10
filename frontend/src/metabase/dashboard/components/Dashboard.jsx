@@ -22,21 +22,21 @@ import type {
   LocationDescriptor,
   ApiError,
   QueryParams,
-} from "metabase/meta/types";
+} from "metabase-types/types";
 
-import type { CardId, VisualizationSettings } from "metabase/meta/types/Card";
+import type { CardId, VisualizationSettings } from "metabase-types/types/Card";
 import type {
   DashboardWithCards,
   DashboardId,
   DashCardId,
-} from "metabase/meta/types/Dashboard";
-import type { Revision } from "metabase/meta/types/Revision";
+} from "metabase-types/types/Dashboard";
+import type { Revision } from "metabase-types/types/Revision";
 import type {
   Parameter,
   ParameterId,
   ParameterValues,
   ParameterOption,
-} from "metabase/meta/types/Parameter";
+} from "metabase-types/types/Parameter";
 
 type Props = {
   location: LocationDescriptor,

@@ -15,11 +15,11 @@ import Utils from "metabase/lib/utils";
 import cx from "classnames";
 
 import Question from "metabase-lib/lib/Question";
-import type { Database } from "metabase/meta/types/Database";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
-import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { Database } from "metabase-types/types/Database";
+import type { TableMetadata } from "metabase-types/types/Metadata";
+import type { DatasetQuery } from "metabase-types/types/Card";
 
-import type { ParameterValues } from "metabase/meta/types/Parameter";
+import type { ParameterValues } from "metabase-types/types/Parameter";
 
 type Props = {
   question: Question,

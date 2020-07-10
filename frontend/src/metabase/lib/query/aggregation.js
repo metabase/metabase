@@ -12,8 +12,18 @@ import type {
   AggregationWithOptions,
   AggregationOptions,
   ConcreteField,
-} from "metabase/meta/types/Query";
-import type { MetricId } from "metabase/meta/types/Metric";
+} from "metabase-types/types/Query";
+import type { MetricId } from "metabase-types/types/Metric";
+
+export const SORTABLE_AGGREGATION_TYPES = new Set([
+  "avg",
+  "count",
+  "distinct",
+  "stddev",
+  "sum",
+  "min",
+  "max",
+]);
 
 // returns canonical list of Aggregations, i.e. with deprecated "rows" removed
 export function getAggregations(
@@ -175,4 +185,10 @@ export function setField(aggregation: any, fieldRef: ConcreteField) {
     // TODO: is there a better failure response than just returning the aggregation unmodified??
     return aggregation;
   }
+}
+
+// MISC
+
+export function isSortable(aggregation: any) {
+  return SORTABLE_AGGREGATION_TYPES.has(getContent(aggregation)[0]);
 }

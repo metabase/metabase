@@ -23,7 +23,7 @@ import type {
   LocalFieldReference,
   ForeignFieldReference,
   ExpressionReference,
-} from "metabase/meta/types/Query";
+} from "metabase-types/types/Query";
 
 const SingleDatePicker = ({
   className,
