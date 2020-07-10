@@ -35,10 +35,10 @@ import currency from "metabase/lib/currency";
 
 import type { Settings, SettingDef } from "../settings";
 import type { DateStyle, TimeStyle } from "metabase/lib/formatting/date";
-import type { DatetimeUnit } from "metabase/meta/types/Query";
-import type { Column } from "metabase/meta/types/Dataset";
-import type { Series } from "metabase/meta/types/Visualization";
-import type { VisualizationSettings } from "metabase/meta/types/Card";
+import type { DatetimeUnit } from "metabase-types/types/Query";
+import type { Column } from "metabase-types/types/Dataset";
+import type { Series } from "metabase-types/types/Visualization";
+import type { VisualizationSettings } from "metabase-types/types/Card";
 
 type ColumnSettings = Settings;
 

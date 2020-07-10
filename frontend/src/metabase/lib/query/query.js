@@ -18,7 +18,7 @@ import type {
   Expression,
   Field,
   FieldsClause,
-} from "metabase/meta/types/Query";
+} from "metabase-types/types/Query";
 
 import * as A from "./aggregation";
 import * as B from "./breakout";

@@ -14,19 +14,19 @@ import * as Urls from "metabase/lib/urls";
 import _ from "underscore";
 import { assoc, updateIn } from "icepick";
 
-import type { StructuredQuery, TemplateTag } from "metabase/meta/types/Query";
+import type { StructuredQuery, TemplateTag } from "metabase-types/types/Query";
 import type {
   Card,
   DatasetQuery,
   StructuredDatasetQuery,
   NativeDatasetQuery,
-} from "metabase/meta/types/Card";
+} from "metabase-types/types/Card";
 import type {
   Parameter,
   ParameterMapping,
   ParameterValues,
-} from "metabase/meta/types/Parameter";
-import type { Metadata, TableMetadata } from "metabase/meta/types/Metadata";
+} from "metabase-types/types/Parameter";
+import type { Metadata, TableMetadata } from "metabase-types/types/Metadata";
 
 declare class Object {
   static values<T>(object: { [key: string]: T }): Array<T>;

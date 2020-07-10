@@ -20,7 +20,7 @@ const DEFAULT_OPTIONS = {
   titled: true,
 };
 
-import type { Parameter } from "metabase/meta/types/Parameter";
+import type { Parameter } from "metabase-types/types/Parameter";
 
 type Props = {
   className?: string,
