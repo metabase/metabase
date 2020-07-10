@@ -940,6 +940,7 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should be unable to access question with URL (if access not permitted)", () => {
+      // This test will fail whenever the previous test fails
       signIn("nocollection");
 
       cy.visit("/question/4");
