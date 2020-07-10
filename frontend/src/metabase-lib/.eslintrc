@@ -1,5 +1,6 @@
 {
   "rules": {
     "flowtype/require-valid-file-annotation": 1
+    // "no-restricted-imports": ["warn", { "patterns": ["metabase/*"] }]
   }
 }

@@ -11,7 +11,7 @@ import { assoc } from "icepick";
 import type {
   TimeIntervalFilter,
   RelativeDatetimeUnit,
-} from "metabase/meta/types/Query";
+} from "metabase-types/types/Query";
 
 export const DATE_PERIODS: RelativeDatetimeUnit[] = [
   "day",

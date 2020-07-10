@@ -7,7 +7,7 @@ import type {
   ClickAction,
   ClickObject,
   QueryMode,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 export default class Mode {
   _question: Question;

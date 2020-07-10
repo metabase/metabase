@@ -25,6 +25,10 @@
 
 (defmethod driver/supports? [:sqlserver :regex] [_ _] false)
 (defmethod driver/supports? [:sqlserver :percentile-aggregations] [_ _] false)
+;; SQLServer LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
+;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
+;; users in the UI
+(defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
 
 ;; See the list here: https://docs.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types
 (defmethod sql-jdbc.sync/database-type->base-type :sqlserver
@@ -275,11 +279,6 @@
   (apply driver.common/current-db-time args))
 
 (defmethod sql.qp/current-datetime-honeysql-form :sqlserver [_] :%getdate)
-
-;; SQLServer LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
-;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
-;; users in the UI
-(defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
 
 (defmethod sql-jdbc.sync/excluded-schemas :sqlserver
   [_]

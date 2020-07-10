@@ -108,6 +108,10 @@
   text-transform: capitalize;
 }
 
+.text-transform-none {
+  text-transform: none;
+}
+
 /* text weight */
 /* NOTE: .text-light removed since it conflicted with text-light in colors.css */
 .text-normal {

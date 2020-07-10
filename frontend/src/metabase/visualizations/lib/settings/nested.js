@@ -16,7 +16,7 @@ import type {
   ExtraProps,
 } from "metabase/visualizations/lib/settings";
 
-import type { Series } from "metabase/meta/types/Visualization";
+import type { Series } from "metabase-types/types/Visualization";
 
 export type NestedObject = any;
 export type NestedObjectKey = string;

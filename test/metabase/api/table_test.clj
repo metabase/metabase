@@ -269,7 +269,7 @@
         :description     "What a nice table!"})
       (is (= (merge
               (-> (table-defaults)
-                  (dissoc :segments :field_values :metrics)
+                  (dissoc :segments :field_values :metrics :updated_at)
                   (assoc-in [:db :details] (:details (mt/db))))
               (db/select-one [Table :id :schema :name :created_at] :id (u/get-id table))
               {:description     "What a nice table!"
