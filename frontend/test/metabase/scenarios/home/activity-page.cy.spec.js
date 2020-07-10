@@ -47,7 +47,7 @@ describe("metabase > scenarios > home > activity-page", () => {
     signInAsAdmin();
     cy.visit("/activity");
 
-    cy.findByText("joined!");
+    cy.findAllByText("joined!").should("have.length", 2);
     cy.findAllByText("Robert").should("have.length", 2);
     cy.findByText("Products, Filtered by Rating");
   });
