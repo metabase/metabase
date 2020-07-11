@@ -10,7 +10,7 @@ import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 
 import screenfull from "screenfull";
 
-import type { LocationDescriptor } from "metabase/meta/types";
+import type { LocationDescriptor } from "metabase-types/types";
 
 type Props = {
   dashboardId: string,

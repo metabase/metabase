@@ -68,7 +68,7 @@ import Snippets from "metabase/entities/snippets";
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
-import type { Card } from "metabase/meta/types/Card";
+import type { Card } from "metabase-types/types/Card";
 
 type UiControls = {
   isEditing?: boolean,

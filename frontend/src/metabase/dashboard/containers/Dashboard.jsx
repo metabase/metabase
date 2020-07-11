@@ -9,8 +9,8 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
 
-import type { Dashboard as _Dashboard } from "metabase/meta/types/Dashboard";
-import type { Parameter } from "metabase/meta/types/Parameter";
+import type { Dashboard as _Dashboard } from "metabase-types/types/Dashboard";
+import type { Parameter } from "metabase-types/types/Parameter";
 
 type Props = {
   location?: { query: { [key: string]: string } },

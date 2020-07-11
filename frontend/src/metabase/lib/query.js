@@ -1,9 +1,10 @@
 import _ from "underscore";
 import Utils from "metabase/lib/utils";
-import { isFK } from "metabase/lib/types";
 
 import * as QUERY from "./query/query";
 import * as FieldRef from "./query/field_ref";
+import { SORTABLE_AGGREGATION_TYPES } from "./query/aggregation";
+
 export * from "./query/query";
 export * from "./query/field_ref";
 
@@ -37,16 +38,6 @@ export function createQuery(type = "query", databaseId, tableId) {
 
   return dataset_query;
 }
-
-const SORTABLE_AGGREGATION_TYPES = new Set([
-  "avg",
-  "count",
-  "distinct",
-  "stddev",
-  "sum",
-  "min",
-  "max",
-]);
 
 export function isStructured(dataset_query) {
   return dataset_query && dataset_query.type === "query";
@@ -149,7 +140,7 @@ export function cleanQuery(query) {
   return query;
 }
 
-export function hasValidBreakout(query) {
+function hasValidBreakout(query) {
   return (
     query &&
     query.breakout &&
@@ -158,7 +149,7 @@ export function hasValidBreakout(query) {
   );
 }
 
-export function canSortByAggregateField(query, index) {
+function canSortByAggregateField(query, index) {
   if (!hasValidBreakout(query)) {
     return false;
   }
@@ -168,41 +159,4 @@ export function canSortByAggregateField(query, index) {
     aggregations[index][0] &&
     SORTABLE_AGGREGATION_TYPES.has(aggregations[index][0])
   );
-}
-
-export function getFieldOptions(
-  fields,
-  includeJoins = false,
-  filterFn = _.identity,
-  usedFields = {},
-) {
-  const results = {
-    count: 0,
-    fields: null,
-    fks: [],
-  };
-  // filter based on filterFn, then remove fks if they'll be duplicated in the joins fields
-  results.fields = filterFn(fields).filter(
-    f => !usedFields[f.id] && (!isFK(f.special_type) || !includeJoins),
-  );
-  results.count += results.fields.length;
-  if (includeJoins) {
-    results.fks = fields
-      .filter(f => isFK(f.special_type) && f.target)
-      .map(joinField => {
-        const targetFields = filterFn(joinField.target.table.fields).filter(
-          f =>
-            (!Array.isArray(f.id) || f.id[0] !== "aggregation") &&
-            !usedFields[f.id],
-        );
-        results.count += targetFields.length;
-        return {
-          field: joinField,
-          fields: targetFields,
-        };
-      })
-      .filter(r => r.fields.length > 0);
-  }
-
-  return results;
 }

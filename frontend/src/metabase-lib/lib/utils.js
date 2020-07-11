@@ -56,3 +56,11 @@ export function sortObject(obj) {
   }
   return o;
 }
+
+export function createLookupByProperty(items, property) {
+  const lookup = {};
+  for (const item of items) {
+    lookup[item[property]] = item;
+  }
+  return lookup;
+}

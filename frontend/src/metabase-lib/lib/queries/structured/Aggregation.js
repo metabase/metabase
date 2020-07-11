@@ -8,12 +8,14 @@ import { TYPE } from "metabase/lib/types";
 
 import * as AGGREGATION from "metabase/lib/query/aggregation";
 
-import type { Aggregation as AggregationObject } from "metabase/meta/types/Query";
+import { AggregationDimension } from "../../Dimension";
+
+import type { Aggregation as AggregationObject } from "metabase-types/types/Query";
 import type StructuredQuery from "../StructuredQuery";
 import type Dimension from "../../Dimension";
-import type { AggregationOperator } from "metabase/meta/types/Metadata";
-import type { MetricId } from "metabase/meta/types/Metric";
-import type { FieldId } from "metabase/meta/types/Field";
+import type { AggregationOperator } from "metabase-types/types/Metadata";
+import type { MetricId } from "metabase-types/types/Metric";
+import type { FieldId } from "metabase-types/types/Field";
 
 const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);
 
@@ -136,14 +138,14 @@ export default class Aggregation extends MBQLClause {
       return this.aggregation().isValid();
     } else if (this.isStandard() && this.dimension()) {
       const dimension = this.dimension();
-      const aggregation = this.query()
+      const aggregationOperator = this.query()
         .table()
-        .aggregation(this[0]);
+        .aggregationOperator(this[0]);
       return (
-        aggregation &&
-        (!aggregation.requiresField ||
+        aggregationOperator &&
+        (!aggregationOperator.requiresField ||
           this.query()
-            .aggregationFieldOptions(aggregation)
+            .aggregationFieldOptions(aggregationOperator)
             .hasDimension(dimension))
       );
     } else if (this.isMetric()) {
@@ -264,5 +266,20 @@ export default class Aggregation extends MBQLClause {
     } else {
       return this;
     }
+  }
+
+  // MISC
+
+  aggregationDimension() {
+    return new AggregationDimension(
+      null,
+      [this._index],
+      this._query.metadata(),
+      this._query,
+    );
+  }
+
+  isSortable() {
+    return AGGREGATION.isSortable(this);
   }
 }

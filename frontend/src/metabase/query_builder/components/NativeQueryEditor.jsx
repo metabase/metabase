@@ -55,11 +55,11 @@ const getLinesForHeight = height => (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
-import type { DatasetQuery } from "metabase/meta/types/Card";
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { TableId } from "metabase/meta/types/Table";
-import type { ParameterId } from "metabase/meta/types/Parameter";
-import type { LocationDescriptor } from "metabase/meta/types";
+import type { DatasetQuery } from "metabase-types/types/Card";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { TableId } from "metabase-types/types/Table";
+import type { ParameterId } from "metabase-types/types/Parameter";
+import type { LocationDescriptor } from "metabase-types/types";
 import type { RunQueryParams } from "metabase/query_builder/actions";
 import {
   DatabaseDataSelector,
