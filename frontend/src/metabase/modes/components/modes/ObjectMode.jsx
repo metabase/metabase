@@ -2,7 +2,7 @@
 
 import ObjectDetailDrill from "../drill/ObjectDetailDrill";
 
-import type { QueryMode } from "metabase/meta/types/Visualization";
+import type { QueryMode } from "metabase-types/types/Visualization";
 
 const ObjectMode: QueryMode = {
   name: "object",

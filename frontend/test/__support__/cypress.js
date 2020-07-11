@@ -54,7 +54,7 @@ export function restore(name = "default") {
   cy.request("POST", `/api/testing/restore/${name}`);
 }
 
-// various Metabase-specific "scoping" functions like inside popover/modal/navbar/main content area
+// various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
 export function popover() {
   return cy.get(".PopoverContainer.PopoverContainer--open");
 }
@@ -66,6 +66,9 @@ export function nav() {
 }
 export function main() {
   return cy.get("nav").next();
+}
+export function sidebar() {
+  return cy.get(".scroll-y");
 }
 
 // Metabase utility functions for commonly-used patterns
@@ -88,3 +91,24 @@ export function typeAndBlurUsingLabel(label, value) {
 }
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
+
+export function withSampleDataset(f) {
+  cy.request("GET", "/api/database/1/metadata").then(({ body }) => {
+    const SAMPLE_DATASET = {};
+    for (const table of body.tables) {
+      const fields = {};
+      for (const field of table.fields) {
+        fields[field.name] = field.id;
+      }
+      SAMPLE_DATASET[table.name] = fields;
+      SAMPLE_DATASET[table.name + "_ID"] = table.id;
+    }
+    f(SAMPLE_DATASET);
+  });
+}
+
+export function visitAlias(alias) {
+  cy.get(alias).then(url => {
+    cy.visit(url);
+  });
+}

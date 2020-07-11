@@ -33,7 +33,7 @@
         (i/ReferencedCardQuery? v)
         (subsistute-card-query [sql args missing] v)
 
-        (i/NativeQuerySnippet? v)
+        (i/ReferencedQuerySnippet? v)
         (substitute-native-query-snippet [sql args missing] v)
 
         (= i/no-value v)

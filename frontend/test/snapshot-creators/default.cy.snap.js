@@ -1,4 +1,9 @@
-import { snapshot, restore, USERS } from "__support__/cypress";
+import {
+  snapshot,
+  restore,
+  USERS,
+  withSampleDataset,
+} from "__support__/cypress";
 
 describe("default", () => {
   it("default", () => {
@@ -6,7 +11,9 @@ describe("default", () => {
     setup();
     updateSettings();
     addUsersAndGroups();
-    createQuestionAndDashboard();
+    withSampleDataset(SAMPLE_DATASET => {
+      createQuestionAndDashboard(SAMPLE_DATASET);
+    });
     snapshot("default");
     restore("blank");
   });
@@ -100,13 +107,17 @@ function addUsersAndGroups() {
   });
 }
 
-function createQuestionAndDashboard() {
+function createQuestionAndDashboard({ ORDERS, ORDERS_ID }) {
   // question 1: Orders
   cy.request("POST", "/api/card", {
     name: "Orders",
     display: "table",
     visualization_settings: {},
-    dataset_query: { database: 1, query: { "source-table": 2 }, type: "query" },
+    dataset_query: {
+      database: 1,
+      query: { "source-table": ORDERS_ID },
+      type: "query",
+    },
   });
 
   // question 2: Orders, Count
@@ -116,7 +127,7 @@ function createQuestionAndDashboard() {
     visualization_settings: {},
     dataset_query: {
       database: 1,
-      query: { "source-table": 2, aggregation: [["count"]] },
+      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
       type: "query",
     },
   });
@@ -126,9 +137,9 @@ function createQuestionAndDashboard() {
     dataset_query: {
       type: "query",
       query: {
-        "source-table": 2,
+        "source-table": ORDERS_ID,
         aggregation: [["count"]],
-        breakout: [["datetime-field", ["field-id", 15], "year"]],
+        breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"]],
       },
       database: 1,
     },

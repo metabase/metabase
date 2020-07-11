@@ -11,8 +11,9 @@
             [java-time :as t]
             [metabase
              [driver :as driver]
-             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric Permissions
-                             PermissionsGroup Pulse PulseCard PulseChannel Revision Segment Table TaskHistory User]]
+             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric
+                             NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel Revision
+                             Segment Table TaskHistory User]]
              [task :as task]
              [util :as u]]
             [metabase.models
@@ -91,7 +92,7 @@
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
                 (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
-                           :fields_hash :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
+                           :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
                          #(str/ends-with? % "_id")
                          #(str/ends-with? % "_at")))
     data))
@@ -113,117 +114,154 @@
 
 (defn- rasta-id [] (user-id :rasta))
 
-(u/strict-extend (class Card)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id             (rasta-id)
-                                :dataset_query          {}
-                                :display                :table
-                                :name                   (random-name)
-                                :visualization_settings {}})})
+(defn- set-with-temp-defaults! []
+  (extend (class Card)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:creator_id             (rasta-id)
+                                  :dataset_query          {}
+                                  :display                :table
+                                  :name                   (random-name)
+                                  :visualization_settings {}})})
 
-(u/strict-extend (class Collection)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:name  (random-name)
-                                :color "#ABCDEF"})})
+  (extend (class Collection)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:name  (random-name)
+                                  :color "#ABCDEF"})})
 
-(u/strict-extend (class Dashboard)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id   (rasta-id)
-                                :name         (random-name)})})
+  (extend (class Dashboard)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:creator_id   (rasta-id)
+                                  :name         (random-name)})})
 
-(u/strict-extend (class DashboardCardSeries)
-  tt/WithTempDefaults
-  {:with-temp-defaults (constantly {:position 0})})
+  (extend (class DashboardCardSeries)
+    tt/WithTempDefaults
+    {:with-temp-defaults (constantly {:position 0})})
 
-(u/strict-extend (class Database)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:details   {}
-                                :engine    :h2
-                                :is_sample false
-                                :name      (random-name)})})
+  (extend (class Database)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:details   {}
+                                  :engine    :h2
+                                  :is_sample false
+                                  :name      (random-name)})})
 
-(u/strict-extend (class Dimension)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:name (random-name)
-                                :type "internal"})})
+  (extend (class Dimension)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:name (random-name)
+                                  :type "internal"})})
 
-(u/strict-extend (class Field)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:database_type "VARCHAR"
-                                :base_type     :type/Text
-                                :name          (random-name)
-                                :position      1
-                                :table_id      (data/id :checkins)})})
+  (extend (class Field)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:database_type "VARCHAR"
+                                  :base_type     :type/Text
+                                  :name          (random-name)
+                                  :position      1
+                                  :table_id      (data/id :checkins)})})
 
-(u/strict-extend (class Metric)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id  (rasta-id)
-                                :definition  {}
-                                :description "Lookin' for a blueberry"
-                                :name        "Toucans in the rainforest"
-                                :table_id    (data/id :checkins)})})
+  (extend (class Metric)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:creator_id  (rasta-id)
+                                  :definition  {}
+                                  :description "Lookin' for a blueberry"
+                                  :name        "Toucans in the rainforest"
+                                  :table_id    (data/id :checkins)})})
 
-(u/strict-extend (class PermissionsGroup)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:name (random-name)})})
+  (extend (class NativeQuerySnippet)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:creator_id (user-id :crowberto)
+                                  :name       (random-name)
+                                  :content    "1 = 1"})})
 
-(u/strict-extend (class Pulse)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
-                                :name       (random-name)})})
+  (extend (class PermissionsGroup)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:name (random-name)})})
 
-(u/strict-extend (class PulseCard)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:position    0
-                                :include_csv false
-                                :include_xls false})})
+  (extend (class Pulse)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
+                                  :name       (random-name)})})
 
-(u/strict-extend (class PulseChannel)
-  tt/WithTempDefaults
-  {:with-temp-defaults (constantly {:channel_type  :email
-                                    :details       {}
-                                    :schedule_type :daily
-                                    :schedule_hour 15})})
+  (extend (class PulseCard)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:position    0
+                                  :include_csv false
+                                  :include_xls false})})
 
-(u/strict-extend (class Revision)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:user_id      (rasta-id)
-                                :is_creation  false
-                                :is_reversion false})})
+  (extend (class PulseChannel)
+    tt/WithTempDefaults
+    {:with-temp-defaults (constantly {:channel_type  :email
+                                      :details       {}
+                                      :schedule_type :daily
+                                      :schedule_hour 15})})
 
-(u/strict-extend (class Segment)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
-                                :definition  {}
-                                :description "Lookin' for a blueberry"
-                                :name        "Toucans in the rainforest"
-                                :table_id    (data/id :checkins)})})
+  (extend (class Revision)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:user_id      (rasta-id)
+                                  :is_creation  false
+                                  :is_reversion false})})
 
-;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
+  (extend (class Segment)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
+                                  :definition  {}
+                                  :description "Lookin' for a blueberry"
+                                  :name        "Toucans in the rainforest"
+                                  :table_id    (data/id :checkins)})})
 
-(u/strict-extend (class Table)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:db_id  (data/id)
-                                :active true
-                                :name   (random-name)})})
+  ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
 
-(u/strict-extend (class TaskHistory)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_]
-                         (let [started (t/zoned-date-time)
-                               ended   (t/plus started (t/millis 10))]
-                           {:db_id      (data/id)
-                            :task       (random-name)
-                            :started_at started
-                            :ended_at   ended
-                            :duration   (.toMillis (t/duration started ended))}))})
+  (extend (class Table)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:db_id  (data/id)
+                                  :active true
+                                  :name   (random-name)})})
 
-(u/strict-extend (class User)
-  tt/WithTempDefaults
-  {:with-temp-defaults (fn [_] {:first_name (random-name)
-                                :last_name  (random-name)
-                                :email      (random-email)
-                                :password   (random-name)})})
+  (extend (class TaskHistory)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_]
+                           (let [started (t/zoned-date-time)
+                                 ended   (t/plus started (t/millis 10))]
+                             {:db_id      (data/id)
+                              :task       (random-name)
+                              :started_at started
+                              :ended_at   ended
+                              :duration   (.toMillis (t/duration started ended))}))})
+
+  (extend (class User)
+    tt/WithTempDefaults
+    {:with-temp-defaults (fn [_] {:first_name (random-name)
+                                  :last_name  (random-name)
+                                  :email      (random-email)
+                                  :password   (random-name)})}))
+
+(set-with-temp-defaults!)
+
+;; if any of the models get redefined, reload the `with-temp-defaults` so they apply to the new version of the model
+(doseq [model-var [#'Card
+                   #'Collection
+                   #'Dashboard
+                   #'DashboardCardSeries
+                   #'Database
+                   #'Dimension
+                   #'Field
+                   #'Metric
+                   #'NativeQuerySnippet
+                   #'Permissions
+                   #'PermissionsGroup
+                   #'Pulse
+                   #'PulseCard
+                   #'PulseChannel
+                   #'Revision
+                   #'Segment
+                   #'Table
+                   #'TaskHistory
+                   #'User]]
+  (remove-watch model-var ::reload)
+  (add-watch
+   model-var
+   ::reload
+   (fn [_ reference _ _]
+     (println (format "%s changed, reloading with-temp-defaults" model-var))
+     #_(set-with-temp-defaults!))))
 
 
 ;;; ------------------------------------------------- Other Util Fns -------------------------------------------------
@@ -570,7 +608,7 @@
 
 (defn do-with-model-cleanup [model-seq f]
   (try
-    (testing (str (pr-str (cons 'with-model-cleanup model-seq)) "\n")
+    (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name model-seq))) "\n")
       (f))
     (finally
       (doseq [model model-seq]

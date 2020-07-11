@@ -22,8 +22,6 @@ import Fields from "metabase/entities/fields";
 
 import { GET, PUT } from "metabase/lib/api";
 
-import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
-
 import { getMetadata } from "metabase/selectors/metadata";
 
 const listTables = GET("/api/table");
@@ -31,6 +29,7 @@ const listTablesForDatabase = async (...args) =>
   // HACK: no /api/database/:dbId/tables endpoint
   (await GET("/api/database/:dbId/metadata")(...args)).tables;
 const listTablesForSchema = GET("/api/database/:dbId/schema/:schemaName");
+const updateFieldOrder = PUT("/api/table/:id/fields/order");
 const updateTables = PUT("/api/table");
 
 // OBJECT ACTIONS
@@ -39,6 +38,7 @@ export const FETCH_METADATA = "metabase/entities/FETCH_METADATA";
 export const FETCH_TABLE_METADATA = "metabase/entities/FETCH_TABLE_METADATA";
 export const FETCH_TABLE_FOREIGN_KEYS =
   "metabase/entities/FETCH_TABLE_FOREIGN_KEYS";
+const UPDATE_TABLE_FIELD_ORDER = "metabase/entities/UPDATE_TABLE_FIELD_ORDER";
 
 const Tables = createEntity({
   name: "tables",
@@ -76,13 +76,12 @@ const Tables = createEntity({
         ({ id }) => [...Tables.getObjectStatePath(id), "fetchMetadata"],
       ),
       withNormalize(TableSchema),
-    )(({ id }, options = {}) => async (dispatch, getState) => {
-      const table = await MetabaseApi.table_query_metadata({
+    )(({ id }, options = {}) => (dispatch, getState) =>
+      MetabaseApi.table_query_metadata({
         tableId: id,
         ...options.params,
-      });
-      return addValidOperatorsToFields(table);
-    }),
+      }),
+    ),
 
     // like fetchMetadata but also loads tables linked by foreign key
     fetchMetadataAndForeignTables: createThunkAction(
@@ -113,6 +112,11 @@ const Tables = createEntity({
       const fks = await MetabaseApi.table_fks({ tableId: entityObject.id });
       return { id: entityObject.id, fks: fks };
     }),
+
+    setFieldOrder: compose(withAction(UPDATE_TABLE_FIELD_ORDER))(
+      ({ id }, fieldOrder) => (dispatch, getState) =>
+        updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
+    ),
   },
 
   // FORMS
@@ -146,7 +150,7 @@ const Tables = createEntity({
     if (type === Segments.actionTypes.UPDATE) {
       const { table_id: tableId, archived, id: segmentId } = payload.segment;
       const table = state[tableId];
-      if (archived && table) {
+      if (archived && table && table.segments) {
         return {
           ...state,
           [tableId]: {
@@ -160,7 +164,7 @@ const Tables = createEntity({
     if (type === Metrics.actionTypes.UPDATE) {
       const { table_id: tableId, archived, id: metricId } = payload.metric;
       const table = state[tableId];
-      if (archived && table) {
+      if (archived && table && table.metrics) {
         return {
           ...state,
           [tableId]: {

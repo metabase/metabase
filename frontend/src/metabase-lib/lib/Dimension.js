@@ -14,9 +14,9 @@ import type {
   DatetimeField,
   ExpressionReference,
   DatetimeUnit,
-} from "metabase/meta/types/Query";
+} from "metabase-types/types/Query";
 
-import type { IconName } from "metabase/meta/types";
+import type { IconName } from "metabase-types/types";
 
 /**
  * A dimension option returned by the query_metadata API
@@ -473,7 +473,7 @@ export class FieldIDDimension extends FieldDimension {
 
   field() {
     return (
-      (this._metadata && this._metadata.fields[this._args[0]]) ||
+      (this._metadata && this._metadata.field(this._args[0])) ||
       new Field({ id: this._args[0] })
     );
   }

@@ -1,0 +1,14 @@
+.Grabber {
+  /* This image is a svg circle as a data url.
+     We tile it for the whole div. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle fill='%23E3E7E9' r='1.5' cx='2.5' cy='2.5' /%3E%3C/svg%3E");
+  background-repeat: round round;
+  background-size: 5px 5px;
+}
+
+/* .sort-helper isn't used in <Grabber>. You'll need to set that on a parent being sorted. */
+.ColumnSortHelper .Grabber,
+.Grabber:hover {
+  /* This image is the same but with a different fill color. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle fill='%23C7CFD4' r='1.5' cx='2.5' cy='2.5' /%3E%3C/svg%3E");
+}

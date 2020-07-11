@@ -996,15 +996,15 @@
                                            ;; (no chunking).
                                            first))]
     (let [show (or show max-cards)]
-      (log/infof (trs "Applying heuristic {0} to {1}." (:rule rule) full-name))
-      (log/infof (trs "Dimensions bindings:\n{0}"
+      (log/info (trs "Applying heuristic {0} to {1}." (:rule rule) full-name))
+      (log/info (trs "Dimensions bindings:\n{0}"
                       (->> context
                            :dimensions
                            (m/map-vals #(update % :matches (partial map :name)))
                            u/pprint-to-str)))
-      (log/infof (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
-                      (->> context :metrics (m/map-vals :metric) u/pprint-to-str)
-                      (-> context :filters u/pprint-to-str)))
+      (log/info (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
+                     (->> context :metrics (m/map-vals :metric) u/pprint-to-str)
+                     (-> context :filters u/pprint-to-str)))
       (-> dashboard
           (populate/create-dashboard show)
           (assoc :related           (related context rule)

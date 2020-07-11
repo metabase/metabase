@@ -55,11 +55,11 @@ const getLinesForHeight = height => (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
-import type { DatasetQuery } from "metabase/meta/types/Card";
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { TableId } from "metabase/meta/types/Table";
-import type { ParameterId } from "metabase/meta/types/Parameter";
-import type { LocationDescriptor } from "metabase/meta/types";
+import type { DatasetQuery } from "metabase-types/types/Card";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { TableId } from "metabase-types/types/Table";
+import type { ParameterId } from "metabase-types/types/Parameter";
+import type { LocationDescriptor } from "metabase-types/types";
 import type { RunQueryParams } from "metabase/query_builder/actions";
 import {
   DatabaseDataSelector,
@@ -174,16 +174,14 @@ export default class NativeQueryEditor extends Component {
   }
 
   handleRightClick = event => {
-    // For some reason the click doesn't target the selection element directly.
-    // We check if it falls in the selections bounding rectangle to know if the selected text was clicked.
-    const selection = document.querySelector(".ace_selection");
-    if (!selection) {
-      return;
-    }
+    // Ace creates multiple selection elements which collectively cover the selected area.
+    const selections = Array.from(document.querySelectorAll(".ace_selection"));
 
     if (
       this.props.nativeEditorSelectedText &&
-      isEventOverElement(event, selection)
+      // For some reason the click doesn't target the selection element directly.
+      // We check if it falls in the selections bounding rectangle to know if the selected text was clicked.
+      selections.some(selection => isEventOverElement(event, selection))
     ) {
       event.preventDefault();
       this.setState({ isSelectedTextPopoverOpen: true });
@@ -434,6 +432,7 @@ export default class NativeQueryEditor extends Component {
       if (query.queryText() !== this._editor.getValue()) {
         query
           .setQueryText(this._editor.getValue())
+          .updateSnippetsWithIds(this.props.snippets)
           .update(this.props.setDatasetQuery);
       }
     }
@@ -545,9 +544,7 @@ export default class NativeQueryEditor extends Component {
       toggleEditorText = null;
       toggleEditorIcon = "contract";
     } else {
-      toggleEditorText = query.hasWritePermission()
-        ? t`Open Editor`
-        : t`Show Query`;
+      toggleEditorText = t`Open Editor`;
       toggleEditorIcon = "expand";
     }
     const dragHandle = (
@@ -570,20 +567,25 @@ export default class NativeQueryEditor extends Component {
             isQB
             commitImmediately
           />
-          <div className="flex-align-right flex align-center text-medium pr1">
-            <a
-              className={cx(
-                "Query-label no-decoration flex align-center mx3 text-brand-hover transition-all",
-                { hide: readOnly },
-              )}
-              onClick={this.toggleEditor}
+          {query.hasWritePermission() && (
+            <div
+              className="flex-align-right flex align-center text-medium"
+              style={{ paddingRight: 4 }}
             >
-              <span className="mr1" style={{ minWidth: 70 }}>
-                {toggleEditorText}
-              </span>
-              <Icon name={toggleEditorIcon} size={18} />
-            </a>
-          </div>
+              <a
+                className={cx(
+                  "Query-label no-decoration flex align-center mx3 text-brand-hover transition-all",
+                  { hide: readOnly },
+                )}
+                onClick={this.toggleEditor}
+              >
+                <span className="mr1" style={{ minWidth: 70 }}>
+                  {toggleEditorText}
+                </span>
+                <Icon name={toggleEditorIcon} size={18} />
+              </a>
+            </div>
+          )}
         </div>
         <ResizableBox
           ref="resizeBox"
@@ -623,6 +625,13 @@ export default class NativeQueryEditor extends Component {
           </Popover>
           {this.props.modalSnippet && (
             <SnippetModal
+              onSnippetUpdate={(newSnippet, oldSnippet) => {
+                if (newSnippet.name !== oldSnippet.name) {
+                  query
+                    .updateQueryTextWithNewSnippetNames([newSnippet])
+                    .update(this.props.setDatasetQuery);
+                }
+              }}
               snippet={this.props.modalSnippet}
               insertSnippet={this.props.insertSnippet}
               closeModal={this.props.closeSnippetModal}

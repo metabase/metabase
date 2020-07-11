@@ -6,8 +6,6 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { loadTableAndForeignKeys } from "metabase/lib/table";
-
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import View from "../components/view/View";
@@ -137,7 +135,6 @@ const mapStateToProps = (state, props) => {
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
 
-    loadTableAndForeignKeysFn: loadTableAndForeignKeys,
     autocompleteResultsFn: prefix => autocompleteResults(state.qb.card, prefix),
     instanceSettings: getSettings(state),
 

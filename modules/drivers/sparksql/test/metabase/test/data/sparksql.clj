@@ -93,17 +93,16 @@
   [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
   (let [quote-name    #(sql.u/quote-name driver :field (tx/format-name driver %))
         pk-field-name (quote-name (sql.tx/pk-field-name driver))]
-    (format "CREATE TABLE %s (%s, %s %s)"
+    (format "CREATE TABLE %s (%s %s, %s)"
             (sql.tx/qualify-and-quote driver database-name table-name)
+            pk-field-name (sql.tx/pk-sql-type driver)
             (->> field-definitions
                  (map (fn [{:keys [field-name base-type]}]
                         (format "%s %s" (quote-name field-name) (if (map? base-type)
                                                                   (:native base-type)
                                                                   (sql.tx/field-base-type->sql-type driver base-type)))))
                  (interpose ", ")
-                 (apply str))
-            pk-field-name (sql.tx/pk-sql-type driver)
-            pk-field-name)))
+                 (apply str)))))
 
 (defmethod sql.tx/drop-table-if-exists-sql :sparksql
   [driver {:keys [database-name]} {:keys [table-name]}]

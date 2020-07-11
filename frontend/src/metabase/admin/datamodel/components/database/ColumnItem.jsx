@@ -1,11 +1,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
+import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
-import Icon from "metabase/components/Icon";
-import { t } from "ttag";
+import Button from "metabase/components/Button";
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType, isCurrency } from "metabase/lib/schema_metadata";
 import { TYPE, isa, isFK } from "metabase/lib/types";
@@ -15,7 +15,7 @@ import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings
 import _ from "underscore";
 import cx from "classnames";
 
-import type { Field } from "metabase/meta/types/Field";
+import type { Field } from "metabase-types/types/Field";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 @withRouter
@@ -24,6 +24,7 @@ export default class Column extends Component {
     field: PropTypes.object,
     idfields: PropTypes.array.isRequired,
     updateField: PropTypes.func.isRequired,
+    dragHandle: PropTypes.node,
   };
 
   updateField = properties => {
@@ -44,10 +45,10 @@ export default class Column extends Component {
   };
 
   render() {
-    const { field, idfields } = this.props;
+    const { field, idfields, dragHandle } = this.props;
 
     return (
-      <li className="mt1 mb3 flex">
+      <div className="p1 mt1 mb3 flex bordered rounded">
         <div className="flex flex-column flex-auto">
           <div>
             <InputBlurChange
@@ -74,6 +75,12 @@ export default class Column extends Component {
                     idfields={idfields}
                   />
                 </div>
+                <Link
+                  to={`${this.props.location.pathname}/${this.props.field.id}`}
+                  className="text-brand-hover mr1"
+                >
+                  <Button icon="gear" style={{ padding: 10 }} />
+                </Link>
               </div>
             </div>
           </div>
@@ -87,13 +94,8 @@ export default class Column extends Component {
             />
           </div>
         </div>
-        <Link
-          to={`${this.props.location.pathname}/${this.props.field.id}`}
-          className="text-brand-hover mx2 mt1"
-        >
-          <Icon name="gear" />
-        </Link>
-      </li>
+        {dragHandle}
+      </div>
     );
   }
 }

@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { DatasetQuery } from "metabase-types/types/Card";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
 // Internal queries call Clojure functions in the backend rather than querying a

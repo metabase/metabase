@@ -15,6 +15,7 @@
              [error-type :as error-type]
              [reducible :as qp.reducible]
              [store :as qp.store]]
+            [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.util
              [i18n :refer [deferred-tru tru]]
              [schema :as su]]
@@ -59,53 +60,37 @@
 
 (defn- check-driver-native-columns
   "Double-check that the *driver* returned the correct number of `columns` for native query results."
-  [cols rows]
+  [cols first-row]
   {:pre [(sequential? cols) (every? map? cols)]}
-  (when (seq rows)
+  (when first-row
     (let [expected-count (count cols)
-          actual-count   (count (first rows))]
+          actual-count   (count first-row)]
       (when-not (= expected-count actual-count)
         (throw (ex-info (str (deferred-tru "Query processor error: number of columns returned by driver does not match results.")
                              "\n"
                              (deferred-tru "Expected {0} columns, but first row of resuls has {1} columns."
                                expected-count actual-count))
                  {:expected-columns (map :name cols)
-                  :first-row        (first rows)
+                  :first-row        first-row
                   :type             error-type/qp}))))))
 
-(defn- native-column-info-for-a-single-column
-  "Determine column metadata for a single column for native query results."
-  [unique-name-fn {col-name :name, driver-base-type :base_type, :as driver-col-metadata} values-sample]
-  ;; Native queries don't have the type information from the original `Field` objects used in the query.
-  ;;
-  ;; If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
-  ;; of rows and infer the base type based on the classes of the values
-  (let [col-name  (name col-name)
-        base-type (or (when-not (= driver-base-type :type/*)
-                        driver-base-type)
-                      (driver.common/values->base-type values-sample)
-                      :type/*)]
-    (merge
-     {:display_name (u/qualified-name col-name)
-      :base_type    base-type
-      :source       :native}
-     ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
-     ;; for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank names in MBQL
-     ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
-     ;; `:field-literal`, omit the `:field_ref`.
-     (when (seq col-name)
-       {:field_ref [:field-literal (unique-name-fn col-name) base-type]})
-     driver-col-metadata
-     {:base_type base-type})))
-
 (defmethod column-info :native
-  [_ {:keys [cols rows]}]
-  (check-driver-native-columns cols rows)
-  (mapv (partial native-column-info-for-a-single-column (mbql.u/unique-name-generator))
-        cols
-        (for [i (range (count cols))]
-          (for [row rows]
-            (nth row i)))))
+  [_ {:keys [cols base-types first-row]}]
+  (check-driver-native-columns cols first-row)
+  (let [unique-name-fn (mbql.u/unique-name-generator)]
+    (vec (for [[{col-name :name,:as driver-col-metadata} base-type] (map vector cols base-types)]
+           (let [col-name (name col-name)]
+             (merge
+              {:display_name (u/qualified-name col-name)
+               :source       :native}
+              ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
+              ;; for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank names in MBQL
+              ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
+              ;; `:field-literal`, omit the `:field_ref`.
+              (when (seq col-name)
+                {:field_ref [:field-literal (unique-name-fn col-name) base-type]})
+              driver-col-metadata
+              {:base_type base-type}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -478,7 +463,12 @@
 (defn- cols-for-source-query
   [{:keys [source-metadata], {native-source-query :native, :as source-query} :source-query} results]
   (if native-source-query
-    (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
+    (->> results
+         :cols
+         (map :base_type)
+         (assoc results :base-types)
+         (column-info {:type :native})
+         (maybe-merge-source-metadata source-metadata))
     (mbql-cols source-query results)))
 
 (s/defn mbql-cols
@@ -559,18 +549,27 @@
   (deduplicate-cols-names
    (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
 
-(def ^:private column-info-sample-size
-  "Number of result rows to sample when adding column info to results."
-  100)
+(defn- base-type-inferer
+  "Native queries don't have the type information from the original `Field` objects used in the query.
+  If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
+  of rows and infer the base type based on the classes of the values"
+  [{:keys [cols]}]
+  (apply f/col-wise (for [{driver-base-type :base_type} cols]
+                      (if-not (contains? #{nil :type/*} driver-base-type)
+                        (f/constant-fingerprinter driver-base-type)
+                        driver.common/values->base-type))))
 
-(defn- add-column-info-xform [{query-type :type, :as query} metadata rf]
+(defn- add-column-info-xform [query metadata rf]
   (qp.reducible/combine-additional-reducing-fns
    rf
-   [((take column-info-sample-size) conj)]
-   (fn combine [result sampled-rows]
+   [(base-type-inferer metadata)
+    ((take 1) conj)]
+   (fn combine [result base-types [first-row]]
      (rf (cond-> result
            (map? result)
-           (assoc-in [:data :cols] (merged-column-info query (assoc metadata :rows sampled-rows))))))))
+           (assoc-in [:data :cols] (merged-column-info query (assoc metadata
+                                                                    :base-types base-types
+                                                                    :first-row  first-row))))))))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."

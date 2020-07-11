@@ -73,7 +73,7 @@ import {
 import { lineAddons } from "./graph/addons";
 import { initBrush } from "./graph/brush";
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
