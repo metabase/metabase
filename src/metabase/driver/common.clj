@@ -243,44 +243,42 @@
   "Return the `Field.base_type` that corresponds to a given class returned by the DB.
    This is used to infer the types of results that come back from native queries."
   [klass]
-  (if (= klass :type/*)
-    klass
-    (condp #(isa? %2 %1) klass
-      Boolean                        :type/Boolean
-      Double                         :type/Float
-      Float                          :type/Float
-      Integer                        :type/Integer
-      Long                           :type/Integer
-      java.math.BigDecimal           :type/Decimal
-      java.math.BigInteger           :type/BigInteger
-      Number                         :type/Number
-      String                         :type/Text
-      ;; java.sql types and Joda-Time types should be considered DEPRECATED
-      java.sql.Date                  :type/Date
-      java.sql.Timestamp             :type/DateTime
-      java.util.Date                 :type/Date
-      DateTime                       :type/DateTime
-      java.util.UUID                 :type/UUID
-      clojure.lang.IPersistentMap    :type/Dictionary
-      clojure.lang.IPersistentVector :type/Array
-      java.time.LocalDate            :type/Date
-      java.time.LocalTime            :type/Time
-      java.time.LocalDateTime        :type/DateTime
-      ;; `OffsetTime` and `OffsetDateTime` should be mapped to one of `type/TimeWithLocalTZ`/`type/TimeWithZoneOffset`
-      ;; and `type/DateTimeWithLocalTZ`/`type/DateTimeWithZoneOffset` respectively. We can't really tell how they're
-      ;; stored in the DB based on class alone, so drivers should return more specific types where possible. See
-      ;; discussion in the `metabase.types` namespace.
-      java.time.OffsetTime           :type/TimeWithTZ
-      java.time.OffsetDateTime       :type/DateTimeWithTZ
-      java.time.ZonedDateTime        :type/DateTimeWithZoneID
-      java.time.Instant              :type/Instant
-      ;; TODO - this should go in the Postgres driver implementation of this method rather than here
-      org.postgresql.util.PGobject   :type/*
-      ;; all-NULL columns in DBs like Mongo w/o explicit types
-      nil                            :type/*
-      (do
-        (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
-        :type/*))))
+  (condp #(isa? %2 %1) klass
+    Boolean                        :type/Boolean
+    Double                         :type/Float
+    Float                          :type/Float
+    Integer                        :type/Integer
+    Long                           :type/Integer
+    java.math.BigDecimal           :type/Decimal
+    java.math.BigInteger           :type/BigInteger
+    Number                         :type/Number
+    String                         :type/Text
+    ;; java.sql types and Joda-Time types should be considered DEPRECATED
+    java.sql.Date                  :type/Date
+    java.sql.Timestamp             :type/DateTime
+    java.util.Date                 :type/Date
+    DateTime                       :type/DateTime
+    java.util.UUID                 :type/UUID
+    clojure.lang.IPersistentMap    :type/Dictionary
+    clojure.lang.IPersistentVector :type/Array
+    java.time.LocalDate            :type/Date
+    java.time.LocalTime            :type/Time
+    java.time.LocalDateTime        :type/DateTime
+    ;; `OffsetTime` and `OffsetDateTime` should be mapped to one of `type/TimeWithLocalTZ`/`type/TimeWithZoneOffset`
+    ;; and `type/DateTimeWithLocalTZ`/`type/DateTimeWithZoneOffset` respectively. We can't really tell how they're
+    ;; stored in the DB based on class alone, so drivers should return more specific types where possible. See
+    ;; discussion in the `metabase.types` namespace.
+    java.time.OffsetTime           :type/TimeWithTZ
+    java.time.OffsetDateTime       :type/DateTimeWithTZ
+    java.time.ZonedDateTime        :type/DateTimeWithZoneID
+    java.time.Instant              :type/Instant
+    ;; TODO - this should go in the Postgres driver implementation of this method rather than here
+    org.postgresql.util.PGobject   :type/*
+    ;; all-NULL columns in DBs like Mongo w/o explicit types
+    nil                            :type/*
+    (do
+      (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
+      :type/*)))
 
 (def ^:private column-info-sample-size
   "Number of result rows to sample when when determining base type."
@@ -290,8 +288,8 @@
   "Transducer that given a sequence of `values`, returns the most common base type."
   ((comp (filter some?) (take column-info-sample-size) (map class))
    (fn
-     ([] (java.util.HashMap. {:type/* -1}))
-     ([^java.util.HashMap freqs klass]
+     ([] (java.util.HashMap. {nil 0})) ; fallback to keep `max-key` happy if no values
+     ([^java.util.HashMap freqs, klass]
       (.put freqs klass (inc (.getOrDefault freqs klass 0)))
       freqs)
      ([freqs]
