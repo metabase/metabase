@@ -293,6 +293,7 @@
       (.put freqs klass (inc (.getOrDefault freqs klass 0)))
       freqs)
      ([freqs]
+      (clojure.tools.logging/info freqs)
       (->> freqs
            (apply max-key val)
            key

@@ -5,6 +5,12 @@
 (deftest base-type-inference-test
   (is (= :type/Text
          (transduce identity driver.common/values->base-type ["A" "B" "C"])))
+  (testing "should work with just one value"
+    (is (= :type/Text
+           (transduce identity driver.common/values->base-type ["A"]))))
+  (testing "should work with just one value"
+    (is (= :type/*
+           (transduce identity driver.common/values->base-type []))))
   (is (= :type/Text
          (transduce identity driver.common/values->base-type ["A" 100 "C"])))
   (is (= :type/*
