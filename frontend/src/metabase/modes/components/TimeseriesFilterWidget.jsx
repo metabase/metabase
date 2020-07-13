@@ -25,13 +25,11 @@ import type {
   Card as CardObject,
   StructuredDatasetQuery,
 } from "metabase-types/types/Card";
-import type { TableMetadata } from "metabase-types/types/Metadata";
 import type { FieldFilter } from "metabase-types/types/Query";
 
 type Props = {
   className?: string,
   card: CardObject,
-  tableMetadata: TableMetadata,
   setDatasetQuery: (
     datasetQuery: StructuredDatasetQuery,
     options: { run: boolean },
@@ -88,7 +86,7 @@ export default class TimeseriesFilterWidget extends Component {
   }
 
   render() {
-    const { className, card, tableMetadata, setDatasetQuery } = this.props;
+    const { className, card, setDatasetQuery } = this.props;
     const { filter, filterIndex, currentFilter } = this.state;
     let currentDescription;
 
@@ -126,7 +124,6 @@ export default class TimeseriesFilterWidget extends Component {
           onFilterChange={newFilter => {
             this.setState({ filter: newFilter });
           }}
-          tableMetadata={tableMetadata}
           includeAllTime
         />
         <div className="p1">

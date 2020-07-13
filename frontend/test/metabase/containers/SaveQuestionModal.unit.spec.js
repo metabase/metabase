@@ -24,7 +24,7 @@ const mountSaveQuestionModal = (question, originalQuestion) => {
       <SaveQuestionModal
         card={question.card()}
         originalCard={originalQuestion && originalQuestion.card()}
-        tableMetadata={question.tableMetadata()}
+        tableMetadata={question.table()}
         onCreate={onCreateMock}
         onSave={onSaveMock}
         onClose={() => {}}
