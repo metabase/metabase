@@ -164,6 +164,7 @@
 
 (defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))
 (defn- str-to-date [format-str expr] (hsql/call :str_to_date expr (hx/literal format-str)))
+(defn- sql-cast [expr newtype] (hsql/call :cast expr (hsql/raw (name newtype))))
 
 
 (defmethod sql.qp/->float :mysql
@@ -183,8 +184,10 @@
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
 ;; explanation of format specifiers
+;; this will generate a SQL statement casting the TIME to a DATETIME so date_format doesn't fail:
+;; date_format(CAST(mytime AS DATETIME), '%Y-%m-%d %H') AS mytime
 (defn- trunc-with-format [format-str expr]
-  (str-to-date format-str (date-format format-str expr)))
+  (str-to-date format-str (date-format format-str (sql-cast expr :DATETIME))))
 
 (defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:mysql :minute]          [_ _ expr] (trunc-with-format "%Y-%m-%d %H:%i" expr))
