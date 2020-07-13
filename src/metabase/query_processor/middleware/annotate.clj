@@ -551,9 +551,9 @@
   of rows and infer the base type based on the classes of the values"
   [{:keys [cols]}]
   (apply f/col-wise (for [{driver-base-type :base_type} cols]
-                      (if-not (contains? #{nil :type/*} driver-base-type)
-                        (f/constant-fingerprinter driver-base-type)
-                        driver.common/values->base-type))))
+                      (if (contains? #{nil :type/*} driver-base-type)
+                        driver.common/values->base-type
+                        (f/constant-fingerprinter driver-base-type)))))
 
 (defn- add-column-info-xform
   [query metadata rf]
