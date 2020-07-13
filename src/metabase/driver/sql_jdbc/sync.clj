@@ -113,7 +113,7 @@
   vs 60)."
   [driver ^DatabaseMetaData metadata & [db-name-or-nil]]
   (with-open [rs (.getSchemas metadata)]
-    (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))
+    (let [all-schemas (set (map :table_schem (jdbc/result-set-seq rs)))
           schemas     (set/difference all-schemas (excluded-schemas driver))]
       (set (for [schema schemas
                  table  (get-tables metadata schema db-name-or-nil)]
@@ -160,7 +160,7 @@
 (defn- fields-metadata
   [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name :as table}, & [^String db-name-or-nil]]
   (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
-    (let [result (jdbc/metadata-result rs)]
+    (let [result (jdbc/result-set-seq rs)]
       ;; In some rare cases `:column_name` is blank (eg. SQLite's FTSs),
       ;; fallback to sniffing the type from a SELECT * query
       (if (some (comp str/blank? :type_name) result)
@@ -176,7 +176,7 @@
                                                  (.getMetaData))]
             (doall
              (for [i (range 1 (inc (.getColumnCount metadata)))]
-               {:type_name (.getColumnTypeName metadata i)
+               {:type_name   (.getColumnTypeName metadata i)
                 :column_name (.getColumnName metadata i)}))))
         result))))
 
