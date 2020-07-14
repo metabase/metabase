@@ -15,7 +15,7 @@ describe("scenarios > question > custom columns", () => {
   before(restore);
   beforeEach(signInAsNormalUser);
 
-  it("cc should only apply to correct column (Issue #12649)", () => {
+  it.skip("cc should only apply to correct column (Issue #12649)", () => {
     // Create custom question
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
