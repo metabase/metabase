@@ -46,7 +46,7 @@ describe("scenarios > alert > email_alert", () => {
       });
     });
 
-    it("should have email alerts toggled off", () => {
+    it.skip("should have email alerts toggled off (Issue #12349)", () => {
       // Turn off email alerts during alert setup
       setUpHourlyAlert(2);
       cy.findByText("Email")
