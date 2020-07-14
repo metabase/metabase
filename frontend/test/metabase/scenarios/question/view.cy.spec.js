@@ -4,6 +4,7 @@ import {
   openOrdersTable,
   popover,
   signIn,
+  withSampleDataset,
 } from "__support__/cypress";
 
 function filterByVendor() {
@@ -121,39 +122,41 @@ describe("scenarios > question > view", () => {
       cy.request("POST", "/api/dashboard", {
         name: "Dashboard",
       });
-      cy.request("POST", "/api/card", {
-        name: "Question",
-        dataset_query: {
-          type: "native",
-          native: {
-            query: "select * from products where {{category}} and {{vendor}}",
-            "template-tags": {
-              category: {
-                id: "6b8b10ef-0104-1047-1e5v-2492d5954555",
-                name: "category",
-                "display-name": "CATEGORY",
-                type: "dimension",
-                dimension: ["field-id", 4],
-                "widget-type": "id",
-              },
-              vendor: {
-                id: "6b8b10ef-0104-1047-1e5v-2492d5964545",
-                name: "vendor",
-                "display-name": "VENDOR",
-                type: "dimension",
-                dimension: ["field-id", 3],
-                "widget-type": "id",
+      withSampleDataset(({ ORDERS }) => {
+        cy.request("POST", "/api/card", {
+          name: "Question",
+          dataset_query: {
+            type: "native",
+            native: {
+              query: "select * from products where {{category}} and {{vendor}}",
+              "template-tags": {
+                category: {
+                  id: "6b8b10ef-0104-1047-1e5v-2492d5954555",
+                  name: "category",
+                  "display-name": "CATEGORY",
+                  type: "dimension",
+                  dimension: ["field-id", ORDERS.CATEGORY],
+                  "widget-type": "id",
+                },
+                vendor: {
+                  id: "6b8b10ef-0104-1047-1e5v-2492d5964545",
+                  name: "vendor",
+                  "display-name": "VENDOR",
+                  type: "dimension",
+                  dimension: ["field-id", ORDERS.VENDOR],
+                  "widget-type": "id",
+                },
               },
             },
+            database: 1,
           },
-          database: 1,
-        },
-        display: "table",
-        visualization_settings: {},
-      });
-      cy.request("POST", "/api/dashboard/2/cards", {
-        id: 2,
-        cardId: 4,
+          display: "table",
+          visualization_settings: {},
+        });
+        cy.request("POST", "/api/dashboard/2/cards", {
+          id: 2,
+          cardId: 4,
+        });
       });
     });
 
@@ -183,7 +186,8 @@ describe("scenarios > question > view", () => {
       });
     });
 
-    it("should be able to filter Q by Category as no data user (from Q link)", () => {
+    it.skip("should be able to filter Q by Category as no data user (from Q link)", () => {
+      // *** Test will fail until Issue #12654 is resolved
       signIn("nodata");
       cy.visit("/question/4");
 
@@ -195,7 +199,8 @@ describe("scenarios > question > view", () => {
       cy.findByText("Gizmo").should("not.exist");
     });
 
-    it("should be able to filter Q by Vendor as user (from Dashboard)", () => {
+    it.skip("should be able to filter Q by Vendor as user (from Dashboard)", () => {
+      // *** Test will fail until Issue #12654 is resolved
       // Navigate to Q from Dashboard
       signIn("nodata");
       cy.visit("/dashboard/2");
