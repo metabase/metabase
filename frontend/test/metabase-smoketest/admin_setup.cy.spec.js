@@ -331,8 +331,7 @@ describe("smoketest > admin_setup", () => {
         .wait(500)
         .type("Test Table");
 
-      cy.get("input")
-        .eq(2)
+      cy.get("[value='This is a confirmed order for a product from a user.']")
         .clear()
         .type("Testing table description");
     });
