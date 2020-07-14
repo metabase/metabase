@@ -9,7 +9,7 @@ describe("scenarios > question > trendline", () => {
   before(restore);
   beforeEach(signInAsNormalUser);
 
-  it("displays trendline when there are multiple numeric outputs (for simple question) (Issue #12781)", () => {
+  it.skip("displays trendline when there are multiple numeric outputs (for simple question) (Issue #12781)", () => {
     // Create question: orders summarized with "Average of Subtotal" and "Sum of Total" by CreatedAt:Year
     openOrdersTable();
     cy.get(".Icon-notebook").click();
