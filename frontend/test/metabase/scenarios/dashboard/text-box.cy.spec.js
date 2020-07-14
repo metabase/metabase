@@ -1,10 +1,10 @@
-import { signInAsAdmin, restore, popover, modal } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("scenarios > dashboard > text-box", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
-  it("should load text box card", () => {
+  it.skip("should load text box card (Issue #12914)", () => {
     // Create dashboard
     cy.server();
     cy.request("POST", "/api/dashboard", {
