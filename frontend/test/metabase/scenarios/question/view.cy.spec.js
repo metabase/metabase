@@ -32,7 +32,7 @@ describe("scenarios > question > view", () => {
         .click();
       cy.findByText("Done").click();
 
-      cy.contains("Count by Created At: Day");
+      cy.contains("Count by Created At: Month");
 
       // Go back into sidebar
       cy.contains("Summarize").click();
@@ -43,7 +43,7 @@ describe("scenarios > question > view", () => {
         .parent()
         .as("sidebar");
       cy.get("@sidebar")
-        .contains("by day")
+        .contains("by month")
         .click();
       cy.get(".PopoverBody")
         .contains("Year")
