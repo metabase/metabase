@@ -284,13 +284,15 @@
   "Number of result rows to sample when when determining base type."
   100)
 
-(def values->base-type
+(defn values->base-type
   "Transducer that given a sequence of `values`, returns the most common base type."
+  []
   ((comp (filter some?) (take column-info-sample-size) (map class))
    (fn
-     ([] {nil 0}) ; fallback to keep `max-key` happy if no values
-     ([freqs klass]
-      (update freqs klass (fnil inc 0)))
+     ([] (java.util.HashMap. {nil 0})) ; fallback to keep `max-key` happy if no values
+     ([^java.util.HashMap freqs, klass]
+      (.put freqs klass (inc (.getOrDefault freqs klass 0)))
+      freqs)
      ([freqs]
       (->> freqs
            (apply max-key val)

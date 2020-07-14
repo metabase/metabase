@@ -462,9 +462,7 @@
 (defn- cols-for-source-query
   [{:keys [source-metadata], {native-source-query :native, :as source-query} :source-query} results]
   (if native-source-query
-    (->> results
-         (column-info {:type :native})
-         (maybe-merge-source-metadata source-metadata))
+    (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
     (mbql-cols source-query results)))
 
 (s/defn mbql-cols
@@ -552,7 +550,7 @@
   [{:keys [cols]}]
   (apply f/col-wise (for [{driver-base-type :base_type} cols]
                       (if (contains? #{nil :type/*} driver-base-type)
-                        driver.common/values->base-type
+                        (driver.common/values->base-type)
                         (f/constant-fingerprinter driver-base-type)))))
 
 (defn- add-column-info-xform
