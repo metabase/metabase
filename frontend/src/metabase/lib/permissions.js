@@ -200,7 +200,7 @@ function inferEntityPermissionValueFromChildTables(
   metadata: Metadata,
 ) {
   const { databaseId } = entityId;
-  const database = metadata && metadata.databases[databaseId];
+  const database = metadata && metadata.database(databaseId);
 
   const entityIdsForDescendantTables: TableEntityId[] = _.chain(database.tables)
     .filter(t => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
@@ -342,7 +342,7 @@ export function updateSchemasPermission(
   value: string,
   metadata: Metadata,
 ): GroupsPermissions {
-  const database = metadata.databases[databaseId];
+  const database = metadata.database(databaseId);
   const schemaNames = database && database.schemaNames();
   const schemaNamesOrNoSchema =
     schemaNames &&

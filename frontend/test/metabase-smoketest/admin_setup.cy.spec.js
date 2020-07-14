@@ -60,7 +60,7 @@ describe("smoketest > admin_setup", () => {
       // cy.findByText("Save").click();
     });
 
-    it("should setup email", () => {
+    it.skip("should setup email", () => {
       cy.findByText("Settings").click();
       cy.findByText("Email").click();
 
@@ -96,7 +96,7 @@ describe("smoketest > admin_setup", () => {
       // );
     });
 
-    it("should setup Slack", () => {
+    it.skip("should setup Slack", () => {
       cy.findByText("Slack").click();
 
       cy.findByText("Answers sent right to your Slack #channels");
@@ -905,7 +905,8 @@ describe("smoketest > admin_setup", () => {
       cy.findByLabelText("Name")
         .clear()
         .wait(1)
-        .type("q for sub-collection");
+        .type("sub-collection question");
+      cy.findByText("sub-collection question");
       cy.findByText("Robert Tableton's Personal Collection").click();
 
       cy.findByText("My personal collection");
@@ -921,11 +922,10 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Sorry, you don’t have permission to see that.").should(
         "not.exist",
       );
-      cy.findByText("q for sub-collection");
+      cy.findByText("sub-collection question");
 
       // Check access as no collection user
 
-      signOut();
       signIn("nocollection");
       cy.visit("/");
 
@@ -940,11 +940,11 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should be unable to access question with URL (if access not permitted)", () => {
-      signOut();
+      // This test will fail whenever the previous test fails
       signIn("nocollection");
 
       cy.visit("/question/4");
-      cy.findByText("q for sub-collection").should("not.exist");
+      cy.findByText("sub-collection question").should("not.exist");
       cy.findByText("Sorry, you don’t have permission to see that.");
     });
 

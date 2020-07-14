@@ -195,8 +195,8 @@ export default class FieldApp extends React.Component {
       params: { section },
     } = this.props;
 
-    const db = metadata.databases[databaseId];
-    const table = metadata.tables[tableId];
+    const db = metadata.database(databaseId);
+    const table = metadata.table(tableId);
 
     const isLoading = !field || !table || !idfields;
 
@@ -224,18 +224,20 @@ export default class FieldApp extends React.Component {
             }
           >
             <div className="wrapper">
-              <div className="mb4 pt2 ml-auto mr-auto">
-                <Breadcrumbs
-                  crumbs={[
-                    [db.name, `/admin/datamodel/database/${db.id}`],
-                    [
-                      table.display_name,
-                      `/admin/datamodel/database/${db.id}/table/${table.id}`,
-                    ],
-                    t`${field.display_name} – Field Settings`,
-                  ]}
-                />
-              </div>
+              {db && table && (
+                <div className="mb4 pt2 ml-auto mr-auto">
+                  <Breadcrumbs
+                    crumbs={[
+                      [db.name, `/admin/datamodel/database/${db.id}`],
+                      [
+                        table.display_name,
+                        `/admin/datamodel/database/${db.id}/table/${table.id}`,
+                      ],
+                      t`${field.display_name} – Field Settings`,
+                    ]}
+                  />
+                </div>
+              )}
               <div className="absolute top right mt4 mr4">
                 <SaveStatus ref={ref => (this.saveStatus = ref)} />
               </div>

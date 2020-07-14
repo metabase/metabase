@@ -7,11 +7,9 @@ import DimensionList from "./DimensionList";
 import Dimension from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
-import type {
-  StructuredQuery,
-  ConcreteField,
-} from "metabase-types/types/Query";
+import type { ConcreteField } from "metabase-types/types/Query";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 // import type { Section } from "metabase/components/AccordionList";
 export type AccordionListItem = {};
@@ -87,11 +85,16 @@ export default class FieldList extends Component {
   };
 
   render() {
-    const { field, metadata, query } = this.props;
+    const { field, query, metadata } = this.props;
+    const dimension =
+      field &&
+      (query
+        ? query.parseFieldReference(field)
+        : Dimension.parseMBQL(field, metadata));
     return (
       <DimensionList
         sections={this.state.sections}
-        dimension={field && Dimension.parseMBQL(field, metadata, query)}
+        dimension={dimension}
         onChangeDimension={this.handleChangeDimension}
         onChangeOther={this.handleChangeOther}
         // forward AccordionList props
