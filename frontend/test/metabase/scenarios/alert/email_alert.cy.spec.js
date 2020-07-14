@@ -25,7 +25,8 @@ describe("scenarios > alert > email_alert", () => {
     });
   });
 
-  describe("alert set up", () => {
+  describe.skip("alert set up", () => {
+    // NOTE: To run tests, first run `python -m smtpd -n -c DebuggingServer localhost:1025` in your terminal
     beforeEach(() => {
       cy.server();
 
@@ -37,7 +38,11 @@ describe("scenarios > alert > email_alert", () => {
     it("should work with email alerts toggled on", () => {
       // Set up alert
       setUpHourlyAlert(1);
-      cy.findByText("Done").click();
+      cy.findByText("Done")
+        .click()
+        .then(() => {
+          cy.findByText("Sample Dataset");
+        });
 
       // Check alert api is sending email
       cy.request("/api/alert").then(response => {
@@ -46,14 +51,18 @@ describe("scenarios > alert > email_alert", () => {
       });
     });
 
-    it("should have email alerts toggled off", () => {
+    it("should have email alerts toggled off (Issue #12349)", () => {
       // Turn off email alerts during alert setup
       setUpHourlyAlert(2);
       cy.findByText("Email")
         .parent()
         .find("a")
         .click();
-      cy.findByText("Done").click();
+      cy.findByText("Done")
+        .click()
+        .then(() => {
+          cy.findAllByText("Orders");
+        });
 
       // Check alert api is NOT sending email
       cy.request("/api/alert").then(response => {
