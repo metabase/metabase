@@ -122,7 +122,7 @@ describe("scenarios > question > view", () => {
       cy.request("POST", "/api/dashboard", {
         name: "Dashboard",
       });
-      withSampleDataset(({ ORDERS }) => {
+      withSampleDataset(({ PRODUCTS }) => {
         cy.request("POST", "/api/card", {
           name: "Question",
           dataset_query: {
