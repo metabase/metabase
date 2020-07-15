@@ -4,7 +4,7 @@ There are Metabase users around the world, each with different preferences for h
 
 1. **Global**. Set global defaults in the [Localization](localization.md) section in Admin -> Settings -> Localization.
 2. **Field**.  Set field (column) defaults in Admin -> Data Model. Field defaults override global defaults.
-3. **Question**. Set formatting defaults for individual questions in the visualization settings of that question. Question defaults override global and field defaults
+3. **Question**. Set formatting defaults for individual questions in the visualization settings of that question. Question defaults override global and field defaults.
 
 ### Field-level formatting
 You can override the global defaults for a specific field by going to the `Data Model` section of the Admin Panel, selecting the database and table of the field in question, and clicking the gear icon on the far right of the screen next to that field to go to its options page, then clicking on the `Formatting` tab.
