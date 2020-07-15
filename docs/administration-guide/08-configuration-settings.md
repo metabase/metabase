@@ -20,7 +20,7 @@ _Default: disabled_.
 
 For example, if you are serving your Metabase application at "example.com", and you enable HTTPS redirect, when a user enters an address like "example.com/data" in their browser's address bar, the user will be automatically redirected to a secure connection at "https://example.com/data".
 
-> Note: if you have not set up HTTPS, Metabase will not let you enable HTTPS redirect. Instead, you'll get a warning saying "It looks like HTTPS is not properly configured."
+> Note: if you haven't set up HTTPS on your server, Metabase will not let you enable HTTPS redirect. Instead, you'll get a warning saying "It looks like HTTPS is not properly configured."
 
 ### Email Address for Help Requests
 
