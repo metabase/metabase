@@ -65,9 +65,12 @@ export default class PreferencesStep extends Component {
 
     if (activeStep !== stepNumber || setupComplete) {
       return (
+        // The -1 is here because we don't display a number for the optional
+        // database scheduling step. So this is the 5th possible step, but
+        // only the 4th numbered step.
         <CollapsedStep
           stepNumber={stepNumber}
-          stepCircleText="3"
+          stepCircleText={String(stepNumber - 1)}
           stepText={stepText}
           isCompleted={setupComplete}
           setActiveStep={setActiveStep}
@@ -79,7 +82,7 @@ export default class PreferencesStep extends Component {
           p={4}
           className="SetupStep bg-white rounded full relative SetupStep--active"
         >
-          <StepTitle title={stepText} circleText={"3"} />
+          <StepTitle title={stepText} circleText={String(stepNumber - 1)} />
           <form onSubmit={this.formSubmitted.bind(this)} noValidate>
             <div className="Form-field">
               {t`In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics.`}{" "}

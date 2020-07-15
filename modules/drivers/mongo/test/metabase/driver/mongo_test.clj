@@ -105,23 +105,29 @@
             :name   "venues"
             :fields #{{:name          "name"
                        :database-type "java.lang.String"
-                       :base-type     :type/Text}
+                       :base-type     :type/Text
+                       :database-position 1}
                       {:name          "latitude"
                        :database-type "java.lang.Double"
-                       :base-type     :type/Float}
+                       :base-type     :type/Float
+                       :database-position 3}
                       {:name          "longitude"
                        :database-type "java.lang.Double"
-                       :base-type     :type/Float}
+                       :base-type     :type/Float
+                       :database-position 4}
                       {:name          "price"
                        :database-type "java.lang.Long"
-                       :base-type     :type/Integer}
+                       :base-type     :type/Integer
+                       :database-position 5}
                       {:name          "category_id"
                        :database-type "java.lang.Long"
-                       :base-type     :type/Integer}
+                       :base-type     :type/Integer
+                       :database-position 2}
                       {:name          "_id"
                        :database-type "java.lang.Long"
                        :base-type     :type/Integer
-                       :pk?           true}}}
+                       :pk?           true
+                       :database-position 0}}}
            (driver/describe-table :mongo (mt/db) (Table (mt/id :venues)))))))
 
 (deftest nested-columns-test

@@ -29,7 +29,7 @@ import { isID, isFK } from "metabase/lib/schema_metadata";
 import type {
   ClickObject,
   VisualizationProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 type Props = VisualizationProps & {
   height: number,

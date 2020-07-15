@@ -38,9 +38,9 @@ import cx from "classnames";
 import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
-import type { DatasetData } from "metabase/meta/types/Dataset";
-import type { VisualizationSettings } from "metabase/meta/types/Card";
-import type { Series } from "metabase/meta/types/Visualization";
+import type { DatasetData } from "metabase-types/types/Dataset";
+import type { VisualizationSettings } from "metabase-types/types/Card";
+import type { Series } from "metabase-types/types/Visualization";
 import type { SettingDefs } from "metabase/visualizations/lib/settings";
 
 type Props = {

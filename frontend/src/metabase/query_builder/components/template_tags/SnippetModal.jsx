@@ -9,7 +9,7 @@ import Snippets from "metabase/entities/snippets";
 
 export default class SnippetModal extends React.Component {
   render() {
-    const { insertSnippet, closeModal, snippet } = this.props;
+    const { insertSnippet, onSnippetUpdate, closeModal, snippet } = this.props;
     return (
       <Modal onClose={closeModal}>
         <Snippets.ModalForm
@@ -22,6 +22,9 @@ export default class SnippetModal extends React.Component {
           onSaved={savedSnippet => {
             if (snippet.id == null) {
               insertSnippet(savedSnippet);
+            } else {
+              // this will update the query if the name changed
+              onSnippetUpdate(savedSnippet, snippet);
             }
             closeModal();
           }}

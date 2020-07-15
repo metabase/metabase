@@ -4,6 +4,7 @@ import {
   restore,
   popover,
   modal,
+  withSampleDataset,
 } from "__support__/cypress";
 
 describe("scenarios > question > native", () => {
@@ -178,13 +179,8 @@ describe("scenarios > question > native", () => {
       .contains("Save")
       .click();
 
-    // update the query to use that snippet
-    cy.get("@ace")
-      // delete existing selection before selecting all
-      .type("{backspace}{selectAll}{backspace}")
-      .type("select {{snippet: stuff-snippet}}", {
-        parseSpecialCharSequences: false,
-      });
+    // SQL editor should get updated automatically
+    cy.get("@ace").contains("select {{snippet: stuff-snippet}}");
 
     // run the query and check the displayed scalar
     cy.get(".NativeQueryEditor .Icon-play").click();
@@ -192,34 +188,36 @@ describe("scenarios > question > native", () => {
   });
 
   it("can load a question with a date filter (from issue metabase#12228)", () => {
-    cy.request("POST", "/api/card", {
-      name: "Test Question",
-      dataset_query: {
-        type: "native",
-        native: {
-          query: "select count(*) from orders where {{created_at}}",
-          "template-tags": {
-            created_at: {
-              id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
-              name: "created_at",
-              "display-name": "Created at",
-              type: "dimension",
-              dimension: ["field-id", 15],
-              "widget-type": "date/month-year",
+    withSampleDataset(({ ORDERS }) => {
+      cy.request("POST", "/api/card", {
+        name: "Test Question",
+        dataset_query: {
+          type: "native",
+          native: {
+            query: "select count(*) from orders where {{created_at}}",
+            "template-tags": {
+              created_at: {
+                id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
+                name: "created_at",
+                "display-name": "Created at",
+                type: "dimension",
+                dimension: ["field-id", ORDERS.CREATED_AT],
+                "widget-type": "date/month-year",
+              },
             },
           },
+          database: 1,
         },
-        database: 1,
-      },
-      display: "scalar",
-      description: null,
-      visualization_settings: {},
-      collection_id: null,
-      result_metadata: null,
-      metadata_checksum: null,
-    }).then(response => {
-      cy.visit(`/question/${response.body.id}?created_at=2020-01`);
-      cy.contains("580");
+        display: "scalar",
+        description: null,
+        visualization_settings: {},
+        collection_id: null,
+        result_metadata: null,
+        metadata_checksum: null,
+      }).then(response => {
+        cy.visit(`/question/${response.body.id}?created_at=2020-01`);
+        cy.contains("580");
+      });
     });
   });
 

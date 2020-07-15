@@ -1,6 +1,6 @@
 /* @flow */
 
-import type { QueryMode } from "metabase/meta/types/Visualization";
+import type { QueryMode } from "metabase-types/types/Visualization";
 
 import { PLUGIN_DRILLS } from "metabase/plugins";
 

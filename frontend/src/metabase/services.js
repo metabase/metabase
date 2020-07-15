@@ -11,9 +11,9 @@ import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // e
 
 import type { Data, Options } from "metabase/lib/api";
 
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { DatabaseCandidates } from "metabase/meta/types/Auto";
-import type { DashboardWithCards } from "metabase/meta/types/Dashboard";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { DatabaseCandidates } from "metabase-types/types/Auto";
+import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 
 export const ActivityApi = {
   list: GET("/api/activity"),

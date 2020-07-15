@@ -3,7 +3,7 @@
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type Question from "metabase-lib/lib/Question";
 
-import type { StructuredDatasetQuery } from "metabase/meta/types/Card";
+import type { StructuredDatasetQuery } from "metabase-types/types/Card";
 
 import _ from "underscore";
 

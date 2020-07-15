@@ -19,7 +19,9 @@
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
             [metabase.query-processor.middleware.cache.impl :as impl]
-            [metabase.test.fixtures :as fixtures]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [pretty.core :as pretty]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -312,6 +314,30 @@
                            (dissoc :cached :updated_at)
                            (m/dissoc-in [:data :results_metadata :checksum])))
                     "Cached result should be in the same format as the uncached result, except for added keys")))))))))
+
+(deftest insights-from-cache-test
+  (testing "Insights should work on cahced results (#12556)"
+    (with-mock-cache [save-chan]
+      (let [query (-> checkins
+                      (mt/mbql-query {:breakout    [[:datetime-field (mt/id :checkins :date) :month]]
+                                      :aggregation [[:count]]})
+                      (assoc :cache-ttl 100))]
+        (qp/process-query query)
+        ;; clear any existing values in the `save-chan`
+        (while (a/poll! save-chan))
+        (mt/wait-for-result save-chan)
+        (is (= {:previous-value 24
+                :unit           :month
+                :offset         -45.27
+                :last-change    -0.46
+                :last-value     13
+                :col            "count"}
+               (tu/round-all-decimals 2 (-> query
+                                            qp/process-query
+                                            :data
+                                            :insights
+                                            first
+                                            (dissoc :best-fit :slope)))))))))
 
 (deftest export-test
   (testing "Should be able to cache results streaming as an alternate download format, e.g. csv"

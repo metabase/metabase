@@ -98,13 +98,18 @@ export default class EntityObjectLoader extends React.Component {
   componentWillMount() {
     // $FlowFixMe: provided by @connect
     const { entityId, fetch } = this.props;
-    fetch(
-      { id: entityId },
-      { reload: this.props.reload, properties: this.props.properties },
-    );
+    if (entityId != null) {
+      fetch(
+        { id: entityId },
+        { reload: this.props.reload, properties: this.props.properties },
+      );
+    }
   }
   componentWillReceiveProps(nextProps: Props) {
-    if (nextProps.entityId !== this.props.entityId) {
+    if (
+      nextProps.entityId !== this.props.entityId &&
+      this.props.entityId != null
+    ) {
       // $FlowFixMe: provided by @connect
       nextProps.fetch(
         { id: nextProps.entityId },
@@ -133,10 +138,10 @@ export default class EntityObjectLoader extends React.Component {
   };
   render() {
     // $FlowFixMe: provided by @connect
-    const { fetched, error, loadingAndErrorWrapper } = this.props;
+    const { entityId, fetched, error, loadingAndErrorWrapper } = this.props;
     return loadingAndErrorWrapper ? (
       <LoadingAndErrorWrapper
-        loading={!fetched}
+        loading={!fetched && entityId != null}
         error={error}
         children={this.renderChildren}
         noWrapper
