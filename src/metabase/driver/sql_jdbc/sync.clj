@@ -161,7 +161,7 @@
   [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name :as table}, & [^String db-name-or-nil]]
   (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
     (let [result (jdbc/result-set-seq rs)]
-      ;; In some rare cases `:column_name` is blank (eg. SQLite's FTSs),
+      ;; In some rare cases `:column_name` is blank (eg. SQLite's views with group by),
       ;; fallback to sniffing the type from a SELECT * query
       (if (some (comp str/blank? :type_name) result)
         (jdbc/with-db-connection [conn (->spec (metabase.models.database/Database (:db_id table)))]

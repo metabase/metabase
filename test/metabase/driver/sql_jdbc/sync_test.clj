@@ -6,7 +6,8 @@
              [test :as mt]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
-             [sync :as sql-jdbc.sync]])
+             [sync :as sql-jdbc.sync]]
+            [metabase.models.table :refer [Table]])
   (:import java.sql.ResultSet))
 
 (defn- sql-jdbc-drivers-with-default-describe-database-impl
@@ -44,3 +45,17 @@
                   "See issues #4389, #6028, and #6467 (Oracle) and #7609 (Redshift)")
       (is (= 0
              (describe-database-with-open-resultset-count driver/*driver* (mt/db)))))))
+
+(deftest database-types-fallback-test
+  (let [org-result-set-seq jdbc/result-set-seq]
+    (with-redefs [jdbc/result-set-seq (fn [& args]
+                                        (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
+      (is (= [{:name "LONGITUDE"   :base-type :type/Float}
+              {:name "CATEGORY_ID" :base-type :type/Integer}
+              {:name "PRICE"       :base-type :type/Integer}
+              {:name "LATITUDE"    :base-type :type/Float}
+              {:name "NAME"        :base-type :type/Text}
+              {:name "ID"          :base-type :type/BigInteger}]
+             (->> (sql-jdbc.sync/describe-table driver/*driver* (mt/id) (Table (mt/id :venues)))
+                  :fields
+                  (map #(select-keys % [:name :base-type])) ))))))
