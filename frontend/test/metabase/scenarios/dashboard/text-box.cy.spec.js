@@ -21,7 +21,7 @@ describe("scenarios > dashboard > text-box", () => {
       });
     });
 
-    it.skip("should load after save/refresh (Issue #12914)", () => {
+    it("should load after save/refresh (Issue #12914)", () => {
       cy.visit(`/dashboard/2`);
 
       cy.findByText("Test Dashboard");
