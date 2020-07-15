@@ -8,7 +8,7 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 * [Setting up Slack integration](09-setting-up-slack.md)
 * [Configuring settings](08-configuration-settings.md)
 * [Setting formatting defaults](19-formatting-settings.md)
-* [Localization settings: default language and formatting](localization.md)
+* [Changing localization settings](localization.md)
 * [Caching query results](14-caching.md)
 * [Customizing your map settings](20-custom-maps.md)
 
