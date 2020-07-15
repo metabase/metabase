@@ -1,6 +1,6 @@
 ## General settings
 
-General settings collects miscellaneous settings that do not fit in other sections of the Admin **Settings** tab.
+This section contains settings for your whole instance, like its URL, the reporting timezone, and toggles for disabling or enabling some of Metabase's optional features.
 
 You can configure these settings in the **General** section of the **Settings** tab in the **Admin Panel**.
 
