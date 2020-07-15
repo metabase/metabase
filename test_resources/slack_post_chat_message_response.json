@@ -1,0 +1,16 @@
+{
+  "ok" : true,
+  "channel" : "C13372B6X",
+  "ts" : "1594847527.002800",
+  "message" : {
+    "type" : "message",
+    "subtype" : "bot_message",
+    "text" : ":wow:",
+    "ts" : "1594841337.002800",
+    "username" : "MetaBot",
+    "icons" : {
+      "image_48" : "https://s3-us-west-2.amazonaws.com/slack-files2/bot_icons/2016-01-19/18878021337_48.png"
+    },
+    "bot_id" : "B133781667P"
+  }
+}
