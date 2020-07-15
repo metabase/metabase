@@ -15,7 +15,7 @@ import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings
 import _ from "underscore";
 import cx from "classnames";
 
-import type { Field } from "metabase/meta/types/Field";
+import type { Field } from "metabase-types/types/Field";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 @withRouter

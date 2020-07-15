@@ -9,7 +9,7 @@ import { nestedSettings } from "./nested";
 import { getColorsForValues } from "metabase/lib/colors";
 
 import type { SettingDef } from "../settings";
-import type { SingleSeries } from "metabase/meta/types/Visualization";
+import type { SingleSeries } from "metabase-types/types/Visualization";
 
 export function keyForSingleSeries(single: SingleSeries): string {
   // _seriesKey is sometimes set by transformSeries

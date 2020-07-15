@@ -14,19 +14,20 @@ import * as Urls from "metabase/lib/urls";
 import _ from "underscore";
 import { assoc, updateIn } from "icepick";
 
-import type { StructuredQuery, TemplateTag } from "metabase/meta/types/Query";
+import type { StructuredQuery, TemplateTag } from "metabase-types/types/Query";
 import type {
   Card,
   DatasetQuery,
   StructuredDatasetQuery,
   NativeDatasetQuery,
-} from "metabase/meta/types/Card";
+} from "metabase-types/types/Card";
 import type {
   Parameter,
   ParameterMapping,
   ParameterValues,
-} from "metabase/meta/types/Parameter";
-import type { Metadata, TableMetadata } from "metabase/meta/types/Metadata";
+} from "metabase-types/types/Parameter";
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import type Table from "metabase-lib/lib/metadata/Table";
 
 declare class Object {
   static values<T>(object: { [key: string]: T }): Array<T>;
@@ -97,13 +98,10 @@ export function getQuery(card: Card): ?StructuredQuery {
   }
 }
 
-export function getTableMetadata(
-  card: Card,
-  metadata: Metadata,
-): ?TableMetadata {
+export function getTableMetadata(card: Card, metadata: Metadata): ?Table {
   const query = getQuery(card);
   if (query && query["source-table"] != null) {
-    return metadata.tables[query["source-table"]] || null;
+    return metadata.table(query["source-table"]) || null;
   }
   return null;
 }

@@ -7,7 +7,7 @@ import StructuredQuery from "../StructuredQuery";
 import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
-import { TableId } from "metabase/meta/types/Table";
+import { TableId } from "metabase-types/types/Table";
 import type {
   Join as JoinObject,
   JoinStrategy,
@@ -17,7 +17,7 @@ import type {
   JoinedFieldReference,
   StructuredQuery as StructuredQueryObject,
   ConcreteField,
-} from "metabase/meta/types/Query";
+} from "metabase-types/types/Query";
 
 import _ from "underscore";
 

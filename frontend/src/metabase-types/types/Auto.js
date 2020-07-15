@@ -1,6 +1,6 @@
 /* @flow */
 
-import type { TableId, SchemaName } from "metabase/meta/types/Table";
+import type { TableId, SchemaName } from "metabase-types/types/Table";
 
 export type DatabaseCandidates = SchemaCandidates[];
 
