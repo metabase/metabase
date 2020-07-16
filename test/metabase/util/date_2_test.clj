@@ -3,8 +3,11 @@
              [string :as str]
              [test :refer :all]]
             [java-time :as t]
+            [metabase.test :as mt]
             [metabase.test.util.timezone :as tu.timezone]
-            [metabase.util.date-2 :as u.date]))
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.date-2.common :as u.date.common])
+  (:import java.time.temporal.ChronoField))
 
 (deftest parse-test
   ;; system timezone should not affect the way strings are parsed
@@ -400,3 +403,8 @@
             (is (= false
                    (u.date/older-than? t (t/months 2)))
                 (format "%s did not happen before 2019-10-03" (pr-str t)))))))))
+
+(deftest static-instances-locale-test
+  (testing "in the Turkish locale, :minute-of-hour can be found"
+    (mt/with-locale "tr"
+      (is (some? (:minute-of-hour (u.date.common/static-instances ChronoField)))))))
