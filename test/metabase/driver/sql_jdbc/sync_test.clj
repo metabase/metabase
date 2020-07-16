@@ -21,6 +21,15 @@
     #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))
     (descendants driver/hierarchy :sql-jdbc))))
 
+(defn- sql-jdbc-drivers-with-default-describe-table-impl
+  "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`. (As far as I know, this is
+  all of them.)"
+  []
+  (set
+   (filter
+    #(identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table %))
+    (descendants driver/hierarchy :sql-jdbc))))
+
 (defn- describe-database-with-open-resultset-count
   "Just like `describe-database`, but instead of returning the database description returns the number of ResultSet
   objects the sync process left open. Make sure you wrap ResultSets with `with-open`! Otherwise some JDBC drivers like
@@ -49,7 +58,7 @@
              (describe-database-with-open-resultset-count driver/*driver* (mt/db)))))))
 
 (deftest database-types-fallback-test
-  (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
+  (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
     (let [org-result-set-seq jdbc/result-set-seq]
       (with-redefs [jdbc/result-set-seq (fn [& args]
                                           (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
@@ -63,7 +72,8 @@
                     :fields
                     (map (fn [{:keys [name base-type]}]
                            {:name      (str/lower-case name)
-                            :base-type (if (isa? base-type :type/Integer) ; some DBs return the ID as BigInt
+                            :base-type (if (or (isa? base-type :type/Integer)
+                                               (isa? base-type :type/Decimal)) ; H2 DBs returns the ID as BigInt, Oracle as Decimal;
                                          :type/Integer
                                          base-type)}))
                     set)))))))
