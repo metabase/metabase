@@ -6,29 +6,20 @@
             [clojure.java.io :as io]
             [medley.core :as m]
             [metabase
-             [email-test :as et]
+             [models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
              [pulse :as pulse]
              [test :as mt]
              [util :as u]]
             [metabase.integrations.slack :as slack]
             [metabase.models
-             [card :refer [Card]]
-             [collection :refer [Collection]]
              [permissions :as perms]
              [permissions-group :as group]
-             [pulse :as models.pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [pulse-channel :refer [PulseChannel]]
-             [pulse-channel-recipient :refer [PulseChannelRecipient]]]
+             [pulse :as models.pulse]]
             [metabase.pulse.render.body :as render.body]
             [metabase.pulse.test-util :as pulse.tu]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
             [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Util Fns & Macros                                                |
@@ -36,25 +27,25 @@
 
 (def ^:private card-name "Test card")
 
-(defn- checkins-query-card*
+(defn checkins-query-card*
   "Basic query that will return results for an alert"
   [query-map]
   {:name          card-name
-   :dataset_query {:database (data/id)
+   :dataset_query {:database (mt/id)
                    :type     :query
-                   :query    (merge {:source-table (data/id :checkins)
+                   :query    (merge {:source-table (mt/id :checkins)
                                      :aggregation  [["count"]]}
                                     query-map)}})
 
-(defmacro ^:private checkins-query-card [query]
+(defmacro checkins-query-card [query]
   `(checkins-query-card* (mt/$ids ~'checkins ~query)))
 
 (defn- venues-query-card [aggregation-op]
   {:name          card-name
-   :dataset_query {:database (data/id)
+   :dataset_query {:database (mt/id)
                    :type     :query
-                   :query    {:source-table (data/id :venues)
-                              :aggregation  [[aggregation-op (data/id :venues :price)]]}}})
+                   :query    {:source-table (mt/id :venues)
+                              :aggregation  [[aggregation-op (mt/id :venues :price)]]}}})
 
 (defn- rasta-id []
   (mt/user->id :rasta))
@@ -68,7 +59,7 @@
 
 (defn- do-with-site-url
   [f]
-  (tu/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
+  (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
     (f)))
 
 (defmacro ^:private slack-test-setup
@@ -82,13 +73,18 @@
 (defmacro ^:private email-test-setup
   "Macro that ensures test-data is present and will use a fake inbox for emails"
   [& body]
-  `(et/with-fake-inbox
+  `(mt/with-fake-inbox
      (do-with-site-url (fn [] ~@body))))
 
-(defn- do-with-pulse-for-card [{:keys [pulse pulse-card channel card]
-                                :or   {channel :email}}
-                               f]
-  (tt/with-temp* [Pulse                 [{pulse-id :id, :as pulse} (merge {:name "Pulse Name"} pulse)]
+(defn- do-with-pulse-for-card
+  "Creates a Pulse and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if specfied), then
+  invokes
+
+    (f pulse)"
+  [{:keys [pulse pulse-card channel card]
+    :or   {channel :email}}
+   f]
+  (mt/with-temp* [Pulse                 [{pulse-id :id, :as pulse} (merge {:name "Pulse Name"} pulse)]
                   PulseCard             [_ (merge {:pulse_id pulse-id
                                                    :card_id  (u/get-id card)
                                                    :position 0}
@@ -102,20 +98,42 @@
                                                         :channel_type "slack"
                                                         :details      {:channel "#general"}})]]
     (if (= channel :email)
-      (tt/with-temp PulseChannelRecipient [_ {:user_id          (rasta-id)
+      (mt/with-temp PulseChannelRecipient [_ {:user_id          (rasta-id)
                                               :pulse_channel_id pc-id}]
         (f pulse))
       (f pulse))))
 
-(defmacro ^:private with-pulse-for-card [[pulse-binding properties] & body]
+(defmacro ^:private with-pulse-for-card
+  "e.g.
+
+    (with-pulse-for-card [pulse {:card my-card, :pulse pulse-properties, ...}]
+      ...)"
+  [[pulse-binding properties] & body]
   `(do-with-pulse-for-card ~properties (fn [~pulse-binding] ~@body)))
 
-(defn- do-test [{:keys [card pulse pulse-card expected fixture]}]
+(defn- do-test
+  "Run a single Pulse test with a standard set of boilerplate. Creates Card, Pulse, and other related objects using
+  `card`, `pulse`, and `pulse-card` properties, then sends the Pulse; finally, test assertions in `assert` are
+  invoked. `assert` can contain `:email` and/or `:slack` assertions, which are used to test an email and Slack version
+  of that Pulse respectively. `:assert` functions have the signature
+
+    (f object-ids send-pulse!-response)
+
+  Example:
+
+    (do-test
+     {:card   {:dataset_query (mt/mbql-query checkins)}
+      :assert {:slack (fn [{:keys [pulse-id]} response]
+                        (is (= {:sent pulse-id}
+                               response)))}})"
+  [{:keys [card pulse pulse-card fixture], assertions :assert}]
+  {:pre [(map? assertions) ((some-fn :email :slack) assertions)]}
   (doseq [channel-type [:email :slack]
-          :let         [f (get expected channel-type)]
+          :let         [f (get assertions channel-type)]
           :when        f]
+    (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (tt/with-temp Card [{card-id :id} (merge {:name card-name} card)]
+      (mt/with-temp Card [{card-id :id} (merge {:name card-name} card)]
         (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse pulse, :pulse-card pulse-card, :channel channel-type}]
           (letfn [(thunk* []
                     (f {:card-id card-id, :pulse-id pulse-id}
@@ -128,7 +146,24 @@
               :email (email-test-setup (thunk))
               :slack (slack-test-setup (thunk)))))))))
 
-(defn- tests {:style/indent 1} [common & {:as message->m}]
+(defn- tests
+  "Convenience for writing multiple tests using `do-test`. `common` is a map of shared properties as passed to `do-test`
+  that is deeply merged with the individual maps for each test. Other args are alternating `testing` context messages
+  and properties as passed to `do-test`:
+
+    (tests
+     ;; shared properties used for both tests
+     {:card {:dataset_query (mt/mbql-query)}}
+
+     \"Test 1\"
+     {:assert {:email (fn [_ _] (is ...))}}
+
+     \"Test 2\"
+     ;; override just the :display property of the Card
+     {:card   {:display \"table\"}
+      :assert {:email (fn [_ _] (is ...))}})"
+  {:style/indent 1}
+  [common & {:as message->m}]
   (doseq [[message m] message->m]
     (testing message
       (do-test (merge-with merge common m)))))
@@ -148,7 +183,7 @@
    :content      java.net.URL})
 
 (defn- rasta-pulse-email [& [email]]
-  (et/email-to :rasta (merge {:subject "Pulse: Pulse Name",
+  (mt/email-to :rasta (merge {:subject "Pulse: Pulse Name",
                               :body  [{"Pulse Name" true}
                                       png-attachment]}
                              email)))
@@ -171,7 +206,7 @@
 
 (defn- rasta-alert-email
   [subject email-body]
-  (et/email-to :rasta {:subject subject
+  (mt/email-to :rasta {:subject subject
                        :body email-body}))
 
 (def ^:private test-card-result {card-name true})
@@ -245,11 +280,11 @@
    {:card  (checkins-query-card {:breakout [!hour.date]})
     :pulse {:skip_if_empty false}
 
-    :expected
+    :assert
     {:email
      (fn [_ _]
        (is (= (rasta-pulse-email)
-              (et/summarize-multipart-email #"Pulse Name"))))
+              (mt/summarize-multipart-email #"Pulse Name"))))
 
      :slack
      (fn [{:keys [card-id]} [pulse-results]]
@@ -274,13 +309,13 @@
        (with-redefs [render.body/attached-results-text (wrap-function @#'render.body/attached-results-text)]
          (thunk)))
 
-     :expected
+     :assert
      {:email
       (fn [_ _]
         (is (= (rasta-pulse-email {:body [{"Pulse Name"                      true
                                            "More results have been included" false
                                            "ID</th>"                         true}]})
-               (et/summarize-multipart-email
+               (mt/summarize-multipart-email
                 #"Pulse Name"
                 #"More results have been included" #"ID</th>"))))
 
@@ -311,14 +346,14 @@
     "21 results results in a CSV being attached and a table being sent"
     {:card (checkins-query-card {:aggregation nil, :limit 21})
 
-     :expected
+     :assert
      {:email
       (fn [_ _]
         (is (= (rasta-pulse-email {:body [{"Pulse Name"                      true
                                            "More results have been included" true
                                            "ID</th>"                         true}
                                           csv-attachment]})
-               (et/summarize-multipart-email
+               (mt/summarize-multipart-email
                 #"Pulse Name"
                 #"More results have been included" #"ID</th>"))))}}))
 
@@ -326,33 +361,33 @@
   (tests {:pulse {:skip_if_empty false}
           :card  (checkins-query-card {:breakout [!hour.date]})})
   "1 card, 1 recipient, with CSV attachment"
-  {:expected
+  {:assert
    {:email
     (fn [_ _]
       (is (= (add-rasta-attachment (rasta-pulse-email) csv-attachment)
-             (et/summarize-multipart-email #"Pulse Name"))))}}
+             (mt/summarize-multipart-email #"Pulse Name"))))}}
 
   "alert with a CSV"
   {:pulse-card {:include_csv true}
 
-   :expected
+   :assert
    {:email
     (fn [_ _]
       (is (= (rasta-alert-email "Metabase alert: Test card has results"
                                 [test-card-result, png-attachment, csv-attachment])
-             (et/summarize-multipart-email test-card-regex))))}}
+             (mt/summarize-multipart-email test-card-regex))))}}
 
   "With a \"rows\" type of pulse (table visualization) we should include the CSV by default"
   {:card {:dataset_query (mt/mbql-query checkins)}
 
-   :expected
+   :assert
    {:email
     (fn [_ _]
       (is (= (-> (rasta-pulse-email)
-                 ;; There's no PNG with a table visualization, remove it from the expected results
+                 ;; There's no PNG with a table visualization, remove it from the assert results
                  (update-in ["rasta@metabase.com" 0 :body] (comp vector first))
                  (add-rasta-attachment csv-attachment))
-             (et/summarize-multipart-email #"Pulse Name"))))}})
+             (mt/summarize-multipart-email #"Pulse Name"))))}})
 
 (deftest xls-test
   (testing "If the pulse is already configured to send an XLS, no need to include a CSV"
@@ -360,14 +395,14 @@
      {:card       {:dataset_query (mt/mbql-query checkins)}
       :pulse-card {:include_xls true}
 
-      :expected
+      :assert
       {:email
        (fn [_ _]
          (is (= (-> (rasta-pulse-email)
-                    ;; There's no PNG with a table visualization, remove it from the expected results
+                    ;; There's no PNG with a table visualization, remove it from the assert results
                     (update-in ["rasta@metabase.com" 0 :body] (comp vector first))
                     (add-rasta-attachment xls-attachment))
-                (et/summarize-multipart-email #"Pulse Name"))))}})))
+                (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
 ;; Not really sure how this is significantly different from `xls-test`
 (deftest xls-test-2
@@ -375,11 +410,11 @@
     (do-test
      {:card       (checkins-query-card {:breakout [!hour.date]})
       :pulse-card {:include_xls true}
-      :expected
+      :assert
       {:email
        (fn [_ _]
          (is (= (add-rasta-attachment (rasta-pulse-email) xls-attachment)
-                (et/summarize-multipart-email #"Pulse Name"))))}})))
+                (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
 (deftest csv-xls-no-data-test
   (testing "card with CSV and XLS attachments, but no data. Should not include an attachment"
@@ -389,11 +424,11 @@
       :pulse      {:skip_if_empty false}
       :pulse-card {:include_csv true
                    :include_xls true}
-      :expected
+      :assert
       {:email
        (fn [_ _]
          (is (= (rasta-pulse-email)
-                (et/summarize-multipart-email #"Pulse Name"))))}})))
+                (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
 (deftest ensure-constraints-test
   (testing "Validate pulse queries are limited by `default-query-constraints`"
@@ -407,10 +442,10 @@
                                                              :max-results-bare-rows 30}]
           (thunk)))
 
-      :expected
+      :assert
       {:email
        (fn [_ _]
-         (let [first-message (-> @et/inbox vals ffirst)]
+         (let [first-message (-> @mt/inbox vals ffirst)]
            (is (= true
                   (some? first-message))
                "Should have a message in the inbox")
@@ -436,20 +471,20 @@
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
-        (mt/with-temp PulseChannelRecipient [_ {:user_id          (users/user->id :crowberto)
+        (mt/with-temp PulseChannelRecipient [_ {:user_id          (mt/user->id :crowberto)
                                                 :pulse_channel_id (db/select-one-id PulseChannel :pulse_id pulse-id)}]
           (thunk)))
 
-      :expected
+      :assert
       {:email
        (fn [_ _]
          (is (= (into {} (map (fn [user-kwd]
-                                (et/email-to user-kwd {:subject "Pulse: Pulse Name",
+                                (mt/email-to user-kwd {:subject "Pulse: Pulse Name",
                                                        :to      #{"rasta@metabase.com" "crowberto@metabase.com"}
                                                        :body    [{"Pulse Name" true}
                                                                  png-attachment]}))
                               [:rasta :crowberto]))
-                (et/summarize-multipart-email #"Pulse Name"))))}})))
+                (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
 (deftest two-cards-in-one-pulse-test
   (testing "1 pulse that has 2 cards, should contain two attachments"
@@ -459,20 +494,20 @@
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
-        (tt/with-temp* [Card [{card-id-2 :id} (assoc (checkins-query-card {:breakout [!month.date]})
+        (mt/with-temp* [Card [{card-id-2 :id} (assoc (checkins-query-card {:breakout [!month.date]})
                                                      :name "card 2")]
                         PulseCard [_ {:pulse_id pulse-id
                                       :card_id  card-id-2
                                       :position 1}]]
           (thunk)))
 
-      :expected
+      :assert
       {:email
        (fn [_ _]
          (is (= (rasta-pulse-email {:body [{"Pulse Name" true}
                                            png-attachment
                                            png-attachment]})
-                (et/summarize-multipart-email #"Pulse Name"))))}})))
+                (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
 (deftest empty-results-test
   (testing "Pulse where the card has no results"
@@ -480,15 +515,15 @@
                                         :breakout [!hour.date]})}
       "skip if empty = false"
       {:pulse    {:skip_if_empty false}
-       :expected {:email (fn [_ _]
+       :assert {:email (fn [_ _]
                            (is (= (rasta-pulse-email)
-                                  (et/summarize-multipart-email #"Pulse Name"))))}}
+                                  (mt/summarize-multipart-email #"Pulse Name"))))}}
 
       "skip if empty = true"
       {:pulse    {:skip_if_empty true}
-       :expected {:email (fn [_ _]
+       :assert {:email (fn [_ _]
                            (is (= {}
-                                  (et/summarize-multipart-email #"Pulse Name"))))}})))
+                                  (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
 (deftest rows-alert-test
   (testing "Rows alert"
@@ -497,14 +532,14 @@
       {:card
        (checkins-query-card {:breakout [!hour.date]})
 
-       :expected
+       :assert
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email
                   "Metabase alert: Test card has results"
                   [(assoc test-card-result "More results have been included" false)
                    png-attachment])
-                 (et/summarize-multipart-email test-card-regex #"More results have been included"))))
+                 (mt/summarize-multipart-email test-card-regex #"More results have been included"))))
 
         :slack
         (fn [{:keys [card-id]} [result]]
@@ -523,17 +558,17 @@
       {:card
        (checkins-query-card {:filter   [:> $date "2017-10-24"]
                              :breakout [!hour.date]})
-       :expected
+       :assert
        {:email
         (fn [_ _]
           (is (= {}
-                 @et/inbox)))}}
+                 @mt/inbox)))}}
 
       "too much data"
       {:card
        (checkins-query-card {:limit 21, :aggregation nil})
 
-       :expected
+       :assert
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Metabase alert: Test card has results"
@@ -541,7 +576,7 @@
                                             {"More results have been included" true
                                              "ID</th>"                         true})
                                      csv-attachment])
-                 (et/summarize-multipart-email test-card-regex
+                 (mt/summarize-multipart-email test-card-regex
                                                #"More results have been included"
                                                #"ID</th>"))))}}
 
@@ -550,12 +585,12 @@
       {:card       (checkins-query-card {:breakout [!hour.date]})
        :pulse-card {:include_csv true, :include_xls true}
 
-       :expected
+       :assert
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Metabase alert: Test card has results"
                                     [test-card-result png-attachment csv-attachment xls-attachment])
-                 (et/summarize-multipart-email test-card-regex))))}})))
+                 (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest alert-first-run-only-test
   (tests {:pulse {:alert_condition "rows", :alert_first_only true}}
@@ -563,13 +598,13 @@
     {:card
      (checkins-query-card {:breakout [!hour.date]})
 
-     :expected
+     :assert
      {:email
       (fn [{:keys [pulse-id]} _]
         (is (= (rasta-alert-email "Metabase alert: Test card has results"
                                   [(assoc test-card-result "stop sending you alerts" true)
                                    png-attachment])
-               (et/summarize-multipart-email test-card-regex #"stop sending you alerts")))
+               (mt/summarize-multipart-email test-card-regex #"stop sending you alerts")))
         (testing "Pulse should be deleted"
           (is (= false
                  (db/exists? Pulse :id pulse-id)))))}}
@@ -579,11 +614,11 @@
      (checkins-query-card {:filter   [:> $date "2017-10-24"]
                            :breakout [!hour.date]})
 
-     :expected
+     :assert
      {:email
       (fn [{:keys [pulse-id]} _]
         (is (= {}
-               @et/inbox))
+               @mt/inbox))
         (testing "Pulse should still exist"
           (is (= true
                  (db/exists? Pulse :id pulse-id)))))}}))
@@ -600,12 +635,12 @@
               {:display                :line
                :visualization_settings {:graph.show_goal true :graph.goal_value 5.9}})
 
-       :expected
+       :assert
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Metabase alert: Test card has reached its goal"
                                     [test-card-result, png-attachment])
-                 (et/summarize-multipart-email test-card-regex))))}}
+                 (mt/summarize-multipart-email test-card-regex))))}}
 
       "no data"
       {:card
@@ -614,11 +649,11 @@
               {:display                :area
                :visualization_settings {:graph.show_goal true :graph.goal_value 5.9}})
 
-       :expected
+       :assert
        {:email
         (fn [_ _]
           (is (= {}
-                 @et/inbox)))}}
+                 @mt/inbox)))}}
 
       "with progress bar"
       {:card
@@ -626,12 +661,12 @@
               {:display                :progress
                :visualization_settings {:progress.goal 3}})
 
-       :expected
+       :assert
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Metabase alert: Test card has reached its goal"
                                     [test-card-result])
-                 (et/summarize-multipart-email test-card-regex))))}})))
+                 (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest below-goal-alert-test
   (testing "Below goal alert"
@@ -645,23 +680,23 @@
        (checkins-query-card {:filter   [:between $date "2014-02-12" "2014-02-17"]
                              :breakout [!day.date]})
 
-       :expected
+       :assert
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Metabase alert: Test card has gone below its goal"
                                     [test-card-result png-attachment])
-                 (et/summarize-multipart-email test-card-regex))))}}
+                 (mt/summarize-multipart-email test-card-regex))))}}
 
       "with no satisfying data"
       {:card
        (checkins-query-card {:filter   [:between $date "2014-02-10" "2014-02-12"]
                              :breakout [!day.date]})
 
-       :expected
+       :assert
        {:email
         (fn [_ _]
           (is (= {}
-                 @et/inbox)))}}
+                 @mt/inbox)))}}
 
       "with progress bar"
       {:card
@@ -669,17 +704,17 @@
               {:display                :progress
                :visualization_settings {:progress.goal 2}})
 
-       :expected
+       :assert
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Metabase alert: Test card has gone below its goal"
                                     [test-card-result])
-                 (et/summarize-multipart-email test-card-regex))))}})))
+                 (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest native-query-with-user-specified-axes-test
   (testing "Native query with user-specified x and y axis"
-    (tt/with-temp Card [{card-id :id} {:name                   "Test card"
-                                       :dataset_query          {:database (data/id)
+    (mt/with-temp Card [{card-id :id} {:name                   "Test card"
+                                       :dataset_query          {:database (mt/id)
                                                                 :type     :native
                                                                 :native   {:query (str "select count(*) as total_per_day, date as the_day "
                                                                                        "from checkins "
@@ -696,12 +731,12 @@
          (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
          (is (= (rasta-alert-email "Metabase alert: Test card has reached its goal"
                                    [test-card-result png-attachment])
-                (et/summarize-multipart-email test-card-regex))))))))
+                (mt/summarize-multipart-email test-card-regex))))))))
 
 (deftest basic-slack-test-2
   (testing "Basic slack test, 2 cards, 1 recipient channel"
-    (tt/with-temp* [Card         [{card-id-1 :id} (checkins-query-card {:breakout [!hour.date]})]
-                    Card         [{card-id-2 :id} (-> {:breakout [[:datetime-field (data/id :checkins :date) "minute"]]}
+    (mt/with-temp* [Card         [{card-id-1 :id} (checkins-query-card {:breakout [!hour.date]})]
+                    Card         [{card-id-2 :id} (-> {:breakout [[:datetime-field (mt/id :checkins :date) "minute"]]}
                                                       checkins-query-card
                                                       (assoc :name "Test card 2"))]
                     Pulse        [{pulse-id :id}  {:name          "Pulse Name"
@@ -739,11 +774,11 @@
 
 (deftest multi-channel-test
   (testing "Test with a slack channel and an email"
-    (tt/with-temp Card [{card-id :id} (checkins-query-card {:breakout [!hour.date]})]
+    (mt/with-temp Card [{card-id :id} (checkins-query-card {:breakout [!hour.date]})]
       ;; create a Pulse with an email channel
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:skip_if_empty false}}]
         ;; add additional Slack channel
-        (tt/with-temp PulseChannel [_ {:pulse_id     pulse-id
+        (mt/with-temp PulseChannel [_ {:pulse_id     pulse-id
                                        :channel_type "slack"
                                        :details      {:channel "#general"}}]
           (slack-test-setup
@@ -769,9 +804,9 @@
 
 (deftest dont-run-async-test
   (testing "even if Card is saved as `:async?` we shouldn't run the query async"
-    (tt/with-temp Card [card {:dataset_query {:database (data/id)
+    (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                               :type     :query
-                                              :query    {:source-table (data/id :venues)}
+                                              :query    {:source-table (mt/id :venues)}
                                               :async?   true}}]
       (is (schema= {:card   (s/pred map?)
                     :result (s/pred map?)}
@@ -780,8 +815,8 @@
 (deftest pulse-permissions-test
   (testing "Pulses should be sent with the Permissions of the user that created them."
     (letfn [(send-pulse-created-by-user! [user-kw]
-              (tt/with-temp* [Collection [coll]
-                              Card       [card {:dataset_query (data/mbql-query checkins
+              (mt/with-temp* [Collection [coll]
+                              Card       [card {:dataset_query (mt/mbql-query checkins
                                                                  {:order-by [[:asc $id]]
                                                                   :limit    1})
                                                 :collection_id (:id coll)}]]
