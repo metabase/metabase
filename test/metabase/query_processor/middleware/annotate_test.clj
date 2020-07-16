@@ -43,9 +43,8 @@
               {:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a_2" :type/Integer]}]
              (annotate/column-info
               {:type :native}
-              {:cols [{:name "a"} {:name "a"}]
-               :first-row [1 nil]
-               :base-types [:type/Integer :type/Integer]}))))))
+              {:cols [{:name "a" :base_type :type/Integer} {:name "a" :base_type :type/Integer}]
+               :rows [[1 nil]]}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
