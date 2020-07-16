@@ -3,7 +3,7 @@
             [metabase
              [email :as email]
              [email-test :as et]
-             [pulse-test :refer [checkins-query]]]
+             [pulse-test :refer [checkins-query-card]]]
             [metabase.models
              [card :refer [Card]]
              [pulse :refer [Pulse]]
@@ -15,7 +15,7 @@
             [metabase.test.data.users :as users]
             [toucan.util.test :as tt]))
 
-(tt/expect-with-temp [Card                 [{card-id :id}  (assoc (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})
+(tt/expect-with-temp [Card                 [{card-id :id}  (assoc (checkins-query-card {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})
                                                              :name "My Question Name")]
                       Pulse                [{pulse-id :id} {:alert_condition  "rows"
                                                             :alert_first_only false}]
@@ -49,7 +49,7 @@
                              :body    {"Test Message" true}})
    :exceptions []}
 
-  (tt/with-temp* [Card                 [{card-id :id}    (assoc (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})
+  (tt/with-temp* [Card                 [{card-id :id}    (assoc (checkins-query-card {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})
                                                            :name "My Question Name")]
                   Pulse                [{pulse-id :id}   {:name "Test", :archived true}]
                   PulseCard             [_               {:pulse_id pulse-id
