@@ -58,7 +58,7 @@ From the SQL Snippets menu, you can:
 - **Preview snippets.** Click on the down arrow to the right of a snippet to see its description and a preview of its SQL code. There's also an option to edit the snippet.
 - **Insert a snippet.** Click on a snippet's name to insert it into your query at the cursor's current location.
 - [**Edit a snippet.**](#editing-snippets) You can change a snippet's name, description and code.
-- [**Archive and unarchive a snippet.**](#archived-snippets) From the Edit modal, you can archive a snippet, which removes the snippet from the snippet menu and autocomplete options in the SQL editor.
+- [**Archive and unarchive a snippet.**](#archiving-snippets) From the Edit modal, you can archive a snippet, which removes the snippet from the snippet menu and autocomplete options in the SQL editor.
 
 ### Editing snippets
 
@@ -72,7 +72,7 @@ Editing snippets is a great way to make changes to many questions at once. If, f
 
 > **Caution: if you edit a snippet and include broken code, you will break every question that uses that snippet.** Make sure to test your code before saving it to an existing snippet.
 
-### Archived snippets
+### Archiving snippets
 
 **Archiving** snippets can help keep dated or less relevant snippets out of the way. When you archive a snippet, the snippet no longer populates in the snippet autocomplete dropdown, and the snippet will no longer show up in the main list of of snippets in the **SQL editor** sidebar.
 
@@ -85,3 +85,5 @@ Although there is no way to delete a snippet, you can archive and unarchive a sn
 ### Snippet permissions
 
 Any user who has SQL editor permissions to at least one of your connected databases will be able to view the snippets sidebar, and will be able to create, edit, and archive or unarchive any and all snippets — even snippets intended to be used with databases the user does NOT have SQL editing access to.
+
+[Metabase Enterprise Edition](https://www.metabase.com/enterprise/) contains additional functionality for organizing snippets into folders and setting permissions on those folders. See our [docs on SQL snippet folders and permissions](../enterprise-guide/sql-snippets) to learn more.
