@@ -115,8 +115,7 @@
   "Check whether a Slack token is valid by checking whether we can call `conversations.list` with it."
   [token :- su/NonBlankString]
   (try
-    (seq (take 1 (conversations-list :limit 1, :token token)))
-    true
+    (boolean (take 1 (conversations-list :limit 1, :token token)))
     (catch Throwable e
       (if (= (:error-code (ex-data e)) "invalid_auth")
         false
