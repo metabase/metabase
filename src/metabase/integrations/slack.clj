@@ -103,6 +103,14 @@
   (let [params (merge {:exclude_archived true, :types "public_channel,private_channel"} query-parameters)]
     (paged-list-request "conversations.list" :channels params)))
 
+(defn- channel-with-name
+  "Return a Slack channel with `channel-name` (as a map) if it exists."
+  [channel-name]
+  (some (fn [channel]
+          (when (= (:name channel) channel-name)
+            channel))
+        (conversations-list :exclude_archived false)))
+
 (s/defn valid-token?
   "Check whether a Slack token is valid by checking whether we can call `conversations.list` with it."
   [token :- su/NonBlankString]
@@ -118,14 +126,6 @@
   "Calls Slack API `users.list` endpoint and returns the list of available users."
   [& {:as query-parameters}]
   (paged-list-request "users.list" :members query-parameters))
-
-(defn- channel-with-name
-  "Return a Slack channel with `channel-name` (as a map) if it exists."
-  [channel-name]
-  (some (fn [channel]
-          (when (= (:name channel) channel-name)
-            channel))
-        (conversations-list :exclude_archived false)))
 
 (defn- files-channel* []
   (or (channel-with-name files-channel-name)
