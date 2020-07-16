@@ -37,9 +37,10 @@ describe("scenarios > question > new", () => {
       openOrdersTable();
       cy.wait("@dataset");
       cy.url().should("include", "question#");
-      cy.get("[data-metabase-event$='Go to Notebook Mode']").click();
+      // Isolate icons within "QueryBuilder" scope because there is also `.Icon-sql` in top navigation
+      cy.get(".QueryBuilder .Icon-notebook").click();
       cy.url().should("include", "question/notebook#");
-      cy.get("[data-metabase-event$='Convert to SQL Click']").click();
+      cy.get(".QueryBuilder .Icon-sql").click();
       cy.findByText("Convert this question to SQL").click();
       cy.url().should("include", "question#");
     });
