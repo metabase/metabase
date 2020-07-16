@@ -177,7 +177,7 @@
       (if (some (comp str/blank? :type_name) result)
         (jdbc/with-db-connection [conn (->spec (:db_id table))]
           (let [^Connection conn            (:connection conn)
-                ^ResultSetMetaData metadata (->> (simple-select-probe driver schema table)
+                ^ResultSetMetaData metadata (->> (simple-select-probe driver schema table-name)
                                                  (.executeQuery (.createStatement conn))
                                                  (.getMetaData))]
             (doall
