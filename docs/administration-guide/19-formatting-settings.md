@@ -1,27 +1,10 @@
-## Setting default formatting
+## Setting default formatting for your data
 
-There are lots of Metabase users around the world, each with different preferences for how dates, times, numbers, and currencies should be formatted and displayed. Metabase allows you to customize these formatting options at three different levels:
+There are Metabase users around the world, each with different preferences for how dates, times, numbers, and currencies should be formatted and displayed. Metabase allows you to customize these formatting options at three different levels:
 
-1. Global formatting defaults in the Admin Panel
-2. Field-level formatting overrides in the Data Model section
-3. Question-level overrides in visualization settings
-
-### Global formatting defaults
-Here are the formatting options available to you from the `Formatting` tab of the `Settings` section in the Admin Panel:
-
-**Dates and Times**
-* `Date style:` the way dates should be displayed in tables, axis labels, and tooltips.
-* `Date separators:` you can choose between slashes, dashes, and dots here.
-* `Abbreviate names of days and months:` whenever a date is displayed with the day of the week and/or the month written out, turning this setting on will display e.g. `January` as `Jan` or `Monday` as `Mon`.
-* `Time style:` this lets you choose between a 12-hour or 24-hour clock to display the time by default where applicable.
-
-**Numbers**
-* `Separator style:` some folks use commas to separate thousands places, and others use periods. Here's where you can indicate which camp you belong to.
-
-**Currency**
-* `Unit of currency:` if you do most of your business in a particular currency, you can specify that here.
-* `Currency label style:` whether you want to have your currencies labeled with a symbol, a code (like `USD`), or its full name.
-* `Where to display the unit of currency:` this pertains specifically to tables, and lets you choose if you want the currency labels to appear only in the column heading, or next to each value in the column.
+1. **Global**. Set global defaults in the [Localization](localization.md) section in Admin -> Settings -> Localization.
+2. **Field**.  Set field (column) defaults in Admin -> Data Model. Field defaults override global defaults.
+3. **Question**. Set formatting defaults for individual questions in the visualization settings of that question. Question defaults override global and field defaults.
 
 ### Field-level formatting
 You can override the global defaults for a specific field by going to the `Data Model` section of the Admin Panel, selecting the database and table of the field in question, and clicking the gear icon on the far right of the screen next to that field to go to its options page, then clicking on the `Formatting` tab.
