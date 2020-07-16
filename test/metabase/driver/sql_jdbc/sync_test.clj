@@ -1,6 +1,8 @@
 (ns metabase.driver.sql-jdbc.sync-test
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
+            [clojure
+             [string :as str]
+             [test :refer :all]]
             [metabase
              [driver :as driver]
              [test :as mt]]
@@ -59,4 +61,8 @@
                 {:name "id"          :base-type :type/Integer}]
                (->> (sql-jdbc.sync/describe-table driver/*driver* (mt/id) (Table (mt/id :venues)))
                     :fields
-                    (map #(select-keys % [:name :base-type])))))))))
+                    (map (fn [{:keys [name base-type]}]
+                           {:name      (str/lower-case name)
+                            :base-type (if (isa? base-type :type/Integer) ; some DBs return the ID as BigInt
+                                         :type/Integer
+                                         base-type)})))))))))

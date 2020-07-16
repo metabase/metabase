@@ -5,7 +5,6 @@
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [honeysql.core :as h]
             [medley.core :as m]
             [metabase
              [driver :as driver]
