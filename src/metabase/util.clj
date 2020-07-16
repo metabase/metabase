@@ -745,6 +745,14 @@
   [^CharSequence s]
   (.. s toString (toLowerCase (Locale/US))))
 
+(defn upper-case-en
+  "Locale-agnostic version of `clojure.string/upper-case`.
+  `clojure.string/upper-case` uses the default locale in conversions, turning
+  `ID` into `ıd`, in the Turkish locale. This function always uses the
+  `Locale/US` locale."
+  [^CharSequence s]
+  (.. s toString (toUpperCase (Locale/US))))
+
 (defn lower-case-map-keys
   "Changes the keys of a given map to lower case."
   [m]
