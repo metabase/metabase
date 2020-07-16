@@ -47,15 +47,16 @@
              (describe-database-with-open-resultset-count driver/*driver* (mt/db)))))))
 
 (deftest database-types-fallback-test
-  (let [org-result-set-seq jdbc/result-set-seq]
-    (with-redefs [jdbc/result-set-seq (fn [& args]
-                                        (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
-      (is (= [{:name "LONGITUDE"   :base-type :type/Float}
-              {:name "CATEGORY_ID" :base-type :type/Integer}
-              {:name "PRICE"       :base-type :type/Integer}
-              {:name "LATITUDE"    :base-type :type/Float}
-              {:name "NAME"        :base-type :type/Text}
-              {:name "ID"          :base-type :type/BigInteger}]
-             (->> (sql-jdbc.sync/describe-table driver/*driver* (mt/id) (Table (mt/id :venues)))
-                  :fields
-                  (map #(select-keys % [:name :base-type])) ))))))
+  (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
+    (let [org-result-set-seq jdbc/result-set-seq]
+      (with-redefs [jdbc/result-set-seq (fn [& args]
+                                          (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
+        (is (= [{:name "LONGITUDE"   :base-type :type/Float}
+                {:name "CATEGORY_ID" :base-type :type/Integer}
+                {:name "PRICE"       :base-type :type/Integer}
+                {:name "LATITUDE"    :base-type :type/Float}
+                {:name "NAME"        :base-type :type/Text}
+                {:name "ID"          :base-type :type/BigInteger}]
+               (->> (sql-jdbc.sync/describe-table driver/*driver* (mt/id) (Table (mt/id :venues)))
+                    :fields
+                    (map #(select-keys % [:name :base-type])))))))))
