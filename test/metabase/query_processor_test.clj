@@ -14,7 +14,6 @@
             [metabase.models.field :refer [Field]]
             [metabase.test.data :as data]
             [metabase.test.data
-             [datasets :as datasets]
              [env :as tx.env]
              [interface :as tx]]
             [toucan.db :as db]))
@@ -46,18 +45,6 @@
   `feature`."
   [feature]
   (set/difference (normal-drivers) (normal-drivers-with-feature feature)))
-
-(defmacro ^:deprecated expect-with-non-timeseries-dbs
-  "DEPRECATED — Use `deftest` + `test-drivers` + `normal-drivers` instead.
-
-    (deftest my-test
-      (datasets/test-drivers (qp.test/normal-drivers)
-        (is (= ...))))"
-  {:style/indent 0}
-  [expected actual]
-  `(datasets/expect-with-drivers (normal-drivers)
-     ~expected
-     ~actual))
 
 (defn normal-drivers-except
   "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."

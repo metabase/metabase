@@ -520,7 +520,7 @@
 (deftest query-metadata-remappings-test
   (testing "GET /api/table/:id/query_metadata"
     (mt/with-temp-objects
-      (data/create-venue-category-remapping "Foo")
+      (data/create-venue-category-remapping! "Foo")
       (testing "Ensure internal remapped dimensions and human_readable_values are returned"
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
@@ -552,7 +552,7 @@
                                  ((mt/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))
 
     (mt/with-temp-objects
-      (data/create-venue-category-fk-remapping "Foo")
+      (data/create-venue-category-fk-remapping! "Foo")
       (testing "Ensure FK remappings are returned"
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
