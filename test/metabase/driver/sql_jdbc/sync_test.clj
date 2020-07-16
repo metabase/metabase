@@ -85,3 +85,14 @@
                                          :type/Integer
                                          base-type)}))
                     set)))))))
+
+(deftest calculated-special-type-test
+  (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
+    (with-redefs [sql-jdbc.sync/column->special-type (fn [_ _ column-name]
+                                                       (when (= (str/lower-case column-name) "longitude")
+                                                         :type/Longitude))]
+      (is (= [["longitude" :type/Longitude]]
+             (->> (sql-jdbc.sync/describe-table (or driver/*driver* :h2) (mt/id) (Table (mt/id :venues)))
+                  :fields
+                  (filter :special-type)
+                  (map (juxt (comp str/lower-case :name) :special-type))))))))
