@@ -60,25 +60,25 @@
 
 (defn- check-driver-native-columns
   "Double-check that the *driver* returned the correct number of `columns` for native query results."
-  [cols first-row]
+  [cols rows]
   {:pre [(sequential? cols) (every? map? cols)]}
-  (when first-row
+  (when (seq rows)
     (let [expected-count (count cols)
-          actual-count   (count first-row)]
+          actual-count   (count (first rows))]
       (when-not (= expected-count actual-count)
         (throw (ex-info (str (deferred-tru "Query processor error: number of columns returned by driver does not match results.")
                              "\n"
                              (deferred-tru "Expected {0} columns, but first row of resuls has {1} columns."
                                expected-count actual-count))
                  {:expected-columns (map :name cols)
-                  :first-row        first-row
+                  :first-row        (first rows)
                   :type             error-type/qp}))))))
 
 (defmethod column-info :native
-  [_ {:keys [cols base-types first-row]}]
-  (check-driver-native-columns cols first-row)
+  [_ {:keys [cols rows]}]
+  (check-driver-native-columns cols rows)
   (let [unique-name-fn (mbql.u/unique-name-generator)]
-    (vec (for [[{col-name :name,:as driver-col-metadata} base-type] (map vector cols base-types)]
+    (vec (for [{col-name :name, base-type :base_type, :as driver-col-metadata} cols]
            (let [col-name (name col-name)]
              (merge
               {:display_name (u/qualified-name col-name)
@@ -89,8 +89,7 @@
               ;; `:field-literal`, omit the `:field_ref`.
               (when (seq col-name)
                 {:field_ref [:field-literal (unique-name-fn col-name) base-type]})
-              driver-col-metadata
-              {:base_type base-type}))))))
+              driver-col-metadata))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -463,12 +462,7 @@
 (defn- cols-for-source-query
   [{:keys [source-metadata], {native-source-query :native, :as source-query} :source-query} results]
   (if native-source-query
-    (->> results
-         :cols
-         (map :base_type)
-         (assoc results :base-types)
-         (column-info {:type :native})
-         (maybe-merge-source-metadata source-metadata))
+    (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
     (mbql-cols source-query results)))
 
 (s/defn mbql-cols
@@ -549,27 +543,29 @@
   (deduplicate-cols-names
    (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
 
-(defn- base-type-inferer
+(defn base-type-inferer
   "Native queries don't have the type information from the original `Field` objects used in the query.
   If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
   of rows and infer the base type based on the classes of the values"
   [{:keys [cols]}]
   (apply f/col-wise (for [{driver-base-type :base_type} cols]
-                      (if-not (contains? #{nil :type/*} driver-base-type)
-                        (f/constant-fingerprinter driver-base-type)
-                        driver.common/values->base-type))))
+                      (if (contains? #{nil :type/*} driver-base-type)
+                        (driver.common/values->base-type)
+                        (f/constant-fingerprinter driver-base-type)))))
 
-(defn- add-column-info-xform [query metadata rf]
+(defn- add-column-info-xform
+  [query metadata rf]
   (qp.reducible/combine-additional-reducing-fns
    rf
    [(base-type-inferer metadata)
     ((take 1) conj)]
-   (fn combine [result base-types [first-row]]
-     (rf (cond-> result
-           (map? result)
-           (assoc-in [:data :cols] (merged-column-info query (assoc metadata
-                                                                    :base-types base-types
-                                                                    :first-row  first-row))))))))
+   (fn combine [result base-types truncated-rows]
+     (let [metadata (update metadata :cols (partial map (fn [col base-type]
+                                                          (assoc col :base_type base-type)))
+                            base-types)]
+       (rf (cond-> result
+             (map? result) (assoc-in [:data :cols] (merged-column-info query
+                                                                       (assoc metadata :rows truncated-rows)))))))))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
