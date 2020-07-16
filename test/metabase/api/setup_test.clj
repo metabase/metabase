@@ -5,17 +5,14 @@
             [metabase
              [email :as email]
              [http-client :as http]
+             [models :refer [Activity Database User]]
              [public-settings :as public-settings]
              [setup :as setup]
              [test :as mt]
              [util :as u]]
             [metabase.api.setup :as setup-api]
             [metabase.integrations.slack :as slack]
-            [metabase.middleware.session :as mw.session]
-            [metabase.models
-             [database :refer [Database]]
-             [setting :as setting]
-             [user :refer [User]]]
+            [metabase.models.setting :as setting]
             [metabase.models.setting.cache-test :as setting.cache-test]
             [metabase.test.fixtures :as fixtures]
             [schema.core :as s]
@@ -23,7 +20,7 @@
 
 ;; make sure the default test users are created before running these tests, otherwise we're going to run into issues
 ;; if it attempts to delete this user and it is the only admin test user
-(use-fixtures :once (fixtures/initialize :test-users))
+(use-fixtures :once (fixtures/initialize :test-users :events))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  POST /setup                                                   |
@@ -77,9 +74,10 @@
                   ;; can wait a few milliseconds and try again. Usually this is pretty much instantaneous but with CI
                   ;; being slow it's probably best to be robust and keep trying up to 250ms until they show up.
                   wait-for-result (fn [thunk]
-                                    (loop [tries 5]
+                                    (loop [tries 10]
                                       (or (thunk)
                                           (when (pos? tries)
+                                            (println "<RETRY>")
                                             (Thread/sleep 50)
                                             (recur (dec tries))))))]
               (is (schema= {:topic    (s/eq :user-joined)
@@ -87,7 +85,7 @@
                             :user_id  (s/eq user-id)
                             :model    (s/eq "user")
                             s/Keyword s/Any}
-                           (wait-for-result #(db/select-one 'Activity :topic "user-joined", :user_id user-id)))))))))))
+                           (wait-for-result #(db/select-one Activity :topic "user-joined", :user_id user-id)))))))))))
 
 (deftest setup-settings-test
   (testing "POST /api/setup"
@@ -138,7 +136,10 @@
                      (db/exists? Database :name db-name))))
             (testing (format "should be able to set %s to %s (default: %s) during creation" k (pr-str v) default)
               (is (= (if (some? v) v default)
-                     (db/select-one-field k Database :name db-name))))))))))
+                     (db/select-one-field k Database :name db-name))))))))
+
+    (testing "Setup should trigger sync right away for the newly created Database (#12826)"
+      (let [db-name (mt/random-name)]))))
 
 (defn- setup! [f & args]
   (let [body {:token (setup/create-token!)
@@ -229,8 +230,11 @@
         (do-with-setup*
          body
          (fn []
-           (is (schema= {:message (s/eq "Oops!"), s/Keyword s/Any}
-                        (with-redefs [mw.session/set-session-cookie (fn [& _] (throw (ex-info "Oops!" {})))]
+           (with-redefs [setup-api/setup-set-settings! (let [orig @#'setup-api/setup-set-settings!]
+                                                         (fn [& args]
+                                                           (apply orig args)
+                                                           (throw (ex-info "Oops!" {}))))]
+             (is (schema= {:message (s/eq "Oops!"), s/Keyword s/Any}
                           (http/client :post 500 "setup" body))))
            (testing "New user shouldn't exist"
              (is (= false

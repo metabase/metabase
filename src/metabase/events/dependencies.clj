@@ -14,8 +14,8 @@
     :metric-create
     :metric-update})
 
-(def ^:private dependencies-channel
-  "Channel for receiving event notifications we want to subscribe to for dependencies events."
+(defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for dependencies events."}
+  dependencies-channel
   (async/chan))
 
 

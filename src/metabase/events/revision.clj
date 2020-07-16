@@ -25,8 +25,8 @@
     :segment-update
     :segment-delete})
 
-(def ^:private revisions-channel
-  "Channel for receiving event notifications we want to subscribe to for revision events."
+(defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for revision events."}
+  revisions-channel
   (async/chan))
 
 

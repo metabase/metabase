@@ -11,10 +11,8 @@
   (:require [clojure.core.async :as async]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [util :as u]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
 
 ;;; --------------------------------------------------- LIFECYCLE ----------------------------------------------------
@@ -24,17 +22,18 @@
   (atom nil))
 
 (defn- find-and-load-event-handlers!
-  "Search Classpath for namespaces that start with `metabase.events.`, and call their `events-init` function if it
-  exists."
+  "Look for namespaces that start with `metabase.events.`, and call their `events-init` function if it exists."
   []
-  (when-not config/is-test?
-    (doseq [ns-symb u/metabase-namespace-symbols
-            :when   (.startsWith (name ns-symb) "metabase.events.")]
-      (classloader/require ns-symb)
-      ;; look for `events-init` function in the namespace and call it if it exists
-      (when-let [init-fn (ns-resolve ns-symb 'events-init)]
-        (log/info (trs "Starting events listener:") (u/format-color 'blue ns-symb) (u/emoji "👂"))
-        (init-fn)))))
+  (doseq [ns-symb u/metabase-namespace-symbols
+          :when   (.startsWith (name ns-symb) "metabase.events.")]
+    (classloader/require ns-symb)
+    ;; look for `events-init` function in the namespace and call it if it exists
+    (when-let [init-fn (ns-resolve ns-symb 'events-init)]
+      (log/info (trs "Starting events listener:") (u/format-color 'blue ns-symb) (u/emoji "👂"))
+      (try
+        (init-fn)
+        (catch Throwable e
+          (log/error e (trs "Error starting events listener")))))))
 
 (defn initialize-events!
   "Initialize the asynchronous internal events system."
@@ -47,12 +46,11 @@
 ;;; -------------------------------------------------- PUBLICATION ---------------------------------------------------
 
 
-(def ^:private events-channel
-  "Channel to host events publications."
+(defonce ^:private ^{:doc "Channel to host events publications."} events-channel
   (async/chan))
 
-(def ^:private events-publication
-  "Publication for general events channel. Expects a map as input and the map must have a `:topic` key."
+(defonce ^:private ^{:doc "Publication for general events channel. Expects a map as input and the map must have a
+  `:topic` key."} events-publication
   (async/pub events-channel :topic))
 
 (defn publish-event!
@@ -60,7 +58,9 @@
   {:style/indent 1}
   [topic event-item]
   {:pre [(keyword topic)]}
-  (async/go (async/>! events-channel {:topic (keyword topic), :item event-item}))
+  (let [event {:topic (keyword topic), :item event-item}]
+    (log/tracef "Publish event %s" (pr-str event))
+    (async/put! events-channel event))
   event-item)
 
 
@@ -90,17 +90,18 @@
   ;; start listening for events we care about and do something with them
   (async/go-loop []
     ;; try/catch here to get possible exceptions thrown by core.async trying to read from the channel
-    (try
-      (handler-fn (async/<! channel))
-      (catch Throwable e
-        (log/error e (trs "Unexpected error listening on events"))))
-    (recur)))
+    (when-let [val (async/<! channel)]
+      (try
+        (handler-fn val)
+        (catch Throwable e
+          (log/error e (trs "Unexpected error listening on events"))))
+      (recur))))
 
 
 ;;; ------------------------------------------------ HELPER FUNCTIONS ------------------------------------------------
 
 (defn topic->model
-  "Determine a valid `model` identifier for the given TOPIC."
+  "Determine a valid `model` identifier for the given `topic`."
   [topic]
   ;; just take the first part of the topic name after splitting on dashes.
   (first (str/split (name topic) #"-")))
