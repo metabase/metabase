@@ -41,6 +41,8 @@ FROM {{snippet: Orders and Products}};
 
 When writing in the SQL editor, you can now start typing `{{snippet:` and Metabase will present autocomplete options for available snippets.
 
+Note: if you use aliases in a snippet, you'll need to observe those aliases outside of the snippet as well. For example, if a snippet aliases `products AS p`, code outside of the snippet will need to use the alias `p` to reference columns in that table (as in `p.column_name`).
+
 ### Snippet menu
 
 ![Snippet sidebar and insertion](./images/sql-snippets/snippet_sidebar_and_insertion.gif)
