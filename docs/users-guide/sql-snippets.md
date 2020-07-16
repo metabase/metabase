@@ -57,6 +57,7 @@ From the SQL Snippets menu, you can:
 - **Create a snippet.** Click on the `+` in the upper right of the SQL Snippets sidebar to create a new snippet.
 - **Preview snippets.** Click on the down arrow to the right of a snippet to see its description and a preview of its SQL code. There's also an option to edit the snippet.
 - **Insert a snippet.** Click on a snippet's name to insert it into your query at the cursor's current location.
+- **Search for snippets**. If you've saved over 15 snippets, a **Search** icon (the classic magnifying glass) will appear to the left of the `+` button. Click on the search icon and type up your search. Note that search results only includes snippets the user has permissions for. SQL snippet folders do not populate the search results.
 - [**Edit a snippet.**](#editing-snippets) You can change a snippet's name, description and code.
 - [**Archive and unarchive a snippet.**](#archiving-snippets) From the Edit modal, you can archive a snippet, which removes the snippet from the snippet menu and autocomplete options in the SQL editor.
 
