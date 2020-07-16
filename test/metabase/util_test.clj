@@ -3,7 +3,8 @@
   (:require [clojure.test :refer :all]
             [clojure.tools.macro :as tools.macro]
             [flatland.ordered.map :refer [ordered-map]]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [clojure.string :as str])
   (:import java.util.Locale))
 
 (defn- are+-message [expr arglist args]
@@ -232,6 +233,16 @@
       ;; `(str/lower-case "ID")` returns "ıd" in the Turkish locale
       (is (= "id"
              (u/lower-case-en "ID")))
+      (finally
+        (Locale/setDefault original-locale)))))
+
+(deftest upper-case-en-test
+  (let [original-locale (Locale/getDefault)]
+    (try
+      (Locale/setDefault (Locale/forLanguageTag "tr"))
+      ;; `(str/upper-case "id")` returns "İD" in the Turkish locale
+      (is (= "ID"
+             (u/upper-case-en "id")))
       (finally
         (Locale/setDefault original-locale)))))
 
