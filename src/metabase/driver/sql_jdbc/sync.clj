@@ -161,11 +161,12 @@
 (defn simple-select-probe
   "Perform a simple (and cheap) SELECT on a given table to test for access and get metadata."
   [driver schema table]
-  (sql.qp/format-honeysql driver
-    (sql.qp/apply-top-level-clause driver :limit
-      {:select [:*]
-       :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]}
-      {:limit 1})))
+  (first
+   (sql.qp/format-honeysql driver
+     (sql.qp/apply-top-level-clause driver :limit
+       {:select [:*]
+        :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]}
+       {:limit 1}))))
 
 (defn- fields-metadata
   [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name :as table}, & [^String db-name-or-nil]]
