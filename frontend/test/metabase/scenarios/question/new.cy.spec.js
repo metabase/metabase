@@ -38,7 +38,7 @@ describe("scenarios > question > new", () => {
       cy.contains("37.65");
     });
 
-    it("should show `Custom Expression` in orders metrics", () => {
+    it.skip("should show `Custom Expression` in orders metrics (Issue #12899)", () => {
       // go straight to "orders" in custom questions
       cy.visit("/question/new?database=1&table=2&mode=notebook");
       cy.findByText("Summarize").click();
