@@ -21,8 +21,8 @@
   #{:metric-update
     :segment-update})
 
-(def ^:private notifications-channel
-  "Channel for receiving event notifications we want to subscribe to for notifications events."
+(defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for notifications events."}
+  notifications-channel
   (async/chan))
 
 

@@ -246,7 +246,6 @@
 (defmethod driver/describe-table :presto
   [driver {{:keys [catalog] :as details} :details} {schema :schema, table-name :name}]
   (let [sql            (str "DESCRIBE " (sql.u/quote-name driver :table catalog schema table-name))
-        _ (println "sql:" sql) ; NOCOMMIT
         {:keys [rows]} (execute-presto-query-for-sync details sql)]
     {:schema schema
      :name   table-name

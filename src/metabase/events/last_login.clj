@@ -9,8 +9,8 @@
   "The `Set` of event topics which are subscribed to for use in last login tracking."
   #{:user-login})
 
-(def ^:private last-login-channel
-  "Channel for receiving event notifications we want to subscribe to for last login events."
+(defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for last login events."}
+  last-login-channel
   (async/chan))
 
 

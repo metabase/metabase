@@ -14,8 +14,8 @@
   #{:database-create
     :database-trigger-sync})
 
-(def ^:private sync-database-channel
-  "Channel for receiving event notifications we want to subscribe to for database sync events."
+(defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for database sync events."}
+  sync-database-channel
   (async/chan))
 
 

@@ -11,8 +11,8 @@
     :card-read
     :dashboard-read})
 
-(def ^:private view-counts-channel
-  "Channel for receiving event notifications we want to subscribe to for view counting."
+(defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for view counting."}
+  view-counts-channel
   (async/chan))
 
 

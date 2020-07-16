@@ -10,12 +10,12 @@
              [driver :as driver]
              [events :as events]]))
 
-(def ^:const ^:private driver-notifications-topics
+(def ^:private driver-notifications-topics
   "The `Set` of event topics which are subscribed to for use in driver notifications."
   #{:database-update :database-delete})
 
-(def ^:private driver-notifications-channel
-  "Channel for receiving event notifications we want to subscribe to for driver notifications events."
+(defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for driver notifications
+  events."} driver-notifications-channel
   (async/chan))
 
 
