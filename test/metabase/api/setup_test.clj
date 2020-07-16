@@ -7,7 +7,8 @@
              [http-client :as http]
              [public-settings :as public-settings]
              [setup :as setup]
-             [test :as mt]]
+             [test :as mt]
+             [util :as u]]
             [metabase.api.setup :as setup-api]
             [metabase.integrations.slack :as slack]
             [metabase.middleware.session :as mw.session]
@@ -68,7 +69,25 @@
             (is (db/exists? User :email email)))
           (testing "Creating a new admin user should set the `admin-email` Setting"
             (is (= email
-                   (public-settings/admin-email)))))))))
+                   (public-settings/admin-email))))
+
+          (testing "Should record :user-joined Activity (#12933)"
+            (let [user-id         (u/get-id (db/select-one-id User :email email))
+                  ;; recording the Activity entries happens asynchronously. So if they're not already there then we
+                  ;; can wait a few milliseconds and try again. Usually this is pretty much instantaneous but with CI
+                  ;; being slow it's probably best to be robust and keep trying up to 250ms until they show up.
+                  wait-for-result (fn [thunk]
+                                    (loop [tries 5]
+                                      (or (thunk)
+                                          (when (pos? tries)
+                                            (Thread/sleep 50)
+                                            (recur (dec tries))))))]
+              (is (schema= {:topic    (s/eq :user-joined)
+                            :model_id (s/eq user-id)
+                            :user_id  (s/eq user-id)
+                            :model    (s/eq "user")
+                            s/Keyword s/Any}
+                           (wait-for-result #(db/select-one 'Activity :topic "user-joined", :user_id user-id)))))))))))
 
 (deftest setup-settings-test
   (testing "POST /api/setup"
