@@ -1,10 +1,8 @@
 (ns metabase.util-test
   "Tests for functions in `metabase.util`."
-  (:require [clojure.test :refer :all]
-            [clojure.tools.macro :as tools.macro]
+  (:require [clojure.tools.macro :as tools.macro]
             [flatland.ordered.map :refer [ordered-map]]
-            [metabase.util :as u]
-            [clojure.string :as str])
+            [metabase.util :as u])
   (:import java.util.Locale))
 
 (defn- are+-message [expr arglist args]
