@@ -11,7 +11,8 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql.query-processor :as sql.qp])
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.util.honeysql-extensions :as hx])
   (:import (java.sql Connection DatabaseMetaData ResultSetMetaData)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -157,6 +158,15 @@
       (str "Invalid type: " special-type))
     special-type))
 
+(defn simple-select-probe
+  "Perform a simple (and cheap) SELECT on a given table to test for access and get metadata."
+  [driver schema table]
+  (sql.qp/format-honeysql driver
+    (sql.qp/apply-top-level-clause driver :limit
+      {:select [:*]
+       :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]}
+      {:limit 1})))
+
 (defn- fields-metadata
   [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name :as table}, & [^String db-name-or-nil]]
   (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
@@ -164,14 +174,9 @@
       ;; In some rare cases `:column_name` is blank (eg. SQLite's views with group by),
       ;; fallback to sniffing the type from a SELECT * query
       (if (some (comp str/blank? :type_name) result)
-        (jdbc/with-db-connection [conn (->spec (metabase.models.database/Database (:db_id table)))]
+        (jdbc/with-db-connection [conn (->spec (:db_id table))]
           (let [^Connection conn            (:connection conn)
-                ^ResultSetMetaData metadata (->> (sql.qp/apply-top-level-clause driver :limit
-                                                   {:select [:*]
-                                                    :from   [(sql.qp/->honeysql driver table)]}
-                                                   {:limit 1})
-                                                 h/format
-                                                 first
+                ^ResultSetMetaData metadata (->> (simple-select-probe driver schema table)
                                                  (.executeQuery (.createStatement conn))
                                                  (.getMetaData))]
             (doall
@@ -179,7 +184,6 @@
                {:type_name   (.getColumnTypeName metadata i)
                 :column_name (.getColumnName metadata i)}))))
         result))))
-
 
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "

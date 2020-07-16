@@ -51,12 +51,12 @@
     (let [org-result-set-seq jdbc/result-set-seq]
       (with-redefs [jdbc/result-set-seq (fn [& args]
                                           (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
-        (is (= [{:name "LONGITUDE"   :base-type :type/Float}
-                {:name "CATEGORY_ID" :base-type :type/Integer}
-                {:name "PRICE"       :base-type :type/Integer}
-                {:name "LATITUDE"    :base-type :type/Float}
-                {:name "NAME"        :base-type :type/Text}
-                {:name "ID"          :base-type :type/BigInteger}]
+        (is (= [{:name "longitude"   :base-type :type/Float}
+                {:name "category_id" :base-type :type/Integer}
+                {:name "price"       :base-type :type/Integer}
+                {:name "latitude"    :base-type :type/Float}
+                {:name "name"        :base-type :type/Text}
+                {:name "id"          :base-type :type/Integer}]
                (->> (sql-jdbc.sync/describe-table driver/*driver* (mt/id) (Table (mt/id :venues)))
                     :fields
                     (map #(select-keys % [:name :base-type])))))))))
