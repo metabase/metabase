@@ -14,7 +14,6 @@
             [metabase.models.field :refer [Field]]
             [metabase.test.data :as data]
             [metabase.test.data
-             [datasets :as datasets]
              [env :as tx.env]
              [interface :as tx]]
             [toucan.db :as db]))
