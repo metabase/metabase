@@ -9,7 +9,7 @@ describe("scenarios > question > trendline", () => {
   before(restore);
   beforeEach(signInAsNormalUser);
 
-  it("displays trendline when there are multiple numeric outputs (for simple question) (Issue #12781)", () => {
+  it.skip("displays trendline when there are multiple numeric outputs (for simple question) (Issue #12781)", () => {
     // Create question: orders summarized with "Average of Subtotal" and "Sum of Total" by CreatedAt:Year
     openOrdersTable();
     cy.get(".Icon-notebook").click();
@@ -32,7 +32,9 @@ describe("scenarios > question > trendline", () => {
     cy.findByText("Visualize").click();
 
     // Check graph is there
-    cy.wait(1000).get("rect");
+    cy.findByText("Visualize").should("not.exist");
+    cy.findByText("Visualization");
+    cy.get("rect");
 
     // Change settings to trendline
     cy.findByText("Visualization").click();
@@ -55,9 +57,11 @@ describe("scenarios > question > trendline", () => {
       cy.get(".Icon-close")
         .last()
         .click();
+      cy.findByText("Done").click();
     });
 
     // Graph should still exist
-    cy.wait(1000).get("rect");
+    cy.findByPlaceholderText("Created At").should("not.exist");
+    cy.get("rect");
   });
 });
