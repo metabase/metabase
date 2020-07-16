@@ -1,8 +1,8 @@
 (ns metabase.driver.sql-jdbc.sync-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure
+  (:require [clojure
              [string :as str]
              [test :refer :all]]
+            [clojure.java.jdbc :as jdbc]
             [metabase
              [driver :as driver]
              [test :as mt]]
@@ -53,16 +53,17 @@
     (let [org-result-set-seq jdbc/result-set-seq]
       (with-redefs [jdbc/result-set-seq (fn [& args]
                                           (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
-        (is (= [{:name "longitude"   :base-type :type/Float}
-                {:name "category_id" :base-type :type/Integer}
-                {:name "price"       :base-type :type/Integer}
-                {:name "latitude"    :base-type :type/Float}
-                {:name "name"        :base-type :type/Text}
-                {:name "id"          :base-type :type/Integer}]
+        (is (= #{{:name "longitude"   :base-type :type/Float}
+                 {:name "category_id" :base-type :type/Integer}
+                 {:name "price"       :base-type :type/Integer}
+                 {:name "latitude"    :base-type :type/Float}
+                 {:name "name"        :base-type :type/Text}
+                 {:name "id"          :base-type :type/Integer}}
                (->> (sql-jdbc.sync/describe-table driver/*driver* (mt/id) (Table (mt/id :venues)))
                     :fields
                     (map (fn [{:keys [name base-type]}]
                            {:name      (str/lower-case name)
                             :base-type (if (isa? base-type :type/Integer) ; some DBs return the ID as BigInt
                                          :type/Integer
-                                         base-type)})))))))))
+                                         base-type)}))
+                    set)))))))
