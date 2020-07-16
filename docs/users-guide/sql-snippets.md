@@ -81,7 +81,9 @@ Archiving a snippet does not affect any existing queries that use the snippet, s
 
 You can access an archived snippet from the snippet sidebar menu by clicking on the archived button in the bottom left of the sidebar.
 
-Although there is no way to delete a snippet, you can archive and unarchive a snippet at any time.
+Although there is no way to delete a snippet, you can archive and unarchive a snippet at any time. 
+
+Note: two snippets cannot share the same name, as even if a snippet is archived, that snippet might still be active in questions.
 
 ### Snippet permissions
 
