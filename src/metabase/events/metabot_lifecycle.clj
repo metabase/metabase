@@ -38,8 +38,6 @@
 
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
-
-(defn events-init
-  "Automatically called during startup; start event listener for metabot lifecycle events."
-  []
+(defmethod events/init! ::MetaBotLifecycle
+  [_]
   (events/start-event-listener! metabot-lifecycle-topics metabot-lifecycle-channel process-metabot-lifecycle-event))

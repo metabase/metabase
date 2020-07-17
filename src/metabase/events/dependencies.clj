@@ -46,8 +46,6 @@
 
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
-
-(defn events-init
-  "Automatically called during startup; start the events listener for dependencies topics."
-  []
+(defmethod events/init! ::Dependencies
+  [_]
   (events/start-event-listener! dependencies-topics dependencies-channel process-dependencies-event))

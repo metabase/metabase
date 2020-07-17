@@ -1,11 +1,13 @@
 (ns metabase.api.setup-test
   "Tests for /api/setup endpoints."
-  (:require [clojure.test :refer :all]
+  (:require [clojure.core.async :as a]
+            [clojure.test :refer :all]
             [medley.core :as m]
             [metabase
              [email :as email]
+             [events :as events]
              [http-client :as http]
-             [models :refer [Activity Database User]]
+             [models :refer [Activity Database Table User]]
              [public-settings :as public-settings]
              [setup :as setup]
              [test :as mt]
@@ -15,12 +17,23 @@
             [metabase.models.setting :as setting]
             [metabase.models.setting.cache-test :as setting.cache-test]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
 ;; make sure the default test users are created before running these tests, otherwise we're going to run into issues
 ;; if it attempts to delete this user and it is the only admin test user
 (use-fixtures :once (fixtures/initialize :test-users :events))
+
+(defn- wait-for-result
+  "Call thunk up to 10 times, until it returns a truthy value. Wait 50ms between tries. Useful for waiting for something
+  asynchronous to happen."
+  [thunk]
+  (loop [tries 10]
+    (or (thunk)
+        (when (pos? tries)
+          (Thread/sleep 50)
+          (recur (dec tries))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  POST /setup                                                   |
@@ -69,17 +82,7 @@
                    (public-settings/admin-email))))
 
           (testing "Should record :user-joined Activity (#12933)"
-            (let [user-id         (u/get-id (db/select-one-id User :email email))
-                  ;; recording the Activity entries happens asynchronously. So if they're not already there then we
-                  ;; can wait a few milliseconds and try again. Usually this is pretty much instantaneous but with CI
-                  ;; being slow it's probably best to be robust and keep trying up to 250ms until they show up.
-                  wait-for-result (fn [thunk]
-                                    (loop [tries 10]
-                                      (or (thunk)
-                                          (when (pos? tries)
-                                            (println "<RETRY>")
-                                            (Thread/sleep 50)
-                                            (recur (dec tries))))))]
+            (let [user-id (u/get-id (db/select-one-id User :email email))]
               (is (schema= {:topic    (s/eq :user-joined)
                             :model_id (s/eq user-id)
                             :user_id  (s/eq user-id)
@@ -139,7 +142,27 @@
                      (db/select-one-field k Database :name db-name))))))))
 
     (testing "Setup should trigger sync right away for the newly created Database (#12826)"
-      (let [db-name (mt/random-name)]))))
+      (let [db-name (mt/random-name)]
+        (mt/with-open-channels [chan (a/chan)]
+          (events/subscribe-to-topics! #{:database-create} chan)
+          (with-setup {:database {:engine  "h2"
+                                  :name    db-name
+                                  :details (:details (mt/db))}}
+            (testing ":database-create events should have been fired"
+              (is (schema= {:topic (s/eq :database-create)
+                            :item  {:id       su/IntGreaterThanZero
+                                    :name     (s/eq db-name)
+                                    s/Keyword s/Any}}
+                           (mt/wait-for-result chan 100))))
+
+            (testing "Database should be synced"
+              (let [db (db/select-one Database :name db-name)]
+                (assert (some? db))
+                (is (= 4
+                       (wait-for-result (fn []
+                                          (let [cnt (db/count Table :db_id (u/get-id db))]
+                                            (when (pos? cnt)
+                                              cnt))))))))))))))
 
 (defn- setup! [f & args]
   (let [body {:token (setup/create-token!)

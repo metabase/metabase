@@ -17,6 +17,14 @@
 
 ;;; --------------------------------------------------- LIFECYCLE ----------------------------------------------------
 
+(defmulti init!
+  "Initialize event handlers. All implementations of this method are called once when the event system is started. Add a
+  new implementation of this method to define new event initialization logic. All `metabase.events.*` namespaces are
+  loaded automatically during event initialization before invoking implementations of `init!`.
+
+  `key` is not used internally but must be unique."
+  {:arglists '([key])}
+  keyword)
 
 (defonce ^:private events-initialized?
   (atom nil))
@@ -26,14 +34,13 @@
   []
   (doseq [ns-symb u/metabase-namespace-symbols
           :when   (.startsWith (name ns-symb) "metabase.events.")]
-    (classloader/require ns-symb)
-    ;; look for `events-init` function in the namespace and call it if it exists
-    (when-let [init-fn (ns-resolve ns-symb 'events-init)]
-      (log/info (trs "Starting events listener:") (u/format-color 'blue ns-symb) (u/emoji "👂"))
-      (try
-        (init-fn)
-        (catch Throwable e
-          (log/error e (trs "Error starting events listener")))))))
+    (classloader/require ns-symb))
+  (doseq [[k f] (methods init!)]
+    (log/info (trs "Starting events listener:") (u/format-color 'blue k) (u/emoji "👂"))
+    (try
+      (f k)
+      (catch Throwable e
+        (log/error e (trs "Error starting events listener"))))))
 
 (defn initialize-events!
   "Initialize the asynchronous internal events system."
@@ -74,7 +81,7 @@
   (async/sub events-publication (keyword topic) channel)
   channel)
 
-(defn- subscribe-to-topics!
+(defn subscribe-to-topics!
   "Convenience method for subscribing to a series of topics against a single channel."
   [topics channel]
   {:pre [(coll? topics)]}
@@ -107,14 +114,13 @@
   (first (str/split (name topic) #"-")))
 
 (defn object->model-id
-  "Determine the appropriate `model_id` (if possible) for a given OBJECT."
+  "Determine the appropriate `model_id` (if possible) for a given `object`."
   [topic object]
   (if (contains? (set (keys object)) :id)
     (:id object)
     (let [model (topic->model topic)]
       (get object (keyword (format "%s_id" model))))))
 
-(defn object->user-id
-  "Determine the appropriate `user_id` (if possible) for a given OBJECT."
-  [object]
-  (or (:actor_id object) (:user_id object) (:creator_id object)))
+(def ^{:arglists '([object])} object->user-id
+  "Determine the appropriate `user_id` (if possible) for a given `object`."
+  (some-fn :actor_id :user_id :creator_id))

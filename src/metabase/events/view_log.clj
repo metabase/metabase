@@ -5,14 +5,14 @@
             [metabase.models.view-log :refer [ViewLog]]
             [toucan.db :as db]))
 
-(def ^:private ^:const view-counts-topics
+(def ^:private ^:const view-log-topics
   "The `Set` of event topics which we subscribe to for view counting."
   #{:card-create
     :card-read
     :dashboard-read})
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for view counting."}
-  view-counts-channel
+  view-log-channel
   (async/chan))
 
 
@@ -28,8 +28,8 @@
     :model    model
     :model_id model-id))
 
-(defn process-view-count-event
-  "Handle processing for a single event notification received on the view-counts-channel"
+(defn process-view-event
+  "Handle processing for a single event notification received on the view-log-channel"
   [event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
@@ -44,8 +44,6 @@
 
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
-
-(defn events-init
-  "Automatically called during startup; start the events listener for view events."
-  []
-  (events/start-event-listener! view-counts-topics view-counts-channel process-view-count-event))
+(defmethod events/init! ::ViewLog
+  [_]
+  (events/start-event-listener! view-log-topics view-log-channel process-view-event))

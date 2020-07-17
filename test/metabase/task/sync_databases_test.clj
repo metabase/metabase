@@ -11,15 +11,15 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [toucan.db :as db]
+            [clojure.test :refer :all]
             [toucan.util.test :as tt])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
 
-;; make sure our annotations are present
-(expect
-  (.isAnnotationPresent SyncAndAnalyzeDatabase org.quartz.DisallowConcurrentExecution))
+(deftest annotations-test
+  (testing "make sure our annotations are present"
+    (is (.isAnnotationPresent SyncAndAnalyzeDatabase org.quartz.DisallowConcurrentExecution))
 
-(expect
-  (.isAnnotationPresent UpdateFieldValues org.quartz.DisallowConcurrentExecution))
+    (is (.isAnnotationPresent UpdateFieldValues org.quartz.DisallowConcurrentExecution))))
 
 (defn- replace-trailing-id-with-<id> [s]
   (some-> s (str/replace #"\d+$" "<id>")))

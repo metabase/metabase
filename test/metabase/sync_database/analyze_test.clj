@@ -49,16 +49,16 @@
                (classified-special-type values)))))))
 
 (deftest classify-emails-test
-  (testing "Check that things that are valid emails are marked as Emails")
-  (doseq [[values expected] {["helper@metabase.com"]                                           true
-                             ["helper@metabase.com", "someone@here.com", "help@nope.com"]      true
-                             ["helper@metabase.com", "1111IsNot!An....email", "help@nope.com"] false
-                             ["\"A string should not cause a Field to be marked as email\""]   false
-                             ["true"]                                                          false
-                             ["false"]                                                         false}]
-    (testing (pr-str values)
-      (is (= (when expected :type/Email)
-             (classified-special-type values))))))
+  (testing "Check that things that are valid emails are marked as Emails"
+    (doseq [[values expected] {["helper@metabase.com"]                                           true
+                               ["helper@metabase.com", "someone@here.com", "help@nope.com"]      true
+                               ["helper@metabase.com", "1111IsNot!An....email", "help@nope.com"] false
+                               ["\"A string should not cause a Field to be marked as email\""]   false
+                               ["true"]                                                          false
+                               ["false"]                                                         false}]
+      (testing (pr-str values)
+        (is (= (when expected :type/Email)
+               (classified-special-type values)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
