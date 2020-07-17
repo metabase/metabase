@@ -33,8 +33,6 @@
 
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
-
-(defn events-init
-  "Automatically called during startup; start the events listener for last login events."
-  []
+(defmethod events/init! ::LastLogin
+  [_]
   (events/start-event-listener! last-login-topics last-login-channel process-last-login-event))

@@ -537,12 +537,15 @@
 (defn do-with-temp-scheduler [f]
   (classloader/the-classloader)
   (initialize/initialize-if-needed! :db)
-  (let [temp-scheduler (qs/start (qs/initialize))]
-    (with-scheduler temp-scheduler
-      (try
-        (f)
-        (finally
-          (qs/shutdown temp-scheduler))))))
+  (let [temp-scheduler        (qs/start (qs/initialize))
+        is-default-scheduler? (identical? temp-scheduler (#'metabase.task/scheduler))]
+    (if is-default-scheduler?
+      (f)
+      (with-scheduler temp-scheduler
+        (try
+          (f)
+          (finally
+            (qs/shutdown temp-scheduler)))))))
 
 (defmacro with-temp-scheduler
   "Execute `body` with a temporary scheduler in place.

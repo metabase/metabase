@@ -95,7 +95,6 @@
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(defn events-init
-  "Automatically called during startup; start event listener for notifications events."
-  []
+(defmethod events/init! ::Notifications
+  [_]
   (events/start-event-listener! notifications-topics notifications-channel process-notifications-event!))
