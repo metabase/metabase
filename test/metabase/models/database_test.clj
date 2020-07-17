@@ -39,7 +39,6 @@
                       :may-fire-again?     (s/eq true)
                       :schedule            (s/eq "0 50 * * * ? *")
                       :final-fire-time     (s/eq nil)
-                      :wow (s/eq true)
                       :data                (s/eq {"db-id" db-id})
                       s/Keyword            s/Any}
                      (trigger-for-db db-id)))

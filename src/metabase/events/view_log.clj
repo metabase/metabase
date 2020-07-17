@@ -18,8 +18,7 @@
 
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
 
-
-(defn- record-view
+(defn- record-view!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
   [model model-id user-id]
   ;; TODO - we probably want a little code that prunes old entries so that this doesn't get too big
@@ -28,13 +27,13 @@
     :model    model
     :model_id model-id))
 
-(defn process-view-event
+(defn handle-view-event!
   "Handle processing for a single event notification received on the view-log-channel"
   [event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
     (when-let [{topic :topic object :item} event]
-      (record-view
+      (record-view!
         (events/topic->model topic)
         (events/object->model-id topic object)
         (events/object->user-id object)))
@@ -46,4 +45,4 @@
 
 (defmethod events/init! ::ViewLog
   [_]
-  (events/start-event-listener! view-log-topics view-log-channel process-view-event))
+  (events/start-event-listener! view-log-topics view-log-channel handle-view-event!))

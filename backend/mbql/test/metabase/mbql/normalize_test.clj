@@ -5,230 +5,211 @@
             [expectations :refer [expect]]
             [metabase.mbql.normalize :as normalize]))
 
+(defn- tests {:style/indent 2} [f-symb f group->input->expected]
+  (doseq [[group input->expected] group->input->expected]
+    (testing group
+      (doseq [[input expected] input->expected]
+        (testing (str "\n" (pr-str (list f-symb input)))
+          (is (= expected
+                 (f input))))))))
+
+(defn- normalize-tests {:style/indent 0} [& {:as group->input->expected}]
+  (tests 'normalize-tokens #'normalize/normalize-tokens group->input->expected))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                NORMALIZE TOKENS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest normalize-tokens-test
-  (doseq [[group query->expected]
-          {"Query type should get normalized"
-           {{:type "NATIVE"}
-            {:type :native}}
+  (normalize-tests
+    "Query type should get normalized"
+    {{:type "NATIVE"}
+     {:type :native}}
 
-           "native queries should NOT get normalized"
-           {{:type "NATIVE", :native {"QUERY" "SELECT COUNT(*) FROM CANS;"}}
-            {:type :native, :native {:query "SELECT COUNT(*) FROM CANS;"}}
+    "native queries should NOT get normalized"
+    {{:type "NATIVE", :native {"QUERY" "SELECT COUNT(*) FROM CANS;"}}
+     {:type :native, :native {:query "SELECT COUNT(*) FROM CANS;"}}
 
-            {:native {:query {:NAME        "FAKE_QUERY"
-                              :description "Theoretical fake query in a JSON-based query lang"}}}
-            {:native {:query {:NAME        "FAKE_QUERY"
-                              :description "Theoretical fake query in a JSON-based query lang"}}}}
+     {:native {:query {:NAME        "FAKE_QUERY"
+                       :description "Theoretical fake query in a JSON-based query lang"}}}
+     {:native {:query {:NAME        "FAKE_QUERY"
+                       :description "Theoretical fake query in a JSON-based query lang"}}}}
 
-           "METRICS shouldn't get normalized in some kind of wacky way"
-           {{:aggregation ["+" ["METRIC" 10] 1]}
-            {:aggregation [:+ [:metric 10] 1]}}
+    "METRICS shouldn't get normalized in some kind of wacky way"
+    {{:aggregation ["+" ["METRIC" 10] 1]}
+     {:aggregation [:+ [:metric 10] 1]}}
 
-           "Nor should SEGMENTS"
-           {{:filter ["=" ["+" ["SEGMENT" 10] 1] 10]}
-            {:filter [:= [:+ [:segment 10] 1] 10]}}
+    "Nor should SEGMENTS"
+    {{:filter ["=" ["+" ["SEGMENT" 10] 1] 10]}
+     {:filter [:= [:+ [:segment 10] 1] 10]}}
 
-           "are expression names exempt from lisp-casing/lower-casing?"
-           {{"query" {"expressions" {:sales_tax ["-" ["field-id" 10] ["field-id" 20]]}}}
-            {:query {:expressions {:sales_tax [:- [:field-id 10] [:field-id 20]]}}}}
+    "are expression names exempt from lisp-casing/lower-casing?"
+    {{"query" {"expressions" {:sales_tax ["-" ["field-id" 10] ["field-id" 20]]}}}
+     {:query {:expressions {:sales_tax [:- [:field-id 10] [:field-id 20]]}}}}
 
-           "expression references should be exempt too"
-           {{:order-by [[:desc [:expression "SALES_TAX"]]]}
-            {:order-by [[:desc [:expression "SALES_TAX"]]]}}
+    "expression references should be exempt too"
+    {{:order-by [[:desc [:expression "SALES_TAX"]]]}
+     {:order-by [[:desc [:expression "SALES_TAX"]]]}}
 
-           "... but they should be converted to strings if passed in as a KW for some reason. Make sure we preserve namespace!"
-           {{:order-by [[:desc ["expression" :SALES/TAX]]]}
-            {:order-by [[:desc [:expression "SALES/TAX"]]]}}
-
-
-           "field literals should be exempt too"
-           {{:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}
-            {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}}
+    "... but they should be converted to strings if passed in as a KW for some reason. Make sure we preserve namespace!"
+    {{:order-by [[:desc ["expression" :SALES/TAX]]]}
+     {:order-by [[:desc [:expression "SALES/TAX"]]]}}
 
 
-           "... but they should be converted to strings if passed in as a KW for some reason"
-           {{:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]}
-            {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}}}]
-    (testing group
-      (doseq [[query expected] query->expected]
-        (is (= expected
-               (#'normalize/normalize-tokens query)))))))
+    "field literals should be exempt too"
+    {{:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}
+     {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}}
+
+
+    "... but they should be converted to strings if passed in as a KW for some reason"
+    {{:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]}
+     {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}}))
 
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
-(expect
- {:query {:aggregation :rows}}
- (#'normalize/normalize-tokens {:query {"AGGREGATION" "ROWS"}}))
+(deftest normalize-aggregations-test
+  (normalize-tests
+    "Legacy 'rows' aggregations"
+    {{:query {"AGGREGATION" "ROWS"}}
+     {:query {:aggregation :rows}}
 
-(expect
-  {:query {:aggregation [:rows]}}
-  (#'normalize/normalize-tokens {:query {"AGGREGATION" ["ROWS"]}}))
+     {:query {"AGGREGATION" ["ROWS"]}}
+     {:query {:aggregation [:rows]}}}
 
-(expect
- {:query {:aggregation [:count 10]}}
- (#'normalize/normalize-tokens {:query {"AGGREGATION" ["COUNT" 10]}}))
+    "Other uppercase tokens"
+    {{:query {"AGGREGATION" ["COUNT" 10]}}
+     {:query {:aggregation [:count 10]}}
 
-(expect
-  {:query {:aggregation [[:count 10]]}}
-  (#'normalize/normalize-tokens {:query {"AGGREGATION" [["COUNT" 10]]}}))
+     {:query {"AGGREGATION" [["COUNT" 10]]}}
+     {:query {:aggregation [[:count 10]]}}}
 
-;; make sure we normalize ag tokens properly when there's wacky MBQL 95 ag syntax
-(expect
-  {:query {:aggregation [:rows :count]}}
-  (#'normalize/normalize-tokens {:query {:aggregation ["rows" "count"]}}))
+    "make sure we normalize ag tokens properly when there's wacky MBQL 95 ag syntax"
+    {{:query {:aggregation ["rows" "count"]}}
+     {:query {:aggregation [:rows :count]}}
 
-(expect
-  {:query {:aggregation [:count :count]}}
-  (#'normalize/normalize-tokens {:query {:aggregation ["count" "count"]}}))
+     {:query {:aggregation ["count" "count"]}}
+     {:query {:aggregation [:count :count]}}}
 
-;; don't normalize names of expression refs!
-(expect
-  {:query {:aggregation [:count [:count [:expression "ABCDEF"]]]}}
-  (#'normalize/normalize-tokens {:query {:aggregation ["count" ["count" ["expression" "ABCDEF"]]]}}))
+    "don't normalize names of expression refs!"
+    {{:query {:aggregation ["count" ["count" ["expression" "ABCDEF"]]]}}
+     {:query {:aggregation [:count [:count [:expression "ABCDEF"]]]}}}
 
-;; make sure binning-strategy clauses get normalized the way we'd expect
-(expect
-  {:query {:breakout [[:binning-strategy 10 :bin-width 2000]]}}
-  (#'normalize/normalize-tokens {:query {:breakout [["BINNING_STRATEGY" 10 "BIN-WIDTH" 2000]]}}))
+    "make sure binning-strategy clauses get normalized the way we'd expect"
+    {{:query {:breakout [["BINNING_STRATEGY" 10 "BIN-WIDTH" 2000]]}}
+     {:query {:breakout [[:binning-strategy 10 :bin-width 2000]]}}}
 
-;; or field literals!
-(expect
-  {:query {:aggregation [:count [:count [:field-literal "ABCDEF" :type/Text]]]}}
-  (#'normalize/normalize-tokens {:query {:aggregation ["count" ["count" ["field_literal" "ABCDEF" "type/Text"]]]}}))
+    "or field literals!"
+    {{:query {:aggregation ["count" ["count" ["field_literal" "ABCDEF" "type/Text"]]]}}
+     {:query {:aggregation [:count [:count [:field-literal "ABCDEF" :type/Text]]]}}}
 
-;; event if you try your best to break things it should handle it
-(expect
-  {:query {:aggregation [:count [:sum 10] [:count 20] :count]}}
-  (#'normalize/normalize-tokens {:query {:aggregation ["count" ["sum" 10] ["count" 20] "count"]}}))
+    "event if you try your best to break things it should handle it"
+    {{:query {:aggregation ["count" ["sum" 10] ["count" 20] "count"]}}
+     {:query {:aggregation [:count [:sum 10] [:count 20] :count]}}}
 
-;; try an ag that is named using legacy `:named` clause
-(expect
-  {:query {:aggregation [:named [:sum 10] "My COOL AG"]}}
-  (#'normalize/normalize-tokens {:query {:aggregation ["named" ["SuM" 10] "My COOL AG"]}}))
+    "try an ag that is named using legacy `:named` clause"
+    {{:query {:aggregation ["named" ["SuM" 10] "My COOL AG"]}}
+     {:query {:aggregation [:named [:sum 10] "My COOL AG"]}}
 
-(expect
-  {:query {:aggregation [:named [:sum 10] "My COOL AG" {:use-as-display-name? false}]}}
-  (#'normalize/normalize-tokens
-   {:query {:aggregation ["named" ["SuM" 10] "My COOL AG" {:use-as-display-name? false}]}}))
+     {:query {:aggregation ["named" ["SuM" 10] "My COOL AG" {:use-as-display-name? false}]}}
+     {:query {:aggregation [:named [:sum 10] "My COOL AG" {:use-as-display-name? false}]}}}
 
-;; try w/ `:aggregation-options`, the replacement for `:named`
-(expect
- {:query {:aggregation [:aggregation-options [:sum 10] {:display-name "My COOL AG"}]}}
- (#'normalize/normalize-tokens
-  {:query {:aggregation ["aggregation_options" ["SuM" 10] {"display_name" "My COOL AG"}]}}))
+    "try w/ `:aggregation-options`, the replacement for `:named`"
+    {{:query {:aggregation ["aggregation_options" ["SuM" 10] {"display_name" "My COOL AG"}]}}
+     {:query {:aggregation [:aggregation-options [:sum 10] {:display-name "My COOL AG"}]}}}
 
-;; try an expression ag
-(expect
- {:query {:aggregation [:+ [:sum 10] [:* [:sum 20] 3]]}}
- (#'normalize/normalize-tokens {:query {:aggregation ["+" ["sum" 10] ["*" ["SUM" 20] 3]]}}))
+    "try an expression ag"
+    {{:query {:aggregation ["+" ["sum" 10] ["*" ["SUM" 20] 3]]}}
+     {:query {:aggregation [:+ [:sum 10] [:* [:sum 20] 3]]}}}
 
-;; expression ags should handle varargs
-(expect
-  {:query {:aggregation [:+ [:sum 10] [:sum 20] [:sum 30]]}}
-  (#'normalize/normalize-tokens {:query {:aggregation ["+" ["sum" 10] ["SUM" 20] ["sum" 30]]}}))
+    "expression ags should handle varargs"
+    {{:query {:aggregation ["+" ["sum" 10] ["SUM" 20] ["sum" 30]]}}
+     {:query {:aggregation [:+ [:sum 10] [:sum 20] [:sum 30]]}}}
 
-;; expression ags should handle datetime arithemtics
-(expect
-  {:query {:expressions {:prev_month [:+ [:field-id 13] [:interval -1 :month]]}}}
-  (#'normalize/normalize-tokens {:query {:expressions {:prev_month ["+" ["field-id" 13]
-                                                                    ["interval" -1 "month"]]}}}))
+    "expression ags should handle datetime arithemtics"
+    {{:query {:expressions {:prev_month ["+" ["field-id" 13] ["interval" -1 "month"]]}}}
+     {:query {:expressions {:prev_month [:+ [:field-id 13] [:interval -1 :month]]}}},
 
-(expect
-  {:query {:expressions {:prev_month [:- [:field-id 13] [:interval 1 :month] [:interval 1 :day]]}}}
-  (#'normalize/normalize-tokens {:query {:expressions {:prev_month ["-" ["field-id" 13]
-                                                                    ["interval" 1 "month"]
-                                                                    ["interval" 1 "day"]]}}}))
+     {:query {:expressions {:prev_month ["-" ["field-id" 13] ["interval" 1 "month"] ["interval" 1 "day"]]}}}
+     {:query {:expressions {:prev_month [:- [:field-id 13] [:interval 1 :month] [:interval 1 :day]]}}}}
 
-;; case
-(expect
-  {:query {:aggregation [:sum [:case [[[:> [:field-id 12] 10] 10]
-                                     [[:> [:field-id 12] 100] [:field-id 1]]
-                                     [[:= [:field-id 2] 1] "foo"]]
-                               {:default [:field-id 2]}]]}}
-  (#'normalize/normalize-tokens {:query {:aggregation ["sum" ["case" [[[">" ["field-id" 12] 10] 10]
-                                                                      [[">" ["field-id" 12] 100] ["field-id" 1]]
-                                                                     [["=" ["field-id" 2] 1] "foo"]]
-                                                              {:default ["field-id" 2]}]]}}))
+    "case"
+    {{:query {:aggregation ["sum" ["case"
+                                   [[[">" ["field-id" 12] 10] 10]
+                                    [[">" ["field-id" 12] 100] ["field-id" 1]]
+                                    [["=" ["field-id" 2] 1] "foo"]]
+                                   {:default ["field-id" 2]}]]}}
+     {:query {:aggregation [:sum [:case
+                                  [[[:> [:field-id 12] 10] 10]
+                                   [[:> [:field-id 12] 100] [:field-id 1]]
+                                   [[:= [:field-id 2] 1] "foo"]]
+                                  {:default [:field-id 2]}]]}}}
 
-(expect
- {:query {:aggregation [:median [:field-id 13]]}}
- (#'normalize/normalize-tokens {:query {:aggregation ["median" ["field-id" 13]]}}))
+    "various other new ag types"
+    {{:query {:aggregation ["median" ["field-id" 13]]}}
+     {:query {:aggregation [:median [:field-id 13]]}}
 
-(expect
- {:query {:aggregation [:var [:field-id 13]]}}
- (#'normalize/normalize-tokens {:query {:aggregation ["var" ["field-id" 13]]}}))
+     {:query {:aggregation ["var" ["field-id" 13]]}}
+     {:query {:aggregation [:var [:field-id 13]]}}
 
-(expect
- {:query {:aggregation [:percentile [:field-id 13] 0.9]}}
- (#'normalize/normalize-tokens {:query {:aggregation ["percentile" ["field-id" 13] 0.9]}}))
+     {:query {:aggregation ["percentile" ["field-id" 13] 0.9]}}
+     {:query {:aggregation [:percentile [:field-id 13] 0.9]}}}))
+
 
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
-;; does order-by get properly normalized?
-(expect
-  {:query {:order-by [[10 :asc]]}}
-  (#'normalize/normalize-tokens {:query {"ORDER_BY" [[10 "ASC"]]}}))
+(deftest normalize-order-by-test
+  (normalize-tests
+    "does order-by get properly normalized?"
+    {{:query {"ORDER_BY" [[10 "ASC"]]}}
+     {:query {:order-by [[10 :asc]]}}
 
-(expect
-  {:query {:order-by [[:asc 10]]}}
-  (#'normalize/normalize-tokens {:query {"ORDER_BY" [["ASC" 10]]}}))
+     {:query {"ORDER_BY" [["ASC" 10]]}}
+     {:query {:order-by [[:asc 10]]}}
 
-(expect
-  {:query {:order-by [[[:field-id 10] :asc]]}}
-  (#'normalize/normalize-tokens {:query {"ORDER_BY" [[["field_id" 10] "ASC"]]}}))
+     {:query {"ORDER_BY" [[["field_id" 10] "ASC"]]}}
+     {:query {:order-by [[[:field-id 10] :asc]]}}
 
-(expect
-  {:query {:order-by [[:desc [:field-id 10]]]}}
-  (#'normalize/normalize-tokens {:query {"ORDER_BY" [["DESC" ["field_id" 10]]]}}))
+     {:query {"ORDER_BY" [["DESC" ["field_id" 10]]]}}
+     {:query {:order-by [[:desc [:field-id 10]]]}}}))
 
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
-;; the unit & amount in time interval clauses should get normalized
-(expect
-  {:query {:filter [:time-interval 10 :current :day]}}
-  (#'normalize/normalize-tokens {:query {"FILTER" ["time-interval" 10 "current" "day"]}}))
+(deftest normalize-filter-test
+  (normalize-tests
+    "the unit & amount in time interval clauses should get normalized"
+    {{:query {"FILTER" ["time-interval" 10 "current" "day"]}}
+     {:query {:filter [:time-interval 10 :current :day]}}}
 
-;; but amount should not get normalized if it's an integer
-(expect
-  {:query {:filter [:time-interval 10 -10 :day]}}
-  (#'normalize/normalize-tokens {:query {"FILTER" ["time-interval" 10 -10 "day"]}}))
+    "but amount should not get normalized if it's an integer"
+    {{:query {"FILTER" ["time-interval" 10 -10 "day"]}}
+     {:query {:filter [:time-interval 10 -10 :day]}}}
 
-;; make sure we support time-interval options
-(expect
-  [:time-interval 10 -30 :day {:include-current true}]
-  (#'normalize/normalize-tokens ["TIME_INTERVAL" 10 -30 "DAY" {"include_current" true}]))
+    "make sure we support time-interval options"
+    {["TIME_INTERVAL" 10 -30 "DAY" {"include_current" true}]
+     [:time-interval 10 -30 :day {:include-current true}]}
 
-;; the unit in relative datetime clauses should get normalized
-(expect
-  {:query {:filter [:= [:field-id 10] [:relative-datetime -31 :day]]}}
-  (#'normalize/normalize-tokens {:query {"FILTER" ["=" [:field-id 10] ["RELATIVE_DATETIME" -31 "DAY"]]}}))
+    "the unit in relative datetime clauses should get normalized"
+    {{:query {"FILTER" ["=" [:field-id 10] ["RELATIVE_DATETIME" -31 "DAY"]]}}
+     {:query {:filter [:= [:field-id 10] [:relative-datetime -31 :day]]}}}
 
-;; should work if we do [:relative-datetime :current] as well
-(expect
-  {:query {:filter [:= [:field-id 10] [:relative-datetime :current]]}}
-  (#'normalize/normalize-tokens {:query {"FILTER" ["=" [:field-id 10] ["RELATIVE_DATETIME" "CURRENT"]]}}))
+    "should work if we do [:relative-datetime :current] as well"
+    {{:query {"FILTER" ["=" [:field-id 10] ["RELATIVE_DATETIME" "CURRENT"]]}}
+     {:query {:filter [:= [:field-id 10] [:relative-datetime :current]]}}}
 
-;; and in datetime-field clauses (MBQL 98+)
-(expect
-  {:query {:filter [:= [:datetime-field [:field-id 10] :day] "2018-09-05"]}}
-  (#'normalize/normalize-tokens {:query {"FILTER" ["=" [:datetime-field ["field_id" 10] "day"] "2018-09-05"]}}))
+    "and in datetime-field clauses (MBQL 98+)"
+    {{:query {"FILTER" ["=" [:datetime-field ["field_id" 10] "day"] "2018-09-05"]}}
+     {:query {:filter [:= [:datetime-field [:field-id 10] :day] "2018-09-05"]}}}
 
-;; (or in long-since-deprecated MBQL 95 format)
-(expect
-  {:query {:filter [:= [:datetime-field 10 :as :day] "2018-09-05"]}}
-  (#'normalize/normalize-tokens {:query {"FILTER" ["=" [:datetime-field 10 "as" "day"] "2018-09-05"]}}))
+    "(or in long-since-deprecated MBQL 95 format)"
+    {{:query {"FILTER" ["=" [:datetime-field 10 "as" "day"] "2018-09-05"]}}
+     {:query {:filter [:= [:datetime-field 10 :as :day] "2018-09-05"]}}}
 
-;; if string filters have an options map that should get normalized
-(expect
-  {:query {:filter [:starts-with 10 "ABC" {:case-sensitive true}]}}
-  (#'normalize/normalize-tokens {:query {"FILTER" ["starts_with" 10 "ABC" {"case_sensitive" true}]}}))
+    "if string filters have an options map that should get normalized"
+    {{:query {"FILTER" ["starts_with" 10 "ABC" {"case_sensitive" true}]}}
+     {:query {:filter [:starts-with 10 "ABC" {:case-sensitive true}]}}}))
 
 
 ;;; --------------------------------------------------- parameters ---------------------------------------------------
