@@ -195,7 +195,7 @@ export default class AggregationPopover extends Component {
       showCustom = false;
       showMetrics = false;
     }
-    if (table.database.hasFeature("expression-aggregations")) {
+    if (!table.database.hasFeature("expression-aggregations")) {
       showCustom = false;
     }
 
