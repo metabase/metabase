@@ -58,9 +58,9 @@
   "Create a new Database. Returns newly created Database."
   [{:keys [name driver details schedules database]}]
   (when driver
-    (when-not (driver/available? (driver/the-driver driver))
-      (throw (ex-info (tru "Cannot create Database: cannot find driver {0}." driver)
-                      {:driver driver})))
+    (when-not (some-> (u/ignore-exceptions (driver/the-driver driver)) driver/available?)
+      (let [msg (tru "Cannot create Database: cannot find driver {0}." driver)]
+        (throw (ex-info msg {:errors {:database {:engine msg}}, :status-code 400}))))
     (db/insert! Database
       (merge
        {:name name, :engine driver, :details details}

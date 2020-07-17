@@ -371,7 +371,10 @@
      :plugins      [[lein-cloverage  "1.1.3-SNAPSHOT"]]
      :source-paths ^:replace ["src" "backend/mbql/src"]
      :test-paths   ^:replace ["test" "backend/mbql/test"]
-     :cloverage    {:fail-threshold 69}}]
+     :cloverage    {:fail-threshold 69
+                    ;; don't instrument logging forms, since they won't get executed as part of tests anyway
+                    ;; log calls expand to these
+                    :exclude-call [clojure.tools.logging/logf clojure.tools.logging/logp]}}]
 
    ;; build the uberjar with `lein uberjar`
    :uberjar

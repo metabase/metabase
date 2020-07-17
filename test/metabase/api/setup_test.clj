@@ -7,7 +7,7 @@
              [email :as email]
              [events :as events]
              [http-client :as http]
-             [models :refer [Activity Database Field Table User]]
+             [models :refer [Activity Database Table User]]
              [public-settings :as public-settings]
              [setup :as setup]
              [test :as mt]
@@ -48,15 +48,16 @@
       (when-let [db-name (get-in request-body [:database :name])]
         (db/delete! Database :name db-name)))))
 
+(defn- default-setup-input []
+  {:token (setup/create-token!)
+   :prefs {:site_name "Metabase Test"}
+   :user  {:first_name (mt/random-name)
+           :last_name  (mt/random-name)
+           :email      (mt/random-email)
+           :password   "anythingUP12!!"}})
+
 (defn- do-with-setup [request-body thunk]
-  (let [request-body (merge-with merge
-                       {:token (setup/create-token!)
-                        :prefs {:site_name "Metabase Test"}
-                        :user  {:first_name (mt/random-name)
-                                :last_name  (mt/random-name)
-                                :email      (mt/random-email)
-                                :password   "anythingUP12!!"}}
-                       request-body)]
+  (let [request-body (merge-with merge (default-setup-input) request-body)]
     (do-with-setup*
      request-body
      (fn []
@@ -162,7 +163,15 @@
                        (wait-for-result (fn []
                                           (let [cnt (db/count Table :db_id (u/get-id db))]
                                             (when (= cnt 4)
-                                              cnt))))))))))))))
+                                              cnt))))))))))))
+
+    (testing "error conditions"
+      (testing "should throw Exception if driver is invalid"
+        (is (= {:errors {:database {:engine "Cannot create Database: cannot find driver my-fake-driver."}}}
+               (http/client :post 400 "setup" (assoc (default-setup-input)
+                                                     :database {:engine  "my-fake-driver"
+                                                                :name    (mt/random-name)
+                                                                :details {}}))))))))
 
 (defn- setup! [f & args]
   (let [body {:token (setup/create-token!)
@@ -283,14 +292,27 @@
 
 (deftest validate-setup-test
   (testing "POST /api/setup/validate"
-    (is (= {:errors {:token "Token does not match the setup token."}}
-           (http/client :post 400 "setup/validate" {})))
-    (is (= {:errors {:token "Token does not match the setup token."}}
-           (http/client :post 400 "setup/validate" {:token "foobar"})))
-    ;; make sure we have a valid setup token
-    (setup/create-token!)
-    (is (= {:errors {:engine "value must be a valid database engine."}}
-           (http/client :post 400 "setup/validate" {:token (setup/setup-token)})))))
+    (testing "Should validate token"
+      (is (= {:errors {:token "Token does not match the setup token."}}
+             (http/client :post 400 "setup/validate" {})))
+      (is (= {:errors {:token "Token does not match the setup token."}}
+             (http/client :post 400 "setup/validate" {:token "foobar"})))
+      ;; make sure we have a valid setup token
+      (setup/create-token!)
+      (is (= {:errors {:engine "value must be a valid database engine."}}
+             (http/client :post 400 "setup/validate" {:token (setup/setup-token)}))))
+
+    (testing "should validate that database connection works"
+      (is (= {:errors {:dbname "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"}}
+             (http/client :post 400 "setup/validate" {:token   (setup/setup-token)
+                                                      :details {:engine  "h2"
+                                                                :details {:db "file:///tmp/fake.db"}}}))))
+
+    (testing "should return 204 no content if everything is valid"
+      (is (= nil
+             (http/client :post 204 "setup/validate" {:token   (setup/setup-token)
+                                                      :details {:engine  "h2"
+                                                                :details (:details (mt/db))}}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
