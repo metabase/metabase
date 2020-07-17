@@ -108,7 +108,7 @@
 (deftest dont-analyze-hidden-tables-test
   (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"
     (letfn [(tests [sync!*]
-              (mt/with-temp* [Table [table (fake-table)]
+              (mt/with-temp* [Table [table (assoc (fake-table) :visibility_type "hidden")]
                               Field [field (fake-field table)]]
                 (letfn [(set-visibility! [visibility]
                           (set-table-visibility-type-via-api! table visibility)
