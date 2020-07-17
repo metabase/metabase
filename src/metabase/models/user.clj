@@ -107,28 +107,6 @@
 (defn- post-select [user]
   (add-common-name user))
 
-;; `pre-delete` is more for the benefit of tests than anything else since these days we archive users instead of fully
-;; deleting them. In other words the following code is only ever called by tests
-(defn- pre-delete [{:keys [id]}]
-  (binding [perm-membership/*allow-changing-all-users-group-members* true
-            collection/*allow-deleting-personal-collections*         true]
-    (doseq [[model k] [['Activity                   :user_id]
-                       ['Card                       :creator_id]
-                       ['Card                       :made_public_by_id]
-                       ['Collection                 :personal_owner_id]
-                       ['Dashboard                  :creator_id]
-                       ['Dashboard                  :made_public_by_id]
-                       ['Metric                     :creator_id]
-                       ['Pulse                      :creator_id]
-                       ['QueryExecution             :executor_id]
-                       ['Revision                   :user_id]
-                       ['Segment                    :creator_id]
-                       ['Session                    :user_id]
-                       [PermissionsGroupMembership  :user_id]
-                       ['PermissionsRevision        :user_id]
-                       ['ViewLog                    :user_id]]]
-      (db/delete! model k id))))
-
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
   [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
@@ -154,7 +132,6 @@
           :post-insert    post-insert
           :pre-update     pre-update
           :post-select    post-select
-          :pre-delete     pre-delete
           :types          (constantly {:login_attributes :json-no-keywordization})}))
 
 (defn group-ids

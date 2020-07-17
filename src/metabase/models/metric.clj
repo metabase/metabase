@@ -27,9 +27,6 @@
       (when (not= creator_id (db/select-one-field :creator_id Metric :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Metric.")))))))
 
-(defn- pre-delete [{:keys [id]}]
-  (db/delete! 'MetricImportantField :metric_id id))
-
 (defn- perms-objects-set [metric read-or-write]
   (let [table (or (:table metric)
                   (db/select-one ['Table :db_id :schema :id] :id (u/get-id (:table_id metric))))]
@@ -41,7 +38,6 @@
    models/IModelDefaults
    {:types      (constantly {:definition :metric-segment-definition})
     :properties (constantly {:timestamped? true})
-    :pre-delete pre-delete
     :pre-update pre-update})
   i/IObjectPermissions
   (merge

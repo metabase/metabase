@@ -57,9 +57,7 @@
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (db/delete! 'Card        :database_id id)
-  (db/delete! 'Permissions :object      [:like (str (perms/object-path id) "%")])
-  (db/delete! 'Table       :db_id       id)
+  (db/delete! 'Permissions :object [:like (str (perms/object-path id) "%")])
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e

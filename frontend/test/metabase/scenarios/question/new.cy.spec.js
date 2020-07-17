@@ -1,4 +1,4 @@
-import { restore, signInAsAdmin } from "__support__/cypress";
+import { restore, signInAsAdmin, popover } from "__support__/cypress";
 
 // test various entry points into the query builder
 
@@ -36,6 +36,13 @@ describe("scenarios > question > new", () => {
       cy.contains("Orders").click();
       cy.contains("Visualize").click();
       cy.contains("37.65");
+    });
+
+    it.skip("should show `Custom Expression` in orders metrics (Issue #12899)", () => {
+      // go straight to "orders" in custom questions
+      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      cy.findByText("Summarize").click();
+      popover().contains("Custom Expression");
     });
   });
 });

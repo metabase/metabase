@@ -45,10 +45,6 @@
     (merge defaults table)))
 
 (defn- pre-delete [{:keys [db_id schema id]}]
-  (db/delete! Segment     :table_id id)
-  (db/delete! Metric      :table_id id)
-  (db/delete! Field       :table_id id)
-  (db/delete! 'Card       :table_id id)
   (db/delete! Permissions :object [:like (str (perms/object-path db_id schema id) "%")]))
 
 (defn- perms-objects-set [table read-or-write]
