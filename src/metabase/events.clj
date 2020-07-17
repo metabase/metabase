@@ -22,8 +22,8 @@
   new implementation of this method to define new event initialization logic. All `metabase.events.*` namespaces are
   loaded automatically during event initialization before invoking implementations of `init!`.
 
-  `key` is not used internally but must be unique."
-  {:arglists '([key])}
+  `unique-key` is not used internally but must be unique."
+  {:arglists '([unique-key])}
   keyword)
 
 (defonce ^:private events-initialized?
