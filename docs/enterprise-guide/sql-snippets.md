@@ -1,8 +1,8 @@
 # SQL snippet folders and permissions
 
-This article covers **SQL snippet folders**, which are an Enterprise feature for keeping snippets organized and setting permissions. You can learn more about [how SQL snippets work in our User Guide](../users-guide/sql-snippets.md).
+This article covers **SQL snippet folders**, which are an Enterprise feature for organizing and permissioning snippets. You can learn more about [how SQL snippets work in our User Guide](../users-guide/sql-snippets.md).
 
-The purpose of snippet folders (and the permissions administrators can set for these folders) is to help teams keep large numbers of snippets organized. Folder permissions should not be considered a security feature, but instead a feature that helps with organization and standardization. See the [discussion on permissions below](#permissions) for more info. 
+Folder permissions should not be considered a security feature, but instead a feature that helps with organization and standardization. See the [discussion on permissions below](#permissions) for more info. 
 
 ## Folders
 
@@ -26,26 +26,37 @@ When creating a SQL snippet in the Enterprise Edition, you'll also see an additi
 
 ## Permissions
 
-Administrators can set snippet visibility and editability by placing snippets in **folders**, and assigning one of three permission levels to groups of people with respect to those folders. If you're familiar with [collection permissions](/docs/latest/administration-guide/06-collections.html#setting-permissions-for-collections), the functionality is similar.
+Administrators can set snippet visibility and editability by placing snippets in **folders**, and assigning one of three permission levels to groups of people with respect to those folders. If you're familiar with [collection permissions](/docs/latest/administration-guide/06-collections.html#setting-permissions-for-collections), the functionality is similar. See [how folder permissions work](#how-folder-permissions-work) for more on how collection permissions and folder permissions work together.
 
-### Setting permissions on a folder
+### Changing permissions on a folder
 
-Administrators can set the permissions on a folder by clicking on the ellipsis (...) next to a folder, and selecting **Change permissions**.
+Administrators (and only administrators) can set the permissions on a folder by clicking on the ellipsis (**...**) next to a folder, and selecting **Change permissions**.
 
-There are three levels for folder permissions:
+You can additionally change the currently selected folder by mousing over to the top of the snippet sidebar, clicking on the ellipsis to the left of the **+**, and selecting **Change permissions**. When at the top (or root folder), selecting the **...** at the top of the sidebar will give Administrators the option to set permissions for all snippets, folders, and sub-folders.
 
-- **Edit**. Full access to the snippet. Users can view, execute, edit, and archive or unarchive the snippet.
-- **Execute**. Users in that group can view and execute that snippet, but not edit or archive/unarchive it. They can, of course, copy the snippet's code and create a new snippet.
-- **Revoke**. Users in groups with neither edit nor execute permissions to a snippet folder will not see that folder's snippets in the sidebar, nor will any snippets in that folder populate those users' searches.
+When changing permissions on a folder that has subfolders, you have an option to extend those permissions to that folder's sub-folders by toggling the **Also change sub-folders** setting.
 
-Archiving or unarchiving snippets does not affect a snippet's permissions. If, for example, only one group, say Datamancers, has edit permissions on a folder, only Datamancers would be able to archive and unarchive snippets in that folder, as archiving and unarchiving is considered editing the snippet.
+### Options for folder permissions
+
+There are three options for changing snippet folder permissions:
+
+- **Edit access (green checkmark icon)**. The default setting. Full access to the snippets in the folder. Users can view, edit, and archive or unarchive snippets. When a folder is created, all snippets are editable by all users. To restrict permissions to that folder, you'll need to either downgrade the group to execute permissions, or revoke permissions entirely.
+- **View access (yellow eye icon)**. Users in that group can view that snippet, but not edit or archive/unarchive it. They can, of course, copy the snippet's code and create a new snippet.
+- **Revoke access (red X icon)**. Users in groups with neither edit nor view permissions to a snippet folder will not see that folder's snippets in the sidebar, nor will any snippets in that folder populate those users' searches.
+
+Archiving or unarchiving snippets does not affect a snippet's permissions. If, for example, only one group, say the Datamancer group, has edit permissions on a folder, only Datamancers would be able to archive and unarchive snippets in that folder, as archiving and unarchiving is considered editing the snippet.
 
 ### How folder permissions work
 
-SQL snippet permissions require some effort to conceptualize, as SQL snippet folders permissions must work in conjunction with other sets of permissions, such as those in collections. But here's the basic rule: data is more sensitive than code, so permissions that protect data will take precedence over permissions that protect code.
+Snippet folder permissions require some effort to unpack, as permissions for snippet folders must work in conjunction with permissions for collections. 
 
-For example, if users in a group have **Edit** or **Execute** permission on a snippet folder, but that group doesn't have permission to access the database queried in that snippet, they'll be able to view the snippet (and edit it, if they have edit permission), but they'll be unable to run the query and return results, as they do not have access to that database.
+Here's the basic rule: data is more sensitive than code, so permissions that protect data will take precedence over permissions that protect code. Let's work through some examples to illustrate how this works in practice.
 
-As a counter example, consider a question that contains a SQL snippet. If a group has 1) SQL editor access, and 2) access to that question (i.e. the group has permissions to the question via a collection), users in that group should be able to view and execute that question with the snippet, even if that group does not have permission to the snippet's folder.
+For example (and here's a sentence that merits slow reading): a group might have permission to a collection that contains a question that uses a snippet housed in a folder that the group does not have permissions to. To rephrase, people in that group have permissions to run questions in a collection, but they do not have permission to a folder containing a snippet used in one of the collection's questions. How will Metabase resolve permissions in this case?
 
-Basically, you should consider SQL snippet permissions as an additional tool for snippet organization, not as method of preventing access to the SQL code those snippets contain. Use folder permissions to keep the snippet sidebar tidy by exposing teams to folders relevant to their analytics, and restrict editing permissions to key snippets in your organization to keep important SQL code accurate and safe from bugs introduced by edits from less experienced personnel.
+In two parts:
+
+1. People in that group can run the question and get results. They have permission to see that data (the question results), and their permissions to the collection takes precedence over permissions to the folder (the code).
+2. However, just because people in that group can run the question without issue, they still don't have permission to snippet's folder, so they wouldn't be able to see that snippet (or the snippet's folder) in the snippet sidebar.
+
+Because of how folder permissions work, you should consider snippet folder permissions as an additional tool for snippet organization, not as method of preventing access to the SQL code those snippets contain. Use folder permissions to keep the snippet sidebar tidy by exposing teams to folders relevant to their analytics, and restrict editing permissions to key snippets in your organization to keep important SQL code accurate and safe from bugs introduced by edits from less experienced personnel.
