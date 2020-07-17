@@ -161,7 +161,7 @@
                 (is (= 4
                        (wait-for-result (fn []
                                           (let [cnt (db/count Table :db_id (u/get-id db))]
-                                            (when (pos? cnt)
+                                            (when (= cnt 4)
                                               cnt))))))))))))))
 
 (defn- setup! [f & args]
