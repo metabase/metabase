@@ -372,9 +372,16 @@
      :source-paths ^:replace ["src" "backend/mbql/src"]
      :test-paths   ^:replace ["test" "backend/mbql/test"]
      :cloverage    {:fail-threshold 69
-                    ;; don't instrument logging forms, since they won't get executed as part of tests anyway
-                    ;; log calls expand to these
-                    :exclude-call [clojure.tools.logging/logf clojure.tools.logging/logp]}}]
+                    :exclude-call
+                    [;; don't instrument logging forms, since they won't get executed as part of tests anyway
+                     ;; log calls expand to these
+                     clojure.tools.logging/logf
+                     clojure.tools.logging/logp
+                     ;; defonce and defmulti forms get instrumented incorrectly and are false negatives
+                     ;; -- see https://github.com/cloverage/cloverage/issues/294. Once this issue is
+                     ;; fixed we can remove this exception.
+                     defonce
+                     defmulti]}}]
 
    ;; build the uberjar with `lein uberjar`
    :uberjar
