@@ -7,7 +7,7 @@
              [email :as email]
              [events :as events]
              [http-client :as http]
-             [models :refer [Activity Database Table User]]
+             [models :refer [Activity Database Field Table User]]
              [public-settings :as public-settings]
              [setup :as setup]
              [test :as mt]
@@ -162,6 +162,13 @@
                        (wait-for-result (fn []
                                           (let [cnt (db/count Table :db_id (u/get-id db))]
                                             (when (= cnt 4)
+                                              cnt))))))
+                ;; we better wait for all the Fields to get synced too, otherwise we're going to have a bad time if we
+                ;; try to delete the DB during sync and new fields get created during the `pre-delete` calls
+                (is (= 16
+                       (wait-for-result (fn []
+                                          (let [cnt (db/count Field :table_id [:in (db/select-ids Table :db_id (u/get-id db))])]
+                                            (when (= cnt 16)
                                               cnt))))))))))))))
 
 (defn- setup! [f & args]
