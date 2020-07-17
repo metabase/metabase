@@ -791,12 +791,7 @@
   false)
 
 (defn- pre-delete [collection]
-  ;; unset the collection_id for Cards/Pulses in this collection. This is mostly for the sake of tests since IRL we
-  ;; shouldn't be deleting Collections, but rather archiving them instead
-  (doseq [model ['Card 'Pulse 'Dashboard]]
-    (db/update-where! model {:collection_id (u/get-id collection)}
-      :collection_id nil))
-  ;; Now delete all the Children of this Collection
+  ;; Delete all the Children of this Collection
   (db/delete! Collection :location (children-location collection))
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*

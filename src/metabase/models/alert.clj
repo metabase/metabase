@@ -1,1 +1,0 @@
-(ns metabase.models.alert)

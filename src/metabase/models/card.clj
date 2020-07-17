@@ -158,11 +158,7 @@
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
-  (db/delete! 'PulseCard :card_id id)
-  (db/delete! 'Revision :model "Card", :model_id id)
-  (db/delete! 'DashboardCardSeries :card_id id)
-  (db/delete! 'DashboardCard :card_id id)
-  (db/delete! 'CardFavorite :card_id id))
+  (db/delete! 'Revision :model "Card", :model_id id))
 
 (u/strict-extend (class Card)
   models/IModel
