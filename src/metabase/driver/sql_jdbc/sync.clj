@@ -9,8 +9,10 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
-  (:import java.sql.DatabaseMetaData))
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.util.honeysql-extensions :as hx])
+  (:import (java.sql Connection DatabaseMetaData ResultSetMetaData)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
@@ -81,6 +83,11 @@
           (re-find pattern column-type) base-type
           (seq more)                    (recur more))))))
 
+(defn- ->spec [db-or-id-or-spec]
+  (if (u/id db-or-id-or-spec)
+    (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
+    db-or-id-or-spec))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Sync Impl                                                    |
@@ -150,23 +157,50 @@
       (str "Invalid type: " special-type))
     special-type))
 
+(defn simple-select-probe
+  "Perform a simple (and cheap) SELECT on a given table to test for access and get metadata."
+  [driver schema table]
+  (first
+   (sql.qp/format-honeysql driver
+     (sql.qp/apply-top-level-clause driver :limit
+       {:select [:*]
+        :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]}
+       {:limit 1}))))
+
+(defn- fields-metadata
+  [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name :as table}, & [^String db-name-or-nil]]
+  (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
+    (let [result (jdbc/result-set-seq rs)]
+      ;; In some rare cases `:column_name` is blank (eg. SQLite's views with group by),
+      ;; fallback to sniffing the type from a SELECT * query
+      (if (some (comp str/blank? :type_name) result)
+        (jdbc/with-db-connection [conn (->spec (:db_id table))]
+          (let [^Connection conn            (:connection conn)
+                ^ResultSetMetaData metadata (->> (simple-select-probe driver schema table-name)
+                                                 (.executeQuery (.createStatement conn))
+                                                 (.getMetaData))]
+            (doall
+             (for [i (range 1 (inc (.getColumnCount metadata)))]
+               {:type_name   (.getColumnTypeName metadata i)
+                :column_name (.getColumnName metadata i)}))))
+        result))))
+
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
-  [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name}, & [^String db-name-or-nil]]
-  (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
-    (set
-     (for [[idx {database-type :type_name
-                 column-name   :column_name
-                 remarks       :remarks}] (m/indexed (jdbc/metadata-result rs))]
-       (merge
-        {:name              column-name
-         :database-type     database-type
-         :base-type         (database-type->base-type-or-warn driver database-type)
-         :database-position idx}
-        (when (not (str/blank? remarks))
-          {:field-comment remarks})
-        (when-let [special-type (calculated-special-type driver column-name database-type)]
-          {:special-type special-type}))))))
+  [^DatabaseMetaData metadata, driver, table, & [^String db-name-or-nil]]
+  (set
+   (for [[idx {database-type :type_name
+               column-name   :column_name
+               remarks       :remarks}] (m/indexed (fields-metadata metadata driver table db-name-or-nil))]
+     (merge
+      {:name              column-name
+       :database-type     database-type
+       :base-type         (database-type->base-type-or-warn driver database-type)
+       :database-position idx}
+      (when (not (str/blank? remarks))
+        {:field-comment remarks})
+      (when-let [special-type (calculated-special-type driver column-name database-type)]
+        {:special-type special-type})))))
 
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
@@ -183,11 +217,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            Default SQL JDBC metabase.driver impls for sync methods                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- ->spec [db-or-id-or-spec]
-  (if (u/id db-or-id-or-spec)
-    (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-    db-or-id-or-spec))
 
 (defn describe-database
   "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
