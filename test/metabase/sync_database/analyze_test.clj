@@ -107,36 +107,36 @@
 
 (deftest dont-analyze-hidden-tables-test
   (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"
-    (mt/with-temp* [Table [table (fake-table)]
-                    Field [field (fake-field table)]]
-      (set-table-visibility-type-via-api! table "hidden")
-      (api-sync! table)
-      (set-table-visibility-type-via-api! table "cruft")
-      (set-table-visibility-type-via-api! table "cruft")
-      (api-sync! table)
-      (set-table-visibility-type-via-api! table "technical")
-      (api-sync! table)
-      (set-table-visibility-type-via-api! table "technical")
-      (api-sync! table)
-      (api-sync! table)
-      (is (= false
-             (fake-field-was-analyzed? field))))
-
-    (testing "\nsame test but with sync triggered programatically rather than via the API"
-      (mt/with-temp* [Table [table (fake-table)]
-                      Field [field (fake-field table)]]
-        (set-table-visibility-type-via-api! table "hidden")
-        (analyze-table! table)
-        (set-table-visibility-type-via-api! table "cruft")
-        (set-table-visibility-type-via-api! table "cruft")
-        (analyze-table! table)
-        (set-table-visibility-type-via-api! table "technical")
-        (analyze-table! table)
-        (set-table-visibility-type-via-api! table "technical")
-        (analyze-table! table)
-        (analyze-table! table)
-        (is (= false
-               (fake-field-was-analyzed? field)))))))
+    (letfn [(tests [sync!*]
+              (mt/with-temp* [Table [table (fake-table)]
+                              Field [field (fake-field table)]]
+                (letfn [(set-visibility! [visibility]
+                          (set-table-visibility-type-via-api! table visibility)
+                          (testing "after updating visibility type"
+                            (is (= false
+                                   (fake-field-was-analyzed? field)))))
+                        (sync! []
+                          (sync!* table)
+                          (testing "after sync"
+                            (is (= false
+                                   (fake-field-was-analyzed? field)))))]
+                  (testing "visibility -> hidden"
+                    (set-visibility! "hidden")
+                    (sync!))
+                  (testing "visibility -> cruft"
+                    (set-visibility! "cruft")
+                    (set-visibility! "cruft")
+                    (sync!))
+                  (testing "visibility -> technical"
+                    (set-visibility! "technical")
+                    (sync!))
+                  (testing "visibility -> technical (again)"
+                    (set-visibility! "technical")
+                    (sync!)
+                    (sync!)))))]
+      (tests api-sync!)
+      (testing "\nsame test but with sync triggered programatically rather than via the API"
+        (tests analyze-table!)))))
 
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
