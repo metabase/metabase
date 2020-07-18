@@ -38,7 +38,6 @@
   "Unschedule any currently pending sync operation tasks for `database`."
   [database]
   (try
-    (classloader/the-classloader)
     (classloader/require 'metabase.task.sync-databases)
     ((resolve 'metabase.task.sync-databases/unschedule-tasks-for-db!) database)
     (catch Throwable e
@@ -95,7 +94,6 @@
 
 (defn- perms-objects-set [database _]
   #{(perms/object-path (u/get-id database))})
-
 
 (u/strict-extend (class Database)
   models/IModel
