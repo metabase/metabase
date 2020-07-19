@@ -24,7 +24,7 @@ You can create a SQL snippet folder from the **Snippets** menu in the [SQL edito
 
 ### Creating a new SQL snippet
 
-When creating a SQL snippet in the Enterprise Edition, you'll also see an additional option to add that snippet to an existing folder: **Folder this should be in**. 
+When creating a SQL snippet in the Enterprise Edition, you'll also see an additional option to add that snippet to an existing folder (**Folder this should be in**). 
 
 ![Add a snippet enterprise modal](./images/sql-snippets/enterprise-add-snippet.png)
 
@@ -43,6 +43,8 @@ You can additionally change the currently selected folder by mousing over to the
 When changing permissions on a folder that has sub-folders, you have an option to extend those permissions to that folder's sub-folders by toggling the **Also change sub-folders** setting.
 
 ### Options for folder permissions
+
+![Change permissions](./images/sql-snippets/change-permissions.png)
 
 There are three options for changing snippet folder permissions:
 
