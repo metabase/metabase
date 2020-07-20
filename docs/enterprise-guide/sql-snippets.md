@@ -2,7 +2,7 @@
 
 This article covers **SQL snippet folders**, which are an Enterprise feature for organizing and permissioning snippets. You can learn more about [how SQL snippets work in our User Guide](../users-guide/sql-snippets.md).
 
-Folder permissions should not be considered a security feature, but instead a feature that helps organize and standardize snippets. For more info, see the [discussion on permissions below](#permissions).
+Folder permissions should not be considered a security feature, but instead a feature that helps organize and standardize snippets. Although folders are distinct and separate from Collections, they both serve an organizational function: Collections gather and permission dashboards and questions; folders gather and permission snippets. For more info, see the [discussion on permissions below](#permissions).
 
 ## Folders
 
@@ -50,9 +50,9 @@ When changing permissions on a folder that has sub-folders, you have an option t
 
 There are three options for changing snippet folder permissions:
 
-- **Edit access (green checkmark icon)**. The default setting. When a folder is created, all users can view, edit, and archive or unarchive the folder's snippets. 
+- **Edit access (green checkmark icon)**. The default setting. When a folder is created, all users (who have SQL editor permissions for at least one database) can view, edit, and archive or unarchive the folder's snippets. 
 - **View access (yellow eye icon)**. Users in groups with view access can view snippets in the folder, but not edit or archive/unarchive them. They can, of course, copy snippet code and create new snippets, with no effect on the existing snippets.
-- **Revoke access (red X icon)**. Users in groups with neither edit nor view permissions to a snippet folder will not see that folder's snippets in the sidebar, nor will any snippets in that folder appear in typeahead suggestions for those users.
+- **Revoke access (red X icon)**. Users in groups with neither edit nor view permissions to a snippet folder will not see that folder's snippets in the sidebar, nor will any snippets in that folder appear in typeahead suggestions for those users. Note that if people have access to a question with a snippet they don't have permission to, they will still be able to get results from that question. See the discussion below on [how folder permissions work](#how-folder-permissions-work).
 
 ### Archiving does not affect permissions
 
