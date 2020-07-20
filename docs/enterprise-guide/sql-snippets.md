@@ -56,7 +56,7 @@ There are three options for changing snippet folder permissions:
 
 ### Archiving does not affect permissions
 
-Archiving or unarchiving snippets does not affect a snippet's permissions. If, for example, only one group, say the Accounting group, has edit permissions on a folder, only people in the Accounting would be able to archive and unarchive snippets in that folder, as archiving and unarchiving is considered editing the snippet.
+Archiving or unarchiving snippets does not affect a snippet's permissions. If, for example, only one group, say the Accounting group, has edit permissions on a folder, only people in the Accounting group (and admins) would be able to archive and unarchive snippets in that folder, as archiving and unarchiving is considered editing the snippet.
 
 ### How folder permissions work
 
