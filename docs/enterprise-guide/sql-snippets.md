@@ -6,7 +6,7 @@ Folder permissions should not be considered a security feature, but instead a fe
 
 ## Folders
 
-Folders work similar to a file system. You can add snippets to folders, and nest folders (i.e. create a folder, and put a sub-folder in that folder, which itself has a sub-folder, etc.). You can nest as many folders as your Metabase instance can handle or the laws of physics allow (whichever yields first).
+Folders work similarly to a file system. You can add snippets to folders, and put folders inside of other folders. You can nest as many folders as your Metabase instance can handle or the laws of physics allow (whichever yields first).
 
 The **Top folder** is the snippet sidebar's default folder. It is the root folder that contains all folders and snippets.
 
