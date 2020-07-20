@@ -128,17 +128,13 @@
                 :order-by [[:u.id :asc]]})]
      (user/add-common-name user))))
 
-(defn- pre-delete [{:keys [id]}]
-  (db/delete! PulseChannelRecipient :pulse_channel_id id))
-
 (u/strict-extend (class PulseChannel)
   models/IModel
   (merge
    models/IModelDefaults
    {:hydration-keys (constantly [:pulse_channel])
     :types          (constantly {:details :json, :channel_type :keyword, :schedule_type :keyword, :schedule_frame :keyword})
-    :properties     (constantly {:timestamped? true})
-    :pre-delete     pre-delete})
+    :properties     (constantly {:timestamped? true})})
 
   i/IObjectPermissions
   (merge

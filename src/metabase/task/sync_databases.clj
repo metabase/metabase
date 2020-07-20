@@ -16,7 +16,8 @@
              [sync-metadata :as sync-metadata]]
             [metabase.util
              [cron :as cron-util]
-             [i18n :refer [trs]]]
+             [i18n :refer [trs]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.database.DatabaseInstance
@@ -26,25 +27,31 @@
 ;;; |                                                   JOB LOGIC                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private job-context->database :- (s/maybe DatabaseInstance)
-  "Get the Database referred to in `job-context`. Returns `nil` if Database no longer exists. (Normally, a Database's
-  sync jobs *should* get deleted when the Database itself is deleted, but better to be safe here just in case.)"
+(s/defn ^:private job-context->database-id :- (s/maybe su/IntGreaterThanZero)
+  "Get the Database ID referred to in `job-context`."
   [job-context]
-  (Database (u/get-id (get (qc/from-job-data job-context) "db-id"))))
+  (u/get-id (get (qc/from-job-data job-context) "db-id")))
 
 ;; The DisallowConcurrentExecution on the two defrecords below attaches an annotation to the generated class that will
 ;; constrain the job execution to only be one at a time. Other triggers wanting the job to run will misfire.
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} SyncAndAnalyzeDatabase [job-context]
-  (when-let [database (job-context->database job-context)]
-    (sync-metadata/sync-db-metadata! database)
-    ;; only run analysis if this is a "full sync" database
-    (when (:is_full_sync database)
-      (analyze/analyze-db! database))))
+  (when-let [database-id (job-context->database-id job-context)]
+    (log/info (trs "Starting sync task for Database {0}." database-id))
+    (when-let [database (or (Database database-id)
+                            (log/warn (trs "Cannot sync Database {0}: Database does not exist." database-id)))]
+      (sync-metadata/sync-db-metadata! database)
+      ;; only run analysis if this is a "full sync" database
+      (when (:is_full_sync database)
+        (analyze/analyze-db! database)))))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} UpdateFieldValues [job-context]
-  (when-let [database (job-context->database job-context)]
-    (when (:is_full_sync database)
-      (field-values/update-field-values! database))))
+  (when-let [database-id (job-context->database-id job-context)]
+    (log/info (trs "Update Field values task triggered for Database {0}." database-id))
+    (when-let [database (or (Database database-id)
+                            (log/warn "Cannot update Field values for Database {0}: Database does not exist." database-id))]
+      (if (:is_full_sync database)
+        (field-values/update-field-values! database)
+        (log/info (trs "Skipping update, automatic Field value updates are disabled for Database {0}." database-id))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -183,10 +190,12 @@
   (task/add-job! sync-analyze-job)
   (task/add-job! field-values-job))
 
-(defmethod task/init! ::SyncDatabases [_]
+(defmethod task/init! ::SyncDatabases
+  [_]
   (job-init)
   (doseq [database (db/select Database)]
     (try
+      ;; TODO -- shouldn't all the triggers be scheduled already?
       (schedule-tasks-for-db! database)
       (catch Throwable e
         (log/error e (trs "Failed to schedule tasks for Database {0}" (:id database)))))))

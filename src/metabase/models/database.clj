@@ -38,7 +38,6 @@
   "Unschedule any currently pending sync operation tasks for `database`."
   [database]
   (try
-    (classloader/the-classloader)
     (classloader/require 'metabase.task.sync-databases)
     ((resolve 'metabase.task.sync-databases/unschedule-tasks-for-db!) database)
     (catch Throwable e
@@ -58,9 +57,7 @@
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (db/delete! 'Card        :database_id id)
-  (db/delete! 'Permissions :object      [:like (str (perms/object-path id) "%")])
-  (db/delete! 'Table       :db_id       id)
+  (db/delete! 'Permissions :object [:like (str (perms/object-path id) "%")])
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
@@ -97,7 +94,6 @@
 
 (defn- perms-objects-set [database _]
   #{(perms/object-path (u/get-id database))})
-
 
 (u/strict-extend (class Database)
   models/IModel

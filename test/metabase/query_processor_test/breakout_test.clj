@@ -73,7 +73,7 @@
 (deftest internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
     (mt/with-temp-objects
-      (data/create-venue-category-remapping "Foo")
+      (data/create-venue-category-remapping! "Foo")
       (let [{:keys [rows cols]} (qp.test/rows-and-cols
                                   (mt/format-rows-by [int int str]
                                     (mt/run-mbql-query venues

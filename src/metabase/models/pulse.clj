@@ -41,10 +41,6 @@
 
 (models/defmodel Pulse :pulse)
 
-(defn- pre-delete [notification]
-  (doseq [model [PulseCard PulseChannel]]
-    (db/delete! model :pulse_id (u/get-id notification))))
-
 (defn- pre-insert [notification]
   (u/prog1 notification
     (collection/check-collection-namespace Pulse (:collection_id notification))))
@@ -82,7 +78,6 @@
    models/IModelDefaults
    {:hydration-keys (constantly [:pulse])
     :properties     (constantly {:timestamped? true})
-    :pre-delete     pre-delete
     :pre-insert     pre-insert
     :pre-update     pre-update})
   i/IObjectPermissions

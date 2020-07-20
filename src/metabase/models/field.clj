@@ -77,12 +77,6 @@
   (u/prog1 field
     (check-valid-types field)))
 
-(defn- pre-delete [{:keys [id]}]
-  (db/delete! Field :parent_id id)
-  (db/delete! 'FieldValues :field_id id)
-  (db/delete! 'MetricImportantField :field_id id))
-
-
 ;;; Field permissions
 ;; There are several API endpoints where large instances can return many thousands of Fields. Normally Fields require
 ;; a DB call to fetch information about their Table, because a Field's permissions set is the same as its parent
@@ -149,8 +143,7 @@
                                        :settings         :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
-          :pre-update     pre-update
-          :pre-delete     pre-delete})
+          :pre-update     pre-update})
 
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults

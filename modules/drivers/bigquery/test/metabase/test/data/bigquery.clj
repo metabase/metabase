@@ -224,7 +224,7 @@
                        :data                         (.getRows rows)})))
     ;; Wait up to 30 seconds for all the rows to be loaded and become available by BigQuery
     (let [expected-row-count (count row-maps)]
-      (loop [seconds-to-wait-for-load 10 #_30] ; NOCOMMIT
+      (loop [seconds-to-wait-for-load 30]
         (let [actual-row-count (table-row-count dataset-id table-id)]
           (cond
             (= expected-row-count actual-row-count)

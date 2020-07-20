@@ -1500,3 +1500,22 @@
              clojure.lang.ExceptionInfo
              #"Collection does not exist"
              (collection/check-collection-namespace Card Integer/MAX_VALUE)))))))
+
+(deftest delete-collection-set-children-collection-id-to-null-test
+  (testing "When deleting a Collection, should change collection_id of Children to nil instead of Cascading"
+    (mt/with-temp* [Collection [{coll-id :id}]
+                    Card       [{card-id :id}      {:collection_id coll-id}]
+                    Dashboard  [{dashboard-id :id} {:collection_id coll-id}]
+                    Pulse      [{pulse-id :id}     {:collection_id coll-id}]]
+      (db/delete! Collection :id coll-id)
+      (is (db/exists? Card :id card-id)
+          "Card")
+      (is (db/exists? Dashboard :id dashboard-id)
+          "Dashboard")
+      (is (db/exists? Pulse :id pulse-id)
+          "Pulse"))
+    (mt/with-temp* [Collection         [{coll-id :id}    {:namespace "snippets"}]
+                    NativeQuerySnippet [{snippet-id :id} {:collection_id coll-id}]]
+      (db/delete! Collection :id coll-id)
+      (is (db/exists? NativeQuerySnippet :id snippet-id)
+          "Snippet"))))

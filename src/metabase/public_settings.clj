@@ -79,9 +79,9 @@
               (setting/set-string! :site-url new-value))))
 
 (defsetting site-locale
-  (str (deferred-tru "The language that should be used for Metabase's UI, system emails, pulses, and alerts.")
+  (str (deferred-tru "The default language for all users across the Metabase UI, system emails, pulses, and alerts.")
        " "
-       (deferred-tru "This is also the default language for all users, which they can change from their own account settings."))
+       (deferred-tru "Users can individually override this default language from their own account settings."))
   :default    "en"
   :visibility :public
   :setter     (fn [new-value]
