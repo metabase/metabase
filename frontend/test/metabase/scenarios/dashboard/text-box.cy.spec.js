@@ -9,11 +9,10 @@ function addTextBox(string) {
 }
 
 describe("scenarios > dashboard > text-box", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
-
   describe("when text-box is the only element on the dashboard", () => {
     beforeEach(() => {
+      restore(); // restore before each so we can reuse dashboard id
+      signInAsAdmin();
       // Create dashboard
       cy.server();
       cy.request("POST", "/api/dashboard", {
@@ -21,7 +20,7 @@ describe("scenarios > dashboard > text-box", () => {
       });
     });
 
-    it.skip("should load after save/refresh (Issue #12914)", () => {
+    it("should load after save/refresh (Issue #12914)", () => {
       cy.visit(`/dashboard/2`);
 
       cy.findByText("Test Dashboard");
