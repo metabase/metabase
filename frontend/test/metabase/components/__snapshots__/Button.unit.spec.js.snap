@@ -26,7 +26,7 @@ exports[`Button should render correctly with an icon 1`] = `
     style={null}
   >
     <svg
-      className="Icon Icon-star Icon-cxuQhR kTAgZA"
+      className="Icon Icon-star Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={14}
       viewBox="0 0 32 32"
