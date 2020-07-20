@@ -55,16 +55,16 @@
 (defn- dox-for-schema
   "Look up the docstring for `schema` for use in auto-generated API documentation. In most cases this is defined by
   wrapping the schema with `with-api-error-message`."
-  [schema]
+  [schema route-str]
   (if-not schema
     ""
     (or (su/api-error-message schema)
         ;; Don't try to i18n this stuff! It's developer-facing only.
         (when config/is-dev?
           (log/warn
-           (u/format-color 'red (str "We don't have a nice error message for schema: %s\n"
+           (u/format-color 'red (str "We don't have a nice error message for schema: %s defined at %s\n"
                                      "Consider wrapping it in `su/with-api-error-message`.")
-             (u/pprint-to-str schema)))))))
+             (u/pprint-to-str schema) route-str))))))
 
 (defn- param-name
   "Return the appropriate name for this `param-symb` based on its `schema`. Usually this is just the name of the
@@ -77,11 +77,11 @@
 (defn- format-route-schema-dox
   "Generate the `params` section of the documentation for a `defendpoint`-defined function by using the
   `param-symb->schema` map passed in after the argslist."
-  [param-symb->schema]
+  [param-symb->schema route-str]
   (when (seq param-symb->schema)
     (str "\n\n##### PARAMS:\n\n"
          (str/join "\n\n" (for [[param-symb schema] param-symb->schema]
-                            (format "*  **`%s`** %s" (param-name param-symb schema) (dox-for-schema schema)))))))
+                            (format "*  **`%s`** %s" (param-name param-symb schema) (dox-for-schema schema route-str)))))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
@@ -89,7 +89,7 @@
   (str (format "## `%s`" route-str)
        (when (seq docstr)
          (str "\n\n" docstr))
-       (format-route-schema-dox param->schema)))
+       (format-route-schema-dox param->schema route-str)))
 
 (defn- contains-superuser-check?
   "Does the BODY of this `defendpoint` form contain a call to `check-superuser`?"
