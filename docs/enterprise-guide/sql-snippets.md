@@ -52,7 +52,7 @@ There are three options for changing snippet folder permissions:
 
 - **Edit access (green checkmark icon)**. The default setting. When a folder is created, all users can view, edit, and archive or unarchive the folder's snippets. 
 - **View access (yellow eye icon)**. Users in groups with view access can view snippets in the folder, but not edit or archive/unarchive them. They can, of course, copy snippet code and create new snippets, with no effect on the existing snippets.
-- **Revoke access (red X icon)**. Users in groups with neither edit nor view permissions to a snippet folder will not see that folder's snippets in the sidebar, nor will any snippets in that folder populate those users' searches.
+- **Revoke access (red X icon)**. Users in groups with neither edit nor view permissions to a snippet folder will not see that folder's snippets in the sidebar, nor will any snippets in that folder appear in typeahead suggestions for those users.
 
 ### Archiving does not affect permissions
 
