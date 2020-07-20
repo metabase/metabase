@@ -1,5 +1,9 @@
-import { restore, signInAsAdmin, signIn } from "__support__/cypress";
-import { signInAsNormalUser } from "../../../__support__/cypress";
+import {
+  restore,
+  signInAsAdmin,
+  signInAsNormalUser,
+  signIn,
+} from "__support__/cypress";
 
 describe("scenarios > auth > search", () => {
   before(restore);
