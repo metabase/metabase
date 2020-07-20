@@ -38,11 +38,20 @@ describe("scenarios > question > new", () => {
       cy.contains("37.65");
     });
 
-    it.skip("should show `Custom Expression` in orders metrics (Issue #12899)", () => {
+    it("should allow using `Custom Expression` in orders metrics", () => {
       // go straight to "orders" in custom questions
       cy.visit("/question/new?database=1&table=2&mode=notebook");
       cy.findByText("Summarize").click();
-      popover().contains("Custom Expression");
+      popover()
+        .contains("Custom Expression")
+        .click();
+      popover().within(() => {
+        cy.get("[contentEditable=true]").type("2 * Max([Total])");
+        cy.findByPlaceholderText("Name (required)").type("twice max total");
+        cy.findByText("Done").click();
+      });
+      cy.findByText("Visualize").click();
+      cy.findByText("604.96");
     });
   });
 });
