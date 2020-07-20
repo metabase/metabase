@@ -1,4 +1,4 @@
-import { restore, signInAsAdmin, popover, modal } from "__support__/cypress";
+import { restore, signInAsAdmin, popover, modal, openOrdersTable } from "__support__/cypress";
 
 describe("scenarios > question > notebook", () => {
   before(restore);
@@ -31,63 +31,89 @@ describe("scenarios > question > notebook", () => {
     cy.contains("Showing 1 row"); // ensure only one user was returned
   });
 
-  it("should allow joins", () => {
-    // start a custom question with orders
-    cy.visit("/question/new");
-    cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
-    cy.contains("Orders").click();
+  describe("JOINs", () => {
+    it("should be allowed", () => {
+      // start a custom question with orders
+      cy.visit("/question/new");
+      cy.contains("Custom question").click();
+      cy.contains("Sample Dataset").click();
+      cy.contains("Orders").click();
 
-    // join to Reviews on orders.product_id = reviews.product_id
-    cy.get(".Icon-join_left_outer").click();
-    popover()
-      .contains("Reviews")
-      .click();
-    popover()
-      .contains("Product ID")
-      .click();
-    popover()
-      .contains("Product ID")
-      .click();
+      // join to Reviews on orders.product_id = reviews.product_id
+      cy.get(".Icon-join_left_outer").click();
+      popover()
+        .contains("Reviews")
+        .click();
+      popover()
+        .contains("Product ID")
+        .click();
+      popover()
+        .contains("Product ID")
+        .click();
 
-    // get the average rating across all rows (not a useful metric)
-    cy.contains("Pick the metric you want to see").click();
-    popover()
-      .contains("Average of")
-      .click();
-    popover()
-      .find(".Icon-join_left_outer")
-      .click();
-    popover()
-      .contains("Rating")
-      .click();
-    cy.contains("Visualize").click();
-    cy.contains("Orders + Reviews");
-    cy.contains("3");
-  });
+      // get the average rating across all rows (not a useful metric)
+      cy.contains("Pick the metric you want to see").click();
+      popover()
+        .contains("Average of")
+        .click();
+      popover()
+        .find(".Icon-join_left_outer")
+        .click();
+      popover()
+        .contains("Rating")
+        .click();
+      cy.contains("Visualize").click();
+      cy.contains("Orders + Reviews");
+      cy.contains("3");
+    });
 
-  it("should allow post-join filters (metabase#12221)", () => {
-    cy.log("start a custom question with Orders");
-    cy.visit("/question/new");
-    cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
-    cy.contains("Orders").click();
+    it("should allow filters after (Issue #12221)", () => {
+      cy.log("start a custom question with Orders");
+      cy.visit("/question/new");
+      cy.contains("Custom question").click();
+      cy.contains("Sample Dataset").click();
+      cy.contains("Orders").click();
 
-    cy.log("join to People table using default settings");
-    cy.get(".Icon-join_left_outer ").click();
-    cy.contains("People").click();
-    cy.contains("Orders + People");
-    cy.contains("Visualize").click();
-    cy.contains("Showing first 2,000");
+      cy.log("join to People table using default settings");
+      cy.get(".Icon-join_left_outer ").click();
+      cy.contains("People").click();
+      cy.contains("Orders + People");
+      cy.contains("Visualize").click();
+      cy.contains("Showing first 2,000");
 
-    cy.log("attempt to filter on the joined table");
-    cy.contains("Filter").click();
-    cy.contains("Email").click();
-    cy.contains("People – Email");
-    cy.get('[placeholder="Search by Email"]').type("wolf.");
-    cy.contains("wolf.dina@yahoo.com").click();
-    cy.contains("Add filter").click();
-    cy.contains("Showing 1 row");
+      cy.log("attempt to filter on the joined table");
+      cy.contains("Filter").click();
+      cy.contains("Email").click();
+      cy.contains("People – Email");
+      cy.get('[placeholder="Search by Email"]').type("wolf.");
+      cy.contains("wolf.dina@yahoo.com").click();
+      cy.contains("Add filter").click();
+      cy.contains("Showing 1 row");
+    });
+
+    it.only("should show correct column title with foreign keys (Issue #11452)", () => {
+      // Join tables with foreign keys
+      openOrdersTable();
+      cy.get(".Icon-notebook").click();
+      cy.findByText("Join data").click();
+      cy.findByText("Reviews").click();
+      cy.findByText("Product ID").click();
+      popover().within(() => {
+        cy.findByText("Product ID").click();
+      })
+
+      // Check column titles
+      cy.get(".QueryBuilder .Icon-sum").click();
+      cy.findByText("Pick a column to group by").click();
+      cy.get(".ReactVirtualized__List")
+        .within(() => {
+          cy.get(".Icon-join_left_outer")
+            .parent()
+            .parent()
+            .should("not.include", "Product")
+        })
+      cy.pause()
+    });
   });
 
   describe("nested", () => {
