@@ -142,11 +142,10 @@ describe("scenarios > admin > datamodel > field", () => {
       cy.contains("Title");
     });
 
-    it.skip("lets you change to 'Custom mapping' and set custom values (Issue #12771)", () => {
+    it("lets you change to 'Custom mapping' and set custom values (Issue #12771)", () => {
       visitAlias("@ORDERS_QUANTITY_URL");
 
       cy.contains("Use original value").click();
-      // *** Clicking this button starts a loop
       cy.contains("Custom mapping").click();
 
       cy.get('input[value="0"]')

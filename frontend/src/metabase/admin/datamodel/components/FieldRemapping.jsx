@@ -328,9 +328,18 @@ export class ValueRemappings extends React.Component {
     this._updateEditingRemappings(this.props.remappings);
   }
 
-  componentWillReceiveProps(nextProps) {
-    if (nextProps.remappings !== this.props.remappings) {
-      this._updateEditingRemappings(nextProps.remappings);
+  componentDidUpdate(prevProps) {
+    const { remappings } = this.props;
+    if (
+      !// check if the Maps are different
+      (
+        prevProps.remappings &&
+        remappings &&
+        prevProps.remappings.size === remappings.size &&
+        [...remappings].every(([k, v]) => prevProps.remappings.get(k) === v)
+      )
+    ) {
+      this._updateEditingRemappings(remappings);
     }
   }
 
