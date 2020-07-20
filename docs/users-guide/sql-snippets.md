@@ -31,7 +31,7 @@ In the **SQL editor**:
 
 2. **Right-click on the highlighted section.**
 3. **Select Save as snippet** to create a snippet. A modal will pop up with the SQL statement you highlighted. 
-4. **Edit, name, and describe your snippet**, then click the save button.
+4. **Edit, name, and describe your snippet**. Snippet names must be unique. Click the save button to create the snippet.
 
 In this case, we named the snippet "Orders and Products". The snippet will now be available for anyone to use. Here's what the snippet looks like in the SQL editor:
 
