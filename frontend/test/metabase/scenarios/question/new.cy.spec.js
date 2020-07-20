@@ -1,4 +1,9 @@
-import { restore, signInAsAdmin, popover } from "__support__/cypress";
+import {
+  restore,
+  signInAsAdmin,
+  popover,
+  openOrdersTable,
+} from "__support__/cypress";
 
 // test various entry points into the query builder
 
@@ -24,6 +29,20 @@ describe("scenarios > question > new", () => {
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
       cy.contains("37.65");
+    });
+
+    it.skip("should remove `/notebook` from URL when converting question to SQL/Native (Issue #12651)", () => {
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+      openOrdersTable();
+      cy.wait("@dataset");
+      cy.url().should("include", "question#");
+      // Isolate icons within "QueryBuilder" scope because there is also `.Icon-sql` in top navigation
+      cy.get(".QueryBuilder .Icon-notebook").click();
+      cy.url().should("include", "question/notebook#");
+      cy.get(".QueryBuilder .Icon-sql").click();
+      cy.findByText("Convert this question to SQL").click();
+      cy.url().should("include", "question#");
     });
   });
 
