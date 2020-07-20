@@ -68,7 +68,7 @@ Here's the basic rule: data is more sensitive than code, so permissions that app
 
 #### Permissions example
 
-Consider the following scenario (and here's a sentence that merits slow reading): a group could have permission to a collection that contains a question that uses a snippet housed in a folder that the group does not have permissions to. To rephrase: people in that group have permissions to run questions in a collection, but they do not have permission to a folder containing a snippet used in one of the collection's questions. How will Metabase resolve permissions in this case?
+Consider the following scenario (and here's a sentence that merits slow reading): a group could have permission to a Collection that contains a question that uses a snippet housed in a folder that the group does _not_ have permissions to. To rephrase: people in that group have permissions to run questions in a collection, but they do not have permission to a folder containing a snippet used in one of the collection's questions. How will Metabase resolve permissions in this case?
 
 In three parts:
 
