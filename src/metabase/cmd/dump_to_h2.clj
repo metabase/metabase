@@ -106,17 +106,17 @@
 
     (println "Dumping from configured Metabase db to H2 file" h2-filename)
 
-    (mdb/setup-db!* (get-target-db-conn h2-filename) true)
-    (mdb/setup-db!)
-
     (if (= :h2 (mdb/db-type))
       (println (u/format-color 'yellow (trs "Don't need to migrate, just use the existing H2 file")))
-      (jdbc/with-db-transaction [target-db-conn (get-target-db-conn h2-filename)]
-        (println "Conn of target: " target-db-conn)
-        (println-ok)
-        (println (u/format-color 'blue "Loading data..."))
-        (load-data! target-db-conn)
-        (println-ok)
-        (jdbc/db-unset-rollback-only! target-db-conn)))
+      (do
+        (mdb/setup-db!* (get-target-db-conn h2-filename) true)
+        (mdb/setup-db!)
+        (jdbc/with-db-transaction [target-db-conn (get-target-db-conn h2-filename)]
+          (println "Conn of target: " target-db-conn)
+          (println-ok)
+          (println (u/format-color 'blue "Loading data..."))
+          (load-data! target-db-conn)
+          (println-ok)
+          (jdbc/db-unset-rollback-only! target-db-conn))))
 
     (println "Dump complete")))
