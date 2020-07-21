@@ -27,7 +27,12 @@ The following steps need to be done before building the Mac App:
     Make sure the JRE version you use is one that is known to work successfully with notarization/the hardened
     runtime. See https://github.com/AdoptOpenJDK/openjdk-build/issues/1130 for more information. I have personally had
     success with [this nighly build of
-    11.0.6](https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk11u-2020-02-05-17-25/OpenJDK11U-jre_x64_mac_hotspot_2020-02-05-17-25.tar.gz). If you get notarization errors like
+    11.0.6](https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk11u-2020-02-05-17-25/OpenJDK11U-jre_x64_mac_hotspot_2020-02-05-17-25.tar.gz).
+
+    Update: this link appears to be broken! Try [this build](https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.8%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.8_10.tar.gz)
+    instead. I think it should work! Please update this page once that is verified.
+
+    If you get notarization errors like
 
     > The executable does not have the hardened runtime enabled.
 
@@ -103,11 +108,14 @@ The following steps are prereqs for releasing the Mac App:
     brew install clojure
     ```
 
+
 ## Building & Releasing the Mac App
 
 After following the configuration steps above, to build and release the app you can use the `./bin/osx-release` script:
 
 1. Make sure release is *published* on GitHub and release notes are ready. The script copies these for the update release notes.
+
+1. Make sure you're on the appropriate release branch locally. The script reads the version number from `./bin/version`
 
 1. Copy latest uberjar to the Mac App build directory
 
