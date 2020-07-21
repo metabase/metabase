@@ -14,6 +14,7 @@ export default function FilterPopoverHeader({
 }) {
   const dimension = filter.dimension();
   const field = dimension.field();
+  const operator = filter.operatorName();
 
   const showOperatorSelector = !(field.isTime() || field.isDate());
   const showHeader = showFieldPicker || showOperatorSelector;
@@ -48,8 +49,8 @@ export default function FilterPopoverHeader({
             my1: showOperatorSelectorOnOwnRow,
           })}
           field={field}
-          operator={filter.operatorName()}
-          operators={filter.filterOperators()}
+          operator={operator}
+          operators={filter.filterOperators(operator)}
           onOperatorChange={setOperator}
         />
       )}
