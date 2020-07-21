@@ -74,11 +74,21 @@ The following steps are prereqs for releasing the Mac App:
 
 1)  Add `Apple Developer ID Application Certificate` to your computer's keychain.
 
-    1) Generate a Certificate Signing Request from the Keychain Access app.
+    1) Generate a Certificate Signing Request from the Keychain Access app. 
     
-    1) Have Sameer go to [the Apple Developer Site](https://developer.apple.com/account/mac/certificate/) and generate a certificate for you using the Certificate Signing Request you creating in the last step.
+        1) `Keychain Access` > `Certificate Assistant` > `Request a Certificate From a Certificate Authority`. 
+    
+        1) Enter the email associated with your Apple Developer account.
+    
+        1) Leave "CA Email Address" blank
+    
+        1) Choose "Save to Disk"
+    
+    1) Have Sameer go to [the Apple Developer Site](https://developer.apple.com/account/mac/certificate/) and generate a certificate for you by uploading the Certificate Signing Request you creating in the last step.
     
     1) Load the generated certificate on your computer.
+    
+    1) If you have trouble with the last steps you can refer to the [Apple documentation](https://help.apple.com/xcode/mac/current/#/dev154b28f09) for other ways to generate the certificate. Apparently you can also just have someone who already has a copy locally (e.g. Cam) export it and send it to you. See dox.
 
 1)  Export your Apple ID for building the app as `METABASE_MAC_APP_BUILD_APPLE_ID`. (This Apple ID must be part of the Metabase org in the Apple developer site. Ask Cam or Sameer to add you if it isn't.)
 
