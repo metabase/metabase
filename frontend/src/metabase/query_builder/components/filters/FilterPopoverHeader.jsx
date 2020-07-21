@@ -48,7 +48,6 @@ export default function FilterPopoverHeader({
             "ml-auto": !showOperatorSelectorOnOwnRow,
             my1: showOperatorSelectorOnOwnRow,
           })}
-          field={field}
           operator={operator}
           operators={filter.filterOperators(operator)}
           onOperatorChange={setOperator}

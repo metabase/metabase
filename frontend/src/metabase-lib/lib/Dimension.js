@@ -273,7 +273,7 @@ export default class Dimension {
   /**
    * Valid filter operators on this dimension
    */
-  filterOperators(selected = 0): FilterOperator[] {
+  filterOperators(selected): FilterOperator[] {
     return this.field().filterOperators(selected);
   }
 

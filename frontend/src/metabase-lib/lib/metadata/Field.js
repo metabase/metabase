@@ -192,27 +192,13 @@ export default class Field extends Base {
   // FILTERS
 
   @memoize
-  filterOperators(selected = 0) {
-    // the default value needs to be something that can be a key in a memoize map
-    return getFilterOperators(this, this.table).filter(operator => {
-      if (selected === 0) {
-        return true;
-      }
-      if (this["base_type"] === "type/Text") {
-        // Text fields should only have is-null / not-null if it was already selected
-        if (selected === "is-null" && operator["name"] !== "not-null") {
-          return true;
-        } else if (selected === "not-null" && operator["name"] !== "is-null") {
-          return true;
-        }
-      }
-      return true;
-    });
+  filterOperators(selected) {
+    return getFilterOperators(this, this.table, selected);
   }
 
   @memoize
   filterOperatorsLookup() {
-    return createLookupByProperty(this.filterOperators(0), "name");
+    return createLookupByProperty(this.filterOperators(), "name");
   }
 
   filterOperator(operatorName) {

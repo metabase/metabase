@@ -446,20 +446,40 @@ const MORE_VERBOSE_NAMES = {
   "greater than or equal to": "is greater than or equal to",
 };
 
-export function getFilterOperators(field, table) {
+export function getFilterOperators(field, table, selected) {
   const type = getFieldType(field) || UNKNOWN;
-  return FILTER_OPERATORS_BY_TYPE_ORDERED[type].map(operatorForType => {
-    const operator = FIELD_FILTER_OPERATORS[operatorForType.name];
-    const verboseNameLower = operatorForType.verboseName.toLowerCase();
-    return {
-      ...operator,
-      ...operatorForType,
-      moreVerboseName: MORE_VERBOSE_NAMES[verboseNameLower] || verboseNameLower,
-      fields: operator.validArgumentsFilters.map(validArgumentsFilter =>
-        validArgumentsFilter(field, table),
-      ),
-    };
-  });
+  return FILTER_OPERATORS_BY_TYPE_ORDERED[type]
+    .map(operatorForType => {
+      const operator = FIELD_FILTER_OPERATORS[operatorForType.name];
+      const verboseNameLower = operatorForType.verboseName.toLowerCase();
+      return {
+        ...operator,
+        ...operatorForType,
+        moreVerboseName:
+          MORE_VERBOSE_NAMES[verboseNameLower] || verboseNameLower,
+        fields: operator.validArgumentsFilters.map(validArgumentsFilter =>
+          validArgumentsFilter(field, table),
+        ),
+      };
+    })
+    .filter(operator => {
+      if (selected === undefined) {
+        return true;
+      }
+      if (type === "STRING" || type === "STRING_LIKE") {
+        // Text fields should only have is-null / not-null if it was already selected
+        if (selected === "is-null") {
+          return operator["name"] !== "not-null";
+        } else if (selected === "not-null") {
+          return operator["name"] !== "is-null";
+        } else {
+          return (
+            operator["name"] !== "not-null" && operator["name"] !== "is-null"
+          );
+        }
+      }
+      return true;
+    });
 }
 
 // Breakouts and Aggregation options
