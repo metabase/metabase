@@ -97,7 +97,7 @@ describe("scenarios > question > notebook", () => {
       cy.contains("Showing 1 row");
     });
 
-    it.only("should show correct column title with foreign keys (Issue #11452)", () => {
+    it.skip("should show correct column title with foreign keys (Issue #11452)", () => {
       // Join tables with foreign keys
       openOrdersTable();
       cy.get(".Icon-notebook").click();
