@@ -1,4 +1,10 @@
-import { restore, signInAsAdmin, popover, modal, openOrdersTable } from "__support__/cypress";
+import {
+  restore,
+  signInAsAdmin,
+  popover,
+  modal,
+  openOrdersTable,
+} from "__support__/cypress";
 
 describe("scenarios > question > notebook", () => {
   before(restore);
@@ -100,19 +106,14 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Product ID").click();
       popover().within(() => {
         cy.findByText("Product ID").click();
-      })
+      });
 
-      // Check column titles
+      // Column titles should not include 'Product'
       cy.get(".QueryBuilder .Icon-sum").click();
       cy.findByText("Pick a column to group by").click();
-      cy.get(".ReactVirtualized__List")
-        .within(() => {
-          cy.get(".Icon-join_left_outer")
-            .parent()
-            .parent()
-            .should("not.include", "Product")
-        })
-      cy.pause()
+      cy.get(".ReactVirtualized__List").within(() => {
+        cy.findAllByText("Product").should("not.exist");
+      });
     });
   });
 
