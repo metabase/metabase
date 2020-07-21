@@ -1016,3 +1016,18 @@
 
       (testing "`nil` values inside native :params shouldn't get removed"
         (test-normalization {:query "SELECT ?" :params [nil]})))))
+
+(deftest empty-test
+  (testing "test a query with :is-empty"
+    (is (= {:query {:filter [:and
+                             [:> [:field-id 4] 1]
+                             [:is-empty [:field-id 7]]
+                             [:= [:field-id 5] "abc"]
+                             [:between [:field-id 9] 0 25]]}}
+           (#'normalize/canonicalize {:query {:filter [:and
+                                                       [:> [:field-id 4] 1]
+                                                       [:is-empty [:field-id 7]]
+                                                       [:and
+                                                        [:= [:field-id 5] "abc"]
+                                                        [:between [:field-id 9] 0 25]]]}})))))
+

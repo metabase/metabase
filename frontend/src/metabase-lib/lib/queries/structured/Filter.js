@@ -267,9 +267,9 @@ export default class Filter extends MBQLClause {
     return this.set([...this.slice(0, 2), ...values]);
   }
 
-  filterOperators(): ?(FilterOperator[]) {
+  filterOperators(selected: string): ?(FilterOperator[]) {
     const dimension = this.dimension();
-    return dimension ? dimension.filterOperators() : null;
+    return dimension ? dimension.filterOperators(selected) : null;
   }
 
   arguments() {
