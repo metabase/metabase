@@ -52,16 +52,16 @@ If you need to use a certificate, connect via the [default method](#using-metaba
 - **Automatically run queries when doing simple filtering and summarizing.** When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries. 
 - **This is a large database, so let me choose when Metabase syncs and scans.** By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
 
- ## Configuring SSL via the command line
+## Configuring SSL via the command line
  
- You can enter a self-signed certificate via the Metabase UI (though not when using a connection string), or you can use the command line to add a self-signed certificate. 
+You can enter a self-signed certificate via the Metabase UI (though not when using a connection string), or you can use the command line to add a self-signed certificate. 
 
+```
+cp /usr/lib/jvm/default-jvm/jre/lib/security/cacerts ./cacerts.jks
+keytool -import -alias cacert -storepass changeit -keystore cacerts.jks -file my-cert.pem
  ```
- cp /usr/lib/jvm/default-jvm/jre/lib/security/cacerts ./cacerts.jks
- keytool -import -alias cacert -storepass changeit -keystore cacerts.jks -file my-cert.pem
-  ```
 
- Then, start Metabase using the store:
+Then, start Metabase using the store:
 
 ```
 java -Djavax.net.ssl.trustStore=cacerts.jks -Djavax.net.ssl.trustStorePassword=changeit -jar metabase.jar
