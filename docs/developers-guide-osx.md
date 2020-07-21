@@ -16,21 +16,14 @@ The following steps need to be done before building the Mac App:
     You can download a copy of a JRE from https://adoptopenjdk.net/releases.html?jvmVariant=hotspot — make sure you download a JRE rather than JDK. Move the `Contents/Home` directory from the JRE archive into `OSX/Metabase/jre`. For example:
 
     ```bash
-    # Don't copy these commands -- this version is broken. See below
-    wget https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u232-b09/OpenJDK8U-jre_x64_mac_hotspot_8u232b09.tar.gz
-    tar -xzvf OpenJDK8U-jre_x64_mac_hotspot_8u232b09.tar.gz
-    mv jdk8u232-b09-jre/Contents/Home/ OSX/Metabase/jre
+    wget https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.8%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.8_10.tar.gz
+    tar -xzvf OpenJDK11U-jdk_x64_mac_hotspot_11.0.8_10.tar.gz  
+    mv jdk-11.0.8+10/Contents/Home OSX/Metabase/jre
     ```
 
     **VERY IMPORTANT!**
 
-    Make sure the JRE version you use is one that is known to work successfully with notarization/the hardened
-    runtime. See https://github.com/AdoptOpenJDK/openjdk-build/issues/1130 for more information. I have personally had
-    success with [this nighly build of
-    11.0.6](https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk11u-2020-02-05-17-25/OpenJDK11U-jre_x64_mac_hotspot_2020-02-05-17-25.tar.gz).
-
-    Update: this link appears to be broken! Try [this build](https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.8%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.8_10.tar.gz)
-    instead. I think it should work! Please update this page once that is verified.
+    Make sure the JRE version you use is one that is known to work successfully with notarization. I'm pretty sure this version will work. Note to self -- update page once we verify that this version works.
 
     If you get notarization errors like
 
@@ -80,7 +73,11 @@ The following steps are prereqs for releasing the Mac App:
 
 1)  Add `Apple Developer ID Application Certificate` to your computer's keychain.
 
-    You'll need to generate a Certificate Signing Request from Keychain Access, and have Sameer go to [the Apple Developer Site](https://developer.apple.com/account/mac/certificate/) and generate one for you, then load the file on your computer.
+    1) Generate a Certificate Signing Request from the Keychain Access app.
+    
+    1) Have Sameer go to [the Apple Developer Site](https://developer.apple.com/account/mac/certificate/) and generate a certificate for you using the Certificate Signing Request you creating in the last step.
+    
+    1) Load the generated certificate on your computer.
 
 1)  Export your Apple ID for building the app as `METABASE_MAC_APP_BUILD_APPLE_ID`. (This Apple ID must be part of the Metabase org in the Apple developer site. Ask Cam or Sameer to add you if it isn't.)
 
