@@ -13,9 +13,10 @@ The following steps need to be done before building the Mac App:
 
 1.  Add a JRE to the `OSX/Metabase/jre`
 
-    You can download a copy of a JRE from https://adoptopenjdk.net/releases.html?jvmVariant=hotspot — make sure you download a JRE rather than JDK. Move the `Contents/Home` directory from the JRE archive into `OSX/Metabase/jre`. For example:
+    You can download a copy of a JRE from https://adoptopenjdk.net/releases.html?jvmVariant=hotspot — make sure you download a JRE rather than JDK. Move the `Contents/Home` directory from the JRE archive into `OSX/Metabase/jre`. (`OSX/Metabase` already exists inside the `metabase/metabase` repo.) For example:
 
     ```bash
+    cd /path/to/metabase/repo
     wget https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.8%2B10/OpenJDK11U-jre_x64_mac_hotspot_11.0.8_10.tar.gz
     tar -xzvf OpenJDK11U-jre_x64_mac_hotspot_11.0.8_10.tar.gz
     mv jdk-11.0.8+10-jre/Contents/Home OSX/Metabase/jre
