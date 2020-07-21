@@ -71,7 +71,7 @@ Learn more about [configuring SSL with MongoDB](http://mongodb.github.io/mongo-j
 
 ## Connecting to a MongoDB Atlas cluster
 
- To make sure you are using the correct connection configuration:
+To make sure you are using the correct connection configuration:
 
   1. Log into your [Atlas cluster](https://cloud.mongodb.com)
 
@@ -93,8 +93,7 @@ Learn more about [configuring SSL with MongoDB](http://mongodb.github.io/mongo-j
 
 ## General connectivity concerns
 
- - **Connect using `DNS SRV`**, which is the recommended method for newer Atlas clusters.
-
- - **Have you checked your cluster host whitelist?** When testing a connection but seeing failure, have you tried setting the IP whitelist to `0.0.0.0/0`?  Whitelisting this address allows connections from any IP addresses. If you know the IP address(es) or CIDR block of clients, use that instead.
+- **Connect using `DNS SRV`**, which is the recommended method for newer Atlas clusters.
+- **Have you checked your cluster host whitelist?** When testing a connection but seeing failure, have you tried setting the IP whitelist to `0.0.0.0/0`?  Whitelisting this address allows connections from any IP addresses. If you know the IP address(es) or CIDR block of clients, use that instead.
 
 

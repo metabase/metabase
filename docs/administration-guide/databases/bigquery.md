@@ -50,7 +50,7 @@ Each BigQuery dataset will have a **Dataset ID**. You can find this ID via the [
 
 #### Service account JSON file
 
-Upload the service account JSON file you created when following the steps above. The JSON file contains the credentials your Metabase application will need to read and query your dataset, as defined by the **roles** you added to the service account. If you need to add additional **roles**, you have to create another service account, download the JSON file, and upload the file to Metabase.
+Upload the service account JSON file you created when following the [steps above](#google-cloud-platform-creating-a-service-account-and-json-file). The JSON file contains the credentials your Metabase application will need to read and query your dataset, as defined by the **roles** you added to the service account. If you need to add additional **roles**, you have to create another service account, download the JSON file, and upload the file to Metabase.
 
 #### Use the Java Virtual Machine (JVM) timezone
 
