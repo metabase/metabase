@@ -151,25 +151,6 @@
     "<<>>"          false
     "{\"a\": 10}"   false))
 
-(deftest occurances-of-substring-test
-  (testing "should return nil if one or both strings are nil or empty"
-    (are+ [s substr expected] (= expected
-                                 (u/occurances-of-substring s substr))
-      nil                                                                                 nil      nil
-      nil                                                                                 ""       nil
-      ""                                                                                  nil      nil
-      ""                                                                                  ""       nil
-      "ABC"                                                                               ""       nil
-      ""                                                                                  "  ABC"  nil
-      ;; non-empty strings
-      "ABC"                                                                               "A"      1
-      "ABA"                                                                               "A"      2
-      "AAA"                                                                               "A"      3
-      "ABC"                                                                               "{{id}}" 0
-      "WHERE ID = {{id}}"                                                                 "{{id}}" 1
-      "WHERE ID = {{id}} OR USER_ID = {{id}}"                                             "{{id}}" 2
-      "WHERE ID = {{id}} OR USER_ID = {{id}} OR TOUCAN_ID = {{id}} OR BIRD_ID = {{bird}}" "{{id}}" 3)))
-
 (deftest select-keys-test
   (testing "select-non-nil-keys"
     (is (= {:a 100}
