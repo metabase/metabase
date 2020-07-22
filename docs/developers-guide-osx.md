@@ -60,7 +60,7 @@ At this point, you should try opening up the Xcode project and building the Mac 
 
 The following steps are prereqs for releasing the Mac App:
 
-1.  Install XCode command-line tools. In `Xcode` > `Preferences` > `Locations` select your current Xcode version in the `Command Line Tools` drop-down.
+1)  Install XCode command-line tools. In `Xcode` > `Preferences` > `Locations` select your current Xcode version in the `Command Line Tools` drop-down.
 
 1)  Install AWS command-line client (if needed)
 
