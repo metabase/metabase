@@ -554,15 +554,6 @@
   "Increment `n` if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
   (fnil inc 0))
 
-(defn occurances-of-substring
-  "Return the number of times SUBSTR occurs in string S."
-  ^Long [^String s, ^String substr]
-  (when (and (seq s) (seq substr))
-    (loop [index 0, cnt 0]
-      (if-let [^long new-index (str/index-of s substr index)]
-        (recur (inc new-index) (inc cnt))
-        cnt))))
-
 (defn select-non-nil-keys
   "Like `select-keys`, but returns a map only containing keys in KS that are present *and non-nil* in M.
 
