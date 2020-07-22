@@ -41,7 +41,7 @@ The following steps need to be done before building the Mac App:
    Assuming the OpenJDK folks have resolved this issue going forward, you are fine to use whatever the latest JRE version available is. I have been using the HotSpot JRE instead of the OpenJ9 one but it ultimately shouldn't make a difference.
    </details>
    
-   <details><summary>Option 2 -- Ask Cam or Sameer for known working JRE</summary>
+   <details><summary>Option 2: Ask Cam or Sameer for known working JRE</summary>
     
     Have Cam or Sameer ZIP up their `/path/to/metabase/repo/OSX/Metabase/jre` folder and send it to you. Don't try Option 1 until we know the issues are fixed
     </details>
