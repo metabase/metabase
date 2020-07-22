@@ -225,7 +225,7 @@
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
     {:tables (set (for [table (jdbc/query
                                (sql-jdbc.conn/db->pooled-connection-spec database)
-                               (format "SHOW TABLES IN DATABASE \"%s\"" db-name))
+                               (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name))
                         :when (not (contains? excluded-schemas (:schema_name table)))]
                     {:name        (:name table)
                      :schema      (:schema_name table)
