@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [flatland.ordered.map :as ordered-map]
             [metabase.cmd.dump-to-h2 :as dump-to-h2]
+            [metabase.db :as mdb]
             [metabase.util.files :as u.files]
             [toucan.db :as db]))
 
@@ -41,17 +42,20 @@
         tmp-h2-db-mv  (str tmp-h2-db ".mv.db")
         file-contents {tmp-h2-db    "Not really an H2 DB"
                        tmp-h2-db-mv "Not really another H2 DB"}]
-    (try
-      (doseq [[filename contents] file-contents]
-        (spit filename contents))
-      (dump-to-h2/dump-to-h2! tmp-h2-db)
+    ;; keep setup-db!/setup-db!* from changing connection state
+    (with-redefs [mdb/setup-db!  (constantly nil)
+                  mdb/setup-db!* (constantly nil)]
+      (try
+        (doseq [[filename contents] file-contents]
+          (spit filename contents))
+        (dump-to-h2/dump-to-h2! tmp-h2-db)
 
-      (doseq [filename (keys file-contents)]
-        (testing (str filename " was deleted")
-          (is (false? (.exists (io/file filename))))))
+        (doseq [filename (keys file-contents)]
+          (testing (str filename " was deleted")
+            (is (false? (.exists (io/file filename))))))
 
-      (finally
-        (doseq [filename (keys file-contents)
-                :let [file (io/file filename)]]
-          (when (.exists file)
-            (io/delete-file file)))))))
+        (finally
+          (doseq [filename (keys file-contents)
+                  :let [file (io/file filename)]]
+            (when (.exists file)
+              (io/delete-file file))))))))
