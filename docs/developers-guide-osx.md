@@ -16,6 +16,7 @@ The following steps need to be done before building the Mac App:
    You must acquire a copy of a JRE (make sure you get a JRE rather than JDK) and move it to the correct location in the Mac App source directory so it can be included as part of the Mac App. To ship Java applications as Mac Apps, you must ship them with their own JRE. In this case we want to get a JRE from somewhere (more on this below) and move the `Contents/Home` directory from the JRE archive into `OSX/Metabase/jre`. (`OSX/Metabase` already exists inside the `metabase/metabase` repo.)
 
    <details><summary>Option 1: Download from AdoptOpenJDK (currently broken -- do not use)</summary>
+   
     You can download a copy of a JRE from https://adoptopenjdk.net/releases.html?jvmVariant=hotspot — make sure you download a JRE rather than JDK. Move the `Contents/Home` directory from the JRE archive into `OSX/Metabase/jre`. (`OSX/Metabase` already exists inside the `metabase/metabase` repo.) For example:
 
    ```bash
