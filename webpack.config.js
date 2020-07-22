@@ -253,10 +253,10 @@ if (NODE_ENV !== "production") {
   }
 
   // enable "cheap" source maps in hot or watch mode since re-build speed overhead is < 1 second
-  config.devtool = "cheap-module-source-map";
+  // config.devtool = "cheap-module-source-map";
 
-  // works with breakpoints
-  // config.devtool = "inline-source-map"
+  // works with breakpoints and makes stacktraces readable
+  config.devtool = "inline-module-source-map";
 
   // helps with source maps
   config.output.devtoolModuleFilenameTemplate = "[absolute-resource-path]";

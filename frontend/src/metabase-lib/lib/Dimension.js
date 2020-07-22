@@ -273,8 +273,8 @@ export default class Dimension {
   /**
    * Valid filter operators on this dimension
    */
-  filterOperators(): FilterOperator[] {
-    return this.field().filterOperators();
+  filterOperators(selected): FilterOperator[] {
+    return this.field().filterOperators(selected);
   }
 
   /**
@@ -625,7 +625,9 @@ import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
 import type Aggregation from "./queries/structured/Aggregation";
 
 const isFieldDimension = dimension =>
-  dimension instanceof FieldIDDimension || dimension instanceof FKDimension;
+  dimension instanceof FieldIDDimension ||
+  dimension instanceof FKDimension ||
+  dimension instanceof FieldLiteralDimension;
 
 /**
  * DatetimeField dimension, `["datetime-field", field-reference, datetime-unit]`

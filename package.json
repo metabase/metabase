@@ -121,7 +121,7 @@
     "enzyme": "^3.8.0",
     "enzyme-2": "npm:enzyme@2",
     "enzyme-adapter-react-15": "^1.3.0",
-    "eslint": "^3.5.0",
+    "eslint": "^3.19.0",
     "eslint-import-resolver-webpack": "^0.8.3",
     "eslint-loader": "^1.9.0",
     "eslint-plugin-cypress": "^2.7.0",
