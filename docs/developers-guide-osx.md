@@ -108,7 +108,7 @@ The following steps are prereqs for releasing the Mac App:
 
 1)  Create an App-Specific password for the Apple ID in the previous step
 
-    Go to https://appleid.apple.com/account/manage then `Security` > `App-Specific Passwords` > `Generate Password`
+    1.  Go to https://appleid.apple.com/account/manage then `Security` > `App-Specific Passwords` > `Generate Password`
 
     1.  Store the password in Keychain
 
