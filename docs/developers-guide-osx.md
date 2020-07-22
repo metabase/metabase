@@ -4,7 +4,11 @@ NOTE: These instructions are only for packaging a built Metabase uberjar into `M
 our [developers' guide](developers-guide.md).
 
 ## First-Time Configuration
-
+<details>
+<summary>
+Steps
+</summary>
+   
 ### Building
 
 The following steps need to be done before building the Mac App:
@@ -58,7 +62,7 @@ At this point, you should try opening up the Xcode project and building the Mac 
 
 ### Releasing
 
-The following steps are prereqs for releasing the Mac App:
+The following steps are prereqs for *releasing* the Mac App:
 
 1)  Install XCode command-line tools. In `Xcode` > `Preferences` > `Locations` select your current Xcode version in the `Command Line Tools` drop-down.
 
@@ -125,6 +129,7 @@ The following steps are prereqs for releasing the Mac App:
     brew install clojure
     ```
 
+</details>
 
 ## Building & Releasing the Mac App
 
