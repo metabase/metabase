@@ -4,38 +4,53 @@ NOTE: These instructions are only for packaging a built Metabase uberjar into `M
 our [developers' guide](developers-guide.md).
 
 ## First-Time Configuration
-
+<details>
+<summary>
+Steps
+</summary>
+   
 ### Building
 
 The following steps need to be done before building the Mac App:
 
-1.  Install XCode.
+1. Install XCode.
 
-1.  Add a JRE to the `OSX/Metabase/jre`
+1. Add a JRE to the `/path/to/metabase/repo/OSX/Metabase/jre`
+   
+   You must acquire a copy of a JRE (make sure you get a JRE rather than JDK) and move it to the correct location in the Mac App source directory so it can be included as part of the Mac App. To ship Java applications as Mac Apps, you must ship them with their own JRE. In this case we want to get a JRE from somewhere (more on this below) and move the `Contents/Home` directory from the JRE archive into `OSX/Metabase/jre`. (`OSX/Metabase` already exists inside the `metabase/metabase` repo.)
 
+   <details><summary>Option 1: Download from AdoptOpenJDK (currently broken -- do not use)</summary>
+   
     You can download a copy of a JRE from https://adoptopenjdk.net/releases.html?jvmVariant=hotspot — make sure you download a JRE rather than JDK. Move the `Contents/Home` directory from the JRE archive into `OSX/Metabase/jre`. (`OSX/Metabase` already exists inside the `metabase/metabase` repo.) For example:
 
-    ```bash
-    cd /path/to/metabase/repo
-    wget https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.8%2B10/OpenJDK11U-jre_x64_mac_hotspot_11.0.8_10.tar.gz
-    tar -xzvf OpenJDK11U-jre_x64_mac_hotspot_11.0.8_10.tar.gz
-    mv jdk-11.0.8+10-jre/Contents/Home OSX/Metabase/jre
-    ```
+   ```bash
+   # IMPORTANT -- DO NOT COPY THIS -- THIS JRE DOESN'T WORK
+   cd /path/to/metabase/repo
+   wget https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.8%2B10/OpenJDK11U-jre_x64_mac_hotspot_11.0.8_10.tar.gz
+   tar -xzvf OpenJDK11U-jre_x64_mac_hotspot_11.0.8_10.tar.gz
+   mv jdk-11.0.8+10-jre/Contents/Home OSX/Metabase/jre
+   ```
 
-    **VERY IMPORTANT!**
+   **VERY IMPORTANT!**
 
-    Make sure the JRE version you use is one that is known to work successfully with notarization. I'm pretty sure this version will work. Note to self -- update page once we verify that this version works.
+   Make sure the JRE version you use is one that is known to work successfully with notarization. We have found out the one linked above does not work. 
+   I have found a nightly build that *does* work, but it's no longer available for download. Cam and Sameer both have copies of a JRE that is known to work. Refer to Option 2.
 
-    If you get notarization errors like
+   If you get notarization errors like
 
-    > The executable does not have the hardened runtime enabled.
+   > The executable does not have the hardened runtime enabled.
 
-    (Referring to files in `Metabase.app/Contents/Resources/jre/bin/`) then use a different build of the JRE.
+   (Referring to files in `Metabase.app/Contents/Resources/jre/bin/`) then use a different build of the JRE.
 
-    Assuming the OpenJDK folks have resolved this issue going forward, you are fine to use whatever the latest JRE version available is. I have been using the HotSpot JRE instead of the
-    OpenJ9 one but it ultimately shouldn't make a difference.
+   Assuming the OpenJDK folks have resolved this issue going forward, you are fine to use whatever the latest JRE version available is. I have been using the HotSpot JRE instead of the OpenJ9 one but it ultimately shouldn't make a difference.
+   </details>
+   
+   <details><summary>Option 2: Ask Cam or Sameer for known working JRE</summary>
+    
+    Have Cam or Sameer ZIP up their `/path/to/metabase/repo/OSX/Metabase/jre` folder and send it to you. Don't try Option 1 until we know the issues are fixed
+    </details>
 
-1)  Copy Metabase uberjar to OSX resources dir
+1. Copy Metabase uberjar to OSX resources dir
 
     ```bash
     cp /path/to/metabase.jar OSX/Resources/metabase.jar
@@ -47,9 +62,9 @@ At this point, you should try opening up the Xcode project and building the Mac 
 
 ### Releasing
 
-The following steps are prereqs for releasing the Mac App:
+The following steps are prereqs for *releasing* the Mac App:
 
-1.  Install XCode command-line tools. In `Xcode` > `Preferences` > `Locations` select your current Xcode version in the `Command Line Tools` drop-down.
+1)  Install XCode command-line tools. In `Xcode` > `Preferences` > `Locations` select your current Xcode version in the `Command Line Tools` drop-down.
 
 1)  Install AWS command-line client (if needed)
 
@@ -97,7 +112,7 @@ The following steps are prereqs for releasing the Mac App:
 
 1)  Create an App-Specific password for the Apple ID in the previous step
 
-    Go to https://appleid.apple.com/account/manage then `Security` > `App-Specific Passwords` > `Generate Password`
+    1.  Go to https://appleid.apple.com/account/manage then `Security` > `App-Specific Passwords` > `Generate Password`
 
     1.  Store the password in Keychain
 
@@ -114,6 +129,7 @@ The following steps are prereqs for releasing the Mac App:
     brew install clojure
     ```
 
+</details>
 
 ## Building & Releasing the Mac App
 
