@@ -3,8 +3,9 @@
   (:require [clojure.test :refer :all]
             [clojure.tools.macro :as tools.macro]
             [flatland.ordered.map :refer [ordered-map]]
-            [metabase.util :as u])
-  (:import java.util.Locale))
+            [metabase
+             [test :as mt]
+             [util :as u]]))
 
 (defn- are+-message [expr arglist args]
   (pr-str
@@ -226,24 +227,14 @@
     nil nil))
 
 (deftest lower-case-en-test
-  (let [original-locale (Locale/getDefault)]
-    (try
-      (Locale/setDefault (Locale/forLanguageTag "tr"))
-      ;; `(str/lower-case "ID")` returns "ıd" in the Turkish locale
-      (is (= "id"
-             (u/lower-case-en "ID")))
-      (finally
-        (Locale/setDefault original-locale)))))
+  (mt/with-locale "tr"
+    (is (= "id"
+           (u/lower-case-en "ID")))))
 
 (deftest upper-case-en-test
-  (let [original-locale (Locale/getDefault)]
-    (try
-      (Locale/setDefault (Locale/forLanguageTag "tr"))
-      ;; `(str/upper-case "id")` returns "İD" in the Turkish locale
-      (is (= "ID"
-             (u/upper-case-en "id")))
-      (finally
-        (Locale/setDefault original-locale)))))
+  (mt/with-locale "tr"
+    (is (= "ID"
+           (u/upper-case-en "id")))))
 
 (deftest parse-currency-test
   (are+ [s expected] (= expected
