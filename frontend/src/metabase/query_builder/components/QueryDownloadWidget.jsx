@@ -28,7 +28,6 @@ const QueryDownloadWidget = ({
   dashcardId,
   icon,
   params,
-  isDirty,
 }) => (
   <PopoverWithTrigger
     triggerElement={
@@ -73,14 +72,14 @@ const QueryDownloadWidget = ({
               />
             ) : token ? (
               <EmbedQueryButton key={type} type={type} token={token} />
-            ) : card && card.id && !isDirty ? (
+            ) : card && card.id ? (
               <SavedQueryButton
                 key={type}
                 type={type}
                 card={card}
                 result={result}
               />
-            ) : card ? (
+            ) : card && !card.id ? (
               <UnsavedQueryButton
                 key={type}
                 type={type}

@@ -48,7 +48,6 @@ const ViewFooter = ({
   visualizationSettings,
   isAdmin,
   isPreviewing,
-  isDirty,
   isResultDirty,
   isVisualized,
   queryBuilderMode,
@@ -149,7 +148,6 @@ const ViewFooter = ({
               key="download"
               className="mx1 hide sm-show"
               card={question.card()}
-              isDirty={isDirty}
               result={result}
             />
           ),
