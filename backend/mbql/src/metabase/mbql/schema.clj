@@ -952,7 +952,7 @@
    s/Bool
 
    ;; should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing
-   ;; results? Used by `metabase.query-processor.middleware.format-rows`; default `false`
+   ;; results? Used by `metabase.query-processor.middleware.format-rows`; default `true`
    (s/optional-key :format-rows?)
    s/Bool
 
