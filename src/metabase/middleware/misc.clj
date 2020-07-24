@@ -40,7 +40,7 @@
 ;;
 ;; Effectively the very first API request that gets sent to us (usually some sort of setup request) ends up setting
 ;; the (initial) value of `site-url`
-(defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host] :as headers} :headers, :as request}]
+(defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host user-agent] :as headers} :headers, :as request}]
   (when (and (mdb/db-is-setup?)
              (not (public-settings/site-url))
              api/*current-user* ((complement clojure.string/includes?) user-agent "HealthChecker")); Not setting URL if it's a healthcheck by ELB
