@@ -60,16 +60,12 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Done").click();
     cy.findByText("You are editing a dashboard");
     cy.findByText("Save").click();
-    cy.findByText("Saving…");
-    cy.findByText("Save")
-      .should("not.exist")
-      .then(() => {
-        cy.reload();
-        cy.findByText("Q2");
-      });
-    // cy.get(".Icon-label").click();
+    cy.findByText("Save").should("not.exist");
+
+    // Check category search
+    cy.get(".Icon-empty").should("not.exist");
     cy.findByText("Category").click();
-    cy.findByPlaceholderText("Category").type("Rust");
-    cy.contains("Rustic Paper Wallet");
+    cy.findByText("Gadget").click();
+    cy.findByText("Add filter").click();
   });
 });
