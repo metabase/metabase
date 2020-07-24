@@ -43,7 +43,7 @@
 (defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host] :as headers} :headers, :as request}]
   (when (and (mdb/db-is-setup?)
              (not (public-settings/site-url))
-             api/*current-user*)
+             api/*current-user* ((complement clojure.string/includes?) user-agent "HealthChecker")); Not setting URL if it's a healthcheck by ELB
     (when-let [site-url (or origin x-forwarded-host host)]
       (log/info (trs "Setting Metabase site URL to {0}" site-url))
       (try
