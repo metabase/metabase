@@ -1,5 +1,7 @@
 import "@testing-library/cypress/add-commands";
 
+export const version = require("../../../version.json");
+
 export const USERS = {
   admin: {
     first_name: "Bobby",

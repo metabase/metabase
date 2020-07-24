@@ -625,9 +625,7 @@ import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
 import type Aggregation from "./queries/structured/Aggregation";
 
 const isFieldDimension = dimension =>
-  dimension instanceof FieldIDDimension ||
-  dimension instanceof FKDimension ||
-  dimension instanceof FieldLiteralDimension;
+  dimension instanceof FieldIDDimension || dimension instanceof FKDimension;
 
 /**
  * DatetimeField dimension, `["datetime-field", field-reference, datetime-unit]`

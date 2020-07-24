@@ -234,7 +234,6 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
         isMultiseriesQuestion
         ? previousCard.id
         : nextCard.id,
-      id: null,
     };
   } else {
     // Even though the card is currently clean, we might still apply dashboard parameters to it,
