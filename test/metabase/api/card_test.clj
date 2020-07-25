@@ -1129,7 +1129,7 @@
   (testing "no-fomatting-rows"
     (with-temp-native-card [_ card "CHECKINS" "SELECT MAX(DATE) FROM CHECKINS;"]
       (with-cards-in-readable-collection card
-        (is (= ["MAX(DATE)" 
+        (is (= ["MAX(DATE)"
                 "2015-12-29"]
                (str/split-lines
                 ((mt/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card)) ))))))))
