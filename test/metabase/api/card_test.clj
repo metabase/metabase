@@ -1111,7 +1111,7 @@
 
 (deftest csv-download-test
   (testing "no parameters"
-    (with-temp-native-card [_ card "CATEGORIES" "SELECT COUNT(*) FROM CATEGORIES;"] 
+    (with-temp-native-card [_ card "CATEGORIES" "SELECT COUNT(*) FROM CATEGORIES;"]
       (with-cards-in-readable-collection card
         (is (= ["COUNT(*)"
                 "75"]
@@ -1133,7 +1133,6 @@
                 "2015-12-29"]
                (str/split-lines
                 ((mt/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card)) ))))))))
-                                                            
 
 (deftest json-download-test
   (testing "no parameters"
