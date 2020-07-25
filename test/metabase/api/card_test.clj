@@ -76,18 +76,18 @@
 
 (defn- do-with-temp-native-card
   {:style/indent 0}
-  [f]
+  [sample-data query f]
   (tt/with-temp* [Database   [db    {:details (:details (data/db)), :engine :h2}]
-                  Table      [table {:db_id (u/get-id db), :name "CATEGORIES"}]
+                  Table      [table {:db_id (u/get-id db), :name sample-data}]
                   Card       [card  {:dataset_query {:database (u/get-id db)
                                                      :type     :native
-                                                     :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]]
+                                                     :native   {:query query}}}]]
     (f db card)))
 
 (defmacro ^:private with-temp-native-card
   {:style/indent 1}
-  [[db-binding card-binding] & body]
-  `(do-with-temp-native-card (fn [~(or db-binding '_) ~(or card-binding '_)]
+  [[db-binding card-binding sample-data query] & body]
+  `(do-with-temp-native-card  ~sample-data ~query (fn [~(or db-binding '_) ~(or card-binding '_)]
                                ~@body)))
 
 
@@ -1111,7 +1111,7 @@
 
 (deftest csv-download-test
   (testing "no parameters"
-    (with-temp-native-card [_ card]
+    (with-temp-native-card [_ card "CATEGORIES" "SELECT COUNT(*) FROM CATEGORIES;"] 
       (with-cards-in-readable-collection card
         (is (= ["COUNT(*)"
                 "75"]
@@ -1125,11 +1125,20 @@
                 "8"]
                (str/split-lines
                 ((mt/user->client :rasta) :post 202 (format "card/%d/query/csv?parameters=%s"
-                                                                    (u/get-id card) encoded-params)))))))))
+                                                                    (u/get-id card) encoded-params))))))))
+  (testing "no-fomatting-rows"
+    (with-temp-native-card [_ card "CHECKINS" "SELECT MAX(DATE) FROM CHECKINS;"]
+      (with-cards-in-readable-collection card
+        (is (= ["MAX(DATE)" 
+                "2015-12-29"]
+               (str/split-lines
+                ((mt/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card)) )))))))
+  )
+                                                            
 
 (deftest json-download-test
   (testing "no parameters"
-    (with-temp-native-card [_ card]
+    (with-temp-native-card [_ card "CATEGORIES" "SELECT COUNT(*) FROM CATEGORIES;"]
       (with-cards-in-readable-collection card
         (is (= [{(keyword "COUNT(*)") 75}]
                ((mt/user->client :rasta) :post 202 (format "card/%d/query/json" (u/get-id card))))))))
@@ -1149,7 +1158,7 @@
 
 (deftest xlsx-download-test
   (testing "no parameters"
-    (with-temp-native-card [_ card]
+    (with-temp-native-card [_ card "CATEGORIES" "SELECT COUNT(*) FROM CATEGORIES;"]
       (with-cards-in-readable-collection card
         (is (= [{:col "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
