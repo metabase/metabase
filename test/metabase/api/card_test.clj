@@ -1132,8 +1132,7 @@
         (is (= ["MAX(DATE)" 
                 "2015-12-29"]
                (str/split-lines
-                ((mt/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card)) )))))))
-  )
+                ((mt/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card)) ))))))))
                                                             
 
 (deftest json-download-test
@@ -1147,7 +1146,12 @@
       (with-cards-in-readable-collection card
         (is (= [{(keyword "COUNT(*)") 8}]
                ((mt/user->client :rasta) :post 202 (format "card/%d/query/json?parameters=%s"
-                                                                   (u/get-id card) encoded-params))))))))
+                                                                   (u/get-id card) encoded-params)))))))
+  (testing "no-fomatting-rows"
+    (with-temp-native-card [_ card "CHECKINS" "SELECT MAX(DATE) FROM CHECKINS;"]
+      (with-cards-in-readable-collection card
+        (is (= [{(keyword "MAX(DATE)") "2015-12-29"}]
+               ((mt/user->client :rasta) :post 202 (format "card/%d/query/json" (u/get-id card)))))))))
 
 (defn- parse-xlsx-results [results]
   (->> results
@@ -1171,7 +1175,14 @@
                (parse-xlsx-results
                 ((mt/user->client :rasta) :post 202 (format "card/%d/query/xlsx?parameters=%s"
                                                                     (u/get-id card) encoded-params)
-                 {:request-options {:as :byte-array}}))))))))
+                 {:request-options {:as :byte-array}})))))))
+  (testing "no-fomatting-rows"
+    (with-temp-native-card [_ card "CHECKINS" "SELECT MAX(DATE) FROM CHECKINS;"]
+      (with-cards-in-readable-collection card
+        (is (= [{:col "MAX(DATE)"} {:col "2015-12-29"}]
+               (parse-xlsx-results
+                ((mt/user->client :rasta) :post 202 (format "card/%d/query/xlsx" (u/get-id card))
+                                          {:request-options {:as :byte-array}}))))))))
 
 (deftest download-default-constraints-test
   (tt/with-temp Card [card {:dataset_query {:database   (data/id)
