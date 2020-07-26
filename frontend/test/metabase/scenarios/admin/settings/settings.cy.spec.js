@@ -9,6 +9,31 @@ describe("scenarios > admin > settings", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
+  it("should render the proper auth options", () => {
+    // Ported from `SettingsAuthenticationOptions.e2e.spec.js`
+    // Google sign in
+    cy.visit("/admin/settings/authentication");
+    cy.findByText("Sign in with Google");
+    cy.findAllByText("Configure")
+      .first()
+      .click();
+    cy.contains(
+      "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID.",
+    );
+    // *** should be 'Save changes'
+    cy.findByText("Save Changes");
+
+    // SSO
+    cy.visit("/admin/settings/authentication");
+    cy.findByText("LDAP").click();
+    cy.findAllByText("Configure")
+      .last()
+      .click();
+    cy.findByText("LDAP Authentication");
+    cy.findByText("User Schema");
+    cy.findByText("Save changes");
+  });
+
   it("should save a setting", () => {
     cy.server();
     cy.route("PUT", "**/admin-email").as("saveSettings");
