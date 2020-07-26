@@ -9,11 +9,14 @@ describe("scenarios > admin > databases > list", () => {
   });
 
   it("should let you see databases in list view", () => {
-    // *** code here
+    cy.visit("/admin/databases");
+    cy.findByText("Sample Dataset");
+    cy.findByText("H2");
   });
 
   it("should not let you see saved questions in the database list", () => {
-    // *** code here
+    cy.visit("/admin/databases");
+    cy.get("td").should("have.length", 3);
   });
 
   it("should let you view a database's detail view", () => {
