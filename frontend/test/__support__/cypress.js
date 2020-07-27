@@ -129,3 +129,16 @@ export function visitAlias(alias) {
     cy.visit(url);
   });
 }
+
+export function createNativeQuestion(name, query) {
+  return cy.request("POST", "/api/card", {
+    name,
+    dataset_query: {
+      type: "native",
+      native: { query },
+      database: 1,
+    },
+    display: "table",
+    visualization_settings: {},
+  });
+}
