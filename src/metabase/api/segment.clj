@@ -58,7 +58,7 @@
 (api/defendpoint GET "/:id"
   "Fetch `Segment` with ID."
   [id]
-  (first (log/spy :error (add-query-descriptions [(log/spy :error (hydrated-segment (log/spy :error id)))]))))
+  (first (add-query-descriptions [(hydrated-segment id)])))
 
 (api/defendpoint GET "/"
   "Fetch *all* `Segments`."

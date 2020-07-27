@@ -1165,9 +1165,12 @@ const loadingDashCards = handleActions(
 
 const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
   const metadata = getMetadata(getState());
+
   const queries = dashCards
-    .flatMap(dc => [dc.card].concat(dc.series))
+    .filter(dc => !isVirtualDashCard(dc))
+    .flatMap(dc => [dc.card].concat(dc.series || []))
     .map(card => new Question(card, metadata).query());
+
   return dispatch(loadMetadataForQueries(queries));
 };
 

@@ -51,8 +51,7 @@
 
 
 (defn- pre-delete [dashboard]
-  (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard))
-  (db/delete! DashboardCard :dashboard_id (u/get-id dashboard)))
+  (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard)))
 
 (defn- pre-insert [dashboard]
   (let [defaults  {:parameters []}

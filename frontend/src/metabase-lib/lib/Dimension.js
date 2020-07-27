@@ -273,8 +273,8 @@ export default class Dimension {
   /**
    * Valid filter operators on this dimension
    */
-  filterOperators(): FilterOperator[] {
-    return this.field().filterOperators();
+  filterOperators(selected): FilterOperator[] {
+    return this.field().filterOperators(selected);
   }
 
   /**
@@ -473,7 +473,7 @@ export class FieldIDDimension extends FieldDimension {
 
   field() {
     return (
-      (this._metadata && this._metadata.fields[this._args[0]]) ||
+      (this._metadata && this._metadata.field(this._args[0])) ||
       new Field({ id: this._args[0] })
     );
   }

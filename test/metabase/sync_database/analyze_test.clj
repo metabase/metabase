@@ -49,16 +49,16 @@
                (classified-special-type values)))))))
 
 (deftest classify-emails-test
-  (testing "Check that things that are valid emails are marked as Emails")
-  (doseq [[values expected] {["helper@metabase.com"]                                           true
-                             ["helper@metabase.com", "someone@here.com", "help@nope.com"]      true
-                             ["helper@metabase.com", "1111IsNot!An....email", "help@nope.com"] false
-                             ["\"A string should not cause a Field to be marked as email\""]   false
-                             ["true"]                                                          false
-                             ["false"]                                                         false}]
-    (testing (pr-str values)
-      (is (= (when expected :type/Email)
-             (classified-special-type values))))))
+  (testing "Check that things that are valid emails are marked as Emails"
+    (doseq [[values expected] {["helper@metabase.com"]                                           true
+                               ["helper@metabase.com", "someone@here.com", "help@nope.com"]      true
+                               ["helper@metabase.com", "1111IsNot!An....email", "help@nope.com"] false
+                               ["\"A string should not cause a Field to be marked as email\""]   false
+                               ["true"]                                                          false
+                               ["false"]                                                         false}]
+      (testing (pr-str values)
+        (is (= (when expected :type/Email)
+               (classified-special-type values)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -81,14 +81,14 @@
   "Change the `visibility-type` of `table` via an API call. (This is done via the API so we can see which, if any, side
   effects (e.g. analysis) get triggered.)"
   [table visibility-type]
-  ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
-                                                                       :visibility_type visibility-type
-                                                                       :description     "What a nice table!"}))
+  ((mt/user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
+                                                                          :visibility_type visibility-type
+                                                                          :description     "What a nice table!"}))
 
 (defn- api-sync!
   "Trigger a sync of `table` via the API."
   [table]
-  ((user->client :crowberto) :post 200 (format "database/%d/sync" (:db_id table))))
+  ((mt/user->client :crowberto) :post 200 (format "database/%d/sync" (:db_id table))))
 
 ;; use these functions to create fake Tables & Fields that are actually backed by something real in the database.
 ;; Otherwise when we go to resync them the logic will figure out Table/Field doesn't exist and mark it as inactive
@@ -107,36 +107,36 @@
 
 (deftest dont-analyze-hidden-tables-test
   (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"
-    (mt/with-temp* [Table [table (fake-table)]
-                    Field [field (fake-field table)]]
-      (set-table-visibility-type-via-api! table "hidden")
-      (api-sync! table)
-      (set-table-visibility-type-via-api! table "cruft")
-      (set-table-visibility-type-via-api! table "cruft")
-      (api-sync! table)
-      (set-table-visibility-type-via-api! table "technical")
-      (api-sync! table)
-      (set-table-visibility-type-via-api! table "technical")
-      (api-sync! table)
-      (api-sync! table)
-      (is (= false
-             (fake-field-was-analyzed? field))))
-
-    (testing "same test not coming through the api"
-      (mt/with-temp* [Table [table (fake-table)]
-                      Field [field (fake-field table)]]
-        (set-table-visibility-type-via-api! table "hidden")
-        (analyze-table! table)
-        (set-table-visibility-type-via-api! table "cruft")
-        (set-table-visibility-type-via-api! table "cruft")
-        (analyze-table! table)
-        (set-table-visibility-type-via-api! table "technical")
-        (analyze-table! table)
-        (set-table-visibility-type-via-api! table "technical")
-        (analyze-table! table)
-        (analyze-table! table)
-        (is (= false
-               (fake-field-was-analyzed? field)))))))
+    (letfn [(tests [sync!*]
+              (mt/with-temp* [Table [table (assoc (fake-table) :visibility_type "hidden")]
+                              Field [field (fake-field table)]]
+                (letfn [(set-visibility! [visibility]
+                          (set-table-visibility-type-via-api! table visibility)
+                          (testing "after updating visibility type"
+                            (is (= false
+                                   (fake-field-was-analyzed? field)))))
+                        (sync! []
+                          (sync!* table)
+                          (testing "after sync"
+                            (is (= false
+                                   (fake-field-was-analyzed? field)))))]
+                  (testing "visibility -> hidden"
+                    (set-visibility! "hidden")
+                    (sync!))
+                  (testing "visibility -> cruft"
+                    (set-visibility! "cruft")
+                    (set-visibility! "cruft")
+                    (sync!))
+                  (testing "visibility -> technical"
+                    (set-visibility! "technical")
+                    (sync!))
+                  (testing "visibility -> technical (again)"
+                    (set-visibility! "technical")
+                    (sync!)
+                    (sync!)))))]
+      (tests api-sync!)
+      (testing "\nsame test but with sync triggered programatically rather than via the API"
+        (tests analyze-table!)))))
 
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"

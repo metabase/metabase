@@ -162,6 +162,7 @@
   round-all-decimals
   scheduler-current-tasks
   throw-if-called
+  with-locale
   with-log-messages
   with-log-messages-for-level
   with-log-level

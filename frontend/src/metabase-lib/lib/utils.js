@@ -23,7 +23,7 @@ const memoized = new WeakMap();
 export function memoize(target, name, descriptor) {
   const method = target[name];
   descriptor.value = function(...args) {
-    const path = [this, method, ...args];
+    const path = [this, method, args.length, ...args];
     const last = path.pop();
     const map = path.reduce(
       (map, key) => getWithFallback(map, key, createMap),
@@ -55,4 +55,12 @@ export function sortObject(obj) {
     o[k] = sortObject(v);
   }
   return o;
+}
+
+export function createLookupByProperty(items, property) {
+  const lookup = {};
+  for (const item of items) {
+    lookup[item[property]] = item;
+  }
+  return lookup;
 }

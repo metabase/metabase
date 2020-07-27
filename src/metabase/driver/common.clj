@@ -258,8 +258,7 @@
     java.sql.Timestamp             :type/DateTime
     java.util.Date                 :type/Date
     DateTime                       :type/DateTime
-    ;; shouldn't this be :type/UUID ?
-    java.util.UUID                 :type/Text
+    java.util.UUID                 :type/UUID
     clojure.lang.IPersistentMap    :type/Dictionary
     clojure.lang.IPersistentVector :type/Array
     java.time.LocalDate            :type/Date
@@ -285,12 +284,13 @@
   "Number of result rows to sample when when determining base type."
   100)
 
-(def values->base-type
+(defn values->base-type
   "Transducer that given a sequence of `values`, returns the most common base type."
+  []
   ((comp (filter some?) (take column-info-sample-size) (map class))
    (fn
-     ([] (java.util.HashMap. {:type/* 1}))
-     ([^java.util.HashMap freqs klass]
+     ([] (java.util.HashMap. {nil 0})) ; fallback to keep `max-key` happy if no values
+     ([^java.util.HashMap freqs, klass]
       (.put freqs klass (inc (.getOrDefault freqs klass 0)))
       freqs)
      ([freqs]

@@ -56,22 +56,23 @@
 ;; e.g. NVARCHAR(100) or NUMERIC(10,5) See also http://www.sqlite.org/datatype3.html
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
-   [[#"BIGINT"   :type/BigInteger]
-    [#"BIG INT"  :type/BigInteger]
-    [#"INT"      :type/Integer]
-    [#"CHAR"     :type/Text]
-    [#"TEXT"     :type/Text]
-    [#"CLOB"     :type/Text]
-    [#"BLOB"     :type/*]
-    [#"REAL"     :type/Float]
-    [#"DOUB"     :type/Float]
-    [#"FLOA"     :type/Float]
-    [#"NUMERIC"  :type/Float]
-    [#"DECIMAL"  :type/Decimal]
-    [#"BOOLEAN"  :type/Boolean]
-    [#"DATETIME" :type/DateTime]
-    [#"DATE"     :type/Date]
-    [#"TIME"     :type/Time]]))
+   [[#"BIGINT"    :type/BigInteger]
+    [#"BIG INT"   :type/BigInteger]
+    [#"INT"       :type/Integer]
+    [#"CHAR"      :type/Text]
+    [#"TEXT"      :type/Text]
+    [#"CLOB"      :type/Text]
+    [#"BLOB"      :type/*]
+    [#"REAL"      :type/Float]
+    [#"DOUB"      :type/Float]
+    [#"FLOA"      :type/Float]
+    [#"NUMERIC"   :type/Float]
+    [#"DECIMAL"   :type/Decimal]
+    [#"BOOLEAN"   :type/Boolean]
+    [#"TIMESTAMP" :type/DateTime]
+    [#"DATETIME"  :type/DateTime]
+    [#"DATE"      :type/Date]
+    [#"TIME"      :type/Time]]))
 
 (defmethod sql-jdbc.sync/database-type->base-type :sqlite
   [_ database-type]
