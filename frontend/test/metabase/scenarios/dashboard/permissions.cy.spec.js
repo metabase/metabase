@@ -67,30 +67,26 @@ describe("scenarios > dashboard > permissions", () => {
           cy.request("POST", `/api/dashboard/${dashId}/cards`, {
             cardId: secondQuestionId,
           }).then(({ body: { id: dashCardIdB } }) => {
-            const dashCards = cy.request(
-              "PUT",
-              `/api/dashboard/${dashId}/cards`,
-              {
-                cards: [
-                  {
-                    id: dashCardIdA,
-                    card_id: firstQuestionId,
-                    row: 0,
-                    col: 0,
-                    sizeX: 6,
-                    sizeY: 6,
-                  },
-                  {
-                    id: dashCardIdB,
-                    card_id: secondQuestionId,
-                    row: 0,
-                    col: 6,
-                    sizeX: 6,
-                    sizeY: 6,
-                  },
-                ],
-              },
-            );
+            cy.request("PUT", `/api/dashboard/${dashId}/cards`, {
+              cards: [
+                {
+                  id: dashCardIdA,
+                  card_id: firstQuestionId,
+                  row: 0,
+                  col: 0,
+                  sizeX: 6,
+                  sizeY: 6,
+                },
+                {
+                  id: dashCardIdB,
+                  card_id: secondQuestionId,
+                  row: 0,
+                  col: 6,
+                  sizeX: 6,
+                  sizeY: 6,
+                },
+              ],
+            });
           });
         });
         dashboardId = dashId;
