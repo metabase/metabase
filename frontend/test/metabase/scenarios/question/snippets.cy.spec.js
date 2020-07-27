@@ -40,12 +40,12 @@ describe("scenarios > question > snippets", () => {
     // update the name and content
     modal().within(() => {
       cy.findByText("Editing stuff-snippet");
-      cy.findByLabelText("Enter some SQL here so you can reuse it later")
-        .clear()
-        .type("'foo'");
-      cy.findByLabelText("Give your snippet a name")
-        .clear()
-        .type("foo");
+      cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
+        "{selectall}{del}'foo'",
+      );
+      cy.findByLabelText("Give your snippet a name").type(
+        "{selectall}{del}foo",
+      );
       cy.findByText("Save").click();
     });
 
