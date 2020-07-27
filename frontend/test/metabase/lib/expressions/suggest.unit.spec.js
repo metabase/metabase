@@ -368,7 +368,7 @@ describe("metabase/lib/expression/suggest", () => {
           startRule: "aggregation",
         });
         expect(name).toEqual("sum");
-        expect(example).toEqual("sum( [Subtotal] )");
+        expect(example).toEqual("Sum([Subtotal])");
       });
     });
 
@@ -402,7 +402,7 @@ describe("metabase/lib/expression/suggest", () => {
           startRule: "boolean",
         });
         expect(name).toEqual("contains");
-        expect(example).toEqual('contains([Status] , "Pass")');
+        expect(example).toEqual('contains([Status], "Pass")');
       });
     });
   });
