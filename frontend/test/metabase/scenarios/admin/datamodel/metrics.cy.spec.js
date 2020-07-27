@@ -1,6 +1,7 @@
 import { restore, signInAsAdmin, popover, modal } from "__support__/cypress";
-// *** should show no questions based on a new metric (what does this mean?)
-// *** should see a newly asked question in its questions list (same here)
+// Not yet here:
+// *** should show no questions based on a new metric
+// *** should see a newly asked question in its questions list
 
 describe("scenarios > admin > datamodel > metrics", () => {
   before(restore);
