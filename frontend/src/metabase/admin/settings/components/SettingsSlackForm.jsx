@@ -237,7 +237,7 @@ export default class SettingsSlackForm extends Component {
       <form noValidate>
         <div className="px2" style={{ maxWidth: "585px" }}>
           <h1>
-            Metabase
+            {t`Metabase`}
             <RetinaImage
               className="mx1"
               src="app/assets/img/slack_emoji.png"

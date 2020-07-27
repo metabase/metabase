@@ -14,6 +14,7 @@ export type SettingName =
   | "custom-geojson"
   | "email-configured?"
   | "enable-embedding"
+  | "enable-enhancements?"
   | "enable-public-sharing"
   | "enable-xrays"
   | "engines"
@@ -74,6 +75,10 @@ class Settings {
   // these are all special accessors which provide a lookup of a property plus some additional help
   adminEmail() {
     return this.get("admin-email");
+  }
+
+  enhancementsEnabled() {
+    return this.get("enable-enhancements?");
   }
 
   isEmailConfigured() {
