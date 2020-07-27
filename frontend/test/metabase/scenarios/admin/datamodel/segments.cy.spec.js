@@ -1,5 +1,6 @@
 import { restore, signInAsAdmin, popover, modal } from "__support__/cypress";
 // Import from `segments.e2e.spec.js`
+// Not sure what these mean:
 // *** Should show the segment fields list and detail view (what does this mean in original file?)
 // *** Should show no questions based on a new segment (what does this mean in original file?)
 // *** Should see a newly asked question in its questions list
