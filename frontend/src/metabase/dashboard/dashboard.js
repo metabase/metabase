@@ -1167,7 +1167,7 @@ const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
   const metadata = getMetadata(getState());
 
   const queries = dashCards
-    .filter(dc => !isVirtualDashCard(dc))
+    .filter(dc => !isVirtualDashCard(dc) && dc.dataset_query) // exclude text cards and queries without perms
     .flatMap(dc => [dc.card].concat(dc.series || []))
     .map(card => new Question(card, metadata).query());
 
