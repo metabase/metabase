@@ -11,6 +11,7 @@ import {
   SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
   SET_NATIVE_EDITOR_SELECTED_RANGE,
   SET_MODAL_SNIPPET,
+  SET_SNIPPET_COLLECTION_ID,
   CLOSE_QB_NEWB_MODAL,
   RELOAD_CARD,
   API_CREATE_QUESTION,
@@ -59,6 +60,7 @@ const DEFAULT_UI_CONTROLS = {
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: false, // "view" or "notebook"
+  snippetCollectionId: null,
 };
 
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
@@ -114,6 +116,7 @@ export const uiControls = handleActions(
         ...state,
         ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingSnippetSidebar: !state.isShowingSnippetSidebar,
+        snippetCollectionId: null,
       }),
     },
     [SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR]: {
@@ -130,6 +133,10 @@ export const uiControls = handleActions(
     [SET_MODAL_SNIPPET]: (state, { payload }) => ({
       ...state,
       modalSnippet: payload,
+    }),
+    [SET_SNIPPET_COLLECTION_ID]: (state, { payload }) => ({
+      ...state,
+      snippetCollectionId: payload,
     }),
     [CLOSE_QB_NEWB_MODAL]: {
       next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }),

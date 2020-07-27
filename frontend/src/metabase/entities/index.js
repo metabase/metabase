@@ -1,4 +1,5 @@
 export collections from "./collections";
+export snippetCollections from "./snippet-collections";
 export dashboards from "./dashboards";
 export pulses from "./pulses";
 export questions from "./questions";
