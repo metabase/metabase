@@ -20,14 +20,14 @@ const helperTextStrings = [
     structure: "Sum(" + t`column` + ")",
     description: t`Adds up all the values of the column.`,
     example: "Sum([" + t`Subtotal` + "])",
-    args: [{ name: t`column`, description: t`The numeric column to sum.` }],
+    args: [{ name: t`column`, description: t`The column or number to sum.` }],
   },
   {
     name: "cum-sum",
     structure: "CumulativeSum(" + t`column` + ")",
     description: t`The rolling sum of a column across a breakout.`,
     example: "CumulativeSum([" + t`Subtotal` + "])",
-    args: [{ name: t`column`, description: t`The column to sum.` }],
+    args: [{ name: t`column`, description: t`The column or number to sum.` }],
   },
   {
     name: "distinct",
@@ -46,7 +46,12 @@ const helperTextStrings = [
     structure: "StandardDeviation(" + t`column` + ")",
     description: t`Calculates the standard deviation of the column.`,
     example: "StandardDeviation([" + t`Population` + "])",
-    args: [{ name: t`column`, description: t`A numeric column.` }],
+    args: [
+      {
+        name: t`column`,
+        description: t`The numeric column to get standard deviation of.`,
+      },
+    ],
   },
   {
     name: "avg",
@@ -54,7 +59,10 @@ const helperTextStrings = [
     description: t`Returns the average of the values in the column.`,
     example: "Average([" + t`Quantity` + "])",
     args: [
-      { name: t`column`, description: t`The column whose values to average.` },
+      {
+        name: t`column`,
+        description: t`The numeric column whose values to average.`,
+      },
     ],
   },
   {
@@ -118,7 +126,7 @@ const helperTextStrings = [
       t`Valid` +
       '")',
     args: [
-      { name: t`column`, description: t`The column to sum.` },
+      { name: t`column`, description: t`The numeric column to sum.` },
       {
         name: t`condition`,
         description: t`Something that should evaluate to true or false.`,
@@ -130,14 +138,24 @@ const helperTextStrings = [
     structure: "Variance(" + t`column` + ")",
     description: t`Returns the numeric variance for a given column.`,
     example: "Variance([" + t`Temperature` + "])",
-    args: [{ name: t`column`, description: t`` }],
+    args: [
+      {
+        name: t`column`,
+        description: t`The column or number to get the variance of.`,
+      },
+    ],
   },
   {
     name: "median",
     structure: "Median(" + t`column` + ")",
     description: t`Returns the median value of the specified column.`,
     example: "Median([" + t`Age` + "])",
-    args: [{ name: t`column`, description: t`` }],
+    args: [
+      {
+        name: t`column`,
+        description: t`The column or number to get the median of.`,
+      },
+    ],
   },
   {
     name: "percentile",
@@ -145,8 +163,14 @@ const helperTextStrings = [
     description: t`Returns the value of the column at the percentile value.`,
     example: "Percentile([" + t`Score` + "], 0.9)",
     args: [
-      { name: t`column`, description: t`` },
-      { name: t`percentile-value`, description: t`` },
+      {
+        name: t`column`,
+        description: t`The column or number to get the percentile of.`,
+      },
+      {
+        name: t`percentile-value`,
+        description: t`The value of the percentile.`,
+      },
     ],
   },
   {
@@ -157,7 +181,7 @@ const helperTextStrings = [
     args: [
       {
         name: t`text`,
-        description: t`The column with values to convert to lowercase.`,
+        description: t`The column with values to convert to lower case.`,
       },
     ],
   },
@@ -180,7 +204,10 @@ const helperTextStrings = [
     description: t`Returns a portion of the supplied text.`,
     example: "substring([" + t`Title` + "], 0, 10)",
     args: [
-      { name: t`text`, description: t`The text to return a portion of.` },
+      {
+        name: t`text`,
+        description: t`The column or text to return a portion of.`,
+      },
       {
         name: t`position`,
         description: t`The position to start copying characters.`,
@@ -194,10 +221,7 @@ const helperTextStrings = [
     description: t`Extracts matching substrings according to a regular expression.`,
     example: "regexextract([" + t`Address` + '], "[0-9]+")',
     args: [
-      {
-        name: t`text`,
-        description: t`The column or string of text to search though.`,
-      },
+      { name: t`text`, description: t`The column or text to search through.` },
       {
         name: t`regular_expression`,
         description: t`The regular expression to match.`,
@@ -210,13 +234,10 @@ const helperTextStrings = [
     description: t`Combine two or more strings of text together.`,
     example: "concat([" + t`Last Name` + '], ", ", [' + t`First Name` + "])",
     args: [
-      {
-        name: t`value1`,
-        description: t`value2 will be added on to the end of this.`,
-      },
+      { name: t`value1`, description: t`The column or text to begin with.` },
       {
         name: t`value2`,
-        description: t`This will be added to the end of value1.`,
+        description: t`This will be added to the end of value1, and so on.`,
       },
     ],
   },
@@ -233,7 +254,7 @@ const helperTextStrings = [
       t`Gigantic` +
       '")',
     args: [
-      { name: t`text`, description: t`The text that will be modified.` },
+      { name: t`text`, description: t`The column or text to search through.` },
       { name: t`find`, description: t`The text to find.` },
       { name: t`replace`, description: t`The text to use as the replacement.` },
     ],
@@ -243,7 +264,12 @@ const helperTextStrings = [
     structure: "length(" + t`text` + ")",
     description: t`Returns the number of characters in text.`,
     example: "length([" + t`Comment` + "])",
-    args: [{ name: t`text`, description: t`` }],
+    args: [
+      {
+        name: t`text`,
+        description: t`The column or text you want to get the length of.`,
+      },
+    ],
   },
   {
     name: "trim",
@@ -251,10 +277,7 @@ const helperTextStrings = [
     description: t`Removes leading and trailing whitespace from a string of text.`,
     example: "trim([" + t`Comment` + "])",
     args: [
-      {
-        name: t`text`,
-        description: t`The column with values you want to trim.`,
-      },
+      { name: t`text`, description: t`The column or text you want to trim.` },
     ],
   },
   {
@@ -263,10 +286,7 @@ const helperTextStrings = [
     description: t`Removes trailing whitespace from a string of text.`,
     example: "rtrim([" + t`Comment` + "])",
     args: [
-      {
-        name: t`text`,
-        description: t`The column with values you want to trim.`,
-      },
+      { name: t`text`, description: t`The column or text you want to trim.` },
     ],
   },
   {
@@ -275,10 +295,7 @@ const helperTextStrings = [
     description: t`Removes leading whitespace from a string of text.`,
     example: "ltrim([" + t`Comment` + "])",
     args: [
-      {
-        name: t`text`,
-        description: t`The column with values you want to trim.`,
-      },
+      { name: t`text`, description: t`The column or text you want to trim.` },
     ],
   },
   {
@@ -286,59 +303,91 @@ const helperTextStrings = [
     structure: "abs(" + t`column` + ")",
     description: t`Returns the absolute (positive) value of the specified column.`,
     example: "abs([" + t`Debt` + "])",
-    args: [{ name: t`column`, description: t`` }],
+    args: [
+      {
+        name: t`column`,
+        description: t`The column or number to return absolute (positive) value of.`,
+      },
+    ],
   },
   {
     name: "floor",
-    structure: "floor(" + t`number` + ")",
+    structure: "floor(" + t`column` + ")",
     description: t`Rounds a decimal number down.`,
     example: "floor([" + t`Price` + "])",
-    args: [{ name: t`number`, description: t`` }],
+    args: [
+      { name: t`column`, description: t`The column or number to round down.` },
+    ],
   },
   {
     name: "ceil",
-    structure: "ceil(" + t`number` + ")",
+    structure: "ceil(" + t`column` + ")",
     description: t`Rounds a decimal number up.`,
     example: "ceil([" + t`Price` + "])",
-    args: [{ name: t`number`, description: t`` }],
+    args: [
+      { name: t`column`, description: t`The column or number to round up.` },
+    ],
   },
   {
     name: "round",
-    structure: "round(" + t`number` + ")",
+    structure: "round(" + t`column` + ")",
     description: t`Rounds a decimal number either up or down to the nearest integer value.`,
     example: "round([" + t`Temperature` + "])",
-    args: [{ name: t`number`, description: t`` }],
+    args: [
+      {
+        name: t`column`,
+        description: t`The column or number to round to nearest integer.`,
+      },
+    ],
   },
   {
     name: "sqrt",
-    structure: "sqrt(" + t`number` + ")",
+    structure: "sqrt(" + t`column` + ")",
     description: t`Returns the square root.`,
     example: "sqrt([" + t`Hypotenuse` + "])",
-    args: [{ name: t`number`, description: t`` }],
+    args: [
+      {
+        name: t`column`,
+        description: t`The column or number to return square root value of.`,
+      },
+    ],
   },
   {
     name: "power",
-    structure: "power(" + t`number` + ", " + t`exponent` + ")",
+    structure: "power(" + t`column` + ", " + t`exponent` + ")",
     description: t`Raises a number to the power of the exponent value.`,
     example: "power([" + t`Length` + "], 2)",
     args: [
-      { name: t`number`, description: t`` },
-      { name: t`exponent`, description: t`` },
+      {
+        name: t`column`,
+        description: t`The column or number raised to the exponent.`,
+      },
+      { name: t`exponent`, description: t`The value of the exponent.` },
     ],
   },
   {
     name: "log",
-    structure: "log(" + t`number` + ")",
+    structure: "log(" + t`column` + ")",
     description: t`Returns the base 10 log of the number.`,
     example: "log([" + t`Value` + "])",
-    args: [{ name: t`number`, description: t`` }],
+    args: [
+      {
+        name: t`column`,
+        description: t`The column or number to return the natural logarithm value of.`,
+      },
+    ],
   },
   {
     name: "exp",
-    structure: "exp(" + t`number` + ")",
+    structure: "exp(" + t`column` + ")",
     description: t`Returns Euler's number, e, raised to the power of the supplied number.`,
     example: "exp([" + t`Interest Months` + "])",
-    args: [{ name: t`number`, description: t`` }],
+    args: [
+      {
+        name: t`column`,
+        description: t`The column or number to return the exponential value of.`,
+      },
+    ],
   },
   {
     name: "contains",
@@ -346,10 +395,7 @@ const helperTextStrings = [
     description: t`Checks to see if string1 contains string2 within it.`,
     example: "contains([" + t`Status` + '], "' + t`Pass` + '")',
     args: [
-      {
-        name: t`string1`,
-        description: t`The contents of this string will be checked.`,
-      },
+      { name: t`string1`, description: t`The column or text to check.` },
       { name: t`string2`, description: t`The string of text to look for.` },
     ],
   },
@@ -360,7 +406,7 @@ const helperTextStrings = [
     example:
       "startsWith([" + t`Course Name` + '], "' + t`Computer Science` + '")',
     args: [
-      { name: t`text`, description: t`A column or string of text to check.` },
+      { name: t`text`, description: t`The column or text to check.` },
       {
         name: t`comparison`,
         description: t`The string of text that the original text should start with.`,
@@ -373,7 +419,7 @@ const helperTextStrings = [
     description: t`Returns true if the end of the text matches the comparison text.`,
     example: "endsWith([" + t`Appetite` + '], "' + t`hungry` + '")',
     args: [
-      { name: t`text`, description: t`A column or string of text to check.` },
+      { name: t`text`, description: t`The column or text to check.` },
       {
         name: t`comparison`,
         description: t`The string of text that the original text should end with.`,
@@ -384,23 +430,35 @@ const helperTextStrings = [
     name: "between",
     structure: "between(" + t`column` + ", " + t`start` + ", " + t`end` + ")",
     description: t`Checks a date or number column's values to see if they're within the specified range.`,
-    example: "between([" + t`Rating` + "], 3.75, 5)",
+    example: "between([" + t`Created At` + '], "2019-01-01", "2020-12-31")',
     args: [
-      { name: t`column`, description: t`The column whose values to average.` },
-      { name: t`start`, description: t`` },
-      { name: t`end`, description: t`` },
+      {
+        name: t`column`,
+        description: t`The date or numeric column that should be within the start and end values.`,
+      },
+      { name: t`start`, description: t`The beginning of the range.` },
+      { name: t`end`, description: t`The end of the range.` },
     ],
   },
   {
     name: "time-interval",
     structure:
-      "interval(" + t`condition` + ", " + t`number` + ", " + t`text` + ")",
-    description: t``,
-    example: "interval()",
+      "interval(" + t`column` + ", " + t`number` + ", " + t`text` + ")",
+    description: t`Checks a date column's values to see if they're within the relative range.`,
+    example: "interval([" + t`Created At` + '], -1, "month")',
     args: [
-      { name: t`condition`, description: t`` },
-      { name: t`number`, description: t`` },
-      { name: t`text`, description: t`` },
+      {
+        name: t`column`,
+        description: t`The date column to return interval of.`,
+      },
+      {
+        name: t`number`,
+        description: t`Period of interval, where negative values are back in time.`,
+      },
+      {
+        name: t`text`,
+        description: t`Type of internal like "day", "month", "year".`,
+      },
     ],
   },
   {
@@ -416,7 +474,7 @@ const helperTextStrings = [
       t`No comments` +
       '")',
     args: [
-      { name: t`value1`, description: t`A column or value.` },
+      { name: t`value1`, description: t`The column or value to return.` },
       {
         name: t`value2`,
         description: t`If value1 is empty, value2 gets returned if its not empty, and so on.`,
@@ -446,7 +504,7 @@ const helperTextStrings = [
       },
       {
         name: t`output`,
-        description: t`The value that will be returned if the preceding condition is true.`,
+        description: t`The value that will be returned if the preceding condition is true, and so on.`,
       },
     ],
   },
