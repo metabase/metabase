@@ -9,7 +9,8 @@
 
   TODO - this is a prime library candidate."
   (:require [metabase.util.date-2.common :as common])
-  (:import [java.time.format DateTimeFormatter DateTimeFormatterBuilder SignStyle] java.time.temporal.TemporalField))
+  (:import [java.time.format DateTimeFormatter DateTimeFormatterBuilder SignStyle]
+           java.time.temporal.TemporalField))
 
 (defprotocol ^:private Section
   (^:private apply-section [this builder]))

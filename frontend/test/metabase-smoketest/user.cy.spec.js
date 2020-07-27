@@ -234,7 +234,7 @@ describe("smoketest > user", () => {
 
     cy.findByText("User → ID");
     cy.findByText("Created At");
-    cy.findByText("People");
+    cy.findByText("Orders + People");
 
     // Setting Row limit
 

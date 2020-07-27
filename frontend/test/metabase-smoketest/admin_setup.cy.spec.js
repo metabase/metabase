@@ -5,6 +5,7 @@ import {
   signOut,
   signInAsNormalUser,
   signIn,
+  setupLocalHostEmail,
 } from "__support__/cypress";
 
 const new_user = {
@@ -60,29 +61,14 @@ describe("smoketest > admin_setup", () => {
       // cy.findByText("Save").click();
     });
 
-    it("should setup email", () => {
+    it.skip("should setup email", () => {
       cy.findByText("Settings").click();
       cy.findByText("Email").click();
 
       cy.findByText("Email address you want to use as the sender of Metabase.");
       cy.findByText("Sample Database").should("not.exist");
 
-      // Email info
-      cy.findByPlaceholderText("smtp.yourservice.com").type("localhost");
-      cy.findByPlaceholderText("587").type("1025");
-      cy.findByText("None").click();
-      // Leaves password and username blank
-      cy.findByPlaceholderText("metabase@yourcompany.com").type(
-        "test@local.host",
-      );
-
-      // *** Unnecessary click (Issue #12692)
-      cy.findByPlaceholderText("smtp.yourservice.com").click();
-
-      cy.findByText("Save changes").click();
-      cy.findByText("Changes saved!");
-
-      cy.findByText("Send test email").click();
+      setupLocalHostEmail();
 
       // *** Will fail if test works correctly:
       cy.wait(2000)
@@ -96,7 +82,7 @@ describe("smoketest > admin_setup", () => {
       // );
     });
 
-    it("should setup Slack", () => {
+    it.skip("should setup Slack", () => {
       cy.findByText("Slack").click();
 
       cy.findByText("Answers sent right to your Slack #channels");
@@ -331,8 +317,7 @@ describe("smoketest > admin_setup", () => {
         .wait(500)
         .type("Test Table");
 
-      cy.get("input")
-        .eq(2)
+      cy.get("[value='This is a confirmed order for a product from a user.']")
         .clear()
         .type("Testing table description");
     });
@@ -905,7 +890,8 @@ describe("smoketest > admin_setup", () => {
       cy.findByLabelText("Name")
         .clear()
         .wait(1)
-        .type("q for sub-collection");
+        .type("sub-collection question");
+      cy.findByText("sub-collection question");
       cy.findByText("Robert Tableton's Personal Collection").click();
 
       cy.findByText("My personal collection");
@@ -921,11 +907,10 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Sorry, you don’t have permission to see that.").should(
         "not.exist",
       );
-      cy.findByText("q for sub-collection");
+      cy.findByText("sub-collection question");
 
       // Check access as no collection user
 
-      signOut();
       signIn("nocollection");
       cy.visit("/");
 
@@ -940,11 +925,11 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should be unable to access question with URL (if access not permitted)", () => {
-      signOut();
+      // This test will fail whenever the previous test fails
       signIn("nocollection");
 
       cy.visit("/question/4");
-      cy.findByText("q for sub-collection").should("not.exist");
+      cy.findByText("sub-collection question").should("not.exist");
       cy.findByText("Sorry, you don’t have permission to see that.");
     });
 

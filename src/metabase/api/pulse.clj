@@ -126,7 +126,7 @@
                  chan-types
                  ;; if we have Slack enabled build a dynamic list of channels/users
                  (try
-                   (let [slack-channels (for [channel (slack/channels-list)]
+                   (let [slack-channels (for [channel (slack/conversations-list)]
                                           (str \# (:name channel)))
                          slack-users    (for [user (slack/users-list)]
                                           (str \@ (:name user)))]

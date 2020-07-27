@@ -393,7 +393,7 @@
     [400 (tru "Embedding is not enabled.")]))
 
 (defn check-not-archived
-  "Check that the OBJECT exists and is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
+  "Check that the `object` exists and is not `:archived`, or throw a `404`. Returns `object` as-is if check passes."
   [object]
   (u/prog1 object
     (check-404 object)

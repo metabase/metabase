@@ -25,8 +25,8 @@
     :segment-update
     :segment-delete})
 
-(def ^:private revisions-channel
-  "Channel for receiving event notifications we want to subscribe to for revision events."
+(defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for revision events."}
+  revisions-channel
   (async/chan))
 
 
@@ -76,8 +76,6 @@
 
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
-
-(defn events-init
-  "Automatically called during startup; start event listener for revision events."
-  []
+(defmethod events/init! ::Revisions
+  [_]
   (events/start-event-listener! revisions-topics revisions-channel process-revision-event!))
