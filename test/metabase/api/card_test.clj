@@ -1109,9 +1109,23 @@
                           :target [:variable [:template-tag :category]]
                           :value  2}]))
 
+;; Test queries and sample-data tables
+;; Categories
+(def ^:private ^:const ^String count-categories-query "SELECT COUNT(*) FROM CATEGORIES;")
+(def ^:private ^:const ^String categories "CATEGORIES")
+
+;; Checkins
+(def ^:private ^:const ^String max-date-checkins-query "SELECT MAX(DATE) FROM CHECKINS;")
+(def ^:private ^:const ^String checkins "CHECKINS")
+
+;; Users
+(def ^:private ^:const ^String max-datetime-users-query "SELECT MAX(last_login) AS TIMESTAMP_COLUMN FROM USERS;")
+(def ^:private ^:const ^String datetime-with-timezone-query "SELECT PARSEDATETIME('2020-07-27 13:00:00 GMT','yyyy-MM-dd HH:mm:ss z','en','GMT') as TIMESTAMP_WITH_TIMEZONE")
+(def ^:private ^:const ^String users "USERS")
+
 (deftest csv-download-test
   (testing "no parameters"
-    (with-temp-native-card [_ card "CATEGORIES" "SELECT COUNT(*) FROM CATEGORIES;"]
+    (with-temp-native-card [_ card categories count-categories-query]
       (with-cards-in-readable-collection card
         (is (= ["COUNT(*)"
                 "75"]
@@ -1126,17 +1140,31 @@
                (str/split-lines
                 ((mt/user->client :rasta) :post 202 (format "card/%d/query/csv?parameters=%s"
                                                                     (u/get-id card) encoded-params))))))))
-  (testing "no-fomatting-rows"
-    (with-temp-native-card [_ card "CHECKINS" "SELECT MAX(DATE) FROM CHECKINS;"]
+  (testing "no-fomatting-date-rows"
+    (with-temp-native-card [_ card checkins max-date-checkins-query]
       (with-cards-in-readable-collection card
         (is (= ["MAX(DATE)"
                 "2015-12-29"]
                (str/split-lines
-                ((mt/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card)) ))))))))
+                ((mt/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card)) )))))))
+  (testing "no-fomatting-datetime"
+   (with-temp-native-card [_ card users max-datetime-users-query]
+     (with-cards-in-readable-collection card
+       (is (= ["TIMESTAMP_COLUMN"
+               "2014-12-05T15:15:00"]
+              (str/split-lines
+               ((mt/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card)))))))))
+  (testing "no-fomatting-datetime-with-timezone"
+    (with-temp-native-card [_ card users datetime-with-timezone-query]
+      (with-cards-in-readable-collection card
+        (is (= ["TIMESTAMP_WITH_TIMEZONE"
+                "2020-07-27T13:00:00"]
+               (str/split-lines
+                ((mt/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card))))))))))
 
 (deftest json-download-test
   (testing "no parameters"
-    (with-temp-native-card [_ card "CATEGORIES" "SELECT COUNT(*) FROM CATEGORIES;"]
+    (with-temp-native-card [_ card categories count-categories-query]
       (with-cards-in-readable-collection card
         (is (= [{(keyword "COUNT(*)") 75}]
                ((mt/user->client :rasta) :post 202 (format "card/%d/query/json" (u/get-id card))))))))
@@ -1146,10 +1174,20 @@
         (is (= [{(keyword "COUNT(*)") 8}]
                ((mt/user->client :rasta) :post 202 (format "card/%d/query/json?parameters=%s"
                                                                    (u/get-id card) encoded-params)))))))
-  (testing "no-fomatting-rows"
-    (with-temp-native-card [_ card "CHECKINS" "SELECT MAX(DATE) FROM CHECKINS;"]
+  (testing "no-fomatting-date-rows"
+    (with-temp-native-card [_ card checkins max-date-checkins-query]
       (with-cards-in-readable-collection card
         (is (= [{(keyword "MAX(DATE)") "2015-12-29"}]
+               ((mt/user->client :rasta) :post 202 (format "card/%d/query/json" (u/get-id card))))))))
+  (testing "no-fomatting-datetime"
+   (with-temp-native-card [_ card users max-datetime-users-query]
+      (with-cards-in-readable-collection card
+        (is (= [{(keyword "TIMESTAMP_COLUMN") "2014-12-05T15:15:00"}]
+               ((mt/user->client :rasta) :post 202 (format "card/%d/query/json" (u/get-id card))))))))
+  (testing "no-fomatting-datetime-with-timezone"
+   (with-temp-native-card [_ card users datetime-with-timezone-query]
+      (with-cards-in-readable-collection card
+        (is (= [{(keyword "TIMESTAMP_WITH_TIMEZONE") "2020-07-27T13:00:00"}]
                ((mt/user->client :rasta) :post 202 (format "card/%d/query/json" (u/get-id card)))))))))
 
 (defn- parse-xlsx-results [results]
@@ -1161,7 +1199,7 @@
 
 (deftest xlsx-download-test
   (testing "no parameters"
-    (with-temp-native-card [_ card "CATEGORIES" "SELECT COUNT(*) FROM CATEGORIES;"]
+    (with-temp-native-card [_ card categories count-categories-query]
       (with-cards-in-readable-collection card
         (is (= [{:col "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
@@ -1175,13 +1213,28 @@
                 ((mt/user->client :rasta) :post 202 (format "card/%d/query/xlsx?parameters=%s"
                                                                     (u/get-id card) encoded-params)
                  {:request-options {:as :byte-array}})))))))
-  (testing "no-fomatting-rows"
-    (with-temp-native-card [_ card "CHECKINS" "SELECT MAX(DATE) FROM CHECKINS;"]
+  (testing "no-fomatting-date-rows"
+     (with-temp-native-card [_ card checkins max-date-checkins-query]
       (with-cards-in-readable-collection card
         (is (= [{:col "MAX(DATE)"} {:col "2015-12-29"}]
                (parse-xlsx-results
                 ((mt/user->client :rasta) :post 202 (format "card/%d/query/xlsx" (u/get-id card))
+                                          {:request-options {:as :byte-array}})))))))
+  (testing "no-fomatting-datetime"
+    (with-temp-native-card [_ card users max-datetime-users-query]
+      (with-cards-in-readable-collection card
+        (is (= [{:col "TIMESTAMP_COLUMN"} {:col "2014-12-05T15:15:00"}]
+               (parse-xlsx-results
+                ((mt/user->client :rasta) :post 202 (format "card/%d/query/xlsx" (u/get-id card))
+                                          {:request-options {:as :byte-array}})))))))
+  (testing "no-fomatting-datetime-with-timezone"
+   (with-temp-native-card [_ card users datetime-with-timezone-query]
+      (with-cards-in-readable-collection card
+        (is (= [{:col "TIMESTAMP_WITH_TIMEZONE"} {:col "2020-07-27T13:00:00"}]
+               (parse-xlsx-results
+                ((mt/user->client :rasta) :post 202 (format "card/%d/query/xlsx" (u/get-id card))
                                           {:request-options {:as :byte-array}}))))))))
+
 
 (deftest download-default-constraints-test
   (tt/with-temp Card [card {:dataset_query {:database   (data/id)
