@@ -17,7 +17,9 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
     it("should show how to create metrics", () => {
       cy.visit("/reference/metrics");
-      cy.findByText("Metrics are the official numbers that your team cares about");
+      cy.findByText(
+        "Metrics are the official numbers that your team cares about",
+      );
       cy.findByText("Learn how to create metrics");
     });
   });
@@ -64,18 +66,21 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.contains("Count, Filtered by Total");
     });
 
-    it.only("should show no questions based on a new metric", () => {
+    it("should show no questions based on a new metric", () => {
       cy.visit("/reference/metrics/1/questions");
-      cy.findByText("Questions about orders <100");
+      cy.findAllByText("Questions about orders <100");
       cy.findByText("Loading...");
       cy.findByText("Loading...").should("not.exist");
-      cy.findByText("Questions about this metric will appear here as they're added");
+      cy.findByText(
+        "Questions about this metric will appear here as they're added",
+      );
     });
 
     it("should see a newly asked question in its questions list", () => {
+      // Ask a new qustion
       cy.visit("/reference/metrics/1/questions");
       cy.get(".full")
-        .find("Ask a question")
+        .find(".Button")
         .click();
       cy.findByText("Filter").click();
       cy.findByText("Total").click();
@@ -83,9 +88,17 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.findByText("Greater than").click();
       cy.findByPlaceholderText("Enter a number").type("50");
       cy.findByText("Add filter").click();
+      cy.findByText("Save").click();
       cy.findAllByText("Save")
         .last()
         .click();
+      cy.findByText("Not now").click();
+
+      // Check the list
+      cy.visit("/reference/metrics/1/questions");
+      cy.findByText("Our analysis").should("not.exist");
+      cy.findAllByText("Questions about orders <100");
+      cy.findByText("Orders, orders <100, Filtered by Total");
     });
 
     it("should show the metric detail view for a specific id", () => {
