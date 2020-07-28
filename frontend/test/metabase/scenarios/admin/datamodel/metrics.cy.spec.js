@@ -1,7 +1,4 @@
 import { restore, signInAsAdmin, popover, modal } from "__support__/cypress";
-// Not yet here:
-// *** should show no questions based on a new metric
-// *** should see a newly asked question in its questions list
 
 describe("scenarios > admin > datamodel > metrics", () => {
   before(restore);
@@ -16,6 +13,12 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.findByText(
         "Create metrics to add them to the Summarize dropdown in the query builder",
       );
+    });
+
+    it("should show how to create metrics", () => {
+      cy.visit("/reference/metrics");
+      cy.findByText("Metrics are the official numbers that your team cares about");
+      cy.findByText("Learn how to create metrics");
     });
   });
 
@@ -59,6 +62,30 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.url().should("match", /datamodel\/metrics$/);
       cy.contains("orders <100");
       cy.contains("Count, Filtered by Total");
+    });
+
+    it.only("should show no questions based on a new metric", () => {
+      cy.visit("/reference/metrics/1/questions");
+      cy.findByText("Questions about orders <100");
+      cy.findByText("Loading...");
+      cy.findByText("Loading...").should("not.exist");
+      cy.findByText("Questions about this metric will appear here as they're added");
+    });
+
+    it("should see a newly asked question in its questions list", () => {
+      cy.visit("/reference/metrics/1/questions");
+      cy.get(".full")
+        .find("Ask a question")
+        .click();
+      cy.findByText("Filter").click();
+      cy.findByText("Total").click();
+      cy.findByText("Equal to").click();
+      cy.findByText("Greater than").click();
+      cy.findByPlaceholderText("Enter a number").type("50");
+      cy.findByText("Add filter").click();
+      cy.findAllByText("Save")
+        .last()
+        .click();
     });
 
     it("should show the metric detail view for a specific id", () => {
