@@ -117,12 +117,8 @@ describe("scenarios > question > notebook", () => {
       });
 
       // select the join columns
-      popover()
-        .findByText("A_COLUMN")
-        .click();
-      popover()
-        .findByText("B_COLUMN")
-        .click();
+      popover().within(() => cy.findByText("A_COLUMN").click());
+      popover().within(() => cy.findByText("B_COLUMN").click());
 
       cy.findByText("Visualize").click();
       cy.queryByText("Visualize").then($el => cy.wrap($el).should("not.exist")); // wait for that screen to disappear to avoid "multiple elements" errors
