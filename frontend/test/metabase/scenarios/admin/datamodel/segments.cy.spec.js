@@ -1,4 +1,4 @@
-import { restore, signInAsAdmin, popover, modal } from "__support__/cypress";
+import { restore, signInAsAdmin, popover, modal, sidebar } from "__support__/cypress";
 // Ported from `segments.e2e.spec.js`
 
 describe("scenarios > admin > datamodel > segments", () => {
@@ -105,7 +105,9 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.visit("/reference/segments/1/questions");
       cy.get(".full .Button").click();
       cy.findByText("Filter").click();
-      cy.findByText("Product ID").click();
+      sidebar().within(() => {
+        cy.findByText("Product ID").click();
+      });
       cy.findByPlaceholderText("Enter an ID").type("14");
       cy.findByText("Add filter").click();
       cy.findByText("Product ID is 14");
