@@ -143,15 +143,16 @@
                                       (cond-> field
                                         (= field-name "CATEGORY_ID")
                                         (assoc :dimensions {:type :internal, :name "Foo", :field_id 10}
-                                               :values     {:human_readable_values ["Foo" "Bar" "Baz" "Qux"]
-                                                            :values                [4 11 29 20]}))))]
+                                               :values     {:human_readable_values ["Foo" "Bar" "Baz" "Qux" "Quux"]
+                                                            :values                [4 11 29 20 nil]}))))]
       (is (= {:status    :completed
-              :row_count 5
-              :data      {:rows [[1 "Red Medicine"                  4 3 "Foo"]
-                                 [2 "Stout Burgers & Beers"        11 2 "Bar"]
-                                 [3 "The Apple Pan"                11 2 "Bar"]
-                                 [4 "Wurstküche"                   29 2 "Baz"]
-                                 [5 "Brite Spot Family Restaurant" 20 2 "Qux"]]
+              :row_count 6
+              :data      {:rows [[1 "Red Medicine"                   4 3 "Foo"]
+                                 [2 "Stout Burgers & Beers"         11 2 "Bar"]
+                                 [3 "The Apple Pan"                 11 2 "Bar"]
+                                 [4 "Wurstküche"                    29 2 "Baz"]
+                                 [5 "Brite Spot Family Restaurant"  20 2 "Qux"]
+                                 [6 "Spaghetti Warehouse"          nil 2 "Quux"]]
                           :cols [example-result-cols-id
                                  example-result-cols-name
                                  (assoc example-result-cols-category-id
@@ -166,11 +167,12 @@
                         example-result-cols-name
                         example-result-cols-category-id
                         example-result-cols-price]}
-                [[1 "Red Medicine"                  4 3]
-                 [2 "Stout Burgers & Beers"        11 2]
-                 [3 "The Apple Pan"                11 2]
-                 [4 "Wurstküche"                   29 2]
-                 [5 "Brite Spot Family Restaurant" 20 2]]))))))
+                [[1 "Red Medicine"                   4 3]
+                 [2 "Stout Burgers & Beers"         11 2]
+                 [3 "The Apple Pan"                 11 2]
+                 [4 "Wurstküche"                    29 2]
+                 [5 "Brite Spot Family Restaurant"  20 2]
+                 [6 "Spaghetti Warehouse"          nil 2]]))))))
 
   (testing "test that external remappings get the appropriate `:remapped_from`/`:remapped_to` info"
     (is (= {:status    :completed
