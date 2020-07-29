@@ -488,9 +488,9 @@ export function createEntity(def: EntityDefinition): Entity {
     // delegate to getObject
     (state, entityIds) =>
       entityIds &&
-      entityIds.map(entityId =>
-        entity.selectors.getObject(state, { entityId }),
-      ),
+      entityIds
+        .map(entityId => entity.selectors.getObject(state, { entityId }))
+        .filter(e => e != null), // deleted entities might remain in lists
   );
 
   // REQUEST STATE SELECTORS
