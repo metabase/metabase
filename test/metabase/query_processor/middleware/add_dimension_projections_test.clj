@@ -207,6 +207,11 @@
                  [2 "banana" 11 2]
                  [3 "kiwi"   11 2]]))))))
 
+  (testing "test that different columns types are transformed"
+    (is (= (map list [123M 123.0 123N 123 "123"])
+           (map #(#'add-dim-projections/transform-values-for-col {:base_type %} [123])
+                [:type/Decimal :type/Float :type/BigInteger :type/Integer :type/Text]))))
+
   (testing "test that external remappings get the appropriate `:remapped_from`/`:remapped_to` info"
     (is (= {:status    :completed
             :row_count 0
