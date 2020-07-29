@@ -1,9 +1,5 @@
 import { restore, signInAsAdmin, popover, modal } from "__support__/cypress";
-// Import from `segments.e2e.spec.js`
-// Not sure what these mean:
-// *** Should show the segment fields list and detail view (what does this mean in original file?)
-// *** Should show no questions based on a new segment (what does this mean in original file?)
-// *** Should see a newly asked question in its questions list
+// Ported from `segments.e2e.spec.js`
 
 describe("scenarios > admin > datamodel > segments", () => {
   before(restore);
@@ -13,12 +9,18 @@ describe("scenarios > admin > datamodel > segments", () => {
   });
 
   describe("with no segments", () => {
-    it("should show no segments", () => {
+    it("should show no segments in UI", () => {
       cy.visit("/admin/datamodel/segments");
       cy.findByText("Segments").click();
       cy.findByText(
         "Create segments to add them to the Filter dropdown in the query builder",
       );
+    });
+
+    it("should show no segments", () => {
+      cy.visit("/reference/segments");
+      cy.findByText("Segments are interesting subsets of tables");
+      cy.findByText("Learn how to create segments");
     });
   });
 
@@ -61,7 +63,24 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.url().should("match", /datamodel\/segments$/);
     });
 
-    it("should show up in list", () => {
+    it("should show the segment fields list and detail view", () => {
+      // In the list
+      cy.visit("/reference/segments");
+      cy.findByText("orders <100");
+
+      // Detail view
+      cy.visit("/reference/segments/1");
+      cy.findByText("Description");
+      cy.findByText("See this segment");
+
+      // Segment fields
+      cy.findByText("Fields in this segment").click();
+      cy.findByText("See this segment").should("not.exist");
+      cy.findByText("Fields in orders <100");
+      cy.findAllByText("Discount");
+    });
+
+    it("should show up in UI list", () => {
       cy.visit("/admin/datamodel/segments");
       cy.contains("orders <100");
       cy.contains("Filtered by Total");
@@ -71,6 +90,36 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.visit("/admin/datamodel/segment/1");
       cy.findByText("Edit Your Segment");
       cy.findByText("Preview");
+    });
+
+    it("should show no questions based on a new segment", () => {
+      cy.visit("/reference/segments/1/questions");
+      cy.findByText("Questions about orders <100");
+      cy.findByText(
+        "Questions about this segment will appear here as they're added",
+      );
+    });
+
+    it("should see a newly asked question in its questions list", () => {
+      // Ask question
+      cy.visit("/reference/segments/1/questions");
+      cy.get(".full .Button").click();
+      cy.findByText("Filter").click();
+      cy.findByText("Product ID").click();
+      cy.findByPlaceholderText("Enter an ID").type("14");
+      cy.findByText("Add filter").click();
+      cy.findByText("Product ID is 14");
+      cy.findByText("Save").click();
+      cy.findAllByText("Save")
+        .last()
+        .click();
+
+      // Check list
+      cy.visit("/reference/segments/1/questions");
+      cy.findByText(
+        "Questions about this segment will appear here as they're added",
+      ).should("not.exist");
+      cy.findByText("Orders, Filtered by orders <100 and Product");
     });
 
     it("should update that segment", () => {
