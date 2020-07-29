@@ -162,7 +162,7 @@
                     :type/Integer    int
                     :type/Text       str
                     identity)]
-    (map #(if (nil? %) nil (transform %)) values)))
+    (map #(some-> % transform) values)))
 
 (def ^:private InternalDimensionInfo
   {;; index of original column

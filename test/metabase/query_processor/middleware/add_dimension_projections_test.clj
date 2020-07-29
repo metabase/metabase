@@ -174,6 +174,39 @@
                  [5 "Brite Spot Family Restaurant"  20 2]
                  [6 "Spaghetti Warehouse"          nil 2]]))))))
 
+  (testing "remapping string columns with `human_readable_values`"
+    ;; swap out `hydrate` with one that will add some fake dimensions and values for CATEGORY_ID.
+    (with-redefs [hydrate/hydrate (fn [fields & _]
+                                    (for [{field-name :name, :as field} fields]
+                                      (cond-> field
+                                        (= field-name "NAME")
+                                        (assoc :dimensions {:type :internal, :name "Foo", :field_id 10}
+                                               :values     {:human_readable_values ["Appletini" "Bananasplit" "Kiwi-flavored Thing"]
+                                                            :values                ["apple" "banana" "kiwi"]}))))]
+      (is (= {:status    :completed
+              :row_count 3
+              :data      {:rows [[1 "apple"   4 3 "Appletini"]
+                                 [2 "banana" 11 2 "Bananasplit"]
+                                 [3 "kiwi"   11 2 "Kiwi-flavored Thing"]]
+                          :cols [example-result-cols-id
+                                 (assoc example-result-cols-name
+                                        :remapped_to "Foo")
+                                 example-result-cols-category-id
+                                 example-result-cols-price
+                                 (assoc example-result-cols-foo
+                                        :remapped_from "NAME")]}}
+             (with-redefs [add-dim-projections/add-fk-remaps (fn [query]
+                                                               [nil query])]
+               (add-remapping
+                {}
+                {:cols [example-result-cols-id
+                        example-result-cols-name
+                        example-result-cols-category-id
+                        example-result-cols-price]}
+                [[1 "apple"   4 3]
+                 [2 "banana" 11 2]
+                 [3 "kiwi"   11 2]]))))))
+
   (testing "test that external remappings get the appropriate `:remapped_from`/`:remapped_to` info"
     (is (= {:status    :completed
             :row_count 0
