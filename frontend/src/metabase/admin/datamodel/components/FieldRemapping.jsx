@@ -355,6 +355,8 @@ export class ValueRemappings extends React.Component {
         const mappedString =
           mappedOrUndefined !== undefined
             ? mappedOrUndefined.toString()
+            : original === null
+            ? "null"
             : original.toString();
 
         return [original, mappedString];
