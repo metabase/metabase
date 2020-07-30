@@ -21,12 +21,12 @@
              [permissions-group :as group]
              [query-execution :refer [QueryExecution]]]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.test.data
-             [dataset-definitions :as defs]
-             [users :as test-users]]
             [metabase.test
              [fixtures :as fixtures]
              [util :as tu]]
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [users :as test-users]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import com.fasterxml.jackson.core.JsonGenerator))
