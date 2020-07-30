@@ -24,10 +24,14 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [users :as test-users]]
-            [metabase.test.util :as tu]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import com.fasterxml.jackson.core.JsonGenerator))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- format-response [m]
   (when-not (map? m)
