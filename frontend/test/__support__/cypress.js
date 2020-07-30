@@ -109,19 +109,23 @@ export function typeAndBlurUsingLabel(label, value) {
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
 
-export function withSampleDataset(f) {
-  cy.request("GET", "/api/database/1/metadata").then(({ body }) => {
-    const SAMPLE_DATASET = {};
+export function withDatabase(databaseId, f) {
+  cy.request("GET", `/api/database/${databaseId}/metadata`).then(({ body }) => {
+    const database = {};
     for (const table of body.tables) {
       const fields = {};
       for (const field of table.fields) {
         fields[field.name] = field.id;
       }
-      SAMPLE_DATASET[table.name] = fields;
-      SAMPLE_DATASET[table.name + "_ID"] = table.id;
+      database[table.name] = fields;
+      database[table.name + "_ID"] = table.id;
     }
-    f(SAMPLE_DATASET);
+    f(database);
   });
+}
+
+export function withSampleDataset(f) {
+  return withDatabase(1, f);
 }
 
 export function visitAlias(alias) {
