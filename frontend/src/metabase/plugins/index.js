@@ -60,3 +60,9 @@ export const PLUGIN_SELECTORS = {
   getShowAuthScene: (state, props) => true,
   getLogoBackgroundClass: (state, props) => "bg-white",
 };
+
+// snippet sidebar
+export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
+export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = {};
+export const PLUGIN_SNIPPET_SIDEBAR_MODALS = [];
+export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];

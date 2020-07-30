@@ -108,11 +108,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findAllByText("Created At")
         .last()
         .click();
-      cy.get("input[type='text']")
-        .wait(1)
-        .clear()
-        .wait(1)
-        .type("5");
+      cy.get("input[type='text']").type("{selectall}{del}5");
       cy.findByText("Days").click();
       cy.findByText("Years").click();
       sidebar()

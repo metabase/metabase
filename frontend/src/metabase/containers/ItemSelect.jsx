@@ -60,7 +60,7 @@ export default (PickerComponent, NameComponent, type) =>
           triggerElement={
             <SelectButton style={style}>
               {value !== undefined && value !== "" ? (
-                <NameComponent collectionId={value} />
+                <NameComponent id={value} />
               ) : (
                 placeholder
               )}
