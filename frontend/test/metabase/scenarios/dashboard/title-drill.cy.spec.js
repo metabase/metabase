@@ -1,4 +1,4 @@
-import { signIn, restore, popover } from "__support__/cypress";
+import { signIn, restore } from "__support__/cypress";
 
 describe("scenarios > dashboard > title drill", () => {
   before(restore);
