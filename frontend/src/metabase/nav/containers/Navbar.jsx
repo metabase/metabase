@@ -186,16 +186,20 @@ class SearchBar extends React.Component {
                         if (list.length === 0) {
                           return <Box>No results</Box>;
                         }
-                        return list.map(l => (
-                          <Box>
-                            <Link to={l.getUrl()}>
-                              <Flex align="center">
-                                <Icon name={l.getIcon()} mr={2} />
-                                <h4 className="text-brand">{l.name}</h4>
-                              </Flex>
-                            </Link>
-                          </Box>
-                        ));
+                        return (
+                          <div>
+                            {list.map(l => (
+                              <Box>
+                                <Link to={l.getUrl()}>
+                                  <Flex align="center">
+                                    <Icon name={l.getIcon()} mr={2} />
+                                    <h4 className="text-brand">{l.name}</h4>
+                                  </Flex>
+                                </Link>
+                              </Box>
+                            ))}
+                          </div>
+                        );
                       }}
                     </Search.ListLoader>
                   </Box>
