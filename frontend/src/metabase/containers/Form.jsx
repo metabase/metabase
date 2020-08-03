@@ -31,7 +31,8 @@ type FormFieldType =
   | "text"
   | "color"
   | "hidden"
-  | "collection";
+  | "collection"
+  | "snippetCollection";
 
 type FormValue = any;
 type FormError = string;

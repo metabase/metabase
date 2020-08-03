@@ -268,7 +268,8 @@ export function parseQueryParam(
   }
   // [].every is always true, so only check if there are some fields
   if (fields.length > 0) {
-    if (fields.every(f => f.isNumeric())) {
+    // unix dates fields are numeric but query params shouldn't be parsed as numbers
+    if (fields.every(f => f.isNumeric() && !f.isDate())) {
       return parseFloat(value);
     }
     if (fields.every(f => f.isBoolean())) {

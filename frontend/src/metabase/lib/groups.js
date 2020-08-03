@@ -19,7 +19,7 @@ export function isMetaBotGroup(group) {
 }
 
 export function isSpecialGroup(group) {
-  return isDefaultGroup(group) || isAdminGroup(group) || isMetaBotGroup(group);
+  return isDefaultGroup(group) || isMetaBotGroup(group);
 }
 
 export function canEditPermissions(group) {

@@ -155,14 +155,14 @@
   "Converts `values` to a type compatible with the base_type found for `col`. These values should be directly comparable
   with the values returned from the database for the given `col`."
   [{:keys [base_type] :as col} values]
-  (map (condp #(isa? %2 %1) base_type
-         :type/Decimal    bigdec
-         :type/Float      double
-         :type/BigInteger bigint
-         :type/Integer    int
-         :type/Text       str
-         identity)
-       values))
+  (let [transform (condp #(isa? %2 %1) base_type
+                    :type/Decimal    bigdec
+                    :type/Float      double
+                    :type/BigInteger bigint
+                    :type/Integer    int
+                    :type/Text       str
+                    identity)]
+    (map #(some-> % transform) values)))
 
 (def ^:private InternalDimensionInfo
   {;; index of original column
