@@ -15,7 +15,7 @@ import Popover from "metabase/components/Popover";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { DatasetQuery } from "metabase-types/types/Card";
 import type { GuiQueryEditorFeatures } from "./GuiQueryEditor";
 
 type Props = {

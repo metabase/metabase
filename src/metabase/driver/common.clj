@@ -54,7 +54,10 @@
    (deferred-tru "Looks like the username or password is incorrect.")
 
    :certificate-not-trusted
-   (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")})
+   (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")
+
+   :requires-ssl
+   (deferred-tru "Server appears to require SSL - please enable SSL above")})
 
 ;; TODO - we should rename these from `default-*-details` to `default-*-connection-property`
 
@@ -74,16 +77,16 @@
 (def default-user-details
   "Map of the db user details field, useful for `connection-properties` implementations"
   {:name         "user"
-   :display-name (deferred-tru "Database username")
+   :display-name (deferred-tru "Username")
    :placeholder  (deferred-tru "What username do you use to login to the database?")
    :required     true})
 
 (def default-password-details
   "Map of the db password details field, useful for `connection-properties` implementations"
   {:name         "password"
-   :display-name (deferred-tru "Database password")
+   :display-name (deferred-tru "Password")
    :type         :password
-   :placeholder  "*******"})
+   :placeholder  "••••••••"})
 
 (def default-dbname-details
   "Map of the db name details field, useful for `connection-properties` implementations"
@@ -255,8 +258,7 @@
     java.sql.Timestamp             :type/DateTime
     java.util.Date                 :type/Date
     DateTime                       :type/DateTime
-    ;; shouldn't this be :type/UUID ?
-    java.util.UUID                 :type/Text
+    java.util.UUID                 :type/UUID
     clojure.lang.IPersistentMap    :type/Dictionary
     clojure.lang.IPersistentVector :type/Array
     java.time.LocalDate            :type/Date
@@ -278,18 +280,21 @@
       (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
       :type/*)))
 
-(defn- values->class->count [values]
-  (reduce
-   (fn [class->count klass]
-     (update class->count klass (fnil inc 0)))
-   {}
-   ;; take (up to) the first 100 non-nil values out of the first 1000 values
-   (eduction (map class) (take 100) (filter some?) (take 1000) values)))
-
-(defn- values->most-common-class [values]
-  (ffirst (reverse (sort-by second (values->class->count values)))))
+(def ^:private column-info-sample-size
+  "Number of result rows to sample when when determining base type."
+  100)
 
 (defn values->base-type
-  "Given a sequence of `values`, return the most common base type."
-  [values]
-  (-> values values->most-common-class class->base-type))
+  "Transducer that given a sequence of `values`, returns the most common base type."
+  []
+  ((comp (filter some?) (take column-info-sample-size) (map class))
+   (fn
+     ([] (java.util.HashMap. {nil 0})) ; fallback to keep `max-key` happy if no values
+     ([^java.util.HashMap freqs, klass]
+      (.put freqs klass (inc (.getOrDefault freqs klass 0)))
+      freqs)
+     ([freqs]
+      (->> freqs
+           (apply max-key val)
+           key
+           class->base-type)))))

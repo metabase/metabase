@@ -3,6 +3,7 @@
              [set :as set]
              [string :as str]]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -103,7 +104,7 @@
 
 (s/defn get-table :- Table
   ([{{:keys [project-id dataset-id]} :details, :as database} table-id]
-   (get-table (database->client database) project-id dataset-id table-id))
+   (get-table (database->client database) (find-project-id project-id (database->credential database)) dataset-id table-id))
 
   ([client :- Bigquery, project-id :- su/NonBlankString, dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
    (google/execute (.get (.tables client) project-id dataset-id table-id))))
@@ -124,10 +125,11 @@
 
 (s/defn ^:private table-schema->metabase-field-info
   [schema :- TableSchema]
-  (for [^TableFieldSchema field (.getFields schema)]
-    {:name          (.getName field)
-     :database-type (.getType field)
-     :base-type     (bigquery-type->base-type (.getType field))}))
+  (for [[idx ^TableFieldSchema field] (m/indexed (.getFields schema))]
+    {:name              (.getName field)
+     :database-type     (.getType field)
+     :base-type         (bigquery-type->base-type (.getType field))
+     :database-position idx}))
 
 (defmethod driver/describe-table :bigquery
   [_ database {table-name :name}]
@@ -174,7 +176,10 @@
       ~@body)))
 
 (defn- post-process-native
-  "Parse results of a BigQuery query."
+  "Parse results of a BigQuery query. `respond` is the same function passed to
+  `metabase.driver/execute-reducible-query`, and has the signature
+
+    (respond results-metadata rows)"
   [respond ^QueryResponse resp]
   (with-finished-response [response resp]
     (let [^TableSchema schema
@@ -191,7 +196,7 @@
           (for [column (table-schema->metabase-field-info schema)]
             (-> column
                 (set/rename-keys {:base-type :base_type})
-                (dissoc :database-type)))]
+                (dissoc :database-type :database-position)))]
       (respond
        {:cols columns}
        (for [^TableRow row (.getRows response)]
@@ -205,7 +210,7 @@
 
 (defn- ^QueryResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} sql parameters]
-   (execute-bigquery (database->client database) project-id sql parameters))
+   (execute-bigquery (database->client database) (find-project-id project-id (database->credential database)) sql parameters))
 
   ([^Bigquery client ^String project-id ^String sql parameters]
    {:pre [client (seq project-id) (seq sql)]}

@@ -7,9 +7,6 @@ import UserAvatar from "metabase/components/UserAvatar";
 
 import moment from "moment";
 
-// TODO: "you" for current user
-// TODO: show different color avatars for users that aren't me
-
 export default class Revision extends Component {
   static propTypes = {
     objectName: PropTypes.string.isRequired,
@@ -26,7 +23,7 @@ export default class Revision extends Component {
     if (revision.is_reversion) {
       return t`reverted to a previous version`;
     }
-    const changedKeys = Object.keys(revision.diff);
+    const changedKeys = Object.keys(revision.diff || {});
     if (changedKeys.length === 1) {
       switch (changedKeys[0]) {
         case "name":
@@ -54,8 +51,9 @@ export default class Revision extends Component {
 
   render() {
     const { revision, tableMetadata, userColor } = this.props;
+
     let message = revision.message;
-    let diffKeys = Object.keys(revision.diff);
+    let diffKeys = Object.keys(revision.diff || {});
 
     if (revision.is_creation) {
       // these are included in the

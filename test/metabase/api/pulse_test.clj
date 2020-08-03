@@ -849,8 +849,8 @@
   (testing "GET /api/pulse/form_input"
     (testing "Check that Slack channels come back when configured"
       (mt/with-temporary-setting-values [slack-token "something"]
-        (with-redefs [slack/channels-list (constantly [{:name "foo"}])
-                      slack/users-list    (constantly [{:name "bar"}])]
+        (with-redefs [slack/conversations-list (constantly [{:name "foo"}])
+                      slack/users-list         (constantly [{:name "bar"}])]
           (is (= [{:name "channel", :type "select", :displayName "Post to", :options ["#foo" "@bar"], :required true}]
                  (-> ((mt/user->client :rasta) :get 200 "pulse/form_input")
                      (get-in [:channels :slack :fields])))))))

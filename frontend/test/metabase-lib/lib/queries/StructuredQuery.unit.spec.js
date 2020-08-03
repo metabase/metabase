@@ -329,28 +329,40 @@ describe("StructuredQuery", () => {
     });
     describe("breakoutOptions", () => {
       it("returns the correct count of dimensions", () => {
-        expect(query.breakoutOptions().dimensions.length).toBe(7);
+        expect(query.breakoutOptions().all().length).toBe(28);
       });
 
       it("excludes the already used breakouts", () => {
         const queryWithBreakout = query.breakout(["field-id", ORDERS.TOTAL.id]);
-        expect(queryWithBreakout.breakoutOptions().dimensions.length).toBe(6);
+        expect(queryWithBreakout.breakoutOptions().all().length).toBe(27);
+      });
+
+      it("excludes the already used fk breakouts", () => {
+        const queryWithBreakout = query.breakout(
+          ORDERS.PRODUCT_ID.foreign(PRODUCTS.CATEGORY),
+        );
+        expect(queryWithBreakout.breakoutOptions().all().length).toBe(27);
       });
 
       it("includes an explicitly provided breakout although it has already been used", () => {
         const breakout = ["field-id", ORDERS.TOTAL.id];
         const queryWithBreakout = query.breakout(breakout);
-        expect(queryWithBreakout.breakoutOptions().dimensions.length).toBe(6);
-        expect(
-          queryWithBreakout.breakoutOptions(breakout).dimensions.length,
-        ).toBe(7);
+        expect(queryWithBreakout.breakoutOptions().all().length).toBe(27);
+        expect(queryWithBreakout.breakoutOptions(breakout).all().length).toBe(
+          28,
+        );
       });
     });
     describe("canAddBreakout", () => {
       pending();
     });
     describe("hasValidBreakout", () => {
-      pending();
+      it("should return false if there are no breakouts", () => {
+        expect(query.hasValidBreakout()).toBe(false);
+      });
+      it("should return true if there is at least one breakout", () => {
+        expect(query.breakout(ORDERS.PRODUCT_ID).hasValidBreakout()).toBe(true);
+      });
     });
 
     describe("addBreakout", () => {
@@ -427,9 +439,9 @@ describe("StructuredQuery", () => {
       it("return an array with the sort clause", () => {
         expect(
           makeQuery({
-            "order-by": ["asc", ["field-id", ORDERS.TOTAL.id]],
+            "order-by": [["asc", ["field-id", ORDERS.TOTAL.id]]],
           }).sorts(),
-        ).toEqual(["asc", ["field-id", ORDERS.TOTAL.id]]);
+        ).toEqual([["asc", ["field-id", ORDERS.TOTAL.id]]]);
       });
     });
 

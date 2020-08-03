@@ -13,6 +13,8 @@ import { open } from "metabase/lib/dom";
 import { defer } from "metabase/lib/promise";
 import { normalize, schema } from "normalizr";
 
+import Question from "metabase-lib/lib/Question";
+
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
@@ -28,8 +30,8 @@ import type {
   DashboardWithCards,
   DashCard,
   DashCardId,
-} from "metabase/meta/types/Dashboard";
-import type { CardId } from "metabase/meta/types/Card";
+} from "metabase-types/types/Dashboard";
+import type { CardId } from "metabase-types/types/Card";
 
 import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
@@ -38,7 +40,7 @@ import { createCard } from "metabase/lib/card";
 import {
   addParamValues,
   addFields,
-  fetchDatabaseMetadata,
+  loadMetadataForQueries,
 } from "metabase/redux/metadata";
 import { push } from "react-router-redux";
 
@@ -166,10 +168,7 @@ export const addCardToDashboard = ({
   dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
   dispatch(fetchCardData(card, dashcard, { reload: true, clear: true }));
 
-  // guard in case card was filtered
-  if (card.dataset_query && card.dataset_query.database) {
-    dispatch(fetchDatabaseMetadata(card.dataset_query.database));
-  }
+  dispatch(loadMetadataForDashboard([dashcard]));
 };
 
 export const addDashCardToDashboard = function({
@@ -662,16 +661,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     }
 
     if (dashboardType === "normal" || dashboardType === "transient") {
-      // fetch database metadata for every card
-      _.chain(result.ordered_cards)
-        .map(dc => [dc.card].concat(dc.series))
-        .flatten()
-        .filter(
-          card => card && card.dataset_query && card.dataset_query.database,
-        )
-        .map(card => card.dataset_query.database)
-        .uniq()
-        .each(dbId => dispatch(fetchDatabaseMetadata(dbId)));
+      dispatch(loadMetadataForDashboard(result.ordered_cards));
     }
 
     // copy over any virtual cards from the dashcard to the underlying card/question
@@ -1172,6 +1162,17 @@ const loadingDashCards = handleActions(
   },
   { dashcardIds: [], loadingIds: [], startTime: null },
 );
+
+const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
+  const metadata = getMetadata(getState());
+
+  const queries = dashCards
+    .filter(dc => !isVirtualDashCard(dc))
+    .flatMap(dc => [dc.card].concat(dc.series || []))
+    .map(card => new Question(card, metadata).query());
+
+  return dispatch(loadMetadataForQueries(queries));
+};
 
 export default combineReducers({
   dashboardId,

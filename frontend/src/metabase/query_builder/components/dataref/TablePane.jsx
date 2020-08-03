@@ -1,85 +1,85 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import cx from "classnames";
-import Icon from "metabase/components/Icon";
 
 // components
+import Icon from "metabase/components/Icon";
 import Expandable from "metabase/components/Expandable";
 
 // lib
-import { createCard } from "metabase/lib/card";
-import * as Q_DEPRECATED from "metabase/lib/query";
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
 import { inflect } from "metabase/lib/formatting";
 
-export default class TablePane extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.setQueryAllRows = this.setQueryAllRows.bind(this);
-    this.showPane = this.showPane.bind(this);
+// entities
+import Table from "metabase/entities/tables";
 
-    this.state = {
-      table: undefined,
-      tableForeignKeys: undefined,
-      pane: "fields",
-    };
-  }
+const mapStateToProps = (state, ownProps) => ({
+  tableId: ownProps.table.id,
+  table: Table.selectors.getObject(state, { entityId: ownProps.table.id }),
+});
+
+const mapDispatchToProps = {
+  fetchForeignKeys: Table.actions.fetchForeignKeys,
+  fetchMetadata: Table.actions.fetchMetadata,
+};
+
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
+export default class TablePane extends React.Component {
+  state = {
+    pane: "fields",
+    error: null,
+  };
 
   static propTypes = {
     query: PropTypes.object.isRequired,
-    loadTableAndForeignKeysFn: PropTypes.func.isRequired,
     show: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
     setCardAndRun: PropTypes.func.isRequired,
+    tableId: PropTypes.number.isRequired,
     table: PropTypes.object,
+    fetchForeignKeys: PropTypes.func.isRequired,
+    fetchMetadata: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
-    this.props
-      .loadTableAndForeignKeysFn(this.props.table.id)
-      .then(result => {
-        this.setState({
-          table: result.table,
-          tableForeignKeys: result.foreignKeys,
-        });
-      })
-      .catch(error => {
-        this.setState({
-          error: t`An error occurred loading the table`,
-        });
+  async componentWillMount() {
+    try {
+      await Promise.all([
+        this.props.fetchForeignKeys({ id: this.props.tableId }),
+        this.props.fetchMetadata({ id: this.props.tableId }),
+      ]);
+    } catch (e) {
+      this.setState({
+        error: t`An error occurred loading the table`,
       });
+    }
   }
 
-  showPane(name) {
+  showPane = name => {
     this.setState({ pane: name });
-  }
-
-  setQueryAllRows() {
-    const card = createCard();
-    card.dataset_query = Q_DEPRECATED.createQuery(
-      "query",
-      this.state.table.db_id,
-      this.state.table.id,
-    );
-    this.props.setCardAndRun(card);
-  }
+  };
 
   render() {
-    const { table, error } = this.state;
+    const { table } = this.props;
+    const { pane, error } = this.state;
     if (table) {
+      const fks = table.fks || [];
       const panes = {
         fields: table.fields.length,
         // "metrics": table.metrics.length,
         // "segments": table.segments.length,
-        connections: this.state.tableForeignKeys.length,
+        connections: fks.length,
       };
       const tabs = Object.entries(panes).map(([name, count]) => (
         <a
           key={name}
           className={cx("Button Button--small", {
-            "Button--active": name === this.state.pane,
+            "Button--active": name === pane,
           })}
           onClick={this.showPane.bind(null, name)}
         >
@@ -88,20 +88,18 @@ export default class TablePane extends Component {
         </a>
       ));
 
-      let pane;
       const descriptionClasses = cx({ "text-medium": !table.description });
       const description = (
         <p className={"text-spaced " + descriptionClasses}>
           {table.description || t`No description set.`}
         </p>
       );
-      if (this.state.pane === "connections") {
-        const fkCountsByTable = foreignKeyCountsByOriginTable(
-          this.state.tableForeignKeys,
-        );
-        pane = (
+      let content;
+      if (pane === "connections") {
+        const fkCountsByTable = foreignKeyCountsByOriginTable(fks);
+        content = (
           <ul>
-            {this.state.tableForeignKeys
+            {fks
               .sort((a, b) =>
                 a.origin.table.display_name.localeCompare(
                   b.origin.table.display_name,
@@ -126,11 +124,11 @@ export default class TablePane extends Component {
               ))}
           </ul>
         );
-      } else if (this.state.pane) {
-        const itemType = this.state.pane.replace(/s$/, "");
-        pane = (
+      } else if (pane) {
+        const itemType = pane.replace(/s$/, "");
+        content = (
           <ul>
-            {table[this.state.pane].map((item, index) => (
+            {table[pane].map((item, index) => (
               <li>
                 <a
                   key={item.id}
@@ -157,7 +155,7 @@ export default class TablePane extends Component {
               {tabs}
             </div>
           </div>
-          {pane}
+          {content}
         </div>
       );
     } else {

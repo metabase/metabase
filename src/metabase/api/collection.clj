@@ -1,5 +1,9 @@
 (ns metabase.api.collection
-  "/api/collection endpoints."
+  "`/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
+  the one that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
+  `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
+  To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
+  `?namespace=snippet`)."
   (:require [clojure.string :as str]
             [compojure.core :refer [GET POST PUT]]
             [metabase.api
@@ -10,8 +14,12 @@
              [collection :as collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [interface :as mi]
+             [native-query-snippet :refer [NativeQuerySnippet]]
              [permissions :as perms]
              [pulse :as pulse :refer [Pulse]]]
+            [metabase.models.collection
+             [graph :as collection.graph]
+             [root :as collection.root]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -27,28 +35,35 @@
 
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`."
-  [archived]
-  {archived (s/maybe su/BooleanString)}
+  [archived namespace]
+  {archived  (s/maybe su/BooleanString)
+   namespace (s/maybe su/NonBlankString)}
   (let [archived? (Boolean/parseBoolean archived)]
-    (as-> (db/select Collection :archived archived?
-                     {:order-by [[:%lower.name :asc]]}) collections
+    (as-> (db/select Collection
+            :archived archived?
+            :namespace namespace
+            {:order-by [[:%lower.name :asc]]}) collections
       (filter mi/can-read? collections)
       ;; include Root Collection at beginning or results if archived isn't `true`
       (if archived?
         collections
         (cons (root-collection) collections))
       (hydrate collections :can_write)
-      ;; remove the :metabase.models.collection/is-root? tag since FE doesn't need it
+      ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
       (for [collection collections]
-        (dissoc collection ::collection/is-root?)))))
+        (dissoc collection ::collection.root/is-root?)))))
 
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
+(def ^:private valid-model-param-values
+  "Valid values for the `?model=` param accepted by endpoints in this namespace."
+  #{"card" "collection" "dashboard" "pulse" "snippet"})
+
 (def ^:private CollectionChildrenOptions
   {:archived? s/Bool
    ;; when specified, only return results of this type.
-   :model     (s/maybe (s/enum :card :dashboard :pulse :collection))})
+   :model     (s/maybe (apply s/enum (map keyword valid-model-param-values)))})
 
 (defmulti ^:private fetch-collection-children
   "Functions for fetching the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -63,38 +78,59 @@
 (defmethod fetch-collection-children :card
   [_ collection {:keys [archived?]}]
   (-> (db/select [Card :id :name :description :collection_position :display]
+        ;; use `:id` here so if it's the root collection we get `id = nil` (no ID)
         :collection_id (:id collection)
-        :archived      archived?)
+        :archived      (boolean archived?))
       (hydrate :favorite)))
 
 (defmethod fetch-collection-children :dashboard
   [_ collection {:keys [archived?]}]
   (db/select [Dashboard :id :name :description :collection_position]
     :collection_id (:id collection)
-    :archived      archived?))
+    :archived      (boolean archived?)))
 
 (defmethod fetch-collection-children :pulse
   [_ collection {:keys [archived?]}]
   (db/select [Pulse :id :name :collection_position]
     :collection_id   (:id collection)
-    :archived        archived?
+    :archived        (boolean archived?)
     ;; exclude Alerts
     :alert_condition nil))
 
-(defmethod fetch-collection-children :collection
+(defmethod fetch-collection-children :snippet
   [_ collection {:keys [archived?]}]
-  (-> (for [child-collection (collection/effective-children collection [:= :archived archived?])]
+  (db/select [NativeQuerySnippet :id :name]
+    :collection_id (:id collection)
+    :archived      (boolean archived?)))
+
+(defmethod fetch-collection-children :collection
+  [_ collection {:keys [archived? collection-namespace]}]
+  (-> (for [child-collection (collection/effective-children collection
+                                                            [:= :archived archived?]
+                                                            [:= :namespace (u/qualified-name collection-namespace)])]
         (assoc child-collection :model "collection"))
       (hydrate :can_write)))
 
+(defn- model-name->toucan-model [model-name]
+  (case (keyword model-name)
+    :collection Collection
+    :card       Card
+    :dashboard  Dashboard
+    :pulse      Pulse
+    :snippet    NativeQuerySnippet))
+
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
-  [collection                                     :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [model collections-only?], :as options} :- CollectionChildrenOptions]
-  (->> (for [model-kw [:collection :card :dashboard :pulse]
-            ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
-            :when    (or (not model) (= model model-kw))
-            item     (fetch-collection-children model-kw collection options)]
+  [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
+   {:keys [model collections-only?], :as options}    :- CollectionChildrenOptions]
+  (->> (for [model-kw [:collection :card :dashboard :pulse :snippet]
+             ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
+             :when    (or (not model) (= model model-kw))
+             :let     [toucan-model       (model-name->toucan-model model-kw)
+                       allowed-namespaces (collection/allowed-namespaces toucan-model)]
+             :when    (or (= model-kw :collection)
+                          (contains? allowed-namespaces (keyword collection-namespace)))
+             item     (fetch-collection-children model-kw collection (assoc options :collection-namespace collection-namespace))]
          (assoc item :model model-kw))
        ;; sorting by name should be fine for now.
        (sort-by (comp str/lower-case :name))))
@@ -105,12 +141,6 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
-
-(s/defn ^:private collection-items
-  "Return items in the Collection, restricted by `children-options`.
-  Works for either a normal Collection or the Root Collection."
-  [collection :- collection/CollectionWithLocationAndIDOrRoot, children-options :- CollectionChildrenOptions]
-  (collection-children collection children-options))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
@@ -123,9 +153,9 @@
   *  `model` - only include objects of a specific `model`. If unspecified, returns objects of all models
   *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`."
   [id model archived]
-  {model    (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
+  {model    (s/maybe (apply s/enum valid-model-param-values))
    archived (s/maybe su/BooleanString)}
-  (collection-items
+  (collection-children
     (api/read-check Collection id)
     {:model     (keyword model)
      :archived? (Boolean/parseBoolean archived)}))
@@ -139,7 +169,7 @@
 (api/defendpoint GET "/root"
   "Return the 'Root' Collection object with standard details added"
   []
-  (dissoc (root-collection) ::collection/is-root?))
+  (dissoc (root-collection) ::collection.root/is-root?))
 
 (api/defendpoint GET "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
@@ -151,18 +181,22 @@
   location of `/`.
 
   This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the
-  top-level objects you're allowed to access."
-  [model archived]
-  {model    (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
-   archived (s/maybe su/BooleanString)}
+  top-level objects you're allowed to access.
+
+  By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
+  `snippets`, you can pass the `?namespace=` parameter."
+  [model archived namespace]
+  {model     (s/maybe (apply s/enum valid-model-param-values))
+   archived  (s/maybe su/BooleanString)
+   namespace (s/maybe su/NonBlankString)}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
-  (collection-items
-    collection/root-collection
-    {:model     (if (mi/can-read? collection/root-collection)
-                  (keyword model)
-                  :collection)
-     :archived? (Boolean/parseBoolean archived)}))
+  (collection-children
+   (assoc collection/root-collection :namespace namespace)
+   {:model     (if (mi/can-read? collection/root-collection)
+                 (keyword model)
+                 :collection)
+    :archived? (Boolean/parseBoolean archived)}))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
@@ -177,11 +211,12 @@
 
 (api/defendpoint POST "/"
   "Create a new Collection."
-  [:as {{:keys [name color description parent_id]} :body}]
+  [:as {{:keys [name color description parent_id namespace]} :body}]
   {name        su/NonBlankString
    color       collection/hex-color-regex
    description (s/maybe su/NonBlankString)
-   parent_id   (s/maybe su/IntGreaterThanZero)}
+   parent_id   (s/maybe su/IntGreaterThanZero)
+   namespace   (s/maybe su/NonBlankString)}
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id)
   ;; Now create the new Collection :)
@@ -189,7 +224,8 @@
     (merge
      {:name        name
       :color       color
-      :description description}
+      :description description
+      :namespace   namespace}
      (when parent_id
        {:location (collection/children-location (db/select-one [Collection :location :id] :id parent_id))}))))
 
@@ -270,10 +306,10 @@
 
 (api/defendpoint GET "/graph"
   "Fetch a graph of all Collection Permissions."
-  []
+  [namespace]
+  {namespace (s/maybe su/NonBlankString)}
   (api/check-superuser)
-  (collection/graph))
-
+  (collection.graph/graph namespace))
 
 (defn- ->int [id] (Integer/parseInt (name id)))
 
@@ -296,11 +332,12 @@
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph."
-  [:as {body :body}]
-  {body su/Map}
+  [namespace :as {body :body}]
+  {body      su/Map
+   namespace (s/maybe su/NonBlankString)}
   (api/check-superuser)
-  (collection/update-graph! (dejsonify-graph body))
-  (collection/graph))
+  (collection.graph/update-graph! namespace (dejsonify-graph body))
+  (collection.graph/graph namespace))
 
 
 (api/define-routes)

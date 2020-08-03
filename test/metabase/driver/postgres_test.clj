@@ -247,7 +247,7 @@
                (mt/rows (mt/run-mbql-query users
                           {:filter [:= $user_id nil]})))))
       (testing "Check that we can filter by a UUID for SQL Field filters (#7955)"
-        (is (= [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027" 1]]
+        (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]]
                (mt/rows
                  (qp/process-query
                    (assoc (mt/native-query
@@ -262,8 +262,8 @@
                          :target ["dimension" ["template-tag" "user"]]
                          :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}])))))
       (testing "Check that we can filter by multiple UUIDs for SQL Field filters"
-        (is (= [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027" 1]
-                [#uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433" 3]]
+        (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
+                [3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]]
                (mt/rows
                  (qp/process-query
                    (assoc (mt/native-query
@@ -357,13 +357,13 @@
                  "CREATE TYPE bird_status AS ENUM ('good bird', 'angry bird', 'delicious bird');"
                  (str "CREATE TABLE birds ("
                       "  name varchar PRIMARY KEY NOT NULL,"
-                      "  type \"bird type\" NOT NULL,"
-                      "  status bird_status NOT NULL"
+                      "  status bird_status NOT NULL,"
+                      "  type \"bird type\" NOT NULL"
                       ");")
-                 (str "INSERT INTO birds (\"name\", \"type\", status) VALUES"
-                      "  ('Rasta', 'toucan', 'good bird'),"
-                      "  ('Lucky', 'pigeon', 'angry bird'),"
-                      "  ('Theodore', 'turkey', 'delicious bird');")]]
+                 (str "INSERT INTO birds (\"name\", status, \"type\") VALUES"
+                      "  ('Rasta', 'good bird', 'toucan'),"
+                      "  ('Lucky', 'angry bird', 'pigeon'),"
+                      "  ('Theodore', 'delicious bird', 'turkey');")]]
       (jdbc/execute! conn [sql]))))
 
 (defn- do-with-enums-db {:style/indent 0} [f]
@@ -386,16 +386,19 @@
 
         (testing "check that describe-table properly describes the database & base types of the enum fields"
           (is (= {:name   "birds"
-                  :fields #{{:name          "name",
-                             :database-type "varchar"
-                             :base-type     :type/Text
-                             :pk?           true}
-                            {:name          "status"
-                             :database-type "bird_status"
-                             :base-type     :type/PostgresEnum}
-                            {:name          "type"
-                             :database-type "bird type"
-                             :base-type     :type/PostgresEnum}}}
+                  :fields #{{:name              "name"
+                             :database-type     "varchar"
+                             :base-type         :type/Text
+                             :pk?               true
+                             :database-position 0}
+                            {:name              "status"
+                             :database-type     "bird_status"
+                             :base-type         :type/PostgresEnum
+                             :database-position 1}
+                            {:name              "type"
+                             :database-type     "bird type"
+                             :base-type         :type/PostgresEnum
+                             :database-position 2}}}
                  (driver/describe-table :postgres db {:name "birds"}))))
 
         (testing "check that when syncing the DB the enum types get recorded appropriately"

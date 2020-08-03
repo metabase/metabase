@@ -40,6 +40,7 @@
              [field-values :refer [FieldValues]]
              [metric :refer [Metric]]
              [metric-important-field :refer [MetricImportantField]]
+             [native-query-snippet :refer [NativeQuerySnippet]]
              [permissions :refer [Permissions]]
              [permissions-group :refer [PermissionsGroup]]
              [permissions-group-membership :refer [PermissionsGroupMembership]]
@@ -65,7 +66,7 @@
 
 ;;; ------------------------------------------ Models to Migrate (in order) ------------------------------------------
 
-(def ^:private entities
+(def entities
   "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load load
   instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
   [Database
@@ -81,6 +82,8 @@
    Revision
    ViewLog
    Session
+   Collection
+   CollectionRevision
    Dashboard
    Card
    CardFavorite
@@ -95,10 +98,9 @@
    PermissionsGroupMembership
    Permissions
    PermissionsRevision
-   Collection
-   CollectionRevision
    DashboardFavorite
    Dimension
+   NativeQuerySnippet
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
    DataMigrations])

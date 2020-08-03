@@ -11,14 +11,14 @@ import * as Dashboard from "metabase/meta/Dashboard";
 
 import { getParameterTargetFieldId } from "metabase/meta/Parameter";
 
-import type { CardId, Card } from "metabase/meta/types/Card";
-import type { DashCardId } from "metabase/meta/types/Dashboard";
+import type { CardId, Card } from "metabase-types/types/Card";
+import type { DashCardId } from "metabase-types/types/Dashboard";
 import type {
   ParameterId,
   Parameter,
   ParameterMapping,
   ParameterMappingUIOption,
-} from "metabase/meta/types/Parameter";
+} from "metabase-types/types/Parameter";
 
 export type AugmentedParameterMapping = ParameterMapping & {
   dashcard_id: DashCardId,
@@ -123,7 +123,7 @@ export const getMappingsByParameter = createSelector(
         const card = _.findWhere(cards, { id: mapping.card_id });
         const fieldId =
           card && getParameterTargetFieldId(mapping.target, card.dataset_query);
-        const field = metadata.fields[fieldId];
+        const field = metadata.field(fieldId);
         const values = (field && field.fieldValues()) || [];
         if (values.length) {
           countsByParameter[mapping.parameter_id] =
@@ -210,7 +210,7 @@ export const getParameters = createSelector(
         .filter(fieldId => fieldId != null)
         .value();
       const fieldIdsWithFKResolved = _.chain(fieldIds)
-        .map(id => metadata.fields[id])
+        .map(id => metadata.field(id))
         .filter(f => f)
         .map(f => (f.target || f).id)
         .uniq()

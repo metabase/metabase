@@ -2,6 +2,10 @@
   overflow: auto;
 }
 
+.overflow-scroll {
+  overflow: scroll;
+}
+
 .overflow-hidden {
   overflow: hidden;
 }
@@ -12,4 +16,12 @@
 
 .overflow-y-hidden {
   overflow-y: hidden;
+}
+
+.overflow-x-scroll {
+  overflow-x: scroll;
+}
+
+.overflow-y-scroll {
+  overflow-y: scroll;
 }

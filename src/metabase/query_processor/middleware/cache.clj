@@ -126,7 +126,7 @@
          (rf))
 
         ([acc]
-         ;; if results are in the 'normal format' the use return the final metadata from the cache rather than
+         ;; if results are in the 'normal format' then use the final metadata from the cache rather than
          ;; whatever `acc` is right now since we don't run the entire post-processing pipeline for cached results
          (let [normal-format? (and (map? acc) (seq (get-in acc [:data :cols])))
                acc*           (-> (if normal-format?

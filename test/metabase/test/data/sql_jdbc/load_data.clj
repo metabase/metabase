@@ -68,7 +68,7 @@
   specified. (This isn't meant for composition with `load-data-get-rows`; "
   [rows]
   (for [[i row] (m/indexed rows)]
-    (assoc row :id (inc i))))
+    (into {:id (inc i)} row)))
 
 (defn load-data-add-ids
   "Middleware function intended for use with `make-load-data-fn`. Add IDs to each row, presumabily for doing a parallel
@@ -186,6 +186,7 @@
       (try
         ;; TODO - why don't we use `execute/execute-sql!` here like we do below?
         (doseq [sql+args statements]
+          (log/tracef "[insert] %s" (pr-str sql+args))
           (jdbc/execute! spec sql+args {:set-parameters (fn [stmt params]
                                                           (sql-jdbc.execute/set-parameters! driver stmt params))}))
         (catch SQLException e
@@ -208,3 +209,9 @@
   (doseq [tabledef table-definitions]
     (u/profile (format "load-data for %s %s %s" (name driver) (:database-name dbdef) (:table-name tabledef))
       (load-data! driver dbdef tabledef))))
+
+(defn destroy-db!
+  "Default impl of `destroy-db!` for SQL drivers."
+  [driver dbdef]
+  (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef)]
+    (execute/execute-sql! driver :server dbdef statement)))

@@ -79,9 +79,9 @@
               (setting/set-string! :site-url new-value))))
 
 (defsetting site-locale
-  (str (deferred-tru "The language that should be used for Metabase's UI, system emails, pulses, and alerts.")
+  (str (deferred-tru "The default language for all users across the Metabase UI, system emails, pulses, and alerts.")
        " "
-       (deferred-tru "This is also the default language for all users, which they can change from their own account settings."))
+       (deferred-tru "Users can individually override this default language from their own account settings."))
   :default    "en"
   :visibility :public
   :setter     (fn [new-value]
@@ -153,8 +153,10 @@
                            global-max-caching-kb))
                (throw (IllegalArgumentException.
                        (str
-                        (deferred-tru "Failed setting `query-caching-max-kb` to {0}." new-value)
-                        (deferred-tru "Values greater than {1} are not allowed." global-max-caching-kb)))))
+                        (tru "Failed setting `query-caching-max-kb` to {0}." new-value)
+                        " "
+                        (tru "Values greater than {0} ({1}) are not allowed."
+                             global-max-caching-kb (u/format-bytes (* global-max-caching-kb 1024)))))))
              (setting/set-integer! :query-caching-max-kb new-value)))
 
 (defsetting query-caching-max-ttl
@@ -215,8 +217,8 @@
                          u/lower-case-en)))
 
 (defn remove-public-uuid-if-public-sharing-is-disabled
-  "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it
-   won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."
+  "If public sharing is *disabled* and `object` has a `:public_uuid`, remove it so people don't try to use it (since it
+  won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."
   [object]
   (if (and (:public_uuid object)
            (not (enable-public-sharing)))

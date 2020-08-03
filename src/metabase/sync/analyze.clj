@@ -76,10 +76,8 @@
   (update-last-analyzed! tables))
 
 (s/defn analyze-table!
-  "Perform in-depth analysis for a TABLE."
+  "Perform in-depth analysis for a `table`."
   [table :- i/TableInstance]
-  ;; Table row count disabled for now because of performance issues
-  #_(table-row-count/update-row-count! table)
   (fingerprint/fingerprint-fields! table)
   (classify/classify-fields! table)
   (classify/classify-table! table)

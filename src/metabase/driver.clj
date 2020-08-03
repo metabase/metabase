@@ -1,7 +1,7 @@
 (ns metabase.driver
   "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like
   introspecting their schemas and processing and running MBQL queries. Drivers must implement some or all of the
-  multimethods defined below, and register themselves with a call to `regsiter!`.
+  multimethods defined below, and register themselves with a call to `register!`.
 
   SQL-based drivers can use the `:sql` driver as a parent, and JDBC-based SQL drivers can use `:sql-jdbc`. Both of
   these drivers define additional multimethods that child drivers should implement; see `metabase.driver.sql` and
@@ -330,7 +330,6 @@
 
   Example impl:
 
-
     (defmethod reducible-query :my-driver
       [_ query context respond]
       (with-open [results (run-query! query)]
@@ -595,3 +594,11 @@
   {:arglists '([driver inner-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti default-field-order
+  "Return how fields should be sorted by default for this database."
+  {:added "0.36.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod default-field-order ::driver [_] :database)

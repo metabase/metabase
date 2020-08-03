@@ -131,9 +131,8 @@
          (not= hours "*"))                        "daily"
     :else                                         "hourly"))
 
-
 (s/defn ^{:style/indent 0} cron-string->schedule-map :- ScheduleMap
-  "Convert a normal CRON-STRING into the expanded ScheduleMap format used by the frontend."
+  "Convert a normal `cron-string` into the expanded ScheduleMap format used by the frontend."
   [cron-string :- CronScheduleString]
   (let [[_ _ hours day-of-month _ day-of-week _] (str/split cron-string #"\s+")]
     {:schedule_day   (cron->day-of-week day-of-week)

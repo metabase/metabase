@@ -9,7 +9,7 @@ const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
 const GRADIENT_ALPHA = 0.75;
 
-import type { Column } from "metabase/meta/types/Dataset";
+import type { Column } from "metabase-types/types/Dataset";
 // for simplicity wheb typing assume all values are numbers, since you can only pick numeric columns
 type Value = number;
 type Row = Value[];

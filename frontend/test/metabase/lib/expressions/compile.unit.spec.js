@@ -6,7 +6,7 @@ import {
   expressionOpts,
 } from "./__support__/expressions";
 
-const ENABLE_PERF_TESTS = !process.env["CI"];
+const ENABLE_PERF_TESTS = false; //!process.env["CI"];
 
 function expectFast(fn, milliseconds = 1000) {
   const start = Date.now();

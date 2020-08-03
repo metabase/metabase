@@ -6,8 +6,8 @@ import type {
   Filter as FilterObject,
   FieldFilter,
   Field,
-} from "metabase/meta/types/Query";
-import type { FilterOperator } from "metabase/meta/types/Metadata";
+} from "metabase-types/types/Query";
+import type { FilterOperator } from "metabase-types/types/Metadata";
 import type StructuredQuery from "../StructuredQuery";
 import type Dimension from "../../Dimension";
 
@@ -224,7 +224,7 @@ export default class Filter extends MBQLClause {
   setDimension(
     fieldRef: ?Field,
     { useDefaultOperator = false }: { useDefaultOperator?: boolean } = {},
-  ) {
+  ): Filter {
     if (!fieldRef) {
       return this.set([]);
     }
@@ -241,7 +241,6 @@ export default class Filter extends MBQLClause {
 
       const operatorName = operator && operator.name;
 
-      // $FlowFixMe
       const filter: Filter = this.set(
         this.isFieldFilter()
           ? [this[0], dimension.mbql(), ...this.slice(2)]
@@ -268,9 +267,9 @@ export default class Filter extends MBQLClause {
     return this.set([...this.slice(0, 2), ...values]);
   }
 
-  filterOperators(): ?(FilterOperator[]) {
+  filterOperators(selected: string): ?(FilterOperator[]) {
     const dimension = this.dimension();
-    return dimension ? dimension.filterOperators() : null;
+    return dimension ? dimension.filterOperators(selected) : null;
   }
 
   arguments() {

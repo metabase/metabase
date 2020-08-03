@@ -14,7 +14,7 @@ import { color } from "metabase/lib/colors";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { DatabaseCandidates, Candidate } from "metabase/meta/types/Auto";
+import type { DatabaseCandidates, Candidate } from "metabase-types/types/Auto";
 
 const DEFAULT_TITLE = t`Hi, Metabot here.`;
 const DEFAULT_DESCRIPTION = "";

@@ -14,7 +14,7 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 - [Google BigQuery](databases/bigquery.md)
 - H2
 - [MongoDB (version 3.4 or higher)](databases/mongodb.md)
-- [MySQL (version 5.5.3 or higher, as well as MariaDB)](databases/mysql.md)
+- [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](databases/mysql.md)
 - Postgres
 - SQLite
 - SQL Server
@@ -24,7 +24,7 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 - Presto
 - Google Analytics
 - SparkSQL
-- Snowflake
+- [Snowflake](databases/snowflake.md)
 
 Don't see the database you need here? Take a look at our [Community Drivers](../developers-guide-drivers.md) page to see if somebody else has built one or how to get started building your own.
 

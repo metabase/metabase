@@ -20,7 +20,7 @@ Assuming you do not need to do a lot of transformation or ingest lots of third p
 
 ## Dedicated analytics database
 
-Typically once enough data is in the system and/or the tranformation needs are complex enough, a dedicated analytics database is used. There are many options ranging from a normal general purpose database (MySQL, Postgres, SQL Server, etc), to a dedicated Analytics database (Vertica, Redshift, GreenPlum, Terredata, etc), the new generation of SQL on Hadoop databases (Spark, Presto) or NoSQL databases (Druid, Cassandra, etc). 
+Typically once enough data is in the system and/or the transformation needs are complex enough, a dedicated analytics database is used. There are many options ranging from a normal general purpose database (MySQL, Postgres, SQL Server, etc), to a dedicated Analytics database (Vertica, Redshift, GreenPlum, Terredata, etc), the new generation of SQL on Hadoop databases (Spark, Presto) or NoSQL databases (Druid, Cassandra, etc). 
 
 
 It is rare that your applications database will have all the data you need and be structured in a way that lets you ask all of the questions you are interested in. Typically an application database will have a schema optimized for small reads and updates, while most analytics queries typically touch a large fraction of a table. 

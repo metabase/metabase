@@ -16,85 +16,13 @@
             [metabase
              [db :as mdb]
              [util :as u]]
-            [metabase.db.migrations :refer [DataMigrations]]
-            [metabase.models
-             [activity :refer [Activity]]
-             [card :refer [Card]]
-             [card-favorite :refer [CardFavorite]]
-             [collection :refer [Collection]]
-             [collection-revision :refer [CollectionRevision]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [dashboard-card-series :refer [DashboardCardSeries]]
-             [dashboard-favorite :refer [DashboardFavorite]]
-             [database :refer [Database]]
-             [dependency :refer [Dependency]]
-             [dimension :refer [Dimension]]
-             [field :refer [Field]]
-             [field-values :refer [FieldValues]]
-             [metric :refer [Metric]]
-             [metric-important-field :refer [MetricImportantField]]
-             [permissions :refer [Permissions]]
-             [permissions-group :refer [PermissionsGroup]]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]
-             [permissions-revision :refer [PermissionsRevision]]
-             [pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [pulse-channel :refer [PulseChannel]]
-             [pulse-channel-recipient :refer [PulseChannelRecipient]]
-             [revision :refer [Revision]]
-             [segment :refer [Segment]]
-             [session :refer [Session]]
-             [setting :refer [Setting]]
-             [table :refer [Table]]
-             [user :refer [User]]
-             [view-log :refer [ViewLog]]]
+            [metabase.cmd.load-from-h2 :refer [entities]]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import java.sql.SQLException))
 
 
 (defn- println-ok [] (println (color/green "[OK]")))
-
-;;; ------------------------------------------ Models to Migrate (in order) ------------------------------------------
-
-(def ^:private entities
-  "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load load
-  instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
-  [Database
-   User
-   Setting
-   Dependency
-   Table
-   Field
-   FieldValues
-   Segment
-   Metric
-   MetricImportantField
-   Revision
-   ViewLog
-   Session
-   Dashboard
-   Card
-   CardFavorite
-   DashboardCard
-   DashboardCardSeries
-   Activity
-   Pulse
-   PulseCard
-   PulseChannel
-   PulseChannelRecipient
-   PermissionsGroup
-   PermissionsGroupMembership
-   Permissions
-   PermissionsRevision
-   Collection
-   CollectionRevision
-   DashboardFavorite
-   Dimension
-   ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
-   ;; above this line)
-   DataMigrations])
 
 
 ;;; --------------------------------------------- H2 Connection Options ----------------------------------------------

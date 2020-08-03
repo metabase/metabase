@@ -21,7 +21,7 @@
   ((-> (fn [request respond _]
          (respond request))
        mw.auth/enforce-authentication
-       mw.session/wrap-current-user-id)
+       mw.session/wrap-current-user-info)
    request
    identity
    (fn [e] (throw e))))
@@ -36,7 +36,7 @@
 (defn- random-session-id []
   (str (UUID/randomUUID)))
 
-(deftest wrap-current-user-id-test
+(deftest wrap-current-user-info-test
   (testing "Valid requests should add `metabase-user-id` to requests with valid session info"
     (let [session-id (random-session-id)]
       (tt/with-temp Session [_ {:id      session-id

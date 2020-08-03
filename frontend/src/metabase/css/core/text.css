@@ -108,6 +108,10 @@
   text-transform: capitalize;
 }
 
+.text-transform-none {
+  text-transform: none;
+}
+
 /* text weight */
 /* NOTE: .text-light removed since it conflicted with text-light in colors.css */
 .text-normal {
@@ -187,6 +191,12 @@
   background-color: var(--color-bg-medium);
   border-radius: 2px;
   padding: 0.2em 0.4em;
+  line-height: 1.4em;
+  white-space: pre-wrap;
+}
+.text-code-plain {
+  font-family: monospace;
+  color: var(--color-text-dark);
   line-height: 1.4em;
   white-space: pre-wrap;
 }

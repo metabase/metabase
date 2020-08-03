@@ -69,7 +69,7 @@ export default class UserStep extends Component {
 
           <User.Form
             className="mt1"
-            form={User.forms.setup}
+            form={User.forms.setup()}
             user={
               userDetails && {
                 ...userDetails,

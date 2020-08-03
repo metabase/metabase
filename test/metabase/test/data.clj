@@ -290,7 +290,7 @@
   (delay (vec (dataset-field-values "categories" "name"))))
 
 ;; TODO - you should always call these functions with the `with-data` macro. We should enforce this
-(defn create-venue-category-remapping
+(defn create-venue-category-remapping!
   "Returns a thunk that adds an internal remapping for category_id in the venues table aliased as `remapping-name`.
   Can be used in a `with-data` invocation."
   [remapping-name]
@@ -302,7 +302,7 @@
                               :values                (json/generate-string (range 1 (inc (count @category-names))))
                               :human_readable_values (json/generate-string @category-names)})]))
 
-(defn create-venue-category-fk-remapping
+(defn create-venue-category-fk-remapping!
   "Returns a thunk that adds a FK remapping for category_id in the venues table aliased as `remapping-name`. Can be
   used in a `with-data` invocation."
   [remapping-name]

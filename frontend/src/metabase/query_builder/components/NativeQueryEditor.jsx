@@ -1,4 +1,4 @@
-/* @flow */
+/* @flow weak */
 /*global ace*/
 
 import React, { Component } from "react";
@@ -28,6 +28,7 @@ import "ace/snippets/json";
 import { t } from "ttag";
 
 import { isMac } from "metabase/lib/browser";
+import { isEventOverElement } from "metabase/lib/dom";
 import { delay } from "metabase/lib/promise";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 
@@ -35,13 +36,16 @@ import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import ExplicitSize from "metabase/components/ExplicitSize";
+import Popover from "metabase/components/Popover";
+
+import Snippets from "metabase/entities/snippets";
 
 import Parameters from "metabase/parameters/components/Parameters";
 
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
 
-const MIN_HEIGHT_LINES = 10;
+const MIN_HEIGHT_LINES = 13;
 
 const ICON_SIZE = 18;
 
@@ -51,20 +55,22 @@ const getLinesForHeight = height => (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
-import type { DatasetQuery } from "metabase/meta/types/Card";
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { TableId } from "metabase/meta/types/Table";
-import type { ParameterId } from "metabase/meta/types/Parameter";
-import type { LocationDescriptor } from "metabase/meta/types";
+import type { DatasetQuery } from "metabase-types/types/Card";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { TableId } from "metabase-types/types/Table";
+import type { ParameterId } from "metabase-types/types/Parameter";
+import type { LocationDescriptor } from "metabase-types/types";
 import type { RunQueryParams } from "metabase/query_builder/actions";
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
+import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
 
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
 import DataReferenceButton from "./view/DataReferenceButton";
 import NativeVariablesButton from "./view/NativeVariablesButton";
+import SnippetSidebarButton from "./view/SnippetSidebarButton";
 
 type AutoCompleteResult = [string, string, string];
 type AceEditor = any; // TODO;
@@ -89,6 +95,8 @@ type Props = {
 
   isNativeEditorOpen: boolean,
   setIsNativeEditorOpen: (isOpen: boolean) => void,
+  nativeEditorSelectedText: string,
+  setNativeEditorSelectedRange: any => void,
 
   isRunnable: boolean,
   isRunning: boolean,
@@ -98,13 +106,19 @@ type Props = {
 
   viewHeight: number,
   width: number,
+
+  openSnippetModalWithSelectedText: () => void,
+  insertSnippet: () => void,
+  closeSnippetModal: () => void,
+  snippets: { name: string }[],
 };
 type State = {
   initialHeight: number,
-  hasTextSelected: boolean,
+  isSelectedTextPopoverOpen: boolean,
 };
 
 @ExplicitSize()
+@Snippets.loadList({ loadingAndErrorWrapper: false })
 export default class NativeQueryEditor extends Component {
   props: Props;
   state: State;
@@ -125,7 +139,7 @@ export default class NativeQueryEditor extends Component {
 
     this.state = {
       initialHeight: getEditorLineHeight(lines),
-      hasTextSelected: false,
+      isSelectedTextPopoverOpen: false,
     };
 
     // Ace sometimes fires mutliple "change" events in rapid succession
@@ -156,12 +170,37 @@ export default class NativeQueryEditor extends Component {
   componentDidMount() {
     this.loadAceEditor();
     document.addEventListener("keydown", this.handleKeyDown);
+    document.addEventListener("contextmenu", this.handleRightClick);
   }
+
+  handleRightClick = event => {
+    // Ace creates multiple selection elements which collectively cover the selected area.
+    const selections = Array.from(document.querySelectorAll(".ace_selection"));
+
+    if (
+      this.props.nativeEditorSelectedText &&
+      // For some reason the click doesn't target the selection element directly.
+      // We check if it falls in the selections bounding rectangle to know if the selected text was clicked.
+      selections.some(selection => isEventOverElement(event, selection))
+    ) {
+      event.preventDefault();
+      this.setState({ isSelectedTextPopoverOpen: true });
+    }
+  };
 
   componentDidUpdate(prevProps: Props) {
     const { query } = this.props;
     if (!query || !this._editor) {
       return;
+    }
+
+    if (
+      this.state.isSelectedTextPopoverOpen &&
+      !this.props.nativeEditorSelectedText &&
+      prevProps.nativeEditorSelectedText
+    ) {
+      // close selected text popover if text is deselected
+      this.setState({ isSelectedTextPopoverOpen: false });
     }
 
     // Check that the query prop changed before updating the editor. Otherwise,
@@ -213,17 +252,15 @@ export default class NativeQueryEditor extends Component {
   componentWillUnmount() {
     this.props.cancelQuery();
     document.removeEventListener("keydown", this.handleKeyDown);
+    document.removeEventListener("contextmenu", this.handleRightClick);
   }
 
-  // Debouncing this avoids race condition between checking the current version
-  // of state and asynchronously setting state. We could pass a function to
-  // setState, but then we'd risk calling setState too much as this event is
-  // triggered multiple times per user-perceived selection.
-  handleSelectionChange = _.debounce(() => {
-    const hasTextSelected = Boolean(this._editor.getSelectedText());
-    if (this.state.hasTextSelected !== hasTextSelected) {
-      this.setState({ hasTextSelected });
-    }
+  // this is overwritten when the editor is set up
+  swapInCorrectCompletors = () => undefined;
+
+  handleCursorChange = _.debounce((e, { cursor }) => {
+    this.swapInCorrectCompletors(cursor);
+    this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
   }, 100);
 
   handleKeyDown = (e: KeyboardEvent) => {
@@ -283,7 +320,7 @@ export default class NativeQueryEditor extends Component {
 
     // listen to onChange events
     this._editor.getSession().on("change", this.onChange);
-    this._editor.on("changeSelection", this.handleSelectionChange);
+    this._editor.getSelection().on("changeCursor", this.handleCursorChange);
 
     const minLineNumberWidth = 20;
     this._editor.getSession().gutterRenderer = {
@@ -311,7 +348,7 @@ export default class NativeQueryEditor extends Component {
     const aceLanguageTools = ace.require("ace/ext/language_tools");
     this._editor.setOptions({
       enableBasicAutocompletion: true,
-      enableSnippets: true,
+      enableSnippets: false,
       enableLiveAutocompletion: true,
       showPrintMargin: false,
       highlightActiveLine: false,
@@ -339,7 +376,37 @@ export default class NativeQueryEditor extends Component {
         }
       },
     });
+
+    const allCompleters = [...this._editor.completers];
+    const snippetCompleter = [{ getCompletions: this.getSnippetCompletions }];
+
+    this.swapInCorrectCompletors = pos => {
+      const isInSnippet = this.getSnippetNameAtCursor(pos) !== null;
+      this._editor.completers = isInSnippet ? snippetCompleter : allCompleters;
+    };
   }
+
+  getSnippetNameAtCursor = ({ row, column }) => {
+    const lines = this._editor.getValue().split("\n");
+    const linePrefix = lines[row].slice(0, column);
+    const match = linePrefix.match(/\{\{\s*snippet:\s*([^\}]*)$/);
+    return match ? match[1] : null;
+  };
+
+  getSnippetCompletions = (editor, session, pos, prefix, callback) => {
+    const name = this.getSnippetNameAtCursor(pos);
+    const snippets = (this.props.snippets || []).filter(snippet =>
+      snippet.name.toLowerCase().includes(name.toLowerCase()),
+    );
+
+    callback(
+      null,
+      snippets.map(({ name, description, content }) => ({
+        name,
+        value: name,
+      })),
+    );
+  };
 
   _updateSize() {
     const doc = this._editor.getSession().getDocument();
@@ -365,6 +432,7 @@ export default class NativeQueryEditor extends Component {
       if (query.queryText() !== this._editor.getValue()) {
         query
           .setQueryText(this._editor.getValue())
+          .updateSnippetsWithIds(this.props.snippets)
           .update(this.props.setDatasetQuery);
       }
     }
@@ -476,9 +544,7 @@ export default class NativeQueryEditor extends Component {
       toggleEditorText = null;
       toggleEditorIcon = "contract";
     } else {
-      toggleEditorText = query.hasWritePermission()
-        ? t`Open Editor`
-        : t`Show Query`;
+      toggleEditorText = t`Open Editor`;
       toggleEditorIcon = "expand";
     }
     const dragHandle = (
@@ -501,20 +567,25 @@ export default class NativeQueryEditor extends Component {
             isQB
             commitImmediately
           />
-          <div className="flex-align-right flex align-center text-medium pr1">
-            <a
-              className={cx(
-                "Query-label no-decoration flex align-center mx3 text-brand-hover transition-all",
-                { hide: readOnly },
-              )}
-              onClick={this.toggleEditor}
+          {query.hasWritePermission() && (
+            <div
+              className="flex-align-right flex align-center text-medium"
+              style={{ paddingRight: 4 }}
             >
-              <span className="mr1" style={{ minWidth: 70 }}>
-                {toggleEditorText}
-              </span>
-              <Icon name={toggleEditorIcon} size={18} />
-            </a>
-          </div>
+              <a
+                className={cx(
+                  "Query-label no-decoration flex align-center mx3 text-brand-hover transition-all",
+                  { hide: readOnly },
+                )}
+                onClick={this.toggleEditor}
+              >
+                <span className="mr1" style={{ minWidth: 70 }}>
+                  {toggleEditorText}
+                </span>
+                <Icon name={toggleEditorIcon} size={18} />
+              </a>
+            </div>
+          )}
         </div>
         <ResizableBox
           ref="resizeBox"
@@ -530,13 +601,54 @@ export default class NativeQueryEditor extends Component {
           resizeHandles={["s"]}
         >
           <div className="flex-full" id="id_sql" ref="editor" />
-          <div className="flex flex-column align-center border-left">
+          <Popover
+            isOpen={this.state.isSelectedTextPopoverOpen}
+            target={() =>
+              ReactDOM.findDOMNode(this.refs.editor).querySelector(
+                ".ace_selection",
+              )
+            }
+          >
+            <div className="flex flex-column">
+              <a className="p2 bg-medium-hover flex" onClick={this.runQuery}>
+                <Icon name={"play"} size={16} className="mr1" />
+                <h4>Run selection</h4>
+              </a>
+              <a
+                className="p2 bg-medium-hover flex"
+                onClick={this.props.openSnippetModalWithSelectedText}
+              >
+                <Icon name={"snippet"} size={16} className="mr1" />
+                <h4>Save as snippet</h4>
+              </a>
+            </div>
+          </Popover>
+          {this.props.modalSnippet && (
+            <SnippetModal
+              onSnippetUpdate={(newSnippet, oldSnippet) => {
+                if (newSnippet.name !== oldSnippet.name) {
+                  query
+                    .updateQueryTextWithNewSnippetNames([newSnippet])
+                    .update(this.props.setDatasetQuery);
+                }
+              }}
+              snippet={this.props.modalSnippet}
+              insertSnippet={this.props.insertSnippet}
+              closeModal={this.props.closeSnippetModal}
+            />
+          )}
+          <div className="flex flex-column align-center">
             <DataReferenceButton
               {...this.props}
               size={ICON_SIZE}
               className="mt3"
             />
             <NativeVariablesButton
+              {...this.props}
+              size={ICON_SIZE}
+              className="mt3"
+            />
+            <SnippetSidebarButton
               {...this.props}
               size={ICON_SIZE}
               className="mt3"
@@ -549,9 +661,10 @@ export default class NativeQueryEditor extends Component {
               onRun={this.runQuery}
               onCancel={() => cancelQuery()}
               compact
-              className="mx2 mb2 mt-auto p2"
+              className="mx2 mb2 mt-auto"
+              style={{ width: 40, height: 40 }}
               getTooltip={() =>
-                (this.state.hasTextSelected
+                (this.props.nativeEditorSelectedText
                   ? t`Run selected text`
                   : t`Run query`) +
                 " " +

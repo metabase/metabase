@@ -22,6 +22,7 @@
              [util :as u]]
             [metabase.models
              [card :refer [Card]]
+             [collection :as collection]
              [interface :as i]
              [permissions :as perms]
              [pulse-card :refer [PulseCard]]
@@ -40,9 +41,13 @@
 
 (models/defmodel Pulse :pulse)
 
-(defn- pre-delete [notification]
-  (doseq [model [PulseCard PulseChannel]]
-    (db/delete! model :pulse_id (u/get-id notification))))
+(defn- pre-insert [notification]
+  (u/prog1 notification
+    (collection/check-collection-namespace Pulse (:collection_id notification))))
+
+(defn- pre-update [updates]
+  (u/prog1 updates
+    (collection/check-collection-namespace Pulse (:collection_id updates))))
 
 (defn- alert->card
   "Return the Card associated with an Alert, fetching it if needed, for permissions-checking purposes."
@@ -73,7 +78,8 @@
    models/IModelDefaults
    {:hydration-keys (constantly [:pulse])
     :properties     (constantly {:timestamped? true})
-    :pre-delete     pre-delete})
+    :pre-insert     pre-insert
+    :pre-update     pre-update})
   i/IObjectPermissions
   (merge
    i/IObjectPermissionsDefaults
@@ -158,7 +164,7 @@
 ;; TODO - do we really need this function? Why can't we just use `db/select` and `hydrate` like we do for everything
 ;; else?
 (s/defn retrieve-pulse :- (s/maybe PulseInstance)
-  "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert coulmns, since this is a
+  "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
   *Pulse* and they will all be unset."
   [pulse-or-id]
   (some-> (db/select-one Pulse :id (u/get-id pulse-or-id), :alert_condition nil)
@@ -413,7 +419,7 @@
 
 ;; TODO - why do we make sure to strictly validate everything when we create a PULSE but not when we create an ALERT?
 (defn update-alert!
-  "Updates the given `ALERT` and returns it"
+  "Updates the given `alert` and returns it"
   [alert]
   (update-notification! (alert->notification alert))
   ;; fetch the fully updated pulse and return it (and fire off an event)
@@ -439,5 +445,4 @@
                                                                 [:= :pcr.user_id user-id]]} "r"]]}]})]
     (when (zero? result)
       (log/warnf "Failed to remove user-id '%s' from alert-id '%s'" user-id alert-id))
-
     result))

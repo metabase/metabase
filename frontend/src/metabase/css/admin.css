@@ -193,9 +193,8 @@
   border: 1px solid var(--color-border);
   background-color: var(--color-bg-white);
   border-radius: var(--default-border-radius);
-  font-size: 14px;
   font-weight: 700;
-  min-width: 90px;
+  min-width: 104px;
 }
 
 .AdminSelect:hover {
@@ -326,4 +325,17 @@
 
 .AdminLink:hover {
   opacity: 1;
+}
+
+.ColumnSortHelper {
+  box-shadow: 0 7px 20px var(--color-shadow);
+}
+
+#formField-details-port .Form-input,
+#formField-details-tunnel-port .Form-input {
+  max-width: 200px !important;
+}
+
+#formField-details-password .Form-input {
+  margin-bottom: 2em;
 }

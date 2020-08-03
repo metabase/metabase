@@ -11,3 +11,5 @@ The Enterprise Edition of Metabase provides added functionality and solutions fo
 * [Customizing drill-through for charts and tables](customizing-drill-through.md)
 * [Copying contents of one Metabase instance to another (serialization)](serialization.md)
 * [Using the audit logs](audit.md)
+* [Organizing SQL snippets with folders and permissions](sql-snippets.md)
+

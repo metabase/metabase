@@ -235,6 +235,8 @@ commands:
         type: string
       dest:
         type: string
+      driver:
+        type: string
     steps:
       - run:
           name: Make plugins dir
@@ -242,6 +244,7 @@ commands:
       - run:
           name: Download JDBC driver JAR << parameters.dest >>
           command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
             wget --output-document=plugins/<< parameters.dest >> ${<< parameters.source >>}
           no_output_timeout: 5m
 
@@ -813,6 +816,7 @@ workflows:
             - fetch-jdbc-driver:
                 source: ORACLE_JDBC_JAR
                 dest: ojdbc8.jar
+                driver: oracle
           driver: oracle
 
       - test-driver:
@@ -887,6 +891,7 @@ workflows:
             - fetch-jdbc-driver:
                 source: VERTICA_JDBC_JAR
                 dest: vertica-jdbc-7.1.2-0.jar
+                driver: vertica
           driver: vertica
           auto-retry: true
 

@@ -17,6 +17,7 @@
              [geojson :as geojson]
              [ldap :as ldap]
              [metric :as metric]
+             [native-query-snippet :as native-query-snippet]
              [notify :as notify]
              [permissions :as permissions]
              [preview-embed :as preview-embed]
@@ -75,6 +76,7 @@
   (context "/geojson"              [] geojson/routes)
   (context "/ldap"                 [] (+auth ldap/routes))
   (context "/metric"               [] (+auth metric/routes))
+  (context "/native-query-snippet" [] (+auth native-query-snippet/routes))
   (context "/notify"               [] (+apikey notify/routes))
   (context "/permissions"          [] (+auth permissions/routes))
   (context "/preview_embed"        [] (+auth preview-embed/routes))

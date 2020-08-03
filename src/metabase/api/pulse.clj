@@ -126,7 +126,7 @@
                  chan-types
                  ;; if we have Slack enabled build a dynamic list of channels/users
                  (try
-                   (let [slack-channels (for [channel (slack/channels-list)]
+                   (let [slack-channels (for [channel (slack/conversations-list)]
                                           (str \# (:name channel)))
                          slack-users    (for [user (slack/users-list)]
                                           (str \@ (:name user)))]
@@ -195,7 +195,7 @@
   {:ok true})
 
 (api/defendpoint DELETE "/:id/subscription/email"
-  "For uses to remove themselves from a pulse subscription"
+  "For users to unsubscribe themselves from a pulse subscription."
   [id]
   (api/let-404 [pulse-id (db/select-one-id Pulse :id id)
                 pc-id    (db/select-one-id PulseChannel :pulse_id pulse-id :channel_type "email")
