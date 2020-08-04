@@ -367,8 +367,8 @@
 
    :cloverage
    [:test-common
-    {:dependencies [[cloverage "1.1.3-SNAPSHOT" :exclusions [riddley]]]
-     :plugins      [[lein-cloverage  "1.1.3-SNAPSHOT"]]
+    {:dependencies [[cloverage "1.2.0" :exclusions [riddley]]]
+     :plugins      [[lein-cloverage  "1.2.0"]]
      :source-paths ^:replace ["src" "backend/mbql/src"]
      :test-paths   ^:replace ["test" "backend/mbql/test"]
      :cloverage    {:fail-threshold 69
