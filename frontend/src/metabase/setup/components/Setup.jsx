@@ -28,7 +28,7 @@ export default class Setup extends Component {
     userDetails: PropTypes.object,
     languageDetails: PropTypes.object,
     setActiveStep: PropTypes.func.isRequired,
-    databaseDetails: PropTypes.object.isRequired,
+    databaseDetails: PropTypes.object,
   };
 
   completeWelcome() {
@@ -45,7 +45,9 @@ export default class Setup extends Component {
       // fall back to matching the prefix (e.g. just "zh" from "zh-tw")
       locales.find(
         ([code]) => code.toLowerCase() === browserLocale.split("-")[0],
-      );
+      ) ||
+      // if our locale list doesn't include the navigator language, pick English
+      locales.find(([code]) => code === "en");
     if (defaultLanguage) {
       const [code, name] = defaultLanguage;
       this.setState({ defaultLanguage: { name, code } });

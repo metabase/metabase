@@ -1,4 +1,10 @@
-import { restore, signInAsAdmin, popover, modal } from "__support__/cypress";
+import {
+  createNativeQuestion,
+  restore,
+  signInAsAdmin,
+  popover,
+  modal,
+} from "__support__/cypress";
 
 describe("scenarios > question > notebook", () => {
   before(restore);
@@ -31,63 +37,98 @@ describe("scenarios > question > notebook", () => {
     cy.contains("Showing 1 row"); // ensure only one user was returned
   });
 
-  it("should allow joins", () => {
-    // start a custom question with orders
-    cy.visit("/question/new");
-    cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
-    cy.contains("Orders").click();
+  describe("joins", () => {
+    it("should allow joins", () => {
+      // start a custom question with orders
+      cy.visit("/question/new");
+      cy.contains("Custom question").click();
+      cy.contains("Sample Dataset").click();
+      cy.contains("Orders").click();
 
-    // join to Reviews on orders.product_id = reviews.product_id
-    cy.get(".Icon-join_left_outer").click();
-    popover()
-      .contains("Reviews")
-      .click();
-    popover()
-      .contains("Product ID")
-      .click();
-    popover()
-      .contains("Product ID")
-      .click();
+      // join to Reviews on orders.product_id = reviews.product_id
+      cy.get(".Icon-join_left_outer").click();
+      popover()
+        .contains("Reviews")
+        .click();
+      popover()
+        .contains("Product ID")
+        .click();
+      popover()
+        .contains("Product ID")
+        .click();
 
-    // get the average rating across all rows (not a useful metric)
-    cy.contains("Pick the metric you want to see").click();
-    popover()
-      .contains("Average of")
-      .click();
-    popover()
-      .find(".Icon-join_left_outer")
-      .click();
-    popover()
-      .contains("Rating")
-      .click();
-    cy.contains("Visualize").click();
-    cy.contains("Orders + Reviews");
-    cy.contains("3");
-  });
+      // get the average rating across all rows (not a useful metric)
+      cy.contains("Pick the metric you want to see").click();
+      popover()
+        .contains("Average of")
+        .click();
+      popover()
+        .find(".Icon-join_left_outer")
+        .click();
+      popover()
+        .contains("Rating")
+        .click();
+      cy.contains("Visualize").click();
+      cy.contains("Orders + Reviews");
+      cy.contains("3");
+    });
 
-  it("should allow post-join filters (metabase#12221)", () => {
-    cy.log("start a custom question with Orders");
-    cy.visit("/question/new");
-    cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
-    cy.contains("Orders").click();
+    it("should allow post-join filters (metabase#12221)", () => {
+      cy.log("start a custom question with Orders");
+      cy.visit("/question/new");
+      cy.contains("Custom question").click();
+      cy.contains("Sample Dataset").click();
+      cy.contains("Orders").click();
 
-    cy.log("join to People table using default settings");
-    cy.get(".Icon-join_left_outer ").click();
-    cy.contains("People").click();
-    cy.contains("Orders + People");
-    cy.contains("Visualize").click();
-    cy.contains("Showing first 2,000");
+      cy.log("join to People table using default settings");
+      cy.get(".Icon-join_left_outer ").click();
+      cy.contains("People").click();
+      cy.contains("Orders + People");
+      cy.contains("Visualize").click();
+      cy.contains("Showing first 2,000");
 
-    cy.log("attempt to filter on the joined table");
-    cy.contains("Filter").click();
-    cy.contains("Email").click();
-    cy.contains("People – Email");
-    cy.get('[placeholder="Search by Email"]').type("wolf.");
-    cy.contains("wolf.dina@yahoo.com").click();
-    cy.contains("Add filter").click();
-    cy.contains("Showing 1 row");
+      cy.log("attempt to filter on the joined table");
+      cy.contains("Filter").click();
+      cy.contains("Email").click();
+      cy.contains("People – Email");
+      cy.get('[placeholder="Search by Email"]').type("wolf.");
+      cy.contains("wolf.dina@yahoo.com").click();
+      cy.contains("Add filter").click();
+      cy.contains("Showing 1 row");
+    });
+
+    it("should join on field literals", () => {
+      // create two native questions
+      createNativeQuestion("question a", "select 'foo' as a_column");
+      createNativeQuestion("question b", "select 'foo' as b_column");
+
+      // start a custom question with question a
+      cy.visit("/question/new");
+      cy.findByText("Custom question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("question a").click();
+
+      // join to question b
+      cy.get(".Icon-join_left_outer").click();
+      popover().within(() => {
+        cy.findByText("Sample Dataset").click();
+        cy.findByText("Saved Questions").click();
+        cy.findByText("question b").click();
+      });
+
+      // select the join columns
+      popover().within(() => cy.findByText("A_COLUMN").click());
+      popover().within(() => cy.findByText("B_COLUMN").click());
+
+      cy.findByText("Visualize").click();
+      cy.queryByText("Visualize").then($el => cy.wrap($el).should("not.exist")); // wait for that screen to disappear to avoid "multiple elements" errors
+
+      // check that query worked
+      cy.findByText("question a + question b");
+      cy.findByText("A_COLUMN");
+      cy.findByText("Question 5 → B Column");
+      cy.findByText("Showing 1 row");
+    });
   });
 
   describe("nested", () => {
