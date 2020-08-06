@@ -39,6 +39,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
 
 import Snippets from "metabase/entities/snippets";
+import SnippetCollections from "metabase/entities/snippet-collections";
 
 import Parameters from "metabase/parameters/components/Parameters";
 
@@ -111,6 +112,7 @@ type Props = {
   insertSnippet: () => void,
   closeSnippetModal: () => void,
   snippets: { name: string }[],
+  snippetCollections: { can_write: boolean }[],
 };
 type State = {
   initialHeight: number,
@@ -119,6 +121,7 @@ type State = {
 
 @ExplicitSize()
 @Snippets.loadList({ loadingAndErrorWrapper: false })
+@SnippetCollections.loadList({ loadingAndErrorWrapper: false })
 export default class NativeQueryEditor extends Component {
   props: Props;
   state: State;
@@ -481,11 +484,22 @@ export default class NativeQueryEditor extends Component {
       isRunning,
       isResultDirty,
       isPreviewing,
+      snippetCollections,
+      snippets,
     } = this.props;
 
     const database = query.database();
     const databases = query.metadata().databasesList({ savedQuestions: false });
     const parameters = query.question().parameters();
+
+    // hide the snippet sidebar if there aren't any visible snippets/collections and the root collection isn't writable
+    const showSnippetSidebarButton = !(
+      snippets &&
+      snippets.length === 0 &&
+      snippetCollections &&
+      snippetCollections.length === 1 &&
+      snippetCollections[0].can_write === false
+    );
 
     let dataSelectors = [];
     if (isNativeEditorOpen && databases.length > 0) {
@@ -648,11 +662,13 @@ export default class NativeQueryEditor extends Component {
               size={ICON_SIZE}
               className="mt3"
             />
-            <SnippetSidebarButton
-              {...this.props}
-              size={ICON_SIZE}
-              className="mt3"
-            />
+            {showSnippetSidebarButton && (
+              <SnippetSidebarButton
+                {...this.props}
+                size={ICON_SIZE}
+                className="mt3"
+              />
+            )}
             <RunButtonWithTooltip
               disabled={!isRunnable}
               isRunning={isRunning}

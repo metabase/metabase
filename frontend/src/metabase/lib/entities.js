@@ -66,6 +66,9 @@ type EntityDefinition = {
   selectors?: {
     [name: string]: Function,
   },
+  createSelectors?: ({ [name: string]: Function }) => {
+    [name: string]: Function,
+  },
   objectActions?: {
     [name: string]: ObjectActionCreator,
   },
@@ -485,9 +488,9 @@ export function createEntity(def: EntityDefinition): Entity {
     // delegate to getObject
     (state, entityIds) =>
       entityIds &&
-      entityIds.map(entityId =>
-        entity.selectors.getObject(state, { entityId }),
-      ),
+      entityIds
+        .map(entityId => entity.selectors.getObject(state, { entityId }))
+        .filter(e => e != null), // deleted entities might remain in lists
   );
 
   // REQUEST STATE SELECTORS
@@ -527,14 +530,18 @@ export function createEntity(def: EntityDefinition): Entity {
     requestState => requestState.error,
   );
 
-  entity.selectors = {
+  const defaultSelectors = {
     getList,
     getObject,
     getFetched,
     getLoading,
     getLoaded,
     getError,
+  };
+  entity.selectors = {
+    ...defaultSelectors,
     ...(def.selectors || {}),
+    ...(def.createSelectors ? def.createSelectors(defaultSelectors) : {}),
   };
 
   entity.objectSelectors = {

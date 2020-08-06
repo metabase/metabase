@@ -482,6 +482,8 @@ export const STANDARD_FILTERS = new Set([
   "time-interval",
   "is-null",
   "not-null",
+  "is-empty",
+  "not-empty",
   "inside",
 ]);
 

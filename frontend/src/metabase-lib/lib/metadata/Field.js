@@ -192,8 +192,8 @@ export default class Field extends Base {
   // FILTERS
 
   @memoize
-  filterOperators() {
-    return getFilterOperators(this, this.table);
+  filterOperators(selected) {
+    return getFilterOperators(this, this.table, selected);
   }
 
   @memoize

@@ -139,6 +139,8 @@ export type FieldFilter =
   | StringFilter
   | NullFilter
   | NotNullFilter
+  | EmptyFilter
+  | NotEmptyFilter
   | InsideFilter
   | TimeIntervalFilter;
 
@@ -178,6 +180,8 @@ export type StringFilterOptions = {
 
 export type NullFilter = ["is-null", ConcreteField];
 export type NotNullFilter = ["not-null", ConcreteField];
+export type EmptyFilter = ["is-empty", ConcreteField];
+export type NotEmptyFilter = ["not-empty", ConcreteField];
 export type InsideFilter = [
   "inside",
   ConcreteField,

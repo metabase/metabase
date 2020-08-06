@@ -1,4 +1,5 @@
 import {
+  createNativeQuestion,
   restore,
   signInAsAdmin,
   popover,
@@ -114,6 +115,39 @@ describe("scenarios > question > notebook", () => {
       cy.get(".ReactVirtualized__List").within(() => {
         cy.findAllByText("Product").should("not.exist");
       });
+    });
+
+    it("should join on field literals", () => {
+      // create two native questions
+      createNativeQuestion("question a", "select 'foo' as a_column");
+      createNativeQuestion("question b", "select 'foo' as b_column");
+
+      // start a custom question with question a
+      cy.visit("/question/new");
+      cy.findByText("Custom question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("question a").click();
+
+      // join to question b
+      cy.get(".Icon-join_left_outer").click();
+      popover().within(() => {
+        cy.findByText("Sample Dataset").click();
+        cy.findByText("Saved Questions").click();
+        cy.findByText("question b").click();
+      });
+
+      // select the join columns
+      popover().within(() => cy.findByText("A_COLUMN").click());
+      popover().within(() => cy.findByText("B_COLUMN").click());
+
+      cy.findByText("Visualize").click();
+      cy.queryByText("Visualize").then($el => cy.wrap($el).should("not.exist")); // wait for that screen to disappear to avoid "multiple elements" errors
+
+      // check that query worked
+      cy.findByText("question a + question b");
+      cy.findByText("A_COLUMN");
+      cy.findByText("Question 5 → B Column");
+      cy.findByText("Showing 1 row");
     });
   });
 

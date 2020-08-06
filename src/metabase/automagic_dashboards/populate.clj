@@ -274,10 +274,10 @@
                                      ;; Height doesn't need to be precise, just some
                                      ;; safe upper bound.
                                      (make-grid grid-width (* n grid-width))]))]
-     (log/info (trs "Adding {0} cards to dashboard {1}:\n{2}"
-                    (count cards)
-                    title
-                    (str/join "; " (map :title cards))))
+     (log/debug (trs "Adding {0} cards to dashboard {1}:\n{2}"
+                     (count cards)
+                     title
+                     (str/join "; " (map :title cards))))
      (cond-> dashboard
        (not-empty filters) (filters/add-filters filters max-filters)))))
 

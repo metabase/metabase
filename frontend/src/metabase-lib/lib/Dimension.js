@@ -273,8 +273,8 @@ export default class Dimension {
   /**
    * Valid filter operators on this dimension
    */
-  filterOperators(): FilterOperator[] {
-    return this.field().filterOperators();
+  filterOperators(selected): FilterOperator[] {
+    return this.field().filterOperators(selected);
   }
 
   /**
@@ -536,10 +536,6 @@ export class FieldLiteralDimension extends FieldDimension {
       base_type: this._args[1],
       // HACK: need to thread the query through to this fake Field
       query: this._query,
-      filter_operators: [{ name: "=", verboseName: t`Is`, fields: [] }],
-      filter_operators_lookup: {
-        "=": { name: "=", verboseName: t`Is`, fields: [] },
-      },
     });
   }
 }
