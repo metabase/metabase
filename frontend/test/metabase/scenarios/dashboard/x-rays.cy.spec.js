@@ -18,8 +18,8 @@ describe("scenarios > x-rays", () => {
 
     cy.findByText("Something's gone wrong").should("not.exist");
     cy.findByText("Here's an overview of the people in your People table");
-    cy.findByText("Overview")
-    cy.findByText("Per state")
-    cy.get(".Card").should("have.length", 11)
+    cy.findByText("Overview");
+    cy.findByText("Per state");
+    cy.get(".Card").should("have.length", 11);
   });
 });
