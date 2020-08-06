@@ -14,13 +14,21 @@
 
 (defn- get-aggregation-description
   [metadata query]
-  (let [field-name (fn [match] (:display_name (Field (mbql.u/field-clause->id-or-literal match))))]
+  (let [field-name (fn [match] (map
+                                (fn [m] (:display_name (Field (mbql.u/field-clause->id-or-literal m))))
+                                (mbql.u/match match :field-id)))]
     (when-let [agg-matches (mbql.u/match query
+                             [:aggregation-options _ (options :guard :display-name)]
+                             {:type :aggregation :arg (:display-name options)}
+
+                             [:aggregation-options ag _]
+                             (recur ag)
+
                              [:metric arg]    {:type :metric
-                                               :arg (let [metric (Metric arg)]
-                                                      (if (not (str/blank? (:name metric)))
-                                                        (:name metric)
-                                                        (deferred-tru "[Unknown Metric]")))}
+                                               :arg  (let [metric (Metric arg)]
+                                                       (if (not (str/blank? (:name metric)))
+                                                         (:name metric)
+                                                         (deferred-tru "[Unknown Metric]")))}
                              [:rows]          {:type :rows}
                              [:count]         {:type :count}
                              [:cum-count]     {:type :cum-count}

@@ -645,7 +645,15 @@
            (mbql.u/desugar-filter-clause [:is-null [:field-id 1]]))))
   (testing "desugaring :not-null"
     (is (= [:!= [:field-id 1] nil]
-           (mbql.u/desugar-filter-clause [:not-null [:field-id 1]])))))
+           (mbql.u/desugar-filter-clause [:not-null [:field-id 1]]))))
+  (testing "desugaring :is-empty"
+    (is (= [:or [:= [:field-id 1] nil]
+                [:= [:field-id 1] ""]]
+           (mbql.u/desugar-filter-clause [:is-empty [:field-id 1]]))))
+  (testing "desugaring :not-empty"
+    (is (= [:and [:!= [:field-id 1] nil]
+                 [:!= [:field-id 1] ""]]
+           (mbql.u/desugar-filter-clause [:not-empty [:field-id 1]])))))
 
 (deftest desugar-does-not-contain-test
   (testing "desugaring does-not-contain without options"

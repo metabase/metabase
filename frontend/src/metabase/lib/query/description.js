@@ -345,7 +345,6 @@ export function formatQueryDescription(parts, options = {}) {
   if (!parts) {
     return "";
   }
-  console.log("formatQueryDescription", { parts, options });
 
   options = {
     jsx: false,
@@ -370,7 +369,7 @@ export function formatQueryDescription(parts, options = {}) {
   };
 
   // these array gymnastics are needed to support JSX formatting
-  const sections = options.sections
+  const sections = (options.sections || [])
     .map(section =>
       _.flatten(sectionFns[section](parts, options)).filter(s => !!s),
     )

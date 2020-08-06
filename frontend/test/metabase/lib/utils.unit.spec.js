@@ -37,7 +37,7 @@ describe("utils", () => {
 
     it("can enforce uppercase requirements", () => {
       expect(
-        MetabaseUtils.generatePassword({ total: 14, uppercase: 2 }).match(
+        MetabaseUtils.generatePassword({ total: 14, upper: 2 }).match(
           /([A-Z])/g,
         ).length >= 2,
       ).toBe(true);

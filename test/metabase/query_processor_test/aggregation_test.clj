@@ -74,52 +74,52 @@
 ;;; |                                                   MIN & MAX                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(qp.test/expect-with-non-timeseries-dbs
-  [1]
-  (mt/first-row
-    (mt/format-rows-by [int]
-      (mt/run-mbql-query venues
-        {:aggregation [[:min $price]]}))))
+(deftest min-test
+  (mt/test-drivers (mt/normal-drivers)
+    (is (= [1]
+           (mt/first-row
+             (mt/format-rows-by [int]
+               (mt/run-mbql-query venues
+                 {:aggregation [[:min $price]]})))))
 
-(qp.test/expect-with-non-timeseries-dbs
-  [4]
-  (mt/first-row
-    (mt/format-rows-by [int]
-      (mt/run-mbql-query venues
-        {:aggregation [[:max $price]]}))))
+    (is (= [[1 34.0071] [2 33.7701] [3 10.0646] [4 33.983]]
+           (mt/formatted-rows [int 4.0]
+             (mt/run-mbql-query venues
+               {:aggregation [[:min $latitude]]
+                :breakout    [$price]}))))))
 
-(qp.test/expect-with-non-timeseries-dbs
-  [[1 34.0071] [2 33.7701] [3 10.0646] [4 33.983]]
-  (mt/formatted-rows [int 4.0]
-    (mt/run-mbql-query venues
-      {:aggregation [[:min $latitude]]
-       :breakout    [$price]})))
+(deftest max-test
+  (mt/test-drivers (mt/normal-drivers)
+    (is (= [4]
+           (mt/first-row
+             (mt/format-rows-by [int]
+               (mt/run-mbql-query venues
+                 {:aggregation [[:max $price]]})))))
 
-(qp.test/expect-with-non-timeseries-dbs
-  [[1 37.8078] [2 40.7794] [3 40.7262] [4 40.7677]]
-  (mt/formatted-rows [int 4.0]
-    (mt/run-mbql-query venues
-      {:aggregation [[:max $latitude]]
-       :breakout    [$price]})))
+    (is (= [[1 37.8078] [2 40.7794] [3 40.7262] [4 40.7677]]
+           (mt/formatted-rows [int 4.0]
+             (mt/run-mbql-query venues
+               {:aggregation [[:max $latitude]]
+                :breakout    [$price]}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             MULTIPLE AGGREGATIONS                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; can we run a simple query with *two* aggregations?
-(qp.test/expect-with-non-timeseries-dbs
-  [[100 203]]
-  (mt/formatted-rows [int int]
-    (mt/run-mbql-query venues
-      {:aggregation [[:count] [:sum $price]]})))
+(deftest multiple-aggregations-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "two aggregations"
+      (is (= [[100 203]]
+             (mt/formatted-rows [int int]
+               (mt/run-mbql-query venues
+                 {:aggregation [[:count] [:sum $price]]})))))
 
-;; how about with *three* aggregations?
-(qp.test/expect-with-non-timeseries-dbs
-  [[2 100 203]]
-  (mt/formatted-rows [int int int]
-    (mt/run-mbql-query venues
-      {:aggregation [[:avg $price] [:count] [:sum $price]]})))
+    (testing "three aggregations"
+      (is (= [[2 100 203]]
+             (mt/formatted-rows [int int int]
+               (mt/run-mbql-query venues
+                 {:aggregation [[:avg $price] [:count] [:sum $price]]})))))))
 
 (deftest multiple-aggregations-metadata-test
   ;; TODO - this isn't tested against Mongo because those driver doesn't currently work correctly with multiple
@@ -201,54 +201,53 @@
 
 ;;; ------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------
 
-;;; cum_count w/o breakout should be treated the same as count
-(qp.test/expect-with-non-timeseries-dbs
-  {:rows [[15]]
-   :cols [(qp.test/aggregate-col :cum-count :users :id)]}
-  (qp.test/rows-and-cols
-    (mt/format-rows-by [int]
-      (mt/run-mbql-query users
-        {:aggregation [[:cum-count $id]]}))))
+(deftest cumulative-count-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "cumulative count aggregations"
+      (testing "w/o breakout should be treated the same as count"
+        (is (= {:rows [[15]]
+                :cols [(qp.test/aggregate-col :cum-count :users :id)]}
+               (qp.test/rows-and-cols
+                 (mt/format-rows-by [int]
+                   (mt/run-mbql-query users
+                     {:aggregation [[:cum-count $id]]}))))))
 
-;;; Cumulative count w/ a different breakout field
-(qp.test/expect-with-non-timeseries-dbs
-  {:rows [["Broen Olujimi"        1]
-          ["Conchúr Tihomir"      2]
-          ["Dwight Gresham"       3]
-          ["Felipinho Asklepios"  4]
-          ["Frans Hevel"          5]
-          ["Kaneonuskatew Eiran"  6]
-          ["Kfir Caj"             7]
-          ["Nils Gotam"           8]
-          ["Plato Yeshua"         9]
-          ["Quentin Sören"       10]
-          ["Rüstem Hebel"        11]
-          ["Shad Ferdynand"      12]
-          ["Simcha Yan"          13]
-          ["Spiros Teofil"       14]
-          ["Szymon Theutrich"    15]]
-   :cols [(qp.test/breakout-col :users :name)
-          (qp.test/aggregate-col :cum-count :users :id)]}
-  (qp.test/rows-and-cols
-    (mt/format-rows-by [str int]
-      (mt/run-mbql-query users
-        {:aggregation [[:cum-count $id]]
-         :breakout    [$name]}))))
+      (testing "w/ breakout on field with distinct values"
+        (is (= {:rows [["Broen Olujimi"        1]
+                       ["Conchúr Tihomir"      2]
+                       ["Dwight Gresham"       3]
+                       ["Felipinho Asklepios"  4]
+                       ["Frans Hevel"          5]
+                       ["Kaneonuskatew Eiran"  6]
+                       ["Kfir Caj"             7]
+                       ["Nils Gotam"           8]
+                       ["Plato Yeshua"         9]
+                       ["Quentin Sören"       10]
+                       ["Rüstem Hebel"        11]
+                       ["Shad Ferdynand"      12]
+                       ["Simcha Yan"          13]
+                       ["Spiros Teofil"       14]
+                       ["Szymon Theutrich"    15]]
+                :cols [(qp.test/breakout-col :users :name)
+                       (qp.test/aggregate-col :cum-count :users :id)]}
+               (qp.test/rows-and-cols
+                 (mt/format-rows-by [str int]
+                   (mt/run-mbql-query users
+                     {:aggregation [[:cum-count $id]]
+                      :breakout    [$name]}))))))
 
-
-;; Cumulative count w/ a different breakout field that requires grouping
-(qp.test/expect-with-non-timeseries-dbs
-  {:cols        [(qp.test/breakout-col :venues :price)
-                 (qp.test/aggregate-col :cum-count :venues :id)]
-   :rows        [[1 22]
-                 [2 81]
-                 [3 94]
-                 [4 100]]}
-  (qp.test/rows-and-cols
-    (mt/format-rows-by [int int]
-      (mt/run-mbql-query venues
-        {:aggregation [[:cum-count $id]]
-         :breakout    [$price]}))))
+      (testing "w/ breakout on field that requires grouping"
+        (is (= {:cols [(qp.test/breakout-col :venues :price)
+                       (qp.test/aggregate-col :cum-count :venues :id)]
+                :rows [[1 22]
+                       [2 81]
+                       [3 94]
+                       [4 100]]}
+               (qp.test/rows-and-cols
+                 (mt/format-rows-by [int int]
+                   (mt/run-mbql-query venues
+                     {:aggregation [[:cum-count $id]]
+                      :breakout    [$price]})))))))))
 
 (deftest field-settings-for-aggregate-fields-test
   (testing "Does `:settings` show up for aggregate Fields?"

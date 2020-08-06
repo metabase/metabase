@@ -282,6 +282,13 @@
     [:is-null field]  [:=  field nil]
     [:not-null field] [:!= field nil]))
 
+(defn desugar-is-empty-and-not-empty
+  "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively."
+  [m]
+  (replace m
+    [:is-empty field]  [:or  [:=  field nil] [:=  field ""]]
+    [:not-empty field] [:and [:!= field nil] [:!= field ""]]))
+
 (defn desugar-time-interval
   "Rewrite `:time-interval` filter clauses as simpler ones like `:=` or `:between`."
   [m]
@@ -358,6 +365,7 @@
       desugar-does-not-contain
       desugar-time-interval
       desugar-is-null-and-not-null
+      desugar-is-empty-and-not-empty
       desugar-inside
       simplify-compound-filter))
 

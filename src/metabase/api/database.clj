@@ -173,6 +173,12 @@
       include-tables?             add-tables
       include-saved-questions-db? (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
 
+(def FetchAllIncludeValues
+  "Schema for matching the include parameter of the GET / endpoint"
+  (su/with-api-error-message
+    (s/maybe (s/eq "tables"))
+    (deferred-tru "include must be either empty or the value 'tables'")))
+
 (api/defendpoint GET "/"
   "Fetch all `Databases`.
 
@@ -189,7 +195,7 @@
   [include_tables include_cards include saved]
   {include_tables (s/maybe su/BooleanString)
    include_cards  (s/maybe su/BooleanString)
-   include        (s/maybe (s/eq "tables"))
+   include        FetchAllIncludeValues
    saved          (s/maybe su/BooleanString)}
   (when (and config/is-dev?
              (or include_tables include_cards))
