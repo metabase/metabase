@@ -12,9 +12,14 @@ describe("scenarios > x-rays", () => {
     cy.contains("A look at your Reviews table");
   });
 
-  it.skip("should be populated (Issue #12917)", () => {
+  it("should be populated", () => {
     cy.visit("/");
     cy.findByText("People table").click();
+
     cy.findByText("Something's gone wrong").should("not.exist");
+    cy.findByText("Here's an overview of the people in your People table");
+    cy.findByText("Overview")
+    cy.findByText("Per state")
+    cy.get(".Card").should("have.length", 11)
   });
 });
