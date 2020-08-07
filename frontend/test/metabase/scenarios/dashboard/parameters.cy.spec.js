@@ -65,7 +65,7 @@ describe("scenarios > dashboard > parameters", () => {
       .contains("4,939");
   });
 
-  it.only("should filter on a UNIX timestamp", () => {
+  it("should filter on a UNIX timestamp", () => {
     // Set datatype of Quantity to UNIX Timestamp
     cy.visit("/admin/datamodel/database/1/table/2");
     cy.findByText("Quantity").click();
