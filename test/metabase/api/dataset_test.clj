@@ -53,8 +53,7 @@
        [k v]))))
 
 (defn- most-recent-query-execution []
-  (Thread/sleep 100)
-  (db/select-one QueryExecution {:order-by [[:id :desc]]}))
+  (db/select-one QueryExecution {:order-by [[:started_at :desc]]}))
 
 (def ^:private query-defaults
   {:middleware {:add-default-userland-constraints? true}})
