@@ -55,10 +55,10 @@ export default class ExpressionWidget extends Component {
             <ExpressionEditorTextfield
               expression={expression}
               query={query}
-              onChange={parsedExpression =>
+              onChange={(parsedExpression) =>
                 this.setState({ expression: parsedExpression, error: null })
               }
-              onError={errorMessage => this.setState({ error: errorMessage })}
+              onError={(errorMessage) => this.setState({ error: errorMessage })}
             />
             <p className="h5 text-medium">
               {t`Think of this as being kind of like writing a formula in a spreadsheet program: you can use numbers, fields in this table, mathematical symbols like +, and some functions. So you could type something like Subtotal - Cost.`}
@@ -81,8 +81,8 @@ export default class ExpressionWidget extends Component {
               type="text"
               value={this.state.name}
               placeholder={t`Something nice and descriptive`}
-              onChange={event => this.setState({ name: event.target.value })}
-              onKeyPress={e => {
+              onChange={(event) => this.setState({ name: event.target.value })}
+              onKeyPress={(e) => {
                 if (e.key === "Enter" && this.isValid()) {
                   this.handleCommit();
                 }

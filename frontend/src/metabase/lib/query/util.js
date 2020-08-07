@@ -35,7 +35,7 @@ export const fieldIdsEq = (a: any, b: any): boolean => {
 };
 
 export const noNullValues = (clause: any[]): boolean =>
-  _.all(clause, c => c != null);
+  _.all(clause, (c) => c != null);
 
 // these are mostly to circumvent Flow type checking :-/
 export const op = (clause: any): string => clause[0];

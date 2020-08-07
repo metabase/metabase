@@ -6,7 +6,7 @@ import { add, update, remove, clear } from "./util";
 
 // returns canonical list of Breakouts, with nulls removed
 export function getBreakouts(breakouts: ?BreakoutClause): Breakout[] {
-  return (breakouts || []).filter(b => b != null);
+  return (breakouts || []).filter((b) => b != null);
 }
 
 // turns a list of Breakouts into the canonical BreakoutClause

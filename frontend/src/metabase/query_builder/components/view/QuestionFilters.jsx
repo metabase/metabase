@@ -11,9 +11,9 @@ import ViewButton from "./ViewButton";
 
 import { color } from "metabase/lib/colors";
 
-const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
+const FilterPill = (props) => <ViewPill color={color("filter")} {...props} />;
 
-const FilterButton = props => (
+const FilterButton = (props) => (
   <ViewButton
     medium
     icon="filter"
@@ -71,7 +71,7 @@ export default function QuestionFilters({
                 isTopLevel
                 query={query}
                 filter={filter}
-                onChangeFilter={newFilter =>
+                onChangeFilter={(newFilter) =>
                   newFilter.replace().update(null, { run: true })
                 }
                 className="scroll-y"

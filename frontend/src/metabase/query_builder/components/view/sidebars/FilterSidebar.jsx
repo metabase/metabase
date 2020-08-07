@@ -38,9 +38,9 @@ export default class FilterSidebar extends React.Component {
           fieldPickerTitle={t`Filter by`}
           query={question.query()}
           // fires every time the filter is changed:
-          onChange={filter => this.setState({ filter })}
+          onChange={(filter) => this.setState({ filter })}
           // fires when a segment or "add" button is clicked:
-          onChangeFilter={filter => this.handleCommit(filter)}
+          onChangeFilter={(filter) => this.handleCommit(filter)}
           noCommitButton
         />
       </SidebarContent>

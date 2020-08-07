@@ -75,8 +75,8 @@ export function cardVisualizationIsEquivalent(
 }
 
 export function cardQueryIsEquivalent(cardA: Card, cardB: Card): boolean {
-  cardA = updateIn(cardA, ["dataset_query", "parameters"], p => p || []);
-  cardB = updateIn(cardB, ["dataset_query", "parameters"], p => p || []);
+  cardA = updateIn(cardA, ["dataset_query", "parameters"], (p) => p || []);
+  cardB = updateIn(cardB, ["dataset_query", "parameters"], (p) => p || []);
   return _.isEqual(
     _.pick(cardA, "dataset_query"),
     _.pick(cardB, "dataset_query"),
@@ -116,7 +116,7 @@ export function getTemplateTagsForParameters(card: ?Card): Array<TemplateTag> {
       : [];
   return templateTags.filter(
     // this should only return template tags that define a parameter of the card
-    tag => tag.type !== "card" && tag.type !== "snippet",
+    (tag) => tag.type !== "card" && tag.type !== "snippet",
   );
 }
 
@@ -133,7 +133,7 @@ export function getParametersWithExtras(
   card: Card,
   parameterValues?: ParameterValues,
 ): Parameter[] {
-  return getParameters(card).map(parameter => {
+  return getParameters(card).map((parameter) => {
     // if we have a parameter value for this parameter, set "value"
     if (parameterValues && parameter.id in parameterValues) {
       parameter = assoc(parameter, "value", parameterValues[parameter.id]);
@@ -245,7 +245,7 @@ export function questionUrlWithParameters(
 
   const query = {};
   for (const datasetParameter of datasetQuery.parameters || []) {
-    const cardParameter = _.find(cardParameters, p =>
+    const cardParameter = _.find(cardParameters, (p) =>
       Utils.equals(p.target, datasetParameter.target),
     );
     if (cardParameter) {
@@ -255,7 +255,7 @@ export function questionUrlWithParameters(
       // if the card is structured, try converting the parameter to an MBQL filter clause
       const filter = parameterToMBQLFilter(datasetParameter, metadata);
       if (filter) {
-        card = updateIn(card, ["dataset_query", "query"], query =>
+        card = updateIn(card, ["dataset_query", "query"], (query) =>
           Query.addFilter(query, filter),
         );
       } else {

@@ -67,7 +67,7 @@ describe("copyObjects", () => {
 
     expect(Object.keys(copiedDatabases).length).toEqual(NUM_DBS);
 
-    Object.values(copiedDatabases).map(db => {
+    Object.values(copiedDatabases).map((db) => {
       expect(db).toBeInstanceOf(Database);
       expect(db).toHaveProperty("metadata");
       expect(db.metadata).toBeInstanceOf(Metadata);

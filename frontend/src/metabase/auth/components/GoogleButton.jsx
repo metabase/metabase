@@ -13,10 +13,7 @@ const GOOGLE_AUTH_ERRORS = {
   popup_closed_by_user: t`The window was closed before completing Google Authentication.`,
 };
 
-@connect(
-  null,
-  { loginGoogle },
-)
+@connect(null, { loginGoogle })
 export default class GoogleButton extends Component {
   constructor(props) {
     super(props);
@@ -40,11 +37,11 @@ export default class GoogleButton extends Component {
           auth2.attachClickHandler(
             element,
             {},
-            googleUser => {
+            (googleUser) => {
               this.setState({ errorMessage: null });
               loginGoogle(googleUser, location.query.redirect);
             },
-            error => {
+            (error) => {
               this.setState({
                 errorMessage:
                   GOOGLE_AUTH_ERRORS[error.error] ||

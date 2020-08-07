@@ -25,13 +25,13 @@ describe("data_grid", () => {
         ["b", "z", 6],
       ]);
       const pivotedData = pivot(data, 0, 1, 2);
-      expect(pivotedData.cols.map(col => col.display_name)).toEqual([
+      expect(pivotedData.cols.map((col) => col.display_name)).toEqual([
         "Dimension 1",
         "x",
         "y",
         "z",
       ]);
-      expect(pivotedData.rows.map(row => [...row])).toEqual([
+      expect(pivotedData.rows.map((row) => [...row])).toEqual([
         ["a", 1, 2, 3],
         ["b", 4, 5, 6],
       ]);
@@ -46,13 +46,13 @@ describe("data_grid", () => {
         ["b", "z", "y"],
       ]);
       const pivotedData = pivot(data, 0, 1, 2);
-      expect(pivotedData.cols.map(col => col.display_name)).toEqual([
+      expect(pivotedData.cols.map((col) => col.display_name)).toEqual([
         "Dimension 1",
         "x",
         "y",
         "z",
       ]);
-      expect(pivotedData.rows.map(row => [...row])).toEqual([
+      expect(pivotedData.rows.map((row) => [...row])).toEqual([
         ["a", "q", "w", "e"],
         ["b", "r", "t", "y"],
       ]);
@@ -67,12 +67,12 @@ describe("data_grid", () => {
         ["b", "z", 6],
       ]);
       const pivotedData = pivot(data, 1, 0, 2);
-      expect(pivotedData.cols.map(col => col.display_name)).toEqual([
+      expect(pivotedData.cols.map((col) => col.display_name)).toEqual([
         "Dimension 2",
         "a",
         "b",
       ]);
-      expect(pivotedData.rows.map(row => [...row])).toEqual([
+      expect(pivotedData.rows.map((row) => [...row])).toEqual([
         ["x", 1, 4],
         ["y", 2, 5],
         ["z", 3, 6],
@@ -100,13 +100,13 @@ describe("data_grid", () => {
         ["b", "z", 6],
       ]);
       const pivotedData = pivot(data, 0, 1, 2);
-      expect(pivotedData.cols.map(col => col.display_name)).toEqual([
+      expect(pivotedData.cols.map((col) => col.display_name)).toEqual([
         "Dimension 1",
         "x",
         "y",
         "z",
       ]);
-      expect(pivotedData.rows.map(row => [...row])).toEqual([
+      expect(pivotedData.rows.map((row) => [...row])).toEqual([
         ["a", 1, null, 3],
         ["b", 4, 5, 6],
       ]);

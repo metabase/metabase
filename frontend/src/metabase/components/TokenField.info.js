@@ -19,10 +19,10 @@ class TokenFieldWithStateAndDefaults extends React.Component {
       <TokenField
         value={this.state.value}
         options={[]}
-        onChange={value => this.setState({ value })}
+        onChange={(value) => this.setState({ value })}
         multi
-        valueKey={option => option}
-        labelKey={option => option}
+        valueKey={(option) => option}
+        labelKey={(option) => option}
         layoutRenderer={({ valuesList, optionsList }) => (
           <div>
             {valuesList}
@@ -45,7 +45,7 @@ export const examples = {
     <TokenFieldWithStateAndDefaults
       options={["Doohickey", "Gadget", "Gizmo", "Widget"]}
       updateOnInputChange
-      parseFreeformValue={value => value}
+      parseFreeformValue={(value) => value}
     />
   ),
 };

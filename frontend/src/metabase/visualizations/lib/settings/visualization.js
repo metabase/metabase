@@ -18,14 +18,14 @@ const COMMON_SETTINGS = {
   "card.title": {
     title: t`Title`,
     widget: "input",
-    getDefault: series => (series.length === 1 ? series[0].card.name : null),
+    getDefault: (series) => (series.length === 1 ? series[0].card.name : null),
     dashboard: true,
     useRawSeries: true,
   },
   "card.description": {
     title: t`Description`,
     widget: "input",
-    getDefault: series =>
+    getDefault: (series) =>
       series.length === 1 ? series[0].card.description : null,
     dashboard: true,
     useRawSeries: true,
@@ -107,7 +107,7 @@ export function getSettingsWidgetsForSeries(
     series,
     onChangeSettings,
   ).filter(
-    widget =>
+    (widget) =>
       widget.dashboard === undefined || widget.dashboard === isDashboard,
   );
 }

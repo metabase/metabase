@@ -78,7 +78,7 @@ const Dashboards = createEntity({
     copy: compose(
       withAction(COPY_ACTION),
       // NOTE: unfortunately we can't use Dashboard.withRequestState, etc because the entity isn't defined yet
-      withRequestState(dashboard => [
+      withRequestState((dashboard) => [
         "entities",
         "dashboard",
         dashboard.id,
@@ -106,7 +106,7 @@ const Dashboards = createEntity({
   },
 
   actions: {
-    save: dashboard => async dispatch => {
+    save: (dashboard) => async (dispatch) => {
       const savedDashboard = await Dashboards.api.save(dashboard);
       dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
       return {
@@ -128,10 +128,10 @@ const Dashboards = createEntity({
   },
 
   objectSelectors: {
-    getFavorited: dashboard => dashboard && dashboard.favorite,
-    getName: dashboard => dashboard && dashboard.name,
-    getUrl: dashboard => dashboard && Urls.dashboard(dashboard.id),
-    getIcon: dashboard => "dashboard",
+    getFavorited: (dashboard) => dashboard && dashboard.favorite,
+    getName: (dashboard) => dashboard && dashboard.name,
+    getUrl: (dashboard) => dashboard && Urls.dashboard(dashboard.id),
+    getIcon: (dashboard) => "dashboard",
     getColor: () => color("dashboard"),
   },
 
@@ -141,7 +141,7 @@ const Dashboards = createEntity({
         name: "name",
         title: t`Name`,
         placeholder: t`What is the name of your dashboard?`,
-        validate: name => (!name ? "Name is required" : null),
+        validate: (name) => (!name ? "Name is required" : null),
       },
       {
         name: "description",
@@ -153,7 +153,7 @@ const Dashboards = createEntity({
         name: "collection_id",
         title: t`Which collection should this go in?`,
         type: "collection",
-        validate: collectionId =>
+        validate: (collectionId) =>
           collectionId === undefined ? "Collection is required" : null,
       },
     ],

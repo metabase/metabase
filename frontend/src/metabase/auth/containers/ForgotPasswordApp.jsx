@@ -17,7 +17,7 @@ export default class ForgotPasswordApp extends Component {
     sentNotification: false,
   };
 
-  handleSubmit = async values => {
+  handleSubmit = async (values) => {
     await SessionApi.forgot_password(values);
     this.setState({ sentNotification: true });
   };

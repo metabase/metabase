@@ -15,15 +15,15 @@ import timeseriesScale from "./timeseriesScale";
 // TODO: base on pixel width of chart?
 const MAX_FILL_COUNT = 10000;
 
-function fillMissingValues(rows, xValues, fillValue, getKey = v => v) {
+function fillMissingValues(rows, xValues, fillValue, getKey = (v) => v) {
   try {
-    const fillValues = rows[0].slice(1).map(d => fillValue);
+    const fillValues = rows[0].slice(1).map((d) => fillValue);
 
     const map = new Map();
     for (const row of rows) {
       map.set(getKey(row[0]), row);
     }
-    const newRows = xValues.map(value => {
+    const newRows = xValues.map((value) => {
       const key = getKey(value);
       const row = map.get(key);
       if (row) {
@@ -68,10 +68,8 @@ function fillMissingValuesInData(
       return rows;
     }
 
-    xValues = timeseriesScale(xInterval)
-      .domain(xDomain)
-      .ticks();
-    getKey = m => m.toISOString();
+    xValues = timeseriesScale(xInterval).domain(xDomain).ticks();
+    getKey = (m) => m.toISOString();
   } else if (isQuantitative(settings) || isHistogram(settings)) {
     const count = Math.abs((xDomain[1] - xDomain[0]) / xInterval);
     if (count > MAX_FILL_COUNT) {
@@ -87,7 +85,7 @@ function fillMissingValuesInData(
     }
     xValues = d3.range(start, end, xInterval);
     // NOTE: normalize to xInterval to avoid floating point issues
-    getKey = v => Math.round(v / xInterval);
+    getKey = (v) => Math.round(v / xInterval);
   }
   return fillMissingValues(rows, xValues, fillValue, getKey);
 }

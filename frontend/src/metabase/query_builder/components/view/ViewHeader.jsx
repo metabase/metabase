@@ -87,11 +87,7 @@ export class ViewTitleHeader extends React.Component {
     const isSaved = question.isSaved();
 
     const isSummarized =
-      isStructured &&
-      question
-        .query()
-        .topLevelQuery()
-        .hasAggregations();
+      isStructured && question.query().topLevelQuery().hasAggregations();
 
     const showFiltersInHeading = !isSummarized && !isFiltersExpanded;
 

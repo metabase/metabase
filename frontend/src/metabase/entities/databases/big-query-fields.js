@@ -18,7 +18,7 @@ function BigQueryServiceAccountToggle({
   );
 
   const hasNoOldStyleData = ["client-id", "client-secret"].every(
-    key => details[key] == null,
+    (key) => details[key] == null,
   );
 
   return (!value && hasNoOldStyleData) || value === true ? (
@@ -54,7 +54,7 @@ export default function getFieldsForBigQuery(details) {
   const useServiceAccount =
     // If this field is unset, show the service account form unless an old-style connection exists.
     details["use-service-account"] == null
-      ? ["client-id", "client-secret"].every(key => details[key] == null)
+      ? ["client-id", "client-secret"].every((key) => details[key] == null)
       : details["use-service-account"];
   return {
     "details-fields": [

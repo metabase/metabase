@@ -529,7 +529,7 @@ function cleanContext(context) {
 
 function cleanSuggestions(suggestions) {
   return _.chain(suggestions)
-    .map(s => _.pick(s, "type", "text"))
+    .map((s) => _.pick(s, "type", "text"))
     .sortBy("text")
     .sortBy("type")
     .value();

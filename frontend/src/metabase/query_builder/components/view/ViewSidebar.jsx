@@ -15,7 +15,7 @@ const ViewSideBar = ({ left, right, width = 355, isOpen, children }) => (
         : { opacity: spring(0), width: spring(0, SPRING_CONFIG) }
     }
   >
-    {motionStyle => (
+    {(motionStyle) => (
       <div
         className={cx("bg-white relative overflow-x-hidden", {
           "border-right": left,

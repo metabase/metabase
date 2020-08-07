@@ -26,7 +26,7 @@ import { getVisualizationRaw } from "metabase/visualizations";
 const getQuestions = createSelector(
   [getMetadata, (state, ownProps) => ownProps.questions],
   (metadata, questions) =>
-    questions && questions.map(card => new Question(card, metadata)),
+    questions && questions.map((card) => new Question(card, metadata)),
 );
 
 // TODO: rework this so we don't have to load all cards up front
@@ -63,7 +63,9 @@ export default class AddSeriesModal extends Component {
   async componentWillMount() {
     const { questions, loadMetadataForQueries } = this.props;
     try {
-      await loadMetadataForQueries(questions.map(question => question.query()));
+      await loadMetadataForQueries(
+        questions.map((question) => question.query()),
+      );
     } catch (error) {
       console.error("AddSeriesModal loadMetadataForQueries", error);
       this.setState({ error });
@@ -74,7 +76,7 @@ export default class AddSeriesModal extends Component {
     MetabaseAnalytics.trackEvent("Dashboard", "Edit Series Modal", "search");
   };
 
-  handleSearchChange = e => {
+  handleSearchChange = (e) => {
     this.setState({ searchValue: e.target.value.toLowerCase() });
   };
 
@@ -130,7 +132,7 @@ export default class AddSeriesModal extends Component {
         }
       } else {
         this.setState({
-          series: this.state.series.filter(c => c.id !== card.id),
+          series: this.state.series.filter((c) => c.id !== card.id),
         });
 
         MetabaseAnalytics.trackEvent("Dashboard", "Remove Series");
@@ -146,7 +148,9 @@ export default class AddSeriesModal extends Component {
   }
 
   handleRemoveSeries(card) {
-    this.setState({ series: this.state.series.filter(c => c.id !== card.id) });
+    this.setState({
+      series: this.state.series.filter((c) => c.id !== card.id),
+    });
     MetabaseAnalytics.trackEvent("Dashboard", "Remove Series");
   }
 
@@ -170,7 +174,7 @@ export default class AddSeriesModal extends Component {
 
     const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
 
-    return questions.filter(question => {
+    return questions.filter((question) => {
       try {
         // filter out the card itself
         if (question.id() === dashcard.card.id) {
@@ -189,10 +193,7 @@ export default class AddSeriesModal extends Component {
         // search
         if (
           searchValue &&
-          question
-            .displayName()
-            .toLowerCase()
-            .indexOf(searchValue) < 0
+          question.displayName().toLowerCase().indexOf(searchValue) < 0
         ) {
           return false;
         }
@@ -235,11 +236,11 @@ export default class AddSeriesModal extends Component {
 
     const series = [dashcard.card]
       .concat(this.state.series)
-      .map(card => ({
+      .map((card) => ({
         card: card,
         data: getIn(dashcardData, [dashcard.id, card.id, "data"]),
       }))
-      .filter(s => !!s.data);
+      .filter((s) => !!s.data);
 
     return (
       <div className="spread flex">
@@ -319,7 +320,7 @@ export default class AddSeriesModal extends Component {
           >
             {() => (
               <ul className="flex-full scroll-y scroll-show pr1">
-                {filteredQuestions.map(question => (
+                {filteredQuestions.map((question) => (
                   <li
                     key={question.id()}
                     className={cx("my1 pl2 py1 flex align-center", {
@@ -329,7 +330,7 @@ export default class AddSeriesModal extends Component {
                     <span className="px1 flex-no-shrink">
                       <CheckBox
                         checked={enabledQuestions[question.id()]}
-                        onChange={e =>
+                        onChange={(e) =>
                           this.handleQuestionSelectedChange(
                             question,
                             e.target.checked,

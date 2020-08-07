@@ -203,7 +203,7 @@ class Settings {
   }
 }
 
-const n2w = n => MetabaseUtils.numberToWord(n);
+const n2w = (n) => MetabaseUtils.numberToWord(n);
 
 const PASSWORD_COMPLEXITY_CLAUSES = {
   total: {

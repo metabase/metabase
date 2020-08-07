@@ -378,4 +378,4 @@ const helperTextStrings = [
   },
 ];
 
-export default name => helperTextStrings.find(h => h.name === name);
+export default (name) => helperTextStrings.find((h) => h.name === name);

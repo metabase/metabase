@@ -12,8 +12,10 @@ const TimeInput = ({ value, onChange }) => {
     <HoursMinutesInput
       hours={time.hour()}
       minutes={time.minute()}
-      onChangeHours={hours => onChange(time.hour(hours).format("HH:mm:00.000"))}
-      onChangeMinutes={minutes =>
+      onChangeHours={(hours) =>
+        onChange(time.hour(hours).format("HH:mm:00.000"))
+      }
+      onChangeMinutes={(minutes) =>
         onChange(time.minute(minutes).format("HH:mm:00.000"))
       }
     />
@@ -24,7 +26,7 @@ const SingleTimePicker = ({ filter, onFilterChange }) => (
   <div className="mx2 mb2">
     <TimeInput
       value={getTime(filter[2])}
-      onChange={time => onFilterChange([filter[0], filter[1], time])}
+      onChange={(time) => onFilterChange([filter[0], filter[1], time])}
     />
   </div>
 );
@@ -38,14 +40,14 @@ const MultiTimePicker = ({ filter, onFilterChange }) => (
   >
     <TimeInput
       value={getTime(filter[2])}
-      onChange={time =>
+      onChange={(time) =>
         onFilterChange([filter[0], filter[1], ...sortTimes(time, filter[3])])
       }
     />
     <span className="h3">and</span>
     <TimeInput
       value={getTime(filter[3])}
-      onChange={time =>
+      onChange={(time) =>
         onFilterChange([filter[0], filter[1], ...sortTimes(filter[2], time)])
       }
     />
@@ -57,7 +59,7 @@ const sortTimes = (a, b) => {
   return parseTime(a).isAfter(parseTime(b)) ? [b, a] : [a, b];
 };
 
-const getTime = value => {
+const getTime = (value) => {
   if (
     typeof value === "string" &&
     /^\d+:\d+(:\d+(.\d+(\+\d+:\d+)?)?)?$/.test(value)
@@ -72,7 +74,7 @@ export const TIME_OPERATORS: Operator[] = [
   {
     name: "before",
     displayName: t`Before`,
-    init: filter => [
+    init: (filter) => [
       "<",
       getDateTimeFieldTarget(filter[1]),
       getTime(filter[2]),
@@ -83,7 +85,7 @@ export const TIME_OPERATORS: Operator[] = [
   {
     name: "after",
     displayName: t`After`,
-    init: filter => [
+    init: (filter) => [
       ">",
       getDateTimeFieldTarget(filter[1]),
       getTime(filter[2]),
@@ -94,7 +96,7 @@ export const TIME_OPERATORS: Operator[] = [
   {
     name: "between",
     displayName: t`Between`,
-    init: filter => [
+    init: (filter) => [
       "between",
       getDateTimeFieldTarget(filter[1]),
       getTime(filter[2]),
@@ -105,7 +107,7 @@ export const TIME_OPERATORS: Operator[] = [
   },
 ];
 
-const TimePicker = props => (
+const TimePicker = (props) => (
   <DatePicker {...props} operators={TIME_OPERATORS} />
 );
 

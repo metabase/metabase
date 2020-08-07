@@ -32,7 +32,8 @@ const Users = createEntity({
   path: "/api/user",
 
   objectSelectors: {
-    getName: user => user.common_name || `${user.first_name} ${user.last_name}`,
+    getName: (user) =>
+      user.common_name || `${user.first_name} ${user.last_name}`,
   },
 
   actionTypes: {
@@ -44,7 +45,7 @@ const Users = createEntity({
   },
 
   actionDecorators: {
-    create: thunkCreator => user => async (dispatch, getState) => {
+    create: (thunkCreator) => (user) => async (dispatch, getState) => {
       if (!MetabaseSettings.isEmailConfigured()) {
         user = {
           ...user,
@@ -61,7 +62,7 @@ const Users = createEntity({
         ...result,
       };
     },
-    update: thunkCreator => user => async (dispatch, getState) => {
+    update: (thunkCreator) => (user) => async (dispatch, getState) => {
       const result = await thunkCreator(user)(dispatch, getState);
       if (user.group_ids) {
         // group ids were just updated

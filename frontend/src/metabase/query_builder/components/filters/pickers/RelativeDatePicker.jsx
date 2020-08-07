@@ -45,7 +45,7 @@ export default class RelativeDatePicker extends Component {
   };
 
   static defaultProps = {
-    formatter: value => value,
+    formatter: (value) => value,
   };
 
   render() {
@@ -67,14 +67,16 @@ export default class RelativeDatePicker extends Component {
           value={
             typeof intervals === "number" ? Math.abs(intervals) : intervals
           }
-          onChange={value => onFilterChange(assoc(filter, 2, formatter(value)))}
+          onChange={(value) =>
+            onFilterChange(assoc(filter, 2, formatter(value)))
+          }
           placeholder="30"
         />
         <div className="flex-full">
           <DateUnitSelector
             open={this.state.showUnits}
             value={unit}
-            onChange={value => {
+            onChange={(value) => {
               onFilterChange(assoc(filter, 3, value));
               this.setState({ showUnits: false });
             }}

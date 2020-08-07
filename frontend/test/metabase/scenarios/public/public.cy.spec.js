@@ -74,28 +74,16 @@ describe("scenarios > public", () => {
       cy.visit(`/question/${questionId}`);
 
       cy.get(".Icon-pencil").click();
-      popover()
-        .contains("Add to dashboard")
-        .click();
-      modal()
-        .contains("Create a new dashboard")
-        .click();
-      modal()
-        .get('input[name="name"]')
-        .type("parameterized dashboard");
-      modal()
-        .contains("Create")
-        .click();
+      popover().contains("Add to dashboard").click();
+      modal().contains("Create a new dashboard").click();
+      modal().get('input[name="name"]').type("parameterized dashboard");
+      modal().contains("Create").click();
 
       cy.get(".Icon-funnel_add").click();
 
-      popover()
-        .contains("Other Categories")
-        .click();
+      popover().contains("Other Categories").click();
       cy.contains("Select…").click();
-      popover()
-        .contains("Category")
-        .click();
+      popover().contains("Category").click();
 
       cy.contains("Done").click();
       cy.contains("Save").click();
@@ -114,7 +102,7 @@ describe("scenarios > public", () => {
 
       cy.url()
         .should("match", /\/dashboard\/\d+\?category=Doohickey$/)
-        .then(url => {
+        .then((url) => {
           dashboardId = parseInt(url.match(/dashboard\/(\d+)/)[1]);
         });
     });
@@ -126,15 +114,12 @@ describe("scenarios > public", () => {
 
       cy.get(".Icon-share").click();
 
-      cy.contains("Enable sharing")
-        .parent()
-        .find("a")
-        .click();
+      cy.contains("Enable sharing").parent().find("a").click();
 
       cy.contains("Public link")
         .parent()
         .find("input")
-        .should($input => {
+        .should(($input) => {
           expect($input[0].value).to.match(PUBLIC_URL_REGEX);
           questionPublicLink = $input[0].value.match(PUBLIC_URL_REGEX)[0];
         });
@@ -158,7 +143,7 @@ describe("scenarios > public", () => {
 
       cy.contains("Publish").click();
 
-      cy.get("iframe").then($iframe => {
+      cy.get("iframe").then(($iframe) => {
         questionEmbedUrl = $iframe[0].src;
       });
     });
@@ -170,15 +155,12 @@ describe("scenarios > public", () => {
 
       cy.get(".Icon-share").click();
 
-      cy.contains("Enable sharing")
-        .parent()
-        .find("a")
-        .click();
+      cy.contains("Enable sharing").parent().find("a").click();
 
       cy.contains("Public link")
         .parent()
         .find("input")
-        .should($input => {
+        .should(($input) => {
           expect($input[0].value).to.match(PUBLIC_URL_REGEX);
           dashboardPublicLink = $input[0].value.match(PUBLIC_URL_REGEX)[0];
         });
@@ -202,7 +184,7 @@ describe("scenarios > public", () => {
 
       cy.contains("Publish").click();
 
-      cy.get("iframe").then($iframe => {
+      cy.get("iframe").then(($iframe) => {
         dashboardEmbedUrl = $iframe[0].src;
       });
     });

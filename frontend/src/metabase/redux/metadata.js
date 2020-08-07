@@ -15,7 +15,7 @@ import Metrics from "metabase/entities/metrics";
 
 // NOTE: All of these actions are deprecated. Use metadata entities directly.
 
-const deprecated = message => console.warn("DEPRECATED: " + message);
+const deprecated = (message) => console.warn("DEPRECATED: " + message);
 
 export const FETCH_METRICS = Metrics.actions.fetchList.toString();
 export const fetchMetrics = (reload = false) => {
@@ -23,7 +23,7 @@ export const fetchMetrics = (reload = false) => {
   return Metrics.actions.fetchList(null, { reload });
 };
 
-export const updateMetric = metric => {
+export const updateMetric = (metric) => {
   deprecated("metabase/redux/metadata updateMetric");
   return Metrics.actions.update(metric);
 };
@@ -32,7 +32,7 @@ const UPDATE_METRIC_IMPORTANT_FIELDS =
   "metabase/guide/UPDATE_METRIC_IMPORTANT_FIELDS";
 export const updateMetricImportantFields = createThunkAction(
   UPDATE_METRIC_IMPORTANT_FIELDS,
-  function(metricId, importantFieldIds) {
+  function (metricId, importantFieldIds) {
     return async (dispatch, getState) => {
       const requestStatePath = [
         "reference",
@@ -67,7 +67,7 @@ export const fetchSegments = (reload = false) => {
   return Segments.actions.fetchList(null, { reload });
 };
 
-export const updateSegment = segment => {
+export const updateSegment = (segment) => {
   deprecated("metabase/redux/metadata updateSegment");
   return Segments.actions.update(segment);
 };
@@ -84,13 +84,13 @@ export const fetchDatabaseMetadata = (dbId, reload = false) => {
   return Databases.actions.fetchDatabaseMetadata({ id: dbId }, { reload });
 };
 
-export const updateDatabase = database => {
+export const updateDatabase = (database) => {
   deprecated("metabase/redux/metadata updateDatabase");
   const slimDatabase = _.omit(database, "tables", "tables_lookup");
   return Databases.actions.update(slimDatabase);
 };
 
-export const updateTable = table => {
+export const updateTable = (table) => {
   deprecated("metabase/redux/metadata updateTable");
   const slimTable = _.omit(
     table,
@@ -132,26 +132,26 @@ export const updateFieldValues = (fieldId, fieldValuePairs) => {
 };
 
 export { ADD_PARAM_VALUES } from "metabase/entities/fields";
-export const addParamValues = paramValues => {
+export const addParamValues = (paramValues) => {
   deprecated("metabase/redux/metadata addParamValues");
   return Fields.actions.addParamValues(paramValues);
 };
 
 export { ADD_FIELDS } from "metabase/entities/fields";
-export const addFields = fieldMaps => {
+export const addFields = (fieldMaps) => {
   deprecated("metabase/redux/metadata addFields");
   return Fields.actions.addFields(fieldMaps);
 };
 
 export const UPDATE_FIELD = Fields.actions.update.toString();
-export const updateField = field => {
+export const updateField = (field) => {
   deprecated("metabase/redux/metadata updateField");
   const slimField = _.omit(field, "filter_operators_lookup");
   return Fields.actions.update(slimField);
 };
 
 export const DELETE_FIELD_DIMENSION = Fields.actions.deleteFieldDimension.toString();
-export const deleteFieldDimension = fieldId => {
+export const deleteFieldDimension = (fieldId) => {
   deprecated("metabase/redux/metadata deleteFieldDimension");
   return Fields.actions.deleteFieldDimension({ id: fieldId });
 };
@@ -315,7 +315,7 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
       await dispatch(fetchRealDatabases());
       const databases = getIn(getState(), ["entities", "databases"]);
       await Promise.all(
-        Object.values(databases).map(database =>
+        Object.values(databases).map((database) =>
           dispatch(fetchDatabaseMetadata(database.id)),
         ),
       );
@@ -323,14 +323,14 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
   },
 );
 
-export const loadMetadataForQuery = query => loadMetadataForQueries([query]);
+export const loadMetadataForQuery = (query) => loadMetadataForQueries([query]);
 
-export const loadMetadataForQueries = queries => dispatch =>
+export const loadMetadataForQueries = (queries) => (dispatch) =>
   Promise.all(
     _.chain(queries)
-      .map(q => q.dependentMetadata())
+      .map((q) => q.dependentMetadata())
       .flatten()
-      .uniq(false, dep => dep.type + dep.id)
+      .uniq(false, (dep) => dep.type + dep.id)
       .map(({ type, id, foreignTables }) => {
         if (type === "table") {
           return (foreignTables
@@ -341,7 +341,7 @@ export const loadMetadataForQueries = queries => dispatch =>
         }
       })
       // unrecognized types would result in undefined, so we filter that out
-      .filter(action => action !== undefined)
+      .filter((action) => action !== undefined)
       .map(dispatch)
       .value(),
-  ).catch(e => console.error("Failed loading metadata for query", e));
+  ).catch((e) => console.error("Failed loading metadata for query", e));

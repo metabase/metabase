@@ -72,7 +72,7 @@ function _init(reducers, getRoutes, callback) {
 
   let root;
   ReactDOM.render(
-    <Provider store={store} ref={ref => (root = ref)}>
+    <Provider store={store} ref={(ref) => (root = ref)}>
       <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
         <ThemeProvider theme={theme}>
           <Router history={history}>{routes}</Router>
@@ -83,7 +83,7 @@ function _init(reducers, getRoutes, callback) {
   );
 
   // listen for location changes and use that as a trigger for page view tracking
-  history.listen(location => {
+  history.listen((location) => {
     MetabaseAnalytics.trackPageView(location.pathname);
   });
 
@@ -102,7 +102,7 @@ function _init(reducers, getRoutes, callback) {
     ] = MetabaseSettings.isTrackingEnabled() ? null : true;
   });
 
-  MetabaseSettings.on("user-locale", async locale => {
+  MetabaseSettings.on("user-locale", async (locale) => {
     // reload locale definition and site settings with the new locale
     await Promise.all([
       loadLocalization(locale),
@@ -112,7 +112,7 @@ function _init(reducers, getRoutes, callback) {
     root.forceUpdate();
   });
 
-  PLUGIN_APP_INIT_FUCTIONS.forEach(init => init({ root }));
+  PLUGIN_APP_INIT_FUCTIONS.forEach((init) => init({ root }));
 
   window.Metabase = window.Metabase || {};
   window.Metabase.store = store;

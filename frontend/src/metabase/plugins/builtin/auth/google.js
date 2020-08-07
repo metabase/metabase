@@ -18,26 +18,26 @@ const GOOGLE_PROVIDER = {
   Button: GoogleButton,
 };
 
-PLUGIN_AUTH_PROVIDERS.push(providers =>
+PLUGIN_AUTH_PROVIDERS.push((providers) =>
   MetabaseSettings.googleAuthEnabled()
     ? [GOOGLE_PROVIDER, ...providers]
     : providers,
 );
 
-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
-  updateIn(sections, ["authentication", "settings"], settings => [
+PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) =>
+  updateIn(sections, ["authentication", "settings"], (settings) => [
     ...settings,
     {
       authName: t`Sign in with Google`,
       authDescription: t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`,
       authType: "google",
-      authEnabled: settings => !!settings["google-auth-client-id"],
+      authEnabled: (settings) => !!settings["google-auth-client-id"],
       widget: AuthenticationOption,
     },
   ]),
 );
 
-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
+PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) => ({
   ...sections,
   "authentication/google": {
     component: SettingsSingleSignOnForm,

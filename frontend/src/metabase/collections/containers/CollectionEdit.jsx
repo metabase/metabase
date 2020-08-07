@@ -10,10 +10,7 @@ const mapDispatchToProps = {
   goBack,
 };
 
-@connect(
-  null,
-  mapDispatchToProps,
-)
+@connect(null, mapDispatchToProps)
 export default class CollectionEdit extends Component {
   render() {
     return (

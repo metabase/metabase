@@ -38,7 +38,7 @@ export function parseMetric(metricName, { query }) {
   return query
     .table()
     .metrics.find(
-      metric => metric.name.toLowerCase() === metricName.toLowerCase(),
+      (metric) => metric.name.toLowerCase() === metricName.toLowerCase(),
     );
 }
 
@@ -52,7 +52,7 @@ export function parseSegment(segmentName, { query }) {
   return query
     .table()
     .segments.find(
-      segment => segment.name.toLowerCase() === segmentName.toLowerCase(),
+      (segment) => segment.name.toLowerCase() === segmentName.toLowerCase(),
     );
 }
 
@@ -67,9 +67,9 @@ export function parseDimension(name, { query }) {
   return query
     .dimensionOptions()
     .all()
-    .find(d =>
+    .find((d) =>
       EDITOR_FK_SYMBOLS.symbols.some(
-        separator => getDimensionName(d, separator) === name,
+        (separator) => getDimensionName(d, separator) === name,
       ),
     );
 }
@@ -131,7 +131,7 @@ function unquoteString(string) {
 
 // HACK: use JSON.stringify to escape single quotes by swapping single and doulble quotes before/after
 function swapQuotes(str) {
-  return str.replace(/['"]/g, q => (q === "'" ? '"' : "'"));
+  return str.replace(/['"]/g, (q) => (q === "'" ? '"' : "'"));
 }
 
 // move to query lib

@@ -46,9 +46,7 @@ export default class SearchApp extends React.Component {
                 );
               }
 
-              const resultsByType = _.chain(list)
-                .groupBy("model")
-                .value();
+              const resultsByType = _.chain(list).groupBy("model").value();
 
               // either use the specified filter type or order the full set according to our preferred order
               // (this should probably just be the default return from the endpoint no?
@@ -83,7 +81,7 @@ export default class SearchApp extends React.Component {
                   filter: "table",
                   icon: "table",
                 },
-              ).filter(f => {
+              ).filter((f) => {
                 // check that results exist for a filter before displaying it
                 if (
                   resultsByType[f.filter] &&
@@ -111,7 +109,7 @@ export default class SearchApp extends React.Component {
                       <Icon name="search" mr={1} />
                       <h4>{t`All results`}</h4>
                     </Link>
-                    {searchFilters.map(f => {
+                    {searchFilters.map((f) => {
                       let isActive =
                         location && location.query.type === f.filter;
                       if (!location.query.type && !f.filter) {
@@ -146,7 +144,7 @@ export default class SearchApp extends React.Component {
 
 const SearchResultSection = ({ title, items }) => (
   <Card>
-    {items.map(item => {
+    {items.map((item) => {
       let extraInfo;
       switch (item.model) {
         case "table":

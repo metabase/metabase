@@ -10,7 +10,7 @@ import PublicApp from "metabase/public/containers/PublicApp";
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
 
-export const getRoutes = store => (
+export const getRoutes = (store) => (
   <Route>
     <Route path="public" component={PublicApp}>
       <Route path="question/:uuid" component={PublicQuestion} />

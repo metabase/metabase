@@ -26,10 +26,7 @@ const mapDispatchToProps = {
   fetchMetadata: Table.actions.fetchMetadata,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class TablePane extends React.Component {
   state = {
     pane: "fields",
@@ -60,7 +57,7 @@ export default class TablePane extends React.Component {
     }
   }
 
-  showPane = name => {
+  showPane = (name) => {
     this.setState({ pane: name });
   };
 

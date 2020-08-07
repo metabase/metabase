@@ -26,9 +26,9 @@ export default class ParameterTargetList extends React.Component {
 
     const mappingOptionSections = _.groupBy(mappingOptions, "sectionName");
 
-    const hasForeignOption = _.any(mappingOptions, o => !!o.isForeign);
+    const hasForeignOption = _.any(mappingOptions, (o) => !!o.isForeign);
 
-    const sections = _.map(mappingOptionSections, options => ({
+    const sections = _.map(mappingOptionSections, (options) => ({
       name: options[0].sectionName,
       items: options,
     }));
@@ -38,9 +38,9 @@ export default class ParameterTargetList extends React.Component {
         className="text-brand"
         maxHeight={this.props.maxHeight || 600}
         sections={sections}
-        onChange={item => this.props.onChange(item.target)}
-        itemIsSelected={item => _.isEqual(item.target, target)}
-        renderItemIcon={item => (
+        onChange={(item) => this.props.onChange(item.target)}
+        itemIsSelected={(item) => _.isEqual(item.target, target)}
+        renderItemIcon={(item) => (
           <Icon name={item.icon || "unknown"} size={18} />
         )}
         alwaysExpanded={true}

@@ -85,7 +85,7 @@ class CustomForm extends React.Component {
         FormFooter: CustomFormFooter,
       });
     } else {
-      return <Form formRef={form => (this._formRef = form)}>{children}</Form>;
+      return <Form formRef={(form) => (this._formRef = form)}>{children}</Form>;
     }
   }
 }
@@ -227,7 +227,7 @@ class CollapsibleSection extends React.Component {
   };
 
   handleToggle = () => {
-    this.setState(previousState => ({
+    this.setState((previousState) => ({
       show: !previousState.show,
     }));
   };

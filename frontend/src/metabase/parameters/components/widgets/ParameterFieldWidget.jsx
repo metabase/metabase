@@ -19,7 +19,7 @@ type Props = {
   isEditing: boolean,
 
   fields: Field[],
-  parentFocusChanged: boolean => void,
+  parentFocusChanged: (boolean) => void,
 };
 
 type State = {
@@ -30,7 +30,7 @@ type State = {
 
 const BORDER_WIDTH = 1;
 
-const normalizeValue = value =>
+const normalizeValue = (value) =>
   Array.isArray(value) ? value : value != null ? [value] : [];
 
 // TODO: rename this something else since we're using it for more than searching and more than text
@@ -96,7 +96,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
       ? ""
       : this.props.placeholder || t`Enter a value...`;
 
-    const focusChanged = isFocused => {
+    const focusChanged = (isFocused) => {
       if (parentFocusChanged) {
         parentFocusChanged(isFocused);
       }
@@ -110,7 +110,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
     if (!isFocused) {
       return (
         <div
-          ref={_ => (this._unfocusedElement = _)}
+          ref={(_) => (this._unfocusedElement = _)}
           className="flex-full cursor-pointer"
           onClick={() => focusChanged(true)}
         >
@@ -135,7 +135,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
         >
           <FieldValuesWidget
             value={unsavedValue}
-            onChange={value => {
+            onChange={(value) => {
               this.setState({ value });
             }}
             placeholder={placeholder}

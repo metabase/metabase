@@ -27,7 +27,7 @@ const DisplayOptionsPane = ({
     <div className="flex align-center my1">
       <CheckBox
         checked={displayOptions.bordered}
-        onChange={e =>
+        onChange={(e) =>
           onChangeDisplayOptions({
             ...displayOptions,
             bordered: e.target.checked,
@@ -39,7 +39,7 @@ const DisplayOptionsPane = ({
     <div className="flex align-center my1">
       <CheckBox
         checked={displayOptions.titled}
-        onChange={e =>
+        onChange={(e) =>
           onChangeDisplayOptions({
             ...displayOptions,
             titled: e.target.checked,
@@ -51,7 +51,7 @@ const DisplayOptionsPane = ({
     <EmbedSelect
       value={displayOptions.theme}
       options={THEME_OPTIONS}
-      onChange={value =>
+      onChange={(value) =>
         onChangeDisplayOptions({ ...displayOptions, theme: value })
       }
     />

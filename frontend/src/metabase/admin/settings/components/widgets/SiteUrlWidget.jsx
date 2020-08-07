@@ -17,7 +17,7 @@ export default class SiteUrlWidget extends Component {
     return (
       <InputWithSelectPrefix
         value={setting.value}
-        onChange={e => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         prefixes={["https://", "http://"]}
         defaultPrefix="http://"
         caseInsensitivePrefix={true}

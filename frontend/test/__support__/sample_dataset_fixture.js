@@ -33,7 +33,7 @@ function aliasTablesAndFields(metadata) {
   }
 }
 
-export function createMetadata(updateState = state => state) {
+export function createMetadata(updateState = (state) => state) {
   const stateModified = updateState(chain(state)).value();
   const metadata = getMetadata(stateModified);
   aliasTablesAndFields(metadata);

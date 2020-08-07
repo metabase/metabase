@@ -39,10 +39,7 @@ const mapDispatchToProps = {
 };
 
 @Database.loadList()
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class DatabaseList extends Component {
   static propTypes = {
     databases: PropTypes.array,
@@ -93,7 +90,7 @@ export default class DatabaseList extends Component {
             <tbody>
               {databases ? (
                 [
-                  databases.map(database => {
+                  databases.map((database) => {
                     const isDeleting =
                       this.props.deletes.indexOf(database.id) !== -1;
                     return (

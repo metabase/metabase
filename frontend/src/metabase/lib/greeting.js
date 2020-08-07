@@ -15,7 +15,7 @@ const subheadPrefixes = [
 ];
 
 const Greeting = {
-  simpleGreeting: function() {
+  simpleGreeting: function () {
     // TODO - this can result in an undefined thing
     const randomIndex = Math.floor(
       Math.random() * (greetingPrefixes.length - 1),
@@ -23,7 +23,7 @@ const Greeting = {
     return greetingPrefixes[randomIndex];
   },
 
-  sayHello: function(personalization) {
+  sayHello: function (personalization) {
     if (personalization) {
       const g = Greeting.simpleGreeting();
       if (g === t`How's it going`) {
@@ -36,7 +36,7 @@ const Greeting = {
     }
   },
 
-  encourageCuriosity: function() {
+  encourageCuriosity: function () {
     // TODO - this can result in an undefined thing
     const randomIndex = Math.floor(
       Math.random() * (subheadPrefixes.length - 1),

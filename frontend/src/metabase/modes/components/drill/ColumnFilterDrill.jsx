@@ -30,10 +30,11 @@ export default function QuickFilterDrill({
   }
 
   const { column } = clicked;
-  const initialFilter = new Filter([], null, query).setDimension(
-    column.field_ref,
-    { useDefaultOperator: true },
-  );
+  const initialFilter = new Filter(
+    [],
+    null,
+    query,
+  ).setDimension(column.field_ref, { useDefaultOperator: true });
 
   return [
     {
@@ -46,11 +47,8 @@ export default function QuickFilterDrill({
           query={query}
           filter={initialFilter}
           onClose={onClose}
-          onChangeFilter={filter => {
-            const nextCard = query
-              .filter(filter)
-              .question()
-              .card();
+          onChangeFilter={(filter) => {
+            const nextCard = query.filter(filter).question().card();
             onChangeCardAndRun({ nextCard });
             onClose();
           }}

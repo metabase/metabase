@@ -92,7 +92,7 @@ export default class PulseEditCards extends Component {
         body: (
           <AttachmentWidget
             card={card}
-            onChange={card => this.setCard(index, card)}
+            onChange={(card) => this.setCard(index, card)}
             trackPulseEvent={this.trackPulseEvent}
           />
         ),
@@ -192,7 +192,7 @@ export default class PulseEditCards extends Component {
                     />
                   ) : (
                     <QuestionSelect
-                      onChange={questionId => this.addCard(index, questionId)}
+                      onChange={(questionId) => this.addCard(index, questionId)}
                       className="flex-full"
                       // TODO: reimplement CardPicker's warnings for unsuitable cards
                       // attachmentsEnabled={this.props.attachmentsEnabled}
@@ -213,7 +213,7 @@ const ATTACHMENT_TYPES = ["csv", "xls"];
 
 const AttachmentWidget = ({ card, onChange, trackPulseEvent }) => (
   <div>
-    {ATTACHMENT_TYPES.map(type => (
+    {ATTACHMENT_TYPES.map((type) => (
       <span
         key={type}
         className={cx("text-brand-hover cursor-pointer mr1", {

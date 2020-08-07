@@ -120,7 +120,7 @@ export default class SpecificDatePicker extends Component {
             <Calendar
               selected={date}
               initial={date || moment()}
-              onChange={value => this.onChange(value, hours, minutes)}
+              onChange={(value) => this.onChange(value, hours, minutes)}
               isRangePicker={false}
             />
           </ExpandingContent>
@@ -141,8 +141,10 @@ export default class SpecificDatePicker extends Component {
                 onClear={() => this.onChange(date, null, null)}
                 hours={hours}
                 minutes={minutes}
-                onChangeHours={hours => this.onChange(date, hours, minutes)}
-                onChangeMinutes={minutes => this.onChange(date, hours, minutes)}
+                onChangeHours={(hours) => this.onChange(date, hours, minutes)}
+                onChangeMinutes={(minutes) =>
+                  this.onChange(date, hours, minutes)
+                }
               />
             )}
           </div>

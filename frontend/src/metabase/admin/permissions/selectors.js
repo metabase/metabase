@@ -51,8 +51,8 @@ import type {
   GroupsPermissions,
 } from "metabase-types/types/Permissions";
 
-const getPermissions = state => state.admin.permissions.permissions;
-const getOriginalPermissions = state =>
+const getPermissions = (state) => state.admin.permissions.permissions;
+const getOriginalPermissions = (state) =>
   state.admin.permissions.originalPermissions;
 
 const getDatabaseId = (state, props) =>
@@ -77,23 +77,20 @@ function getTooltipForGroup(group) {
   return null;
 }
 
-export const getGroups = createSelector(
-  [Group.selectors.getList],
-  groups => {
-    const orderedGroups = groups ? [...groups] : [];
-    for (const groupFilter of SPECIAL_GROUP_FILTERS) {
-      const index = _.findIndex(orderedGroups, groupFilter);
-      if (index >= 0) {
-        orderedGroups.unshift(...orderedGroups.splice(index, 1));
-      }
+export const getGroups = createSelector([Group.selectors.getList], (groups) => {
+  const orderedGroups = groups ? [...groups] : [];
+  for (const groupFilter of SPECIAL_GROUP_FILTERS) {
+    const index = _.findIndex(orderedGroups, groupFilter);
+    if (index >= 0) {
+      orderedGroups.unshift(...orderedGroups.splice(index, 1));
     }
-    return orderedGroups.map(group => ({
-      ...group,
-      editable: canEditPermissions(group),
-      tooltip: getTooltipForGroup(group),
-    }));
-  },
-);
+  }
+  return orderedGroups.map((group) => ({
+    ...group,
+    editable: canEditPermissions(group),
+    tooltip: getTooltipForGroup(group),
+  }));
+});
 
 export const getIsDirty = createSelector(
   getPermissions,
@@ -102,7 +99,7 @@ export const getIsDirty = createSelector(
     JSON.stringify(permissions) !== JSON.stringify(originalPermissions),
 );
 
-export const getSaveError = state => state.admin.permissions.saveError;
+export const getSaveError = (state) => state.admin.permissions.saveError;
 
 // these are all the permission levels ordered by level of access
 const PERM_LEVELS = ["write", "read", "all", "controlled", "none"];
@@ -206,7 +203,7 @@ function getRevokingAccessToAllTablesWarningModal(
     getNativePermission(permissions, groupId, entityId) !== "none"
   ) {
     // allTableEntityIds contains tables from all schemas
-    const allTableEntityIds = database.tables.map(table => ({
+    const allTableEntityIds = database.tables.map((table) => ({
       databaseId: table.db_id,
       schemaName: table.schema_name || "",
       tableId: table.id,
@@ -215,7 +212,7 @@ function getRevokingAccessToAllTablesWarningModal(
     // Show the warning only if user tries to revoke access to the very last table of all schemas
     const afterChangesNoAccessToAnyTable = _.every(
       allTableEntityIds,
-      id =>
+      (id) =>
         getFieldsPermission(permissions, groupId, id) === "none" ||
         _.isEqual(id, entityId),
     );
@@ -361,7 +358,7 @@ export const getTablesPermissionsGrid = createSelector(
             const value = getFieldsPermission(permissions, groupId, entityId);
             const getActions =
               PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS[value] || [];
-            return getActions.map(getAction => getAction(groupId, entityId));
+            return getActions.map((getAction) => getAction(groupId, entityId));
           },
           postAction(groupId, entityId, value) {
             const getPostAction =
@@ -420,7 +417,7 @@ export const getTablesPermissionsGrid = createSelector(
           },
         },
       },
-      entities: tables.map(table => ({
+      entities: tables.map((table) => ({
         id: {
           databaseId: databaseId,
           schemaName: schemaName,
@@ -518,7 +515,7 @@ export const getSchemasPermissionsGrid = createSelector(
           },
         },
       },
-      entities: schemaNames.map(schemaName => ({
+      entities: schemaNames.map((schemaName) => ({
         id: {
           databaseId,
           schemaName,
@@ -670,7 +667,7 @@ export const getDatabasesPermissionsGrid = createSelector(
           },
         },
       },
-      entities: databases.map(database => {
+      entities: databases.map((database) => {
         const schemas = database.schemaNames();
         return {
           id: {
@@ -686,9 +683,7 @@ export const getDatabasesPermissionsGrid = createSelector(
               : schemas.length === 1
               ? {
                   name: t`View tables`,
-                  url: `/admin/permissions/databases/${database.id}/schemas/${
-                    schemas[0]
-                  }/tables`,
+                  url: `/admin/permissions/databases/${database.id}/schemas/${schemas[0]}/tables`,
                 }
               : {
                   name: t`View schemas`,
@@ -708,7 +703,7 @@ const getCollectionId = (state, props) => props && props.collectionId;
 const getSingleCollectionPermissionsMode = (state, props) =>
   (props && props.singleCollectionMode) || false;
 
-const permissionsCollectionFilter = collection => !collection.is_personal;
+const permissionsCollectionFilter = (collection) => !collection.is_personal;
 
 const getNamespace = (state, props) => props.namespace;
 
@@ -745,7 +740,7 @@ const getCollections = createSelector(
 const getCollectionPermission = (permissions, groupId, { collectionId }) =>
   getIn(permissions, [groupId, collectionId]);
 
-export const getPropagatePermissions = state =>
+export const getPropagatePermissions = (state) =>
   state.admin.permissions.propagatePermissions;
 
 export const getCollectionsPermissionsGrid = createSelector(
@@ -887,7 +882,7 @@ export const getCollectionsPermissionsGrid = createSelector(
           },
         },
       },
-      entities: collections.map(collection => {
+      entities: collections.map((collection) => {
         return {
           id: {
             collectionId: collection.id,
@@ -912,7 +907,7 @@ function getDecendentCollections(collection) {
 }
 
 function getPermissionsSet(collections, permissions, groupId) {
-  const perms = collections.map(collection =>
+  const perms = collections.map((collection) =>
     getCollectionPermission(permissions, groupId, {
       collectionId: collection.id,
     }),

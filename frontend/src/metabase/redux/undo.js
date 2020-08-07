@@ -11,7 +11,7 @@ const PERFORM_UNDO = "metabase/questions/PERFORM_UNDO";
 
 let nextUndoId = 0;
 
-export const addUndo = createThunkAction(ADD_UNDO, undo => {
+export const addUndo = createThunkAction(ADD_UNDO, (undo) => {
   return (dispatch, getState) => {
     const id = nextUndoId++;
     setTimeout(() => dispatch(dismissUndo(id, false)), 5000);
@@ -29,18 +29,18 @@ export const dismissUndo = createAction(
   },
 );
 
-export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
+export const performUndo = createThunkAction(PERFORM_UNDO, (undoId) => {
   return (dispatch, getState) => {
     MetabaseAnalytics.trackEvent("Undo", "Perform Undo");
     const undo = _.findWhere(getState().undo, { id: undoId });
     if (undo) {
-      undo.actions.map(action => dispatch(action));
+      undo.actions.map((action) => dispatch(action));
       dispatch(dismissUndo(undoId, false));
     }
   };
 });
 
-export default function(state = [], { type, payload, error }) {
+export default function (state = [], { type, payload, error }) {
   if (type === ADD_UNDO) {
     if (error) {
       console.warn("ADD_UNDO", payload);
@@ -81,7 +81,7 @@ export default function(state = [], { type, payload, error }) {
       console.warn("DISMISS_UNDO", payload);
       return state;
     }
-    return state.filter(undo => undo.id !== payload);
+    return state.filter((undo) => undo.id !== payload);
   }
   return state;
 }

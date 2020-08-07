@@ -7,7 +7,7 @@ import Ellipsified from "metabase/components/Ellipsified";
 import cx from "classnames";
 
 // Don't use a <a> tag if there's no href
-const LegendLink = props =>
+const LegendLink = (props) =>
   props.href ? <a {...props} /> : <span {...props} />;
 
 export default class LegendItem extends Component {

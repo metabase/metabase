@@ -9,7 +9,10 @@ function getSeries(display) {
     {
       card: { display, visualization_settings: {} },
       data: {
-        rows: [["a", 1], ["b", 2]],
+        rows: [
+          ["a", 1],
+          ["b", 2],
+        ],
         cols: [{ name: "foo" }, { name: "bar" }],
       },
     },

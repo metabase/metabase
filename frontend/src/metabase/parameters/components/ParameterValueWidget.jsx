@@ -52,10 +52,7 @@ const mapDispatchToProps = {
   fetchField,
 };
 
-@connect(
-  makeMapStateToProps,
-  mapDispatchToProps,
-)
+@connect(makeMapStateToProps, mapDispatchToProps)
 export default class ParameterValueWidget extends Component {
   static propTypes = {
     parameter: PropTypes.object.isRequired,
@@ -88,7 +85,7 @@ export default class ParameterValueWidget extends Component {
     if (!metadata) {
       return [];
     }
-    return this.fieldIds(this.props).map(id => metadata.field(id));
+    return this.fieldIds(this.props).map((id) => metadata.field(id));
   }
 
   getWidget() {
@@ -148,7 +145,7 @@ export default class ParameterValueWidget extends Component {
 
     const Widget = this.getWidget();
 
-    const focusChanged = isFocused => {
+    const focusChanged = (isFocused) => {
       if (parentFocusChanged) {
         parentFocusChanged(isFocused);
       }
@@ -180,7 +177,7 @@ export default class ParameterValueWidget extends Component {
             name="close"
             className="flex-align-right cursor-pointer flex-no-shrink"
             size={12}
-            onClick={e => {
+            onClick={(e) => {
               if (hasValue) {
                 e.stopPropagation();
                 setValue(null);

@@ -10,7 +10,7 @@ const DisclosureTriangle = ({ open, className }) => (
       deg: open ? spring(0, presets.gentle) : spring(-90, presets.gentle),
     }}
   >
-    {motionStyle => (
+    {(motionStyle) => (
       <Icon
         className={className}
         name="expand_arrow"

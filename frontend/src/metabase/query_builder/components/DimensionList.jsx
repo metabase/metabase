@@ -75,9 +75,9 @@ export default class DimensionList extends Component {
   }
   _updateSections(sections) {
     this.setState({
-      sections: (sections || []).map(section => ({
+      sections: (sections || []).map((section) => ({
         ...section,
-        items: section.items.map(item => ({
+        items: section.items.map((item) => ({
           ...item,
           name: item.name || (item.dimension && item.dimension.displayName()),
           icon: item.icon || (item.dimension && item.dimension.icon()),
@@ -93,11 +93,11 @@ export default class DimensionList extends Component {
     );
   }
 
-  itemIsSelected = item => {
+  itemIsSelected = (item) => {
     const dimensions = this._getDimensions();
     return (
       item.dimension &&
-      _.any(dimensions, d => item.dimension.isSameBaseDimension(d))
+      _.any(dimensions, (d) => item.dimension.isSameBaseDimension(d))
     );
   };
 
@@ -135,7 +135,7 @@ export default class DimensionList extends Component {
                 className="scroll-y"
                 dimension={dimension}
                 dimensions={subDimensions}
-                onChangeDimension={dimension => {
+                onChangeDimension={(dimension) => {
                   this.props.onChangeDimension(dimension);
                   onClose();
                 }}
@@ -149,7 +149,7 @@ export default class DimensionList extends Component {
               name="add"
               size={14}
               className="mx1 cursor-pointer hover-child faded fade-in-hover"
-              onClick={e => {
+              onClick={(e) => {
                 e.stopPropagation();
                 this.handleAdd(item);
               }}
@@ -160,7 +160,7 @@ export default class DimensionList extends Component {
           <Icon
             name="close"
             className="mx1 cursor-pointer faded fade-in-hover"
-            onClick={e => {
+            onClick={(e) => {
               e.stopPropagation();
               this.handleRemove(item);
             }}
@@ -173,7 +173,7 @@ export default class DimensionList extends Component {
   renderSubDimensionTrigger(otherDimension, multiSelect) {
     const dimensions = this._getDimensions();
     const subDimension =
-      _.find(dimensions, d => d.isSameBaseDimension(otherDimension)) ||
+      _.find(dimensions, (d) => d.isSameBaseDimension(otherDimension)) ||
       otherDimension.defaultDimension();
     const name = subDimension ? subDimension.subTriggerDisplayName() : null;
     return (
@@ -204,7 +204,7 @@ export default class DimensionList extends Component {
     }
   }
 
-  handleChange = item => {
+  handleChange = (item) => {
     const { dimension, onChangeDimension, onChangeOther } = this.props;
     if (dimension != null && this.itemIsSelected(item)) {
       // ensure if we select the same item we don't reset the subdimension
@@ -216,14 +216,14 @@ export default class DimensionList extends Component {
     }
   };
 
-  handleAdd = item => {
+  handleAdd = (item) => {
     const d = this._getDimensionFromItem(item);
     if (d && this.props.onAddDimension) {
       this.props.onAddDimension(d, item);
     }
   };
 
-  handleRemove = item => {
+  handleRemove = (item) => {
     const d = this._getDimensionFromItem(item);
     if (d && this.props.onRemoveDimension) {
       this.props.onRemoveDimension(d, item);

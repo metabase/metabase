@@ -15,17 +15,14 @@ import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 import EntityForm from "metabase/entities/containers/EntityForm";
 
-const withPush = ComposedComponent =>
-  connect(
-    null,
-    { push },
-  )(ComposedComponent);
+const withPush = (ComposedComponent) =>
+  connect(null, { push })(ComposedComponent);
 
 export default class EntitiesApp extends React.Component {
   render() {
     return (
       <div className="p2">
-        {Object.values(entityDefs).map(entityDef => (
+        {Object.values(entityDefs).map((entityDef) => (
           <div key={entityDef.name} className="mb1">
             <Link to={`/_internal/entities/${entityDef.name}`} className="link">
               {capitalize(entityDef.name)}

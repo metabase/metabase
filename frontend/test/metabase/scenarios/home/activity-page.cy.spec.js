@@ -31,9 +31,7 @@ describe("metabase > scenarios > home > activity-page", () => {
     });
     cy.findByText("Save").click();
     cy.get("[value='Products, Filtered by Rating']");
-    cy.findAllByText("Save")
-      .last()
-      .click();
+    cy.findAllByText("Save").last().click();
     cy.findByText("Not now").click();
 
     // View a dashboard

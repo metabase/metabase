@@ -22,10 +22,11 @@ import { updateSettings } from "metabase/visualizations/lib/settings";
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Display`];
 
-const withTransientSettingState = ComposedComponent =>
+const withTransientSettingState = (ComposedComponent) =>
   class extends React.Component {
-    static displayName = `withTransientSettingState[${ComposedComponent.displayName ||
-      ComposedComponent.name}]`;
+    static displayName = `withTransientSettingState[${
+      ComposedComponent.displayName || ComposedComponent.name
+    }]`;
 
     constructor(props) {
       super(props);
@@ -45,8 +46,8 @@ const withTransientSettingState = ComposedComponent =>
         <ComposedComponent
           {...this.props}
           settings={this.state.settings}
-          onChange={settings => this.setState({ settings })}
-          onDone={settings =>
+          onChange={(settings) => this.setState({ settings })}
+          onDone={(settings) =>
             this.props.onChange(settings || this.state.settings)
           }
         />
@@ -63,12 +64,12 @@ class ChartSettings extends Component {
     };
   }
 
-  handleShowSection = section => {
+  handleShowSection = (section) => {
     this.setState({ currentSection: section, currentWidget: null });
   };
 
   // allows a widget to temporarily replace itself with a different widget
-  handleShowWidget = widget => {
+  handleShowWidget = (widget) => {
     this.setState({ currentWidget: widget });
   };
 
@@ -82,7 +83,7 @@ class ChartSettings extends Component {
     this.props.onChange({});
   };
 
-  handleChangeSettings = changedSettings => {
+  handleChangeSettings = (changedSettings) => {
     this.props.onChange(updateSettings(this._getSettings(), changedSettings));
   };
 
@@ -177,10 +178,10 @@ class ChartSettings extends Component {
       "axes",
       "labels",
       // include all section names so any forgotten sections are sorted to the end
-      ...sectionNames.map(x => x.toLowerCase()),
+      ...sectionNames.map((x) => x.toLowerCase()),
     ];
     sectionNames.sort((a, b) => {
-      const [aIdx, bIdx] = [a, b].map(x =>
+      const [aIdx, bIdx] = [a, b].map((x) =>
         sectionSortOrder.indexOf(x.toLowerCase()),
       );
       return aIdx - bIdx;
@@ -189,7 +190,7 @@ class ChartSettings extends Component {
     const currentSection =
       this.state.currentSection && sections[this.state.currentSection]
         ? this.state.currentSection
-        : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
+        : _.find(DEFAULT_TAB_PRIORITY, (name) => name in sections) ||
           sectionNames[0];
 
     let visibleWidgets;
@@ -213,7 +214,7 @@ class ChartSettings extends Component {
     // overriding the sidebar title.
     const currentSectionHasColumnSettings = (
       sections[currentSection] || []
-    ).some(widget => widget.id === "column_settings");
+    ).some((widget) => widget.id === "column_settings");
 
     const extraWidgetProps = {
       // NOTE: special props to support adding additional fields
@@ -229,13 +230,13 @@ class ChartSettings extends Component {
         value={currentSection}
         onChange={this.handleShowSection}
         options={sectionNames}
-        optionNameFn={v => v}
-        optionValueFn={v => v}
+        optionNameFn={(v) => v}
+        optionValueFn={(v) => v}
         bubble
       />
     );
 
-    const widgetList = visibleWidgets.map(widget => (
+    const widgetList = visibleWidgets.map((widget) => (
       <ChartSettingsWidget
         key={`${widget.id}`}
         {...widget}
@@ -302,7 +303,7 @@ class ChartSettings extends Component {
                   isSettings
                   showWarnings
                   onUpdateVisualizationSettings={this.handleChangeSettings}
-                  onUpdateWarnings={warnings => this.setState({ warnings })}
+                  onUpdateWarnings={(warnings) => this.setState({ warnings })}
                 />
               </div>
               <ChartSettingsFooter

@@ -8,29 +8,21 @@ import {
 } from "__support__/cypress";
 
 function filterByVendor() {
-  cy.findAllByText("VENDOR")
-    .first()
-    .click();
+  cy.findAllByText("VENDOR").first().click();
   popover().within(() => {
     cy.findByPlaceholderText("Search by Vendor").type("b");
     cy.findByText("Balistreri-Muller").click();
     cy.findByText("Add filter").click();
   });
-  cy.get(".RunButton")
-    .first()
-    .click();
+  cy.get(".RunButton").first().click();
 }
 function filterByCategory() {
-  cy.findAllByText("CATEGORY")
-    .first()
-    .click();
+  cy.findAllByText("CATEGORY").first().click();
   popover().within(() => {
     cy.findByText("Widget").click();
     cy.findByText("Add filter").click();
   });
-  cy.get(".RunButton")
-    .last()
-    .click();
+  cy.get(".RunButton").last().click();
 }
 
 describe("scenarios > question > view", () => {
@@ -55,14 +47,9 @@ describe("scenarios > question > view", () => {
       cy.contains("Summarize").click();
 
       // alias @sidebar so we can more easily click dimensions
-      cy.contains("Summarize by")
-        .parent()
-        .parent()
-        .as("sidebar");
+      cy.contains("Summarize by").parent().parent().as("sidebar");
 
-      cy.get("@sidebar")
-        .contains("Created At")
-        .click();
+      cy.get("@sidebar").contains("Created At").click();
       cy.findByText("Done").click();
 
       cy.contains("Count by Created At: Month");
@@ -71,16 +58,9 @@ describe("scenarios > question > view", () => {
       cy.contains("Summarize").click();
 
       // change grouping from month to year
-      cy.contains("Summarize by")
-        .parent()
-        .parent()
-        .as("sidebar");
-      cy.get("@sidebar")
-        .contains("by month")
-        .click();
-      cy.get(".PopoverBody")
-        .contains("Year")
-        .click();
+      cy.contains("Summarize by").parent().parent().as("sidebar");
+      cy.get("@sidebar").contains("by month").click();
+      cy.get(".PopoverBody").contains("Year").click();
 
       cy.contains("Count by Created At: Year");
 
@@ -95,8 +75,8 @@ describe("scenarios > question > view", () => {
 
       // check for title, legend, and x axis labels
       cy.contains("Count by Created At: Year and Product → Category");
-      ["2016", "2017", "2018", "2019", "2020"].forEach(l => cy.contains(l));
-      ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach(l => cy.contains(l));
+      ["2016", "2017", "2018", "2019", "2020"].forEach((l) => cy.contains(l));
+      ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach((l) => cy.contains(l));
     });
   });
 
@@ -120,9 +100,7 @@ describe("scenarios > question > view", () => {
       // All users upgraded to collection view access
       signInAsAdmin();
       cy.visit("/admin/permissions/collections");
-      cy.get(".Icon-close")
-        .first()
-        .click();
+      cy.get(".Icon-close").first().click();
       cy.findByText("View collection").click();
       cy.findByText("Save Changes").click();
       cy.findByText("Yes").click();
@@ -174,9 +152,7 @@ describe("scenarios > question > view", () => {
     it("should show filters by list for Category", () => {
       cy.visit("/question/4");
 
-      cy.findAllByText("CATEGORY")
-        .first()
-        .click();
+      cy.findAllByText("CATEGORY").first().click();
       popover().within(() => {
         cy.findByPlaceholderText("Search the list");
         cy.findByPlaceholderText("Search by Category").should("not.exist");
@@ -186,9 +162,7 @@ describe("scenarios > question > view", () => {
     it("should show filters by search for Vendor", () => {
       cy.visit("/question/4");
 
-      cy.findAllByText("VENDOR")
-        .first()
-        .click();
+      cy.findAllByText("VENDOR").first().click();
       popover().within(() => {
         cy.findByPlaceholderText("Search by Vendor");
         cy.findByText("Search the list").should("not.exist");

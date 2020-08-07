@@ -33,7 +33,7 @@ export default class SortWidget extends React.Component {
     }
   }
 
-  handleChangeField = value => {
+  handleChangeField = (value) => {
     if (this.state.field !== value) {
       this.props.updateOrderBy([this.state.direction, value]);
       // Optimistically set field state so componentWillUnmount logic works correctly
@@ -41,7 +41,7 @@ export default class SortWidget extends React.Component {
     }
   };
 
-  handleChangeDirection = value => {
+  handleChangeDirection = (value) => {
     if (this.state.direction !== value) {
       this.props.updateOrderBy([value, this.state.field]);
       // Optimistically set direction state so componentWillUnmount logic works correctly

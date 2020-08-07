@@ -64,7 +64,7 @@ export class ExplorePane extends React.Component {
     let tables;
     const hasMore = false;
     if (candidates && candidates.length > 0) {
-      schemaNames = candidates.map(schema => schema.schema);
+      schemaNames = candidates.map((schema) => schema.schema);
       if (schemaName == null) {
         schemaName = schemaNames[0];
       }
@@ -94,14 +94,14 @@ export class ExplorePane extends React.Component {
             <div className="mr1">{t`Based on the schema`}</div>
             <Select
               value={schemaName}
-              onChange={e =>
+              onChange={(e) =>
                 this.setState({
                   schemaName: e.target.value,
                   visibleItems: DEFAULT_VISIBLE_ITEMS,
                 })
               }
             >
-              {schemaNames.map(schemaName => (
+              {schemaNames.map((schemaName) => (
                 <Option key={schemaName} value={schemaName}>
                   {schemaName}
                 </Option>

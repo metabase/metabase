@@ -35,7 +35,7 @@ export default class FieldWidget extends React.Component {
     useOriginalDimension: false,
   };
 
-  handleChangeField = value => {
+  handleChangeField = (value) => {
     this.props.onChangeField(value);
     if (FieldRef.isValidField(value)) {
       this.toggle();

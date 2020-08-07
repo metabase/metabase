@@ -21,7 +21,7 @@ export default function LimitStep({
         type="number"
         value={query.limit() == null ? "" : query.limit()}
         placeholder={t`Enter a limit`}
-        onChange={e => {
+        onChange={(e) => {
           const limit = parseInt(e.target.value, 0);
           if (limit >= 1) {
             query.updateLimit(limit).update(updateQuery);

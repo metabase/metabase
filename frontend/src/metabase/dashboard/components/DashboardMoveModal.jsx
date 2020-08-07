@@ -19,10 +19,7 @@ const mapDispatchToProps = {
 };
 
 @withRouter
-@connect(
-  null,
-  mapDispatchToProps,
-)
+@connect(null, mapDispatchToProps)
 class DashboardMoveModal extends React.Component {
   render() {
     const { onClose, setDashboardCollection } = this.props;
@@ -30,7 +27,7 @@ class DashboardMoveModal extends React.Component {
       <CollectionMoveModal
         title={t`Move dashboard to...`}
         onClose={onClose}
-        onMove={async collection => {
+        onMove={async (collection) => {
           await setDashboardCollection(
             { id: this.props.params.dashboardId },
             collection,

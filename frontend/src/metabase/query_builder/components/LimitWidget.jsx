@@ -16,7 +16,7 @@ export default class LimitWidget extends Component {
   render() {
     return (
       <ul className="Button-group Button-group--blue">
-        {this.props.options.map(count => (
+        {this.props.options.map((count) => (
           <li
             key={count || "None"}
             className={cx("Button", {

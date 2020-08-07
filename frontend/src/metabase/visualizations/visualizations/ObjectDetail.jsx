@@ -67,15 +67,16 @@ type Props = VisualizationProps & {
   viewPreviousObjectDetail: () => void,
 };
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   table: getTableMetadata(state),
   tableForeignKeys: getTableForeignKeys(state),
   tableForeignKeyReferences: getTableForeignKeyReferences(state),
 });
 
 // ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
-const mapDispatchToProps = dispatch => ({
-  fetchTableFks: id => dispatch(Tables.objectActions.fetchForeignKeys({ id })),
+const mapDispatchToProps = (dispatch) => ({
+  fetchTableFks: (id) =>
+    dispatch(Tables.objectActions.fetchForeignKeys({ id })),
   loadObjectDetailFKReferences: (...args) =>
     dispatch(loadObjectDetailFKReferences(...args)),
   followForeignKey: (...args) => dispatch(followForeignKey(...args)),
@@ -131,11 +132,11 @@ export class ObjectDetail extends Component {
     const {
       data: { cols, rows },
     } = this.props;
-    const columnIndex = _.findIndex(cols, col => isPK(col));
+    const columnIndex = _.findIndex(cols, (col) => isPK(col));
     return rows[0][columnIndex];
   }
 
-  foreignKeyClicked = fk => {
+  foreignKeyClicked = (fk) => {
     this.props.followForeignKey(fk);
   };
 
@@ -194,7 +195,7 @@ export class ObjectDetail extends Component {
           })}
           onClick={
             isClickable &&
-            (e => {
+            ((e) => {
               onVisualizationClick({ ...clicked, element: e.currentTarget });
             })
           }
@@ -240,7 +241,7 @@ export class ObjectDetail extends Component {
       .sort((a, b) =>
         a.origin.table.display_name.localeCompare(b.origin.table.display_name),
       )
-      .map(fk => {
+      .map((fk) => {
         let fkCount = <LoadingSpinner size={25} />;
         let fkCountValue = 0;
         let fkClickable = false;
@@ -313,7 +314,7 @@ export class ObjectDetail extends Component {
     return <ul className="px4">{relationships}</ul>;
   }
 
-  onKeyDown = event => {
+  onKeyDown = (event) => {
     if (event.key === "ArrowLeft") {
       this.props.viewPreviousObjectDetail();
     }
@@ -398,7 +399,4 @@ export class ObjectDetail extends Component {
   }
 }
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(ObjectDetail);
+export default connect(mapStateToProps, mapDispatchToProps)(ObjectDetail);

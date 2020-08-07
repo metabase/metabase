@@ -25,7 +25,7 @@ const SETTING_WIDGET_MAP = {
   color: SettingColor,
 };
 
-const updatePlaceholderForEnvironmentVars = props => {
+const updatePlaceholderForEnvironmentVars = (props) => {
   if (props && props.setting && props.setting.is_env_setting) {
     return assocIn(
       props,

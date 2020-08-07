@@ -25,7 +25,7 @@ export default class NumberPicker extends Component {
   constructor(props: Props) {
     super(props);
     this.state = {
-      stringValues: props.values.map(v => {
+      stringValues: props.values.map((v) => {
         if (typeof v === "number") {
           return String(v);
         } else {
@@ -48,12 +48,12 @@ export default class NumberPicker extends Component {
   };
 
   _validate(values: Array<number | null>) {
-    return values.map(v => v === undefined || !isNaN(v));
+    return values.map((v) => v === undefined || !isNaN(v));
   }
 
   onValuesChange(stringValues: string[]) {
-    const values = stringValues.map(v => parseFloat(v));
-    this.props.onValuesChange(values.map(v => (isNaN(v) ? null : v)));
+    const values = stringValues.map((v) => parseFloat(v));
+    this.props.onValuesChange(values.map((v) => (isNaN(v) ? null : v)));
     this.setState({
       stringValues: stringValues,
       validations: this._validate(values),
@@ -71,7 +71,7 @@ export default class NumberPicker extends Component {
         {...this.props}
         values={values}
         validations={this.state.validations}
-        onValuesChange={values => this.onValuesChange(values)}
+        onValuesChange={(values) => this.onValuesChange(values)}
       />
     );
   }

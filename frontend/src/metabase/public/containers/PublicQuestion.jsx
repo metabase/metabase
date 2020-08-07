@@ -41,8 +41,8 @@ type Props = {
   width: number,
   height: number,
   setErrorPage: (error: { status: number }) => void,
-  addParamValues: any => void,
-  addFields: any => void,
+  addParamValues: (any) => void,
+  addFields: (any) => void,
 };
 
 type State = {
@@ -51,7 +51,7 @@ type State = {
   parameterValues: ParameterValues,
 };
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   metadata: getMetadata(state),
 });
 
@@ -61,10 +61,7 @@ const mapDispatchToProps = {
   addFields,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @ExplicitSize()
 export default class PublicQuestion extends Component {
   props: Props;
@@ -213,13 +210,13 @@ export default class PublicQuestion extends Component {
               error={result && result.error}
               rawSeries={[{ card: card, data: result && result.data }]}
               className="full flex-full z1"
-              onUpdateVisualizationSettings={settings =>
+              onUpdateVisualizationSettings={(settings) =>
                 this.setState({
                   // $FlowFixMe
                   result: updateIn(
                     result,
                     ["card", "visualization_settings"],
-                    s => ({ ...s, ...settings }),
+                    (s) => ({ ...s, ...settings }),
                   ),
                 })
               }

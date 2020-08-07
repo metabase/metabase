@@ -38,7 +38,7 @@ export function getAggregations(
   } else {
     aggregations = [];
   }
-  return aggregations.filter(agg => agg && agg[0] && agg[0] !== "rows");
+  return aggregations.filter((agg) => agg && agg[0] && agg[0] !== "rows");
 }
 
 // turns a list of Aggregations into the canonical AggregationClause
@@ -85,11 +85,14 @@ export function isBareRows(ac: ?AggregationClause) {
 }
 
 export function hasEmptyAggregation(ac: ?AggregationClause): boolean {
-  return _.any(getAggregations(ac), aggregation => !noNullValues(aggregation));
+  return _.any(
+    getAggregations(ac),
+    (aggregation) => !noNullValues(aggregation),
+  );
 }
 
 export function hasValidAggregation(ac: ?AggregationClause): boolean {
-  return _.all(getAggregations(ac), aggregation => noNullValues(aggregation));
+  return _.all(getAggregations(ac), (aggregation) => noNullValues(aggregation));
 }
 
 // AGGREGATION TYPES

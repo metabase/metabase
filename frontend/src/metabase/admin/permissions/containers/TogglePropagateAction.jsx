@@ -28,4 +28,4 @@ const TogglePropagateAction = connect(
 ));
 
 // eslint-disable-next-line react/display-name
-export default props => <TogglePropagateAction {...props} />;
+export default (props) => <TogglePropagateAction {...props} />;

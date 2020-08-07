@@ -51,16 +51,16 @@ export default function rowRenderer(
   );
 
   const dataset = crossfilter(rows);
-  const dimension = dataset.dimension(d => d[0]);
-  const group = dimension.group().reduceSum(d => d[1]);
-  const xDomain = d3.extent(rows, d => d[1]);
-  const yValues = rows.map(d => d[0]);
+  const dimension = dataset.dimension((d) => d[0]);
+  const group = dimension.group().reduceSum((d) => d[1]);
+  const xDomain = d3.extent(rows, (d) => d[1]);
+  const yValues = rows.map((d) => d[0]);
 
   forceSortedGroup(group, makeIndexMap(yValues));
 
   initChart(chart, element);
 
-  chart.on("renderlet.tooltips", chart => {
+  chart.on("renderlet.tooltips", (chart) => {
     if (onHoverChange) {
       chart
         .selectAll(".row rect")
@@ -86,7 +86,7 @@ export default function rowRenderer(
     }
 
     if (onVisualizationClick) {
-      chart.selectAll(".row rect").on("click", function(d) {
+      chart.selectAll(".row rect").on("click", function (d) {
         onVisualizationClick({
           value: d.value,
           column: cols[1],
@@ -109,13 +109,13 @@ export default function rowRenderer(
     .elasticX(true)
     .dimension(dimension)
     .group(group)
-    .ordering(d => d.index);
+    .ordering((d) => d.index);
 
   const labelPadHorizontal = 5;
   const labelPadVertical = 1;
   let labelsOutside = false;
 
-  chart.on("renderlet.bar-labels", chart => {
+  chart.on("renderlet.bar-labels", (chart) => {
     chart
       .selectAll("g.row text")
       .attr("text-anchor", labelsOutside ? "end" : "start")
@@ -124,7 +124,7 @@ export default function rowRenderer(
   });
 
   if (settings["graph.y_axis.labels_enabled"]) {
-    chart.on("renderlet.axis-labels", chart => {
+    chart.on("renderlet.axis-labels", (chart) => {
       chart
         .svg()
         .append("text")
@@ -159,7 +159,7 @@ export default function rowRenderer(
   const maxTextHeight = Math.max(
     ...chart
       .selectAll("g.row text")[0]
-      .map(e => e.getBoundingClientRect().height),
+      .map((e) => e.getBoundingClientRect().height),
   );
   const rowHeight = maxTextHeight + chart.gap() + labelPadVertical * 2;
   const cap = Math.max(1, Math.floor(containerHeight / rowHeight));
@@ -194,7 +194,7 @@ export default function rowRenderer(
     chart
       .selectAll(".tick text")[0]
       .slice(1, -1)
-      .forEach(e => e.remove());
+      .forEach((e) => e.remove());
   }
 
   // add a class our CSS can target

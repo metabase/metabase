@@ -61,7 +61,7 @@ class TasksApp extends React.Component {
             <th>{t`Details`}</th>
           </thead>
           <tbody>
-            {tasks.map(task => (
+            {tasks.map((task) => (
               <tr key={task.id}>
                 <td className="text-bold">{task.task}</td>
                 <td>{task.db_id}</td>

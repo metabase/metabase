@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 
-const NoDatabasesEmptyState = user => (
+const NoDatabasesEmptyState = (user) => (
   <AdminAwareEmptyState
     title={t`Metabase is no fun without any data`}
     adminMessage={t`Your databases will appear here once you connect one`}

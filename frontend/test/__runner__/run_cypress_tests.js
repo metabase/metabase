@@ -16,7 +16,7 @@ const testFiles = userArgs.includes("--testFiles");
 const testFilesLocation = userArgs[userArgs.indexOf("--testFiles") + 1];
 
 function readFile(fileName) {
-  return new Promise(function(resolve, reject) {
+  return new Promise(function (resolve, reject) {
     fs.readFile(fileName, "utf8", (err, data) => {
       if (err) {
         reject(err);
@@ -110,7 +110,7 @@ const cleanup = async (exitCode = 0) => {
 const launch = () =>
   init()
     .then(cleanup)
-    .catch(e => {
+    .catch((e) => {
       console.error(e);
       cleanup(1);
     });

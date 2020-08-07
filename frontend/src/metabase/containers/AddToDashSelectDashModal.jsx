@@ -27,9 +27,9 @@ export default class AddToDashSelectDashModal extends Component {
   props: {
     card: Card,
     onClose: () => void,
-    onChangeLocation: string => void,
+    onChangeLocation: (string) => void,
     // via connect:
-    createDashboard: DashboardType => any,
+    createDashboard: (DashboardType) => any,
   };
 
   addToDashboard = (dashboardId: DashboardId) => {
@@ -44,7 +44,7 @@ export default class AddToDashSelectDashModal extends Component {
       return (
         <Dashboard.ModalForm
           dashboard={{ collection_id: this.props.card.collection_id }}
-          onSaved={dashboard => this.addToDashboard(dashboard.id)}
+          onSaved={(dashboard) => this.addToDashboard(dashboard.id)}
           onClose={() => this.setState({ shouldCreateDashboard: false })}
         />
       );

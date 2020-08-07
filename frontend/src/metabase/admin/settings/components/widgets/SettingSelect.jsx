@@ -12,9 +12,9 @@ const SettingSelect = ({
     placeholder={placeholder}
     value={value}
     defaultValue={defaultValue}
-    onChange={e => onChange(e.target.value)}
+    onChange={(e) => onChange(e.target.value)}
   >
-    {options.map(option => {
+    {options.map((option) => {
       const name = typeof option === "object" ? option.name : option;
       const value = typeof option === "object" ? option.value : option;
       return (

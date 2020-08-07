@@ -72,14 +72,14 @@ export default class LegendVertical extends Component {
             key={index}
             ref={"item" + index}
             className="flex flex-no-shrink"
-            onMouseEnter={e =>
+            onMouseEnter={(e) =>
               onHoverChange &&
               onHoverChange({
                 index,
                 element: ReactDOM.findDOMNode(this.refs["legendItem" + index]),
               })
             }
-            onMouseLeave={e => onHoverChange && onHoverChange()}
+            onMouseLeave={(e) => onHoverChange && onHoverChange()}
           >
             <LegendItem
               ref={"legendItem" + index}

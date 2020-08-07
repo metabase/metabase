@@ -63,7 +63,7 @@ export default class CheckBox extends Component {
           "flex align-center justify-center rounded cursor-pointer",
         )}
         style={{ ...style, ...checkboxStyle }}
-        onClick={e => {
+        onClick={(e) => {
           this.onClick(e);
         }}
       >

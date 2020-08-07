@@ -9,7 +9,7 @@ const QuestionPicker = ({ value, onChange, maxHeight, ...props }) => (
     // maxHeight is set when rendered in a popover
     style={maxHeight != null ? { maxHeight } : {}}
     value={value === undefined ? undefined : { model: "card", id: value }}
-    onChange={question => onChange(question ? question.id : undefined)}
+    onChange={(question) => onChange(question ? question.id : undefined)}
     models={["card"]}
   />
 );

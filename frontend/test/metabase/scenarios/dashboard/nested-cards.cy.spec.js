@@ -5,19 +5,13 @@ describe("scenarios > dashboard > nested cards", () => {
   beforeEach(signIn);
 
   it("should show fields on nested cards", () => {
-    createDashboardWithNestedCard(dashId => {
+    createDashboardWithNestedCard((dashId) => {
       cy.visit(`/dashboard/${dashId}`);
       cy.get(".Icon-pencil").click();
       cy.get(".Icon-funnel_add").click();
-      popover()
-        .contains("Time")
-        .click();
-      popover()
-        .contains("All Options")
-        .click();
-      cy.get(".DashCard")
-        .contains("Select")
-        .click();
+      popover().contains("Time").click();
+      popover().contains("All Options").click();
+      cy.get(".DashCard").contains("Select").click();
       popover().contains("CREATED_AT");
     });
   });

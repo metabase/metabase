@@ -54,12 +54,13 @@ export function computeNumericDataInverval(xValues) {
 // logTickFormat(chart.xAxis())
 export function logTickFormat(axis) {
   const superscript = "⁰¹²³⁴⁵⁶⁷⁸⁹";
-  const formatPower = d =>
+  const formatPower = (d) =>
     (d + "")
       .split("")
-      .map(c => superscript[c])
+      .map((c) => superscript[c])
       .join("");
-  const formatTick = d => 10 + formatPower(Math.round(Math.log(d) / Math.LN10));
+  const formatTick = (d) =>
+    10 + formatPower(Math.round(Math.log(d) / Math.LN10));
   axis.tickFormat(formatTick);
 }
 

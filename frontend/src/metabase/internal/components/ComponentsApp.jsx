@@ -87,7 +87,7 @@ export default class ComponentsApp extends Component {
                   component.propTypes && (
                     <Section title="Props">
                       <div className="border-left border-right border-bottom text-code">
-                        {Object.keys(component.propTypes).map(prop => (
+                        {Object.keys(component.propTypes).map((prop) => (
                           <div>
                             {prop}{" "}
                             {component.defaultProps &&

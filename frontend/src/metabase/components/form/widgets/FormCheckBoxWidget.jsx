@@ -7,7 +7,7 @@ import { formDomOnlyProps } from "metabase/lib/redux";
 const FormCheckBoxWidget = ({ field }) => (
   <CheckBox
     {...formDomOnlyProps(field)}
-    onChange={e => field.onChange(e.target.checked)}
+    onChange={(e) => field.onChange(e.target.checked)}
   />
 );
 

@@ -61,9 +61,7 @@ describe("scenarios > question > new", () => {
       // go straight to "orders" in custom questions
       cy.visit("/question/new?database=1&table=2&mode=notebook");
       cy.findByText("Summarize").click();
-      popover()
-        .contains("Custom Expression")
-        .click();
+      popover().contains("Custom Expression").click();
       popover().within(() => {
         cy.get("[contentEditable=true]").type("2 * Max([Total])");
         cy.findByPlaceholderText("Name (required)").type("twice max total");

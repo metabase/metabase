@@ -4,7 +4,7 @@
 ace.define(
   "ace/theme/metabase",
   ["require", "exports", "module", "ace/lib/dom"],
-  function(require, exports, module) {
+  function (require, exports, module) {
     exports.isDark = false;
     exports.cssClass = "ace-metabase";
     exports.cssText =

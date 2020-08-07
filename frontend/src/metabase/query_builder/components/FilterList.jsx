@@ -17,7 +17,7 @@ type Props = {
   filterRenderer?: FilterRenderer,
 };
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   metadata: getMetadata(state),
 });
 

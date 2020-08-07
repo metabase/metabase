@@ -43,7 +43,7 @@ class CollectionMoveModal extends React.Component {
       <ModalContent title={this.props.title} onClose={this.props.onClose}>
         <CollectionPicker
           value={selectedCollectionId}
-          onChange={selectedCollectionId =>
+          onChange={(selectedCollectionId) =>
             this.setState({ selectedCollectionId })
           }
         />

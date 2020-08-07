@@ -45,10 +45,7 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class MetricRevisions extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
@@ -78,7 +75,7 @@ export default class MetricRevisions extends Component {
     const userColorAssignments =
       user && Object.keys(revisions).length > 0
         ? assignUserColors(
-            Object.values(revisions).map(revision =>
+            Object.values(revisions).map((revision) =>
               getIn(revision, ["user", "id"]),
             ),
             user.id,
@@ -100,7 +97,7 @@ export default class MetricRevisions extends Component {
               <div className="wrapper wrapper--trim">
                 <div className={R.revisionsWrapper}>
                   {Object.values(revisions)
-                    .map(revision =>
+                    .map((revision) =>
                       revision && revision.diff ? (
                         <Revision
                           key={revision.id}

@@ -101,10 +101,7 @@ export function setupLocalHostEmail() {
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
 export function typeAndBlurUsingLabel(label, value) {
-  cy.findByLabelText(label)
-    .clear()
-    .type(value)
-    .blur();
+  cy.findByLabelText(label).clear().type(value).blur();
 }
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
@@ -129,7 +126,7 @@ export function withSampleDataset(f) {
 }
 
 export function visitAlias(alias) {
-  cy.get(alias).then(url => {
+  cy.get(alias).then((url) => {
     cy.visit(url);
   });
 }

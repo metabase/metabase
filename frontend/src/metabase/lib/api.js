@@ -38,7 +38,7 @@ const DEFAULT_OPTIONS: Options = {
   json: true,
   hasBody: false,
   noEvent: false,
-  transformResponse: o => o,
+  transformResponse: (o) => o,
   raw: {},
   headers: {},
   retry: false,
@@ -46,7 +46,7 @@ const DEFAULT_OPTIONS: Options = {
   // Creates an array with exponential backoff in millis
   // i.e. [1000, 2000, 4000, 8000...]
   retryDelayIntervals: Array.from(new Array(MAX_RETRIES).keys())
-    .map(x => ONE_SECOND * Math.pow(2, x))
+    .map((x) => ONE_SECOND * Math.pow(2, x))
     .reverse(),
 };
 

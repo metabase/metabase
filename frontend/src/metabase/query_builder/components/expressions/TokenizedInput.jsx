@@ -56,23 +56,23 @@ export default class TokenizedInput extends Component {
       false,
     );
   }
-  onSelectionChange = e => {
+  onSelectionChange = (e) => {
     ReactDOM.findDOMNode(this).selectionStart = getCaretPosition(
       ReactDOM.findDOMNode(this),
     );
   };
-  onClick = e => {
+  onClick = (e) => {
     this._isTyping = false;
     return this.props.onClick(e);
   };
-  onInput = e => {
+  onInput = (e) => {
     this._setValue(e.target.textContent);
   };
 
-  onKeyDownNormal = e => {
+  onKeyDownNormal = (e) => {
     this.props.onKeyDown(e);
   };
-  onKeyDownTokenized = e => {
+  onKeyDownTokenized = (e) => {
     // isTyping signals whether the user is typing characters (keyCode >= 65) vs. deleting / navigating with arrows / clicking to select
     const isTyping = this._isTyping;
     // also keep isTyping same when deleting

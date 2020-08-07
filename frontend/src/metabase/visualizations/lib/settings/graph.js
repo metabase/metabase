@@ -184,7 +184,7 @@ export const GRAPH_BUBBLE_SETTINGS = {
           isNumeric,
         ),
       ),
-    getDefault: series => getDefaultColumns(series).bubble,
+    getDefault: (series) => getDefaultColumns(series).bubble,
     getProps: ([{ card, data }], vizSettings, onChange) => {
       const options = data.cols.filter(isNumeric).map(getOptionFromColumn);
       return {
@@ -227,8 +227,10 @@ export const STACKABLE_SETTINGS = {
     },
     isValid: (series, settings) => {
       if (settings["stackable.stack_type"] != null) {
-        const displays = series.map(single => settings.series(single).display);
-        const hasStackable = _.any(displays, display =>
+        const displays = series.map(
+          (single) => settings.series(single).display,
+        );
+        const hasStackable = _.any(displays, (display) =>
           STACKABLE_DISPLAY_TYPES.has(display),
         );
         return hasStackable;
@@ -242,8 +244,10 @@ export const STACKABLE_SETTINGS = {
         ? "stacked"
         : null,
     getHidden: (series, settings) => {
-      const displays = series.map(single => settings.series(single).display);
-      return !_.any(displays, display => STACKABLE_DISPLAY_TYPES.has(display));
+      const displays = series.map((single) => settings.series(single).display);
+      return !_.any(displays, (display) =>
+        STACKABLE_DISPLAY_TYPES.has(display),
+      );
     },
     readDependencies: ["graph.metrics", "series"],
   },
@@ -258,8 +262,8 @@ export const STACKABLE_SETTINGS = {
       ],
     },
     getDefault: (series, settings) => {
-      const displays = series.map(single => settings.series(single).display);
-      const firstStackable = _.find(displays, display =>
+      const displays = series.map((single) => settings.series(single).display);
+      const firstStackable = _.find(displays, (display) =>
         STACKABLE_DISPLAY_TYPES.has(display),
       );
       if (firstStackable) {
@@ -368,7 +372,7 @@ export const GRAPH_AXIS_SETTINGS = {
         data,
         _.findIndex(
           data.cols,
-          c => c.name === vizSettings["graph.dimensions"].filter(d => d)[0],
+          (c) => c.name === vizSettings["graph.dimensions"].filter((d) => d)[0],
         ),
       ),
   },
@@ -379,7 +383,7 @@ export const GRAPH_AXIS_SETTINGS = {
         data,
         _.findIndex(
           data.cols,
-          c => c.name === vizSettings["graph.dimensions"].filter(d => d)[0],
+          (c) => c.name === vizSettings["graph.dimensions"].filter((d) => d)[0],
         ),
       ),
   },
@@ -522,7 +526,7 @@ export const GRAPH_AXIS_SETTINGS = {
     title: t`Use a split y-axis when necessary`,
     widget: "toggle",
     default: true,
-    getHidden: series => series.length < 2,
+    getHidden: (series) => series.length < 2,
   },
   "graph.x_axis.labels_enabled": {
     section: t`Labels`,
@@ -561,7 +565,7 @@ export const GRAPH_AXIS_SETTINGS = {
       const metricNames = Array.from(
         new Set(
           series.map(({ data: { cols } }) => {
-            const metricCol = cols.find(c => c.name === metric);
+            const metricCol = cols.find((c) => c.name === metric);
             return metricCol && metricCol.display_name;
           }),
         ),

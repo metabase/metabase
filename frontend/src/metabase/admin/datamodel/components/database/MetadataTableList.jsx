@@ -14,16 +14,13 @@ import cx from "classnames";
 import { regexpEscape } from "metabase/lib/string";
 import { color } from "metabase/lib/colors";
 
-@connect(
-  null,
-  {
-    setVisibilityForTables: (tables, visibility_type) =>
-      Tables.actions.bulkUpdate({
-        ids: tables.map(t => t.id),
-        visibility_type,
-      }),
-  },
-)
+@connect(null, {
+  setVisibilityForTables: (tables, visibility_type) =>
+    Tables.actions.bulkUpdate({
+      ids: tables.map((t) => t.id),
+      visibility_type,
+    }),
+})
 export default class MetadataTableList extends Component {
   constructor(props, context) {
     super(props, context);
@@ -55,11 +52,11 @@ export default class MetadataTableList extends Component {
     const regex = this.state.searchRegex;
     const [hiddenTables, queryableTables] = _.chain(this.props.tables)
       .filter(
-        table =>
+        (table) =>
           !regex || regex.test(table.display_name) || regex.test(table.name),
       )
       .sortBy("display_name")
-      .partition(table => table.visibility_type != null)
+      .partition((table) => table.visibility_type != null)
       .value();
     return { hiddenTables, queryableTables };
   }
@@ -73,7 +70,7 @@ export default class MetadataTableList extends Component {
     if (queryableTables.length > 0) {
       queryableTablesHeader = (
         <li className="AdminList-section">
-          {(n =>
+          {((n) =>
             ngettext(msgid`${n} Queryable Table`, `${n} Queryable Tables`, n))(
             queryableTables.length,
           )}
@@ -88,7 +85,7 @@ export default class MetadataTableList extends Component {
     if (hiddenTables.length > 0) {
       hiddenTablesHeader = (
         <li className="AdminList-section">
-          {(n => ngettext(msgid`${n} Hidden Table`, `${n} Hidden Tables`, n))(
+          {((n) => ngettext(msgid`${n} Hidden Table`, `${n} Hidden Tables`, n))(
             hiddenTables.length,
           )}
           <ToggleHiddenButton
@@ -137,7 +134,7 @@ export default class MetadataTableList extends Component {
 
         <ul className="AdminList-items">
           {queryableTablesHeader}
-          {queryableTables.map(table => (
+          {queryableTables.map((table) => (
             <TableRow
               table={table}
               selected={tableId === table.id}
@@ -146,7 +143,7 @@ export default class MetadataTableList extends Component {
             />
           ))}
           {hiddenTablesHeader}
-          {hiddenTables.map(table => (
+          {hiddenTables.map((table) => (
             <TableRow
               table={table}
               selected={tableId === table.id}
@@ -193,7 +190,7 @@ function ToggleHiddenButton({ setVisibilityForTables, tables, isHidden }) {
   return (
     <Icon
       name={isHidden ? "eye" : "eye_crossed_out"}
-      onClick={e => {
+      onClick={(e) => {
         e.stopPropagation();
         setVisibilityForTables(tables, isHidden ? null : "hidden");
       }}

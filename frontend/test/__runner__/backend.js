@@ -127,10 +127,10 @@ function createSharedResource(
   resourceName,
   {
     defaultOptions,
-    getKey = options => JSON.stringify(options),
-    create = options => ({}),
-    start = resource => {},
-    stop = resource => {},
+    getKey = (options) => JSON.stringify(options),
+    create = (options) => ({}),
+    start = (resource) => {},
+    stop = (resource) => {},
   },
 ) {
   const entriesByKey = new Map();
@@ -140,7 +140,7 @@ function createSharedResource(
     if (entriesByKey.has(entry.key)) {
       entriesByKey.delete(entry.key);
       entriesByResource.delete(entry.resource);
-      const p = stop(entry.resource).then(null, err =>
+      const p = stop(entry.resource).then(null, (err) =>
         console.log("Error stopping resource", resourceName, entry.key, err),
       );
       return p;

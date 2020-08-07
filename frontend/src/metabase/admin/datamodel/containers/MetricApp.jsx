@@ -22,7 +22,7 @@ const mapStateToProps = (state, props) => ({
 
 @Metrics.load({ id: (state, props) => parseInt(props.params.id) })
 class UpdateMetricForm extends Component {
-  onSubmit = async metric => {
+  onSubmit = async (metric) => {
     await this.props.updateMetric(metric);
     MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
     this.props.onChangeLocation(`/admin/datamodel/metrics`);
@@ -41,7 +41,7 @@ class UpdateMetricForm extends Component {
 }
 
 class CreateMetricForm extends Component {
-  onSubmit = async metric => {
+  onSubmit = async (metric) => {
     await this.props.createMetric({
       ...metric,
       table_id: metric.definition["source-table"],
@@ -55,10 +55,7 @@ class CreateMetricForm extends Component {
   }
 }
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class MetricApp extends Component {
   render() {
     return this.props.params.id ? (

@@ -92,7 +92,7 @@ function formatFunction([fn, ...args], options) {
     args = args.slice(0, -1);
   }
   const formattedName = getExpressionName(fn);
-  const formattedArgs = args.map(arg => format(arg, options));
+  const formattedArgs = args.map((arg) => format(arg, options));
   return args.length === 0
     ? formattedName
     : `${formattedName}(${formattedArgs.join(", ")})`;
@@ -104,7 +104,7 @@ function formatOperator([op, ...args], options) {
     args = args.slice(0, -1);
   }
   const formattedOperator = getExpressionName(op) || op;
-  const formattedArgs = args.map(arg => {
+  const formattedArgs = args.map((arg) => {
     const isLowerPrecedence =
       isOperator(arg) && OPERATOR_PRECEDENCE[op] > OPERATOR_PRECEDENCE[arg[0]];
     return format(arg, { ...options, parens: isLowerPrecedence });

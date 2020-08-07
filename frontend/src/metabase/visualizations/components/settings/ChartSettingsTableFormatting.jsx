@@ -53,7 +53,10 @@ import { color, desaturated } from "metabase/lib/colors";
 
 const COLORS = Object.values(desaturated);
 const COLOR_RANGES = [].concat(
-  ...COLORS.map(color => [["white", color], [color, "white"]]),
+  ...COLORS.map((color) => [
+    ["white", color],
+    [color, "white"],
+  ]),
   [
     [color("error"), "white", color("success")],
     [color("success"), "white", color("error")],
@@ -83,7 +86,7 @@ const DEFAULTS_BY_TYPE = {
 };
 
 // predicate for columns that can be formatted
-export const isFormattable = field => isNumeric(field) || isString(field);
+export const isFormattable = (field) => isNumeric(field) || isString(field);
 
 const INPUT_CLASSNAME = "AdminSelect input mt1 full";
 
@@ -101,7 +104,7 @@ export default class ChartSettingsTableFormatting extends React.Component {
           rule={value[editingRule]}
           cols={cols}
           isNew={editingRuleIsNew}
-          onChange={rule =>
+          onChange={(rule) =>
             onChange([
               ...value.slice(0, editingRule),
               rule,
@@ -125,7 +128,7 @@ export default class ChartSettingsTableFormatting extends React.Component {
         <RuleListing
           rules={value}
           cols={cols}
-          onEdit={index => {
+          onEdit={(index) => {
             this.setState({ editingRule: index, editingRuleIsNew: false });
           }}
           onAdd={() => {
@@ -139,7 +142,7 @@ export default class ChartSettingsTableFormatting extends React.Component {
             ]);
             this.setState({ editingRule: 0, editingRuleIsNew: true });
           }}
-          onRemove={index => {
+          onRemove={(index) => {
             onChange([...value.slice(0, index), ...value.slice(index + 1)]);
             MetabaseAnalytics.trackEvent(
               "Chart Settings",
@@ -232,7 +235,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
           {rule.columns.length > 0 ? (
             rule.columns
               .map(
-                name =>
+                (name) =>
                   (_.findWhere(cols, { name }) || {}).display_name || name,
               )
               .join(", ")
@@ -245,7 +248,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         <Icon
           name="close"
           className="cursor-pointer text-light text-medium-hover"
-          onClick={e => {
+          onClick={(e) => {
             e.stopPropagation();
             onRemove();
           }}
@@ -299,7 +302,9 @@ const RuleDescription = ({ rule }) => (
 );
 
 const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
-  const selectedColumns = rule.columns.map(name => _.findWhere(cols, { name }));
+  const selectedColumns = rule.columns.map((name) =>
+    _.findWhere(cols, { name }),
+  );
   const isStringRule =
     selectedColumns.length > 0 && _.all(selectedColumns, isString);
   const isNumericRule =
@@ -313,12 +318,12 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
       <h3 className="mb1">{t`Which columns should be affected?`}</h3>
       <Select
         value={rule.columns}
-        onChange={e => onChange({ ...rule, columns: e.target.value })}
+        onChange={(e) => onChange({ ...rule, columns: e.target.value })}
         isInitiallyOpen={rule.columns.length === 0}
         placeholder="Choose a column"
         multiple
       >
-        {cols.map(col => (
+        {cols.map((col) => (
           <Option
             value={col.name}
             disabled={
@@ -339,7 +344,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
               { name: t`Single color`, value: "single" },
               { name: t`Color range`, value: "range" },
             ]}
-            onChange={type =>
+            onChange={(type) =>
               onChange({ ...DEFAULTS_BY_TYPE[type], ...rule, type })
             }
             vertical
@@ -351,7 +356,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
           <h3 className="mt3 mb1">{t`When a cell in this column…`}</h3>
           <Select
             value={rule.operator}
-            onChange={e => onChange({ ...rule, operator: e.target.value })}
+            onChange={(e) => onChange({ ...rule, operator: e.target.value })}
           >
             {Object.entries(
               isNumericRule ? NUMBER_OPERATOR_NAMES : STRING_OPERATOR_NAMES,
@@ -364,25 +369,25 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
               className={INPUT_CLASSNAME}
               type="number"
               value={rule.value}
-              onChange={value => onChange({ ...rule, value })}
+              onChange={(value) => onChange({ ...rule, value })}
             />
           ) : hasOperand ? (
             <input
               className={INPUT_CLASSNAME}
               value={rule.value}
-              onChange={e => onChange({ ...rule, value: e.target.value })}
+              onChange={(e) => onChange({ ...rule, value: e.target.value })}
             />
           ) : null}
           <h3 className="mt3 mb1">{t`…turn its background this color:`}</h3>
           <ColorPicker
             value={rule.color}
             colors={COLORS}
-            onChange={color => onChange({ ...rule, color })}
+            onChange={(color) => onChange({ ...rule, color })}
           />
           <h3 className="mt3 mb1">{t`Highlight the whole row`}</h3>
           <Toggle
             value={rule.highlight_row}
-            onChange={highlight_row => onChange({ ...rule, highlight_row })}
+            onChange={(highlight_row) => onChange({ ...rule, highlight_row })}
           />
         </div>
       ) : rule.type === "range" ? (
@@ -390,7 +395,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
           <h3 className="mt3 mb1">{t`Colors`}</h3>
           <ColorRangePicker
             value={rule.colors}
-            onChange={colors => {
+            onChange={(colors) => {
               MetabaseAnalytics.trackEvent(
                 "Chart Settings",
                 "Table Formatting",
@@ -404,7 +409,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
           <h3 className="mt3 mb1">{t`Start the range at`}</h3>
           <Radio
             value={rule.min_type}
-            onChange={min_type => onChange({ ...rule, min_type })}
+            onChange={(min_type) => onChange({ ...rule, min_type })}
             options={(rule.columns.length <= 1
               ? [{ name: t`Smallest value in this column`, value: null }]
               : [
@@ -422,13 +427,13 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
               className={INPUT_CLASSNAME}
               type="number"
               value={rule.min_value}
-              onChange={min_value => onChange({ ...rule, min_value })}
+              onChange={(min_value) => onChange({ ...rule, min_value })}
             />
           )}
           <h3 className="mt3 mb1">{t`End the range at`}</h3>
           <Radio
             value={rule.max_type}
-            onChange={max_type => onChange({ ...rule, max_type })}
+            onChange={(max_type) => onChange({ ...rule, max_type })}
             options={(rule.columns.length <= 1
               ? [{ name: t`Largest value in this column`, value: null }]
               : [
@@ -446,7 +451,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
               className={INPUT_CLASSNAME}
               type="number"
               value={rule.max_value}
-              onChange={max_value => onChange({ ...rule, max_value })}
+              onChange={(max_value) => onChange({ ...rule, max_value })}
             />
           )}
         </div>

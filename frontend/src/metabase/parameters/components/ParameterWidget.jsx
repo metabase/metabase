@@ -49,7 +49,7 @@ export default class ParameterWidget extends Component {
     );
   }
 
-  focusChanged = isFocused => {
+  focusChanged = (isFocused) => {
     this.setState({ isFocused });
   };
 
@@ -88,7 +88,7 @@ export default class ParameterWidget extends Component {
         >
           {this.renderPopover(
             parameter.value,
-            value => setValue(value),
+            (value) => setValue(value),
             parameter.name,
             isFullscreen,
           )}
@@ -109,11 +109,13 @@ export default class ParameterWidget extends Component {
             className={cx(S.nameInput, {
               "border-error": _.any(
                 parameters,
-                p => p.name === parameter.name && p.id !== parameter.id,
+                (p) => p.name === parameter.name && p.id !== parameter.id,
               ),
             })}
             value={this.state.editingNameValue}
-            onChange={e => this.setState({ editingNameValue: e.target.value })}
+            onChange={(e) =>
+              this.setState({ editingNameValue: e.target.value })
+            }
             onBlur={() => {
               setName(this.state.editingNameValue);
               this.setState({
@@ -121,7 +123,7 @@ export default class ParameterWidget extends Component {
                 editingNameValue: undefined,
               });
             }}
-            onKeyUp={e => {
+            onKeyUp={(e) => {
               if (e.keyCode === KEYCODE_ESCAPE || e.keyCode === KEYCODE_ENTER) {
                 e.target.blur();
               }
@@ -164,7 +166,7 @@ export default class ParameterWidget extends Component {
         >
           {this.renderPopover(
             parameter.default,
-            value => setDefaultValue(value),
+            (value) => setDefaultValue(value),
             parameter.name,
             isFullscreen,
           )}

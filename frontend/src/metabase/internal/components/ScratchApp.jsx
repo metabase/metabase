@@ -24,7 +24,7 @@ export default class ScratchApp extends React.Component {
     };
   }
 
-  handleChange = code => {
+  handleChange = (code) => {
     this.setState({ code });
     history.replaceState({}, null, "/_internal/scratch#" + btoa(code));
   };
@@ -86,7 +86,7 @@ export default class ScratchApp extends React.Component {
     return (
       <div className="flex-full flex flex-column">
         <div
-          ref={r => (this._container = r)}
+          ref={(r) => (this._container = r)}
           className={cx("flex-full relative", {
             "flex layout-centered": centered,
           })}
@@ -106,7 +106,7 @@ export default class ScratchApp extends React.Component {
           <span className="mr1">Centered:</span>
           <CheckBox
             checked={centered}
-            onChange={e => this.setState({ centered: !centered })}
+            onChange={(e) => this.setState({ centered: !centered })}
           />
         </div>
       </div>

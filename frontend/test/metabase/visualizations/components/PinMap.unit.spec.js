@@ -4,8 +4,13 @@ describe("PinMap", () => {
   it("should filter out rows with null values", () => {
     const onUpdateWarnings = jest.fn();
     const data = {
-      cols: ["lat", "lng", "metric"].map(name => ({ name })),
-      rows: [[null, 0, 0], [0, null, 0], [0, 0, null], [0, 0, 0]],
+      cols: ["lat", "lng", "metric"].map((name) => ({ name })),
+      rows: [
+        [null, 0, 0],
+        [0, null, 0],
+        [0, 0, null],
+        [0, 0, 0],
+      ],
     };
     const props = {
       settings: {

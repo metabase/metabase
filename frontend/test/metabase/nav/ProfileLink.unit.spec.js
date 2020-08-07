@@ -13,7 +13,7 @@ describe("ProfileLink", () => {
           wrapper
             .instance()
             .generateOptionsForUser()
-            .map(o => o.title),
+            .map((o) => o.title),
         ).toEqual([
           "Account settings",
           "Activity",
@@ -32,7 +32,7 @@ describe("ProfileLink", () => {
           wrapper
             .instance()
             .generateOptionsForUser()
-            .map(o => o.title),
+            .map((o) => o.title),
         ).toEqual([
           "Account settings",
           "Admin",

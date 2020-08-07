@@ -8,7 +8,7 @@ export function getField(table, fieldId) {
     if (table.fields_lookup) {
       return table.fields_lookup[fieldId];
     } else {
-      return _.find(table.fields, field => _.isEqual(field.id, fieldId));
+      return _.find(table.fields, (field) => _.isEqual(field.id, fieldId));
     }
   }
 }

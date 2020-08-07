@@ -25,7 +25,7 @@ export default class DimensionOptions {
   }
 
   all(): Dimension {
-    return [].concat(this.dimensions, ...this.fks.map(fk => fk.dimensions));
+    return [].concat(this.dimensions, ...this.fks.map((fk) => fk.dimensions));
   }
 
   hasDimension(dimension: Dimension): boolean {
@@ -44,14 +44,14 @@ export default class DimensionOptions {
       icon: this.icon || "table2",
       items: [
         ...extraItems,
-        ...this.dimensions.map(dimension => ({ dimension })),
+        ...this.dimensions.map((dimension) => ({ dimension })),
       ],
     };
 
-    const fkSections = this.fks.map(fk => ({
+    const fkSections = this.fks.map((fk) => ({
       name: fk.name || (fk.field && fk.field.targetObjectName()),
       icon: fk.icon || "connections",
-      items: fk.dimensions.map(dimension => ({ dimension })),
+      items: fk.dimensions.map((dimension) => ({ dimension })),
     }));
 
     const sections = [];

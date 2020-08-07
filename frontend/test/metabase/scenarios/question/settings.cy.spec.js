@@ -55,9 +55,7 @@ describe("scenarios > question > settings", () => {
       cy.get(".Visualization .TableInteractive").as("table");
       cy.get("@table").contains("Product → Category");
       cy.get("@table").contains("Product → Ean");
-      cy.get("@table")
-        .contains("Total")
-        .should("not.exist");
+      cy.get("@table").contains("Total").should("not.exist");
     });
   });
 
@@ -67,9 +65,7 @@ describe("scenarios > question > settings", () => {
       openOrdersTable();
 
       cy.contains("Save").click();
-      cy.get(".ModalContent")
-        .contains("button", "Save")
-        .click();
+      cy.get(".ModalContent").contains("button", "Save").click();
       cy.contains("Yes please!").click();
       cy.contains("Orders in a dashboard").click();
 

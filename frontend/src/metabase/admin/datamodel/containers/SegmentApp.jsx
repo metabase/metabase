@@ -22,7 +22,7 @@ const mapStateToProps = (state, props) => ({
 
 @Segments.load({ id: (state, props) => parseInt(props.params.id) })
 class UpdateSegmentForm extends Component {
-  onSubmit = async segment => {
+  onSubmit = async (segment) => {
     await this.props.updateSegment(segment);
     MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
     this.props.onChangeLocation(`/admin/datamodel/segments`);
@@ -41,7 +41,7 @@ class UpdateSegmentForm extends Component {
 }
 
 class CreateSegmentForm extends Component {
-  onSubmit = async segment => {
+  onSubmit = async (segment) => {
     await this.props.createSegment({
       ...segment,
       table_id: segment.definition["source-table"],
@@ -55,10 +55,7 @@ class CreateSegmentForm extends Component {
   }
 }
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class SegmentApp extends Component {
   render() {
     return this.props.params.id ? (

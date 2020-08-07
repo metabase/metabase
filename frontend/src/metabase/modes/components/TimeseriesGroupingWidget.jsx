@@ -48,12 +48,12 @@ export default class TimeseriesGroupingWidget extends Component {
             </SelectButton>
           }
           triggerClasses="my2"
-          ref={ref => (this._popover = ref)}
+          ref={(ref) => (this._popover = ref)}
         >
           <TimeGroupingPopover
             className="text-brand"
             field={breakouts[0]}
-            onFieldChange={breakout => {
+            onFieldChange={(breakout) => {
               let query = Card.getQuery(card);
               if (query) {
                 query = Query.updateBreakout(query, 0, breakout);

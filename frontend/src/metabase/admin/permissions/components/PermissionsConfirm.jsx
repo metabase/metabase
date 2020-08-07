@@ -12,14 +12,14 @@ const DatabaseName = ({ database }) => (
 );
 
 const TableAccessChange = ({ tables, verb, color }) => {
-  const tableNames = Object.values(tables).map(t => t.name);
+  const tableNames = Object.values(tables).map((t) => t.name);
   return (
     <span>
       {verb}
       <Tooltip
         tooltip={
           <div className="p1">
-            {tableNames.map(name => (
+            {tableNames.map((name) => (
               <div>{name}</div>
             ))}
           </div>
@@ -28,7 +28,7 @@ const TableAccessChange = ({ tables, verb, color }) => {
         <span>
           <span className={color}>
             {" " +
-              (n => ngettext(msgid`${n} table`, `${n} tables`, n))(
+              ((n) => ngettext(msgid`${n} table`, `${n} tables`, n))(
                 tableNames.length,
               )}
           </span>
@@ -40,8 +40,8 @@ const TableAccessChange = ({ tables, verb, color }) => {
 
 const PermissionsConfirm = ({ diff }) => (
   <div>
-    {Object.values(diff.groups).map(group =>
-      Object.values(group.databases).map(database => (
+    {Object.values(diff.groups).map((group) =>
+      Object.values(group.databases).map((database) => (
         <div>
           {(database.grantedTables || database.revokedTables) && (
             <div>

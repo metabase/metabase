@@ -10,7 +10,7 @@ import Link from "metabase/components/Link";
 
 import { fetchJobInfo } from "../jobInfo";
 
-const renderSchedulerInfo = scheduler => {
+const renderSchedulerInfo = (scheduler) => {
   return (
     scheduler && (
       <Flex align="center">
@@ -20,7 +20,7 @@ const renderSchedulerInfo = scheduler => {
   );
 };
 
-const renderJobsTable = jobs => {
+const renderJobsTable = (jobs) => {
   return (
     jobs && (
       <table className="ContentTable mt2">
@@ -34,7 +34,7 @@ const renderJobsTable = jobs => {
         </thead>
         <tbody>
           {jobs &&
-            jobs.map(job => (
+            jobs.map((job) => (
               <tr key={job.key}>
                 <td className="text-bold">{job.key}</td>
                 <td>{job.class}</td>
@@ -56,10 +56,7 @@ const renderJobsTable = jobs => {
   );
 };
 
-@connect(
-  null,
-  { fetchJobInfo },
-)
+@connect(null, { fetchJobInfo })
 export default class JobInfoApp extends React.Component {
   async componentDidMount() {
     try {

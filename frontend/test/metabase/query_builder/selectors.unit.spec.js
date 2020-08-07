@@ -8,7 +8,7 @@ import { state as sampleState } from "__support__/sample_dataset_fixture";
 describe("getIsResultDirty", () => {
   describe("structure query", () => {
     function getState(q1, q2) {
-      const card = query => ({
+      const card = (query) => ({
         dataset_query: { database: 1, type: "query", query },
       });
       const qb = { lastRunCard: card(q1), card: card(q2) };
@@ -35,8 +35,20 @@ describe("getIsResultDirty", () => {
 
     it("should not be dirty if the fields were reordered", () => {
       const state = getState(
-        { "source-table": 1, fields: [["field-id", 1], ["field-id", 2]] },
-        { "source-table": 1, fields: [["field-id", 2], ["field-id", 1]] },
+        {
+          "source-table": 1,
+          fields: [
+            ["field-id", 1],
+            ["field-id", 2],
+          ],
+        },
+        {
+          "source-table": 1,
+          fields: [
+            ["field-id", 2],
+            ["field-id", 1],
+          ],
+        },
       );
       expect(getIsResultDirty(state)).toBe(false);
     });
@@ -45,11 +57,17 @@ describe("getIsResultDirty", () => {
       const state = getState(
         {
           "source-table": 1,
-          fields: [["fk->", ["field-id", 1], ["field-id", 2]], ["field-id", 1]],
+          fields: [
+            ["fk->", ["field-id", 1], ["field-id", 2]],
+            ["field-id", 1],
+          ],
         },
         {
           "source-table": 1,
-          fields: [["field-id", 1], ["fk->", ["field-id", 1], ["field-id", 2]]],
+          fields: [
+            ["field-id", 1],
+            ["fk->", ["field-id", 1], ["field-id", 2]],
+          ],
         },
       );
       expect(getIsResultDirty(state)).toBe(false);
@@ -76,7 +94,7 @@ describe("getIsResultDirty", () => {
   });
   describe("native query", () => {
     function getState(q1, q2) {
-      const card = native => ({
+      const card = (native) => ({
         dataset_query: { database: 1, type: "query", native },
       });
       const qb = { lastRunCard: card(q1), card: card(q2) };

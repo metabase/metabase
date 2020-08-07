@@ -104,7 +104,7 @@ export default class Table extends Component {
         ],
         settings,
       ) => {
-        const col = _.min(cols.filter(isDimension), col =>
+        const col = _.min(cols.filter(isDimension), (col) =>
           getColumnCardinality(cols, rows, cols.indexOf(col)),
         );
         return col && col.name;
@@ -130,7 +130,7 @@ export default class Table extends Component {
       getDefault: ([{ data }], { "table.pivot_column": pivotCol }) => {
         // We try to show numeric values in pivot cells, but if none are
         // available, we fall back to the last column in the unpivoted table
-        const nonPivotCols = data.cols.filter(c => c.name !== pivotCol);
+        const nonPivotCols = data.cols.filter((c) => c.name !== pivotCol);
         const lastCol = nonPivotCols[nonPivotCols.length - 1];
         const { name } = nonPivotCols.find(isMetric) || lastCol || {};
         return name;
@@ -168,7 +168,7 @@ export default class Table extends Component {
       isValid: ([{ card, data }]) =>
         _.all(
           card.visualization_settings["table.columns"],
-          columnSetting =>
+          (columnSetting) =>
             findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
         ),
       getDefault: ([
@@ -176,7 +176,7 @@ export default class Table extends Component {
           data: { cols },
         },
       ]) =>
-        cols.map(col => ({
+        cols.map((col) => ({
           name: col.name,
           fieldRef: col.field_ref,
           enabled: col.visibility_type !== "details-only",
@@ -230,12 +230,12 @@ export default class Table extends Component {
     },
   };
 
-  static columnSettings = column => {
+  static columnSettings = (column) => {
     const settings: SettingDefs = {
       column_title: {
         title: t`Column title`,
         widget: "input",
-        getDefault: column => formatColumn(column),
+        getDefault: (column) => formatColumn(column),
       },
     };
     if (isNumber(column)) {
@@ -325,11 +325,11 @@ export default class Table extends Component {
     if (settings["table.pivot"]) {
       const pivotIndex = _.findIndex(
         data.cols,
-        col => col.name === settings["table.pivot_column"],
+        (col) => col.name === settings["table.pivot_column"],
       );
       const cellIndex = _.findIndex(
         data.cols,
-        col => col.name === settings["table.cell_column"],
+        (col) => col.name === settings["table.cell_column"],
       );
       const normalIndex = _.findIndex(
         data.cols,
@@ -348,16 +348,16 @@ export default class Table extends Component {
       const { cols, rows } = data;
       const columnSettings = settings["table.columns"];
       const columnIndexes = columnSettings
-        .filter(columnSetting => columnSetting.enabled)
-        .map(columnSetting =>
+        .filter((columnSetting) => columnSetting.enabled)
+        .map((columnSetting) =>
           findColumnIndexForColumnSetting(cols, columnSetting),
         )
-        .filter(columnIndex => columnIndex >= 0 && columnIndex < cols.length);
+        .filter((columnIndex) => columnIndex >= 0 && columnIndex < cols.length);
 
       this.setState({
         data: {
-          cols: columnIndexes.map(i => cols[i]),
-          rows: rows.map(row => columnIndexes.map(i => row[i])),
+          cols: columnIndexes.map((i) => cols[i]),
+          rows: rows.map((row) => columnIndexes.map((i) => row[i])),
         },
       });
     }
@@ -392,7 +392,7 @@ export default class Table extends Component {
     const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
     const isPivoted = settings["table.pivot"];
     const isColumnsDisabled =
-      (settings["table.columns"] || []).filter(f => f.enabled).length < 1;
+      (settings["table.columns"] || []).filter((f) => f.enabled).length < 1;
     const TableComponent = isDashboard ? TableSimple : TableInteractive;
 
     if (!data) {

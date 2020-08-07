@@ -58,7 +58,7 @@ export default class Calendar extends Component {
     }
   }
 
-  onClickDay = date => {
+  onClickDay = (date) => {
     const { selected, selectedEnd, isRangePicker } = this.props;
     if (!isRangePicker || !selected || selectedEnd) {
       this.props.onChange(date.format("YYYY-MM-DD"), null);
@@ -112,7 +112,7 @@ export default class Calendar extends Component {
     const names = [t`Su`, t`Mo`, t`Tu`, t`We`, t`Th`, t`Fr`, t`Sa`];
     return (
       <div className="Calendar-day-names Calendar-week py1">
-        {names.map(name => (
+        {names.map((name) => (
           <span key={name} className="Calendar-day-name text-centered">
             {name}
           </span>
@@ -123,9 +123,7 @@ export default class Calendar extends Component {
 
   renderWeeks(current) {
     const weeks = [];
-    const date = moment(current)
-      .startOf("month")
-      .day("Sunday");
+    const date = moment(current).startOf("month").day("Sunday");
     let done = false;
     let monthIndex = date.month();
     let count = 0;

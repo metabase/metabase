@@ -25,49 +25,48 @@ import Databases from "metabase/entities/databases";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
 
-export const getUiControls = state => state.qb.uiControls;
+export const getUiControls = (state) => state.qb.uiControls;
 
-export const getIsShowingTemplateTagsEditor = state =>
+export const getIsShowingTemplateTagsEditor = (state) =>
   getUiControls(state).isShowingTemplateTagsEditor;
-export const getIsShowingSnippetSidebar = state =>
+export const getIsShowingSnippetSidebar = (state) =>
   getUiControls(state).isShowingSnippetSidebar;
-export const getIsShowingDataReference = state =>
+export const getIsShowingDataReference = (state) =>
   getUiControls(state).isShowingDataReference;
-export const getIsShowingRawTable = state =>
+export const getIsShowingRawTable = (state) =>
   getUiControls(state).isShowingRawTable;
-export const getIsEditing = state => getUiControls(state).isEditing;
-export const getIsRunning = state => getUiControls(state).isRunning;
+export const getIsEditing = (state) => getUiControls(state).isEditing;
+export const getIsRunning = (state) => getUiControls(state).isRunning;
 
-export const getCard = state => state.qb.card;
-export const getOriginalCard = state => state.qb.originalCard;
-export const getLastRunCard = state => state.qb.lastRunCard;
+export const getCard = (state) => state.qb.card;
+export const getOriginalCard = (state) => state.qb.originalCard;
+export const getLastRunCard = (state) => state.qb.lastRunCard;
 
-export const getParameterValues = state => state.qb.parameterValues;
-export const getQueryResults = state => state.qb.queryResults;
-export const getFirstQueryResult = state =>
+export const getParameterValues = (state) => state.qb.parameterValues;
+export const getQueryResults = (state) => state.qb.queryResults;
+export const getFirstQueryResult = (state) =>
   state.qb.queryResults && state.qb.queryResults[0];
 
 // get instance settings, used for determining whether to display certain actions
-export const getSettings = state => state.settings.values;
+export const getSettings = (state) => state.settings.values;
 
-export const getIsNew = state => state.qb.card && !state.qb.card.id;
+export const getIsNew = (state) => state.qb.card && !state.qb.card.id;
 
-export const getQueryStartTime = state => state.qb.queryStartTime;
+export const getQueryStartTime = (state) => state.qb.queryStartTime;
 
 export const getDatabaseId = createSelector(
   [getCard],
-  card => card && card.dataset_query && card.dataset_query.database,
+  (card) => card && card.dataset_query && card.dataset_query.database,
 );
 
-export const getTableId = createSelector(
-  [getCard],
-  card => getIn(card, ["dataset_query", "query", "source-table"]),
+export const getTableId = createSelector([getCard], (card) =>
+  getIn(card, ["dataset_query", "query", "source-table"]),
 );
 
-export const getTableForeignKeyReferences = state =>
+export const getTableForeignKeyReferences = (state) =>
   state.qb.tableForeignKeyReferences;
 
-export const getDatabasesList = state =>
+export const getDatabasesList = (state) =>
   Databases.selectors.getList(state, {
     entityQuery: { include: "tables", saved: true },
   }) || [];
@@ -88,8 +87,8 @@ export const getTables = createSelector(
 
 export const getNativeDatabases = createSelector(
   [getDatabasesList],
-  databases =>
-    databases && databases.filter(db => db.native_permissions === "write"),
+  (databases) =>
+    databases && databases.filter((db) => db.native_permissions === "write"),
 );
 
 export const getTableMetadata = createSelector(
@@ -99,19 +98,19 @@ export const getTableMetadata = createSelector(
 
 export const getTableForeignKeys = createSelector(
   [getTableMetadata],
-  table => table && table.fks,
+  (table) => table && table.fks,
 );
 
 export const getSampleDatasetId = createSelector(
   [getDatabasesList],
-  databases => {
+  (databases) => {
     const sampleDataset = _.findWhere(databases, { is_sample: true });
     return sampleDataset && sampleDataset.id;
   },
 );
 
 export const getDatabaseFields = createSelector(
-  [getDatabaseId, state => state.qb.databaseFields],
+  [getDatabaseId, (state) => state.qb.databaseFields],
   (databaseId, databaseFields) => [], // FIXME!
 );
 
@@ -122,16 +121,16 @@ export const getParameters = createSelector(
 
 const getLastRunDatasetQuery = createSelector(
   [getLastRunCard],
-  card => card && card.dataset_query,
+  (card) => card && card.dataset_query,
 );
 const getNextRunDatasetQuery = createSelector(
   [getCard],
-  card => card && card.dataset_query,
+  (card) => card && card.dataset_query,
 );
 
 const getLastRunParameters = createSelector(
   [getFirstQueryResult],
-  queryResult =>
+  (queryResult) =>
     (queryResult &&
       queryResult.json_query &&
       queryResult.json_query.parameters) ||
@@ -139,12 +138,14 @@ const getLastRunParameters = createSelector(
 );
 const getLastRunParameterValues = createSelector(
   [getLastRunParameters],
-  parameters => parameters.map(parameter => parameter.value),
+  (parameters) => parameters.map((parameter) => parameter.value),
 );
 const getNextRunParameterValues = createSelector(
   [getParameters],
-  parameters =>
-    parameters.map(parameter => parameter.value).filter(p => p !== undefined),
+  (parameters) =>
+    parameters
+      .map((parameter) => parameter.value)
+      .filter((p) => p !== undefined),
 );
 
 // Certain differences in a query should be ignored. `normalizeQuery`
@@ -154,7 +155,7 @@ function normalizeQuery(query, tableMetadata) {
     return query;
   }
   if (query.query && tableMetadata) {
-    query = updateIn(query, ["query", "fields"], fields => {
+    query = updateIn(query, ["query", "fields"], (fields) => {
       fields = fields
         ? // if the query has fields, copy them before sorting
           [...fields]
@@ -216,12 +217,12 @@ export const getOriginalQuestion = createSelector(
 
 export const getMode = createSelector(
   [getLastRunQuestion],
-  question => question && question.mode(),
+  (question) => question && question.mode(),
 );
 
 export const getIsObjectDetail = createSelector(
   [getMode],
-  mode => mode && mode.name() === "object",
+  (mode) => mode && mode.name() === "object",
 );
 
 export const getIsDirty = createSelector(
@@ -232,24 +233,24 @@ export const getIsDirty = createSelector(
 
 export const getQuery = createSelector(
   [getQuestion],
-  question => question && question.query(),
+  (question) => question && question.query(),
 );
 
 export const getIsRunnable = createSelector(
   [getQuestion],
-  question => question && question.canRun(),
+  (question) => question && question.canRun(),
 );
 
 export const getQuestionAlerts = createSelector(
   [getAlerts, getCard],
   (alerts, card) =>
-    (card && card.id && _.pick(alerts, alert => alert.card.id === card.id)) ||
+    (card && card.id && _.pick(alerts, (alert) => alert.card.id === card.id)) ||
     {},
 );
 
 export const getResultsMetadata = createSelector(
   [getFirstQueryResult],
-  result => result && result.data && result.data.results_metadata,
+  (result) => result && result.data && result.data.results_metadata,
 );
 
 /**
@@ -299,7 +300,7 @@ export const getRawSeries = createSelector(
 
 const _getVisualizationTransformed = createSelector(
   [getRawSeries],
-  rawSeries =>
+  (rawSeries) =>
     rawSeries && getVisualizationTransformed(extractRemappings(rawSeries)),
 );
 
@@ -309,12 +310,12 @@ const _getVisualizationTransformed = createSelector(
  */
 export const getTransformedSeries = createSelector(
   [_getVisualizationTransformed],
-  transformed => transformed && transformed.series,
+  (transformed) => transformed && transformed.series,
 );
 
 export const getTransformedVisualization = createSelector(
   [_getVisualizationTransformed],
-  transformed => transformed && transformed.visualization,
+  (transformed) => transformed && transformed.visualization,
 );
 
 /**
@@ -322,12 +323,12 @@ export const getTransformedVisualization = createSelector(
  */
 export const getVisualizationSettings = createSelector(
   [getTransformedSeries],
-  series => series && getComputedSettingsForSeries(series),
+  (series) => series && getComputedSettingsForSeries(series),
 );
 
 export const getQueryBuilderMode = createSelector(
   [getUiControls],
-  uiControls => uiControls.queryBuilderMode,
+  (uiControls) => uiControls.queryBuilderMode,
 );
 
 /**
@@ -335,7 +336,7 @@ export const getQueryBuilderMode = createSelector(
  */
 export const getIsNative = createSelector(
   [getQuestion],
-  question => question && question.query() instanceof NativeQuery,
+  (question) => question && question.query() instanceof NativeQuery,
 );
 
 /**
@@ -348,7 +349,7 @@ export const getIsNativeEditorOpen = createSelector(
 
 const getNativeEditorSelectedRange = createSelector(
   [getUiControls],
-  uiControls => uiControls && uiControls.nativeEditorSelectedRange,
+  (uiControls) => uiControls && uiControls.nativeEditorSelectedRange,
 );
 
 function getOffsetForQueryAndPosition(queryText, { row, column }) {
@@ -390,12 +391,12 @@ export const getNativeEditorSelectedText = createSelector(
 
 export const getModalSnippet = createSelector(
   [getUiControls],
-  uiControls => uiControls && uiControls.modalSnippet,
+  (uiControls) => uiControls && uiControls.modalSnippet,
 );
 
 export const getSnippetCollectionId = createSelector(
   [getUiControls],
-  uiControls => uiControls && uiControls.snippetCollectionId,
+  (uiControls) => uiControls && uiControls.snippetCollectionId,
 );
 
 /**
@@ -427,7 +428,7 @@ export const getIsVisualized = createSelector(
     // table is the default
     (question.display() !== "table" ||
       // any "table." settings has been explcitly set
-      Object.keys(question.settings()).some(k => k.startsWith("table.")) ||
+      Object.keys(question.settings()).some((k) => k.startsWith("table.")) ||
       // "table.pivot" setting has been implicitly set to true
       (settings && settings["table.pivot"])),
 );

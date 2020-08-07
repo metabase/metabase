@@ -23,7 +23,7 @@ class SchemaPane extends Component {
         </div>
 
         <ul>
-          {tables.map(table => (
+          {tables.map((table) => (
             <li key={table.id}>
               <a
                 className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"

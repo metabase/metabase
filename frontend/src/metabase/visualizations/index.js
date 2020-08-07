@@ -8,7 +8,7 @@ import type { Series } from "metabase-types/types/Visualization";
 const visualizations = new Map();
 const aliases = new Map();
 // $FlowFixMe
-visualizations.get = function(key) {
+visualizations.get = function (key) {
   return (
     Map.prototype.get.call(this, key) ||
     aliases.get(key) ||
@@ -63,7 +63,7 @@ export function getVisualizationRaw(series: Series) {
 
 export function getVisualizationTransformed(series: Series) {
   // don't transform if we don't have the data
-  if (_.any(series, s => s.data == null)) {
+  if (_.any(series, (s) => s.data == null)) {
     return getVisualizationRaw(series);
   }
 
@@ -93,8 +93,8 @@ export function getIconForVisualizationType(display) {
   return viz && viz.iconName;
 }
 
-export const extractRemappings = series => {
-  const se = series.map(s => ({
+export const extractRemappings = (series) => {
+  const se = series.map((s) => ({
     ...s,
     data: s.data && extractRemappedColumns(s.data),
   }));
@@ -102,12 +102,12 @@ export const extractRemappings = series => {
 };
 
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
-const extractRemappedColumns = data => {
-  const cols = data.cols.map(col => ({
+const extractRemappedColumns = (data) => {
+  const cols = data.cols.map((col) => ({
     ...col,
     remapped_from_index:
       col.remapped_from &&
-      _.findIndex(data.cols, c => c.name === col.remapped_from),
+      _.findIndex(data.cols, (c) => c.name === col.remapped_from),
     remapping: col.remapped_to && new Map(),
   }));
 
@@ -136,7 +136,7 @@ const extractRemappedColumns = data => {
   return {
     ...data,
     rows,
-    cols: cols.filter(col => col.remapped_from == null),
+    cols: cols.filter((col) => col.remapped_from == null),
   };
 };
 

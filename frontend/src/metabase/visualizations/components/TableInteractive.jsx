@@ -74,7 +74,7 @@ type Props = VisualizationProps & {
   renderTableCellWrapper: any,
   renderTableHeaderWrapper: any,
   tableHeaderHeight: number,
-  getColumnTitle: number => string,
+  getColumnTitle: (number) => string,
   data: any,
 };
 type State = {
@@ -140,10 +140,10 @@ export default class TableInteractive extends Component {
 
   static defaultProps = {
     isPivoted: false,
-    renderTableHeaderWrapper: children => (
+    renderTableHeaderWrapper: (children) => (
       <div className="cellData">{children}</div>
     ),
-    renderTableCellWrapper: children => (
+    renderTableCellWrapper: (children) => (
       <div className="cellData">{children}</div>
     ),
   };
@@ -185,7 +185,9 @@ export default class TableInteractive extends Component {
   }
 
   _getColumnSettings(props: Props) {
-    return props.data && props.data.cols.map(col => props.settings.column(col));
+    return (
+      props.data && props.data.cols.map((col) => props.settings.column(col))
+    );
   }
 
   shouldComponentUpdate(nextProps: Props, nextState: State) {
@@ -241,7 +243,7 @@ export default class TableInteractive extends Component {
               key: "header",
               style: {},
             })}
-            {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
+            {pickRowsToMeasure(rows, columnIndex).map((rowIndex) =>
               this.cellRenderer({
                 rowIndex,
                 columnIndex,
@@ -256,7 +258,7 @@ export default class TableInteractive extends Component {
       () => {
         const contentWidths = [].map.call(
           this._div.getElementsByClassName("fake-column"),
-          columnElement => columnElement.offsetWidth,
+          (columnElement) => columnElement.offsetWidth,
         );
 
         const columnWidths: number[] = cols.map((col, index) => {
@@ -500,7 +502,7 @@ export default class TableInteractive extends Component {
         })}
         onMouseUp={
           isClickable
-            ? e => {
+            ? (e) => {
                 this.onVisualizationClick(clicked, e.currentTarget);
               }
             : undefined
@@ -516,13 +518,13 @@ export default class TableInteractive extends Component {
     if (dragColStyle) {
       if (data.x < 0) {
         const left = dragColStyle.left + data.x;
-        const index = _.findIndex(columnPositions, p => left < p.center);
+        const index = _.findIndex(columnPositions, (p) => left < p.center);
         if (index >= 0) {
           return index;
         }
       } else if (data.x > 0) {
         const right = dragColStyle.left + dragColStyle.width + data.x;
-        const index = _.findLastIndex(columnPositions, p => right > p.center);
+        const index = _.findLastIndex(columnPositions, (p) => right > p.center);
         if (index >= 0) {
           return index;
         }
@@ -553,14 +555,14 @@ export default class TableInteractive extends Component {
     // $FlowFixMe
     indexes.splice(dragColNewIndex, 0, indexes.splice(dragColIndex, 1)[0]);
     let left = 0;
-    const lefts = indexes.map(index => {
+    const lefts = indexes.map((index) => {
       const thisLeft = left;
       // $FlowFixMe: we know columnPositions[index] isn't null because onDrag is called after onStart
       left += columnPositions[index].width;
       return { index, left: thisLeft };
     });
     lefts.sort((a, b) => a.index - b.index);
-    return lefts.map(p => p.left);
+    return lefts.map((p) => p.left);
   }
 
   getColumnLeft(style: any, index: number) {
@@ -597,7 +599,7 @@ export default class TableInteractive extends Component {
     const fieldRef = fieldRefForColumn(column);
     const sortIndex = _.findIndex(
       sort,
-      sort => sort[1] && Dimension.isEqual(sort[1], fieldRef),
+      (sort) => sort[1] && Dimension.isEqual(sort[1], fieldRef),
     );
     const isSorted = sortIndex >= 0;
     const isAscending = isSorted && sort[sortIndex][0] === "asc";
@@ -650,7 +652,7 @@ export default class TableInteractive extends Component {
         }}
       >
         <div
-          ref={e => (this.headerRefs[columnIndex] = e)}
+          ref={(e) => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,
             overflow: "visible" /* ensure resize handle is visible */,
@@ -674,7 +676,7 @@ export default class TableInteractive extends Component {
           onClick={
             // only use the onClick if not draggable since it's also handled in Draggable's onStop
             isClickable && !isDraggable
-              ? e => {
+              ? (e) => {
                   this.onVisualizationClick(clicked, e.currentTarget);
                 }
               : undefined
@@ -705,7 +707,7 @@ export default class TableInteractive extends Component {
             axis="x"
             bounds={{ left: RESIZE_HANDLE_WIDTH }}
             position={{ x: this.getColumnWidth({ index: columnIndex }), y: 0 }}
-            onStart={e => {
+            onStart={(e) => {
               e.stopPropagation();
               this.setState({ dragColIndex: columnIndex });
             }}
@@ -790,7 +792,7 @@ export default class TableInteractive extends Component {
               height={height}
             />
             <Grid
-              ref={ref => (this.header = ref)}
+              ref={(ref) => (this.header = ref)}
               style={{
                 top: 0,
                 left: 0,
@@ -806,10 +808,10 @@ export default class TableInteractive extends Component {
               rowHeight={headerHeight}
               // HACK: there might be a better way to do this, but add a phantom padding cell at the end to ensure scroll stays synced if main content scrollbars are visible
               columnCount={cols.length + 1}
-              columnWidth={props =>
+              columnWidth={(props) =>
                 props.index < cols.length ? this.getColumnWidth(props) : 50
               }
-              cellRenderer={props =>
+              cellRenderer={(props) =>
                 props.columnIndex < cols.length
                   ? this.tableHeaderRenderer(props)
                   : null
@@ -819,7 +821,7 @@ export default class TableInteractive extends Component {
               tabIndex={null}
             />
             <Grid
-              ref={ref => (this.grid = ref)}
+              ref={(ref) => (this.grid = ref)}
               style={{
                 top: headerHeight,
                 left: 0,

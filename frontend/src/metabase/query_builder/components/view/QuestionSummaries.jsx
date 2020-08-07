@@ -10,11 +10,11 @@ import SummarizeSidebar from "./sidebars/SummarizeSidebar";
 
 import { color } from "metabase/lib/colors";
 
-const SummarizePill = props => (
+const SummarizePill = (props) => (
   <ViewPill icon="insight" color={color("accent1")} {...props} />
 );
 
-const SummarizeButton = props => (
+const SummarizeButton = (props) => (
   <ViewButton
     medium
     icon="insight"
@@ -66,10 +66,7 @@ QuestionSummaries.shouldRender = ({ question, queryBuilderMode }) =>
   queryBuilderMode === "view" &&
   question &&
   question.isStructured() &&
-  question
-    .query()
-    .topLevelQuery()
-    .hasAggregations() &&
+  question.query().topLevelQuery().hasAggregations() &&
   !question.isObjectDetail();
 
 QuestionSummarizeWidget.shouldRender = ({ question, queryBuilderMode }) =>

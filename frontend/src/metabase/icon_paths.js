@@ -419,7 +419,7 @@ export function parseViewBox(viewBox: string): Array<number> {
   // we cast to numbers so we can do math-y stuff with the width and height
   return viewBox
     .split(" ")
-    .map(v => Number(v))
+    .map((v) => Number(v))
     .slice(2, 4);
 }
 

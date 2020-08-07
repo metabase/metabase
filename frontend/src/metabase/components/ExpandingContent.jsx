@@ -54,7 +54,7 @@ class ExpandingContent extends Component {
       : "none";
     return (
       <div
-        ref={ref => (this._ref = ref)}
+        ref={(ref) => (this._ref = ref)}
         style={{
           transition: `all ${duration}ms ease`,
           maxHeight: !animateHeight || isOpen ? maxHeight : 0,

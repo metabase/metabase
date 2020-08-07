@@ -9,7 +9,7 @@ export default function ChartSettingInputGroup({ value: values, onChange }) {
       key={i}
       className="input block full mb1"
       value={str}
-      onBlurChange={e => {
+      onBlurChange={(e) => {
         const newStr = e.target.value.trim();
         if (!newStr || !newStr.length) {
           return;

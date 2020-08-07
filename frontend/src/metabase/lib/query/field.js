@@ -11,7 +11,7 @@ import { add, update, remove, clear } from "./util";
 
 // returns canonical list of Fields, with nulls removed
 export function getFields(fields: ?FieldsClause): FieldReference[] {
-  return (fields || []).filter(b => b != null);
+  return (fields || []).filter((b) => b != null);
 }
 
 // turns a list of Fields into the canonical FieldClause
@@ -56,7 +56,7 @@ export function getFieldValues(field: ?Field): FieldValues {
       return values;
     } else {
       // console.warn("deprecated field values array!", values);
-      return values.map(value => [value]);
+      return values.map((value) => [value]);
     }
   } else if (values && Array.isArray(values.values)) {
     // console.warn("deprecated field values object!", values);

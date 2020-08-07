@@ -61,12 +61,12 @@ const ColumnSettings = ({
     storedSettings,
     computedSettings,
     column,
-    changedSettings => {
+    (changedSettings) => {
       onChange({ ...storedSettings, ...changedSettings });
     },
     { series },
   ).filter(
-    widget =>
+    (widget) =>
       (!whitelist || whitelist.has(widget.id)) &&
       (!blacklist || !blacklist.has(widget.id)),
   );
@@ -74,7 +74,7 @@ const ColumnSettings = ({
   return (
     <div style={{ maxWidth: 300 }}>
       {widgets.length > 0 ? (
-        widgets.map(widget => (
+        widgets.map((widget) => (
           <ChartSettingsWidget
             key={widget.id}
             {...widget}

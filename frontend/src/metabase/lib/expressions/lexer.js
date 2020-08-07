@@ -175,7 +175,7 @@ export const RParen = createToken({
 
 // QUOTED STRINGS
 
-const getQuoteCategories = character => {
+const getQuoteCategories = (character) => {
   return EDITOR_QUOTES.characters[character] === "literal"
     ? [StringLiteral]
     : EDITOR_QUOTES.characters[character] === "identifier"
@@ -292,18 +292,18 @@ export const lexerWithRecovery = new Lexer([
   Any,
 ]);
 
-const tokensByIdx = new Map(allTokens.map(t => [t.tokenTypeIdx, t]));
+const tokensByIdx = new Map(allTokens.map((t) => [t.tokenTypeIdx, t]));
 
 export const isTokenType = memoize(
   (child, ancestor) => {
     return (
       child === ancestor ||
-      child.CATEGORIES.some(token => isTokenType(token, ancestor))
+      child.CATEGORIES.some((token) => isTokenType(token, ancestor))
     );
   },
   (child, ancestor) => `${child.tokenTypeIdx},${ancestor.tokenTypeIdx}`,
 );
 
 export function getSubTokenTypes(TokenClass) {
-  return TokenClass.categoryMatches.map(idx => tokensByIdx.get(idx));
+  return TokenClass.categoryMatches.map((idx) => tokensByIdx.get(idx));
 }

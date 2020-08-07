@@ -119,7 +119,7 @@ const ViewFooter = ({
               className="mx1"
               question={question}
               isShowingRawTable={isShowingRawTable}
-              onShowTable={isShowingRawTable => {
+              onShowTable={(isShowingRawTable) => {
                 setUIControls({ isShowingRawTable });
               }}
             />
@@ -219,8 +219,9 @@ Well.defaultProps = {
 
 const ToggleIcon = styled(Flex)`
   cursor: pointer;
-  background-color: ${props => (props.active ? color("brand") : "transparent")};
-  color: ${props => (props.active ? "white" : "inherit")};
+  background-color: ${(props) =>
+    props.active ? color("brand") : "transparent"};
+  color: ${(props) => (props.active ? "white" : "inherit")};
   border-radius: 99px;
 `;
 

@@ -10,7 +10,7 @@ import {
   metadata,
 } from "__support__/sample_dataset_fixture";
 
-const getTimeseriesFilterWidget = question => (
+const getTimeseriesFilterWidget = (question) => (
   <TimeseriesFilterWidget
     card={question.card()}
     datasetQuery={question.query().datasetQuery()}

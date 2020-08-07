@@ -35,12 +35,14 @@ export default createEntity({
               Object.keys(unsupported).join(", "),
           );
         }
-        return (await collectionList({
-          collection,
-          archived,
-          model,
-          namespace,
-        })).map(item => ({
+        return (
+          await collectionList({
+            collection,
+            archived,
+            model,
+            namespace,
+          })
+        ).map((item) => ({
           collection_id: canonicalCollectionId(collection),
           archived: archived || false,
           ...item,

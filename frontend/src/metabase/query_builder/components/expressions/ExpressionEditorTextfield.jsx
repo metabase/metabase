@@ -152,7 +152,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     this.setState({ highlightedSuggestion: index }, this.onSuggestionAccepted);
   };
 
-  onInputKeyDown = e => {
+  onInputKeyDown = (e) => {
     const { suggestions, highlightedSuggestion } = this.state;
 
     if (e.keyCode === KEYCODE_LEFT || e.keyCode === KEYCODE_RIGHT) {
@@ -311,10 +311,10 @@ export default class ExpressionEditorTextfield extends React.Component {
           value={source}
           syntaxTree={syntaxTree}
           parserOptions={this._getParserOptions()}
-          onChange={e => this.onExpressionChange(e.target.value)}
+          onChange={(e) => this.onExpressionChange(e.target.value)}
           onKeyDown={this.onInputKeyDown}
           onBlur={this.onInputBlur}
-          onFocus={e => this._triggerAutosuggest()}
+          onFocus={(e) => this._triggerAutosuggest()}
           onClick={this.onInputClick}
           autoFocus
         />
@@ -376,7 +376,7 @@ export default class ExpressionEditorTextfield extends React.Component {
                     </li>
                   ),
                   <li
-                    ref={r => {
+                    ref={(r) => {
                       if (i === this.state.highlightedSuggestion) {
                         this._selectedRow = r;
                       }
@@ -389,7 +389,7 @@ export default class ExpressionEditorTextfield extends React.Component {
                           i === this.state.highlightedSuggestion,
                       },
                     )}
-                    onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
+                    onMouseDownCapture={(e) => this.onSuggestionMouseDown(e, i)}
                   >
                     {suggestion.range ? (
                       <span>

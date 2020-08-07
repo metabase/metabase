@@ -33,9 +33,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.contains("Metrics").click();
       cy.contains("New metric").click();
       cy.contains("Select a table").click();
-      popover()
-        .contains("Orders")
-        .click({ force: true }); // this shouldn't be needed, but there were issues with reordering as loads happeend
+      popover().contains("Orders").click({ force: true }); // this shouldn't be needed, but there were issues with reordering as loads happeend
 
       cy.url().should("match", /metric\/create$/);
       cy.contains("Create Your Metric");
@@ -46,9 +44,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.contains("Equal to").click();
       cy.contains("Less than").click();
       cy.get('[placeholder="Enter a number"]').type("100");
-      popover()
-        .contains("Add filter")
-        .click();
+      popover().contains("Add filter").click();
 
       //
       cy.contains("Result: 12765");
@@ -79,9 +75,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
     it("should see a newly asked question in its questions list", () => {
       // Ask a new qustion
       cy.visit("/reference/metrics/1/questions");
-      cy.get(".full")
-        .find(".Button")
-        .click();
+      cy.get(".full").find(".Button").click();
       cy.findByText("Filter").click();
       cy.findByText("Total").click();
       cy.findByText("Equal to").click();
@@ -89,9 +83,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.findByPlaceholderText("Enter a number").type("50");
       cy.findByText("Add filter").click();
       cy.findByText("Save").click();
-      cy.findAllByText("Save")
-        .last()
-        .click();
+      cy.findAllByText("Save").last().click();
       cy.findByText("Not now").click();
 
       // Check the list
@@ -123,26 +115,16 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.url().should("match", /metric\/1$/);
       cy.contains("Edit Your Metric");
       cy.contains(/Total\s+is less than/).click();
-      popover()
-        .contains("Less than")
-        .click();
-      popover()
-        .contains("Greater than")
-        .click();
-      popover()
-        .find("input")
-        .type("{SelectAll}10");
-      popover()
-        .contains("Update filter")
-        .click();
+      popover().contains("Less than").click();
+      popover().contains("Greater than").click();
+      popover().find("input").type("{SelectAll}10");
+      popover().contains("Update filter").click();
 
       // confirm that the preview updated
       cy.contains("Result: 18703");
 
       // update name and description, set a revision note, and save the update
-      cy.get('[name="name"]')
-        .clear()
-        .type("orders >10");
+      cy.get('[name="name"]').clear().type("orders >10");
       cy.get('[name="description"]')
         .clear()
         .type("Count of orders with a total over $10.");
@@ -160,12 +142,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
         .find(".Icon-ellipsis")
         .click();
       cy.contains("Retire Metric").click();
-      modal()
-        .find("textarea")
-        .type("delete it");
-      modal()
-        .contains("button", "Retire")
-        .click();
+      modal().find("textarea").type("delete it");
+      modal().contains("button", "Retire").click();
     });
   });
 });

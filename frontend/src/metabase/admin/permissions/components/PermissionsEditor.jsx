@@ -94,7 +94,7 @@ PermissionsEditor.defaultProps = {
 };
 
 function getEntityAndGroupIdFromLocation({ query = {} } = {}) {
-  query = _.mapObject(query, value =>
+  query = _.mapObject(query, (value) =>
     isNaN(value) ? value : parseFloat(value),
   );
   const entityId = _.omit(query, "groupId");

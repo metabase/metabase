@@ -39,7 +39,7 @@ import { getIn } from "icepick";
 
 const DATABASE_FORM_NAME = "database";
 
-const getLetUserControlScheduling = database =>
+const getLetUserControlScheduling = (database) =>
   getIn(database, ["details", "let-user-control-scheduling"]);
 
 const mapStateToProps = (state, props) => ({
@@ -79,10 +79,7 @@ const TABS: TabOption[] = [
   },
 ];
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @title(({ database }) => database && database.name)
 export default class DatabaseEditApp extends Component {
   state: {
@@ -156,7 +153,7 @@ export default class DatabaseEditApp extends Component {
                   <Radio
                     value={currentTab}
                     options={TABS}
-                    onChange={currentTab => this.setState({ currentTab })}
+                    onChange={(currentTab) => this.setState({ currentTab })}
                     underlined
                   />
                 </div>

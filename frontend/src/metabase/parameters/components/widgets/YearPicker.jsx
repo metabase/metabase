@@ -10,8 +10,8 @@ const YearPicker = ({ value, onChange }) => (
     className="borderless"
     value={value}
     options={YEARS}
-    optionNameFn={option => option}
-    optionValueFn={option => option}
+    optionNameFn={(option) => option}
+    optionValueFn={(option) => option}
     onChange={({ target: { value } }) => onChange(value)}
   />
 );

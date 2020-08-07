@@ -17,10 +17,7 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = { fetchRevisions };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class RevisionHistoryApp extends Component {
   componentWillMount() {
     const { id, objectType } = this.props;

@@ -537,7 +537,7 @@ export default class Activity extends Component {
                 </div>
               ) : (
                 <ul className="pb4 relative">
-                  {activity.map(item => (
+                  {activity.map((item) => (
                     <li key={item.id} className="mt3">
                       <ActivityItem
                         item={item}

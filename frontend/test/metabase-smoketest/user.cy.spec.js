@@ -38,16 +38,10 @@ describe("smoketest > user", () => {
   it("should filter via both the header and notebook editor", () => {
     // Sorting by header
 
-    cy.wait(1000)
-      .get(".Icon-table2")
-      .click();
-    cy.get(".cellData")
-      .eq(2)
-      .findByText("Durable Wool Toucan");
+    cy.wait(1000).get(".Icon-table2").click();
+    cy.get(".cellData").eq(2).findByText("Durable Wool Toucan");
 
-    cy.findAllByText("Average of Rating")
-      .last()
-      .click();
+    cy.findAllByText("Average of Rating").last().click();
     cy.findByText("Ascending").click();
 
     cy.get(".TableInteractive-cellWrapper--firstColumn")
@@ -57,14 +51,10 @@ describe("smoketest > user", () => {
     // Sorting by notebook editor
 
     cy.get(".Icon-notebook").click();
-    cy.get(".Icon-close")
-      .last()
-      .click();
+    cy.get(".Icon-close").last().click();
 
     cy.findByText("Sort").click();
-    cy.findAllByText("Title")
-      .last()
-      .click();
+    cy.findAllByText("Title").last().click();
     cy.findByText("Visualize").click();
 
     cy.get(".TableInteractive-cellWrapper--firstColumn")
@@ -77,12 +67,8 @@ describe("smoketest > user", () => {
   it("should filter via the sidebar, header, and notebook editor", () => {
     // Sidebar filter
 
-    cy.wait(1000)
-      .findByText("Visualize")
-      .should("not.exist");
-    cy.findAllByText("Filter")
-      .first()
-      .click();
+    cy.wait(1000).findByText("Visualize").should("not.exist");
+    cy.findAllByText("Filter").first().click();
     cy.findByText("Category").click();
     cy.findByText("Is");
     cy.findByText("Gadget").click();
@@ -98,9 +84,7 @@ describe("smoketest > user", () => {
     // Notebook editor filter
 
     cy.get(".Icon-notebook").click();
-    cy.wait(1000)
-      .get(".Icon-filter")
-      .click();
+    cy.wait(1000).get(".Icon-filter").click();
     cy.get(".Icon-int").click();
     cy.findByText("Equal to").click();
     cy.findByText("Greater than or equal to").click();
@@ -124,28 +108,20 @@ describe("smoketest > user", () => {
 
     // Header filter
 
-    cy.get(".TableInteractive-cellWrapper--lastColumn")
-      .eq(1)
-      .contains("0");
+    cy.get(".TableInteractive-cellWrapper--lastColumn").eq(1).contains("0");
 
     cy.findAllByText("Average of Rating").click();
-    cy.get(".Icon-funnel_outline")
-      .closest("div")
-      .click();
+    cy.get(".Icon-funnel_outline").closest("div").click();
     cy.findByText("Equal to").click();
     cy.findByText("Greater than or equal to").click();
     cy.get("input[placeholder='Enter a number']").type("4");
     cy.findByText("Update filter").click();
 
-    cy.get(".TableInteractive-cellWrapper--lastColumn")
-      .eq(1)
-      .contains("4");
+    cy.get(".TableInteractive-cellWrapper--lastColumn").eq(1).contains("4");
 
     // Can minimize Filter dispay in header
 
-    cy.get(".Icon-filter")
-      .first()
-      .click();
+    cy.get(".Icon-filter").first().click();
 
     cy.findByText("Vendor is not empty").should("not.exist");
   });
@@ -153,26 +129,18 @@ describe("smoketest > user", () => {
   it("should summarize via both the sidebar and notebook editor", () => {
     // Sidebar summary
 
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
+    cy.findAllByText("Summarize").first().click();
     cy.findByText("Category").click();
     cy.findByText("Done").click();
 
     // Delete summary from sidebar
 
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
-    cy.get(".Icon-close")
-      .first()
-      .click();
+    cy.findAllByText("Summarize").first().click();
+    cy.get(".Icon-close").first().click();
     cy.findByText("Done").click();
 
     cy.findByText("Average of Rating by Category").should("not.exist");
-    cy.get("span")
-      .findByText("Group")
-      .should("not.exist");
+    cy.get("span").findByText("Group").should("not.exist");
 
     // Notebook editor summary
 
@@ -192,15 +160,11 @@ describe("smoketest > user", () => {
     cy.get(".Icon-notebook").click();
 
     // Delete last summary
-    cy.findAllByText("Count")
-      .first()
-      .click(70, 20);
+    cy.findAllByText("Count").first().click(70, 20);
 
     // Switch table from Product to Orders
 
-    cy.findAllByText("Products")
-      .last()
-      .click();
+    cy.findAllByText("Products").last().click();
     cy.findByText("Orders").click();
 
     // Create custom column
@@ -208,9 +172,7 @@ describe("smoketest > user", () => {
     cy.findByText("Product → Price").click();
     cy.findByText("-").click();
     cy.findByText("Subtotal").click();
-    cy.get(".PopoverBody")
-      .first()
-      .click();
+    cy.get(".PopoverBody").first().click();
     cy.get("input[placeholder='Something nice and descriptive']").type(
       "Demo Column",
     );
@@ -252,22 +214,16 @@ describe("smoketest > user", () => {
     // Can view the SQL query
 
     cy.get(".Icon-notebook", { timeout: 20000 }).click();
-    cy.get(".Icon-sql")
-      .last()
-      .click();
+    cy.get(".Icon-sql").last().click();
 
     cy.contains('SELECT "source"."ID"');
-    cy.get(".Icon-close")
-      .last()
-      .click();
+    cy.get(".Icon-close").last().click();
   });
 
   it("should be able to do header actions", () => {
     // Reset question
 
-    cy.findAllByText("Orders")
-      .first()
-      .click();
+    cy.findAllByText("Orders").first().click();
     cy.findByText("Products").click();
 
     // Distinctions
@@ -280,9 +236,7 @@ describe("smoketest > user", () => {
     cy.findByText("4");
     cy.findByText("3").should("not.exist");
 
-    cy.get(".Icon-close")
-      .last()
-      .click();
+    cy.get(".Icon-close").last().click();
 
     // Distributing
 
@@ -298,22 +252,15 @@ describe("smoketest > user", () => {
 
     // Refresh works
 
-    cy.get(".Icon-refresh")
-      .first()
-      .click();
+    cy.get(".Icon-refresh").first().click();
     // *** check that refresh has happened
     cy.findByText("Sample Dataset");
   });
 
   it("should ensuring that header actions are appropriate for different data types", () => {
     // *** Currently Longitude is an integer while zip codes and dates are strings in terms of header options
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
-    sidebar()
-      .find(".Icon-close")
-      .first()
-      .click();
+    cy.findAllByText("Summarize").first().click();
+    sidebar().find(".Icon-close").first().click();
     cy.findByText("Done").click();
 
     // ID column
@@ -329,9 +276,7 @@ describe("smoketest > user", () => {
 
     // String column
 
-    cy.findAllByText("Title")
-      .last()
-      .click();
+    cy.findAllByText("Title").last().click();
 
     cy.findByText("Ascending");
     cy.findByText("Descending");
@@ -339,15 +284,11 @@ describe("smoketest > user", () => {
     cy.findByText("Distribution");
     cy.get(".Icon-funnel_outline");
     cy.findByText("Formatting");
-    cy.get(".PopoverBody")
-      .findByText("Sum")
-      .should("not.exist");
+    cy.get(".PopoverBody").findByText("Sum").should("not.exist");
 
     // Integer column
 
-    cy.findAllByText("Price")
-      .last()
-      .click();
+    cy.findAllByText("Price").last().click();
 
     cy.findByText("Ascending");
     cy.findByText("Descending");
@@ -363,9 +304,7 @@ describe("smoketest > user", () => {
     // Longitude column (first switch to people table)
 
     cy.get(".Icon-notebook").click();
-    cy.findAllByText("Products")
-      .last()
-      .click();
+    cy.findAllByText("Products").last().click();
     cy.findByText("People").click();
     cy.findByText("Visualize").click();
 

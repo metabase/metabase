@@ -8,7 +8,7 @@ import Link from "metabase/components/Link";
 
 import { color } from "metabase/lib/colors";
 
-const ItemLink = props => (
+const ItemLink = (props) => (
   <Link
     to={`collection/${props.collection.id}`}
     bg={
@@ -40,13 +40,13 @@ const ItemLink = props => (
   </Link>
 );
 
-const ItemInfo = props => (
+const ItemInfo = (props) => (
   <h4 className="overflow-hidden">
     <Ellipsified>{props.collection.name}</Ellipsified>
   </h4>
 );
 
-const CollectionItem = props => {
+const CollectionItem = (props) => {
   const icon = (
     <Icon
       name={props.iconName}

@@ -18,7 +18,7 @@ export default createEntity({
         throw new Error("Schemas can only be listed for a particular dbId");
       }
       const schemaNames = await listDastabaseSchemas({ dbId });
-      return schemaNames.map(schemaName => ({
+      return schemaNames.map((schemaName) => ({
         // NOTE: needs unqiue IDs for entities to work correctly
         id: generateSchemaId(dbId, schemaName),
         name: schemaName,

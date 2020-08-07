@@ -31,11 +31,11 @@ export const FILTERS = [
   },
 ];
 
-const ItemTypeFilterBar = props => {
+const ItemTypeFilterBar = (props) => {
   const { location, analyticsContext } = props;
   return (
     <Flex align="center" className="border-bottom mt1">
-      {props.filters.map(f => {
+      {props.filters.map((f) => {
         let isActive = location && location.query.type === f.filter;
 
         if (!location.query.type && !f.filter) {

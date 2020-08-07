@@ -74,22 +74,12 @@ describe("initial collection id", () => {
   });
 });
 
-const clickNewDashboard = app =>
+const clickNewDashboard = (app) =>
   eventually(() => {
-    app
-      .find("Navbar")
-      .find("EntityMenu")
-      .first()
-      .props()
-      .items[0].action();
+    app.find("Navbar").find("EntityMenu").first().props().items[0].action();
   });
 
 const assertInitialCollection = (app, collectionName) =>
   eventually(() => {
-    expect(
-      app
-        .find(".AdminSelect")
-        .first()
-        .text(),
-    ).toBe(collectionName);
+    expect(app.find(".AdminSelect").first().text()).toBe(collectionName);
   });

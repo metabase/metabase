@@ -16,9 +16,7 @@ describe("scenarios > question > filter", () => {
     cy.findByPlaceholderText("What is the name of your card?")
       .clear()
       .type("Q1");
-    cy.findAllByText("Save")
-      .last()
-      .click();
+    cy.findAllByText("Save").last().click();
     cy.findByText("Not now").click();
 
     // From Q1, save Q2
@@ -30,9 +28,7 @@ describe("scenarios > question > filter", () => {
     cy.findByPlaceholderText("What is the name of your card?")
       .clear()
       .type("Q2");
-    cy.findAllByText("Save")
-      .last()
-      .click();
+    cy.findAllByText("Save").last().click();
 
     // Add Q2 to a dashboard
     cy.findByText("Yes please!").click();
@@ -42,16 +38,12 @@ describe("scenarios > question > filter", () => {
     cy.get(".Icon-funnel_add").click();
     cy.findByText("Time").click();
     cy.findByText("All Options").click();
-    cy.findAllByText("Select…")
-      .last()
-      .click();
+    cy.findAllByText("Select…").last().click();
     cy.findByText("Created At").click();
 
     cy.get(".Icon-funnel_add").click();
     cy.findByText("Other Categories").click();
-    cy.findAllByText("Select…")
-      .last()
-      .click();
+    cy.findAllByText("Select…").last().click();
     popover().within(() => {
       cy.findByText("Category").click();
     });

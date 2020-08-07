@@ -15,12 +15,12 @@ export const UPDATE_USER = "UPDATE_USER";
 
 export const setTab = createAction(CHANGE_TAB);
 
-export const updatePassword = createThunkAction(UPDATE_PASSWORD, function(
+export const updatePassword = createThunkAction(UPDATE_PASSWORD, function (
   user_id,
   new_password,
   current_password,
 ) {
-  return async function(dispatch, getState) {
+  return async function (dispatch, getState) {
     try {
       await UserApi.update_password({
         id: user_id,
@@ -40,8 +40,8 @@ export const updatePassword = createThunkAction(UPDATE_PASSWORD, function(
   };
 });
 
-export const updateUser = createThunkAction(UPDATE_USER, function(user) {
-  return async function(dispatch, getState) {
+export const updateUser = createThunkAction(UPDATE_USER, function (user) {
+  return async function (dispatch, getState) {
     try {
       await UserApi.update(user);
 

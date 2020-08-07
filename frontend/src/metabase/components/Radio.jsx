@@ -24,9 +24,9 @@ export default class Radio extends Component {
   };
 
   static defaultProps = {
-    optionNameFn: option => option.name,
-    optionValueFn: option => option.value,
-    optionKeyFn: option => option.value,
+    optionNameFn: (option) => option.name,
+    optionValueFn: (option) => option.value,
+    optionKeyFn: (option) => option.value,
     vertical: false,
     underlined: false,
     bubble: false,
@@ -83,7 +83,7 @@ export default class Radio extends Component {
               py={py}
               xspace={xspace}
               yspace={yspace}
-              onClick={e => onChange(optionValueFn(option))}
+              onClick={(e) => onChange(optionValueFn(option))}
             >
               <input
                 className="Form-radio"
@@ -108,19 +108,19 @@ export default class Radio extends Component {
 // BASE components all variants inherit from
 const BaseList = styled.ul`
   display: flex;
-  flex-direction: ${props => (props.vertical ? "column" : "row")};
+  flex-direction: ${(props) => (props.vertical ? "column" : "row")};
 `;
 const BaseItem = styled.li.attrs({
-  mr: props => (!props.vertical && !props.last ? props.xspace : null),
-  mb: props => (props.vertical && !props.last ? props.yspace : null),
-  "aria-selected": props => props.selected,
+  mr: (props) => (!props.vertical && !props.last ? props.xspace : null),
+  mb: (props) => (props.vertical && !props.last ? props.yspace : null),
+  "aria-selected": (props) => props.selected,
 })`
   ${space}
   display: flex;
   align-items: center;
   cursor: pointer;
   :hover {
-    color: ${props =>
+    color: ${(props) =>
       !props.showButtons && !props.selected ? color("brand") : null};
   }
 `;
@@ -131,18 +131,18 @@ BaseItem.defaultProps = {
 
 // NORMAL
 const NormalList = styled(BaseList).attrs({
-  className: props =>
+  className: (props) =>
     cx(props.className, { "h3 text-bold": !props.showButtons }), // TODO: better way to merge classname?
 })``;
 const NormalItem = styled(BaseItem)`
-  color: ${props => (props.selected ? color("brand") : null)};
+  color: ${(props) => (props.selected ? color("brand") : null)};
 `;
 
 // UNDERLINE
 const UnderlinedList = styled(NormalList)``;
 const UnderlinedItem = styled(NormalItem)`
   border-bottom: 3px solid transparent;
-  border-color: ${props => (props.selected ? color("brand") : null)};
+  border-color: ${(props) => (props.selected ? color("brand") : null)};
 `;
 UnderlinedItem.defaultProps = {
   py: 2,
@@ -153,11 +153,11 @@ const BubbleList = styled(BaseList)``;
 const BubbleItem = styled(BaseItem)`
   font-weight: 700;
   border-radius: 99px;
-  color: ${props => (props.selected ? color("white") : color("brand"))};
-  background-color: ${props =>
+  color: ${(props) => (props.selected ? color("white") : color("brand"))};
+  background-color: ${(props) =>
     props.selected ? color("brand") : lighten("brand")};
   :hover {
-    background-color: ${props => !props.selected && lighten("brand", 0.38)};
+    background-color: ${(props) => !props.selected && lighten("brand", 0.38)};
     transition: background 300ms linear;
   }
 `;

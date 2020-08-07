@@ -103,9 +103,9 @@ export default class LineAreaBarChart extends Component {
     }
 
     const dimensions = (settings["graph.dimensions"] || []).filter(
-      name => name,
+      (name) => name,
     );
-    const metrics = (settings["graph.metrics"] || []).filter(name => name);
+    const metrics = (settings["graph.metrics"] || []).filter((name) => name);
     if (dimensions.length < 1 || metrics.length < 1) {
       throw new ChartSettingsError(
         t`Which fields do you want to use for the X and Y axes?`,
@@ -167,7 +167,7 @@ export default class LineAreaBarChart extends Component {
         dataset_query: { type: "null" },
       },
       data: {
-        rows: _.range(0, 11).map(i => [i, i]),
+        rows: _.range(0, 11).map((i) => [i, i]),
         cols: [
           { name: "x", base_type: "type/Integer" },
           { name: "y", base_type: "type/Integer" },
@@ -202,8 +202,8 @@ export default class LineAreaBarChart extends Component {
     const { hovered } = this.props;
     if (hovered && hovered.index != null) {
       const seriesClasses = _.range(0, MAX_SERIES)
-        .filter(n => n !== hovered.index)
-        .map(n => "mute-" + n);
+        .filter((n) => n !== hovered.index)
+        .map((n) => "mute-" + n);
       const axisClasses =
         hovered.axisIndex === 0
           ? "mute-yr"
@@ -338,7 +338,7 @@ function getColumnsFromNames(cols, names) {
   if (!names) {
     return [];
   }
-  return names.map(name => _.findWhere(cols, { name }));
+  return names.map((name) => _.findWhere(cols, { name }));
 }
 
 function transformSingleSeries(s, series, seriesIndex) {
@@ -353,18 +353,18 @@ function transformSingleSeries(s, series, seriesIndex) {
   const settings = getComputedSettingsForSeries([s]);
 
   const dimensions = (settings["graph.dimensions"] || []).filter(
-    d => d != null,
+    (d) => d != null,
   );
-  const metrics = (settings["graph.metrics"] || []).filter(d => d != null);
-  const dimensionColumnIndexes = dimensions.map(dimensionName =>
-    _.findIndex(cols, col => col.name === dimensionName),
+  const metrics = (settings["graph.metrics"] || []).filter((d) => d != null);
+  const dimensionColumnIndexes = dimensions.map((dimensionName) =>
+    _.findIndex(cols, (col) => col.name === dimensionName),
   );
-  const metricColumnIndexes = metrics.map(metricName =>
-    _.findIndex(cols, col => col.name === metricName),
+  const metricColumnIndexes = metrics.map((metricName) =>
+    _.findIndex(cols, (col) => col.name === metricName),
   );
   const bubbleColumnIndex =
     settings["scatter.bubble"] &&
-    _.findIndex(cols, col => col.name === settings["scatter.bubble"]);
+    _.findIndex(cols, (col) => col.name === settings["scatter.bubble"]);
   const extraColumnIndexes =
     bubbleColumnIndex != null && bubbleColumnIndex >= 0
       ? [bubbleColumnIndex]
@@ -390,13 +390,13 @@ function transformSingleSeries(s, series, seriesIndex) {
         breakoutValues.push(seriesValue);
       }
 
-      const newRow = rowColumnIndexes.map(columnIndex => row[columnIndex]);
+      const newRow = rowColumnIndexes.map((columnIndex) => row[columnIndex]);
       // $FlowFixMe: _origin not typed
       newRow._origin = { seriesIndex, rowIndex, row, cols };
       seriesRows.push(newRow);
     }
 
-    return breakoutValues.map(breakoutValue => ({
+    return breakoutValues.map((breakoutValue) => ({
       card: {
         ...card,
         // if multiseries include the card title as well as the breakout value
@@ -406,14 +406,14 @@ function transformSingleSeries(s, series, seriesIndex) {
           // always show grouping value
           formatValue(breakoutValue, { column: cols[seriesColumnIndex] }),
         ]
-          .filter(n => n)
+          .filter((n) => n)
           .join(": "),
         _breakoutValue: breakoutValue,
         _breakoutColumn: cols[seriesColumnIndex],
       },
       data: {
         rows: breakoutRowsByValue.get(breakoutValue),
-        cols: rowColumnIndexes.map(i => cols[i]),
+        cols: rowColumnIndexes.map((i) => cols[i]),
         _rawCols: cols,
         _transformed: true,
       },
@@ -430,7 +430,7 @@ function transformSingleSeries(s, series, seriesIndex) {
   } else {
     // dimensions.length <= 1
     const dimensionColumnIndex = dimensionColumnIndexes[0];
-    return metricColumnIndexes.map(metricColumnIndex => {
+    return metricColumnIndexes.map((metricColumnIndex) => {
       const col = cols[metricColumnIndex];
       const rowColumnIndexes = [dimensionColumnIndex].concat(
         metricColumnIndex,
@@ -444,7 +444,7 @@ function transformSingleSeries(s, series, seriesIndex) {
           col &&
           getFriendlyName(col),
       ]
-        .filter(n => n)
+        .filter((n) => n)
         .join(": ");
 
       return {
@@ -458,12 +458,12 @@ function transformSingleSeries(s, series, seriesIndex) {
         },
         data: {
           rows: rows.map((row, rowIndex) => {
-            const newRow = rowColumnIndexes.map(i => row[i]);
+            const newRow = rowColumnIndexes.map((i) => row[i]);
             // $FlowFixMe: _origin not typed
             newRow._origin = { seriesIndex, rowIndex, row, cols };
             return newRow;
           }),
-          cols: rowColumnIndexes.map(i => cols[i]),
+          cols: rowColumnIndexes.map((i) => cols[i]),
           _transformed: true,
           _rawCols: cols,
         },

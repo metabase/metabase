@@ -32,7 +32,10 @@ export default class MetadataTablePicker extends Component {
   };
 
   render() {
-    const tablesBySchemaName = _.groupBy(this.props.tables, t => t.schema_name);
+    const tablesBySchemaName = _.groupBy(
+      this.props.tables,
+      (t) => t.schema_name,
+    );
     const schemas = Object.keys(tablesBySchemaName).sort((a, b) =>
       a.localeCompare(b),
     );
@@ -58,7 +61,7 @@ export default class MetadataTablePicker extends Component {
       <MetadataSchemaList
         schemas={schemas}
         selectedSchema={this.state.selectedSchema}
-        onChangeSchema={schema =>
+        onChangeSchema={(schema) =>
           this.setState({ selectedSchema: schema, showTablePicker: true })
         }
       />
