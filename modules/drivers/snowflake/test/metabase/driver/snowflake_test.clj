@@ -129,10 +129,10 @@
       (is (= true
              (can-connect? (:details (mt/db))))
           "can-connect? should return true for normal Snowflake DB details")
-      (is (= false
-             (mt/suppress-output
-               (can-connect? (assoc (:details (mt/db)) :db (mt/random-name)))))
-          "can-connect? should return false for Snowflake databases that don't exist (#9041)"))))
+      (is (thrown? net.snowflake.client.jdbc.SnowflakeSQLException
+                   (mt/suppress-output
+                    (can-connect? (assoc (:details (mt/db)) :db (mt/random-name)))))
+          "can-connect? should throw for Snowflake databases that don't exist (#9511)"))))
 
 (deftest report-timezone-test
   (mt/test-driver :snowflake

@@ -23,6 +23,7 @@ export const TitleLegendHeader = ({
             : {
                 id: cardIds[0],
                 dataset_query: originalSeries[0].card.dataset_query,
+                display: originalSeries[0].card.display,
               }),
         },
       },

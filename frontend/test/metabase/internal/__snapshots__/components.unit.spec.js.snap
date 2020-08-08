@@ -975,7 +975,7 @@ exports[`Select should render "default" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1012,7 +1012,7 @@ exports[`Select should render "kitchen_sink" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1053,7 +1053,7 @@ exports[`Select should render "multiple" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1094,7 +1094,7 @@ exports[`Select should render "search" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1131,7 +1131,7 @@ exports[`Select should render "sections" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span

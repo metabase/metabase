@@ -24,6 +24,6 @@ It is expected that you will run the command against a brand-new (empty!) databa
 
 - Avoid upgrading and migrating at the same time, since it can cause problems with one of database schemas not matching.
 - It is required that you can connect to the target MySQL or Postgres database in whatever environment you are running this migration command in. So, if you are attempting to move the data to a cloud database, make sure you take that into consideration.
-- For MySQL or MariaDB, the minimum recommended version is MySQL 5.7.7 and MariaDB 10.2.2, while `utf8mb4` character set is required and `innodb_large_prefix=ON`.
-- The code that handles these migrations uses a Postgres SQL command that is only available in Postgres 9.4 or newer versions. Please make sure you Postgres database is version 9.4 or newer.
+- For MySQL or MariaDB, the minimum recommended version is MySQL 5.7.7 and MariaDB 10.2.2, while the following is required: `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
+- For PostgreSQL, the minimum version is PostgreSQL 9.4, since the code that handles these migrations uses a command that is only available in version 9.4 or newer.
 - H2 automatically adds a `.h2.db` or `.mv.db` extension to the database path you specify, so make sure the path to the DB file you pass to the command _does not_ include it. For example, if you have a file named `/path/to/metabase.db.h2.db`, call the command with `load-from-h2 /path/to/metabase.db`.
