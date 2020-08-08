@@ -552,44 +552,40 @@
       "Should be able to add a filter clause to a query"))
 
 (deftest desugar-time-interval-test
-  (is (= [:between
-          [:datetime-field [:field-id 1] :month]
-          [:relative-datetime 1 :month]
-          [:relative-datetime 2 :month]]
+  (is (= [:and
+          [:>= [:field-id 1] [:relative-datetime 1 :month]]
+          [:< [:field-id 1] [:relative-datetime 3 :month]]]
          (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] 2 :month]))
-      "`time-interval` with value > 1 or < -1 should generate a `between` clause")
-  (is (= [:between
-          [:datetime-field [:field-id 1] :month]
-          [:relative-datetime 0 :month]
-          [:relative-datetime 2 :month]]
+      "`time-interval` with value > 1 or < -1 should generate an `and` clause")
+  (is (= [:and
+          [:>= [:field-id 1] [:relative-datetime 0 :month]]
+          [:< [:field-id 1] [:relative-datetime 2 :month]]]
          (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] 2 :month {:include-current true}]))
       "test the `include-current` option -- interval should start or end at `0` instead of `1`")
-  (is (= [:=
-          [:datetime-field [:field-id 1] :month]
-          [:relative-datetime 1 :month]]
+  (is (= [:and
+          [:>= [:field-id 1] [:relative-datetime 1 :month]]
+          [:< [:field-id 1] [:relative-datetime 2 :month]]]
          (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] 1 :month]))
-      "`time-interval` with value = 1 should generate an `=` clause")
-  (is (= [:=
-          [:datetime-field [:field-id 1] :week]
-          [:relative-datetime -1 :week]]
+      "`time-interval` with value = 1 should generate an `and` clause")
+  (is (= [:and
+          [:>= [:field-id 1] [:relative-datetime -1 :week]]
+          [:< [:field-id 1] [:relative-datetime 0 :week]]]
          (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] -1 :week]))
-      "`time-interval` with value = -1 should generate an `=` clause")
+      "`time-interval` with value = -1 should generate an `and` clause")
   (testing "`include-current` option"
-    (is (= [:between
-            [:datetime-field [:field-id 1] :month]
-            [:relative-datetime 0 :month]
-            [:relative-datetime 1 :month]]
+    (is (= [:and
+            [:>= [:field-id 1] [:relative-datetime 0 :month]]
+            [:< [:field-id 1] [:relative-datetime 2 :month]]]
            (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] 1 :month {:include-current true}]))
-        "interval with value = 1 should generate a `between` clause")
-    (is (= [:between
-            [:datetime-field [:field-id 1] :day]
-            [:relative-datetime -1 :day]
-            [:relative-datetime 0 :day]]
+        "interval with value = 1 should generate an `and` clause")
+    (is (= [:and
+            [:>= [:field-id 1] [:relative-datetime -1 :day]]
+            [:< [:field-id 1] [:relative-datetime 1 :day]]]
            (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] -1 :day {:include-current true}]))
-        "`include-current` option -- interval with value = 1 should generate a `between` clause"))
-  (is (= [:=
-          [:datetime-field [:field-id 1] :week]
-          [:relative-datetime 0 :week]]
+        "`include-current` option -- interval with value = 1 should generate a `and` clause"))
+  (is (= [:and
+          [:>= [:field-id 1] [:relative-datetime 0 :week]]
+          [:< [:field-id 1] [:relative-datetime 1 :week]]]
          (mbql.u/desugar-filter-clause [:time-interval [:field-id 1] :current :week]))
       "keywords like `:current` should work correctly"))
 
@@ -733,9 +729,9 @@
             [:= [:field-id 1] 30]]
            (mbql.u/negate-filter-clause [:!= [:field-id 1] 10 20 30]))))
   (testing :time-interval
-    (is (= [:!=
-            [:datetime-field [:field-id 1] :week]
-            [:relative-datetime 0 :week]]
+    (is (= [:or
+            [:< [:field-id 1] [:relative-datetime 0 :week]]
+            [:>= [:field-id 1] [:relative-datetime 1 :week]]]
            (mbql.u/negate-filter-clause [:time-interval [:field-id 1] :current :week]))))
   (testing :is-null
     (is (= [:!= [:field-id 1] nil]

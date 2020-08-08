@@ -10,18 +10,14 @@
           :query    {:source-table 1
                      :filter       [:and
                                     [:= [:field-id 1] "Run Query"]
-                                    [:between
-                                     [:datetime-field [:field-id 2] :day]
-                                     [:relative-datetime -30 :day]
-                                     [:relative-datetime -1 :day]]
+                                    [:>= [:field-id 2] [:relative-datetime -30 :day]]
+                                    [:< [:field-id 2] [:relative-datetime 0 :day]]
                                     [:!= [:field-id 3] "(not set)"]
                                     [:!= [:field-id 3] "url"]]
                      :aggregation  [[:share [:and
                                              [:= [:field-id 1] "Run Query"]
-                                             [:between
-                                              [:datetime-field [:field-id 2] :day]
-                                              [:relative-datetime -30 :day]
-                                              [:relative-datetime -1 :day]]
+                                             [:>= [:field-id 2] [:relative-datetime -30 :day]]
+                                             [:< [:field-id 2] [:relative-datetime 0 :day]]
                                              [:!= [:field-id 3] "(not set)"]
                                              [:!= [:field-id 3] "url"]]]]}}
          (:pre
