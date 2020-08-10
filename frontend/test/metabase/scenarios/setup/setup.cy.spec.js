@@ -5,7 +5,7 @@ import { restore } from "__support__/cypress";
 const locales = ["en", "xx"];
 
 describe("scenarios > setup", () => {
-  locales.forEach((locale) => {
+  locales.forEach(locale => {
     beforeEach(() => restore("blank"));
 
     it(`should allow you to sign up using "${locale}" browser locale`, () => {
@@ -38,7 +38,9 @@ describe("scenarios > setup", () => {
       // "Next" should be disabled on the blank form
       // NOTE: unclear why cy.findByText("Next", { selector: "button" }) doesn't work
       // alternative: cy.contains("Next").should("be.disabled");
-      cy.findByText("Next").closest("button").should("be.disabled");
+      cy.findByText("Next")
+        .closest("button")
+        .should("be.disabled");
 
       cy.findByLabelText("First name").type("Testy");
       cy.findByLabelText("Last name").type("McTestface");
@@ -51,22 +53,30 @@ describe("scenarios > setup", () => {
 
       // the form shouldn't be valid yet and we should display an error
       cy.findByText("must include one number", { exact: false });
-      cy.findByText("Next").closest("button").should("be.disabled");
+      cy.findByText("Next")
+        .closest("button")
+        .should("be.disabled");
 
       // now try a strong password that doesn't match
       const strongPassword = "QJbHYJN3tPW[";
-      cy.findByLabelText("Create a password").clear().type(strongPassword);
+      cy.findByLabelText("Create a password")
+        .clear()
+        .type(strongPassword);
       cy.findByLabelText("Confirm your password")
         .clear()
         .type(strongPassword + "foobar")
         .blur();
 
       // tell the user about the mismatch after clicking "Next"
-      cy.findByText("Next").closest("button").should("be.disabled");
+      cy.findByText("Next")
+        .closest("button")
+        .should("be.disabled");
       cy.findByText("passwords do not match", { exact: false });
 
       // fix that mismatch
-      cy.findByLabelText("Confirm your password").clear().type(strongPassword);
+      cy.findByLabelText("Confirm your password")
+        .clear()
+        .type(strongPassword);
 
       // Submit the first section
       cy.findByText("Next").click();
@@ -91,14 +101,19 @@ describe("scenarios > setup", () => {
       cy.findByText("Select a database").click();
       cy.findByText("H2").click();
       cy.findByLabelText("Name").type("Metabase H2");
-      cy.findByText("Next").closest("button").should("be.disabled");
+      cy.findByText("Next")
+        .closest("button")
+        .should("be.disabled");
 
       const dbPath = path.resolve(
         Cypress.config("fileServerFolder"),
         "frontend/test/__runner__/empty.db",
       );
       cy.findByLabelText("Connection String").type(`file:${dbPath}`);
-      cy.findByText("Next").closest("button").should("not.be.disabled").click();
+      cy.findByText("Next")
+        .closest("button")
+        .should("not.be.disabled")
+        .click();
 
       // return to db settings and turn on manual scheduling
       cy.findByText("Connecting to Metabase H2").click();

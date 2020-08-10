@@ -8,7 +8,7 @@ const StandardForm = ({ onClose, submitTitle, ...props }) => (
   <CustomForm {...props}>
     {({ values, formFields, Form, FormField, FormFooter }) => (
       <Form>
-        {formFields.map((formField) => (
+        {formFields.map(formField => (
           <FormField key={formField.name} name={formField.name} />
         ))}
         <FormFooter

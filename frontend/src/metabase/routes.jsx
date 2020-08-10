@@ -92,9 +92,9 @@ import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
 
 const MetabaseIsSetup = UserAuthWrapper({
-  predicate: (authData) => !authData.hasSetupToken,
+  predicate: authData => !authData.hasSetupToken,
   failureRedirectPath: "/setup",
-  authSelector: (state) => ({
+  authSelector: state => ({
     hasSetupToken: MetabaseSettings.hasSetupToken(),
   }), // HACK
   wrapperDisplayName: "MetabaseIsSetup",
@@ -104,24 +104,24 @@ const MetabaseIsSetup = UserAuthWrapper({
 
 const UserIsAuthenticated = UserAuthWrapper({
   failureRedirectPath: "/auth/login",
-  authSelector: (state) => state.currentUser,
+  authSelector: state => state.currentUser,
   wrapperDisplayName: "UserIsAuthenticated",
   redirectAction: routerActions.replace,
 });
 
 const UserIsAdmin = UserAuthWrapper({
-  predicate: (currentUser) => currentUser && currentUser.is_superuser,
+  predicate: currentUser => currentUser && currentUser.is_superuser,
   failureRedirectPath: "/unauthorized",
-  authSelector: (state) => state.currentUser,
+  authSelector: state => state.currentUser,
   allowRedirectBack: false,
   wrapperDisplayName: "UserIsAdmin",
   redirectAction: routerActions.replace,
 });
 
 const UserIsNotAuthenticated = UserAuthWrapper({
-  predicate: (currentUser) => !currentUser,
+  predicate: currentUser => !currentUser,
   failureRedirectPath: "/",
-  authSelector: (state) => state.currentUser,
+  authSelector: state => state.currentUser,
   allowRedirectBack: false,
   wrapperDisplayName: "UserIsNotAuthenticated",
   redirectAction: routerActions.replace,
@@ -138,7 +138,7 @@ const IsNotAuthenticated = MetabaseIsSetup(
   UserIsNotAuthenticated(({ children }) => children),
 );
 
-export const getRoutes = (store) => (
+export const getRoutes = store => (
   <Route title={t`Metabase`} component={App}>
     {/* SETUP */}
     <Route
@@ -331,7 +331,7 @@ export const getRoutes = (store) => (
       path="/_internal"
       getChildRoutes={(partialNextState, callback) =>
         // $FlowFixMe: flow doesn't know about require.ensure
-        require.ensure([], function (require) {
+        require.ensure([], function(require) {
           callback(null, [require("metabase/internal/routes").default]);
         })
       }

@@ -48,7 +48,7 @@ describe("StructuredQuery nesting", () => {
         q
           .nest()
           .filterDimensionOptions()
-          .dimensions.map((d) => d.mbql()),
+          .dimensions.map(d => d.mbql()),
       ).toEqual([
         ["field-literal", "PRODUCT_ID", "type/Integer"],
         ["field-literal", "count", "type/Integer"],
@@ -95,7 +95,9 @@ describe("StructuredQuery nesting", () => {
       });
     });
     it("should return last summarized stage if any is summarized", () => {
-      const q = ORDERS.query().aggregate(["count"]).nest();
+      const q = ORDERS.query()
+        .aggregate(["count"])
+        .nest();
       expect(q.topLevelQuery().query()).toEqual({
         "source-table": ORDERS.id,
         aggregation: [["count"]],

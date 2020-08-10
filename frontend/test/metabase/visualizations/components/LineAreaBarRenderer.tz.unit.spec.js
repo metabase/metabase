@@ -20,7 +20,7 @@ describe("LineAreaBarRenderer-bar", () => {
   let element;
   let onHoverChange;
 
-  const qsa = (selector) => [...element.querySelectorAll(selector)];
+  const qsa = selector => [...element.querySelectorAll(selector)];
 
   function setupFixture() {
     document.body.style.width = `${WIDTH}px`;
@@ -37,20 +37,20 @@ describe("LineAreaBarRenderer-bar", () => {
   }
 
   const activateTooltips = () =>
-    qsa(".bar").map((bar) => dispatchUIEvent(bar, "mousemove"));
+    qsa(".bar").map(bar => dispatchUIEvent(bar, "mousemove"));
 
   const getXAxisLabelsText = () =>
-    qsa(".axis.x .tick text").map((t) => t.textContent);
+    qsa(".axis.x .tick text").map(t => t.textContent);
   const getTooltipDimensionValueText = () =>
     onHoverChange.mock.calls.map(([t]) => getFormattedTooltips(t)[0]);
 
-  const getSVGElementMiddle = (element) => {
+  const getSVGElementMiddle = element => {
     return (
       parseFloat(element.getAttribute("x")) +
       parseFloat(element.getAttribute("width")) / 2
     );
   };
-  const getSVGElementTransformMiddle = (element) => {
+  const getSVGElementTransformMiddle = element => {
     const transform = element.getAttribute("transform");
     const match = transform.match(/translate\(([0-9\.]+)/);
     return parseFloat(match[1]);
@@ -58,7 +58,7 @@ describe("LineAreaBarRenderer-bar", () => {
 
   const MAX_DELTA = 0;
 
-  const getClosestLabelText = (bar) => {
+  const getClosestLabelText = bar => {
     // get the horizontal center of the target element
     const barCenter = getSVGElementMiddle(bar);
     let closest;
@@ -74,7 +74,7 @@ describe("LineAreaBarRenderer-bar", () => {
     return closest && minDelta <= MAX_DELTA ? closest.textContent : null;
   };
 
-  testAcrossTimezones((reportTz) => {
+  testAcrossTimezones(reportTz => {
     const rows = generateRowsInTz(reportTz);
 
     sharedMonthTests(rows.slice(0, 2), "months in standard time");
@@ -137,7 +137,13 @@ describe("LineAreaBarRenderer-bar", () => {
     function sharedIntervalTests(interval, expectedFormat) {
       describe(`with ${interval}s`, () => {
         const rows = [
-          [moment().tz(reportTz).startOf(interval).toISOString(true), 1],
+          [
+            moment()
+              .tz(reportTz)
+              .startOf(interval)
+              .toISOString(true),
+            1,
+          ],
           [
             moment()
               .tz(reportTz)
@@ -238,7 +244,7 @@ function assertSequentialMonths(months) {
 }
 
 function generateRowsInTz(tz) {
-  return _.range(0, 12).map((month) => [
+  return _.range(0, 12).map(month => [
     moment("2016-01-01")
       .tz(tz)
       .startOf("month")

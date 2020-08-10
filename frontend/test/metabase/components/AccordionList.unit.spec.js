@@ -48,13 +48,19 @@ describe("AccordionList", () => {
   it("should close the section when header is clicked", () => {
     const wrapper = mount(<AccordionList sections={SECTIONS} />);
     expect(wrapper.find(".List-item").length).toBe(2);
-    wrapper.find(".List-section-header").first().simulate("click");
+    wrapper
+      .find(".List-section-header")
+      .first()
+      .simulate("click");
     expect(wrapper.find(".List-item").length).toBe(0);
   });
   it("should switch sections when another section is clicked", () => {
     const wrapper = mount(<AccordionList sections={SECTIONS} />);
     expect(wrapper.find(".List-item").length).toBe(2);
-    wrapper.find(".List-section-header").last().simulate("click");
+    wrapper
+      .find(".List-section-header")
+      .last()
+      .simulate("click");
     expect(wrapper.find(".List-item").length).toBe(1);
   });
   it("should filter items when searched", () => {

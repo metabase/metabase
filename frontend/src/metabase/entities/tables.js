@@ -63,7 +63,7 @@ const Tables = createEntity({
     bulkUpdate: compose(
       withAction(TABLES_BULK_UPDATE),
       withNormalize([TableSchema]),
-    )((updates) => async (dispatch, getState) => updateTables(updates)),
+    )(updates => async (dispatch, getState) => updateTables(updates)),
   },
 
   // ACTION CREATORS
@@ -89,11 +89,12 @@ const Tables = createEntity({
       ({ id }, options = {}) => async (dispatch, getState) => {
         await dispatch(Tables.actions.fetchMetadata({ id }, options));
         // fetch foreign key linked table's metadata as well
-        const table = Tables.selectors[
-          options.selectorName || "getObject"
-        ](getState(), { entityId: id });
+        const table = Tables.selectors[options.selectorName || "getObject"](
+          getState(),
+          { entityId: id },
+        );
         await Promise.all(
-          getTableForeignKeyTableIds(table).map((id) =>
+          getTableForeignKeyTableIds(table).map(id =>
             dispatch(Tables.actions.fetchMetadata({ id }, options)),
           ),
         );
@@ -107,15 +108,14 @@ const Tables = createEntity({
         ({ id }) => [...Tables.getObjectStatePath(id), "fetchForeignKeys"],
       ),
       withNormalize(TableSchema),
-    )((entityObject) => async (dispatch, getState) => {
+    )(entityObject => async (dispatch, getState) => {
       const fks = await MetabaseApi.table_fks({ tableId: entityObject.id });
       return { id: entityObject.id, fks: fks };
     }),
 
-    setFieldOrder: compose(
-      withAction(UPDATE_TABLE_FIELD_ORDER),
-    )(({ id }, fieldOrder) => (dispatch, getState) =>
-      updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
+    setFieldOrder: compose(withAction(UPDATE_TABLE_FIELD_ORDER))(
+      ({ id }, fieldOrder) => (dispatch, getState) =>
+        updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
     ),
   },
 
@@ -155,7 +155,7 @@ const Tables = createEntity({
           ...state,
           [tableId]: {
             ...table,
-            segments: table.segments.filter((id) => id !== segmentId),
+            segments: table.segments.filter(id => id !== segmentId),
           },
         };
       }
@@ -169,7 +169,7 @@ const Tables = createEntity({
           ...state,
           [tableId]: {
             ...table,
-            metrics: table.metrics.filter((id) => id !== metricId),
+            metrics: table.metrics.filter(id => id !== metricId),
           },
         };
       }
@@ -178,10 +178,10 @@ const Tables = createEntity({
     return state;
   },
   objectSelectors: {
-    getUrl: (table) =>
+    getUrl: table =>
       Urls.tableRowsQuery(table.database_id, table.table_id, null),
-    getIcon: (table) => "table",
-    getColor: (table) => color("accent2"),
+    getIcon: table => "table",
+    getColor: table => color("accent2"),
   },
 
   selectors: {
@@ -192,25 +192,23 @@ const Tables = createEntity({
       return (
         table && {
           ...table,
-          fields: (table.fields || []).map((entityId) =>
+          fields: (table.fields || []).map(entityId =>
             Fields.selectors.getObjectUnfiltered(state, { entityId }),
           ),
-          metrics: (table.metrics || []).map(
-            (id) => state.entities.metrics[id],
-          ),
+          metrics: (table.metrics || []).map(id => state.entities.metrics[id]),
           segments: (table.segments || []).map(
-            (id) => state.entities.segments[id],
+            id => state.entities.segments[id],
           ),
         }
       );
     },
     getListUnfiltered: ({ entities }, { entityQuery }) =>
       (entities.tables_list[JSON.stringify(entityQuery)] || []).map(
-        (id) => entities.tables[id],
+        id => entities.tables[id],
       ),
     getTable: createSelector(
       // we wrap getMetadata to handle a circular dep issue
-      [(state) => getMetadata(state), (state, props) => props.entityId],
+      [state => getMetadata(state), (state, props) => props.entityId],
       (metadata, id) => metadata.table(id),
     ),
   },
@@ -218,8 +216,8 @@ const Tables = createEntity({
 
 function getTableForeignKeyTableIds(table) {
   return _.chain(table.fields)
-    .filter((field) => field.target)
-    .map((field) => field.target.table_id)
+    .filter(field => field.target)
+    .map(field => field.target.table_id)
     .uniq()
     .value();
 }

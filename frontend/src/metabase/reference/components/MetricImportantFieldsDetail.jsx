@@ -32,10 +32,10 @@ const MetricImportantFieldsDetail = ({
             multiple
             value={formField.value || []}
             onChange={formField.onChange}
-            options={table.fields.map((fieldId) => allFields[fieldId])}
-            optionValueFn={(field) => field.id}
-            optionNameFn={(field) => field.display_name || field.name}
-            optionDisabledFn={(field) =>
+            options={table.fields.map(fieldId => allFields[fieldId])}
+            optionValueFn={field => field.id}
+            optionNameFn={field => field.display_name || field.name}
+            optionDisabledFn={field =>
               formField.value &&
               formField.value.length >= 3 &&
               !formField.value.includes(field.id)

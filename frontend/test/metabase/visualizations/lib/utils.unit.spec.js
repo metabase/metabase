@@ -198,11 +198,7 @@ describe("metabase/visualization/lib/utils", () => {
   describe("computeMaxDecimalsForValues", () => {
     it("should correctly compute max decimals for normal numbers", () => {
       const options = { maximumSignificantDigits: 2 };
-      const testCases = [
-        [[123, 321], 0],
-        [[1.2, 321], 1],
-        [[1, 0.123], 2],
-      ];
+      const testCases = [[[123, 321], 0], [[1.2, 321], 1], [[1, 0.123], 2]];
       testCases.forEach(([values, decimals]) =>
         expect(computeMaxDecimalsForValues(values, options)).toBe(decimals),
       );
@@ -227,7 +223,7 @@ describe("metabase/visualization/lib/utils", () => {
         getDefaultDimensionsAndMetrics([
           {
             data: {
-              rows: _.range(0, 100).map((v) => [0, 0, v]),
+              rows: _.range(0, 100).map(v => [0, 0, v]),
               cols: [
                 {
                   name: "count",
@@ -255,7 +251,7 @@ describe("metabase/visualization/lib/utils", () => {
         getDefaultDimensionsAndMetrics([
           {
             data: {
-              rows: _.range(0, 101).map((v) => [0, v, v]),
+              rows: _.range(0, 101).map(v => [0, v, v]),
               cols: [
                 {
                   name: "count",

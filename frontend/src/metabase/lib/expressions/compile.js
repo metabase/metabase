@@ -49,13 +49,13 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
     if (!fn) {
       throw new Error(`Unknown Function: ${functionName}`);
     }
-    const args = (ctx.arguments || []).map((argument) => this.visit(argument));
+    const args = (ctx.arguments || []).map(argument => this.visit(argument));
     return [fn, ...args];
   }
 
   caseExpression(ctx) {
     const mbql = ["case", []];
-    const args = ctx.arguments.map((arg) => this.visit(arg));
+    const args = ctx.arguments.map(arg => this.visit(arg));
     for (let i = 0; i < args.length; i++) {
       if (i === args.length - 1) {
         // if there's a single remaining argument it's the default
@@ -146,10 +146,10 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   }
 
   _getOperators(operators) {
-    return (operators || []).map((o) => o.image.toLowerCase());
+    return (operators || []).map(o => o.image.toLowerCase());
   }
   _getOperands(operands) {
-    return (operands || []).map((o) => this.visit(o));
+    return (operands || []).map(o => this.visit(o));
   }
 }
 

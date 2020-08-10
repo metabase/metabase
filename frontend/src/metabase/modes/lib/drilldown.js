@@ -13,8 +13,8 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 // Helpers for defining drill-down progressions
-const CategoryDrillDown = (type) => [(field) => isa(field.special_type, type)];
-const DateTimeDrillDown = (unit) => [["datetime-field", isDate, unit]];
+const CategoryDrillDown = type => [field => isa(field.special_type, type)];
+const DateTimeDrillDown = unit => [["datetime-field", isDate, unit]];
 
 const LatLonDrillDown = (binningStrategy, binWidth) => [
   ["binning-strategy", isLatitude, binningStrategy, binWidth],
@@ -146,8 +146,8 @@ function breakoutTemplateMatchesDimension(breakoutTemplate, dimension) {
 // Returns true if all breakout templates having a matching dimension object, but disregarding order
 function breakoutTemplatesMatchDimensions(breakoutTemplates, dimensions) {
   dimensions = [...dimensions];
-  return _.all(breakoutTemplates, (breakoutTemplate) => {
-    const index = _.findIndex(dimensions, (dimension) =>
+  return _.all(breakoutTemplates, breakoutTemplate => {
+    const index = _.findIndex(dimensions, dimension =>
       breakoutTemplateMatchesDimension(breakoutTemplate, dimension),
     );
     if (index >= 0) {
@@ -164,7 +164,7 @@ function breakoutForBreakoutTemplate(breakoutTemplate, dimensions, table) {
   const fieldFilter = Array.isArray(breakoutTemplate)
     ? breakoutTemplate[1]
     : breakoutTemplate;
-  const dimensionColumns = dimensions.map((d) => d.column);
+  const dimensionColumns = dimensions.map(d => d.column);
   const field =
     dimensionColumns.find(fieldFilter) ||
     (table && table.fields.find(fieldFilter));
@@ -181,7 +181,7 @@ function breakoutForBreakoutTemplate(breakoutTemplate, dimensions, table) {
   }
 
   if (Array.isArray(breakoutTemplate)) {
-    const prevDimension = _.find(dimensions, (dimension) =>
+    const prevDimension = _.find(dimensions, dimension =>
       breakoutTemplateMatchesDimension(breakoutTemplate, dimension),
     );
     const breakout = [breakoutTemplate[0], fieldRef];

@@ -18,7 +18,7 @@ const defaultTitleForState = {
  */
 export default class ButtonWithStatus extends Component {
   props: {
-    onClickOperation: (any) => Promise<void>,
+    onClickOperation: any => Promise<void>,
     titleForState?: string[],
     disabled?: boolean,
     className?: string,

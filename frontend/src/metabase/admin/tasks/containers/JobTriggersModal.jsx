@@ -9,7 +9,7 @@ import ModalContent from "metabase/components/ModalContent";
 
 import { fetchJobInfo } from "../jobInfo";
 
-const renderTriggersTable = (triggers) => {
+const renderTriggersTable = triggers => {
   return (
     <table className="ContentTable mt2">
       <thead>
@@ -29,7 +29,7 @@ const renderTriggersTable = (triggers) => {
       </thead>
       <tbody>
         {triggers &&
-          triggers.map((trigger) => (
+          triggers.map(trigger => (
             <tr key={trigger.key}>
               <td className="text-bold">{trigger.key}</td>
               <td>{trigger.description}</td>
@@ -49,7 +49,10 @@ const renderTriggersTable = (triggers) => {
   );
 };
 
-@connect(null, { fetchJobInfo, goBack })
+@connect(
+  null,
+  { fetchJobInfo, goBack },
+)
 export default class JobTriggersModal extends React.Component {
   state = {
     triggers: null,

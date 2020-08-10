@@ -18,7 +18,7 @@ const ChartSettingFieldsPicker = ({
           key={index}
           value={v}
           options={options}
-          onChange={(v) => {
+          onChange={v => {
             const newValue = [...value];
             // this swaps the position of the existing value
             const existingIndex = value.indexOf(v);
@@ -30,7 +30,7 @@ const ChartSettingFieldsPicker = ({
             onChange(newValue);
           }}
           onRemove={
-            value.filter((v) => v != null).length > 1 ||
+            value.filter(v => v != null).length > 1 ||
             (value.length > 1 && v == null)
               ? () =>
                   onChange([
@@ -49,7 +49,7 @@ const ChartSettingFieldsPicker = ({
         <a
           className="text-brand text-bold py1 px2 rounded bg-light bg-medium-hover"
           onClick={() => {
-            const remaining = options.filter((o) => value.indexOf(o.value) < 0);
+            const remaining = options.filter(o => value.indexOf(o.value) < 0);
             if (remaining.length === 1) {
               // if there's only one unused option, use it
               onChange(value.concat([remaining[0].value]));

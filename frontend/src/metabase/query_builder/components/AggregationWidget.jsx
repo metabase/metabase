@@ -27,7 +27,7 @@ export default class AggregationWidget extends React.Component {
     showRawData: PropTypes.bool,
   };
 
-  handleChangeAggregation = (value) => {
+  handleChangeAggregation = value => {
     this.props.onChangeAggregation(value);
     this.handleClose();
   };
@@ -88,4 +88,4 @@ export default class AggregationWidget extends React.Component {
   }
 }
 
-const isRows = (aggregation) => aggregation && aggregation[0] === "rows";
+const isRows = aggregation => aggregation && aggregation[0] === "rows";

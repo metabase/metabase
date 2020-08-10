@@ -203,12 +203,12 @@ function inferEntityPermissionValueFromChildTables(
   const database = metadata && metadata.database(databaseId);
 
   const entityIdsForDescendantTables: TableEntityId[] = _.chain(database.tables)
-    .filter((t) => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
+    .filter(t => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
     .map(metadataTableToTableEntityId)
     .value();
 
   const entityIdsByPermValue = _.chain(entityIdsForDescendantTables)
-    .map((id) => getFieldsPermission(permissions, groupId, id))
+    .map(id => getFieldsPermission(permissions, groupId, id))
     .groupBy(_.identity)
     .value();
 
@@ -315,7 +315,7 @@ export function updateTablesPermission(
   metadata: Metadata,
 ): GroupsPermissions {
   const schema = metadata && metadata.database(databaseId).schema(schemaName);
-  const tableIds = schema && schema.tables.map((t) => t.id);
+  const tableIds = schema && schema.tables.map(t => t.id);
 
   permissions = updateSchemasPermission(
     permissions,

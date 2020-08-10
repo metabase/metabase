@@ -17,8 +17,12 @@ describe("scenarios > question > snippets", () => {
     // add a snippet of that text
     cy.get(".Icon-snippet").click();
     cy.contains("Create a snippet").click();
-    modal().find("input[name=name]").type("stuff-snippet");
-    modal().contains("Save").click();
+    modal()
+      .find("input[name=name]")
+      .type("stuff-snippet");
+    modal()
+      .contains("Save")
+      .click();
 
     // SQL editor should get updated automatically
     cy.get("@ace").contains("select {{snippet: stuff-snippet}}");

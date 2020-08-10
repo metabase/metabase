@@ -24,7 +24,7 @@ function getFilterValueSerializer(
   func: (val1: string, val2: string) => UrlEncoded,
 ) {
   // $FlowFixMe
-  return (filter) => func(filter[2], filter[3], filter[4] || {});
+  return filter => func(filter[2], filter[3], filter[4] || {});
 }
 
 const serializersByOperatorName: {
@@ -40,14 +40,14 @@ const serializersByOperatorName: {
       `next${value}${unit}s${options["include-current"] ? "~" : ""}`,
   ),
   current: getFilterValueSerializer((_, unit) => `this${unit}`),
-  before: getFilterValueSerializer((value) => `~${value}`),
-  after: getFilterValueSerializer((value) => `${value}~`),
-  on: getFilterValueSerializer((value) => `${value}`),
+  before: getFilterValueSerializer(value => `~${value}`),
+  after: getFilterValueSerializer(value => `${value}~`),
+  on: getFilterValueSerializer(value => `${value}`),
   between: getFilterValueSerializer((from, to) => `${from}~${to}`),
 };
 
 function getFilterOperator(filter) {
-  return DATE_OPERATORS.find((op) => op.test(filter));
+  return DATE_OPERATORS.find(op => op.test(filter));
 }
 function filterToUrlEncoded(filter: FieldFilter): ?UrlEncoded {
   const operator = getFilterOperator(filter);
@@ -121,7 +121,7 @@ export default class DateAllOptionsWidget extends Component {
 
   isValid() {
     const filterValues = this.state.filter.slice(2);
-    return filterValues.every((value) => value != null);
+    return filterValues.every(value => value != null);
   }
 
   render() {

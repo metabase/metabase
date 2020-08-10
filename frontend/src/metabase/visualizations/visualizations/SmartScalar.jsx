@@ -40,7 +40,7 @@ export default class Smart extends React.Component {
         settings,
       ) => [
         // try and find a selected field setting
-        cols.find((col) => col.name === settings["scalar.field"]) ||
+        cols.find(col => col.name === settings["scalar.field"]) ||
           // fall back to the second column
           cols[1] ||
           // but if there's only one column use that
@@ -114,7 +114,9 @@ export default class Smart extends React.Component {
     const isSwapped = settings["scalar.switch_positive_negative"];
 
     // if the number is negative but thats been identified as a good thing (e.g. decreased latency somehow?)
-    const changeColor = (isSwapped ? !isNegative : isNegative)
+    const changeColor = (isSwapped
+    ? !isNegative
+    : isNegative)
       ? color("error")
       : color("success");
 
@@ -164,7 +166,7 @@ export default class Smart extends React.Component {
               this._scalar &&
               onVisualizationClick({ ...clicked, element: this._scalar }))
           }
-          ref={(scalar) => (this._scalar = scalar)}
+          ref={scalar => (this._scalar = scalar)}
         >
           <ScalarValue
             value={formatValue(insight["last-value"], settings.column(column))}

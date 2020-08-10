@@ -27,14 +27,14 @@ export default class ChartSettingInputNumeric extends Component {
             this.state.value !== "" && isNaN(parseFloat(this.state.value)),
         })}
         value={this.state.value}
-        onChange={(e) => {
+        onChange={e => {
           const num = parseFloat(e.target.value);
           if (!isNaN(num) && num !== this.props.value) {
             onChange(num);
           }
           this.setState({ value: e.target.value });
         }}
-        onBlur={(e) => {
+        onBlur={e => {
           const num = parseFloat(e.target.value);
           if (isNaN(num)) {
             onChange(undefined);

@@ -9,7 +9,7 @@ import { capitalize } from "metabase/lib/formatting";
 import { t } from "ttag";
 import _ from "underscore";
 
-export const HOUR_OPTIONS = _.times(12, (n) => ({
+export const HOUR_OPTIONS = _.times(12, n => ({
   name: (n === 0 ? 12 : n) + ":00",
   value: n,
 }));
@@ -225,8 +225,8 @@ export default class SchedulePicker extends Component {
               this.handleChangeProperty("schedule_type", value)
             }
             options={scheduleOptions}
-            optionNameFn={(o) => capitalize(o)}
-            optionValueFn={(o) => o}
+            optionNameFn={o => capitalize(o)}
+            optionValueFn={o => o}
           />
           {scheduleType === "monthly" && this.renderMonthlyPicker()}
           {scheduleType === "weekly" && this.renderDayPicker()}

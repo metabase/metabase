@@ -23,10 +23,7 @@ function getFiltersForColumn(column) {
       { name: ">", operator: ">" },
     ];
   } else {
-    return [
-      { name: "=", operator: "=" },
-      { name: "≠", operator: "!=" },
-    ];
+    return [{ name: "=", operator: "=" }, { name: "≠", operator: "!=" }];
   }
 }
 

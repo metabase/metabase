@@ -54,7 +54,7 @@ import Users from "metabase/entities/users";
 async function removeAllCreatedAlerts() {
   useSharedAdminLogin();
   const alerts = await AlertApi.list();
-  await Promise.all(alerts.map((alert) => AlertApi.delete({ id: alert.id })));
+  await Promise.all(alerts.map(alert => AlertApi.delete({ id: alert.id })));
 }
 
 const initQbWithAlertMenuItemClicked = async (
@@ -460,7 +460,7 @@ describe("Alerts", () => {
         click(
           othersAlertListItem
             .find("a")
-            .filterWhere((item) => /Edit/.test(item.text())),
+            .filterWhere(item => /Edit/.test(item.text())),
         );
 
         const editingScreen = app.find(UpdateAlertModalContent);
@@ -481,7 +481,7 @@ describe("Alerts", () => {
         await store.waitForActions([UPDATE_ALERT]);
 
         const alerts = Object.values(getQuestionAlerts(store.getState()));
-        const othersAlert = alerts.find((alert) => alert.creator_id === 2);
+        const othersAlert = alerts.find(alert => alert.creator_id === 2);
         expect(othersAlert.alert_above_goal).toBe(false);
       });
     });
@@ -526,7 +526,7 @@ describe("Alerts", () => {
         click(
           ownAlertListItem
             .find("a")
-            .filterWhere((item) => /Unsubscribe/.test(item.text())),
+            .filterWhere(item => /Unsubscribe/.test(item.text())),
         );
         await store.waitForActions([UNSUBSCRIBE_FROM_ALERT]);
       });

@@ -11,7 +11,7 @@ describe("scenarios > admin > datamodel > field", () => {
   beforeEach(() => {
     signInAsAdmin();
     withSampleDataset(({ ORDERS, ORDERS_ID }) => {
-      ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach((name) => {
+      ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach(name => {
         cy.wrap(
           `/admin/datamodel/database/1/table/${ORDERS_ID}/${ORDERS[name]}/general`,
         ).as(`ORDERS_${name}_URL`);
@@ -150,7 +150,10 @@ describe("scenarios > admin > datamodel > field", () => {
       cy.contains("Use original value").click();
       cy.contains("Custom mapping").click();
 
-      cy.get('input[value="0"]').clear().type("foo").blur();
+      cy.get('input[value="0"]')
+        .clear()
+        .type("foo")
+        .blur();
       cy.contains("button", "Save").click({ force: true });
       cy.wait("@fieldValuesUpdate");
 
@@ -173,10 +176,14 @@ describe("scenarios > admin > datamodel > field", () => {
 
       // change to custom mapping
       cy.findByText("Use original value").click();
-      popover().findByText("Custom mapping").click();
+      popover()
+        .findByText("Custom mapping")
+        .click();
 
       // update text for nulls from "null" to "nothin"
-      cy.get("input[value=null]").clear().type("nothin");
+      cy.get("input[value=null]")
+        .clear()
+        .type("nothin");
       cy.findByText("Save").click();
       cy.findByText("Saved!");
 

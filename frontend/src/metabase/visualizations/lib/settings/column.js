@@ -48,7 +48,7 @@ type ColumnGetter = (
 ) => Column[];
 
 const DEFAULT_GET_COLUMNS: ColumnGetter = (series, vizSettings) =>
-  [].concat(...series.map((s) => s.data.cols));
+  [].concat(...series.map(s => s.data.cols));
 
 type ColumnSettingDef = SettingDef & {
   getColumns?: ColumnGetter,
@@ -141,7 +141,7 @@ function getDateStyleOptionsForUnit(
     ),
   ];
   const seen = new Set();
-  return options.filter((option) => {
+  return options.filter(option => {
     const format = getDateFormatFromStyle(option.value, unit);
     if (seen.has(format)) {
       return false;
@@ -449,7 +449,7 @@ const COMMON_COLUMN_SETTINGS = {
   //   },
   // },
   column: {
-    getValue: (column) => column,
+    getValue: column => column,
   },
   _column_title_full: {
     getValue: (column: Column, settings: ColumnSettings) => {

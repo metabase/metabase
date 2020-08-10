@@ -50,9 +50,8 @@ const MIN_HEIGHT_LINES = 13;
 
 const ICON_SIZE = 18;
 
-const getEditorLineHeight = (lines) => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
-const getLinesForHeight = (height) =>
-  (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
+const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
+const getLinesForHeight = height => (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
 
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
@@ -98,7 +97,7 @@ type Props = {
   isNativeEditorOpen: boolean,
   setIsNativeEditorOpen: (isOpen: boolean) => void,
   nativeEditorSelectedText: string,
-  setNativeEditorSelectedRange: (any) => void,
+  setNativeEditorSelectedRange: any => void,
 
   isRunnable: boolean,
   isRunning: boolean,
@@ -177,7 +176,7 @@ export default class NativeQueryEditor extends Component {
     document.addEventListener("contextmenu", this.handleRightClick);
   }
 
-  handleRightClick = (event) => {
+  handleRightClick = event => {
     // Ace creates multiple selection elements which collectively cover the selected area.
     const selections = Array.from(document.querySelectorAll(".ace_selection"));
 
@@ -185,7 +184,7 @@ export default class NativeQueryEditor extends Component {
       this.props.nativeEditorSelectedText &&
       // For some reason the click doesn't target the selection element directly.
       // We check if it falls in the selections bounding rectangle to know if the selected text was clicked.
-      selections.some((selection) => isEventOverElement(event, selection))
+      selections.some(selection => isEventOverElement(event, selection))
     ) {
       event.preventDefault();
       this.setState({ isSelectedTextPopoverOpen: true });
@@ -281,7 +280,10 @@ export default class NativeQueryEditor extends Component {
     // if any text is selected, just run that
     const selectedText = this._editor && this._editor.getSelectedText();
     if (selectedText) {
-      const temporaryCard = query.setQueryText(selectedText).question().card();
+      const temporaryCard = query
+        .setQueryText(selectedText)
+        .question()
+        .card();
       runQuestionQuery({
         overrideWithCard: temporaryCard,
         shouldUpdateUrl: false,
@@ -363,7 +365,7 @@ export default class NativeQueryEditor extends Component {
           // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
           const results = await this.props.autocompleteResultsFn(prefix);
           // transform results of the API call into what ACE expects
-          const js_results = results.map(function (result) {
+          const js_results = results.map(function(result) {
             return {
               name: result[0],
               value: result[0],
@@ -381,7 +383,7 @@ export default class NativeQueryEditor extends Component {
     const allCompleters = [...this._editor.completers];
     const snippetCompleter = [{ getCompletions: this.getSnippetCompletions }];
 
-    this.swapInCorrectCompletors = (pos) => {
+    this.swapInCorrectCompletors = pos => {
       const isInSnippet = this.getSnippetNameAtCursor(pos) !== null;
       this._editor.completers = isInSnippet ? snippetCompleter : allCompleters;
     };
@@ -396,7 +398,7 @@ export default class NativeQueryEditor extends Component {
 
   getSnippetCompletions = (editor, session, pos, prefix, callback) => {
     const name = this.getSnippetNameAtCursor(pos);
-    const snippets = (this.props.snippets || []).filter((snippet) =>
+    const snippets = (this.props.snippets || []).filter(snippet =>
       snippet.name.toLowerCase().includes(name.toLowerCase()),
     );
 
@@ -504,7 +506,7 @@ export default class NativeQueryEditor extends Component {
       // we only render a db selector if there are actually multiple to choose from
       if (
         database == null ||
-        (databases.length > 1 && databases.some((db) => db.id === database.id))
+        (databases.length > 1 && databases.some(db => db.id === database.id))
       ) {
         dataSelectors.push(
           <div

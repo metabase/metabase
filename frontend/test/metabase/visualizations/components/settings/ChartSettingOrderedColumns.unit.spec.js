@@ -19,10 +19,7 @@ function renderChartSettingOrderedColumns(props) {
 describe("ChartSettingOrderedColumns", () => {
   it("should have the correct add and remove buttons", () => {
     const setting = renderChartSettingOrderedColumns({
-      value: [
-        { name: "Foo", enabled: true },
-        { name: "Bar", enabled: false },
-      ],
+      value: [{ name: "Foo", enabled: true }, { name: "Bar", enabled: false }],
     });
     expect(setting.find(".Icon-add")).toHaveLength(1);
     expect(setting.find(".Icon-close")).toHaveLength(1);
@@ -30,59 +27,35 @@ describe("ChartSettingOrderedColumns", () => {
   it("should add a column", () => {
     const onChange = jest.fn();
     const setting = renderChartSettingOrderedColumns({
-      value: [
-        { name: "Foo", enabled: true },
-        { name: "Bar", enabled: false },
-      ],
+      value: [{ name: "Foo", enabled: true }, { name: "Bar", enabled: false }],
       onChange,
     });
     setting.find(".Icon-add").simulate("click");
     expect(onChange.mock.calls).toEqual([
-      [
-        [
-          { name: "Foo", enabled: true },
-          { name: "Bar", enabled: true },
-        ],
-      ],
+      [[{ name: "Foo", enabled: true }, { name: "Bar", enabled: true }]],
     ]);
   });
   it("should remove a column", () => {
     const onChange = jest.fn();
     const setting = renderChartSettingOrderedColumns({
-      value: [
-        { name: "Foo", enabled: true },
-        { name: "Bar", enabled: false },
-      ],
+      value: [{ name: "Foo", enabled: true }, { name: "Bar", enabled: false }],
       onChange,
     });
     setting.find(".Icon-close").simulate("click");
     expect(onChange.mock.calls).toEqual([
-      [
-        [
-          { name: "Foo", enabled: false },
-          { name: "Bar", enabled: false },
-        ],
-      ],
+      [[{ name: "Foo", enabled: false }, { name: "Bar", enabled: false }]],
     ]);
   });
   it("should reorder columns", () => {
     const onChange = jest.fn();
     const setting = renderChartSettingOrderedColumns({
-      value: [
-        { name: "Foo", enabled: true },
-        { name: "Bar", enabled: true },
-      ],
+      value: [{ name: "Foo", enabled: true }, { name: "Bar", enabled: true }],
       onChange,
     });
     // just call handleSortEnd directly for now as it's difficult to simulate drag and drop
     setting.instance().handleSortEnd({ oldIndex: 1, newIndex: 0 });
     expect(onChange.mock.calls).toEqual([
-      [
-        [
-          { name: "Bar", enabled: true },
-          { name: "Foo", enabled: true },
-        ],
-      ],
+      [[{ name: "Bar", enabled: true }, { name: "Foo", enabled: true }]],
     ]);
   });
 
@@ -96,7 +69,10 @@ describe("ChartSettingOrderedColumns", () => {
         onChange,
       });
       expect(setting.find(".Icon-add")).toHaveLength(28);
-      setting.find(".Icon-add").first().simulate("click");
+      setting
+        .find(".Icon-add")
+        .first()
+        .simulate("click");
       expect(onChange.mock.calls).toEqual([
         [[{ fieldRef: ["field-id", 1], enabled: true }]],
       ]);

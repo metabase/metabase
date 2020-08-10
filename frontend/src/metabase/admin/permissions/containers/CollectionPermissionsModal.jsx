@@ -19,7 +19,7 @@ import {
 } from "../selectors";
 import { initialize, updatePermission, savePermissions } from "../permissions";
 
-const getCollectionEntity = (props) =>
+const getCollectionEntity = props =>
   props.namespace === "snippets" ? SnippetCollections : Collections;
 
 const mapStateToProps = (state, props) => {
@@ -46,16 +46,19 @@ const mapDispatchToProps = (dispatch, props) =>
       onUpdatePermission: updatePermission,
       onSave: savePermissions,
     },
-    (f) => (...args) => dispatch(f(...args)),
+    f => (...args) => dispatch(f(...args)),
   );
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class CollectionPermissionsModal extends Component {
   componentWillMount() {
     const { namespace, loadCollections, initialize } = this.props;
     initialize(
       () => CollectionsApi.graph({ namespace }),
-      (graph) => CollectionsApi.updateGraph({ ...graph, namespace }),
+      graph => CollectionsApi.updateGraph({ ...graph, namespace }),
     );
     loadCollections();
   }

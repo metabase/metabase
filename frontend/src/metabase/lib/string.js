@@ -14,7 +14,7 @@ export function regexpEscape(s) {
   return s.replace(regexpSpecialChars, "\\$&");
 }
 
-export const countLines = (str) => str.split(/\n/g).length;
+export const countLines = str => str.split(/\n/g).length;
 
 export function caseInsensitiveSearch(haystack, needle) {
   return (

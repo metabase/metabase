@@ -51,20 +51,20 @@ export default class OnClickOutsideWrapper extends Component {
     }, 0);
   }
 
-  _handleClick = (e) => {
+  _handleClick = e => {
     if (!ReactDOM.findDOMNode(this).contains(e.target)) {
       setTimeout(this._handleDismissal, 0);
     }
   };
 
-  _handleKeyPress = (e) => {
+  _handleKeyPress = e => {
     if (e.keyCode === KEYCODE_ESCAPE) {
       e.preventDefault();
       this._handleDismissal();
     }
   };
 
-  _handleDismissal = (e) => {
+  _handleDismissal = e => {
     // only propagate event for the popover on top of the stack
     if (this === popoverStack[popoverStack.length - 1]) {
       this.props.handleDismissal(e);

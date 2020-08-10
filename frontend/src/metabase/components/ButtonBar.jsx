@@ -4,7 +4,7 @@ import { Flex } from "grid-styled";
 
 function normalizeArray(array) {
   if (Array.isArray(array)) {
-    array = array.filter((a) => a);
+    array = array.filter(a => a);
     if (array.length === 0) {
       array = null;
     }

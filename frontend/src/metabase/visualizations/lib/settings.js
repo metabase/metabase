@@ -169,7 +169,7 @@ function getSettingWidget(
 ): WidgetDef {
   const settingDef = settingDefs[settingId];
   const value = computedSettings[settingId];
-  const onChange = (value) => {
+  const onChange = value => {
     const newSettings = { [settingId]: value };
     for (const settingId of settingDef.writeDependencies || []) {
       newSettings[settingId] = computedSettings[settingId];
@@ -216,7 +216,7 @@ export function getSettingsWidgets(
   extra?: ExtraProps = {},
 ) {
   return Object.keys(settingDefs)
-    .map((settingId) =>
+    .map(settingId =>
       getSettingWidget(
         settingDefs,
         settingId,
@@ -227,7 +227,7 @@ export function getSettingsWidgets(
         extra,
       ),
     )
-    .filter((widget) => widget.widget);
+    .filter(widget => widget.widget);
 }
 
 export function getPersistableDefaultSettings(

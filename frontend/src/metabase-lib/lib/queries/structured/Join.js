@@ -95,8 +95,8 @@ export default class Join extends MBQLObjectClause {
     const usedAliases = new Set(
       this.query()
         .joins()
-        .map((join) => join.alias)
-        .filter((alias) => alias !== this.alias),
+        .map(join => join.alias)
+        .filter(alias => alias !== this.alias),
     );
 
     // alias can't be same as parent table name either
@@ -200,7 +200,7 @@ export default class Join extends MBQLObjectClause {
     // look for foreign keys linking the two tables
     const joinedTable = this.joinedTable();
     if (joinedTable && joinedTable.id != null) {
-      const fk = _.find(dimensions, (d) => {
+      const fk = _.find(dimensions, d => {
         const { target } = d.field();
         return target && target.table && target.table.id === joinedTable.id;
       });
@@ -317,7 +317,7 @@ export default class Join extends MBQLObjectClause {
   joinedDimensions() {
     const table = this.joinedTable();
     return table
-      ? table.dimensions().map((dimension) => this.joinedDimension(dimension))
+      ? table.dimensions().map(dimension => this.joinedDimension(dimension))
       : [];
   }
 
@@ -328,7 +328,7 @@ export default class Join extends MBQLObjectClause {
     if (this.fields === "all") {
       return this.joinedDimensions();
     } else if (Array.isArray(this.fields)) {
-      return this.fields.map((f) => this.query().parseFieldReference(f));
+      return this.fields.map(f => this.query().parseFieldReference(f));
     } else {
       return [];
     }

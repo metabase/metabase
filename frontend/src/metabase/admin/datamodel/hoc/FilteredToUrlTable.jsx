@@ -9,8 +9,11 @@ import Icon from "metabase/components/Icon";
 import FieldSet from "metabase/components/FieldSet";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
-const FilteredToUrlTable = (propName) => (ComposedComponent) =>
-  connect(null, { push })(
+const FilteredToUrlTable = propName => ComposedComponent =>
+  connect(
+    null,
+    { push },
+  )(
     class FilteredToUrlTable extends React.Component {
       constructor(props) {
         super(props);
@@ -18,7 +21,7 @@ const FilteredToUrlTable = (propName) => (ComposedComponent) =>
         this.state = { tableId: table != null ? parseInt(table) : null };
       }
 
-      setTableId = (tableId) => {
+      setTableId = tableId => {
         this.setState({ tableId });
         this.props.push({
           ...this.props.location,
@@ -33,7 +36,7 @@ const FilteredToUrlTable = (propName) => (ComposedComponent) =>
           [propName]:
             tableId == null
               ? items
-              : items.filter((item) => item.table_id === tableId),
+              : items.filter(item => item.table_id === tableId),
           tableSelector: (
             <TableSelector tableId={tableId} setTableId={this.setTableId} />
           ),
@@ -73,7 +76,7 @@ class TableSelector extends React.Component {
                   {table && table.displayName()}
                   <Icon
                     name="close"
-                    onClick={(e) => {
+                    onClick={e => {
                       e.stopPropagation();
                       setTableId(null);
                     }}

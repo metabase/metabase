@@ -44,19 +44,31 @@ describe("scenarios > dashboard > parameters", () => {
     cy.contains("Category").click();
 
     // After typing "Ga", you should see this name
-    popover().find("input").type("Ga");
+    popover()
+      .find("input")
+      .type("Ga");
     popover().contains("Gabrielle Considine");
 
     // Continue typing a "d" and you see "Gadget"
-    popover().find("input").type("d");
-    popover().contains("Gadget").click();
+    popover()
+      .find("input")
+      .type("d");
+    popover()
+      .contains("Gadget")
+      .click();
 
-    popover().contains("Add filter").click();
+    popover()
+      .contains("Add filter")
+      .click();
 
     // There should be 0 orders from someone named "Gadget"
-    cy.get(".DashCard").first().contains("0");
+    cy.get(".DashCard")
+      .first()
+      .contains("0");
     // There should be 4939 orders for a product that is a gadget
-    cy.get(".DashCard").last().contains("4,939");
+    cy.get(".DashCard")
+      .last()
+      .contains("4,939");
   });
 
   it.skip("should link to custom questions with filtered aggregate data (Issue #11007)", () => {
@@ -70,14 +82,18 @@ describe("scenarios > dashboard > parameters", () => {
       cy.contains("Cancel");
 
       cy.contains("User ID").click();
-      cy.get("input").last().type("1");
+      cy.get("input")
+        .last()
+        .type("1");
       cy.get(".Button").click();
     });
     cy.findByText("User ID is 1");
     cy.findByText("Filter by").should("not.exist");
 
     // Add first summary param to question
-    cy.findAllByText("Summarize").first().click();
+    cy.findAllByText("Summarize")
+      .first()
+      .click();
     sidebar().within(() => {
       cy.contains("Summarize by");
       cy.contains("Count").click();
@@ -116,7 +132,9 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Summarize by").should("not.exist");
 
     // Add aggregation filter
-    cy.findAllByText("Filter").first().click();
+    cy.findAllByText("Filter")
+      .first()
+      .click();
     sidebar().within(() => {
       cy.contains("Filter by");
 
@@ -132,7 +150,9 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByPlaceholderText("What is the name of your card?").type(
       "Test Question",
     );
-    cy.findAllByText("Save").last().click();
+    cy.findAllByText("Save")
+      .last()
+      .click();
     cy.findByText("Yes please!").click();
     cy.findByText("Orders in a dashboard").click();
 
@@ -165,16 +185,24 @@ describe("scenarios > dashboard > parameters", () => {
 });
 
 function selectFilterItem(filterItem) {
-  cy.findAllByText("Select…").last().click();
-  cy.findAllByText(filterItem).first().click();
+  cy.findAllByText("Select…")
+    .last()
+    .click();
+  cy.findAllByText(filterItem)
+    .first()
+    .click();
 }
 
 function selectFilter(selection, filterName) {
   selection.contains("Select…").click();
-  popover().contains(filterName).click({ force: true });
+  popover()
+    .contains(filterName)
+    .click({ force: true });
 }
 
 function addQuestion(name) {
   cy.get(".DashboardHeader .Icon-add").click();
-  modal().contains(name).click();
+  modal()
+    .contains(name)
+    .click();
 }

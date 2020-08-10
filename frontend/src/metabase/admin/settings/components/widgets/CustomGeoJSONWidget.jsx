@@ -72,7 +72,7 @@ export default class CustomGeoJSONWidget extends Component {
     this.setState({ map: null, originalMap: null });
   };
 
-  _delete = async (map) => {
+  _delete = async map => {
     await this._saveMap(map.id, null);
   };
 
@@ -137,7 +137,7 @@ export default class CustomGeoJSONWidget extends Component {
             ...value,
             id: key,
           }))}
-          onEditMap={(map) =>
+          onEditMap={map =>
             this.setState(
               {
                 map: {
@@ -159,7 +159,7 @@ export default class CustomGeoJSONWidget extends Component {
               <EditMap
                 map={this.state.map}
                 originalMap={this.state.originalMap}
-                onMapChange={(map) => this.setState({ map })}
+                onMapChange={map => this.setState({ map })}
                 geoJson={this.state.geoJson}
                 geoJsonLoading={this.state.geoJsonLoading}
                 geoJsonError={this.state.geoJsonError}
@@ -186,8 +186,8 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
       </thead>
       <tbody>
         {maps
-          .filter((map) => !map.builtin)
-          .map((map) => (
+          .filter(map => !map.builtin)
+          .map(map => (
             <tr key={map.id}>
               <td className="cursor-pointer" onClick={() => onEditMap(map)}>
                 {map.name}
@@ -224,7 +224,7 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
   return (
     <Select
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={e => onChange(e.target.value)}
       placeholder={t`Select…`}
     >
       {Object.entries(options).map(([name, values]) => (
@@ -286,7 +286,7 @@ const EditMap = ({
               className="SettingsInput AdminInput bordered rounded h3"
               placeholder={t`e.g. United Kingdom, Brazil, Mars`}
               value={map.name}
-              onChange={(e) => onMapChange({ ...map, name: e.target.value })}
+              onChange={e => onMapChange({ ...map, name: e.target.value })}
             />
           </div>
         </SettingContainer>
@@ -299,7 +299,7 @@ const EditMap = ({
               className="SettingsInput AdminInput bordered rounded h3"
               placeholder={t`Like https://my-mb-server.com/maps/my-map.json`}
               value={map.url}
-              onChange={(e) => onMapChange({ ...map, url: e.target.value })}
+              onChange={e => onMapChange({ ...map, url: e.target.value })}
             />
             <button
               className={cx("Button ml1", {
@@ -318,7 +318,7 @@ const EditMap = ({
           >
             <GeoJsonPropertySelect
               value={map.region_key}
-              onChange={(value) => onMapChange({ ...map, region_key: value })}
+              onChange={value => onMapChange({ ...map, region_key: value })}
               geoJson={geoJson}
             />
           </SettingContainer>
@@ -327,7 +327,7 @@ const EditMap = ({
           >
             <GeoJsonPropertySelect
               value={map.region_name}
-              onChange={(value) => onMapChange({ ...map, region_name: value })}
+              onChange={value => onMapChange({ ...map, region_name: value })}
               geoJson={geoJson}
             />
           </SettingContainer>

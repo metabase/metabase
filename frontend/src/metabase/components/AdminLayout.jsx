@@ -9,7 +9,7 @@ export default class AdminLayout extends Component {
   setSaved = () => {
     this.refs.header.refs.status.setSaved();
   };
-  setSaveError = (error) => {
+  setSaveError = error => {
     this.refs.header.refs.status.setSaveError(error);
   };
 

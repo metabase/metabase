@@ -21,14 +21,17 @@ const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),
 });
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class FieldsToGroupBy extends Component {
   props: {
     fields: Object,
     databaseId: number,
     metric: Object,
     title: string,
-    onChangeLocation: (string) => void,
+    onChangeLocation: string => void,
     metadata: Metadata,
   };
 
@@ -68,7 +71,7 @@ export default class FieldsToGroupBy extends Component {
                       }),
                     )
                   }
-                  secondaryOnClick={(event) => {
+                  secondaryOnClick={event => {
                     event.stopPropagation();
                     onChangeLocation(
                       `/reference/databases/${databaseId}/tables/${field.table_id}/fields/${field.id}`,

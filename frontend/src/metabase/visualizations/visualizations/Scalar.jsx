@@ -125,7 +125,7 @@ export default class Scalar extends Component {
         ],
         settings,
       ) => [
-        _.find(cols, (col) => col.name === settings["scalar.field"]) || cols[0],
+        _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
       ],
       readDependencies: ["scalar.field"],
     }),
@@ -164,7 +164,7 @@ export default class Scalar extends Component {
   _getColumnIndex(cols: Column[], settings: VisualizationSettings) {
     const columnIndex = _.findIndex(
       cols,
-      (col) => col.name === settings["scalar.field"],
+      col => col.name === settings["scalar.field"],
     );
     return columnIndex < 0 ? 0 : columnIndex;
   }
@@ -231,7 +231,7 @@ export default class Scalar extends Component {
                 this._scalar &&
                 onVisualizationClick({ ...clicked, element: this._scalar }))
             }
-            ref={(scalar) => (this._scalar = scalar)}
+            ref={scalar => (this._scalar = scalar)}
           >
             <ScalarValue value={displayValue} />
           </span>

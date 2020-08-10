@@ -30,7 +30,7 @@ const fetchAlertsForQuestionRequest = new RestfulRequest({
   actionPrefix: FETCH_ALERTS_FOR_QUESTION,
   storeAsDictionary: true,
 });
-export const fetchAlertsForQuestion = (questionId) => {
+export const fetchAlertsForQuestion = questionId => {
   return async (dispatch, getState) => {
     dispatch.action(FETCH_ALERTS_FOR_QUESTION_CLEAR_OLD_ALERTS, questionId);
     await dispatch(fetchAlertsForQuestionRequest.trigger({ questionId }));
@@ -44,7 +44,7 @@ const createAlertRequest = new RestfulRequest({
   actionPrefix: CREATE_ALERT,
   storeAsDictionary: true,
 });
-export const createAlert = (alert) => {
+export const createAlert = alert => {
   return async (dispatch, getState) => {
     // TODO: How to handle a failed creation and display it to a user?
     // Maybe RestfulRequest.trigger should throw an exception
@@ -88,7 +88,7 @@ const updateAlertRequest = new RestfulRequest({
   actionPrefix: UPDATE_ALERT,
   storeAsDictionary: true,
 });
-export const updateAlert = (alert) => {
+export const updateAlert = alert => {
   return async (dispatch, getState) => {
     await dispatch(updateAlertRequest.trigger(cleanAlert(alert)));
 
@@ -116,7 +116,7 @@ const unsubscribeFromAlertRequest = new RestfulRequest({
   actionPrefix: UNSUBSCRIBE_FROM_ALERT,
   storeAsDictionary: true,
 });
-export const unsubscribeFromAlert = (alert) => {
+export const unsubscribeFromAlert = alert => {
   return async (dispatch, getState) => {
     await dispatch(unsubscribeFromAlertRequest.trigger(alert));
     dispatch.action(UNSUBSCRIBE_FROM_ALERT);
@@ -136,7 +136,7 @@ const deleteAlertRequest = new RestfulRequest({
   actionPrefix: DELETE_ALERT,
   storeAsDictionary: true,
 });
-export const deleteAlert = (alertId) => {
+export const deleteAlert = alertId => {
   return async (dispatch, getState) => {
     await dispatch(deleteAlertRequest.trigger({ id: alertId }));
 
@@ -164,7 +164,7 @@ const removeAlertReducer = (state, { payload: alertId }) => ({
 const removeAlertsForQuestionReducer = (state, { payload: questionId }) => {
   return {
     ...state,
-    result: _.omit(state.result || {}, (alert) => alert.card.id === questionId),
+    result: _.omit(state.result || {}, alert => alert.card.id === questionId),
   };
 };
 

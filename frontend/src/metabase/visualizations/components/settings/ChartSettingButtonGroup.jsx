@@ -9,7 +9,7 @@ const ChartSettingButtonGroup = ({ value, onChange, options, ...props }) => (
     value={value}
     onChange={onChange}
     options={options}
-    optionNameFn={(o) => (o.icon ? <Icon name={o.icon} /> : o.name)}
+    optionNameFn={o => (o.icon ? <Icon name={o.icon} /> : o.name)}
   />
 );
 

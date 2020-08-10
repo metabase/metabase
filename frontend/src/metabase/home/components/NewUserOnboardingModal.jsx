@@ -87,7 +87,7 @@ export default class NewUserOnboardingModal extends Component {
               <StepIndicators
                 currentStep={step}
                 steps={STEPS}
-                goToStep={(step) => this.setState({ step })}
+                goToStep={step => this.setState({ step })}
               />
             </div>
             <a

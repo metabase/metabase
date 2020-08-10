@@ -25,7 +25,7 @@ export default class RefreshWidget extends Component {
   componentWillMount() {
     const { setRefreshElapsedHook } = this.props;
     if (setRefreshElapsedHook) {
-      setRefreshElapsedHook((elapsed) => this.setState({ elapsed }));
+      setRefreshElapsedHook(elapsed => this.setState({ elapsed }));
     }
   }
 
@@ -35,7 +35,7 @@ export default class RefreshWidget extends Component {
       setRefreshElapsedHook &&
       prevProps.setRefreshElapsedHook !== setRefreshElapsedHook
     ) {
-      setRefreshElapsedHook((elapsed) => this.setState({ elapsed }));
+      setRefreshElapsedHook(elapsed => this.setState({ elapsed }));
     }
   }
 
@@ -76,7 +76,7 @@ export default class RefreshWidget extends Component {
         <div className={styles.popover}>
           <div className={styles.title}>Auto Refresh</div>
           <RefreshOptionList>
-            {OPTIONS.map((option) => (
+            {OPTIONS.map(option => (
               <RefreshOption
                 key={option.period}
                 name={option.name}

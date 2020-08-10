@@ -6,7 +6,7 @@ import { getEmptyImage } from "react-dnd-html5-backend";
 import { dragTypeForItem } from ".";
 
 @DragSource(
-  (props) => dragTypeForItem(props.item),
+  props => dragTypeForItem(props.item),
   {
     canDrag(props, monitor) {
       // can't drag if can't write the parent collection
@@ -41,11 +41,11 @@ import { dragTypeForItem } from ".";
         try {
           if (collection !== undefined) {
             await Promise.all(
-              items.map((i) => i.setCollection && i.setCollection(collection)),
+              items.map(i => i.setCollection && i.setCollection(collection)),
             );
           } else if (pinIndex !== undefined) {
             await Promise.all(
-              items.map((i) => i.setPinned && i.setPinned(pinIndex)),
+              items.map(i => i.setPinned && i.setPinned(pinIndex)),
             );
           }
         } catch (e) {

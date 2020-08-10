@@ -89,12 +89,19 @@ describe("scenarios > admin > datamodel > table", () => {
     });
 
     function field(name) {
-      return cy.get(`input[value="${name}"]`).parent().parent();
+      return cy
+        .get(`input[value="${name}"]`)
+        .parent()
+        .parent();
     }
 
     function testSelect(alias, initialOption, desiredOption) {
-      cy.get(alias).contains(initialOption).click({ force: true });
-      popover().contains(desiredOption).click({ force: true });
+      cy.get(alias)
+        .contains(initialOption)
+        .click({ force: true });
+      popover()
+        .contains(desiredOption)
+        .click({ force: true });
       cy.get(alias).contains(desiredOption);
 
       cy.wait("@fieldUpdate");
@@ -145,11 +152,15 @@ describe("scenarios > admin > datamodel > table", () => {
       cy.contains("Column order:").click();
 
       // switch to alphabetical ordering
-      popover().contains("Alphabetical").click({ force: true });
+      popover()
+        .contains("Alphabetical")
+        .click({ force: true });
 
       // move product_id to the top
       cy.route("PUT", "/api/table/2/fields/order").as("fieldReorder");
-      cy.get(".Grabber").eq(3).trigger("mousedown", 0, 0);
+      cy.get(".Grabber")
+        .eq(3)
+        .trigger("mousedown", 0, 0);
       cy.get("#ColumnsList")
         .trigger("mousemove", 10, 10)
         .trigger("mouseup", 10, 10);
@@ -162,7 +173,7 @@ describe("scenarios > admin > datamodel > table", () => {
         database: 1,
         query: { "source-table": 2 },
         type: "query",
-      }).then((resp) => {
+      }).then(resp => {
         expect(resp.body.data.cols[0].name).to.eq("PRODUCT_ID");
       });
     });

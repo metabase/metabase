@@ -12,7 +12,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 export default function ClauseStep({
   color,
   items,
-  renderName = (item) => item.displayName(),
+  renderName = item => item.displayName(),
   renderPopover,
   onRemove = null,
   canRemove,
@@ -31,7 +31,7 @@ export default function ClauseStep({
                 <Icon
                   ml={1}
                   name="close"
-                  onClick={(e) => {
+                  onClick={e => {
                     e.stopPropagation();
                     onRemove(item, index);
                   }}

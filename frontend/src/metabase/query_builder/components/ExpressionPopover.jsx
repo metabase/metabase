@@ -42,14 +42,14 @@ export default class ExpressionPopover extends React.Component {
             startRule={startRule}
             expression={expression}
             query={query}
-            onChange={(expression) => {
+            onChange={expression => {
               onChange(expression);
               this.setState({ error: null });
             }}
-            onError={(errorMessage) => {
+            onError={errorMessage => {
               this.setState({ error: errorMessage });
             }}
-            onCommit={(expression) => {
+            onCommit={expression => {
               if (!onChangeName) {
                 onChange(expression);
                 onDone();
@@ -58,7 +58,7 @@ export default class ExpressionPopover extends React.Component {
           />
           {error &&
             (Array.isArray(error) ? (
-              error.map((error) => (
+              error.map(error => (
                 <div
                   className="text-error mb1"
                   style={{ whiteSpace: "pre-wrap" }}
@@ -73,8 +73,8 @@ export default class ExpressionPopover extends React.Component {
             <input
               className="input block full my1"
               value={name}
-              onChange={(e) => onChangeName(e.target.value)}
-              onKeyPress={(e) => {
+              onChange={e => onChangeName(e.target.value)}
+              onKeyPress={e => {
                 if (e.key === "Enter" && isValid) {
                   onDone();
                 }

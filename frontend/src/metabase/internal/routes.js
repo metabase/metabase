@@ -50,7 +50,7 @@ const InternalLayout = fitViewport(({ children }) => {
           <h4>Style Guide</h4>
         </a>
         <ul className="flex ml-auto">
-          {Object.keys(PAGES).map((name) => (
+          {Object.keys(PAGES).map(name => (
             <li key={name}>
               <Link
                 className="link mx2"

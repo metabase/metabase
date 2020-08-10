@@ -34,7 +34,7 @@ const DATABASE_DETAIL_OVERRIDES = {
     ),
   }),
   "service-account-json": (engine, details) => ({
-    validate: (value) => {
+    validate: value => {
       if (!value) {
         return t`required`;
       }
@@ -223,8 +223,8 @@ function getFieldsForEngine(engine, details, id) {
         type: field.type,
         placeholder: field.placeholder || field.default,
         options: field.options,
-        validate: (value) => (field.required && !value ? t`required` : null),
-        normalize: (value) =>
+        validate: value => (field.required && !value ? t`required` : null),
+        normalize: value =>
           value === "" || value == null
             ? "default" in field
               ? field.default
@@ -263,7 +263,7 @@ const forms = {
         name: "name",
         title: t`Name`,
         placeholder: t`How would you like to refer to this database?`,
-        validate: (value) => !value && t`required`,
+        validate: value => !value && t`required`,
         hidden: !engine,
       },
       ...(getFieldsForEngine(engine, details, id) || []),
@@ -302,7 +302,7 @@ const forms = {
         hidden: !engine || !details["let-user-control-scheduling"],
       },
     ],
-    normalize: function (database) {
+    normalize: function(database) {
       if (!database.details["let-user-control-scheduling"]) {
         // If we don't let user control the scheduling settings, let's override them with Metabase defaults
         // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults
@@ -322,7 +322,7 @@ const forms = {
 forms.connection = {
   ...forms.details,
   fields: (...args) =>
-    forms.details.fields(...args).map((field) => ({
+    forms.details.fields(...args).map(field => ({
       ...field,
       hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
     })),
@@ -330,7 +330,7 @@ forms.connection = {
 forms.scheduling = {
   ...forms.details,
   fields: (...args) =>
-    forms.details.fields(...args).map((field) => ({
+    forms.details.fields(...args).map(field => ({
       ...field,
       hidden: field.hidden || !SCHEDULING_FIELDS.has(field.name),
     })),

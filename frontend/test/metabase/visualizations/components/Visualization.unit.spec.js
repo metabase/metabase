@@ -16,12 +16,12 @@ import Visualization from "metabase/visualizations/components/Visualization";
 describe("Visualization", () => {
   // eslint-disable-next-line no-unused-vars
   let element, viz;
-  const qs = (s) => element.querySelector(s);
-  const qsa = (s) => [...element.querySelectorAll(s)];
+  const qs = s => element.querySelector(s);
+  const qsa = s => [...element.querySelectorAll(s)];
 
-  const renderViz = async (series) => {
+  const renderViz = async series => {
     ReactDOM.render(
-      <Visualization ref={(ref) => (viz = ref)} rawSeries={series} />,
+      <Visualization ref={ref => (viz = ref)} rawSeries={series} />,
       element,
     );
     // The chart isn't rendered until the next tick. This is due to ExplicitSize
@@ -50,8 +50,7 @@ describe("Visualization", () => {
   });
 
   describe("bar", () => {
-    const getBarColors = () =>
-      qsa(".bar").map((bar) => bar.getAttribute("fill"));
+    const getBarColors = () => qsa(".bar").map(bar => bar.getAttribute("fill"));
     describe("single series", () => {
       it("should have correct colors", async () => {
         await renderViz([
@@ -62,10 +61,7 @@ describe("Visualization", () => {
                 StringColumn({ name: "Dimension" }),
                 NumberColumn({ name: "Count" }),
               ],
-              rows: [
-                ["foo", 1],
-                ["bar", 2],
-              ],
+              rows: [["foo", 1], ["bar", 2]],
             },
           },
         ]);
@@ -86,10 +82,7 @@ describe("Visualization", () => {
                 NumberColumn({ name: "Count" }),
                 NumberColumn({ name: "Sum" }),
               ],
-              rows: [
-                ["foo", 1, 3],
-                ["bar", 2, 4],
-              ],
+              rows: [["foo", 1, 3], ["bar", 2, 4]],
             },
           },
         ]);
@@ -139,10 +132,7 @@ describe("Visualization", () => {
                 StringColumn({ name: "Dimension" }),
                 NumberColumn({ name: "Count" }),
               ],
-              rows: [
-                ["foo", 1],
-                ["bar", 2],
-              ],
+              rows: [["foo", 1], ["bar", 2]],
             },
           },
           {
@@ -152,10 +142,7 @@ describe("Visualization", () => {
                 StringColumn({ name: "Dimension" }),
                 NumberColumn({ name: "Count" }),
               ],
-              rows: [
-                ["foo", 3],
-                ["bar", 4],
-              ],
+              rows: [["foo", 3], ["bar", 4]],
             },
           },
         ]);

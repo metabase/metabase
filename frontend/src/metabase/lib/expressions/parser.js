@@ -41,7 +41,7 @@ export class ExpressionParser extends CstParser {
 
     // START RULES:
 
-    $.RULE("any", (returnType) => {
+    $.RULE("any", returnType => {
       $.OR({
         DEF: [
           {
@@ -117,7 +117,7 @@ export class ExpressionParser extends CstParser {
     // Lowest precedence thus it is first in the rule chain
     // The precedence of binary expressions is determined by
     // how far down the Parse Tree the binary expression appears.
-    $.RULE("additionExpression", (returnType) => {
+    $.RULE("additionExpression", returnType => {
       $.SUBRULE($.multiplicationExpression, {
         ARGS: [returnType],
         LABEL: "operands",
@@ -131,7 +131,7 @@ export class ExpressionParser extends CstParser {
       });
     });
 
-    $.RULE("multiplicationExpression", (returnType) => {
+    $.RULE("multiplicationExpression", returnType => {
       $.SUBRULE($.atomicExpression, {
         ARGS: [returnType],
         LABEL: "operands",
@@ -170,7 +170,7 @@ export class ExpressionParser extends CstParser {
       $.SUBRULE($.expression, { LABEL: "operands" });
     });
 
-    $.RULE("functionExpression", (returnType) => {
+    $.RULE("functionExpression", returnType => {
       $.CONSUME(FunctionName, { LABEL: "functionName" });
       $.OR1([
         {
@@ -223,7 +223,7 @@ export class ExpressionParser extends CstParser {
       ]);
     });
 
-    $.RULE("caseExpression", (returnType) => {
+    $.RULE("caseExpression", returnType => {
       $.CONSUME(Case, { LABEL: "functionName" });
       $.CONSUME(LParen);
       $.SUBRULE($.boolean, { LABEL: "arguments" });
@@ -282,7 +282,7 @@ export class ExpressionParser extends CstParser {
       $.CONSUME(NumberLiteral);
     });
 
-    $.RULE("atomicExpression", (returnType) => {
+    $.RULE("atomicExpression", returnType => {
       $.OR({
         DEF: [
           // functions: used by aggregations, expressions, and filters
@@ -382,7 +382,7 @@ export class ExpressionParser extends CstParser {
       });
     });
 
-    $.RULE("parenthesisExpression", (returnType) => {
+    $.RULE("parenthesisExpression", returnType => {
       $.CONSUME(LParen);
       $.SUBRULE($.any, { LABEL: "expression", ARGS: [returnType] });
       $.CONSUME(RParen);

@@ -12,7 +12,7 @@ export const NotebookCell = styled(Flex).attrs({
   flexWrap: "wrap",
 })`
   border-radius: 8px;
-  background-color: ${(props) => alpha(props.color, 0.1)};
+  background-color: ${props => alpha(props.color, 0.1)};
 `;
 NotebookCell.defaultProps = {
   px: 2,
@@ -30,14 +30,13 @@ export const NotebookCellItem = styled(Flex).attrs({
   font-weight: bold;
   border: 2px solid transparent;
   border-radius: 6px;
-  color: ${(props) => (props.inactive ? props.color : "white")};
-  background-color: ${(props) =>
-    props.inactive ? "transparent" : props.color};
-  border-color: ${(props) =>
+  color: ${props => (props.inactive ? props.color : "white")};
+  background-color: ${props => (props.inactive ? "transparent" : props.color)};
+  border-color: ${props =>
     props.inactive ? alpha(props.color, 0.25) : "transparent"};
   &:hover {
-    background-color: ${(props) => !props.inactive && alpha(props.color, 0.8)};
-    border-color: ${(props) => props.inactive && alpha(props.color, 0.8)};
+    background-color: ${props => !props.inactive && alpha(props.color, 0.8)};
+    border-color: ${props => props.inactive && alpha(props.color, 0.8)};
   }
   transition: background 300ms linear, border 300ms linear;
   > .Icon {

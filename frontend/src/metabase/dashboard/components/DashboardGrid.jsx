@@ -74,7 +74,7 @@ export default class DashboardGrid extends Component {
 
   onLayoutChange(layout) {
     const changes = layout.filter(
-      (newLayout) =>
+      newLayout =>
         !_.isEqual(newLayout, this.getLayoutForDashCard(newLayout.dashcard)),
     );
     for (const change of changes) {
@@ -245,7 +245,7 @@ export default class DashboardGrid extends Component {
         style={{ margin: 0 }}
       >
         {dashcards &&
-          dashcards.map((dc) => (
+          dashcards.map(dc => (
             <div
               key={dc.id}
               className="DashCard"
@@ -287,7 +287,7 @@ export default class DashboardGrid extends Component {
         isEditing={isEditing}
       >
         {dashboard &&
-          dashboard.ordered_cards.map((dc) => (
+          dashboard.ordered_cards.map(dc => (
             <div
               key={dc.id}
               className="DashCard"

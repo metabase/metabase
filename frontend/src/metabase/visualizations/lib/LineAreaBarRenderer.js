@@ -106,7 +106,7 @@ function getXInterval({ settings, series }, xValues, warn) {
     // 1. interval - it's really the "unit": month, day, etc
     // 2. count - how many intervals per tick?
     // 3. timezone - what timezone are values in? days vary in length by timezone
-    const unit = minTimeseriesUnit(series.map((s) => s.data.cols[0].unit));
+    const unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
     const timezone = getTimezone(series, warn);
     const { count, interval } = computeTimeseriesDataInverval(xValues, unit);
     return { count, interval, timezone };
@@ -146,12 +146,12 @@ function getXAxisProps(props, datas, warn) {
 
 function getDimensionsAndGroupsForScatterChart(datas) {
   const dataset = crossfilter();
-  datas.map((data) => dataset.add(data));
+  datas.map(data => dataset.add(data));
 
-  const dimension = dataset.dimension((row) => row);
-  const groups = datas.map((data) => {
-    const dim = crossfilter(data).dimension((row) => row);
-    return [dim.group().reduceSum((d) => d[2] || 1)];
+  const dimension = dataset.dimension(row => row);
+  const groups = datas.map(data => {
+    const dim = crossfilter(data).dimension(row => row);
+    return [dim.group().reduceSum(d => d[2] || 1)];
   });
 
   return { dimension, groups };
@@ -159,8 +159,8 @@ function getDimensionsAndGroupsForScatterChart(datas) {
 
 /// Add '% ' in from of the names of the appropriate series. E.g. 'Sum' becomes '% Sum'
 function addPercentSignsToDisplayNames(series) {
-  return series.map((s) =>
-    updateIn(s, ["data", "cols", 1], (col) => ({
+  return series.map(s =>
+    updateIn(s, ["data", "cols", 1], col => ({
       ...col,
       display_name: "% " + getFriendlyName(col),
     })),
@@ -169,9 +169,7 @@ function addPercentSignsToDisplayNames(series) {
 
 // Store a "decimals" property on the column that is normalized
 function addDecimalsToPercentColumn(series, decimals) {
-  return series.map((s) =>
-    assocIn(s, ["data", "cols", 1, "decimals"], decimals),
-  );
+  return series.map(s => assocIn(s, ["data", "cols", 1, "decimals"], decimals));
 }
 
 function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
@@ -193,7 +191,7 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
 
     props.series = addPercentSignsToDisplayNames(props.series);
 
-    const normalizedValues = datas.flatMap((data) =>
+    const normalizedValues = datas.flatMap(data =>
       data.map(([d, m]) => m / scaleFactors[d]),
     );
     const decimals = computeMaxDecimalsForValues(normalizedValues, {
@@ -205,14 +203,14 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
 
   datas.map((data, i) =>
     dataset.add(
-      data.map((d) => ({
+      data.map(d => ({
         [0]: d[0],
         [i + 1]: normalized ? d[1] / scaleFactors[d[0]] : d[1],
       })),
     ),
   );
 
-  const dimension = dataset.dimension((d) => d[0]);
+  const dimension = dataset.dimension(d => d[0]);
   const groups = [
     datas.map((data, seriesIndex) =>
       reduceGroup(dimension.group(), seriesIndex + 1, () =>
@@ -226,14 +224,14 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
 
 function getDimensionsAndGroupsForOther({ series }, datas, warn) {
   const dataset = crossfilter();
-  datas.map((data) => dataset.add(data));
+  datas.map(data => dataset.add(data));
 
-  const dimension = dataset.dimension((d) => d[0]);
+  const dimension = dataset.dimension(d => d[0]);
   const groups = datas.map((data, seriesIndex) => {
     // If the value is empty, pass a dummy array to crossfilter
     data = data.length > 0 ? data : [[null, null]];
 
-    const dim = crossfilter(data).dimension((d) => d[0]);
+    const dim = crossfilter(data).dimension(d => d[0]);
 
     return data[0]
       .slice(1)
@@ -248,7 +246,7 @@ function getDimensionsAndGroupsForOther({ series }, datas, warn) {
 }
 
 function getYExtentsForGroups(groups) {
-  return groups.map((group) => {
+  return groups.map(group => {
     const sums = new Map();
     for (const g of group) {
       for (const { key, value } of g.all()) {
@@ -291,7 +289,7 @@ function getYAxisSplit(
   datas,
   yExtents,
 ) {
-  const seriesAxis = series.map((single) => settings.series(single)["axis"]);
+  const seriesAxis = series.map(single => settings.series(single)["axis"]);
   const left = [];
   const right = [];
   const auto = [];
@@ -307,7 +305,7 @@ function getYAxisSplit(
 
   // don't auto-split if the metric columns are all identical, i.e. it's a breakout multiseries
   const hasDifferentYAxisColumns =
-    _.uniq(series.map((s) => JSON.stringify(s.data.cols[1]))).length > 1;
+    _.uniq(series.map(s => JSON.stringify(s.data.cols[1]))).length > 1;
   if (
     !isScalarSeries &&
     chartType !== "scatter" &&
@@ -323,8 +321,8 @@ function getYAxisSplit(
     // assigned ones to their correct axis
     const [autoLeft, autoRight] = computeSplit(yExtents);
     return [
-      _.uniq([...left, ...autoLeft.filter((index) => !seriesAxis[index])]),
-      _.uniq([...right, ...autoRight.filter((index) => !seriesAxis[index])]),
+      _.uniq([...left, ...autoLeft.filter(index => !seriesAxis[index])]),
+      _.uniq([...right, ...autoRight.filter(index => !seriesAxis[index])]),
     ];
   } else {
     // assign all auto to the left
@@ -333,9 +331,9 @@ function getYAxisSplit(
 }
 
 function getYAxisSplitLeftAndRight(series, yAxisSplit, yExtents) {
-  return yAxisSplit.map((indexes) => ({
-    series: indexes.map((index) => series[index]),
-    extent: d3.extent([].concat(...indexes.map((index) => yExtents[index]))),
+  return yAxisSplit.map(indexes => ({
+    series: indexes.map(index => series[index]),
+    extent: d3.extent([].concat(...indexes.map(index => yExtents[index]))),
   }));
 }
 
@@ -453,14 +451,14 @@ function applyChartLineBarSettings(
 
 // TODO - give this a good name when I figure out what it does
 function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
-  chart.keyAccessor((d) => d.key[0]).valueAccessor((d) => d.key[1]);
+  chart.keyAccessor(d => d.key[0]).valueAccessor(d => d.key[1]);
 
   if (chart.radiusValueAccessor) {
     const isBubble = datas[index][0].length > 2;
     if (isBubble) {
       const BUBBLE_SCALE_FACTOR_MAX = 64;
       chart
-        .radiusValueAccessor((d) => d.value)
+        .radiusValueAccessor(d => d.value)
         .r(
           d3.scale
             .sqrt()
@@ -468,7 +466,7 @@ function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
             .range([0, 1]),
         );
     } else {
-      chart.radiusValueAccessor((d) => 1);
+      chart.radiusValueAccessor(d => 1);
       chart.MIN_RADIUS = 3;
     }
     chart.minRadiusWithLabel(Infinity);
@@ -494,7 +492,7 @@ function setChartColor({ series, settings, chartType }, chart, groups, index) {
     }
   } else {
     chart.ordinalColors(
-      series.map((single) => colorsByKey[keyForSingleSeries(single)]),
+      series.map(single => colorsByKey[keyForSingleSeries(single)]),
     );
   }
 }
@@ -522,8 +520,7 @@ function getCharts(
   const { yAxisSplit } = yAxisProps;
 
   const isHeterogenous =
-    _.uniq(series.map((single) => getSeriesDisplay(settings, single))).length >
-    1;
+    _.uniq(series.map(single => getSeriesDisplay(settings, single))).length > 1;
   const isHeterogenousOrdinal =
     settings["graph.x_axis.scale"] === "ordinal" && isHeterogenous;
 
@@ -539,7 +536,7 @@ function getCharts(
         .svg()
         // shift bar/line and dots
         .selectAll(".stack, .dc-tooltip")
-        .each(function () {
+        .each(function() {
           this.setAttribute("transform", `translate(${spacing / 2}, 0)`);
         });
     });
@@ -572,8 +569,8 @@ function getCharts(
     if (chart.defined) {
       chart.defined(
         seriesSettings["line.missing"] === "none"
-          ? (d) => d.y != null
-          : (d) => true,
+          ? d => d.y != null
+          : d => true,
       );
     }
 
@@ -609,26 +606,21 @@ function addGoalChartAndGetOnGoalHover(
   }
 
   const goalValue = settings["graph.goal_value"];
-  const goalData = [
-    [xDomain[0], goalValue],
-    [xDomain[1], goalValue],
-  ];
-  const goalDimension = crossfilter(goalData).dimension((d) => d[0]);
+  const goalData = [[xDomain[0], goalValue], [xDomain[1], goalValue]];
+  const goalDimension = crossfilter(goalData).dimension(d => d[0]);
 
   // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
   // has just a single row / datapoint
-  const goalGroup = goalDimension.group().reduce(
-    (p, d) => d[1],
-    (p, d) => p,
-    () => 0,
-  );
+  const goalGroup = goalDimension
+    .group()
+    .reduce((p, d) => d[1], (p, d) => p, () => 0);
   const goalIndex = charts.length;
 
   const goalChart = dc
     .lineChart(parent)
     .dimension(goalDimension)
     .group(goalGroup)
-    .on("renderlet", function (chart) {
+    .on("renderlet", function(chart) {
       // remove "sub" class so the goal is not used in voronoi computation
       chart
         .select(".sub._" + goalIndex)
@@ -637,7 +629,7 @@ function addGoalChartAndGetOnGoalHover(
     });
   charts.push(goalChart);
 
-  return (element) => {
+  return element => {
     onHoverChange(
       element && {
         element,
@@ -679,22 +671,20 @@ function addTrendlineChart(
 
       const points = Math.round(parent.width() / TREND_LINE_POINT_SPACING);
       const trendData = getTrendDataPointsFromInsight(insight, xDomain, points);
-      const trendDimension = crossfilter(trendData).dimension((d) => d[0]);
+      const trendDimension = crossfilter(trendData).dimension(d => d[0]);
 
       // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
       // has just a single row / datapoint
-      const trendGroup = trendDimension.group().reduce(
-        (p, d) => d[1],
-        (p, d) => p,
-        () => 0,
-      );
+      const trendGroup = trendDimension
+        .group()
+        .reduce((p, d) => d[1], (p, d) => p, () => 0);
       const trendIndex = charts.length;
 
       const trendChart = dc
         .lineChart(parent)
         .dimension(trendDimension)
         .group(trendGroup)
-        .on("renderlet", function (chart) {
+        .on("renderlet", function(chart) {
           // remove "sub" class so the trend is not used in voronoi computation
           chart
             .select(".sub._" + trendIndex)
@@ -731,12 +721,12 @@ function applyYAxisSettings(parent, { yLeftSplit, yRightSplit }) {
 
 // TODO - better name
 function doGroupedBarStuff(parent) {
-  parent.on("renderlet.grouped-bar", function (chart) {
+  parent.on("renderlet.grouped-bar", function(chart) {
     // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
     // https://github.com/dc-js/dc.js/issues/558
     const barCharts = chart
       .selectAll(".sub rect:first-child")[0]
-      .map((node) => node.parentNode.parentNode.parentNode);
+      .map(node => node.parentNode.parentNode.parentNode);
     if (barCharts.length === 0) {
       return;
     }
@@ -762,11 +752,11 @@ function doGroupedBarStuff(parent) {
 
 // TODO - better name
 function doHistogramBarStuff(parent) {
-  parent.on("renderlet.histogram-bar", function (chart) {
+  parent.on("renderlet.histogram-bar", function(chart) {
     // manually size bars to fill space, minus 1 pixel padding
     const barCharts = chart
       .selectAll(".sub rect:first-child")[0]
-      .map((node) => node.parentNode.parentNode.parentNode);
+      .map(node => node.parentNode.parentNode.parentNode);
     if (barCharts.length === 0) {
       return;
     }
@@ -830,7 +820,7 @@ export default function lineAreaBar(
   xAxisProps = getXAxisProps(props, datas, warn);
 
   if (isScalarSeries) {
-    xAxisProps.xValues = datas.map((data) => data[0][0]);
+    xAxisProps.xValues = datas.map(data => data[0][0]);
   } // TODO - what is this for?
 
   const {
@@ -885,7 +875,7 @@ export default function lineAreaBar(
   if (!isHistogram(props.settings)) {
     const hasBar = _.any(
       series,
-      (single) => getSeriesDisplay(settings, single) === "bar",
+      single => getSeriesDisplay(settings, single) === "bar",
     );
     parent._rangeBandPadding(hasBar ? BAR_PADDING_RATIO : 1);
   }

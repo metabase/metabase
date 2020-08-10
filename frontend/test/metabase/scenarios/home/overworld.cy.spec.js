@@ -23,7 +23,9 @@ describe("scenarios > home > overworld", () => {
         cy.route("PUT", "**/show-homepage-data").as("hideData");
         cy.visit("/");
         cy.contains("Sample Dataset");
-        cy.contains("Our data").find(".Icon-close").click({ force: true });
+        cy.contains("Our data")
+          .find(".Icon-close")
+          .click({ force: true });
         cy.get(".Button--danger").click();
         cy.wait("@hideData");
         cy.contains("Sample Dataset").should("have.length", 0);
@@ -33,7 +35,9 @@ describe("scenarios > home > overworld", () => {
         cy.server();
         cy.route("PUT", "**/show-homepage-xrays").as("hideXrays");
         cy.visit("/");
-        cy.contains("based on").find(".Icon-close").click({ force: true });
+        cy.contains("based on")
+          .find(".Icon-close")
+          .click({ force: true });
         cy.get(".Button--danger").click();
         cy.wait("@hideXrays");
       });
@@ -42,8 +46,12 @@ describe("scenarios > home > overworld", () => {
       beforeEach(signInAsNormalUser);
       it("should not be possible for them to see the controls", () => {
         cy.visit("/");
-        cy.contains("Our data").find(".Icon-close").should("have.length", 0);
-        cy.contains("x-ray").find(".Icon-close").should("have.length", 0);
+        cy.contains("Our data")
+          .find(".Icon-close")
+          .should("have.length", 0);
+        cy.contains("x-ray")
+          .find(".Icon-close")
+          .should("have.length", 0);
       });
     });
   });

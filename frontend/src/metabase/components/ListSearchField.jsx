@@ -55,8 +55,8 @@ export default class ListSearchField extends Component {
           type="text"
           placeholder={placeholder}
           value={searchText}
-          onChange={(e) => onChange(e.target.value)}
-          ref={(input) => (this._input = input)}
+          onChange={e => onChange(e.target.value)}
+          ref={input => (this._input = input)}
         />
       </div>
     );

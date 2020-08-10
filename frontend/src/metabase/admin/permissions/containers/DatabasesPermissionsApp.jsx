@@ -23,7 +23,10 @@ const mapDispatchToProps = {
   onUpdatePermission: updatePermission,
   onSave: savePermissions,
   onCancel: loadPermissions,
-  onChangeTab: (tab) => push(`/admin/permissions/${tab}`),
+  onChangeTab: tab => push(`/admin/permissions/${tab}`),
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(PermissionsEditor);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(PermissionsEditor);

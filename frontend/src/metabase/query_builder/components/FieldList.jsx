@@ -64,7 +64,7 @@ export default class FieldList extends Component {
     segmentOptions = [],
   } = {}) {
     const sections = new DimensionOptions(fieldOptions).sections({
-      extraItems: segmentOptions.map((segment) => ({
+      extraItems: segmentOptions.map(segment => ({
         filter: ["segment", segment.id],
         name: segment.name,
         icon: "star_outline",
@@ -78,7 +78,7 @@ export default class FieldList extends Component {
     this.props.onFieldChange(dimension.mbql(), item);
   };
 
-  handleChangeOther = (item) => {
+  handleChangeOther = item => {
     if (item.filter && this.props.onFilterChange) {
       this.props.onFilterChange(item.filter);
     }

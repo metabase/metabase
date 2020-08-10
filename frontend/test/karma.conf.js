@@ -1,12 +1,12 @@
 const webpackConfig = require("../../webpack.config");
 console.dir(webpackConfig.module.rules, { depth: null });
-webpackConfig.module.rules.forEach(function (loader) {
+webpackConfig.module.rules.forEach(function(loader) {
   loader.use = loader.use.filter(
-    (item) => !item.loader.includes("extract-text-webpack-plugin"),
+    item => !item.loader.includes("extract-text-webpack-plugin"),
   );
 });
 
-module.exports = function (config) {
+module.exports = function(config) {
   config.set({
     basePath: "../",
     files: [

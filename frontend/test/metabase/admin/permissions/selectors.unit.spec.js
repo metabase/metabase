@@ -77,7 +77,7 @@ const getPermissionsTree = () => state.admin.permissions.permissions;
 const getPermissionsForDb = ({ entityId, groupId }) =>
   getPermissionsTree()[groupId][entityId.databaseId];
 
-const updatePermissionsInState = (permissions) => {
+const updatePermissionsInState = permissions => {
   state = setIn(state, ["admin", "permissions", "permissions"], permissions);
 };
 
@@ -162,7 +162,7 @@ const changeTablePermissionsForEntity = ({ entityId, groupId, permission }) => {
   });
 };
 
-const getMethodsForDbAndSchema = (entityId) => ({
+const getMethodsForDbAndSchema = entityId => ({
   changeDbNativePermissions: ({ groupId, permission }) =>
     changeDbNativePermissionsForEntity({ entityId, groupId, permission }),
   changeDbDataPermissions: ({ groupId, permission }) =>

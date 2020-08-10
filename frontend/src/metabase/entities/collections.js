@@ -45,21 +45,21 @@ const Collections = createEntity({
   },
 
   objectSelectors: {
-    getName: (collection) => collection && collection.name,
-    getUrl: (collection) => Urls.collection(collection.id),
-    getIcon: (collection) => "all",
+    getName: collection => collection && collection.name,
+    getUrl: collection => Urls.collection(collection.id),
+    getIcon: collection => "all",
   },
 
   selectors: {
     getExpandedCollectionsById: createSelector(
       [
-        (state) => state.entities.collections,
-        (state) => state.entities.collections_list[null] || [],
+        state => state.entities.collections,
+        state => state.entities.collections_list[null] || [],
         getUser,
       ],
       (collections, collectionsIds, user) =>
         getExpandedCollectionsById(
-          collectionsIds.map((id) => collections[id]),
+          collectionsIds.map(id => collections[id]),
           user && user.personal_collection_id,
         ),
     ),
@@ -93,7 +93,7 @@ const Collections = createEntity({
         name: "name",
         title: t`Name`,
         placeholder: t`My new fantastic collection`,
-        validate: (name) =>
+        validate: name =>
           (!name && t`Name is required`) ||
           (name && name.length > 100 && t`Name must be 100 characters or less`),
       },
@@ -102,14 +102,14 @@ const Collections = createEntity({
         title: t`Description`,
         type: "text",
         placeholder: t`It's optional but oh, so helpful`,
-        normalize: (description) => description || null, // expected to be nil or non-empty string
+        normalize: description => description || null, // expected to be nil or non-empty string
       },
       {
         name: "color",
         title: t`Color`,
         type: "hidden",
         initial: () => color("brand"),
-        validate: (color) => !color && t`Color is required`,
+        validate: color => !color && t`Color is required`,
       },
       {
         name: "parent_id",
@@ -207,7 +207,7 @@ export function getExpandedCollectionsById(
         c.id === "root"
           ? []
           : c.location != null
-          ? ["root", ...c.location.split("/").filter((l) => l)]
+          ? ["root", ...c.location.split("/").filter(l => l)]
           : null,
       parent: null,
       children: [],
@@ -278,7 +278,7 @@ export function getExpandedCollectionsById(
     delete collectionsById[PERSONAL_COLLECTIONS.id];
     collectionsById[ROOT_COLLECTION.id].children = collectionsById[
       ROOT_COLLECTION.id
-    ].children.filter((c) => c.id !== PERSONAL_COLLECTIONS.id);
+    ].children.filter(c => c.id !== PERSONAL_COLLECTIONS.id);
   }
 
   return collectionsById;

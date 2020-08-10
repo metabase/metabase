@@ -5,7 +5,7 @@ export const getScrollY = () =>
   typeof window.scrollY === "undefined" ? window.pageYOffset : window.scrollY;
 
 // denotes whether the current page is loaded in an iframe or not
-export const IFRAMED = (function () {
+export const IFRAMED = (function() {
   try {
     return window.self !== window.top;
   } catch (e) {
@@ -18,7 +18,7 @@ window.METABASE = true;
 
 // check that we're both iframed, and the parent is a Metabase instance
 // used for detecting if we're previewing an embed
-export const IFRAMED_IN_SELF = (function () {
+export const IFRAMED_IN_SELF = (function() {
   try {
     return window.self !== window.top && window.top.METABASE;
   } catch (e) {
@@ -28,7 +28,7 @@ export const IFRAMED_IN_SELF = (function () {
 
 // check if we have access to localStorage to avoid handling "access denied"
 // exceptions
-export const HAS_LOCAL_STORAGE = (function () {
+export const HAS_LOCAL_STORAGE = (function() {
   try {
     window.localStorage; // This will trigger an exception if access is denied.
     return true;
@@ -68,7 +68,7 @@ export function elementIsInView(element, percentX = 1, percentY = 1) {
     element = element.parentElement;
   }
 
-  return parentRects.every((parentRect) => {
+  return parentRects.every(parentRect => {
     const visiblePixelX =
       Math.min(elementRect.right, parentRect.right) -
       Math.max(elementRect.left, parentRect.left);
@@ -154,7 +154,7 @@ function getTextNodeAtPosition(root, index) {
   const treeWalker = document.createTreeWalker(
     root,
     NodeFilter.SHOW_TEXT,
-    (elem) => {
+    elem => {
       if (index > elem.textContent.length) {
         index -= elem.textContent.length;
         return NodeFilter.FILTER_REJECT;
@@ -170,7 +170,7 @@ function getTextNodeAtPosition(root, index) {
 }
 
 // https://davidwalsh.name/add-rules-stylesheets
-const STYLE_SHEET = (function () {
+const STYLE_SHEET = (function() {
   // Create the <style> tag
   const style = document.createElement("style");
 
@@ -247,7 +247,7 @@ export function moveToFront(element) {
 let metaKey;
 window.addEventListener(
   "mouseup",
-  (e) => {
+  e => {
     metaKey = e.metaKey;
   },
   true,
@@ -261,9 +261,9 @@ export function open(
   url,
   {
     // custom function for opening in same window
-    openInSameWindow = (url) => clickLink(url, false),
+    openInSameWindow = url => clickLink(url, false),
     // custom function for opening in new window
-    openInBlankWindow = (url) => clickLink(url, true),
+    openInBlankWindow = url => clickLink(url, true),
     ...options
   } = {},
 ) {
@@ -397,7 +397,7 @@ export function initializeIframeResizer(readyCallback = () => {}) {
     // Make iframe-resizer avaliable to the embed
     // We only care about contentWindow so require that minified file
 
-    require.ensure([], (require) => {
+    require.ensure([], require => {
       require("iframe-resizer/js/iframeResizer.contentWindow.js");
     });
   }

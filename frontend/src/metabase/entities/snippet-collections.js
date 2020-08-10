@@ -15,7 +15,7 @@ const SnippetCollections = createEntity({
   name: "snippetCollections",
   schema: SnippetCollectionSchema,
 
-  api: _.mapObject(NormalCollections.api, (f) => (first, ...rest) =>
+  api: _.mapObject(NormalCollections.api, f => (first, ...rest) =>
     f({ ...first, namespace: "snippets" }, ...rest),
   ),
 
@@ -45,12 +45,12 @@ const SnippetCollections = createEntity({
   selectors: {
     getExpandedCollectionsById: createSelector(
       [
-        (state) => state.entities.snippetCollections,
-        (state) => state.entities.snippetCollections_list[null] || [],
+        state => state.entities.snippetCollections,
+        state => state.entities.snippetCollections_list[null] || [],
       ],
       (collections, collectionsIds) =>
         getExpandedCollectionsById(
-          collectionsIds.map((id) => collections[id]),
+          collectionsIds.map(id => collections[id]),
           null,
         ),
     ),
@@ -62,7 +62,7 @@ const SnippetCollections = createEntity({
   }),
 
   objectSelectors: {
-    getIcon: (collection) => "folder",
+    getIcon: collection => "folder",
   },
 
   form: {
@@ -71,7 +71,7 @@ const SnippetCollections = createEntity({
         name: "name",
         title: t`Give your folder a name`,
         placeholder: t`Something short but sweet`,
-        validate: (name) =>
+        validate: name =>
           (!name && t`Name is required`) ||
           (name && name.length > 100 && t`Name must be 100 characters or less`),
       },
@@ -80,14 +80,14 @@ const SnippetCollections = createEntity({
         title: t`Add a description`,
         type: "text",
         placeholder: t`It's optional but oh, so helpful`,
-        normalize: (description) => description || null, // expected to be nil or non-empty string
+        normalize: description => description || null, // expected to be nil or non-empty string
       },
       {
         name: "color",
         title: t`Color`,
         type: "hidden",
         initial: () => color("brand"),
-        validate: (color) => !color && t`Color is required`,
+        validate: color => !color && t`Color is required`,
       },
       {
         name: "parent_id",

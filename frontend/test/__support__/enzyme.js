@@ -14,7 +14,7 @@ export { delay } from "metabase/lib/promise";
 // Triggers events that are being listened to with `window.addEventListener` or `document.addEventListener`
 export const dispatchBrowserEvent = (eventName, ...args) => {
   if (eventListeners[eventName]) {
-    eventListeners[eventName].forEach((listener) => listener(...args));
+    eventListeners[eventName].forEach(listener => listener(...args));
   } else {
     throw new Error(
       `No event listeners are currently attached to event '${eventName}'. List of event listeners:\n` +
@@ -25,7 +25,7 @@ export const dispatchBrowserEvent = (eventName, ...args) => {
   }
 };
 
-export const click = (enzymeWrapper) => {
+export const click = enzymeWrapper => {
   if (enzymeWrapper.length === 0) {
     throw new Error("The wrapper you provided for `click(wrapper)` is empty.");
   }
@@ -44,7 +44,7 @@ export const click = (enzymeWrapper) => {
   return delay(10);
 };
 
-export const clickButton = (enzymeWrapper) => {
+export const clickButton = enzymeWrapper => {
   if (enzymeWrapper.length === 0) {
     throw new Error(
       "The wrapper you provided for `clickButton(wrapper)` is empty.",
@@ -86,7 +86,7 @@ export const setInputValue = (inputWrapper, value, { blur = true } = {}) => {
   }
 };
 
-export const chooseSelectOption = (optionWrapper) => {
+export const chooseSelectOption = optionWrapper => {
   if (optionWrapper.length === 0) {
     throw new Error(
       "The wrapper you provided for `chooseSelectOption(...)` is empty.",
@@ -136,7 +136,11 @@ async function fillFormValues(wrapper, values) {
 }
 
 function submitForm(wrapper) {
-  wrapper.find("form").first().props().onSubmit();
+  wrapper
+    .find("form")
+    .first()
+    .props()
+    .onSubmit();
 }
 
 export async function fillAndSubmitForm(wrapper, values) {
@@ -147,7 +151,7 @@ export async function fillAndSubmitForm(wrapper, values) {
 export function findButtonByText(wrapper, text) {
   return wrapper
     .find("button")
-    .findWhere((n) => n.type() === "button" && n.text() === text);
+    .findWhere(n => n.type() === "button" && n.text() === text);
 }
 
 function findByText(wrapper, text) {
@@ -180,7 +184,7 @@ Object.defineProperty(ReactWrapper.prototype, "async", {
 });
 
 function addReactWrapperMethod(name, method) {
-  ReactWrapper.prototype[name] = function (...args) {
+  ReactWrapper.prototype[name] = function(...args) {
     return method(this, ...args);
   };
 }

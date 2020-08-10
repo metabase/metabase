@@ -5,7 +5,7 @@ import ResizeObserver from "resize-observer-polyfill";
 
 import cx from "classnames";
 
-export default ({ selector, wrapped } = {}) => (ComposedComponent) =>
+export default ({ selector, wrapped } = {}) => ComposedComponent =>
   class extends Component {
     static displayName =
       "ExplicitSize[" +

@@ -66,7 +66,7 @@ export function getDateFormatFromStyle(
   unit: ?DatetimeUnit,
   separator?: DateSeparator,
 ): DateFormat {
-  const replaceSeparators = (format) =>
+  const replaceSeparators = format =>
     separator && format ? format.replace(/\//g, separator) : format;
 
   if (!unit) {

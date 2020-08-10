@@ -15,4 +15,4 @@ const PASSWORD_PROVIDER = {
   Panel: LdapAndEmailForm,
 };
 
-PLUGIN_AUTH_PROVIDERS.push((providers) => [...providers, PASSWORD_PROVIDER]);
+PLUGIN_AUTH_PROVIDERS.push(providers => [...providers, PASSWORD_PROVIDER]);

@@ -13,7 +13,7 @@ describe("snapshots", () => {
       setup();
       updateSettings();
       addUsersAndGroups();
-      withSampleDataset((SAMPLE_DATASET) => {
+      withSampleDataset(SAMPLE_DATASET => {
         createQuestionAndDashboard(SAMPLE_DATASET);
       });
       snapshot("default");
@@ -55,7 +55,7 @@ describe("snapshots", () => {
     });
 
     // update the Sample db connection string so it is valid in both CI and locally
-    cy.request("GET", "/api/database/1").then((response) => {
+    cy.request("GET", "/api/database/1").then(response => {
       response.body.details.db =
         "./resources/sample-dataset.db;USER=GUEST;PASSWORD=guest";
       cy.request("PUT", "/api/database/1", response.body);

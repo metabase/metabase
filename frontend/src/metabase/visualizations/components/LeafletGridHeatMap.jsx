@@ -48,10 +48,7 @@ export default class LeafletGridHeatMap extends LeafletMap {
           gridSquares[i].setStyle({ color: colorScale(points[i][2]) });
           const [latMin, latMax] = rangeForValue(points[i][0], latitudeColumn);
           const [lonMin, lonMax] = rangeForValue(points[i][1], longitudeColumn);
-          gridSquares[i].setBounds([
-            [latMin, lonMin],
-            [latMax, lonMax],
-          ]);
+          gridSquares[i].setBounds([[latMin, lonMin], [latMax, lonMax]]);
         }
       }
     } catch (err) {
@@ -60,11 +57,8 @@ export default class LeafletGridHeatMap extends LeafletMap {
     }
   }
 
-  _createGridSquare = (index) => {
-    const bounds = [
-      [54.559322, -5.767822],
-      [56.1210604, -3.02124],
-    ];
+  _createGridSquare = index => {
+    const bounds = [[54.559322, -5.767822], [56.1210604, -3.02124]];
     const gridSquare = L.rectangle(bounds, {
       color: "red",
       weight: 1,

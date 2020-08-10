@@ -48,7 +48,7 @@ export default class SettingsUpdatesForm extends Component {
             <Version version={versionInfo.latest} />
 
             {versionInfo.older &&
-              versionInfo.older.map((version) => <Version version={version} />)}
+              versionInfo.older.map(version => <Version version={version} />)}
           </div>
         </div>
       );
@@ -66,7 +66,7 @@ export default class SettingsUpdatesForm extends Component {
       <SettingsSetting
         key={setting.key}
         setting={setting}
-        onChange={(value) => updateSetting(setting, value)}
+        onChange={value => updateSetting(setting, value)}
         autoFocus={index === 0}
       />
     ));
@@ -97,7 +97,7 @@ function Version({ version }) {
       </h3>
       <ul style={{ listStyleType: "disc", listStylePosition: "inside" }}>
         {version.highlights &&
-          version.highlights.map((highlight) => (
+          version.highlights.map(highlight => (
             <li style={{ lineHeight: "1.5" }} className="pl1">
               {highlight}
             </li>

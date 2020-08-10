@@ -20,7 +20,7 @@ export default ({
   optionIsEqual = DEFAULT_OPTION_IS_EQUAL,
   defaultFirstSuggestion = false,
   defaultSingleSuggestion = false,
-}) => (ComposedComponent) =>
+}) => ComposedComponent =>
   class extends Component {
     static displayName =
       "Typeahead[" +
@@ -48,7 +48,7 @@ export default ({
       window.removeEventListener("keydown", this.onKeyDown, true);
     }
 
-    onKeyDown = (e) => {
+    onKeyDown = e => {
       if (e.keyCode === KEYCODE_UP) {
         e.preventDefault();
         this.onPressUp();
@@ -78,7 +78,7 @@ export default ({
     }
 
     indexOfSelectedSuggestion() {
-      return _.findIndex(this.state.suggestions, (suggestion) =>
+      return _.findIndex(this.state.suggestions, suggestion =>
         optionIsEqual(suggestion, this.state.selectedSuggestion),
       );
     }
@@ -93,7 +93,7 @@ export default ({
       });
     }
 
-    onSuggestionAccepted = (suggestion) => {
+    onSuggestionAccepted = suggestion => {
       this.props.onSuggestionAccepted(suggestion);
     };
 

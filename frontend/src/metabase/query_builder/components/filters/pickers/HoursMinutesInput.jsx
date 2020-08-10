@@ -30,8 +30,8 @@ const HoursMinutesInput = ({
       }
       onChange={
         is24HourMode
-          ? (value) => onChangeHours(value)
-          : (value) => onChangeHours((hours >= 12 ? 12 : 0) + value)
+          ? value => onChangeHours(value)
+          : value => onChangeHours((hours >= 12 ? 12 : 0) + value)
       }
     />
     <span className="px1">:</span>
@@ -41,7 +41,7 @@ const HoursMinutesInput = ({
       size={2}
       maxLength={2}
       value={(minutes < 10 ? "0" : "") + minutes}
-      onChange={(value) => onChangeMinutes(value)}
+      onChange={value => onChangeMinutes(value)}
     />
     {!is24HourMode && (
       <div className="flex align-center pl1">

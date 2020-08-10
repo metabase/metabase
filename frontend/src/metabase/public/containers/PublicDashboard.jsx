@@ -84,7 +84,10 @@ type Props = {
   setErrorPage: (error: { status: number }) => void,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @DashboardControls
 // NOTE: this should use DashboardData HoC
 export default class PublicDashboard extends Component {

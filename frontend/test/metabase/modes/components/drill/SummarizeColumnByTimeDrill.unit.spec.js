@@ -11,7 +11,7 @@ describe("SummarizeColumnByTimeDrill", () => {
     ).toHaveLength(0);
   });
   it("should not be valid if there is no time field", () => {
-    const metadata = createMetadata((state) =>
+    const metadata = createMetadata(state =>
       state.assocIn(
         ["entities", "tables", ORDERS.id, "fields"],
         [ORDERS.TOTAL.id],

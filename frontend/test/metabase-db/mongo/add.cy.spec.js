@@ -7,14 +7,19 @@ import {
 
 function addMongoDatabase() {
   cy.visit("/admin/databases/create");
-  cy.contains("Database type").closest(".Form-field").find("a").click();
+  cy.contains("Database type")
+    .closest(".Form-field")
+    .find("a")
+    .click();
   cy.contains("MongoDB").click({ force: true });
   cy.contains("Additional Mongo connection");
 
   typeAndBlurUsingLabel("Name", "MongoDB");
   typeAndBlurUsingLabel("Database name", "admin");
 
-  cy.findByText("Save").should("not.be.disabled").click();
+  cy.findByText("Save")
+    .should("not.be.disabled")
+    .click();
 }
 
 describe("mongodb > admin > add", () => {
@@ -36,7 +41,9 @@ describe("mongodb > admin > add", () => {
 
     cy.url().should("match", /\/admin\/databases\?created=\d+$/);
     cy.contains("Your database has been added!");
-    modal().contains("I'm good thanks").click();
+    modal()
+      .contains("I'm good thanks")
+      .click();
   });
 
   it("can query a Mongo database", () => {

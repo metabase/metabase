@@ -4,9 +4,9 @@ function getElementIndex(e) {
   return (
     e &&
     [...e.classList]
-      .map((c) => c.match(/^_(\d+)$/))
-      .filter((c) => c)
-      .map((c) => parseInt(c[1], 10))[0]
+      .map(c => c.match(/^_(\d+)$/))
+      .filter(c => c)
+      .map(c => parseInt(c[1], 10))[0]
   );
 }
 

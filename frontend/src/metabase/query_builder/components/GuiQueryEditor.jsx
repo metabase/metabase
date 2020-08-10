@@ -120,7 +120,7 @@ export default class GuiQueryEditor extends React.Component {
           <FilterWidgetList
             query={query}
             filters={filters}
-            removeFilter={(index) =>
+            removeFilter={index =>
               query.removeFilter(index).update(setDatasetQuery)
             }
             updateFilter={(index, filter) =>
@@ -162,7 +162,7 @@ export default class GuiQueryEditor extends React.Component {
             <FilterPopover
               isNew
               query={query}
-              onChangeFilter={(filter) =>
+              onChangeFilter={filter =>
                 query.filter(filter).update(setDatasetQuery)
               }
               onClose={() => this.refs.filterPopover.close()}
@@ -209,7 +209,7 @@ export default class GuiQueryEditor extends React.Component {
             key={"agg" + index}
             aggregation={aggregation}
             query={query}
-            onChangeAggregation={(aggregation) =>
+            onChangeAggregation={aggregation =>
               aggregation
                 ? query
                     .updateAggregation(index, aggregation)
@@ -273,7 +273,7 @@ export default class GuiQueryEditor extends React.Component {
           breakout={breakout}
           query={query}
           breakoutOptions={query.breakoutOptions(breakout)}
-          onChangeBreakout={(breakout) =>
+          onChangeBreakout={breakout =>
             breakout
               ? query.updateBreakout(index, breakout).update(setDatasetQuery)
               : query.removeBreakout(index).update(setDatasetQuery)
@@ -314,7 +314,7 @@ export default class GuiQueryEditor extends React.Component {
         {this.props.canChangeTable ? (
           <DatabaseSchemaAndTableDataSelector
             selectedTableId={query.tableId()}
-            setSourceTableFn={(tableId) =>
+            setSourceTableFn={tableId =>
               setDatasetQuery(query.setSourceTableId(tableId).datasetQuery())
             }
           />

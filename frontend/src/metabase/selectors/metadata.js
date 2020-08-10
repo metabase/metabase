@@ -21,20 +21,20 @@ import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { getIn } from "icepick";
 
 // fully nomalized, raw "entities"
-export const getNormalizedDatabases = (state) => state.entities.databases;
-export const getNormalizedSchemas = (state) => state.entities.schemas;
-const getNormalizedTablesUnfiltered = (state) => state.entities.tables;
+export const getNormalizedDatabases = state => state.entities.databases;
+export const getNormalizedSchemas = state => state.entities.schemas;
+const getNormalizedTablesUnfiltered = state => state.entities.tables;
 export const getNormalizedTables = createSelector(
   [getNormalizedTablesUnfiltered],
   // remove hidden tables from the metadata graph
-  (tables) => filterValues(tables, (table) => table.visibility_type == null),
+  tables => filterValues(tables, table => table.visibility_type == null),
 );
 
-const getNormalizedFieldsUnfiltered = (state) => state.entities.fields;
+const getNormalizedFieldsUnfiltered = state => state.entities.fields;
 export const getNormalizedFields = createSelector(
   [getNormalizedFieldsUnfiltered, getNormalizedTablesUnfiltered],
   (fields, tables) =>
-    filterValues(fields, (field) => {
+    filterValues(fields, field => {
       // remove fields that are sensitive or belong to hidden tables
       const table = tables[field.table_id];
       return (
@@ -43,8 +43,8 @@ export const getNormalizedFields = createSelector(
       );
     }),
 );
-export const getNormalizedMetrics = (state) => state.entities.metrics;
-export const getNormalizedSegments = (state) => state.entities.segments;
+export const getNormalizedMetrics = state => state.entities.metrics;
+export const getNormalizedSegments = state => state.entities.segments;
 
 // TODO: these should be denomalized but non-cylical, and only to the same "depth" previous "tableMetadata" was, e.x.
 //
@@ -93,60 +93,60 @@ export const getMetadata = createSelector(
     // database
     hydrateList(meta.databases, "tables", meta.tables);
     // schema
-    hydrate(meta.schemas, "database", (s) => meta.database(s.database));
+    hydrate(meta.schemas, "database", s => meta.database(s.database));
     // table
     hydrateList(meta.tables, "fields", meta.fields);
     hydrateList(meta.tables, "segments", meta.segments);
     hydrateList(meta.tables, "metrics", meta.metrics);
-    hydrate(meta.tables, "db", (t) => meta.database(t.db_id || t.db));
-    hydrate(meta.tables, "schema", (t) => meta.schema(t.schema));
+    hydrate(meta.tables, "db", t => meta.database(t.db_id || t.db));
+    hydrate(meta.tables, "schema", t => meta.schema(t.schema));
 
     // NOTE: special handling for schemas
     // This is pretty hacky
     // hydrateList(meta.databases, "schemas", meta.schemas);
-    hydrate(meta.databases, "schemas", (database) =>
+    hydrate(meta.databases, "schemas", database =>
       database.schemas
         ? // use the database schemas if they exist
-          database.schemas.map((s) => meta.schema(s))
+          database.schemas.map(s => meta.schema(s))
         : database.tables.length > 0
         ? // if the database has tables, use their schemas
-          _.uniq(database.tables.map((t) => t.schema))
+          _.uniq(database.tables.map(t => t.schema))
         : // otherwise use any loaded schemas that match the database id
           Object.values(meta.schemas).filter(
-            (s) => s.database && s.database.id === database.id,
+            s => s.database && s.database.id === database.id,
           ),
     );
     // hydrateList(meta.schemas, "tables", meta.tables);
-    hydrate(meta.schemas, "tables", (schema) =>
+    hydrate(meta.schemas, "tables", schema =>
       schema.tables
         ? // use the schema tables if they exist
-          schema.tables.map((t) => meta.table(t))
+          schema.tables.map(t => meta.table(t))
         : schema.database && schema.database.tables.length > 0
         ? // if the schema has a database with tables, use those
-          schema.database.tables.filter((t) => t.schema_name === schema.name)
+          schema.database.tables.filter(t => t.schema_name === schema.name)
         : // otherwise use any loaded tables that match the schema id
           Object.values(meta.tables).filter(
-            (t) => t.schema && t.schema.id === schema.id,
+            t => t.schema && t.schema.id === schema.id,
           ),
     );
 
     // segments
-    hydrate(meta.segments, "table", (s) => meta.table(s.table_id));
+    hydrate(meta.segments, "table", s => meta.table(s.table_id));
     // metrics
-    hydrate(meta.metrics, "table", (m) => meta.table(m.table_id));
+    hydrate(meta.metrics, "table", m => meta.table(m.table_id));
     // fields
-    hydrate(meta.fields, "table", (f) => meta.table(f.table_id));
-    hydrate(meta.fields, "target", (f) => meta.field(f.fk_target_field_id));
-    hydrate(meta.fields, "name_field", (f) => {
+    hydrate(meta.fields, "table", f => meta.table(f.table_id));
+    hydrate(meta.fields, "target", f => meta.field(f.fk_target_field_id));
+    hydrate(meta.fields, "name_field", f => {
       if (f.name_field != null) {
         return meta.field(f.name_field);
       } else if (f.table && f.isPK()) {
-        return _.find(f.table.fields, (f) => f.isEntityName());
+        return _.find(f.table.fields, f => f.isEntityName());
       }
     });
 
-    hydrate(meta.fields, "values", (f) => getFieldValues(f));
-    hydrate(meta.fields, "remapping", (f) => new Map(getRemappings(f)));
+    hydrate(meta.fields, "values", f => getFieldValues(f));
+    hydrate(meta.fields, "remapping", f => new Map(getRemappings(f)));
 
     return meta;
   },
@@ -157,9 +157,15 @@ export const getDatabases = createSelector(
   ({ databases }) => databases,
 );
 
-export const getTables = createSelector([getMetadata], ({ tables }) => tables);
+export const getTables = createSelector(
+  [getMetadata],
+  ({ tables }) => tables,
+);
 
-export const getFields = createSelector([getMetadata], ({ fields }) => fields);
+export const getFields = createSelector(
+  [getMetadata],
+  ({ fields }) => fields,
+);
 export const getMetrics = createSelector(
   [getMetadata],
   ({ metrics }) => metrics,
@@ -195,15 +201,15 @@ const createFieldValuesEqualSelector = createSelectorCreator(
   (a, b) => {
     // TODO: Why can't we use plain shallowEqual, i.e. why the field value arrays change very often?
     return shallowEqual(
-      _.mapObject(a, (values) => values.length),
-      _.mapObject(b, (values) => values.length),
+      _.mapObject(a, values => values.length),
+      _.mapObject(b, values => values.length),
     );
   },
 );
 
 // HACK Atte Keinänen 7/27/17: Currently the field value analysis code only returns a single value for booleans,
 // this will be addressed in analysis sync refactor
-const patchBooleanFieldValues_HACK = (valueArray) => {
+const patchBooleanFieldValues_HACK = valueArray => {
   const isBooleanFieldValues =
     valueArray &&
     valueArray.length === 1 &&
@@ -225,7 +231,7 @@ const patchBooleanFieldValues_HACK = (valueArray) => {
 export const makeGetMergedParameterFieldValues = () => {
   return createFieldValuesEqualSelector(
     getParameterFieldValuesByFieldId,
-    (fieldValues) => {
+    fieldValues => {
       const fieldIds = Object.keys(fieldValues);
 
       if (fieldIds.length === 0) {
@@ -240,14 +246,14 @@ export const makeGetMergedParameterFieldValues = () => {
         // We have multiple fields, so let's merge their values to a single array
         const sortedMergedValues = _.chain(Object.values(fieldValues))
           .flatten(true)
-          .sortBy((fieldValue) => {
+          .sortBy(fieldValue => {
             const valueIsRemapped = fieldValue.length === 2;
             return valueIsRemapped ? fieldValue[1] : fieldValue[0];
           })
           .value();
 
         // run the uniqueness comparision always against a non-remapped value
-        return _.uniq(sortedMergedValues, false, (fieldValue) => fieldValue[0]);
+        return _.uniq(sortedMergedValues, false, fieldValue => fieldValue[0]);
       }
     },
   );
@@ -281,10 +287,10 @@ function hydrate(objects, property, getPropertyValue) {
 
 // replaces lists of ids with the actual objects
 function hydrateList(objects, property, targetObjects) {
-  hydrate(objects, property, (object) =>
+  hydrate(objects, property, object =>
     (object[property] || [])
-      .map((id) => targetObjects[id])
-      .filter((o) => o != null),
+      .map(id => targetObjects[id])
+      .filter(o => o != null),
   );
 }
 

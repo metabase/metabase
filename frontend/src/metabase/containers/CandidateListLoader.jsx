@@ -54,7 +54,7 @@ class CandidateListLoader extends React.Component {
       // Otherwise, it's a fresh start. Grab the last added database
       const [sampleDbs, otherDbs] = _.partition(
         await MetabaseApi.db_list(),
-        (db) => db.is_sample,
+        db => db.is_sample,
       );
       if (otherDbs.length > 0) {
         this.setState({ databaseId: otherDbs[0].id, isSample: false }, () => {

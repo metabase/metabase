@@ -100,9 +100,7 @@ export function generateTimeFilterValuesDescriptions(filter) {
     const [n, unit] = values;
     return generateTimeIntervalDescription(n, unit);
   } else {
-    return values.map((value) =>
-      generateTimeValueDescription(value, bucketing),
-    );
+    return values.map(value => generateTimeValueDescription(value, bucketing));
   }
 }
 

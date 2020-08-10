@@ -22,7 +22,7 @@ const QuestionDescription = ({ question }) => {
             aggregations.length,
           )
         : aggregations
-            .map((aggregation) => aggregation.displayName())
+            .map(aggregation => aggregation.displayName())
             .join(t` and `);
     const breakoutDescription =
       breakouts.length === 0
@@ -33,7 +33,7 @@ const QuestionDescription = ({ question }) => {
             `${breakouts.length} breakouts`,
             breakouts.length,
           )
-        : breakouts.map((breakout) => breakout.displayName()).join(t` and `);
+        : breakouts.map(breakout => breakout.displayName()).join(t` and `);
     if (aggregationDescription && breakoutDescription) {
       return (
         <span>{t`${aggregationDescription} by ${breakoutDescription}`}</span>

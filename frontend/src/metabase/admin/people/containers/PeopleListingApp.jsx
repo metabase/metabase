@@ -77,12 +77,12 @@ export default class PeopleListingApp extends Component {
     let { user, users, groups } = this.props;
     let { showDeactivated } = this.state;
 
-    const isCurrentUser = (u) => user && user.id === u.id;
+    const isCurrentUser = u => user && user.id === u.id;
 
     // TODO - this should be done in connect
     users = _.values(users).sort((a, b) => b.date_joined - a.date_joined);
 
-    const [active, deactivated] = _.partition(users, (user) => user.is_active);
+    const [active, deactivated] = _.partition(users, user => user.is_active);
     if (deactivated.length === 0) {
       showDeactivated = false;
     } else if (active.length === 0) {
@@ -104,7 +104,7 @@ export default class PeopleListingApp extends Component {
             ]}
             underlined
             py={1}
-            onChange={(showDeactivated) => this.setState({ showDeactivated })}
+            onChange={showDeactivated => this.setState({ showDeactivated })}
           />
         </div>
       );
@@ -136,7 +136,7 @@ export default class PeopleListingApp extends Component {
               </tr>
             </thead>
             <tbody>
-              {users.map((user) => (
+              {users.map(user => (
                 <tr key={user.id}>
                   <td>
                     <span className="text-white inline-block">

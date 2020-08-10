@@ -8,7 +8,7 @@ const ActionIcon = ({ icon, onClick }) => (
   <Icon
     name={icon}
     className="cursor-pointer text-light text-medium-hover ml1"
-    onClick={(e) => {
+    onClick={e => {
       e.stopPropagation();
       onClick();
     }}

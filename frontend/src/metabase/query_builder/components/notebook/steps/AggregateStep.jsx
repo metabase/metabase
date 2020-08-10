@@ -17,11 +17,11 @@ export default function AggregateStep({
       color={color}
       initialAddText={t`Pick the metric you want to see`}
       items={query.aggregations()}
-      renderPopover={(aggregation) => (
+      renderPopover={aggregation => (
         <AggregationPopover
           query={query}
           aggregation={aggregation}
-          onChangeAggregation={(newAggregation) =>
+          onChangeAggregation={newAggregation =>
             aggregation
               ? aggregation.replace(newAggregation).update(updateQuery)
               : query.aggregate(newAggregation).update(updateQuery)
@@ -29,8 +29,8 @@ export default function AggregateStep({
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={(aggregation) => aggregation.remove().update(updateQuery)}
-      canRemove={(aggregation) => aggregation.canRemove()}
+      onRemove={aggregation => aggregation.remove().update(updateQuery)}
+      canRemove={aggregation => aggregation.canRemove()}
     />
   );
 }

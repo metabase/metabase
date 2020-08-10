@@ -16,7 +16,7 @@ const QuestionRowCount = ({
   isResultDirty,
   ...props
 }) => {
-  const formatRowCount = (count) => {
+  const formatRowCount = count => {
     const countString = formatNumber(count);
     return ngettext(msgid`${countString} row`, `${countString} rows`, count);
   };
@@ -51,7 +51,7 @@ const QuestionRowCount = ({
           <LimitPopover
             className="p2"
             limit={limit}
-            onChangeLimit={(limit) => {
+            onChangeLimit={limit => {
               if (limit > 0) {
                 query.updateLimit(limit).update();
               } else {

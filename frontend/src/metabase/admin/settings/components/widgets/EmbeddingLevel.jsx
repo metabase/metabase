@@ -32,7 +32,7 @@ class PremiumTokenInput extends Component {
           {message}
         </h3>
         <SettingsInput
-          onChange={async (value) => {
+          onChange={async value => {
             try {
               await onChangeSetting(PREMIUM_EMBEDDING_SETTING_KEY, value);
             } catch (error) {

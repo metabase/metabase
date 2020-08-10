@@ -5,9 +5,9 @@ import d3 from "d3";
 
 export function computeMinimalBounds(features) {
   const points = getAllFeaturesPoints(features);
-  const gap = computeLargestGap(points, (d) => d[0]);
-  const [west, east] = d3.extent(points, (d) => d[0]);
-  const [north, south] = d3.extent(points, (d) => d[1]);
+  const gap = computeLargestGap(points, d => d[0]);
+  const [west, east] = d3.extent(points, d => d[0]);
+  const [north, south] = d3.extent(points, d => d[1]);
 
   const normalGapSize = gap[1] - gap[0];
   const antemeridianGapSize = 180 + west + (180 - east);
@@ -25,7 +25,7 @@ export function computeMinimalBounds(features) {
   }
 }
 
-export function computeLargestGap(items, valueAccessor = (d) => d) {
+export function computeLargestGap(items, valueAccessor = d => d) {
   const [xMin, xMax] = d3.extent(items, valueAccessor);
   if (xMin === xMax) {
     return [xMin, xMax];

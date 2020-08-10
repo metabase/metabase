@@ -9,7 +9,7 @@ import TokenField from "metabase/components/TokenField";
 const mock = (object, properties) =>
   Object.assign(Object.create(object), properties);
 
-const mountFieldValuesWidget = (props) =>
+const mountFieldValuesWidget = props =>
   mount(
     <FieldValuesWidget
       value={[]}

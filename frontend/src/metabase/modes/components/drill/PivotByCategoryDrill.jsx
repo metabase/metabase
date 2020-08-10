@@ -9,5 +9,5 @@ import PivotByDrill from "./PivotByDrill";
 export default PivotByDrill(
   t`Category`,
   "label",
-  (field) => isCategory(field) && !isAddress(field),
+  field => isCategory(field) && !isAddress(field),
 );

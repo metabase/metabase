@@ -22,13 +22,13 @@ function renderVisualization(props) {
 }
 
 function getScalarTitles(scalarComponent) {
-  return scalarComponent.find(".Scalar-title").map((title) => title.text());
+  return scalarComponent.find(".Scalar-title").map(title => title.text());
 }
 
 function getTitles(viz) {
   return viz
     .find(LegendHeader)
-    .map((header) => header.find(LegendItem).map((item) => item.props().title));
+    .map(header => header.find(LegendItem).map(item => item.props().title));
 }
 
 describe("Visualization", () => {

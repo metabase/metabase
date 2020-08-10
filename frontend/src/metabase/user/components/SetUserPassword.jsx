@@ -16,7 +16,7 @@ export default class SetUserPassword extends Component {
     user: PropTypes.object,
   };
 
-  handleSubmit = (values) => {
+  handleSubmit = values => {
     return this.props.submitFn({
       user_id: this.props.user.id,
       ...values,

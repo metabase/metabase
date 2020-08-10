@@ -18,7 +18,7 @@ const DatabaseSchemasPane = ({ database, show, ...props }) => {
       </div>
 
       <ul>
-        {database.schemas.map((schema) => (
+        {database.schemas.map(schema => (
           <li key={schema.id}>
             <a
               className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"

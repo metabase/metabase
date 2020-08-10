@@ -22,7 +22,7 @@ export default class ChannelSetupMessage extends Component {
     if (user.is_superuser) {
       content = (
         <div>
-          {channels.map((c) => (
+          {channels.map(c => (
             <Link
               to={"/admin/settings/" + c.toLowerCase()}
               key={c.toLowerCase()}

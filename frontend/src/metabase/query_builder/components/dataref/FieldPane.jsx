@@ -26,7 +26,10 @@ const mapDispatchToProps = {
 const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),
 });
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class FieldPane extends Component {
   constructor(props, context) {
     super(props, context);
@@ -109,7 +112,7 @@ export default class FieldPane extends Component {
     this.props.setCardAndRun(card);
   };
 
-  setQueryCountGroupedBy = (chartType) => {
+  setQueryCountGroupedBy = chartType => {
     const { metadata, field } = this.props;
     const defaultBreakout = metadata.field(field.id).getDefaultBreakout();
 
@@ -120,7 +123,7 @@ export default class FieldPane extends Component {
     this.props.setCardAndRun(card);
   };
 
-  isBreakoutWithCurrentField = (breakout) => {
+  isBreakoutWithCurrentField = breakout => {
     const { field, metadata } = this.props;
     const dimension = Dimension.parseMBQL(breakout, metadata);
     return dimension && dimension.field().id === field.id;
@@ -146,7 +149,7 @@ export default class FieldPane extends Component {
     let validBreakout = false;
     if (query.table()) {
       const validDimensions = _.filter(query.table().fields, isDimension);
-      validBreakout = _.some(validDimensions, (f) => f.id === field.id);
+      validBreakout = _.some(validDimensions, f => f.id === field.id);
     }
 
     // TODO: allow for filters/grouping via foreign keys

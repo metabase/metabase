@@ -20,7 +20,10 @@ const mapDispatchToProps = {
   updateUser,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class UserSettingsApp extends Component {
   render() {
     return <UserSettings {...this.props} />;

@@ -8,7 +8,7 @@ import {
 
 describe("getXValues", () => {
   function getXValuesForRows(listOfRows, settings = {}) {
-    const series = listOfRows.map((rows) => ({ data: { rows, cols: [{}] } }));
+    const series = listOfRows.map(rows => ({ data: { rows, cols: [{}] } }));
     series._raw = series;
     return getXValues({ settings, series });
   }
@@ -46,20 +46,20 @@ describe("getXValues", () => {
   });
 
   it("should correctly merge multiple series of ascending numbers", () => {
-    expect(
-      getXValuesForRows([
-        [[2], [11], [12]],
-        [[1], [2], [11]],
-      ]),
-    ).toEqual([1, 2, 11, 12]);
+    expect(getXValuesForRows([[[2], [11], [12]], [[1], [2], [11]]])).toEqual([
+      1,
+      2,
+      11,
+      12,
+    ]);
   });
   it("should correctly merge multiple series of descending numbers", () => {
-    expect(
-      getXValuesForRows([
-        [[12], [11], [2]],
-        [[11], [2], [1]],
-      ]),
-    ).toEqual([12, 11, 2, 1]);
+    expect(getXValuesForRows([[[12], [11], [2]], [[11], [2], [1]]])).toEqual([
+      12,
+      11,
+      2,
+      1,
+    ]);
   });
   it("should use raw row ordering rather than broken out series", () => {
     const series = [
@@ -113,12 +113,9 @@ describe("getXValues", () => {
   it("should sort values according to parsed value", () => {
     expect(
       getXValuesForRows(
-        [
-          [["2019-W33"], ["2019-08-13"]],
-          [["2019-08-11"], ["2019-W33"]],
-        ],
+        [[["2019-W33"], ["2019-08-13"]], [["2019-08-11"], ["2019-W33"]]],
         { "graph.x_axis.scale": "timeseries" },
-      ).map((x) => x.format()),
+      ).map(x => x.format()),
     ).toEqual([
       "2019-08-11T00:00:00Z",
       "2019-08-12T00:00:00Z",
@@ -142,7 +139,7 @@ describe("getXValues", () => {
         "graph.x_axis.scale": "timeseries",
       },
     );
-    const formattedXValues = xValues.map((v) => v.format("YYYY-MM-DD"));
+    const formattedXValues = xValues.map(v => v.format("YYYY-MM-DD"));
     expect(formattedXValues).toEqual(["2019-01-02", "2019-01-03"]);
   });
 });

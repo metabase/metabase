@@ -23,7 +23,7 @@ export default class QueryModals extends React.Component {
 
     const hasAlertsCreatedByCurrentUser = _.any(
       questionAlerts,
-      (alert) => alert.creator.id === user.id,
+      alert => alert.creator.id === user.id,
     );
 
     if (hasAlertsCreatedByCurrentUser) {
@@ -45,12 +45,12 @@ export default class QueryModals extends React.Component {
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
-          onSave={async (card) => {
+          onSave={async card => {
             // if saving modified question, don't show "add to dashboard" modal
             await this.props.onSave(card);
             onCloseModal();
           }}
-          onCreate={async (card) => {
+          onCreate={async card => {
             await this.props.onCreate(card);
             onOpenModal("saved");
           }}
@@ -73,11 +73,11 @@ export default class QueryModals extends React.Component {
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
-          onSave={async (card) => {
+          onSave={async card => {
             await this.props.onSave(card);
             onOpenModal("add-to-dashboard");
           }}
-          onCreate={async (card) => {
+          onCreate={async card => {
             await this.props.onCreate(card);
             onOpenModal("add-to-dashboard");
           }}
@@ -106,11 +106,11 @@ export default class QueryModals extends React.Component {
           card={this.props.card}
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
-          onSave={async (card) => {
+          onSave={async card => {
             await this.props.onSave(card, false);
             this.showAlertsAfterQuestionSaved();
           }}
-          onCreate={async (card) => {
+          onCreate={async card => {
             await this.props.onCreate(card, false);
             this.showAlertsAfterQuestionSaved();
           }}
@@ -125,11 +125,11 @@ export default class QueryModals extends React.Component {
           card={this.props.card}
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
-          onSave={async (card) => {
+          onSave={async card => {
             await this.props.onSave(card, false);
             onOpenModal("embed");
           }}
-          onCreate={async (card) => {
+          onCreate={async card => {
             await this.props.onCreate(card, false);
             onOpenModal("embed");
           }}
@@ -155,7 +155,7 @@ export default class QueryModals extends React.Component {
           title={t`Which collection should this be in?`}
           initialCollectionId={question.collectionId()}
           onClose={onCloseModal}
-          onMove={(collection) => {
+          onMove={collection => {
             const card = question
               .setCollectionId(collection && collection.id)
               .card();
@@ -174,7 +174,7 @@ export default class QueryModals extends React.Component {
         <EditQuestionInfoModal
           question={question}
           onClose={onCloseModal}
-          onSave={(card) => this.props.onSave(card, false)}
+          onSave={card => this.props.onSave(card, false)}
         />
       </Modal>
     ) : modal === "embed" ? (

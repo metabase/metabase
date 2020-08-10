@@ -5,11 +5,11 @@ import { updateIn, assoc } from "icepick";
 
 export const setRequestLoading = createAction(
   "metabase/requests/SET_REQUEST_LOADING",
-  (statePath) => ({ statePath }),
+  statePath => ({ statePath }),
 );
 export const setRequestLoaded = createAction(
   "metabase/requests/SET_REQUEST_LOADED",
-  (statePath) => ({ statePath }),
+  statePath => ({ statePath }),
 );
 export const setRequestError = createAction(
   "metabase/requests/SET_REQUEST_ERROR",
@@ -17,7 +17,7 @@ export const setRequestError = createAction(
 );
 export const setRequestUnloaded = createAction(
   "metabase/requests/SET_REQUEST_UNLOADED",
-  (statePath) => ({ statePath }),
+  statePath => ({ statePath }),
 );
 
 const initialRequestState = {
@@ -31,7 +31,7 @@ const initialRequestState = {
 const requestStateReducer = handleActions(
   {
     [setRequestLoading]: {
-      next: (state) => ({
+      next: state => ({
         ...state,
         loading: true,
         loaded: false,
@@ -39,7 +39,7 @@ const requestStateReducer = handleActions(
       }),
     },
     [setRequestLoaded]: {
-      next: (state) => ({
+      next: state => ({
         ...state,
         loading: false,
         loaded: true,
@@ -56,7 +56,7 @@ const requestStateReducer = handleActions(
       }),
     },
     [setRequestUnloaded]: {
-      next: (state) => ({
+      next: state => ({
         ...state,
         loaded: false,
         error: null,
@@ -79,7 +79,7 @@ function requestStateReducerRecursive(state, action) {
 
 export default (state = {}, action) => {
   if (action && action.payload && action.payload.statePath) {
-    state = updateIn(state, action.payload.statePath, (subState) =>
+    state = updateIn(state, action.payload.statePath, subState =>
       requestStateReducerRecursive(subState, action),
     );
   }

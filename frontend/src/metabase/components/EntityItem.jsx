@@ -65,7 +65,7 @@ const EntityItem = ({
       action: onArchive,
       event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
     },
-  ].filter((action) => action);
+  ].filter(action => action);
 
   let spacing;
 
@@ -97,7 +97,7 @@ const EntityItem = ({
         justify="center"
         onClick={
           selectable
-            ? (e) => {
+            ? e => {
                 e.preventDefault();
                 onToggleSelected();
               }
@@ -123,7 +123,7 @@ const EntityItem = ({
         <Box>{extraInfo && extraInfo}</Box>
       </Box>
 
-      <Flex ml="auto" pr={1} align="center" onClick={(e) => e.preventDefault()}>
+      <Flex ml="auto" pr={1} align="center" onClick={e => e.preventDefault()}>
         {buttons}
         {item.description && (
           <Icon

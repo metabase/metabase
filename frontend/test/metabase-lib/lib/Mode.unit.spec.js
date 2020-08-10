@@ -22,7 +22,10 @@ describe("Mode", () => {
       });
 
       it("returns `metric` mode with >= 1 aggregations", () => {
-        const mode = rawDataQuery.aggregate(["count"]).question().mode();
+        const mode = rawDataQuery
+          .aggregate(["count"])
+          .question()
+          .mode();
         expect(mode && mode.name()).toEqual("metric");
       });
 

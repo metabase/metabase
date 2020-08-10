@@ -175,10 +175,10 @@ export default class ViewFilterPopover extends Component {
                     includeSegments: showCustom,
                   })
             }
-            onChangeDimension={(dimension) =>
+            onChangeDimension={dimension =>
               this.handleDimensionChange(dimension)
             }
-            onChangeOther={(item) => {
+            onChangeOther={item => {
               // special case for segments
               this.handleCommitFilter(item.filter, item.query);
             }}

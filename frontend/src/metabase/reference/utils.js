@@ -7,7 +7,7 @@ import * as Urls from "metabase/lib/urls";
 
 export const idsToObjectMap = (ids, objects) =>
   ids
-    .map((id) => objects[id])
+    .map(id => objects[id])
     .reduce((map, object) => ({ ...map, [object.id]: object }), {});
 // recursive freezing done by assoc here is too expensive
 // hangs browser for large databases
@@ -15,23 +15,22 @@ export const idsToObjectMap = (ids, objects) =>
 
 export const filterUntouchedFields = (fields, entity = {}) =>
   Object.keys(fields)
-    .filter((key) => fields[key] !== undefined && entity[key] !== fields[key])
+    .filter(key => fields[key] !== undefined && entity[key] !== fields[key])
     .reduce((map, key) => ({ ...map, [key]: fields[key] }), {});
 
-export const isEmptyObject = (object) => Object.keys(object).length === 0;
+export const isEmptyObject = object => Object.keys(object).length === 0;
 
-export const databaseToForeignKeys = (database) =>
+export const databaseToForeignKeys = database =>
   database && database.tables_lookup
     ? Object.values(database.tables_lookup)
         // ignore tables without primary key
         .filter(
-          (table) =>
-            table && table.fields.find((field) => isPK(field.special_type)),
+          table =>
+            table && table.fields.find(field => isPK(field.special_type)),
         )
-        .map((table) => ({
+        .map(table => ({
           table: table,
-          field:
-            table && table.fields.find((field) => isPK(field.special_type)),
+          field: table && table.fields.find(field => isPK(field.special_type)),
         }))
         .map(({ table, field }) => ({
           id: field.id,
@@ -46,9 +45,9 @@ export const databaseToForeignKeys = (database) =>
         .reduce((map, foreignKey) => assoc(map, foreignKey.id, foreignKey), {})
     : {};
 
-export const fieldsToFormFields = (fields) =>
+export const fieldsToFormFields = fields =>
   Object.keys(fields)
-    .map((key) => [
+    .map(key => [
       `${key}.display_name`,
       `${key}.special_type`,
       `${key}.fk_target_field_id`,
@@ -71,11 +70,11 @@ export const getQuestion = ({
   // consider taking a look at Ramda as a possible underscore alternative?
   // http://ramdajs.com/0.21.0/index.html
   const question = chain(newQuestion)
-    .updateIn(["dataset_query", "query", "aggregation"], (aggregation) =>
+    .updateIn(["dataset_query", "query", "aggregation"], aggregation =>
       getCount ? [["count"]] : aggregation,
     )
-    .updateIn(["display"], (display) => visualization || display)
-    .updateIn(["dataset_query", "query", "breakout"], (oldBreakout) => {
+    .updateIn(["display"], display => visualization || display)
+    .updateIn(["dataset_query", "query", "breakout"], oldBreakout => {
       if (fieldId && metadata && metadata.field(fieldId)) {
         return [metadata.field(fieldId).getDefaultBreakout()];
       }
@@ -105,7 +104,7 @@ export const getQuestion = ({
   return question;
 };
 
-export const getQuestionUrl = (getQuestionArgs) =>
+export const getQuestionUrl = getQuestionArgs =>
   Urls.question(null, getQuestion(getQuestionArgs));
 
 export const typeToLinkClass = {
@@ -124,4 +123,4 @@ export const typeToBgClass = {
 
 // little utility function to determine if we 'has' things, useful
 // for handling entity empty states
-export const has = (entity) => entity && entity.length > 0;
+export const has = entity => entity && entity.length > 0;

@@ -80,7 +80,7 @@ export default class PulseEdit extends Component {
     MetabaseAnalytics.trackEvent("PulseUnarchive", "Complete");
   };
 
-  setPulse = (pulse) => {
+  setPulse = pulse => {
     this.props.updateEditingPulse(pulse);
   };
 
@@ -90,11 +90,11 @@ export default class PulseEdit extends Component {
         <span key={index}>
           {jt`This pulse will no longer be emailed to ${(
             <strong>
-              {((n) => ngettext(msgid`${n} address`, `${n} addresses`, n))(
+              {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
                 c.recipients.length,
               )}
             </strong>
-          )} ${(<strong>{c.schedule_type}</strong>)}`}
+          )} ${<strong>{c.schedule_type}</strong>}`}
           .
         </span>
       ) : c.channel_type === "slack" ? (

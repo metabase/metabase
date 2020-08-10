@@ -22,7 +22,7 @@ export default class DatabaseSchedulingStep extends Component {
     setDatabaseDetails: PropTypes.func.isRequired,
   };
 
-  handleSubmit = async (database) => {
+  handleSubmit = async database => {
     this.props.setDatabaseDetails({
       nextStep: this.props.stepNumber + 1,
       details: database,

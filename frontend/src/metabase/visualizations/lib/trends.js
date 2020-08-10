@@ -7,9 +7,9 @@ const EXPRESSION_OPERATORS = new Map([
   ["-", (...args) => `(${args.join(" - ")})`],
   ["*", (...args) => `(${args.join(" * ")})`],
   ["/", (...args) => `(${args.join(" / ")})`],
-  ["log", (x) => `Math.log(${x})`],
+  ["log", x => `Math.log(${x})`],
   ["pow", (x, y) => `Math.pow(${x}, ${y})`],
-  ["exp", (x) => `Math.pow(Math.E, ${x})`],
+  ["exp", x => `Math.pow(Math.E, ${x})`],
 ]);
 // whitelist of allowed expressions
 const EXPRESSION_IDENTIFIERS = new Set(["x"]);
@@ -33,7 +33,7 @@ export function compileExpression(node) {
   return new Function("x", `return ${compiled};`);
 }
 
-const msToDays = (ms) => ms / (24 * 60 * 60 * 1000);
+const msToDays = ms => ms / (24 * 60 * 60 * 1000);
 
 export function getTrendDataPointsFromInsight(insight, xDomain, count = 10) {
   const isTimeseries = moment.isMoment(xDomain[0]);
@@ -42,15 +42,15 @@ export function getTrendDataPointsFromInsight(insight, xDomain, count = 10) {
   if (insight["best-fit"]) {
     fn = compileExpression(insight["best-fit"]);
   } else {
-    fn = (x) => x * insight.slope + insight.offset;
+    fn = x => x * insight.slope + insight.offset;
   }
 
-  const [start, end] = isTimeseries ? xDomain.map((x) => +x) : xDomain;
+  const [start, end] = isTimeseries ? xDomain.map(x => +x) : xDomain;
   const xValues = getValuesInRange(start, end, count);
 
   const trendData = isTimeseries
-    ? xValues.map((x) => [moment(x), fn(msToDays(x))])
-    : xValues.map((x) => [x, fn(x)]);
+    ? xValues.map(x => [moment(x), fn(msToDays(x))])
+    : xValues.map(x => [x, fn(x)]);
 
   return trendData;
 }

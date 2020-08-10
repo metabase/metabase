@@ -34,7 +34,10 @@ const TICK_PERIOD = 1; // seconds
  * It should probably be in Redux?
  */
 export default (ComposedComponent: ReactClass<any>) =>
-  connect(null, { replace })(
+  connect(
+    null,
+    { replace },
+  )(
     class extends Component {
       static displayName =
         "DashboardControls[" +
@@ -130,7 +133,7 @@ export default (ComposedComponent: ReactClass<any>) =>
         }
       };
 
-      setRefreshPeriod = (refreshPeriod) => {
+      setRefreshPeriod = refreshPeriod => {
         this._clearRefreshInterval();
         if (refreshPeriod != null) {
           this._interval = setInterval(
@@ -150,7 +153,7 @@ export default (ComposedComponent: ReactClass<any>) =>
         }
       };
 
-      setNightMode = (isNightMode) => {
+      setNightMode = isNightMode => {
         isNightMode = !!isNightMode;
         this.setState({ isNightMode });
       };
@@ -176,7 +179,7 @@ export default (ComposedComponent: ReactClass<any>) =>
         }
       };
 
-      setHideParameters = (parameters) => {
+      setHideParameters = parameters => {
         this.setState({ hideParameters: parameters });
       };
 
@@ -220,11 +223,11 @@ export default (ComposedComponent: ReactClass<any>) =>
         this.setState({ isFullscreen: !!screenfull.isFullscreen });
       };
 
-      setRefreshElapsedHook = (hook) => {
+      setRefreshElapsedHook = hook => {
         this._refreshElapsedHook = hook;
       };
 
-      setRefreshElapsed = (elapsed) => {
+      setRefreshElapsed = elapsed => {
         if (this._refreshElapsedHook) {
           this._refreshElapsedHook(elapsed);
         }

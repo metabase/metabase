@@ -41,7 +41,7 @@ export default class Mode {
     return _.flatten(
       this._queryMode
         .drills()
-        .map((actionCreator) =>
+        .map(actionCreator =>
           actionCreator({ question: this._question, settings, clicked }),
         ),
     );

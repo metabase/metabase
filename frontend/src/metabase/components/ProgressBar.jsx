@@ -13,14 +13,14 @@ type Props = {
 
 const ProgressWrapper = styled.div`
   position: relative;
-  border: 1px solid ${(props) => props.color};
+  border: 1px solid ${props => props.color};
   height: 10px;
   borderradius: 99px;
 `;
 
 const Progress = styled.div`
       overflow: hidden;
-      background-color: ${(props) => props.color};
+      background-color: ${props => props.color};
       position: relative;
       height: 100%;
       top: 0;
@@ -28,16 +28,16 @@ const Progress = styled.div`
       border-radius: inherit;
       border-top-left-radius: 0;
       borderBottomLeftRadius: 0;
-      width: ${(props) => props.width}%;
+      width: ${props => props.width}%;
       ":before": {
-        display: ${(props) => (props.animated ? "block" : "none")};
+        display: ${props => (props.animated ? "block" : "none")};
         position: absolute,
         content: "";
         left: 0;
-        width: ${(props) => props.width / 4}%;
+        width: ${props => props.width / 4}%;
         height: 100%;
         background-color: ${color("bg-black")};
-        animation: ${(props) =>
+        animation: ${props =>
           props.animated ? "progress-bar 1.5s linear infinite" : "none"};
       },
 `;

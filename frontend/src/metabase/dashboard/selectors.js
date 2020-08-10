@@ -35,14 +35,14 @@ export type MappingsByParameter = {
   },
 };
 
-export const getDashboardId = (state) => state.dashboard.dashboardId;
-export const getIsEditing = (state) => state.dashboard.isEditing;
-export const getDashboards = (state) => state.dashboard.dashboards;
-export const getDashcards = (state) => state.dashboard.dashcards;
-export const getCardData = (state) => state.dashboard.dashcardData;
-export const getSlowCards = (state) => state.dashboard.slowCards;
-export const getParameterValues = (state) => state.dashboard.parameterValues;
-export const getLoadingStartTime = (state) =>
+export const getDashboardId = state => state.dashboard.dashboardId;
+export const getIsEditing = state => state.dashboard.isEditing;
+export const getDashboards = state => state.dashboard.dashboards;
+export const getDashcards = state => state.dashboard.dashcards;
+export const getCardData = state => state.dashboard.dashcardData;
+export const getSlowCards = state => state.dashboard.slowCards;
+export const getParameterValues = state => state.dashboard.parameterValues;
+export const getLoadingStartTime = state =>
   state.dashboard.loadingDashCards.startTime;
 
 export const getDashboard = createSelector(
@@ -56,8 +56,8 @@ export const getDashboardComplete = createSelector(
     dashboard && {
       ...dashboard,
       ordered_cards: dashboard.ordered_cards
-        .map((id) => dashcards[id])
-        .filter((dc) => !dc.isRemoved),
+        .map(id => dashcards[id])
+        .filter(dc => !dc.isRemoved),
     },
 );
 
@@ -69,7 +69,7 @@ export const getIsDirty = createSelector(
       (dashboard.isDirty ||
         _.some(
           dashboard.ordered_cards,
-          (id) =>
+          id =>
             !(dashcards[id].isAdded && dashcards[id].isRemoved) &&
             (dashcards[id].isDirty ||
               dashcards[id].isAdded ||
@@ -78,7 +78,7 @@ export const getIsDirty = createSelector(
     ),
 );
 
-export const getEditingParameterId = (state) =>
+export const getEditingParameterId = state =>
   state.dashboard.editingParameterId;
 
 export const getEditingParameter = createSelector(
@@ -89,7 +89,7 @@ export const getEditingParameter = createSelector(
       : null,
 );
 
-export const getIsEditingParameter = (state) =>
+export const getIsEditingParameter = state =>
   state.dashboard.editingParameterId != null;
 
 const getCard = (state, props) => props.card;
@@ -156,7 +156,7 @@ export const getMappingsByParameter = createSelector(
       if (mapping.values && mapping.values.length > 0) {
         const overlapMax = Math.max(
           ...mapping.values.map(
-            (value) => countsByParameter[mapping.parameter_id][value],
+            value => countsByParameter[mapping.parameter_id][value],
           ),
         );
         mappingsByParameter = setIn(
@@ -195,24 +195,24 @@ export const getMappingsByParameter = createSelector(
 export const getParameters = createSelector(
   [getMetadata, getDashboard, getMappingsByParameter],
   (metadata, dashboard, mappingsByParameter) =>
-    ((dashboard && dashboard.parameters) || []).map((parameter) => {
+    ((dashboard && dashboard.parameters) || []).map(parameter => {
       const mappings = _.flatten(
         _.map(mappingsByParameter[parameter.id] || {}, _.values),
       );
 
       // we change out widgets if a parameter is connected to non-field targets
-      const hasOnlyFieldTargets = mappings.every((x) => x.field_id != null);
+      const hasOnlyFieldTargets = mappings.every(x => x.field_id != null);
 
       // get the unique list of field IDs these mappings reference
       const fieldIds = _.chain(mappings)
-        .map((m) => m.field_id)
+        .map(m => m.field_id)
         .uniq()
-        .filter((fieldId) => fieldId != null)
+        .filter(fieldId => fieldId != null)
         .value();
       const fieldIdsWithFKResolved = _.chain(fieldIds)
-        .map((id) => metadata.field(id))
-        .filter((f) => f)
-        .map((f) => (f.target || f).id)
+        .map(id => metadata.field(id))
+        .filter(f => f)
+        .map(f => (f.target || f).id)
         .uniq()
         .value();
       return {

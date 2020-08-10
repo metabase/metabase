@@ -66,13 +66,13 @@ const Databases = createEntity({
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).database(entityId),
 
-    getHasSampleDataset: (state) =>
-      _.any(Databases.selectors.getList(state), (db) => db.is_sample),
+    getHasSampleDataset: state =>
+      _.any(Databases.selectors.getList(state), db => db.is_sample),
     getIdfields: createSelector(
       // we wrap getFields to handle a circular dep issue
-      [(state) => getFields(state), (state, props) => props.databaseId],
+      [state => getFields(state), (state, props) => props.databaseId],
       (fields, databaseId) =>
-        Object.values(fields).filter((f) => {
+        Object.values(fields).filter(f => {
           const { db_id } = f.table || {}; // a field's table can be null
           return db_id === databaseId && f.isPK();
         }),

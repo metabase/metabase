@@ -130,18 +130,18 @@ export default class PinMap extends Component {
     } = props;
     const latitudeIndex = _.findIndex(
       cols,
-      (col) => col.name === settings["map.latitude_column"],
+      col => col.name === settings["map.latitude_column"],
     );
     const longitudeIndex = _.findIndex(
       cols,
-      (col) => col.name === settings["map.longitude_column"],
+      col => col.name === settings["map.longitude_column"],
     );
     const metricIndex = _.findIndex(
       cols,
-      (col) => col.name === settings["map.metric_column"],
+      col => col.name === settings["map.metric_column"],
     );
 
-    const allPoints = rows.map((row) => [
+    const allPoints = rows.map(row => [
       row[latitudeIndex],
       row[longitudeIndex],
       metricIndex >= 0 ? row[metricIndex] : 1,
@@ -165,8 +165,8 @@ export default class PinMap extends Component {
 
     const bounds = L.latLngBounds(points);
 
-    const min = d3.min(points, (point) => point[2]);
-    const max = d3.max(points, (point) => point[2]);
+    const min = d3.min(points, point => point[2]);
+    const max = d3.max(points, point => point[2]);
 
     const binWidth =
       cols[longitudeIndex] &&
@@ -202,12 +202,12 @@ export default class PinMap extends Component {
           className,
           "PinMap relative hover-parent hover--visibility",
         )}
-        onMouseDownCapture={(e) => e.stopPropagation() /* prevent dragging */}
+        onMouseDownCapture={e => e.stopPropagation() /* prevent dragging */}
       >
         {Map ? (
           <Map
             {...this.props}
-            ref={(map) => (this._map = map)}
+            ref={map => (this._map = map)}
             className="absolute top left bottom right z1"
             onMapCenterChange={this.onMapCenterChange}
             onMapZoomChange={this.onMapZoomChange}
@@ -220,7 +220,7 @@ export default class PinMap extends Component {
             max={max}
             binWidth={binWidth}
             binHeight={binHeight}
-            onFiltering={(filtering) => this.setState({ filtering })}
+            onFiltering={filtering => this.setState({ filtering })}
           />
         ) : null}
         <div className="absolute top right m1 z2 flex flex-column hover-child">

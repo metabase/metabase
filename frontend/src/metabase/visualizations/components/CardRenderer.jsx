@@ -102,7 +102,7 @@ export default class CardRenderer extends Component {
     try {
       const t = startTimer();
       this._deregister = this.props.renderer(element, this.props);
-      t((duration) => {
+      t(duration => {
         const { display } = this.props.card;
         trackEventThrottled("Visualization", "Render Card", display, duration);
       });

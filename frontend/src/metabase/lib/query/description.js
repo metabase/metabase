@@ -50,7 +50,7 @@ export function getTableDescription(tableMetadata) {
 
 export function getAggregationDescription(tableMetadata, query, options) {
   return conjunctList(
-    QUERY.getAggregations(query).map((aggregation) => {
+    QUERY.getAggregations(query).map(aggregation => {
       if (AGGREGATION.hasOptions(aggregation)) {
         if (AGGREGATION.isNamed(aggregation)) {
           return [AGGREGATION.getName(aggregation)];
@@ -125,7 +125,7 @@ export function getBreakoutDescription(tableMetadata, { breakout }, options) {
     return [
       t`Grouped by `,
       joinList(
-        breakout.map((b) => getFieldName(tableMetadata, b, options)),
+        breakout.map(b => getFieldName(tableMetadata, b, options)),
         " and ",
       ),
     ];
@@ -147,7 +147,7 @@ export function getFilterClauseDescription(tableMetadata, filter, options) {
   if (filter[0] === "and" || filter[0] === "or") {
     const clauses = filter
       .slice(1)
-      .map((f) => getFilterClauseDescription(tableMetadata, f, options));
+      .map(f => getFilterClauseDescription(tableMetadata, f, options));
     return conjunctList(clauses, filter[0].toLowerCase());
   } else if (filter[0] === "segment") {
     const segment = _.findWhere(tableMetadata.segments, { id: filter[1] });
@@ -215,12 +215,12 @@ export function generateQueryDescription(tableMetadata, query, options = {}) {
 
   // these array gymnastics are needed to support JSX formatting
   const sections = options.sections
-    .map((section) =>
+    .map(section =>
       _.flatten(sectionFns[section](tableMetadata, query, options)).filter(
-        (s) => !!s,
+        s => !!s,
       ),
     )
-    .filter((s) => s && s.length > 0);
+    .filter(s => s && s.length > 0);
 
   const description = _.flatten(joinList(sections, ", "));
   if (options.jsx) {
@@ -244,7 +244,7 @@ export function formatTableDescription({ table }, options = {}) {
 
 export function formatAggregationDescription({ aggregation }, options = {}) {
   return conjunctList(
-    aggregation.map((agg) => {
+    aggregation.map(agg => {
       switch (agg["type"]) {
         case "aggregation":
           return [agg["arg"]];
@@ -283,13 +283,7 @@ export function formatAggregationDescription({ aggregation }, options = {}) {
 
 export function formatBreakoutDescription({ breakout }, options = {}) {
   if (breakout && breakout.length > 0) {
-    return [
-      t`Grouped by `,
-      joinList(
-        breakout.map((b) => b),
-        " and ",
-      ),
-    ];
+    return [t`Grouped by `, joinList(breakout.map(b => b), " and ")];
   } else {
     return [];
   }
@@ -300,7 +294,7 @@ export function formatFilterDescription({ filter }, options = {}) {
     return [
       t`Filtered by `,
       joinList(
-        filter.map((f) => {
+        filter.map(f => {
           if (f["segment"] != null) {
             return options.jsx ? (
               <span className="text-purple text-bold">{f["segment"]}</span>
@@ -326,7 +320,7 @@ export function formatOrderByDescription(parts, options = {}) {
       t`Sorted by `,
       joinList(
         orderBy.map(
-          (field) =>
+          field =>
             field["field"] +
             " " +
             (field["direction"] === "asc" ? "ascending" : "descending"),
@@ -376,10 +370,10 @@ export function formatQueryDescription(parts, options = {}) {
 
   // these array gymnastics are needed to support JSX formatting
   const sections = (options.sections || [])
-    .map((section) =>
-      _.flatten(sectionFns[section](parts, options)).filter((s) => !!s),
+    .map(section =>
+      _.flatten(sectionFns[section](parts, options)).filter(s => !!s),
     )
-    .filter((s) => s && s.length > 0);
+    .filter(s => s && s.length > 0);
 
   const description = _.flatten(joinList(sections, ", "));
   if (options.jsx) {

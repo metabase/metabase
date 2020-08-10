@@ -43,7 +43,10 @@ DefaultMessage.propTypes = {
   undo: PropTypes.object.isRequired,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @BodyComponent
 export default class UndoListing extends Component {
   static propTypes = {
@@ -56,7 +59,7 @@ export default class UndoListing extends Component {
     const { undos, performUndo, dismissUndo } = this.props;
     return (
       <UndoList m={2} className="fixed left bottom zF">
-        {undos.map((undo) => (
+        {undos.map(undo => (
           <Card key={undo._domId} dark p={2} mt={1}>
             <Flex align="center">
               <Icon

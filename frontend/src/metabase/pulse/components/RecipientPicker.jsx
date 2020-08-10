@@ -25,7 +25,7 @@ export default class RecipientPicker extends Component {
     autoFocus: true,
   };
 
-  handleOnChange = (newRecipients) => {
+  handleOnChange = newRecipients => {
     this.props.onRecipientsChange(newRecipients);
     this._trackChange(newRecipients);
   };
@@ -34,11 +34,11 @@ export default class RecipientPicker extends Component {
     const { recipients, isNewPulse } = this.props;
 
     // kind of hacky way to find the changed recipient
-    const previous = new Set(recipients.map((r) => JSON.stringify(r)));
-    const next = new Set(newRecipients.map((r) => JSON.stringify(r)));
+    const previous = new Set(recipients.map(r => JSON.stringify(r)));
+    const next = new Set(newRecipients.map(r => JSON.stringify(r)));
     const recipient =
-      [...next].filter((r) => !previous.has(r))[0] ||
-      [...previous].filter((r) => !next.has(r))[0];
+      [...next].filter(r => !previous.has(r))[0] ||
+      [...previous].filter(r => !next.has(r))[0];
 
     MetabaseAnalytics.trackEvent(
       isNewPulse ? "PulseCreate" : "PulseEdit",
@@ -56,7 +56,7 @@ export default class RecipientPicker extends Component {
         value={recipients}
         options={
           users
-            ? users.map((user) => ({ label: user.common_name, value: user }))
+            ? users.map(user => ({ label: user.common_name, value: user }))
             : []
         }
         onChange={this.handleOnChange}
@@ -67,8 +67,8 @@ export default class RecipientPicker extends Component {
         }
         autoFocus={autoFocus && recipients.length === 0}
         multi
-        valueRenderer={(value) => value.common_name || value.email}
-        optionRenderer={(option) => (
+        valueRenderer={value => value.common_name || value.email}
+        optionRenderer={option => (
           <div className="flex align-center">
             <span className="text-white">
               <UserAvatar user={option.value} />
@@ -83,7 +83,7 @@ export default class RecipientPicker extends Component {
             .indexOf(filterString.toLowerCase()) ||
           ~option.value.email.toLowerCase().indexOf(filterString.toLowerCase())
         }
-        parseFreeformValue={(inputValue) => {
+        parseFreeformValue={inputValue => {
           if (VALID_EMAIL_REGEX.test(inputValue)) {
             return { email: inputValue };
           }

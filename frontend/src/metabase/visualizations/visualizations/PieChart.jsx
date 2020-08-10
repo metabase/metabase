@@ -162,7 +162,7 @@ export default class PieChart extends Component {
           },
         ],
         settings,
-      ) => _.findIndex(cols, (col) => col.name === settings["pie.metric"]),
+      ) => _.findIndex(cols, col => col.name === settings["pie.metric"]),
       readDependencies: ["pie.metric"],
     },
     "pie._dimensionIndex": {
@@ -173,7 +173,7 @@ export default class PieChart extends Component {
           },
         ],
         settings,
-      ) => _.findIndex(cols, (col) => col.name === settings["pie.dimension"]),
+      ) => _.findIndex(cols, col => col.name === settings["pie.dimension"]),
       readDependencies: ["pie.dimension"],
     },
     "pie._dimensionValues": {
@@ -188,7 +188,7 @@ export default class PieChart extends Component {
         const dimensionIndex = settings["pie._dimensionIndex"];
         return dimensionIndex >= 0
           ? // cast to string because getColorsForValues expects strings
-            rows.map((row) => String(row[dimensionIndex]))
+            rows.map(row => String(row[dimensionIndex]))
           : null;
       },
       readDependencies: ["pie._dimensionIndex"],
@@ -260,7 +260,7 @@ export default class PieChart extends Component {
         percentage: row[metricIndex] / total,
         color: settings["pie._colors"][row[dimensionIndex]],
       }))
-      .partition((d) => d.percentage > sliceThreshold)
+      .partition(d => d.percentage > sliceThreshold)
       .value();
 
     const otherTotal = others.reduce((acc, o) => acc + o.value, 0);
@@ -283,10 +283,10 @@ export default class PieChart extends Component {
     }
 
     const decimals = computeMaxDecimalsForValues(
-      slices.map((s) => s.percentage),
+      slices.map(s => s.percentage),
       { style: "percent", maximumSignificantDigits: 3 },
     );
-    const formatPercent = (percent) =>
+    const formatPercent = percent =>
       formatValue(percent, {
         column: cols[metricIndex],
         jsx: true,
@@ -295,13 +295,13 @@ export default class PieChart extends Component {
         decimals,
       });
 
-    const legendTitles = slices.map((slice) => [
+    const legendTitles = slices.map(slice => [
       slice.key === "Other" ? slice.key : formatDimension(slice.key, true),
       settings["pie.show_legend_perecent"]
         ? formatPercent(slice.percentage)
         : undefined,
     ]);
-    const legendColors = slices.map((slice) => slice.color);
+    const legendColors = slices.map(slice => slice.color);
 
     // no non-zero slices
     if (slices.length === 0) {
@@ -317,7 +317,7 @@ export default class PieChart extends Component {
       .pie()
       .sort(null)
       .padAngle(PAD_ANGLE)
-      .value((d) => d.value);
+      .value(d => d.value);
     const arc = d3.svg
       .arc()
       .outerRadius(OUTER_RADIUS)
@@ -331,7 +331,7 @@ export default class PieChart extends Component {
         return {
           index,
           event: event && event.nativeEvent,
-          data: others.map((o) => ({
+          data: others.map(o => ({
             key: formatDimension(o.key, false),
             value: formatMetric(o.displayValue, false),
           })),
@@ -376,7 +376,7 @@ export default class PieChart extends Component {
       value = formatMetric(total);
     }
 
-    const getSliceClickObject = (index) => ({
+    const getSliceClickObject = index => ({
       value: slices[index].value,
       column: cols[metricIndex],
       dimensions: [
@@ -390,7 +390,7 @@ export default class PieChart extends Component {
 
     const isClickable =
       onVisualizationClick && visualizationIsClickable(getSliceClickObject(0));
-    const getSliceIsClickable = (index) =>
+    const getSliceIsClickable = index =>
       isClickable && slices[index] !== otherSlice;
 
     return (
@@ -400,7 +400,7 @@ export default class PieChart extends Component {
         legendColors={legendColors}
         gridSize={gridSize}
         hovered={hovered}
-        onHoverChange={(d) =>
+        onHoverChange={d =>
           onHoverChange &&
           onHoverChange(d && { ...d, ...hoverForIndex(d.index) })
         }
@@ -438,7 +438,7 @@ export default class PieChart extends Component {
                         ? 0.3
                         : 1
                     }
-                    onMouseMove={(e) =>
+                    onMouseMove={e =>
                       onHoverChange && onHoverChange(hoverForIndex(index, e))
                     }
                     onMouseLeave={() => onHoverChange && onHoverChange(null)}
@@ -447,7 +447,7 @@ export default class PieChart extends Component {
                     })}
                     onClick={
                       getSliceIsClickable(index) &&
-                      ((e) =>
+                      (e =>
                         onVisualizationClick({
                           ...getSliceClickObject(index),
                           event: e.nativeEvent,

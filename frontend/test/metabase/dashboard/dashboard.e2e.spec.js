@@ -204,14 +204,14 @@ describe("Dashboard", () => {
       click(
         app
           .find(ParameterOptionsSection)
-          .filterWhere((section) => section.text().match(/Time/)),
+          .filterWhere(section => section.text().match(/Time/)),
       );
 
       // Choose Relative date filter
       click(
         app
           .find(ParameterOptionItem)
-          .filterWhere((item) => item.text().match(/Relative Date/)),
+          .filterWhere(item => item.text().match(/Relative Date/)),
       );
 
       await store.waitForActions(ADD_PARAMETER);
@@ -380,7 +380,7 @@ describe("Dashboard", () => {
       app.findByIcon("share").click();
       app.findByText("Embed this dashboard in an application").click();
       app.findByText("Code").click();
-      const [js, html] = app.find("TextEditor").map((n) => n.prop("value"));
+      const [js, html] = app.find("TextEditor").map(n => n.prop("value"));
       expect(js)
         .toBe(`// you will need to install via 'npm install jsonwebtoken' or in your package.json
 

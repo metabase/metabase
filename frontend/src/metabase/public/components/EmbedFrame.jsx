@@ -91,7 +91,7 @@ export default class EmbedFrame extends Component {
               {parameters && parameters.length > 0 ? (
                 <div className="flex ml-auto">
                   <Parameters
-                    parameters={parameters.map((p) => ({
+                    parameters={parameters.map(p => ({
                       ...p,
                       value: parameterValues && parameterValues[p.id],
                     }))}

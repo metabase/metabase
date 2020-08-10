@@ -6,13 +6,13 @@ const timeseriesScale = (
   { count, interval, timezone },
   linear = d3.scale.linear(),
 ) => {
-  const s = (x) => linear(toInt(x));
+  const s = x => linear(toInt(x));
 
-  s.domain = (x) => {
+  s.domain = x => {
     if (x === undefined) {
-      return firstAndLast(linear.domain()).map((t) => moment(t).tz(timezone));
+      return firstAndLast(linear.domain()).map(t => moment(t).tz(timezone));
     }
-    x = x.map((t) => moment(t).tz(timezone)); // ensure we have moment objects
+    x = x.map(t => moment(t).tz(timezone)); // ensure we have moment objects
     if (interval === "month") {
       x = domainForEvenlySpacedMonths(x, { interval, timezone });
     }
@@ -20,7 +20,7 @@ const timeseriesScale = (
     return s;
   };
 
-  s.range = (x) => {
+  s.range = x => {
     if (x === undefined) {
       return firstAndLast(linear.range());
     }
@@ -50,15 +50,18 @@ function domainForEvenlySpacedMonths(domain, { timezone, interval }) {
 }
 
 function rangeForEvenlySpacedMonths(range, domain, { timezone, interval }) {
-  const plainScale = d3.scale.linear().domain(domain.map(toInt)).range(range);
+  const plainScale = d3.scale
+    .linear()
+    .domain(domain.map(toInt))
+    .range(range);
   const ticks = ticksForRange(domain, { count: 1, timezone, interval });
   // if the domain only contains one month, return the range untouched
   if (ticks.length < 2) {
     return range;
   }
-  const [start, end] = firstAndLast(ticks).map((t) => plainScale(toInt(t)));
+  const [start, end] = firstAndLast(ticks).map(t => plainScale(toInt(t)));
   const step = (end - start) / (ticks.length - 1);
-  const monthPoints = d3.range(ticks.length).map((i) => start + i * step);
+  const monthPoints = d3.range(ticks.length).map(i => start + i * step);
   return wrapValues(monthPoints, range);
 }
 
@@ -80,7 +83,10 @@ function firstAndLast(a) {
 
 function ticksForRange([start, end], { count, timezone, interval }) {
   const ticks = [];
-  let tick = start.clone().tz(timezone).startOf(interval);
+  let tick = start
+    .clone()
+    .tz(timezone)
+    .startOf(interval);
 
   // We want to use "round" ticks for a given interval (unit). If we're
   // creating ticks every 50 years, but and the start of the domain is in 1981

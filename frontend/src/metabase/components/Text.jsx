@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 
 const Text = styled.p`
   ${space};
-  color: ${(props) => color(`text-${props.color}`)};
+  color: ${props => color(`text-${props.color}`)};
 `;
 
 Text.defaultProps = {

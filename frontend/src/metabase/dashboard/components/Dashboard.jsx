@@ -90,8 +90,8 @@ type Props = {
   hideParameters: ?string,
 
   onRefreshPeriodChange: (?number) => void,
-  onNightModeChange: (boolean) => void,
-  onFullscreenChange: (boolean) => void,
+  onNightModeChange: boolean => void,
+  onFullscreenChange: boolean => void,
 
   loadDashboardParams: () => void,
 
@@ -104,7 +104,7 @@ type Props = {
     settings: VisualizationSettings,
   ) => void,
 
-  onChangeLocation: (string) => void,
+  onChangeLocation: string => void,
   setErrorPage: (error: ApiError) => void,
 };
 
@@ -230,7 +230,7 @@ export default class Dashboard extends Component {
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
           hideParameters={hideParameters}
-          parameters={parameters.map((p) => ({
+          parameters={parameters.map(p => ({
             ...p,
             value: parameterValues[p.id],
           }))}

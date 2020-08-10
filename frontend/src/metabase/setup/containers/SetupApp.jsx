@@ -30,7 +30,10 @@ const mapDispatchToProps = {
   submitSetup,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @fitViewport
 export default class SetupApp extends Component {
   render() {

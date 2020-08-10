@@ -78,8 +78,8 @@ export const selectEngine = createAction(SELECT_ENGINE);
 
 // Migrates old "Enable in-depth database analysis" option to new "Let me choose when Metabase syncs and scans" option
 // Migration is run as a separate action because that makes it easy to track in tests
-const migrateDatabaseToNewSchedulingSettings = (database) => {
-  return async function (dispatch, getState) {
+const migrateDatabaseToNewSchedulingSettings = database => {
+  return async function(dispatch, getState) {
     if (database.details["let-user-control-scheduling"] == null) {
       dispatch.action(MIGRATE_TO_NEW_SCHEDULING_SETTINGS, {
         ...database,
@@ -99,8 +99,8 @@ const migrateDatabaseToNewSchedulingSettings = (database) => {
 };
 
 // initializeDatabase
-export const initializeDatabase = function (databaseId) {
-  return async function (dispatch, getState) {
+export const initializeDatabase = function(databaseId) {
+  return async function(dispatch, getState) {
     if (databaseId) {
       try {
         const action = await dispatch(
@@ -135,8 +135,8 @@ export const initializeDatabase = function (databaseId) {
 // addSampleDataset
 export const addSampleDataset = createThunkAction(
   ADD_SAMPLE_DATASET,
-  function () {
-    return async function (dispatch, getState) {
+  function() {
+    return async function(dispatch, getState) {
       try {
         const sampleDataset = await MetabaseApi.db_add_sample_dataset();
         dispatch(Databases.actions.fetchList(undefined, { reload: true }));
@@ -150,8 +150,8 @@ export const addSampleDataset = createThunkAction(
   },
 );
 
-export const proceedWithDbCreation = function (database) {
-  return async function (dispatch, getState) {
+export const proceedWithDbCreation = function(database) {
+  return async function(dispatch, getState) {
     if (database.details["let-user-control-scheduling"]) {
       try {
         dispatch.action(VALIDATE_DATABASE_STARTED);
@@ -179,8 +179,8 @@ export const proceedWithDbCreation = function (database) {
   };
 };
 
-export const createDatabase = function (database) {
-  return async function (dispatch, getState) {
+export const createDatabase = function(database) {
+  return async function(dispatch, getState) {
     try {
       dispatch.action(CREATE_DATABASE_STARTED, {});
       const action = await dispatch(Databases.actions.create(database));
@@ -201,8 +201,8 @@ export const createDatabase = function (database) {
   };
 };
 
-export const updateDatabase = function (database) {
-  return async function (dispatch, getState) {
+export const updateDatabase = function(database) {
+  return async function(dispatch, getState) {
     try {
       dispatch.action(UPDATE_DATABASE_STARTED, { database });
       const action = await dispatch(Databases.actions.update(database));
@@ -224,8 +224,8 @@ export const updateDatabase = function (database) {
 
 // NOTE Atte Keinänen 7/26/17: Original monolithic saveDatabase was broken out to smaller actions
 // but `saveDatabase` action creator is still left here for keeping the interface for React components unchanged
-export const saveDatabase = function (database) {
-  return async function (dispatch, getState) {
+export const saveDatabase = function(database) {
+  return async function(dispatch, getState) {
     const isUnsavedDatabase = !database.id;
     if (isUnsavedDatabase) {
       await dispatch(createDatabase(database));
@@ -235,8 +235,8 @@ export const saveDatabase = function (database) {
   };
 };
 
-export const deleteDatabase = function (databaseId, isDetailView = true) {
-  return async function (dispatch, getState) {
+export const deleteDatabase = function(databaseId, isDetailView = true) {
+  return async function(dispatch, getState) {
     try {
       dispatch.action(DELETE_DATABASE_STARTED, { databaseId });
       dispatch(push("/admin/databases/"));
@@ -257,8 +257,8 @@ export const deleteDatabase = function (databaseId, isDetailView = true) {
 // syncDatabaseSchema
 export const syncDatabaseSchema = createThunkAction(
   SYNC_DATABASE_SCHEMA,
-  function (databaseId) {
-    return async function (dispatch, getState) {
+  function(databaseId) {
+    return async function(dispatch, getState) {
       try {
         const call = await MetabaseApi.db_sync_schema({ dbId: databaseId });
         MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
@@ -273,8 +273,8 @@ export const syncDatabaseSchema = createThunkAction(
 // rescanDatabaseFields
 export const rescanDatabaseFields = createThunkAction(
   RESCAN_DATABASE_FIELDS,
-  function (databaseId) {
-    return async function (dispatch, getState) {
+  function(databaseId) {
+    return async function(dispatch, getState) {
       try {
         const call = await MetabaseApi.db_rescan_values({ dbId: databaseId });
         MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
@@ -289,8 +289,8 @@ export const rescanDatabaseFields = createThunkAction(
 // discardSavedFieldValues
 export const discardSavedFieldValues = createThunkAction(
   DISCARD_SAVED_FIELD_VALUES,
-  function (databaseId) {
-    return async function (dispatch, getState) {
+  function(databaseId) {
+    return async function(dispatch, getState) {
       try {
         const call = await MetabaseApi.db_discard_values({ dbId: databaseId });
         MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
@@ -323,9 +323,9 @@ const deletes = handleActions(
     [DELETE_DATABASE_STARTED]: (state, { payload: { databaseId } }) =>
       state.concat([databaseId]),
     [DELETE_DATABASE_FAILED]: (state, { payload: { databaseId, error } }) =>
-      state.filter((dbId) => dbId !== databaseId),
+      state.filter(dbId => dbId !== databaseId),
     [DELETE_DATABASE]: (state, { payload: { databaseId } }) =>
-      state.filter((dbId) => dbId !== databaseId),
+      state.filter(dbId => dbId !== databaseId),
   },
   [],
 );

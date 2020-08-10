@@ -34,7 +34,7 @@ type State = {
   saveError: ?Object,
 };
 
-const groupIsMappable = (group) => !isSpecialGroup(group);
+const groupIsMappable = group => !isSpecialGroup(group);
 
 export default class GroupMappingsWidget extends React.Component {
   props: Props;
@@ -61,7 +61,7 @@ export default class GroupMappingsWidget extends React.Component {
       mappings: (setting && setting.value) || {},
       showEditModal: true,
     });
-    PermissionsApi.groups().then((groups) =>
+    PermissionsApi.groups().then(groups =>
       this.setState({ groups: groups.filter(groupIsMappable) }),
     );
   };
@@ -97,7 +97,7 @@ export default class GroupMappingsWidget extends React.Component {
       this.setState((prevState: State) => ({
         mappings: {
           ...prevState.mappings,
-          [dn]: prevState.mappings[dn].filter((id) => id !== group.id),
+          [dn]: prevState.mappings[dn].filter(id => id !== group.id),
         },
       }));
     }
@@ -130,7 +130,7 @@ export default class GroupMappingsWidget extends React.Component {
           saveError: null,
         });
       },
-      (e) => this.setState({ saveError: e }),
+      e => this.setState({ saveError: e }),
     );
   };
 
@@ -267,7 +267,7 @@ class AddMappingRow extends React.Component {
               value={value}
               placeholder={this.props.placeholder}
               autoFocus
-              onChange={(e) => this.setState({ value: e.target.value })}
+              onChange={e => this.setState({ value: e.target.value })}
             />
             <span
               className="link no-decoration cursor-pointer"

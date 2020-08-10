@@ -10,5 +10,5 @@ export function startTimer() {
     return () => {};
   }
   const start = performance.now();
-  return (f) => f(performance.now() - start);
+  return f => f(performance.now() - start);
 }

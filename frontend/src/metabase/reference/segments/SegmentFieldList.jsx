@@ -63,7 +63,10 @@ const validate = (values, props) => {
   return {};
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "fields",
   validate,
@@ -113,7 +116,7 @@ export default class SegmentFieldList extends Component {
         style={style}
         className="full"
         onSubmit={handleSubmit(
-          async (formFields) =>
+          async formFields =>
             await actions.rUpdateFields(
               this.props.entities,
               formFields,
@@ -160,7 +163,7 @@ export default class SegmentFieldList extends Component {
                   </div>
                   <List>
                     {Object.values(entities).map(
-                      (entity) =>
+                      entity =>
                         entity &&
                         entity.id &&
                         entity.name && (

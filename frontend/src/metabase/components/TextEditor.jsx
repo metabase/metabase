@@ -70,7 +70,7 @@ export default class TextEditor extends Component {
     this._editor.resize();
   }
 
-  onChange = (e) => {
+  onChange = e => {
     this._update();
     if (this.props.onChange) {
       this.props.onChange(this.value);

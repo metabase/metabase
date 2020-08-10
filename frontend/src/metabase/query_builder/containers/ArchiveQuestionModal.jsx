@@ -7,7 +7,10 @@ import ArchiveModal from "metabase/components/ArchiveModal";
 
 import { archiveQuestion } from "metabase/query_builder/actions";
 
-@connect(null, { onArchive: archiveQuestion })
+@connect(
+  null,
+  { onArchive: archiveQuestion },
+)
 class ArchiveQuestionModal extends Component {
   render() {
     const { onArchive, onClose } = this.props;

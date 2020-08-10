@@ -80,7 +80,10 @@ const mapDispatchToProps = {
   discardFieldValues,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class FieldApp extends React.Component {
   state = {
     tab: "general",
@@ -96,16 +99,16 @@ export default class FieldApp extends React.Component {
     metadata: Metadata,
     idfields: Object[],
 
-    fetchDatabaseMetadata: (Object) => Promise<void>,
-    fetchTableMetadata: (Object) => Promise<void>,
-    fetchFieldValues: (Object) => Promise<void>,
-    updateField: (any) => Promise<void>,
-    updateFieldValues: (any) => Promise<void>,
+    fetchDatabaseMetadata: Object => Promise<void>,
+    fetchTableMetadata: Object => Promise<void>,
+    fetchFieldValues: Object => Promise<void>,
+    updateField: any => Promise<void>,
+    updateFieldValues: any => Promise<void>,
     updateFieldDimension: (Object, any) => Promise<void>,
-    deleteFieldDimension: (Object) => Promise<void>,
+    deleteFieldDimension: Object => Promise<void>,
 
-    rescanFieldValues: (FieldId) => Promise<void>,
-    discardFieldValues: (FieldId) => Promise<void>,
+    rescanFieldValues: FieldId => Promise<void>,
+    discardFieldValues: FieldId => Promise<void>,
 
     location: any,
     params: any,
@@ -149,7 +152,7 @@ export default class FieldApp extends React.Component {
     this.saveStatus && this.saveStatus.setSaved();
   };
 
-  onUpdateFieldProperties = this.linkWithSaveStatus(async (fieldProps) => {
+  onUpdateFieldProperties = this.linkWithSaveStatus(async fieldProps => {
     const { field } = this.props;
 
     if (field) {
@@ -236,7 +239,7 @@ export default class FieldApp extends React.Component {
                 </div>
               )}
               <div className="absolute top right mt4 mr4">
-                <SaveStatus ref={(ref) => (this.saveStatus = ref)} />
+                <SaveStatus ref={ref => (this.saveStatus = ref)} />
               </div>
 
               {section == null || section === "general" ? (
@@ -401,7 +404,7 @@ export class FieldHeader extends React.Component {
   };
 
   // Separate update methods because of throttling the input
-  updateNameDebounced = _.debounce(async (name) => {
+  updateNameDebounced = _.debounce(async name => {
     const { field, updateFieldProperties, updateFieldDimension } = this.props;
 
     // Update the dimension name if it exists
@@ -421,7 +424,7 @@ export class FieldHeader extends React.Component {
     updateFieldProperties({ display_name: name });
   }, 300);
 
-  updateDescriptionDebounced = _.debounce((description) => {
+  updateDescriptionDebounced = _.debounce(description => {
     const { updateFieldProperties } = this.props;
     updateFieldProperties({ description });
   }, 300);

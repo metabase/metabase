@@ -68,7 +68,7 @@ export default class TimeseriesFilterWidget extends Component {
 
       const filterIndex = _.findIndex(
         filters,
-        (filter) =>
+        filter =>
           Filter.isFieldFilter(filter) &&
           FieldRef.getFieldTargetId(filter[1]) === timeFieldId,
       );
@@ -113,7 +113,7 @@ export default class TimeseriesFilterWidget extends Component {
           <SelectButton hasValue>{currentDescription}</SelectButton>
         }
         triggerClasses={cx(className, "my2")}
-        ref={(ref) => (this._popover = ref)}
+        ref={ref => (this._popover = ref)}
         sizeToFit
         // accomodate dual calendar size
         autoWidth={true}
@@ -121,7 +121,7 @@ export default class TimeseriesFilterWidget extends Component {
         <DatePicker
           className="m2"
           filter={this.state.filter}
-          onFilterChange={(newFilter) => {
+          onFilterChange={newFilter => {
             this.setState({ filter: newFilter });
           }}
           includeAllTime

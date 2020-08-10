@@ -118,7 +118,7 @@ export default class SharingPane extends Component {
             <CopyWidget value={publicLink} />
             {extensions && extensions.length > 0 && (
               <div className="mt1">
-                {extensions.map((extension) => (
+                {extensions.map(extension => (
                   <span
                     className={cx(
                       "cursor-pointer text-brand-hover text-bold text-uppercase",

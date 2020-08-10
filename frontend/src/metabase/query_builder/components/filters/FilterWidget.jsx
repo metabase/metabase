@@ -116,7 +116,7 @@ export default class FilterWidget extends Component {
           <FilterPopover
             query={query}
             filter={filter}
-            onChangeFilter={(filter) =>
+            onChangeFilter={filter =>
               this.props.updateFilter &&
               this.props.updateFilter(this.props.index, filter)
             }

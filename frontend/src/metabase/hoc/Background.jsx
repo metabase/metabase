@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 
-export const withBackground = (className) => (ComposedComponent) => {
+export const withBackground = className => ComposedComponent => {
   return class extends Component {
     static displayName = "BackgroundApplicator";
 
@@ -21,7 +21,7 @@ export const withBackground = (className) => (ComposedComponent) => {
 import { connect } from "react-redux";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 
-export const withLogoBackground = (ComposedComponent) => {
+export const withLogoBackground = ComposedComponent => {
   const mapStateToProps = (state, props) => ({
     bgClassName: PLUGIN_SELECTORS.getLogoBackgroundClass(state, props),
   });

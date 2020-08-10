@@ -27,7 +27,7 @@ export default class SaveQuestionModal extends Component {
     multiStep: PropTypes.bool,
   };
 
-  handleSubmit = async (details) => {
+  handleSubmit = async details => {
     // TODO Atte Keinäenn 31/1/18 Refactor this
     // I think that the primary change should be that
     // SaveQuestionModal uses Question objects instead of directly modifying card objects –
@@ -164,9 +164,8 @@ const SaveTypeInput = ({ field, originalCard }) => (
     {...field}
     options={[
       {
-        name: t`Replace original question, "${
-          originalCard && originalCard.name
-        }"`,
+        name: t`Replace original question, "${originalCard &&
+          originalCard.name}"`,
         value: "overwrite",
       },
       { name: t`Save as new question`, value: "create" },

@@ -74,7 +74,7 @@ export class ExtendedOptionsPopover extends Component {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Remove Expression");
   }
 
-  setLimit = (limit) => {
+  setLimit = limit => {
     const { query, setDatasetQuery } = this.props;
     query.updateLimit(limit).update(setDatasetQuery);
     MetabaseAnalytics.trackEvent("QueryBuilder", "Set Limit", limit);
@@ -100,7 +100,7 @@ export class ExtendedOptionsPopover extends Component {
           sort={sort}
           fieldOptions={query.sortOptions(sort)}
           removeOrderBy={() => query.removeSort(index).update(setDatasetQuery)}
-          updateOrderBy={(orderBy) =>
+          updateOrderBy={orderBy =>
             query.updateSort(index, orderBy).update(setDatasetQuery)
           }
         />
@@ -146,7 +146,7 @@ export class ExtendedOptionsPopover extends Component {
       <Expressions
         query={query}
         onAddExpression={() => this.setState({ editExpression: true })}
-        onEditExpression={(name) => {
+        onEditExpression={name => {
           this.setState({ editExpression: name });
           MetabaseAnalytics.trackEvent(
             "QueryBuilder",
@@ -179,7 +179,7 @@ export class ExtendedOptionsPopover extends Component {
         onChangeExpression={(newName, newExpression) =>
           this.setExpression(newName, newExpression, name)
         }
-        onRemoveExpression={(name) => this.removeExpression(name)}
+        onRemoveExpression={name => this.removeExpression(name)}
         onClose={() => this.setState({ editExpression: null })}
       />
     );

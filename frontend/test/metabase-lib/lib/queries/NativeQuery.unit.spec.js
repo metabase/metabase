@@ -129,7 +129,7 @@ describe("NativeQuery", () => {
   });
   describe("clean", () => {
     it("should add template-tags: {} if there are none", () => {
-      const cleanedQuery = (native) =>
+      const cleanedQuery = native =>
         new NativeQuery(SAMPLE_DATASET.question(), {
           type: "native",
           database: SAMPLE_DATASET.id,
@@ -240,7 +240,7 @@ describe("NativeQuery", () => {
     describe("card template tags", () => {
       it("should parse card tags", () => {
         const q = makeQuery().setQueryText("{{#1}} {{ #2 }} {{ #1 }}");
-        expect(q.templateTags().map((v) => v["card-id"])).toEqual([1, 2]);
+        expect(q.templateTags().map(v => v["card-id"])).toEqual([1, 2]);
       });
     });
     describe("replaceCardId", () => {
@@ -287,7 +287,7 @@ describe("NativeQuery", () => {
       );
       const variables = q.variables();
       expect(variables).toHaveLength(1);
-      expect(variables.map((v) => v.displayName())).toEqual(["Category"]);
+      expect(variables.map(v => v.displayName())).toEqual(["Category"]);
     });
     it("should not return variable for dimension template tag", () => {
       const q = makeQuery()
@@ -311,7 +311,7 @@ describe("NativeQuery", () => {
         });
       const dimensions = q.dimensionOptions().dimensions;
       expect(dimensions).toHaveLength(1);
-      expect(dimensions.map((d) => d.displayName())).toEqual(["Category"]);
+      expect(dimensions.map(d => d.displayName())).toEqual(["Category"]);
     });
   });
 });

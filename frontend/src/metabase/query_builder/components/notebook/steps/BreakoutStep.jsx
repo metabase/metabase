@@ -17,11 +17,11 @@ export default function BreakoutStep({
       color={color}
       initialAddText={t`Pick a column to group by`}
       items={query.breakouts()}
-      renderPopover={(breakout) => (
+      renderPopover={breakout => (
         <BreakoutPopover
           query={query}
           breakout={breakout}
-          onChangeBreakout={(newBreakout) =>
+          onChangeBreakout={newBreakout =>
             breakout
               ? breakout.replace(newBreakout).update(updateQuery)
               : query.breakout(newBreakout).update(updateQuery)
@@ -29,7 +29,7 @@ export default function BreakoutStep({
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={(breakout) => breakout.remove().update(updateQuery)}
+      onRemove={breakout => breakout.remove().update(updateQuery)}
     />
   );
 }

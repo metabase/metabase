@@ -45,7 +45,7 @@ export default class ColumnsList extends Component {
       return;
     }
     const positionById = {};
-    if (fields.every((field) => field.position === 0)) {
+    if (fields.every(field => field.position === 0)) {
       // Tables sometimes come down with all field positions set to zero.
       // In that case, we assume the current field order.
       fields.forEach(({ id }, index) => {
@@ -161,7 +161,7 @@ class ColumnOrderDropdown extends Component {
     }));
     return (
       <PopoverWithTrigger
-        ref={(ref) => (this._popover = ref)}
+        ref={ref => (this._popover = ref)}
         triggerElement={
           <span
             className="text-brand text-bold"

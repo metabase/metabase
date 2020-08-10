@@ -79,7 +79,7 @@ export default (PickerComponent, NameComponent, type) =>
               }
               className="p2 overflow-auto"
               value={value}
-              onChange={(itemId) => {
+              onChange={itemId => {
                 onChange(itemId);
                 onClose();
               }}

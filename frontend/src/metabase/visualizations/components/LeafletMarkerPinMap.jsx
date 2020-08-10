@@ -52,11 +52,11 @@ export default class LeafletMarkerPinMap extends LeafletMap {
     }
   }
 
-  _createMarker = (rowIndex) => {
+  _createMarker = rowIndex => {
     const marker = L.marker([0, 0], { icon: MARKER_ICON });
     const { onHoverChange, onVisualizationClick, settings } = this.props;
     if (onHoverChange) {
-      marker.on("mousemove", (e) => {
+      marker.on("mousemove", e => {
         const {
           series: [
             {

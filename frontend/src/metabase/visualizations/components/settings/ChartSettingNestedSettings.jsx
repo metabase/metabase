@@ -135,7 +135,7 @@ const chartSettingNestedSettings = ({
       if (editingObjectKey) {
         const editingObject = _.find(
           objects,
-          (o) => getObjectKey(o) === editingObjectKey,
+          o => getObjectKey(o) === editingObjectKey,
         );
         if (editingObject) {
           const objectsSettings = this.props.value || {};
@@ -154,7 +154,7 @@ const chartSettingNestedSettings = ({
               onChangeEditingObject={this.handleChangeEditingObject}
               onChangeObjectSettings={this.handleChangeSettingsForObject}
               object={editingObject}
-              objectSettingsWidgets={objectSettingsWidgets.map((widget) => (
+              objectSettingsWidgets={objectSettingsWidgets.map(widget => (
                 <ChartSettingsWidget key={widget.id} {...widget} />
               ))}
             />

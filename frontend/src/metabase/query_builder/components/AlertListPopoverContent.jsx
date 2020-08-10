@@ -20,7 +20,7 @@ import {
 } from "metabase/query_builder/components/AlertModals";
 
 @connect(
-  (state) => ({
+  state => ({
     questionAlerts: getQuestionAlerts(state),
     user: getUser(state),
   }),
@@ -29,7 +29,7 @@ import {
 export default class AlertListPopoverContent extends Component {
   props: {
     questionAlerts: any[],
-    setMenuFreeze: (boolean) => void,
+    setMenuFreeze: boolean => void,
     closeMenu: () => void,
   };
 
@@ -51,12 +51,12 @@ export default class AlertListPopoverContent extends Component {
     }
   };
 
-  isCreatedByCurrentUser = (alert) => {
+  isCreatedByCurrentUser = alert => {
     const { user } = this.props;
     return alert.creator.id === user.id;
   };
 
-  onUnsubscribe = (alert) => {
+  onUnsubscribe = alert => {
     if (this.isCreatedByCurrentUser(alert)) {
       this.setState({ hasJustUnsubscribedFromOwnAlert: true });
     }
@@ -79,7 +79,7 @@ export default class AlertListPopoverContent extends Component {
     return (
       <div style={{ minWidth: 410 }}>
         <ul>
-          {Object.values(sortedQuestionAlerts).map((alert) => (
+          {Object.values(sortedQuestionAlerts).map(alert => (
             <AlertListItem
               alert={alert}
               setMenuFreeze={setMenuFreeze}
@@ -117,15 +117,18 @@ export default class AlertListPopoverContent extends Component {
   }
 }
 
-@connect((state) => ({ user: getUser(state) }), {
-  unsubscribeFromAlert,
-  deleteAlert,
-})
+@connect(
+  state => ({ user: getUser(state) }),
+  {
+    unsubscribeFromAlert,
+    deleteAlert,
+  },
+)
 export class AlertListItem extends Component {
   props: {
     alert: any,
     user: any,
-    setMenuFreeze: (boolean) => void,
+    setMenuFreeze: boolean => void,
     closeMenu: () => void,
     onUnsubscribe: () => void,
   };
@@ -169,9 +172,9 @@ export class AlertListItem extends Component {
     const isAdmin = user.is_superuser;
     const isCurrentUser = alert.creator.id === user.id;
 
-    const emailChannel = alert.channels.find((c) => c.channel_type === "email");
+    const emailChannel = alert.channels.find(c => c.channel_type === "email");
     const emailEnabled = emailChannel && emailChannel.enabled;
-    const slackChannel = alert.channels.find((c) => c.channel_type === "slack");
+    const slackChannel = alert.channels.find(c => c.channel_type === "slack");
     const slackEnabled = slackChannel && slackChannel.enabled;
 
     if (hasJustUnsubscribed) {
@@ -275,11 +278,11 @@ export class AlertScheduleText extends Component {
       return verbose ? "hourly" : "Hourly";
     } else if (scheduleType === "daily") {
       const hourOfDay = schedule.schedule_hour;
-      const hour = _.find(HOUR_OPTIONS, (opt) => opt.value === hourOfDay % 12)
+      const hour = _.find(HOUR_OPTIONS, opt => opt.value === hourOfDay % 12)
         .name;
       const amPm = _.find(
         AM_PM_OPTIONS,
-        (opt) => opt.value === (hourOfDay >= 12 ? 1 : 0),
+        opt => opt.value === (hourOfDay >= 12 ? 1 : 0),
       ).name;
 
       return `${verbose ? "daily at " : "Daily, "} ${hour} ${amPm}`;
@@ -288,13 +291,13 @@ export class AlertScheduleText extends Component {
       const hourOfDay = schedule.schedule_hour;
       const day = _.find(
         DAY_OF_WEEK_OPTIONS,
-        (o) => o.value === schedule.schedule_day,
+        o => o.value === schedule.schedule_day,
       ).name;
-      const hour = _.find(HOUR_OPTIONS, (opt) => opt.value === hourOfDay % 12)
+      const hour = _.find(HOUR_OPTIONS, opt => opt.value === hourOfDay % 12)
         .name;
       const amPm = _.find(
         AM_PM_OPTIONS,
-        (opt) => opt.value === (hourOfDay >= 12 ? 1 : 0),
+        opt => opt.value === (hourOfDay >= 12 ? 1 : 0),
       ).name;
 
       if (verbose) {

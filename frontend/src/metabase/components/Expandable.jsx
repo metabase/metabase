@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-const Expandable = (ComposedComponent) =>
+const Expandable = ComposedComponent =>
   class extends Component {
     static displayName =
       "Expandable[" +

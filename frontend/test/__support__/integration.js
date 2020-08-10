@@ -11,12 +11,12 @@ export { delay } from "metabase/lib/promise";
 import { MockResponse, MockRequest } from "xhr-mock";
 
 // helper for JSON responses, also defaults to 200 status code
-MockResponse.prototype.json = function (object) {
+MockResponse.prototype.json = function(object) {
   return this.status(this._status || 200)
     .header("Content-Type", "application/json")
     .body(JSON.stringify(object));
 };
-MockRequest.prototype.json = function () {
+MockRequest.prototype.json = function() {
   return JSON.parse(this.body());
 };
 
@@ -27,12 +27,12 @@ export function getTestStore(reducers) {
   const store = getStore({ ...reducers, reducerSpy });
 
   store.getActions = () => actions;
-  store.waitForAction = function (type) {
-    return new Promise((resolve) => {
+  store.waitForAction = function(type) {
+    return new Promise(resolve => {
       let existingActionsCount = actions.length;
       const unsubscribe = store.subscribe(() => {
         const newActions = actions.slice(existingActionsCount);
-        const action = newActions.find((action) => action.type === type);
+        const action = newActions.find(action => action.type === type);
         if (action) {
           unsubscribe();
           resolve(action);

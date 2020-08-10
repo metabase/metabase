@@ -7,7 +7,7 @@ const CollectionPicker = ({ value, onChange, ...props }) => (
   <ItemPicker
     {...props}
     value={value === undefined ? undefined : { model: "collection", id: value }}
-    onChange={(collection) => onChange(collection ? collection.id : undefined)}
+    onChange={collection => onChange(collection ? collection.id : undefined)}
     models={["collection"]}
   />
 );

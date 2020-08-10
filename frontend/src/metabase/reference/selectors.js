@@ -122,11 +122,11 @@ export const getMetricQuestions = createSelector(
   (metricId, questions) =>
     Object.values(questions)
       .filter(
-        (question) =>
+        question =>
           question.dataset_query.type === "query" &&
           _.any(
             Query.getAggregations(question.dataset_query.query),
-            (aggregation) => Aggregation.getMetric(aggregation) === metricId,
+            aggregation => Aggregation.getMetric(aggregation) === metricId,
           ),
       )
       .reduce((map, question) => assoc(map, question.id, question), {}),
@@ -149,10 +149,10 @@ export const getSegmentQuestions = createSelector(
   (segmentId, questions) =>
     Object.values(questions)
       .filter(
-        (question) =>
+        question =>
           question.dataset_query.type === "query" &&
           Query.getFilters(question.dataset_query.query).some(
-            (filter) => Filter.isSegment(filter) && filter[1] === segmentId,
+            filter => Filter.isSegment(filter) && filter[1] === segmentId,
           ),
       )
       .reduce((map, question) => assoc(map, question.id, question), {}),
@@ -161,9 +161,7 @@ export const getSegmentQuestions = createSelector(
 export const getTableQuestions = createSelector(
   [getTable, getQuestions],
   (table, questions) =>
-    Object.values(questions).filter(
-      (question) => question.table_id === table.id,
-    ),
+    Object.values(questions).filter(question => question.table_id === table.id),
 );
 
 const getDatabaseBySegment = createSelector(
@@ -198,7 +196,7 @@ export const getError = (state, props) => state.reference.error;
 
 export const getHasSingleSchema = createSelector(
   [getTablesByDatabase],
-  (tables) =>
+  tables =>
     tables && Object.keys(tables).length > 0
       ? Object.values(tables).every(
           (table, index, tables) => table.schema_name === tables[0].schema,

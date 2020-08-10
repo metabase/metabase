@@ -33,13 +33,13 @@ export default function getFieldsForMongo(details, defaults, id) {
 
   const fields = defaults["details-fields"]
     .filter(
-      (field) =>
+      field =>
         !(
           (useConnectionString && manualFields.includes(field["name"])) ||
           (!useConnectionString && field["name"] === "conn-uri")
         ),
     )
-    .map(function (field) {
+    .map(function(field) {
       if (field["name"] === "conn-uri" && id) {
         field.type = "password";
       }

@@ -9,7 +9,7 @@ const Warnings = ({ warnings, className, size = 16 }) => {
   }
   const tooltip = (
     <ul className="px2 pt2 pb1" style={{ maxWidth: 350 }}>
-      {warnings.map((warning) => (
+      {warnings.map(warning => (
         <li className="pb1" key={warning}>
           {warning}
         </li>

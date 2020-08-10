@@ -20,7 +20,7 @@ export default class IconsApp extends Component {
               <input
                 placeholder="Name"
                 value={searchText}
-                onChange={(e) => this.setState({ searchText: e.target.value })}
+                onChange={e => this.setState({ searchText: e.target.value })}
               />
             </th>
             {sizes.map((size, index) => (
@@ -32,7 +32,7 @@ export default class IconsApp extends Component {
                     type="range"
                     value={size}
                     max={64}
-                    onChange={(e) => this.setState({ size: e.target.value })}
+                    onChange={e => this.setState({ size: e.target.value })}
                   />
                 )}
               </th>
@@ -41,11 +41,11 @@ export default class IconsApp extends Component {
         </thead>
         <tbody>
           {Object.keys(require("metabase/icon_paths").ICON_PATHS)
-            .filter((name) => !searchText || name.indexOf(searchText) >= 0)
-            .map((name) => (
+            .filter(name => !searchText || name.indexOf(searchText) >= 0)
+            .map(name => (
               <tr>
                 <td>{name}</td>
-                {sizes.map((size) => (
+                {sizes.map(size => (
                   <td>
                     <Icon name={name} size={size} />
                   </td>

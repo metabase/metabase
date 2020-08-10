@@ -68,8 +68,8 @@ export function cleanQuery(query) {
   }
 
   // filters
-  const filters = QUERY.getFilters(query).filter((filter) =>
-    _.all(filter, (a) => a != null),
+  const filters = QUERY.getFilters(query).filter(filter =>
+    _.all(filter, a => a != null),
   );
   if (filters.length > 0) {
     query.filter = ["and", ...filters];
@@ -79,7 +79,7 @@ export function cleanQuery(query) {
 
   if (query["order-by"]) {
     query["order-by"] = query["order-by"]
-      .map((s) => {
+      .map(s => {
         const [direction, field] = s;
 
         // remove incomplete sorts
@@ -93,13 +93,13 @@ export function cleanQuery(query) {
             return s;
           }
         } else if (hasValidBreakout(query)) {
-          const exactMatches = query.breakout.filter((b) =>
+          const exactMatches = query.breakout.filter(b =>
             FieldRef.isSameField(b, field, true),
           );
           if (exactMatches.length > 0) {
             return s;
           }
-          const targetMatches = query.breakout.filter((b) =>
+          const targetMatches = query.breakout.filter(b =>
             FieldRef.isSameField(b, field, false),
           );
           if (targetMatches.length > 0) {
@@ -122,7 +122,7 @@ export function cleanQuery(query) {
         // otherwise remove sort if it doesn't have a breakout but isn't a bare rows aggregation
         return null;
       })
-      .filter((s) => s != null);
+      .filter(s => s != null);
 
     if (query["order-by"].length === 0) {
       delete query["order-by"];

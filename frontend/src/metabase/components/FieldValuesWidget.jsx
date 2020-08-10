@@ -35,7 +35,7 @@ function mapStateToProps(state, { fields = [] }) {
   // try and use the selected fields, but fall back to the ones passed
   return {
     fields: fields.map(
-      (field) =>
+      field =>
         Fields.selectors.getObject(state, { entityId: field.id }) || field,
     ),
   };
@@ -95,8 +95,8 @@ export class FieldValuesWidget extends Component {
 
   componentWillMount() {
     const { fields, fetchFieldValues } = this.props;
-    if (fields.every((field) => field.has_field_values === "list")) {
-      fields.forEach((field) => fetchFieldValues(field.id));
+    if (fields.every(field => field.has_field_values === "list")) {
+      fields.forEach(field => fetchFieldValues(field.id));
     }
   }
 
@@ -108,7 +108,7 @@ export class FieldValuesWidget extends Component {
 
   hasList() {
     return this.props.fields.every(
-      (field) => field.has_field_values === "list" && field.values,
+      field => field.has_field_values === "list" && field.values,
     );
   }
 
@@ -119,10 +119,10 @@ export class FieldValuesWidget extends Component {
       // all fields have a valid search field
       fields.every(this.searchField) &&
       // at least one field is set to display as "search"
-      fields.some((f) => f.has_field_values === "search") &&
+      fields.some(f => f.has_field_values === "search") &&
       // and all fields are either "search" or "list"
       fields.every(
-        (f) => f.has_field_values === "search" || f.has_field_values === "list",
+        f => f.has_field_values === "search" || f.has_field_values === "list",
       )
     );
   }
@@ -155,7 +155,7 @@ export class FieldValuesWidget extends Component {
     const { fields } = this.props;
 
     const allResults = await Promise.all(
-      fields.map((field) =>
+      fields.map(field =>
         MetabaseApi.field_search(
           {
             value,
@@ -297,7 +297,7 @@ export class FieldValuesWidget extends Component {
       } else if (this.isSearchable()) {
         const names = new Set(
           // $FlowFixMe all fields have a search field if this.isSearchable()
-          fields.map((field) => stripId(this.searchField(field).display_name)),
+          fields.map(field => stripId(this.searchField(field).display_name)),
         );
         if (names.size > 1) {
           placeholder = t`Search`;
@@ -322,7 +322,7 @@ export class FieldValuesWidget extends Component {
 
     let options = [];
     if (this.hasList()) {
-      options = dedupeValues(fields.map((field) => field.values));
+      options = dedupeValues(fields.map(field => field.values));
     } else if (this.isSearchable() && loadingState === "LOADED") {
       options = this.state.options;
     } else {
@@ -338,7 +338,7 @@ export class FieldValuesWidget extends Component {
         }}
       >
         <TokenField
-          value={value.filter((v) => v != null)}
+          value={value.filter(v => v != null)}
           onChange={onChange}
           placeholder={placeholder}
           updateOnInputChange
@@ -357,13 +357,13 @@ export class FieldValuesWidget extends Component {
           options={options}
           // $FlowFixMe
           valueKey={0}
-          valueRenderer={(value) =>
+          valueRenderer={value =>
             this.renderValue(value, { autoLoad: true, compact: false })
           }
-          optionRenderer={(option) =>
+          optionRenderer={option =>
             this.renderValue(option[0], { autoLoad: false })
           }
-          layoutRenderer={(props) => (
+          layoutRenderer={props => (
             <div>
               {props.valuesList}
               {this.renderOptions(props)}
@@ -380,7 +380,7 @@ export class FieldValuesWidget extends Component {
                 .indexOf(filterString.toLowerCase()) === 0)
           }
           onInputChange={this.onInputChange}
-          parseFreeformValue={(v) => {
+          parseFreeformValue={v => {
             // trim whitespace
             v = String(v || "").trim();
             // empty string is not valid
@@ -405,7 +405,7 @@ export class FieldValuesWidget extends Component {
 
 function dedupeValues(valuesList) {
   // $FlowFixMe
-  const uniqueValueMap = new Map(valuesList.flat().map((o) => [o[0], o]));
+  const uniqueValueMap = new Map(valuesList.flat().map(o => [o[0], o]));
   return Array.from(uniqueValueMap.values());
 }
 
@@ -443,4 +443,7 @@ const OptionsMessage = ({ message }) => (
   <div className="flex layout-centered p4 border-bottom">{message}</div>
 );
 
-export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(FieldValuesWidget);

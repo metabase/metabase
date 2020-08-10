@@ -19,7 +19,7 @@ export default class MetadataSchema extends Component {
 
     const tdClassName = "py2 px1 border-bottom";
 
-    const fields = table.fields.map((field) => {
+    const fields = table.fields.map(field => {
       return (
         <tr key={field.id}>
           <td className={tdClassName}>

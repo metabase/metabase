@@ -46,7 +46,7 @@ export default class UserGroupSelect extends Component {
       }
     };
     const selectedGroupIds = Object.values(user.memberships).map(
-      (m) => m.group_id,
+      m => m.group_id,
     );
     return (
       <GroupSelect

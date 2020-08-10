@@ -95,7 +95,7 @@ export function makeCellBackgroundGetter(
   if (Object.keys(formatters).length === 0 && rowFormatters.length === 0) {
     return () => null;
   } else {
-    return function (value: Value, rowIndex: number, colName: ColumnName) {
+    return function(value: Value, rowIndex: number, colName: ColumnName) {
       if (formatters[colName]) {
         // const value = rows[rowIndex][colIndexes[colName]];
         for (let i = 0; i < formatters[colName].length; i++) {
@@ -132,31 +132,31 @@ function getColumnIndexesByName(cols) {
 export const OPERATOR_FORMATTER_FACTORIES: {
   [Operator]: FormatterFactory,
 } = {
-  "<": (value, color) => (v) =>
+  "<": (value, color) => v =>
     typeof value === "number" && v < value ? color : null,
-  "<=": (value, color) => (v) =>
+  "<=": (value, color) => v =>
     typeof value === "number" && v <= value ? color : null,
-  ">=": (value, color) => (v) =>
+  ">=": (value, color) => v =>
     typeof value === "number" && v >= value ? color : null,
-  ">": (value, color) => (v) =>
+  ">": (value, color) => v =>
     typeof value === "number" && v > value ? color : null,
-  "=": (value, color) => (v) => (v === value ? color : null),
-  "!=": (value, color) => (v) => (v !== value ? color : null),
-  "is-null": (_value, color) => (v) => (v === null ? color : null),
-  "not-null": (_value, color) => (v) => (v !== null ? color : null),
-  contains: (value, color) => (v) =>
+  "=": (value, color) => v => (v === value ? color : null),
+  "!=": (value, color) => v => (v !== value ? color : null),
+  "is-null": (_value, color) => v => (v === null ? color : null),
+  "not-null": (_value, color) => v => (v !== null ? color : null),
+  contains: (value, color) => v =>
     typeof value === "string" && typeof v === "string" && v.indexOf(value) >= 0
       ? color
       : null,
-  "does-not-contain": (value, color) => (v) =>
+  "does-not-contain": (value, color) => v =>
     typeof value === "string" && typeof v === "string" && v.indexOf(value) < 0
       ? color
       : null,
-  "starts-with": (value, color) => (v) =>
+  "starts-with": (value, color) => v =>
     typeof value === "string" && typeof v === "string" && v.startsWith(value)
       ? color
       : null,
-  "ends-with": (value, color) => (v) =>
+  "ends-with": (value, color) => v =>
     typeof value === "string" && typeof v === "string" && v.endsWith(value)
       ? color
       : null,
@@ -180,10 +180,10 @@ export function compileFormatter(
     console.error("Unsupported formatting operator:", operator);
     return () => null;
   } else if (format.type === "range") {
-    const columnMin = (name) =>
+    const columnMin = name =>
       // $FlowFixMe
       columnExtents && columnExtents[name] && columnExtents[name][0];
-    const columnMax = (name) =>
+    const columnMax = name =>
       // $FlowFixMe
       columnExtents && columnExtents[name] && columnExtents[name][1];
 
@@ -209,9 +209,9 @@ export function compileFormatter(
 
     const scale = getColorScale(
       [min, max],
-      format.colors.map((c) => alpha(c, GRADIENT_ALPHA)),
+      format.colors.map(c => alpha(c, GRADIENT_ALPHA)),
     ).clamp(true);
-    return (value) => roundColor(scale(value));
+    return value => roundColor(scale(value));
   } else {
     console.warn("Unknown format type", format.type);
     return () => null;
@@ -238,8 +238,8 @@ function extent(rows: Row[], colIndex: number) {
 
 function computeColumnExtents(formats, rows, colIndexes) {
   const columnExtents = {};
-  formats.forEach((format) => {
-    format.columns.forEach((columnName) => {
+  formats.forEach(format => {
+    format.columns.forEach(columnName => {
       if (!columnExtents[columnName]) {
         const colIndex = colIndexes[columnName];
         columnExtents[columnName] = extent(rows, colIndex);
@@ -251,8 +251,8 @@ function computeColumnExtents(formats, rows, colIndexes) {
 
 function compileFormatters(formats: Format[], columnExtents: ColumnExtents) {
   const formatters = {};
-  formats.forEach((format) => {
-    format.columns.forEach((columnName) => {
+  formats.forEach(format => {
+    format.columns.forEach(columnName => {
       formatters[columnName] = formatters[columnName] || [];
       formatters[columnName].push(
         compileFormatter(format, columnName, columnExtents, false),
@@ -265,11 +265,11 @@ function compileFormatters(formats: Format[], columnExtents: ColumnExtents) {
 function compileRowFormatters(formats: Format[]): RowFormatter[] {
   const rowFormatters = [];
   formats
-    .filter((format) => format.type === "single" && format.highlight_row)
-    .forEach((format) => {
+    .filter(format => format.type === "single" && format.highlight_row)
+    .forEach(format => {
       const formatter = compileFormatter(format, null, null, true);
       if (formatter) {
-        format.columns.forEach((columnName) => {
+        format.columns.forEach(columnName => {
           rowFormatters.push((row, colIndexes) =>
             formatter(row[colIndexes[columnName]]),
           );

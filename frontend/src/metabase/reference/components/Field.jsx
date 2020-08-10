@@ -57,12 +57,12 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                   section: t`Other`,
                 })
                 .filter(
-                  (type) =>
+                  type =>
                     isNumericBaseType(field) ||
                     !isa(type && type.id, TYPE.UNIXTimestamp),
                 )}
-              optionValueFn={(o) => o.id}
-              optionSectionFn={(o) => o.section}
+              optionValueFn={o => o.id}
+              optionSectionFn={o => o.section}
             />
           ) : (
             <div className="flex">
@@ -105,7 +105,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                     formField.fk_target_field_id.onChange(value)
                   }
                   options={Object.values(foreignKeys)}
-                  optionValueFn={(o) => o.id}
+                  optionValueFn={o => o.id}
                 />
               )
             : isFK(field.special_type) && (

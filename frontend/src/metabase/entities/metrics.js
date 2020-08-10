@@ -25,11 +25,11 @@ const Metrics = createEntity({
   },
 
   objectSelectors: {
-    getName: (metric) => metric && metric.name,
-    getUrl: (metric) =>
+    getName: metric => metric && metric.name,
+    getUrl: metric =>
       Urls.tableRowsQuery(metric.database_id, metric.table_id, metric.id),
-    getColor: (metric) => color("accent1"),
-    getIcon: (metric) => "sum",
+    getColor: metric => color("accent1"),
+    getIcon: metric => "sum",
   },
 
   selectors: {

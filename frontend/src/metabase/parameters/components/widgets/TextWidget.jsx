@@ -31,7 +31,7 @@ export default class TextWidget extends Component {
 
   static noPopover = true;
 
-  static format = (value) => value;
+  static format = value => value;
 
   componentWillReceiveProps(nextProps) {
     if (this.props.value !== nextProps.value) {
@@ -53,7 +53,7 @@ export default class TextWidget extends Component {
       ? ""
       : this.props.placeholder || t`Enter a value...`;
 
-    const focusChanged = (isFocused) => {
+    const focusChanged = isFocused => {
       if (parentFocusChanged) {
         parentFocusChanged(isFocused);
       }
@@ -65,13 +65,13 @@ export default class TextWidget extends Component {
         className={className}
         type="text"
         value={this.state.value || ""}
-        onChange={(e) => {
+        onChange={e => {
           this.setState({ value: e.target.value });
           if (this.props.commitImmediately) {
             this.props.setValue(e.target.value || null);
           }
         }}
-        onKeyUp={(e) => {
+        onKeyUp={e => {
           if (e.keyCode === KEYCODE_ESCAPE) {
             e.target.blur();
           } else if (e.keyCode === KEYCODE_ENTER) {

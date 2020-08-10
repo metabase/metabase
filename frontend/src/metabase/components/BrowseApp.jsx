@@ -51,7 +51,7 @@ export class SchemaBrowser extends React.Component {
                   <h2 className="full text-centered text-medium">{t`This database doesn't have any tables.`}</h2>
                 ) : (
                   <Grid>
-                    {schemas.map((schema) => (
+                    {schemas.map(schema => (
                       <GridItem w={ITEM_WIDTHS} key={schema.id}>
                         <Link
                           to={`/browse/${dbId}/schema/${schema.name}`}
@@ -90,7 +90,7 @@ export class SchemaBrowser extends React.Component {
   }
 }
 
-@connect((state) => ({
+@connect(state => ({
   metadata: getMetadata(state),
   xraysEnabled: getXraysEnabled(state),
 }))
@@ -118,7 +118,7 @@ export class TableBrowser extends React.Component {
                   ]}
                 />
                 <Grid>
-                  {tables.map((table) => {
+                  {tables.map(table => {
                     // NOTE: currently tables entities doesn't integrate with Metadata objects
                     const metadataTable = metadata.table(table.id);
                     const link =
@@ -207,7 +207,7 @@ export class DatabaseBrowser extends React.Component {
           {({ databases, loading, error }) => {
             return (
               <Grid>
-                {databases.map((database) => (
+                {databases.map(database => (
                   <GridItem w={ITEM_WIDTHS} key={database.id}>
                     <Link
                       to={`browse/${database.id}`}

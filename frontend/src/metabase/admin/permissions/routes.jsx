@@ -10,7 +10,7 @@ import CollectionPermissions from "./containers/CollectionsPermissionsApp";
 
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
 
-const getRoutes = (store) => (
+const getRoutes = store => (
   <Route title={t`Permissions`} path="permissions">
     <IndexRedirect to="databases" />
 

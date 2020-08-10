@@ -52,7 +52,7 @@ const QueryDownloadWidget = ({
         </Box>
       )}
       <Box>
-        {EXPORT_FORMATS.map((type) => (
+        {EXPORT_FORMATS.map(type => (
           <Box key={type} w={"100%"}>
             {dashcardId && token ? (
               <DashboardEmbedQueryButton

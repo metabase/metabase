@@ -58,14 +58,13 @@ export default class HttpsOnlyWidget extends Component {
     const { status } = this.state;
     return (
       <div>
-        {
-          status === VERIFIED ? (
-            <SettingToggle {...this.props} />
-          ) : status === CHECKING ? (
-            t`Checking HTTPS...`
-          ) : status === FAILED ? (
-            t`It looks like HTTPS is not properly configured`
-          ) : null // NOT_CHECKED
+        {status === VERIFIED ? (
+          <SettingToggle {...this.props} />
+        ) : status === CHECKING ? (
+          t`Checking HTTPS...`
+        ) : status === FAILED ? (
+          t`It looks like HTTPS is not properly configured`
+        ) : null // NOT_CHECKED
         }
       </div>
     );

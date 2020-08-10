@@ -17,7 +17,7 @@ export default function FieldsPicker({
   onSelectNone,
   onToggleDimension,
 }) {
-  const selected = new Set(selectedDimensions.map((d) => d.key()));
+  const selected = new Set(selectedDimensions.map(d => d.key()));
   return (
     <PopoverWithTrigger
       triggerElement={t`Columns`}
@@ -47,7 +47,7 @@ export default function FieldsPicker({
             {isAll && onSelectNone ? t`Select None` : t`Select All`}
           </li>
         )}
-        {dimensions.map((dimension) => (
+        {dimensions.map(dimension => (
           <li
             key={dimension.key()}
             className="px1 pb1 flex align-center cursor-pointer"

@@ -61,14 +61,14 @@ export default class LegendHeader extends Component {
     const showTitles = !showDots || !isNarrow;
 
     const seriesSettings =
-      settings.series && series.map((single) => settings.series(single));
+      settings.series && series.map(single => settings.series(single));
 
     const colors = seriesSettings
-      ? seriesSettings.map((s) => s.color)
+      ? seriesSettings.map(s => s.color)
       : DEFAULT_COLORS;
     const titles = seriesSettings
-      ? seriesSettings.map((s) => s.title)
-      : series.map((single) => single.card.name);
+      ? seriesSettings.map(s => s.title)
+      : series.map(single => single.card.name);
 
     return (
       <div
@@ -93,9 +93,9 @@ export default class LegendHeader extends Component {
             onMouseLeave={() => onHoverChange && onHoverChange(null)}
             onClick={
               onEditSeries
-                ? (e) => onEditSeries(e, index)
+                ? e => onEditSeries(e, index)
                 : s.clicked && visualizationIsClickable(s.clicked)
-                ? (e) =>
+                ? e =>
                     onVisualizationClick({
                       ...s.clicked,
                       element: e.currentTarget,
@@ -116,7 +116,7 @@ export default class LegendHeader extends Component {
               className="text-light text-medium-hover flex-no-shrink mr2 cursor-pointer"
               width={12}
               height={12}
-              onClick={(e) => onRemoveSeries(e, index)}
+              onClick={e => onRemoveSeries(e, index)}
             />
           ),
         ])}
@@ -126,7 +126,7 @@ export default class LegendHeader extends Component {
             className="mx1 flex-no-shrink text-medium text-brand-hover bg-medium rounded cursor-pointer"
             size={12}
             style={{ padding: 5 }}
-            onClick={(e) => onAddSeries(e)}
+            onClick={e => onAddSeries(e)}
           />
         )}
         {actionButtons && (

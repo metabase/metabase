@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import _ from "underscore";
 
-const DEFAULT_KEY_FOR_ITEM = (item) => item.id;
+const DEFAULT_KEY_FOR_ITEM = item => item.id;
 
 // Higher order component for managing selection of a list.
 //
@@ -15,7 +15,7 @@ const DEFAULT_KEY_FOR_ITEM = (item) => item.id;
 const listSelect = ({
   listProp = "list",
   keyForItem = DEFAULT_KEY_FOR_ITEM,
-} = {}) => (ComposedComponent) =>
+} = {}) => ComposedComponent =>
   class extends React.Component {
     state = {
       selectionKeys: new Set(),
@@ -31,7 +31,7 @@ const listSelect = ({
     };
 
     render() {
-      const [selected, deselected] = _.partition(this.props[listProp], (item) =>
+      const [selected, deselected] = _.partition(this.props[listProp], item =>
         this.state.selectionKeys.has(keyForItem(item)),
       );
       return (
@@ -60,13 +60,13 @@ const listSelect = ({
       this.setState({ selectionKeys });
     }
 
-    handleSelect = (item) => {
+    handleSelect = item => {
       this._setSelected(item, true);
     };
-    handleDeselect = (item) => {
+    handleDeselect = item => {
       this._setSelected(item, false);
     };
-    handleToggleSelected = (item) => {
+    handleToggleSelected = item => {
       this._setSelected(item, !this.state.selectionKeys.has(keyForItem(item)));
     };
     handleSelectAll = () => {

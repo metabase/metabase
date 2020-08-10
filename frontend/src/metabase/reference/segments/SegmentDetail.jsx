@@ -67,7 +67,7 @@ const mapStateToProps = (state, props) => {
         guide.metric_important_fields &&
         guide.metric_important_fields[entity.id] &&
         guide.metric_important_fields[entity.id].map(
-          (fieldId) => fields[fieldId],
+          fieldId => fields[fieldId],
         )) ||
       [],
   };
@@ -97,7 +97,10 @@ const validate = (values, props) =>
     ? { revision_message: t`Please enter a revision message` }
     : {};
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "details",
   fields: [
@@ -162,7 +165,7 @@ export default class SegmentDetail extends Component {
     } = this.props;
 
     const onSubmit = handleSubmit(
-      async (fields) => await actions.rUpdateSegmentDetail(fields, this.props),
+      async fields => await actions.rUpdateSegmentDetail(fields, this.props),
     );
 
     return (

@@ -50,7 +50,7 @@ export default class FunnelNormal extends Component {
     const metricIndex = 1;
     const cols = series[0].data.cols;
     // $FlowFixMe
-    const rows: number[][] = series.map((s) => s.data.rows[0]);
+    const rows: number[][] = series.map(s => s.data.rows[0]);
 
     const funnelSmallSize =
       gridSize && (gridSize.width < 7 || gridSize.height <= 5);
@@ -67,7 +67,7 @@ export default class FunnelNormal extends Component {
         jsx,
         majorWidth: 0,
       });
-    const formatPercent = (percent) => `${(100 * percent).toFixed(2)} %`;
+    const formatPercent = percent => `${(100 * percent).toFixed(2)} %`;
 
     // Initial infos (required for step calculation)
     let infos: StepInfo[] = [
@@ -216,7 +216,7 @@ const GraphSection = ({
   return (
     <svg
       className={cx(className, styles.Graph)}
-      onMouseMove={(e) => {
+      onMouseMove={e => {
         if (onHoverChange && info.hovered) {
           onHoverChange({
             ...info.hovered,
@@ -225,7 +225,7 @@ const GraphSection = ({
         }
       }}
       onMouseLeave={() => onHoverChange && onHoverChange(null)}
-      onClick={(e) => {
+      onClick={e => {
         if (onVisualizationClick && info.clicked) {
           onVisualizationClick({
             ...info.clicked,

@@ -62,9 +62,9 @@ export default class CodeSample extends Component {
               <Select
                 className="AdminSelect--borderless ml-auto pt1 pb1"
                 value={name}
-                onChange={(e) => this.handleChange(e.target.value)}
+                onChange={e => this.handleChange(e.target.value)}
               >
-                {options.map((option) => (
+                {options.map(option => (
                   <Option value={option.name}>{option.name}</Option>
                 ))}
               </Select>

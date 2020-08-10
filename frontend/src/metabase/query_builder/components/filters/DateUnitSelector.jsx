@@ -26,11 +26,11 @@ const DateUnitSelector = ({
   <Select
     className={className}
     value={value}
-    onChange={(e) => onChange(e.target.value)}
+    onChange={e => onChange(e.target.value)}
     width={150}
     compact
   >
-    {periods.map((period) => (
+    {periods.map(period => (
       <Option value={period} key={period}>
         {formatBucketing(period, formatter(intervals) || 1)}
       </Option>

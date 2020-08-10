@@ -1,6 +1,6 @@
 import React from "react";
 
-const paginationState = () => (ComposedComponent) =>
+const paginationState = () => ComposedComponent =>
   class extends React.Component {
     constructor(props) {
       super(props);
@@ -9,7 +9,7 @@ const paginationState = () => (ComposedComponent) =>
         hasMorePages: null,
       };
     }
-    handleChangeHasMorePages = (hasMorePages) => {
+    handleChangeHasMorePages = hasMorePages => {
       this.setState({ hasMorePages });
     };
     handleNextPage = () => {

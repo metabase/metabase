@@ -42,7 +42,10 @@ describe("Join", () => {
         alias: "x",
         "source-table": PRODUCTS.id,
       });
-      const j = q.joins()[0].setDefaultCondition().setDefaultAlias();
+      const j = q
+        .joins()[0]
+        .setDefaultCondition()
+        .setDefaultAlias();
       expect(j).toEqual({
         alias: "Product",
         condition: [

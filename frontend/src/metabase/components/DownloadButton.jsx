@@ -37,7 +37,7 @@ const DownloadButton = ({
         className="text-white-hover bg-brand-hover rounded cursor-pointer full hover-parent hover--inherit"
         align="center"
         px={1}
-        onClick={(e) => {
+        onClick={e => {
           if (window.OSX) {
             // prevent form from being submitted normally
             e.preventDefault();

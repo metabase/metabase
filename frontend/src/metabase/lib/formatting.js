@@ -128,9 +128,9 @@ const BINNING_DEGREES_FORMATTER = (value, binWidth) => {
   return d3.format(`.0${decimalCount(binWidth)}f`)(value);
 };
 
-const getMonthFormat = (options) =>
+const getMonthFormat = options =>
   options.compact || options.date_abbreviate ? "MMM" : "MMMM";
-const getDayFormat = (options) =>
+const getDayFormat = options =>
   options.compact || options.date_abbreviate ? "ddd" : "dddd";
 
 // use en dashes, for Maz
@@ -238,7 +238,7 @@ function replaceNumberSeparators(
     ".": decimalSeparator,
   };
 
-  return formatted.replace(/,|\./g, (separator) => separatorMap[separator]);
+  return formatted.replace(/,|\./g, separator => separatorMap[separator]);
 }
 
 function formatNumberScientific(
@@ -286,7 +286,7 @@ function formatNumberCompact(value: number, options: FormattingOptions) {
       }
       const { value: currency } = nf
         .formatToParts(value)
-        .find((p) => p.type === "currency");
+        .find(p => p.type === "currency");
       return currency + formatNumberCompactWithoutOptions(value);
     } catch (e) {
       // Intl.NumberFormat failed, so we fall back to a non-currency number
@@ -348,7 +348,7 @@ export function formatRange(
   formatter: (value: number) => any,
   options: FormattingOptions = {},
 ) {
-  const [start, end] = range.map((value) => formatter(value, options));
+  const [start, end] = range.map(value => formatter(value, options));
   if ((options.jsx && typeof start !== "string") || typeof end !== "string") {
     return (
       <span>
@@ -403,8 +403,16 @@ export function formatDateTimeRangeWithUnit(
   // The startOf/endOf transition needs to happen in "en" rather than the
   // current locale. Other locales define week boundaries differently, and they
   // don't line up with the server's grouping logic.
-  const start = m.clone().locale("en").startOf(unit).locale(false);
-  const end = m.clone().locale("en").endOf(unit).locale(false);
+  const start = m
+    .clone()
+    .locale("en")
+    .startOf(unit)
+    .locale(false);
+  const end = m
+    .clone()
+    .locale("en")
+    .endOf(unit)
+    .locale(false);
 
   if (start.isValid() && end.isValid()) {
     if (!condensed || start.year() !== end.year()) {

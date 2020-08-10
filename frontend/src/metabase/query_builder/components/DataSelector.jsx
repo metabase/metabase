@@ -28,7 +28,7 @@ const TABLE_STEP = "TABLE";
 // chooses a table field (table has already been selected)
 const FIELD_STEP = "FIELD";
 
-export const DatabaseDataSelector = (props) => (
+export const DatabaseDataSelector = props => (
   <DataSelector
     steps={[DATABASE_STEP]}
     getTriggerElementContent={DatabaseTriggerContent}
@@ -36,7 +36,7 @@ export const DatabaseDataSelector = (props) => (
   />
 );
 
-export const DatabaseSchemaAndTableDataSelector = (props) => (
+export const DatabaseSchemaAndTableDataSelector = props => (
   <DataSelector
     steps={[DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
     combineDatabaseSchemaSteps
@@ -45,7 +45,7 @@ export const DatabaseSchemaAndTableDataSelector = (props) => (
   />
 );
 
-export const SchemaAndTableDataSelector = (props) => (
+export const SchemaAndTableDataSelector = props => (
   <DataSelector
     steps={[SCHEMA_STEP, TABLE_STEP]}
     getTriggerElementContent={TableTriggerContent}
@@ -53,7 +53,7 @@ export const SchemaAndTableDataSelector = (props) => (
   />
 );
 
-export const SchemaTableAndFieldDataSelector = (props) => (
+export const SchemaTableAndFieldDataSelector = props => (
   <DataSelector
     steps={[SCHEMA_STEP, TABLE_STEP, FIELD_STEP]}
     getTriggerElementContent={FieldTriggerContent}
@@ -87,7 +87,7 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
   } else {
     const hasMultipleSchemas =
       selectedDatabase &&
-      _.uniq(selectedDatabase.tables, (t) => t.schema_name).length > 1;
+      _.uniq(selectedDatabase.tables, t => t.schema_name).length > 1;
     return (
       <div className="flex-full cursor-pointer">
         <div className="h6 text-bold text-uppercase text-light">
@@ -122,12 +122,10 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
     }),
   }),
   {
-    fetchDatabases: (databaseQuery) =>
-      Databases.actions.fetchList(databaseQuery),
-    fetchSchemas: (databaseId) =>
-      Schemas.actions.fetchList({ dbId: databaseId }),
-    fetchSchemaTables: (schemaId) => Schemas.actions.fetch({ id: schemaId }),
-    fetchFields: (tableId) => Tables.actions.fetchMetadata({ id: tableId }),
+    fetchDatabases: databaseQuery => Databases.actions.fetchList(databaseQuery),
+    fetchSchemas: databaseId => Schemas.actions.fetchList({ dbId: databaseId }),
+    fetchSchemaTables: schemaId => Schemas.actions.fetch({ id: schemaId }),
+    fetchFields: tableId => Tables.actions.fetchMetadata({ id: tableId }),
   },
 )
 class DataSelector extends Component {
@@ -210,12 +208,11 @@ export class UnconnectedDataSelector extends Component {
       selectedTable = null,
       selectedField = null;
 
-    const getDatabase = (id) =>
+    const getDatabase = id =>
       _.findWhere(databases, { id }) || metadata.database(id);
-    const getSchema = (id) =>
-      _.findWhere(schemas, { id }) || metadata.schema(id);
-    const getTable = (id) => _.findWhere(tables, { id }) || metadata.table(id);
-    const getField = (id) => _.findWhere(fields, { id }) || metadata.field(id);
+    const getSchema = id => _.findWhere(schemas, { id }) || metadata.schema(id);
+    const getTable = id => _.findWhere(tables, { id }) || metadata.table(id);
+    const getField = id => _.findWhere(fields, { id }) || metadata.field(id);
 
     function setSelectedDatabase(database) {
       selectedDatabase = database;
@@ -284,7 +281,7 @@ export class UnconnectedDataSelector extends Component {
   // Like setState, but automatically adds computed state so we don't have to recalculate
   // repeatedly. Also returns a promise resolves after state is updated
   setStateWithComputedState(newState, newProps = this.props) {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const computedState = this._getComputedState(newProps, {
         ...this.state,
         ...newState,
@@ -547,7 +544,7 @@ export class UnconnectedDataSelector extends Component {
     }
   };
 
-  onChangeDatabase = async (database) => {
+  onChangeDatabase = async database => {
     if (this.props.setDatabaseFn) {
       this.props.setDatabaseFn(database && database.id);
     }
@@ -559,19 +556,19 @@ export class UnconnectedDataSelector extends Component {
     await this.nextStep({ selectedDatabaseId: database && database.id });
   };
 
-  onChangeSchema = async (schema) => {
+  onChangeSchema = async schema => {
     // NOTE: not really any need to have a setSchemaFn since schemas are just a namespace
     await this.nextStep({ selectedSchemaId: schema && schema.id });
   };
 
-  onChangeTable = async (table) => {
+  onChangeTable = async table => {
     if (this.props.setSourceTableFn) {
       this.props.setSourceTableFn(table && table.id);
     }
     await this.nextStep({ selectedTableId: table && table.id });
   };
 
-  onChangeField = async (field) => {
+  onChangeField = async field => {
     if (this.props.setFieldFn) {
       this.props.setFieldFn(field && field.id);
     }
@@ -707,8 +704,8 @@ const DatabasePicker = ({
       key="databasePicker"
       className="text-brand"
       sections={sections}
-      onChange={(item) => onChangeDatabase(item.database)}
-      itemIsSelected={(item) =>
+      onChange={item => onChangeDatabase(item.database)}
+      itemIsSelected={item =>
         selectedDatabase && item.database.id === selectedDatabase.id
       }
       renderItemIcon={() => (
@@ -727,7 +724,7 @@ const SchemaPicker = ({
 }) => {
   const sections = [
     {
-      items: schemas.map((schema) => ({
+      items: schemas.map(schema => ({
         name: schema.displayName(),
         schema: schema,
       })),
@@ -741,8 +738,8 @@ const SchemaPicker = ({
         className="text-brand"
         sections={sections}
         searchable
-        onChange={(item) => onChangeSchema(item.schema)}
-        itemIsSelected={(item) => item && item.schema.id === selectedSchemaId}
+        onChange={item => onChangeSchema(item.schema)}
+        itemIsSelected={item => item && item.schema.id === selectedSchemaId}
         renderItemIcon={() => <Icon name="folder" size={16} />}
         showItemArrows={hasNextStep}
       />
@@ -763,11 +760,11 @@ const DatabaseSchemaPicker = ({
     return <DataSelectorLoading />;
   }
 
-  const sections = databases.map((database) => ({
+  const sections = databases.map(database => ({
     name: database.name,
     items:
       database.schemas.length > 1
-        ? database.schemas.map((schema) => ({
+        ? database.schemas.map(schema => ({
             schema,
             name: schema.displayName(),
           }))
@@ -782,9 +779,9 @@ const DatabaseSchemaPicker = ({
   }));
 
   let openSection = selectedSchema
-    ? databases.findIndex((db) => db.id === selectedSchema.database.id)
+    ? databases.findIndex(db => db.id === selectedSchema.database.id)
     : selectedDatabase
-    ? databases.findIndex((db) => db.id === selectedDatabase.id)
+    ? databases.findIndex(db => db.id === selectedDatabase.id)
     : -1;
 
   if (
@@ -801,7 +798,7 @@ const DatabaseSchemaPicker = ({
       key="databaseSchemaPicker"
       className="text-brand"
       sections={sections}
-      onChange={(item) => onChangeSchema(item.schema)}
+      onChange={item => onChangeSchema(item.schema)}
       onChangeSection={(section, sectionIndex) => {
         if (
           selectedDatabase &&
@@ -814,8 +811,8 @@ const DatabaseSchemaPicker = ({
         onChangeDatabase(databases[sectionIndex]);
         return true;
       }}
-      itemIsSelected={(schema) => schema === selectedSchema}
-      renderSectionIcon={(item) => (
+      itemIsSelected={schema => schema === selectedSchema}
+      renderSectionIcon={item => (
         <Icon className="Icon text-default" name={item.icon} size={18} />
       )}
       renderItemIcon={() => <Icon name="folder" size={16} />}
@@ -869,7 +866,7 @@ const TablePicker = ({
     const sections = [
       {
         name: header,
-        items: tables.map((table) => ({
+        items: tables.map(table => ({
           name: table.displayName(),
           table: table,
           database: selectedDatabase,
@@ -887,14 +884,14 @@ const TablePicker = ({
           maxHeight={Infinity}
           width={"100%"}
           searchable
-          onChange={(item) => onChangeTable(item.table)}
-          itemIsSelected={(item) =>
+          onChange={item => onChangeTable(item.table)}
+          itemIsSelected={item =>
             item.table && selectedTable
               ? item.table.id === selectedTable.id
               : false
           }
-          itemIsClickable={(item) => item.table}
-          renderItemIcon={(item) =>
+          itemIsClickable={item => item.table}
+          renderItemIcon={item =>
             item.table ? <Icon name="table2" size={18} /> : null
           }
           showItemArrows={hasNextStep}
@@ -964,7 +961,7 @@ class FieldPicker extends Component {
     const sections = [
       {
         name: header,
-        items: fields.map((field) => ({
+        items: fields.map(field => ({
           name: field.display_name,
           field: field,
         })),
@@ -981,14 +978,14 @@ class FieldPicker extends Component {
           maxHeight={Infinity}
           width={"100%"}
           searchable
-          onChange={(item) => onChangeField(item.field)}
-          itemIsSelected={(item) =>
+          onChange={item => onChangeField(item.field)}
+          itemIsSelected={item =>
             item.field && selectedField
               ? item.field.id === selectedField.id
               : false
           }
-          itemIsClickable={(item) => item.field}
-          renderItemIcon={(item) =>
+          itemIsClickable={item => item.field}
+          renderItemIcon={item =>
             item.field ? (
               <Icon name={item.field.dimension().icon()} size={18} />
             ) : null

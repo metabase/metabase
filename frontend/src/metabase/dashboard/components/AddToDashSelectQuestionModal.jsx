@@ -15,7 +15,7 @@ export default class AddToDashSelectQuestionModal extends React.Component {
     onClose: PropTypes.func.isRequired,
   };
 
-  handleAdd = (cardId) => {
+  handleAdd = cardId => {
     this.props.addCardToDashboard({
       dashId: this.props.dashboard.id,
       cardId: cardId,

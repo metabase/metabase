@@ -21,8 +21,7 @@ import Collections from "metabase/entities/collections";
 
 const COLLECTION_ICON_COLOR = color("text-light");
 
-const isRoot = (collection) =>
-  collection.id === "root" || collection.id == null;
+const isRoot = collection => collection.id === "root" || collection.id == null;
 
 @entityListLoader({
   entityType: (state, props) => {
@@ -59,7 +58,7 @@ export default class ItemPicker extends React.Component {
   _getCrumbs(collection, collectionsById) {
     if (collection && collection.path) {
       return [
-        ...collection.path.map((id) => [
+        ...collection.path.map(id => [
           collectionsById[id].name,
           () => this.setState({ parentId: id }),
         ]),
@@ -90,7 +89,7 @@ export default class ItemPicker extends React.Component {
 
     const models = new Set(this.props.models);
     const modelsIncludeNonCollections =
-      this.props.models.filter((model) => model !== "collection").length > 0;
+      this.props.models.filter(model => model !== "collection").length > 0;
 
     const collection = collectionsById[parentId];
     const crumbs = this._getCrumbs(collection, collectionsById);
@@ -103,17 +102,17 @@ export default class ItemPicker extends React.Component {
     }
 
     // code below assumes items have a "model" property
-    allCollections = allCollections.map((collection) => ({
+    allCollections = allCollections.map(collection => ({
       ...collection,
       model: "collection",
     }));
 
     // special case for root collection
-    const getId = (item) =>
+    const getId = item =>
       item &&
       (item.model === "collection" && item.id === null ? "root" : item.id);
 
-    const isSelected = (item) =>
+    const isSelected = item =>
       item &&
       value &&
       getId(item) === getId(value) &&
@@ -129,7 +128,7 @@ export default class ItemPicker extends React.Component {
                 className="input rounded flex-full"
                 placeholder={t`Search`}
                 autoFocus
-                onKeyPress={(e) => {
+                onKeyPress={e => {
                   if (e.key === "Enter") {
                     this.setState({ searchString: e.target.value });
                   }
@@ -157,7 +156,7 @@ export default class ItemPicker extends React.Component {
           )}
           <Box className="scroll-y">
             {!searchString
-              ? allCollections.map((collection) => {
+              ? allCollections.map(collection => {
                   const hasChildren =
                     (collection.children &&
                       collection.children.length > 0 &&
@@ -179,15 +178,13 @@ export default class ItemPicker extends React.Component {
                       selected={canSelect && isSelected(collection)}
                       canSelect={canSelect}
                       hasChildren={hasChildren}
-                      onChange={(collection) =>
+                      onChange={collection =>
                         isRoot(collection)
                           ? // "root" collection should have `null` id
                             onChange({ id: null, model: "collection" })
                           : onChange(collection)
                       }
-                      onChangeParentId={(parentId) =>
-                        this.setState({ parentId })
-                      }
+                      onChangeParentId={parentId => this.setState({ parentId })}
                     />
                   ) : null;
                 })
@@ -209,13 +206,13 @@ export default class ItemPicker extends React.Component {
                   <div>
                     {list
                       .filter(
-                        (item) =>
+                        item =>
                           // remove collections unless we're searching
                           (item.model !== "collection" || !!searchString) &&
                           // only include desired models (TODO: ideally the endpoint would handle this)
                           models.has(item.model),
                       )
-                      .map((item) => (
+                      .map(item => (
                         <Item
                           item={item}
                           name={item.getName()}
@@ -276,7 +273,7 @@ const Item = ({
               "bg-brand-hover": !canSelect,
             },
           )}
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation();
             onChangeParentId(item.id);
           }}

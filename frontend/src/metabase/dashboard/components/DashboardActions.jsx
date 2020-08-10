@@ -61,7 +61,7 @@ export const getDashboardActions = ({
           <FullscreenIcon
             className="text-brand-hover cursor-pointer"
             isFullscreen={isFullscreen}
-            onClick={(e) => onFullscreenChange(!isFullscreen, !e.altKey)}
+            onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
           />
         </span>
       </Tooltip>,

@@ -56,8 +56,8 @@ export default class TextPicker extends Component {
       // Trim values to prevent confusing problems with leading/trailing whitespaces
       const newValues = newFieldString
         .split(",")
-        .map((v) => v.trim())
-        .filter((v) => v !== "");
+        .map(v => v.trim())
+        .filter(v => v !== "");
       this.props.onValuesChange(newValues);
     } else {
       this.props.onValuesChange([]);
@@ -66,9 +66,9 @@ export default class TextPicker extends Component {
 
   render() {
     const { validations, multi, onCommit } = this.props;
-    const hasInvalidValues = _.some(validations, (v) => v === false);
+    const hasInvalidValues = _.some(validations, v => v === false);
 
-    const commitOnEnter = (e) => {
+    const commitOnEnter = e => {
       if (e.key === "Enter" && onCommit) {
         onCommit();
       }
@@ -83,7 +83,7 @@ export default class TextPicker extends Component {
             })}
             type="text"
             value={this.state.fieldString}
-            onChange={(e) => this.setValue(e.target.value)}
+            onChange={e => this.setValue(e.target.value)}
             onKeyPress={commitOnEnter}
             placeholder={this.props.placeholder}
             autoFocus={true}

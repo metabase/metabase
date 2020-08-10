@@ -89,7 +89,7 @@ describe("Metadata", () => {
       });
 
       try {
-        const dataFail = await fetchData(argsFail).catch((error) =>
+        const dataFail = await fetchData(argsFail).catch(error =>
           console.log(error),
         );
         expect(argsFail.dispatch.calls.count()).toEqual(2);

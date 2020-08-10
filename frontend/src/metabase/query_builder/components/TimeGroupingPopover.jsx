@@ -73,7 +73,7 @@ export default class TimeGroupingPopover extends Component {
       <div className={cx(className, "px2 py1")} style={{ width: "250px" }}>
         {title && <h3 className="List-section-header pt1 mx2">{title}</h3>}
         <ul className="py1">
-          {BUCKETINGS.filter((o) => o == null || enabledOptions.has(o)).map(
+          {BUCKETINGS.filter(o => o == null || enabledOptions.has(o)).map(
             (bucketing, bucketingIndex) =>
               bucketing == null ? (
                 <hr key={bucketingIndex} style={{ border: "none" }} />

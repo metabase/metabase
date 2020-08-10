@@ -11,7 +11,7 @@ const DateSingleWidget = ({ value, setValue, onClose }) => {
       selected={value}
       selectedEnd={value}
       isRangePicker={false}
-      onChange={(value) => {
+      onChange={value => {
         setValue(value);
         onClose();
       }}
@@ -19,7 +19,7 @@ const DateSingleWidget = ({ value, setValue, onClose }) => {
   );
 };
 
-DateSingleWidget.format = (value) =>
+DateSingleWidget.format = value =>
   value ? moment(value).format("MMMM D, YYYY") : "";
 
 export default DateSingleWidget;

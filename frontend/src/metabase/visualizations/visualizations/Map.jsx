@@ -257,7 +257,7 @@ export default class Map extends Component {
       title: t`Color`,
       widget: ColorRangePicker,
       props: {
-        ranges: Object.values(desaturated).map((color) =>
+        ranges: Object.values(desaturated).map(color =>
           getColorplethColorScale(color),
         ),
         quantile: true,

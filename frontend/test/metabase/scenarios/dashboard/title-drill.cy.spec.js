@@ -5,7 +5,7 @@ describe("scenarios > dashboard > title drill", () => {
   beforeEach(signIn);
 
   it("should let you click through the title to the query builder", () => {
-    createDashboard((dashId) => {
+    createDashboard(dashId => {
       cy.visit(`/dashboard/${dashId}`);
       // wait for qustion to load
       cy.findByText("foo");

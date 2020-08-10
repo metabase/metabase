@@ -20,7 +20,7 @@ describe("scenarios > alert > email_alert", () => {
     cy.server();
     cy.visit("/");
 
-    cy.request("/api/alert").then((response) => {
+    cy.request("/api/alert").then(response => {
       expect(response.body).to.have.length(0);
     });
   });
@@ -45,7 +45,7 @@ describe("scenarios > alert > email_alert", () => {
         });
 
       // Check alert api is sending email
-      cy.request("/api/alert").then((response) => {
+      cy.request("/api/alert").then(response => {
         expect(response.body[0].channels).to.have.length(1);
         expect(response.body[0].channels[0].recipients).to.have.length(1);
       });
@@ -54,7 +54,10 @@ describe("scenarios > alert > email_alert", () => {
     it("should have email alerts toggled off (Issue #12349)", () => {
       // Turn off email alerts during alert setup
       setUpHourlyAlert(2);
-      cy.findByText("Email").parent().find("a").click();
+      cy.findByText("Email")
+        .parent()
+        .find("a")
+        .click();
       cy.findByText("Done")
         .click()
         .then(() => {
@@ -62,7 +65,7 @@ describe("scenarios > alert > email_alert", () => {
         });
 
       // Check alert api is NOT sending email
-      cy.request("/api/alert").then((response) => {
+      cy.request("/api/alert").then(response => {
         expect(response.body[0].channels).to.have.length(1);
         expect(response.body[0].channels[0].recipients).to.equal("null");
       });

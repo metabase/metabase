@@ -54,7 +54,7 @@ export default class Progress extends Component {
         ],
         settings,
       ) => [
-        _.find(cols, (col) => col.name === settings["scalar.field"]) || cols[0],
+        _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
       ],
     }),
     "progress.goal": {
@@ -140,8 +140,14 @@ export default class Progress extends Component {
     const goal = settings["progress.goal"] || 0;
 
     const mainColor = settings["progress.color"];
-    const lightColor = Color(mainColor).lighten(0.25).rgb().string();
-    const darkColor = Color(mainColor).darken(0.3).rgb().string();
+    const lightColor = Color(mainColor)
+      .lighten(0.25)
+      .rgb()
+      .string();
+    const darkColor = Color(mainColor)
+      .darken(0.3)
+      .rgb()
+      .string();
 
     const progressColor = mainColor;
     const restColor = value > goal ? darkColor : lightColor;
@@ -200,8 +206,7 @@ export default class Progress extends Component {
             }}
             onClick={
               isClickable &&
-              ((e) =>
-                onVisualizationClick({ ...clicked, event: e.nativeEvent }))
+              (e => onVisualizationClick({ ...clicked, event: e.nativeEvent }))
             }
           >
             <div

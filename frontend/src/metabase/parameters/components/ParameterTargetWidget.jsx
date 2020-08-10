@@ -19,7 +19,7 @@ type Props = {
   onChange: (target: ?ParameterTarget) => void,
   mappingOptions: ParameterMappingUIOption[],
   placeholder?: string,
-  children?: React$Element<any> | ((any) => React$Element<any>),
+  children?: React$Element<any> | (any => React$Element<any>),
 };
 
 export default class ParameterTargetWidget extends React.Component {
@@ -43,7 +43,7 @@ export default class ParameterTargetWidget extends React.Component {
     } = this.props;
 
     const disabled = mappingOptions.length === 0;
-    const selected = _.find(mappingOptions, (o) => _.isEqual(o.target, target));
+    const selected = _.find(mappingOptions, o => _.isEqual(o.target, target));
 
     return (
       <PopoverWithTrigger
@@ -57,7 +57,7 @@ export default class ParameterTargetWidget extends React.Component {
         }
       >
         <ParameterTargetList
-          onChange={(target) => {
+          onChange={target => {
             onChange(target);
             this.refs.popover.close();
           }}

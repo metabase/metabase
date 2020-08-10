@@ -19,7 +19,7 @@ function syntaxNode(type, ...children) {
   return {
     type: type,
     tokenized: TOKENIZED_NODES.has(type),
-    children: children.filter((child) => child),
+    children: children.filter(child => child),
   };
 }
 
@@ -226,7 +226,7 @@ export function fallbackParser({ source, startRule }) {
   let outsideAggregation = startRule === "aggregation";
 
   const stack = [];
-  const push = (element) => {
+  const push = element => {
     current.children.push(element);
     stack.push(current);
     current = element;

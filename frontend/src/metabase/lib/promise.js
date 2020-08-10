@@ -4,12 +4,12 @@ export function cancelable(promise) {
 
   const wrappedPromise = new Promise((resolve, reject) => {
     promise.then(
-      (value) => (canceled ? reject({ isCanceled: true }) : resolve(value)),
-      (error) => (canceled ? reject({ isCanceled: true }) : reject(error)),
+      value => (canceled ? reject({ isCanceled: true }) : resolve(value)),
+      error => (canceled ? reject({ isCanceled: true }) : reject(error)),
     );
   });
 
-  wrappedPromise.cancel = function () {
+  wrappedPromise.cancel = function() {
     canceled = true;
   };
 

@@ -22,10 +22,10 @@ const MockOption = ({ option }) => <span>{option}</span>;
 const DEFAULT_TOKEN_FIELD_PROPS = {
   options: [],
   value: [],
-  valueKey: (option) => option,
-  labelKey: (option) => option,
-  valueRenderer: (value) => <MockValue value={value} />,
-  optionRenderer: (option) => <MockOption option={option} />,
+  valueKey: option => option,
+  labelKey: option => option,
+  valueRenderer: value => <MockValue value={value} />,
+  optionRenderer: option => <MockOption option={option} />,
   layoutRenderer: ({ valuesList, optionsList }) => (
     <div>
       {valuesList}
@@ -50,7 +50,7 @@ class TokenFieldWithStateAndDefaults extends React.Component {
         {...DEFAULT_TOKEN_FIELD_PROPS}
         {...props}
         value={this.state.value}
-        onChange={(value) => {
+        onChange={value => {
           this.setState({ value });
           if (onChange) {
             onChange(value);
@@ -65,15 +65,18 @@ describe("TokenField", () => {
   let component;
   const input = () => component.find("input");
   const value = () => component.state().value;
-  const options = () => component.find(MockOption).map((o) => o.text());
-  const values = () => component.find(MockValue).map((v) => v.text());
+  const options = () => component.find(MockOption).map(o => o.text());
+  const values = () => component.find(MockValue).map(v => v.text());
   const blur = () => input().simulate("blur");
   const focus = () => input().simulate("focus");
-  const type = (str) => input().simulate("change", { target: { value: str } });
-  const focusAndType = (str) => focus() && type(str);
-  const keyDown = (keyCode) => input().simulate("keydown", { keyCode });
+  const type = str => input().simulate("change", { target: { value: str } });
+  const focusAndType = str => focus() && type(str);
+  const keyDown = keyCode => input().simulate("keydown", { keyCode });
   const clickOption = (n = 0) =>
-    component.find(MockOption).at(n).simulate("click");
+    component
+      .find(MockOption)
+      .at(n)
+      .simulate("click");
 
   afterEach(() => {
     component = null;
@@ -125,7 +128,7 @@ describe("TokenField", () => {
       <TokenFieldWithStateAndDefaults
         value={[]}
         options={["bar", "baz"]}
-        parseFreeformValue={(value) => value}
+        parseFreeformValue={value => value}
       />,
     );
     focusAndType("yep");
@@ -185,7 +188,7 @@ describe("TokenField", () => {
           options={DEFAULT_OPTIONS}
           multi
           // return null for empty string since it's not a valid
-          parseFreeformValue={(value) => value || null}
+          parseFreeformValue={value => value || null}
           updateOnInputChange
         />,
       );
@@ -308,7 +311,7 @@ describe("TokenField", () => {
           options={DEFAULT_OPTIONS}
           multi
           // return null for empty string since it's not a valid
-          parseFreeformValue={(value) => value || null}
+          parseFreeformValue={value => value || null}
           updateOnInputBlur={false}
         />,
       );
@@ -332,7 +335,7 @@ describe("TokenField", () => {
           options={DEFAULT_OPTIONS}
           multi
           // return null for empty string since it's not a valid
-          parseFreeformValue={(value) => value || null}
+          parseFreeformValue={value => value || null}
           updateOnInputBlur={true}
         />,
       );
@@ -398,7 +401,7 @@ describe("TokenField", () => {
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
           // return null for empty string since it's not a valid
-          parseFreeformValue={(value) => value || null}
+          parseFreeformValue={value => value || null}
           updateOnInputChange
           multi
         />,
@@ -415,7 +418,7 @@ describe("TokenField", () => {
       component = mount(
         <TokenFieldWithStateAndDefaults
           // return null for empty string since it's not a valid
-          parseFreeformValue={(value) => value || null}
+          parseFreeformValue={value => value || null}
           updateOnInputChange
           multi
         />,
@@ -438,7 +441,7 @@ describe("TokenField", () => {
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
           // return null for empty string since it's not a valid
-          parseFreeformValue={(value) => value || null}
+          parseFreeformValue={value => value || null}
           updateOnInputChange
         />,
       );
@@ -454,7 +457,7 @@ describe("TokenField", () => {
       component = mount(
         <TokenFieldWithStateAndDefaults
           // return null for empty string since it's not a valid
-          parseFreeformValue={(value) => value || null}
+          parseFreeformValue={value => value || null}
           updateOnInputChange
         />,
       );

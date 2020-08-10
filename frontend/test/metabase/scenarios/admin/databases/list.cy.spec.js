@@ -32,9 +32,14 @@ describe("scenarios > admin > databases > list", () => {
     cy.visit("/admin/databases");
     cy.get("table").should("contain", "Sample Dataset");
 
-    cy.contains("Sample Dataset").closest("tr").contains("Delete").click();
+    cy.contains("Sample Dataset")
+      .closest("tr")
+      .contains("Delete")
+      .click();
     cy.get(".ModalBody input").type("DELETE");
-    cy.get(".ModalBody").contains("button", "Delete").click();
+    cy.get(".ModalBody")
+      .contains("button", "Delete")
+      .click();
     cy.wait("@delete");
 
     cy.get("table").should("not.contain", "Sample Dataset");

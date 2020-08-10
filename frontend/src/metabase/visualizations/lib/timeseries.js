@@ -42,28 +42,28 @@ export function dimensionIsExplicitTimeseries({ cols }, i) {
 // Count and time interval for axis.ticks()
 //
 const TIMESERIES_INTERVALS = [
-  { interval: "ms", count: 1, testFn: (d) => 0 }, //  (0) millisecond
-  { interval: "second", count: 1, testFn: (d) => d.milliseconds() }, //  (1) 1 second
-  { interval: "second", count: 5, testFn: (d) => d.seconds() % 5 }, //  (2) 5 seconds
-  { interval: "second", count: 15, testFn: (d) => d.seconds() % 15 }, //  (3) 15 seconds
-  { interval: "second", count: 30, testFn: (d) => d.seconds() % 30 }, //  (4) 30 seconds
-  { interval: "minute", count: 1, testFn: (d) => d.seconds() }, //  (5) 1 minute
-  { interval: "minute", count: 5, testFn: (d) => d.minutes() % 5 }, //  (6) 5 minutes
-  { interval: "minute", count: 15, testFn: (d) => d.minutes() % 15 }, //  (7) 15 minutes
-  { interval: "minute", count: 30, testFn: (d) => d.minutes() % 30 }, //  (8) 30 minutes
-  { interval: "hour", count: 1, testFn: (d) => d.minutes() }, //  (9) 1 hour
-  { interval: "hour", count: 3, testFn: (d) => d.hours() % 3 }, // (10) 3 hours
-  { interval: "hour", count: 6, testFn: (d) => d.hours() % 6 }, // (11) 6 hours
-  { interval: "hour", count: 12, testFn: (d) => d.hours() % 12 }, // (12) 12 hours
-  { interval: "day", count: 1, testFn: (d) => d.hours() }, // (13) 1 day
-  { interval: "week", count: 1, testFn: (d) => d.date() % 7 }, // (14) 7 days / 1 week
-  { interval: "month", count: 1, testFn: (d) => d.date() }, // (15) 1 months
-  { interval: "month", count: 3, testFn: (d) => d.month() % 3 }, // (16) 3 months / 1 quarter
-  { interval: "year", count: 1, testFn: (d) => d.month() }, // (17) 1 year
-  { interval: "year", count: 5, testFn: (d) => d.year() % 5 }, // (18) 5 year
-  { interval: "year", count: 10, testFn: (d) => d.year() % 10 }, // (19) 10 year
-  { interval: "year", count: 50, testFn: (d) => d.year() % 50 }, // (20) 50 year
-  { interval: "year", count: 100, testFn: (d) => d.year() % 100 }, // (21) 100 year
+  { interval: "ms", count: 1, testFn: d => 0 }, //  (0) millisecond
+  { interval: "second", count: 1, testFn: d => d.milliseconds() }, //  (1) 1 second
+  { interval: "second", count: 5, testFn: d => d.seconds() % 5 }, //  (2) 5 seconds
+  { interval: "second", count: 15, testFn: d => d.seconds() % 15 }, //  (3) 15 seconds
+  { interval: "second", count: 30, testFn: d => d.seconds() % 30 }, //  (4) 30 seconds
+  { interval: "minute", count: 1, testFn: d => d.seconds() }, //  (5) 1 minute
+  { interval: "minute", count: 5, testFn: d => d.minutes() % 5 }, //  (6) 5 minutes
+  { interval: "minute", count: 15, testFn: d => d.minutes() % 15 }, //  (7) 15 minutes
+  { interval: "minute", count: 30, testFn: d => d.minutes() % 30 }, //  (8) 30 minutes
+  { interval: "hour", count: 1, testFn: d => d.minutes() }, //  (9) 1 hour
+  { interval: "hour", count: 3, testFn: d => d.hours() % 3 }, // (10) 3 hours
+  { interval: "hour", count: 6, testFn: d => d.hours() % 6 }, // (11) 6 hours
+  { interval: "hour", count: 12, testFn: d => d.hours() % 12 }, // (12) 12 hours
+  { interval: "day", count: 1, testFn: d => d.hours() }, // (13) 1 day
+  { interval: "week", count: 1, testFn: d => d.date() % 7 }, // (14) 7 days / 1 week
+  { interval: "month", count: 1, testFn: d => d.date() }, // (15) 1 months
+  { interval: "month", count: 3, testFn: d => d.month() % 3 }, // (16) 3 months / 1 quarter
+  { interval: "year", count: 1, testFn: d => d.month() }, // (17) 1 year
+  { interval: "year", count: 5, testFn: d => d.year() % 5 }, // (18) 5 year
+  { interval: "year", count: 10, testFn: d => d.year() % 10 }, // (19) 10 year
+  { interval: "year", count: 50, testFn: d => d.year() % 50 }, // (20) 50 year
+  { interval: "year", count: 100, testFn: d => d.year() % 100 }, // (21) 100 year
 ];
 
 // mapping from Metabase "unit" to d3 intervals above
@@ -95,7 +95,7 @@ function computeTimeseriesDataInvervalIndex(xValues, unit) {
   }
   // Always use 'day' when there's just one value.
   if (xValues.length === 1) {
-    return TIMESERIES_INTERVALS.findIndex((ti) => ti.interval === "day");
+    return TIMESERIES_INTERVALS.findIndex(ti => ti.interval === "day");
   }
   // Keep track of the value seen for each level of granularity,
   // if any don't match then we know the data is *at least* that granular.
@@ -129,7 +129,9 @@ export function computeTimeseriesDataInverval(xValues, unit) {
 function intervalTickDistanceMilliseconds(interval) {
   // add COUNT nuumber of INTERVALS to the UNIX timestamp 0. e.g. add '5 hours' to 0. Then get the new timestamp
   // (in milliseconds). Since we added to 0 this will be the interval between each tick
-  return moment(0).add(interval.count, interval.interval).valueOf();
+  return moment(0)
+    .add(interval.count, interval.interval)
+    .valueOf();
 }
 
 /// Return the number of ticks we can expect to see over a time range using the TIMESERIES_INTERVALS entry interval.
@@ -221,7 +223,7 @@ export function getTimezone(series, warn) {
 
   // Dashboard multiseries cards might have series with different timezones.
   const timezones = Array.from(
-    new Set(series.map((s) => s.data.results_timezone)),
+    new Set(series.map(s => s.data.results_timezone)),
   );
   if (timezones.length > 1) {
     warn(multipleTimezoneWarning(timezones));

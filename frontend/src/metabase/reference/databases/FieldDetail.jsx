@@ -100,7 +100,10 @@ const validate = (values, props) => {
   return {};
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "details",
   fields: [
@@ -169,7 +172,7 @@ export default class FieldDetail extends Component {
     } = this.props;
 
     const onSubmit = handleSubmit(
-      async (fields) => await actions.rUpdateFieldDetail(fields, this.props),
+      async fields => await actions.rUpdateFieldDetail(fields, this.props),
     );
 
     return (

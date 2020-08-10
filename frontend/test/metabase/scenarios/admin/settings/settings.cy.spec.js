@@ -14,7 +14,9 @@ describe("scenarios > admin > settings", () => {
     // Google sign in
     cy.visit("/admin/settings/authentication");
     cy.findByText("Sign in with Google");
-    cy.findAllByText("Configure").first().click();
+    cy.findAllByText("Configure")
+      .first()
+      .click();
     cy.contains(
       "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID.",
     );
@@ -24,7 +26,9 @@ describe("scenarios > admin > settings", () => {
     // SSO
     cy.visit("/admin/settings/authentication");
     cy.findByText("LDAP").click();
-    cy.findAllByText("Configure").last().click();
+    cy.findAllByText("Configure")
+      .last()
+      .click();
     cy.findByText("LDAP Authentication");
     cy.findByText("User Schema");
     cy.findByText("Save changes");
@@ -45,7 +49,10 @@ describe("scenarios > admin > settings", () => {
         .parent()
         .find("input");
 
-    emailInput().clear().type("other.email@metabase.com").blur();
+    emailInput()
+      .clear()
+      .type("other.email@metabase.com")
+      .blur();
     cy.wait("@saveSettings");
 
     cy.visit("/admin/settings/general");
@@ -53,7 +60,10 @@ describe("scenarios > admin > settings", () => {
     emailInput().should("have.value", "other.email@metabase.com");
 
     // reset the email
-    emailInput().clear().type("bob@metabase.com").blur();
+    emailInput()
+      .clear()
+      .type("bob@metabase.com")
+      .blur();
     cy.wait("@saveSettings");
   });
 
@@ -67,11 +77,20 @@ describe("scenarios > admin > settings", () => {
     cy.contains("Redirect to HTTPS").should("not.exist");
 
     // switch site url to use https
-    cy.contains("Site URL").parent().parent().find(".AdminSelect").click();
-    popover().contains("https://").click();
+    cy.contains("Site URL")
+      .parent()
+      .parent()
+      .find(".AdminSelect")
+      .click();
+    popover()
+      .contains("https://")
+      .click();
 
     cy.wait("@httpsCheck");
-    cy.contains("Redirect to HTTPS").parent().parent().contains("Disabled");
+    cy.contains("Redirect to HTTPS")
+      .parent()
+      .parent()
+      .contains("Disabled");
 
     restore(); // avoid leaving https site url
   });
@@ -85,8 +104,14 @@ describe("scenarios > admin > settings", () => {
     );
 
     // switch site url to use https
-    cy.contains("Site URL").parent().parent().find(".AdminSelect").click();
-    popover().contains("https://").click();
+    cy.contains("Site URL")
+      .parent()
+      .parent()
+      .find(".AdminSelect")
+      .click();
+    popover()
+      .contains("https://")
+      .click();
 
     cy.wait("@httpsCheck");
     cy.contains("It looks like HTTPS is not properly configured");
@@ -128,7 +153,10 @@ describe("scenarios > admin > settings", () => {
       cy.contains("Enter a token").click();
 
       // Try an invalid token format
-      cy.contains("Enter the token").next().type("Hi").blur();
+      cy.contains("Enter the token")
+        .next()
+        .type("Hi")
+        .blur();
       cy.wait("@saveEmbeddingToken").then(({ response }) => {
         expect(response.body).to.equal(
           "Token format is invalid. Token should be 64 hexadecimal characters.",
@@ -189,7 +217,10 @@ describe("scenarios > admin > settings", () => {
         ],
       }).as("getSettings");
 
-      cy.contains("Enter the token").next().type(embeddingToken).blur();
+      cy.contains("Enter the token")
+        .next()
+        .type(embeddingToken)
+        .blur();
       cy.wait("@saveEmbeddingToken").then(({ response }) => {
         expect(response.body).to.equal(embeddingToken);
       });
@@ -202,8 +233,12 @@ describe("scenarios > admin > settings", () => {
   describe(" > email settings", () => {
     it("should be able to save email settings", () => {
       cy.visit("/admin/settings/email");
-      cy.findByPlaceholderText("smtp.yourservice.com").type("localhost").blur();
-      cy.findByPlaceholderText("587").type("1234").blur();
+      cy.findByPlaceholderText("smtp.yourservice.com")
+        .type("localhost")
+        .blur();
+      cy.findByPlaceholderText("587")
+        .type("1234")
+        .blur();
       cy.findByPlaceholderText("metabase@yourcompany.com")
         .type("admin@metabase.com")
         .blur();

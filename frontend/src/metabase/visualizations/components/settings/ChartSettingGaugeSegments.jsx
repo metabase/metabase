@@ -33,7 +33,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
               <td>
                 <ColorPicker
                   value={segment.color}
-                  onChange={(color) => onChangeProperty(index, "color", color)}
+                  onChange={color => onChangeProperty(index, "color", color)}
                   triggerSize={28}
                   padding={2}
                   colors={getColorPalette()}
@@ -44,7 +44,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                   type="number"
                   className="input full"
                   value={segment.min}
-                  onChange={(value) => onChangeProperty(index, "min", value)}
+                  onChange={value => onChangeProperty(index, "min", value)}
                   placeholder={t`Min`}
                 />
               </td>
@@ -53,7 +53,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                   type="number"
                   className="input full"
                   value={segment.max}
-                  onChange={(value) => onChangeProperty(index, "max", value)}
+                  onChange={value => onChangeProperty(index, "max", value)}
                   placeholder={t`Max`}
                 />
               </td>
@@ -75,7 +75,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                   type="text"
                   className="input full"
                   value={segment.label}
-                  onChange={(e) =>
+                  onChange={e =>
                     onChangeProperty(index, "label", e.target.value)
                   }
                   placeholder={t`Label for this range (optional)`}
@@ -110,7 +110,7 @@ function newSegment(segments) {
   const palette = getColorPalette();
   const lastSegment = segments[segments.length - 1];
   const lastColorIndex = lastSegment
-    ? _.findIndex(palette, (color) => color === lastSegment.color)
+    ? _.findIndex(palette, color => color === lastSegment.color)
     : -1;
   const nextColor =
     lastColorIndex >= 0

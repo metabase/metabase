@@ -42,8 +42,13 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
       .split("\n")
       .join("");
 
-    cy.get(".ace_content").first().invoke("text").should("match", JS_CODE);
-    cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
+    cy.get(".ace_content")
+      .first()
+      .invoke("text")
+      .should("match", JS_CODE);
+    cy.get(".ace_content")
+      .last()
+      .should("have.text", IFRAME_CODE);
   });
 
   it("should update the name and description", () => {
@@ -51,7 +56,9 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
     // click pencil icon to edit
     cy.get(".Icon-pencil").click();
     // update title
-    cy.get(".Header-title input").first().type("{selectall}Orders per year");
+    cy.get(".Header-title input")
+      .first()
+      .type("{selectall}Orders per year");
     // update desc
     cy.get(".Header-title input")
       .last()
@@ -60,13 +67,19 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
 
     // refresh page and check that title/desc were updated
     cy.visit("/dashboard/1");
-    cy.contains("Orders per year").next().trigger("mouseenter");
+    cy.contains("Orders per year")
+      .next()
+      .trigger("mouseenter");
     cy.contains("How many orders were placed in each year?");
 
     // reset title/desc
     cy.get(".Icon-pencil").click();
-    cy.get(".Header-title input").first().type("{selectall}Orders over time");
-    cy.get(".Header-title input").last().clear();
+    cy.get(".Header-title input")
+      .first()
+      .type("{selectall}Orders over time");
+    cy.get(".Header-title input")
+      .last()
+      .clear();
     cy.contains("Save").click();
   });
 
@@ -76,9 +89,14 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
     cy.get(".Icon-pencil").click();
     // add text box with text
     cy.get(".Icon-string").click();
-    cy.get(".DashCard").last().find("textarea").type("text text text");
+    cy.get(".DashCard")
+      .last()
+      .find("textarea")
+      .type("text text text");
     cy.get(".Icon-funnel_add").click();
-    popover().contains("Other Categories").click();
+    popover()
+      .contains("Other Categories")
+      .click();
     cy.contains("Done").click();
     cy.contains("Save").click();
 
@@ -89,8 +107,13 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
     // reset
     // remove text box
     cy.get(".Icon-pencil").click();
-    cy.get(".DashCard").last().find(".Icon-close").click({ force: true });
-    modal().contains("button", "Remove").click({ force: true });
+    cy.get(".DashCard")
+      .last()
+      .find(".Icon-close")
+      .click({ force: true });
+    modal()
+      .contains("button", "Remove")
+      .click({ force: true });
     // remove filter
     cy.contains("Remove").click();
     cy.contains("Save").click();

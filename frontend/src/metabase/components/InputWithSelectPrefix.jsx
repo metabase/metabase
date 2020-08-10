@@ -41,8 +41,8 @@ export default class InputWithSelectPrefix extends Component {
     if (value) {
       const prefix = prefixes.find(
         caseInsensitivePrefix
-          ? (p) => value.toLowerCase().startsWith(p.toLowerCase())
-          : (p) => value.startsWith(p),
+          ? p => value.toLowerCase().startsWith(p.toLowerCase())
+          : p => value.startsWith(p),
       );
       this.setState(
         prefix
@@ -71,10 +71,10 @@ export default class InputWithSelectPrefix extends Component {
         <Select
           className="border-right"
           value={prefix || defaultPrefix}
-          onChange={(e) => this.setState({ prefix: e.target.value })}
+          onChange={e => this.setState({ prefix: e.target.value })}
           buttonProps={{ className: "borderless" }}
         >
-          {prefixes.map((p) => (
+          {prefixes.map(p => (
             <Option value={p}>{p}</Option>
           ))}
         </Select>
@@ -83,7 +83,7 @@ export default class InputWithSelectPrefix extends Component {
           className="Form-input flex-full borderless"
           value={rest}
           placeholder={"foo"}
-          onBlurChange={(e) => this.setState({ rest: e.target.value })}
+          onBlurChange={e => this.setState({ rest: e.target.value })}
         />
       </div>
     );

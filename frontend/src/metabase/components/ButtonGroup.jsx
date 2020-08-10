@@ -21,8 +21,8 @@ const ButtonGroup = ({
   value,
   onChange,
   options,
-  optionNameFn = (o) => o.name,
-  optionValueFn = (o) => o.value,
+  optionNameFn = o => o.name,
+  optionValueFn = o => o.value,
   optionKeyFn = optionValueFn,
   className,
 }: Props) => {

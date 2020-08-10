@@ -31,16 +31,16 @@ const Segments = createEntity({
   },
 
   objectSelectors: {
-    getName: (segment) => segment && segment.name,
-    getUrl: (segment) =>
+    getName: segment => segment && segment.name,
+    getUrl: segment =>
       Urls.tableRowsQuery(
         segment.database_id,
         segment.table_id,
         null,
         segment.id,
       ),
-    getColor: (segment) => color("accent7"),
-    getIcon: (segment) => "segment",
+    getColor: segment => color("accent7"),
+    getIcon: segment => "segment",
   },
 
   form: {

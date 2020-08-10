@@ -47,7 +47,7 @@ describe("GroupDetailApp", () => {
     );
     store.dispatch(refreshCurrentUser());
 
-    expect((await wrapper.async.find("tr td")).map((td) => td.text())).toEqual([
+    expect((await wrapper.async.find("tr td")).map(td => td.text())).toEqual([
       "Testy McTestFace",
       "test@metabase.com",
     ]);

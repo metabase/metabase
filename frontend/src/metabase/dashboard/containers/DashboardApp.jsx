@@ -53,7 +53,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   ...dashboardActions,
-  archiveDashboard: (id) => Dashboards.actions.setArchived({ id }, true),
+  archiveDashboard: id => Dashboards.actions.setArchived({ id }, true),
   fetchDatabaseMetadata,
   setErrorPage,
   onChangeLocation: push,
@@ -63,7 +63,10 @@ type DashboardAppState = {
   addCardOnLoad: number | null,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ dashboard }) => dashboard && dashboard.name)
 @titleWithLoadingTime("loadingStartTime")
 // NOTE: should use DashboardControls and DashboardData HoCs here?

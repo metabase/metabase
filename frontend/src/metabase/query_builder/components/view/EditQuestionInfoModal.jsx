@@ -14,7 +14,7 @@ const EditQuestionInfoModal = ({ question, onClose, onSave }) => (
       initialValues={question.card()}
       submitTitle={t`Save`}
       onClose={onClose}
-      onSubmit={async (card) => {
+      onSubmit={async card => {
         await onSave({ ...question.card(), ...card });
         onClose();
       }}

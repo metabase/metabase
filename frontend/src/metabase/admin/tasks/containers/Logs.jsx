@@ -39,9 +39,9 @@ function logEventKey(ev) {
 function mergeLogs(...logArrays) {
   return _.chain(logArrays)
     .flatten(true)
-    .sortBy((ev) => ev.msg)
-    .sortBy((ev) => ev.process_uuid)
-    .sortBy((ev) => ev.timestamp)
+    .sortBy(ev => ev.msg)
+    .sortBy(ev => ev.process_uuid)
+    .sortBy(ev => ev.timestamp)
     .uniq(true, logEventKey)
     .last(MAX_LOGS)
     .value();
@@ -102,15 +102,15 @@ export default class Logs extends Component {
   render() {
     const { logs, selectedProcessUUID } = this.state;
     const filteredLogs = logs.filter(
-      (ev) =>
+      ev =>
         !selectedProcessUUID ||
         selectedProcessUUID === "ALL" ||
         ev.process_uuid === selectedProcessUUID,
     );
     const processUUIDs = _.uniq(
-      logs.map((ev) => ev.process_uuid).filter(Boolean),
+      logs.map(ev => ev.process_uuid).filter(Boolean),
     ).sort();
-    const renderedLogs = filteredLogs.map((ev) => {
+    const renderedLogs = filteredLogs.map(ev => {
       const timestamp = moment(ev.timestamp).format();
       const uuid = ev.process_uuid || "---";
       return `[${uuid}] ${timestamp} ${ev.level} ${ev.fqns} ${ev.msg}`;
@@ -124,14 +124,14 @@ export default class Logs extends Component {
           <Select
             defaultValue="ALL"
             value={this.state.selectedProcessUUID}
-            onChange={(e) =>
+            onChange={e =>
               this.setState({ selectedProcessUUID: e.target.value })
             }
             className="inline-block ml1"
             width={400}
           >
             <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>
-            {processUUIDs.map((uuid) => (
+            {processUUIDs.map(uuid => (
               <Option key={uuid} value={uuid}>
                 <code>{uuid}</code>
               </Option>

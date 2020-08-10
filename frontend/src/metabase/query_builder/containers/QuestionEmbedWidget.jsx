@@ -26,7 +26,10 @@ const mapDispatchToProps = {
   updateEmbeddingParams,
 };
 
-@connect(null, mapDispatchToProps)
+@connect(
+  null,
+  mapDispatchToProps,
+)
 export default class QuestionEmbedWidget extends Component {
   render() {
     const {
@@ -47,10 +50,10 @@ export default class QuestionEmbedWidget extends Component {
         resourceParameters={getParameters(card)}
         onCreatePublicLink={() => createPublicLink(card)}
         onDisablePublicLink={() => deletePublicLink(card)}
-        onUpdateEnableEmbedding={(enableEmbedding) =>
+        onUpdateEnableEmbedding={enableEmbedding =>
           updateEnableEmbedding(card, enableEmbedding)
         }
-        onUpdateEmbeddingParams={(embeddingParams) =>
+        onUpdateEmbeddingParams={embeddingParams =>
           updateEmbeddingParams(card, embeddingParams)
         }
         getPublicUrl={({ public_uuid }, extension) =>

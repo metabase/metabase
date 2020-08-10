@@ -36,12 +36,12 @@ const FormGroupsWidget = ({ field: { value, onChange }, groups }) => {
 
   const visibleGroups = _.filter(
     groups,
-    (g) => canEditMembership(g) || isDefaultGroup(g),
+    g => canEditMembership(g) || isDefaultGroup(g),
   );
   const hadAdminGroup = !!adminGroup;
   const hasNonAdminEditableGroups = _.any(
     groups,
-    (g) => canEditMembership(g) && !isAdminGroup(g),
+    g => canEditMembership(g) && !isAdminGroup(g),
   );
 
   return hasNonAdminEditableGroups ? (
@@ -54,7 +54,7 @@ const FormGroupsWidget = ({ field: { value, onChange }, groups }) => {
     <div className="flex align-center">
       <Toggle
         value={selection.has(adminGroup.id)}
-        onChange={(isAdmin) => {
+        onChange={isAdmin => {
           onGroupChange(adminGroup, isAdmin);
         }}
       />

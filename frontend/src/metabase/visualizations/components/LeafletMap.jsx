@@ -91,16 +91,10 @@ export default class LeafletMap extends Component {
       } else {
         // compute ideal lat and lon zoom separately and use the lesser zoom to ensure the bounds are visible
         const latZoom = this.map.getBoundsZoom(
-          L.latLngBounds([
-            [bounds.getSouth(), 0],
-            [bounds.getNorth(), 0],
-          ]),
+          L.latLngBounds([[bounds.getSouth(), 0], [bounds.getNorth(), 0]]),
         );
         const lonZoom = this.map.getBoundsZoom(
-          L.latLngBounds([
-            [0, bounds.getWest()],
-            [0, bounds.getEast()],
-          ]),
+          L.latLngBounds([[0, bounds.getWest()], [0, bounds.getEast()]]),
         );
         const zoom = Math.min(latZoom, lonZoom);
         // NOTE: unclear why calling `fitBounds` twice is sometimes required to get it to work
@@ -127,7 +121,7 @@ export default class LeafletMap extends Component {
     this._filter && this._filter.disable();
     this.props.onFiltering(false);
   }
-  onFilter = (e) => {
+  onFilter = e => {
     const bounds = e.layer.getBounds();
 
     const {
@@ -181,11 +175,11 @@ export default class LeafletMap extends Component {
     return {
       latitudeIndex: _.findIndex(
         cols,
-        (col) => col.name === settings["map.latitude_column"],
+        col => col.name === settings["map.latitude_column"],
       ),
       longitudeIndex: _.findIndex(
         cols,
-        (col) => col.name === settings["map.longitude_column"],
+        col => col.name === settings["map.longitude_column"],
       ),
     };
   }

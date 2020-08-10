@@ -44,7 +44,10 @@ const mapDispatchToProps = {
   saveDashboard: Dashboards.actions.save,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @DashboardData
 @withToast
 @title(({ dashboard }) => dashboard && dashboard.name)
@@ -145,7 +148,7 @@ class AutomaticDashboardApp extends React.Component {
             {parameters && parameters.length > 0 && (
               <div className="px1 pt1">
                 <Parameters
-                  parameters={parameters.map((p) => ({
+                  parameters={parameters.map(p => ({
                     ...p,
                     value: parameterValues && parameterValues[p.id],
                   }))}

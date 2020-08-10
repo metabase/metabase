@@ -44,7 +44,10 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class SegmentRevisions extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
@@ -74,7 +77,7 @@ export default class SegmentRevisions extends Component {
     const userColorAssignments =
       user && Object.keys(revisions).length > 0
         ? assignUserColors(
-            Object.values(revisions).map((revision) =>
+            Object.values(revisions).map(revision =>
               getIn(revision, ["user", "id"]),
             ),
             user.id,
@@ -97,7 +100,7 @@ export default class SegmentRevisions extends Component {
                 <div className="px3 py3 mb4 bg-white bordered">
                   <div>
                     {Object.values(revisions)
-                      .map((revision) =>
+                      .map(revision =>
                         revision && revision.diff ? (
                           <Revision
                             key={revision.id}

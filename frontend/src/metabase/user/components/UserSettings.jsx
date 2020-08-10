@@ -32,8 +32,8 @@ export default class UserSettings extends Component {
 
   render() {
     const { tab, user, setTab } = this.props;
-    const showChangePassword = PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.every(
-      (f) => f(user),
+    const showChangePassword = PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.every(f =>
+      f(user),
     );
 
     return (
@@ -67,7 +67,7 @@ export default class UserSettings extends Component {
                   value: "password",
                 },
               ]}
-              onChange={(tab) => setTab(tab)}
+              onChange={tab => setTab(tab)}
             />
           )}
         </Flex>

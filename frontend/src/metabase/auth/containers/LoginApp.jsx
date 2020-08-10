@@ -46,9 +46,7 @@ export default class LoginApp extends Component {
               this.renderPanel(visibleProviders[0])
             ) : (
               <div className="pt2 relative">
-                {visibleProviders.map((provider) =>
-                  this.renderButton(provider),
-                )}
+                {visibleProviders.map(provider => this.renderButton(provider))}
               </div>
             )}
           </div>

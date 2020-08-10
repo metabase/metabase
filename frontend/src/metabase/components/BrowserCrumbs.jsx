@@ -16,7 +16,7 @@ const Crumb = ({ children }) => (
 const BrowserCrumbs = ({ crumbs, analyticsContext }) => (
   <Flex align="center">
     {crumbs
-      .filter((c) => c)
+      .filter(c => c)
       .map((crumb, index, crumbs) => [
         <Flex align="center">
           {crumb.to ? (

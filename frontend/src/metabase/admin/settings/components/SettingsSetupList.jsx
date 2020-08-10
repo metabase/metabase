@@ -89,9 +89,9 @@ export default class SettingsSetupList extends Component {
   render() {
     let tasks, nextTask;
     if (this.state.tasks) {
-      tasks = this.state.tasks.map((section) => ({
+      tasks = this.state.tasks.map(section => ({
         ...section,
-        tasks: section.tasks.filter((task) => {
+        tasks: section.tasks.filter(task => {
           if (task.is_next_step) {
             nextTask = task;
           }

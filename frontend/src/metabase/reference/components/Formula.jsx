@@ -15,7 +15,10 @@ const mapDispatchToProps = {
   fetchTableMetadata,
 };
 
-@connect(null, mapDispatchToProps)
+@connect(
+  null,
+  mapDispatchToProps,
+)
 export default class Formula extends Component {
   props: {
     type: string,

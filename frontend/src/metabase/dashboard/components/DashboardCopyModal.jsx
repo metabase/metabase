@@ -24,7 +24,10 @@ const mapDispatchToProps = {
 };
 
 @withRouter
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 class DashboardCopyModal extends React.Component {
   render() {
     const {
@@ -38,14 +41,14 @@ class DashboardCopyModal extends React.Component {
       <EntityCopyModal
         entityType="dashboards"
         entityObject={dashboard}
-        copy={(object) =>
+        copy={object =>
           copyDashboard(
             { id: this.props.params.dashboardId },
             dissoc(object, "id"),
           )
         }
         onClose={onClose}
-        onSaved={(dashboard) => onReplaceLocation(Urls.dashboard(dashboard.id))}
+        onSaved={dashboard => onReplaceLocation(Urls.dashboard(dashboard.id))}
         {...props}
       />
     );

@@ -22,7 +22,7 @@ type State = {
   text: string,
 };
 
-const getSettingsStyle = (settings) => ({
+const getSettingsStyle = settings => ({
   "align-center": settings["text.align_horizontal"] === "center",
   "align-end": settings["text.align_horizontal"] === "right",
   "justify-center": settings["text.align_vertical"] === "middle",
@@ -166,7 +166,7 @@ export default class Text extends Component {
               name="text"
               placeholder={t`Write here, and use Markdown if you'd like`}
               value={settings.text}
-              onChange={(e) => this.handleTextChange(e.target.value)}
+              onChange={e => this.handleTextChange(e.target.value)}
             />
           )}
         </div>

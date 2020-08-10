@@ -25,17 +25,17 @@ export default ({
     return [];
   }
   const dateDimension = query
-    .dimensionOptions((d) => d.field().isDate())
+    .dimensionOptions(d => d.field().isDate())
     .all()[0];
   if (!dateDimension) {
     return [];
   }
   return ["sum"]
     .map(getAggregationOperator)
-    .filter((aggregator) =>
+    .filter(aggregator =>
       isCompatibleAggregationOperatorForField(aggregator, column),
     )
-    .map((aggregator) => ({
+    .map(aggregator => ({
       name: "summarize-by-time",
       section: "distribution",
       title: (

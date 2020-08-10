@@ -32,7 +32,7 @@ import {
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 
-const interestingQuestions = (table) => {
+const interestingQuestions = table => {
   return [
     {
       text: t`Count of ${table.display_name}`,
@@ -82,7 +82,10 @@ const validate = (values, props) => {
   return {};
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "details",
   fields: [
@@ -143,7 +146,7 @@ export default class TableDetail extends Component {
     } = this.props;
 
     const onSubmit = handleSubmit(
-      async (fields) => await actions.rUpdateTableDetail(fields, this.props),
+      async fields => await actions.rUpdateTableDetail(fields, this.props),
     );
 
     return (

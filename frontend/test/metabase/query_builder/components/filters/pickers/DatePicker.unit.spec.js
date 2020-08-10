@@ -50,13 +50,13 @@ describe("DatePicker", () => {
       />,
     );
     expect(picker.find(DateOperatorSelector).text()).toEqual("Between");
-    expect(picker.find(".Calendar-header").map((t) => t.text())).toEqual([
+    expect(picker.find(".Calendar-header").map(t => t.text())).toEqual([
       "January 2018",
     ]);
     for (let i = 0; i < 24; i++) {
       picker.find(".Icon-chevronright").simulate("click");
     }
-    expect(picker.find(".Calendar-header").map((t) => t.text())).toEqual([
+    expect(picker.find(".Calendar-header").map(t => t.text())).toEqual([
       "January 2020",
     ]);
   });

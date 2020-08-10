@@ -134,7 +134,7 @@ const Fields = createEntity({
 
   actions: {
     addParamValues: createAction(ADD_PARAM_VALUES),
-    addFields: createAction(ADD_FIELDS, (fields) =>
+    addFields: createAction(ADD_FIELDS, fields =>
       normalize(fields, [FieldSchema]),
     ),
   },
@@ -171,7 +171,7 @@ const Fields = createEntity({
         {
           name: "visibility_type",
           type: "select",
-          options: field_visibility_types.map((type) => ({
+          options: field_visibility_types.map(type => ({
             name: type.name,
             value: type.id,
           })),
@@ -179,7 +179,7 @@ const Fields = createEntity({
         {
           name: "special_type",
           type: "select",
-          options: field_special_types.map((type) => ({
+          options: field_special_types.map(type => ({
             name: type.name,
             value: type.id,
           })),
@@ -192,7 +192,7 @@ const Fields = createEntity({
           type: "select",
           options: has_field_values_options,
         },
-      ].filter((f) => f),
+      ].filter(f => f),
   },
 });
 

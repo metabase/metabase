@@ -138,7 +138,7 @@ export default class SettingsSingleSignOnForm extends Component {
             type="text"
             value={this.state.clientIDValue}
             placeholder={t`Your Google client ID`}
-            onChange={(event) => this.updateClientID(event.target.value)}
+            onChange={event => this.updateClientID(event.target.value)}
           />
           <div className="py3">
             <div className="flex align-center">
@@ -150,7 +150,7 @@ export default class SettingsSingleSignOnForm extends Component {
                 className="SettingsInput inline-block AdminInput h3 border-left"
                 type="text"
                 value={this.state.domainValue}
-                onChange={(event) => this.updateDomain(event.target.value)}
+                onChange={event => this.updateDomain(event.target.value)}
                 disabled={!hasClientID}
               />
             </div>

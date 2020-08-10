@@ -14,7 +14,7 @@ const containersReq = require.context(
 function getComponents(req) {
   return req
     .keys()
-    .map((key) => Object.assign({}, req(key), { showExample: true }));
+    .map(key => Object.assign({}, req(key), { showExample: true }));
 }
 
 const components = [

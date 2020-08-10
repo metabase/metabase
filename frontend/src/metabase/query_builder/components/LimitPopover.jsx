@@ -12,7 +12,7 @@ const CustomRowLimit = ({ limit, onChangeLimit, onClose }) => {
       defaultValue={limit}
       className={cx({ "text-brand border-brand": limit != null })}
       placeholder={t`Pick a limit`}
-      onKeyPress={(e) => {
+      onKeyPress={e => {
         if (e.key === "Enter") {
           const value = parseInt(e.target.value, 10);
           if (value > 0) {
@@ -48,7 +48,7 @@ const LimitPopover = ({ limit, onChangeLimit, onClose, className }) => (
           value: "custom",
         },
       ]}
-      onChange={(value) =>
+      onChange={value =>
         value === "maximum" ? onChangeLimit(null) : onChangeLimit(2000)
       }
     />

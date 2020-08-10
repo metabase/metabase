@@ -98,12 +98,12 @@ export default class PulseEditChannels extends Component {
   toggleChannel(type, enable) {
     const { pulse } = this.props;
     if (enable) {
-      if (pulse.channels.some((c) => c.channel_type === type)) {
+      if (pulse.channels.some(c => c.channel_type === type)) {
         this.props.setPulse(
           assoc(
             pulse,
             "channels",
-            pulse.channels.map((c) =>
+            pulse.channels.map(c =>
               c.channel_type === type ? assoc(c, "enabled", true) : c,
             ),
           ),
@@ -116,7 +116,7 @@ export default class PulseEditChannels extends Component {
         assoc(
           pulse,
           "channels",
-          pulse.channels.map((c) =>
+          pulse.channels.map(c =>
             c.channel_type === type ? assoc(c, "enabled", false) : c,
           ),
         ),
@@ -138,20 +138,20 @@ export default class PulseEditChannels extends Component {
   willPulseSkip = () => {
     const cards = _.pluck(this.props.pulse.cards, "id");
     const cardPreviews = this.props.cardPreviews;
-    const previews = _.map(cards, (id) => _.findWhere(cardPreviews, { id }));
+    const previews = _.map(cards, id => _.findWhere(cardPreviews, { id }));
     const types = _.pluck(previews, "pulse_card_type");
     const empty = _.isEqual(_.uniq(types), ["empty"]);
     return empty && this.props.pulse.skip_if_empty;
   };
 
   renderFields(channel, index, channelSpec) {
-    const valueForField = (field) => {
+    const valueForField = field => {
       const value = channel.details && channel.details[field.name];
       return value != null ? value : null; // convert undefined to null so Uncontrollable doesn't ignore changes
     };
     return (
       <div>
-        {channelSpec.fields.map((field) => (
+        {channelSpec.fields.map(field => (
           <div key={field.name} className={field.name}>
             <span className="h4 text-bold mr1">{field.displayName}</span>
             {field.type === "select" ? (
@@ -161,14 +161,14 @@ export default class PulseEditChannels extends Component {
                 placeholder={t`Pick a user or channel...`}
                 searchProp="name"
                 // Address #5799 where `details` object is missing for some reason
-                onChange={(o) =>
+                onChange={o =>
                   this.onChannelPropertyChange(index, "details", {
                     ...channel.details,
                     [field.name]: o.target.value,
                   })
                 }
               >
-                {field.options.map((option) => (
+                {field.options.map(option => (
                   <Option name={option} value={option}>
                     {option}
                   </Option>
@@ -200,7 +200,7 @@ export default class PulseEditChannels extends Component {
               recipients={channel.recipients}
               recipientTypes={channelSpec.recipients}
               users={this.props.users}
-              onRecipientsChange={(recipients) =>
+              onRecipientsChange={recipients =>
                 this.onChannelPropertyChange(index, "recipients", recipients)
               }
             />
@@ -218,10 +218,9 @@ export default class PulseEditChannels extends Component {
             )}
             scheduleOptions={channelSpec.schedules}
             textBeforeInterval={t`Sent`}
-            textBeforeSendTime={t`${
-              CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] ||
-              t`Messages`
-            } will be sent at`}
+            textBeforeSendTime={t`${CHANNEL_NOUN_PLURAL[
+              channelSpec && channelSpec.type
+            ] || t`Messages`} will be sent at`}
             onScheduleChange={this.onChannelScheduleChange.bind(this, index)}
           />
         )}
@@ -301,7 +300,7 @@ export default class PulseEditChannels extends Component {
     };
     return (
       <ul className="bordered rounded bg-white">
-        {Object.values(channels).map((channelSpec) =>
+        {Object.values(channels).map(channelSpec =>
           this.renderChannelSection(channelSpec),
         )}
       </ul>

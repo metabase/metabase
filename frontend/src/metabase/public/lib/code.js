@@ -98,7 +98,9 @@ var METABASE_SECRET_KEY = ${JSON.stringify(secretKey)};
 
 var payload = {
   resource: { ${resourceType}: ${resourceId} },
-  params: ${JSON.stringify(params, null, 2).split("\n").join("\n  ")},
+  params: ${JSON.stringify(params, null, 2)
+    .split("\n")
+    .join("\n  ")},
   exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration
 };
 var token = jwt.sign(payload, METABASE_SECRET_KEY);

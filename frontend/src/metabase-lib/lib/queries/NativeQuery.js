@@ -107,7 +107,7 @@ export default class NativeQuery extends AtomicQuery {
       updateIn(
         this.datasetQuery(),
         ["native", "template-tags"],
-        (tt) => tt || {},
+        tt => tt || {},
       ),
     );
   }
@@ -227,9 +227,9 @@ export default class NativeQuery extends AtomicQuery {
       updateIn(
         this._datasetQuery,
         ["native", "template_tags"],
-        (templateTags) => {
+        templateTags => {
           const entries = Array.from(Object.entries(templateTags));
-          const oldIndex = _.findIndex(entries, (entry) => entry[1].id === id);
+          const oldIndex = _.findIndex(entries, entry => entry[1].id === id);
           entries.splice(newIndex, 0, entries.splice(oldIndex, 1)[0]);
           return _.object(entries);
         },
@@ -268,7 +268,7 @@ export default class NativeQuery extends AtomicQuery {
     return Object.values(this.templateTagsMap());
   }
   templateTagsWithoutSnippets(): TemplateTag[] {
-    return this.templateTags().filter((t) => t.type !== "snippet");
+    return this.templateTags().filter(t => t.type !== "snippet");
   }
   templateTagsMap(): TemplateTags {
     return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
@@ -276,7 +276,7 @@ export default class NativeQuery extends AtomicQuery {
   allTemplateTagsAreValid(): boolean {
     return this.templateTags().every(
       // field filters require a field
-      (t) => !(t.type === "dimension" && t.dimension == null),
+      t => !(t.type === "dimension" && t.dimension == null),
     );
   }
 
@@ -302,9 +302,9 @@ export default class NativeQuery extends AtomicQuery {
     dimensionFilter: DimensionFilter = () => true,
   ): DimensionOptions {
     const dimensions = this.templateTags()
-      .filter((tag) => tag.type === "dimension")
+      .filter(tag => tag.type === "dimension")
       .map(
-        (tag) =>
+        tag =>
           new TemplateTagDimension(null, [tag.name], this.metadata(), this),
       )
       .filter(dimensionFilter);
@@ -316,15 +316,15 @@ export default class NativeQuery extends AtomicQuery {
 
   variables(variableFilter: VariableFilter = () => true): Variable[] {
     return this.templateTags()
-      .filter((tag) => tag.type !== "dimension")
-      .map((tag) => new TemplateTagVariable([tag.name], this.metadata(), this))
+      .filter(tag => tag.type !== "dimension")
+      .map(tag => new TemplateTagVariable([tag.name], this.metadata(), this))
       .filter(variableFilter);
   }
 
   updateSnippetsWithIds(snippets): NativeQuery {
     const tagsBySnippetName = _.chain(this.templateTags())
-      .filter((tag) => tag.type === "snippet" && tag["snippet-id"] == null)
-      .groupBy((tag) => tag["snippet-name"])
+      .filter(tag => tag.type === "snippet" && tag["snippet-id"] == null)
+      .groupBy(tag => tag["snippet-name"])
       .value();
 
     if (Object.keys(tagsBySnippetName).length === 0) {
@@ -346,8 +346,8 @@ export default class NativeQuery extends AtomicQuery {
 
   updateQueryTextWithNewSnippetNames(snippets): NativeQuery {
     const tagsBySnippetId = _.chain(this.templateTags())
-      .filter((tag) => tag.type === "snippet")
-      .groupBy((tag) => tag["snippet-id"])
+      .filter(tag => tag.type === "snippet")
+      .groupBy(tag => tag["snippet-id"])
       .value();
 
     if (Object.keys(tagsBySnippetId).length === 0) {

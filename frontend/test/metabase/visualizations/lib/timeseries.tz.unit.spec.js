@@ -4,7 +4,7 @@ import moment from "moment-timezone";
 
 import { computeTimeseriesDataInverval } from "metabase/visualizations/lib/timeseries";
 
-testAcrossTimezones((reportTz) => {
+testAcrossTimezones(reportTz => {
   describe("computeTimeseriesDataInvervalIndex", () => {
     [
       ["hour", 6, ["2015-01-01T00:00:00", "2016-05-04T06:00:00"]],
@@ -16,7 +16,7 @@ testAcrossTimezones((reportTz) => {
     ].map(([expectedInterval, expectedCount, data]) => {
       it(`should return ${expectedCount} ${expectedInterval}`, () => {
         // parse timestamps in reporting timezone and serialize
-        const xValues = data.map((d) => moment.tz(d, reportTz).format());
+        const xValues = data.map(d => moment.tz(d, reportTz).format());
 
         const { interval, count } = computeTimeseriesDataInverval(xValues);
 

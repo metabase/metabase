@@ -23,12 +23,12 @@ const ChartSettingSelect = ({
         (options.length === 1 && options[0].value === value),
     })}
     value={value}
-    onChange={(e) => onChange(e.target.value)}
+    onChange={e => onChange(e.target.value)}
     placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
     isInitiallyOpen={isInitiallyOpen}
     {...props}
   >
-    {options.map((option) => (
+    {options.map(option => (
       <Option key={option.value} name={option.name} value={option.value}>
         {option.name}
       </Option>

@@ -28,7 +28,7 @@ import {
 
 import * as metadataActions from "metabase/redux/metadata";
 
-const emptyStateData = (table) => {
+const emptyStateData = table => {
   return {
     message: t`Questions about this table will appear here as they're added`,
     icon: "all",
@@ -51,7 +51,10 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class TableQuestions extends Component {
   static propTypes = {
     table: PropTypes.object.isRequired,

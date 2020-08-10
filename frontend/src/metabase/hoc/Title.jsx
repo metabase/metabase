@@ -8,13 +8,13 @@ const SEPARATOR = " · ";
 
 const updateDocumentTitle = _.debounce(() => {
   document.title = componentStack
-    .map((component) => component._documentTitle)
-    .filter((title) => title)
+    .map(component => component._documentTitle)
+    .filter(title => title)
     .reverse()
     .join(SEPARATOR);
 });
 
-const title = (documentTitleOrGetter) => (ComposedComponent) =>
+const title = documentTitleOrGetter => ComposedComponent =>
   class extends React.Component {
     static displayName =
       "Title[" +

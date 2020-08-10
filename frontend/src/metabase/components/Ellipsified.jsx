@@ -58,7 +58,7 @@ export default class Ellipsified extends Component {
         maxWidth={tooltipMaxWidth}
       >
         <div
-          ref={(r) => (this._content = r)}
+          ref={r => (this._content = r)}
           className={className}
           style={{
             ...style,

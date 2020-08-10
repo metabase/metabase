@@ -42,14 +42,14 @@ const SortableColumnList = SortableContainer(
 );
 
 export default class ChartSettingOrderedColumns extends Component {
-  handleEnable = (columnSetting) => {
+  handleEnable = columnSetting => {
     const columnSettings = [...this.props.value];
     const index = columnSetting.index;
     columnSettings[index] = { ...columnSettings[index], enabled: true };
     this.props.onChange(columnSettings);
   };
 
-  handleDisable = (columnSetting) => {
+  handleDisable = columnSetting => {
     const columnSettings = [...this.props.value];
     const index = columnSetting.index;
     columnSettings[index] = { ...columnSettings[index], enabled: false };
@@ -62,7 +62,7 @@ export default class ChartSettingOrderedColumns extends Component {
     this.props.onChange(fields);
   };
 
-  handleEdit = (columnSetting) => {
+  handleEdit = columnSetting => {
     const column = findColumnForColumnSetting(
       this.props.columns,
       columnSetting,
@@ -77,13 +77,13 @@ export default class ChartSettingOrderedColumns extends Component {
     }
   };
 
-  handleAddNewField = (fieldRef) => {
+  handleAddNewField = fieldRef => {
     const { value, onChange } = this.props;
     const columnSettings = [...value, { fieldRef, enabled: true }];
     onChange(columnSettings);
   };
 
-  getColumnName = (columnSetting) =>
+  getColumnName = columnSetting =>
     getFriendlyName(
       findColumnForColumnSetting(this.props.columns, columnSetting) || {
         display_name: "[Unknown]",
@@ -96,8 +96,8 @@ export default class ChartSettingOrderedColumns extends Component {
 
     let additionalFieldOptions = { count: 0 };
     if (columns && query instanceof StructuredQuery) {
-      additionalFieldOptions = query.fieldsOptions((dimension) => {
-        return !_.find(columns, (column) =>
+      additionalFieldOptions = query.fieldsOptions(dimension => {
+        return !_.find(columns, column =>
           dimension.isSameBaseDimension(column.field_ref),
         );
       });
@@ -105,11 +105,11 @@ export default class ChartSettingOrderedColumns extends Component {
 
     const [enabledColumns, disabledColumns] = _.partition(
       value
-        .filter((columnSetting) =>
+        .filter(columnSetting =>
           findColumnForColumnSetting(columns, columnSetting),
         )
         .map((columnSetting, index) => ({ ...columnSetting, index })),
-      (columnSetting) => columnSetting.enabled,
+      columnSetting => columnSetting.enabled,
     );
 
     return (
@@ -150,7 +150,7 @@ export default class ChartSettingOrderedColumns extends Component {
                 onAdd={() => this.handleAddNewField(dimension.mbql())}
               />
             ))}
-            {additionalFieldOptions.fks.map((fk) => (
+            {additionalFieldOptions.fks.map(fk => (
               <div>
                 <div className="my2 text-medium text-bold text-uppercase text-small">
                   {fk.name ||

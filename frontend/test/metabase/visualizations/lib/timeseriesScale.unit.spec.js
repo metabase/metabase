@@ -13,7 +13,7 @@ describe("timeseriesScale", () => {
       moment("2019-03-12T00:00:00.000Z"),
     ]);
 
-    expect(scale.ticks().map((t) => t.toISOString())).toEqual([
+    expect(scale.ticks().map(t => t.toISOString())).toEqual([
       "2019-03-08T00:00:00.000Z",
       "2019-03-09T00:00:00.000Z",
       "2019-03-10T00:00:00.000Z",
@@ -32,7 +32,7 @@ describe("timeseriesScale", () => {
       moment("2019-03-12T00:00:00.000-07"),
     ]);
 
-    expect(scale.ticks().map((t) => t.toISOString())).toEqual([
+    expect(scale.ticks().map(t => t.toISOString())).toEqual([
       "2019-03-08T08:00:00.000Z",
       "2019-03-09T08:00:00.000Z",
       "2019-03-10T08:00:00.000Z",
@@ -51,7 +51,7 @@ describe("timeseriesScale", () => {
       moment("2019-03-10T04:00:00.000-07"),
     ]);
 
-    expect(scale.ticks().map((t) => t.format())).toEqual([
+    expect(scale.ticks().map(t => t.format())).toEqual([
       "2019-03-10T00:00:00-08:00",
       "2019-03-10T01:00:00-08:00",
       "2019-03-10T03:00:00-07:00",
@@ -69,7 +69,7 @@ describe("timeseriesScale", () => {
       moment("2019-11-03T04:00:00.000-08"),
     ]);
 
-    expect(scale.ticks().map((t) => t.format())).toEqual([
+    expect(scale.ticks().map(t => t.format())).toEqual([
       "2019-11-03T00:00:00-07:00",
       "2019-11-03T01:00:00-07:00",
       "2019-11-03T01:00:00-08:00",
@@ -89,7 +89,7 @@ describe("timeseriesScale", () => {
       moment("2019-01-03T18:15:00.000Z"),
     ]);
 
-    expect(scale.ticks().map((t) => t.toISOString())).toEqual([
+    expect(scale.ticks().map(t => t.toISOString())).toEqual([
       "2019-01-01T18:15:00.000Z",
       "2019-01-02T18:15:00.000Z",
       "2019-01-03T18:15:00.000Z",
@@ -106,7 +106,7 @@ describe("timeseriesScale", () => {
       moment("2019-03-12T12:34:56.789Z"),
     ]);
 
-    expect(scale.ticks().map((t) => t.toISOString())).toEqual([
+    expect(scale.ticks().map(t => t.toISOString())).toEqual([
       "2019-03-08T00:00:00.000Z",
       "2019-03-09T00:00:00.000Z",
       "2019-03-10T00:00:00.000Z",
@@ -138,7 +138,7 @@ describe("timeseriesScale", () => {
       moment("2019-04-12T12:34:56.789Z"),
     ]);
 
-    expect(scale.ticks().map((t) => t.toISOString())).toEqual([
+    expect(scale.ticks().map(t => t.toISOString())).toEqual([
       "2019-03-31T16:00:00.000Z",
     ]);
   });
@@ -153,7 +153,7 @@ describe("timeseriesScale", () => {
       moment("2020-02-01T00:00:00.000Z"),
     ]);
 
-    expect(scale.ticks().map((t) => t.toISOString())).toEqual([
+    expect(scale.ticks().map(t => t.toISOString())).toEqual([
       "2019-01-01T00:00:00.000Z",
       "2019-04-01T00:00:00.000Z",
       "2019-07-01T00:00:00.000Z",
@@ -172,7 +172,7 @@ describe("timeseriesScale", () => {
       moment("2020-01-01T00:00:00.000Z"),
     ]);
 
-    expect(scale.ticks().map((t) => t.toISOString())).toEqual([
+    expect(scale.ticks().map(t => t.toISOString())).toEqual([
       "1900-01-01T00:00:00.000Z",
       "1950-01-01T00:00:00.000Z",
       "2000-01-01T00:00:00.000Z",
@@ -251,7 +251,7 @@ describe("timeseriesScale", () => {
       .range([0, 30]);
 
     expect(
-      ["2018-11-01", "2018-12-01", "2019-01-01", "2019-02-01"].map((d) =>
+      ["2018-11-01", "2018-12-01", "2019-01-01", "2019-02-01"].map(d =>
         scale(moment(`${d}T00:00:00.000Z`)),
       ),
     ).toEqual([0, 10, 20, 30]);
@@ -270,7 +270,7 @@ describe("timeseriesScale", () => {
       .range([0, 30]);
 
     expect(
-      ["2018-11-15", "2018-12-15"].map((d) =>
+      ["2018-11-15", "2018-12-15"].map(d =>
         scale(moment(`${d}T00:00:00.000Z`)),
       ),
     ).toEqual([0, 30]);
@@ -291,7 +291,7 @@ describe("timeseriesScale", () => {
       .range([0, 731]);
 
     expect(
-      ["2019-01-01", "2020-01-01", "2021-01-01"].map((d) =>
+      ["2019-01-01", "2020-01-01", "2021-01-01"].map(d =>
         scale(moment(`${d}T00:00:00.000Z`)),
       ),
     ).toEqual([0, 365, 731]);
@@ -315,7 +315,7 @@ describe("timeseriesScale", () => {
         "2019-11-02T00:00:00.000-07",
         "2019-11-03T00:00:00.000-07",
         "2019-11-04T00:00:00.000-08",
-      ].map((d) => scale(moment(d))),
+      ].map(d => scale(moment(d))),
     ).toEqual([0, 24, 49]);
   });
 
@@ -343,7 +343,7 @@ describe("timeseriesScale", () => {
         "2020-02-01",
         "2020-03-01",
         "2020-03-11",
-      ].map((d) => scale(moment(`${d}T00:00:00.000Z`))),
+      ].map(d => scale(moment(`${d}T00:00:00.000Z`))),
     ).toEqual([0, 10, 40, 70, 80]);
   });
 });

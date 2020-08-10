@@ -153,8 +153,8 @@ export const addCardToDashboard = ({
   const { dashboards, dashcards } = getState().dashboard;
   const dashboard: DashboardWithCards = dashboards[dashId];
   const existingCards: Array<DashCard> = dashboard.ordered_cards
-    .map((id) => dashcards[id])
-    .filter((dc) => !dc.isRemoved);
+    .map(id => dashcards[id])
+    .filter(dc => !dc.isRemoved);
   const dashcard: DashCard = {
     id: Math.random(), // temporary id
     dashboard_id: dashId,
@@ -171,19 +171,19 @@ export const addCardToDashboard = ({
   dispatch(loadMetadataForDashboard([dashcard]));
 };
 
-export const addDashCardToDashboard = function ({
+export const addDashCardToDashboard = function({
   dashId,
   dashcardOverrides,
 }: {
   dashId: DashCardId,
   dashcardOverrides: {},
 }) {
-  return function (dispatch, getState) {
+  return function(dispatch, getState) {
     const { dashboards, dashcards } = getState().dashboard;
     const dashboard: DashboardWithCards = dashboards[dashId];
     const existingCards: Array<DashCard> = dashboard.ordered_cards
-      .map((id) => dashcards[id])
-      .filter((dc) => !dc.isRemoved);
+      .map(id => dashcards[id])
+      .filter(dc => !dc.isRemoved);
     const dashcard: DashCard = {
       id: Math.random(), // temporary id
       card_id: null,
@@ -199,7 +199,7 @@ export const addDashCardToDashboard = function ({
   };
 };
 
-export const addTextDashCardToDashboard = function ({
+export const addTextDashCardToDashboard = function({
   dashId,
 }: {
   dashId: DashCardId,
@@ -222,21 +222,21 @@ export const addTextDashCardToDashboard = function ({
 
 export const saveDashboardAndCards = createThunkAction(
   SAVE_DASHBOARD_AND_CARDS,
-  function () {
-    return async function (dispatch, getState) {
+  function() {
+    return async function(dispatch, getState) {
       const { dashboards, dashcards, dashboardId } = getState().dashboard;
       const dashboard = {
         ...dashboards[dashboardId],
         ordered_cards: dashboards[dashboardId].ordered_cards.map(
-          (dashcardId) => dashcards[dashcardId],
+          dashcardId => dashcards[dashcardId],
         ),
       };
 
       // remove isRemoved dashboards
       await Promise.all(
         dashboard.ordered_cards
-          .filter((dc) => dc.isRemoved && !dc.isAdded)
-          .map((dc) =>
+          .filter(dc => dc.isRemoved && !dc.isAdded)
+          .map(dc =>
             DashboardApi.removecard({
               dashId: dashboard.id,
               dashcardId: dc.id,
@@ -247,8 +247,8 @@ export const saveDashboardAndCards = createThunkAction(
       // add isAdded dashboards
       const updatedDashcards = await Promise.all(
         dashboard.ordered_cards
-          .filter((dc) => !dc.isRemoved)
-          .map(async (dc) => {
+          .filter(dc => !dc.isRemoved)
+          .map(async dc => {
             if (dc.isAdded) {
               const result = await DashboardApi.addcard({
                 dashId: dashboard.id,
@@ -277,8 +277,8 @@ export const saveDashboardAndCards = createThunkAction(
       // update modified cards
       await Promise.all(
         dashboard.ordered_cards
-          .filter((dc) => dc.card.isDirty)
-          .map(async (dc) => CardApi.update(dc.card)),
+          .filter(dc => dc.card.isDirty)
+          .map(async dc => CardApi.update(dc.card)),
       );
 
       // update the dashboard itself
@@ -290,7 +290,7 @@ export const saveDashboardAndCards = createThunkAction(
       }
 
       // reposition the cards
-      if (_.some(updatedDashcards, (dc) => dc.isDirty || dc.isAdded)) {
+      if (_.some(updatedDashcards, dc => dc.isDirty || dc.isAdded)) {
         const cards = updatedDashcards.map(
           ({
             id,
@@ -314,7 +314,7 @@ export const saveDashboardAndCards = createThunkAction(
             parameter_mappings:
               parameter_mappings &&
               parameter_mappings.filter(
-                (mapping) =>
+                mapping =>
                   // filter out mappings for deleted paramters
                   _.findWhere(dashboard.parameters, {
                     id: mapping.parameter_id,
@@ -368,7 +368,7 @@ function getAllDashboardCards(dashboard) {
   if (dashboard) {
     for (const dashcard of dashboard.ordered_cards) {
       const cards = [dashcard.card].concat(dashcard.series || []);
-      results.push(...cards.map((card) => ({ card, dashcard })));
+      results.push(...cards.map(card => ({ card, dashcard })));
     }
   }
   return results;
@@ -380,7 +380,7 @@ function isVirtualDashCard(dashcard) {
 
 export const fetchDashboardCardData = createThunkAction(
   FETCH_DASHBOARD_CARD_DATA,
-  (options) => (dispatch, getState) => {
+  options => (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
     for (const { card, dashcard } of getAllDashboardCards(dashboard)) {
       // we skip over virtual cards, i.e. dashcards that do not have backing cards in the backend
@@ -420,12 +420,12 @@ function setFetchCardDataCancel(card_id, dashcard_id, deferred) {
   cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = deferred;
 }
 
-export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function (
+export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
   card,
   dashcard,
   { reload, clear, ignoreCache } = {},
 ) {
-  return async function (dispatch, getState) {
+  return async function(dispatch, getState) {
     // If the dataset_query was filtered then we don't have permisison to view this card, so
     // shortcircuit and return a fake 403
     if (!card.dataset_query) {
@@ -567,7 +567,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function (
   };
 });
 
-export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, (card) => ({
+export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
   id: card.id,
   result: true,
 }));
@@ -578,13 +578,13 @@ function expandInlineDashboard(dashboard) {
     name: "",
     parameters: [],
     ...dashboard,
-    ordered_cards: dashboard.ordered_cards.map((dashcard) => ({
+    ordered_cards: dashboard.ordered_cards.map(dashcard => ({
       visualization_settings: {},
       parameter_mappings: [],
       ...dashcard,
       id: _.uniqueId("dashcard"),
       card: expandInlineCard(dashcard.card),
-      series: (dashcard.series || []).map((card) => expandInlineCard(card)),
+      series: (dashcard.series || []).map(card => expandInlineCard(card)),
     })),
   };
 }
@@ -597,20 +597,20 @@ function expandInlineCard(card) {
   };
 }
 
-export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function (
+export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
   dashId,
   queryParams,
   enableDefaultParameters = true,
 ) {
   let result;
-  return async function (dispatch, getState) {
+  return async function(dispatch, getState) {
     const dashboardType = getDashboardType(dashId);
     if (dashboardType === "public") {
       result = await PublicApi.dashboard({ uuid: dashId });
       result = {
         ...result,
         id: dashId,
-        ordered_cards: result.ordered_cards.map((dc) => ({
+        ordered_cards: result.ordered_cards.map(dc => ({
           ...dc,
           dashboard_id: dashId,
         })),
@@ -620,18 +620,21 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function (
       result = {
         ...result,
         id: dashId,
-        ordered_cards: result.ordered_cards.map((dc) => ({
+        ordered_cards: result.ordered_cards.map(dc => ({
           ...dc,
           dashboard_id: dashId,
         })),
       };
     } else if (dashboardType === "transient") {
-      const subPath = dashId.split("/").slice(3).join("/");
+      const subPath = dashId
+        .split("/")
+        .slice(3)
+        .join("/");
       result = await AutoApi.dashboard({ subPath });
       result = {
         ...result,
         id: dashId,
-        ordered_cards: result.ordered_cards.map((dc) => ({
+        ordered_cards: result.ordered_cards.map(dc => ({
           ...dc,
           dashboard_id: dashId,
         })),
@@ -662,7 +665,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function (
     }
 
     // copy over any virtual cards from the dashcard to the underlying card/question
-    result.ordered_cards.forEach((card) => {
+    result.ordered_cards.forEach(card => {
       if (card.visualization_settings.virtual_card) {
         card.card = Object.assign(
           card.card || {},
@@ -714,7 +717,7 @@ export const setParameterMapping = createThunkAction(
     let parameter_mappings =
       getState().dashboard.dashcards[dashcard_id].parameter_mappings || [];
     parameter_mappings = parameter_mappings.filter(
-      (m) => m.card_id !== card_id || m.parameter_id !== parameter_id,
+      m => m.card_id !== card_id || m.parameter_id !== parameter_id,
     );
     if (target) {
       parameter_mappings = parameter_mappings.concat({
@@ -736,7 +739,7 @@ function updateParameter(dispatch, getState, id, parameterUpdater) {
   const dashboard = getDashboard(getState());
   const index = _.findIndex(
     dashboard && dashboard.parameters,
-    (p) => p.id === id,
+    p => p.id === id,
   );
   if (index >= 0) {
     const parameters = assoc(
@@ -762,9 +765,9 @@ function updateParameters(dispatch, getState, parametersUpdater) {
 
 export const addParameter = createThunkAction(
   ADD_PARAMETER,
-  (parameterOption) => (dispatch, getState) => {
+  parameterOption => (dispatch, getState) => {
     let parameter;
-    updateParameters(dispatch, getState, (parameters) => {
+    updateParameters(dispatch, getState, parameters => {
       parameter = createParameter(parameterOption, parameters);
       return parameters.concat(parameter);
     });
@@ -774,9 +777,9 @@ export const addParameter = createThunkAction(
 
 export const removeParameter = createThunkAction(
   REMOVE_PARAMETER,
-  (parameterId) => (dispatch, getState) => {
-    updateParameters(dispatch, getState, (parameters) =>
-      parameters.filter((p) => p.id !== parameterId),
+  parameterId => (dispatch, getState) => {
+    updateParameters(dispatch, getState, parameters =>
+      parameters.filter(p => p.id !== parameterId),
     );
     return { id: parameterId };
   },
@@ -785,7 +788,7 @@ export const removeParameter = createThunkAction(
 export const setParameterName = createThunkAction(
   SET_PARAMETER_NAME,
   (parameterId, name) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, (parameter) =>
+    updateParameter(dispatch, getState, parameterId, parameter =>
       setParamName(parameter, name),
     );
     return { id: parameterId, name };
@@ -795,7 +798,7 @@ export const setParameterName = createThunkAction(
 export const setParameterDefaultValue = createThunkAction(
   SET_PARAMETER_DEFAULT_VALUE,
   (parameterId, defaultValue) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, (parameter) =>
+    updateParameter(dispatch, getState, parameterId, parameter =>
       setParamDefaultValue(parameter, defaultValue),
     );
     return { id: parameterId, defaultValue };
@@ -808,7 +811,7 @@ export const setParameterIndex = createThunkAction(
     const dashboard = getDashboard(getState());
     const parameterIndex = _.findIndex(
       dashboard.parameters,
-      (p) => p.id === parameterId,
+      p => p.id === parameterId,
     );
     if (parameterIndex >= 0) {
       const parameters = dashboard.parameters.slice();
@@ -900,7 +903,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
 
     open(url, {
       blankOnMetaKey: true,
-      openInSameWindow: (url) => dispatch(push(url)),
+      openInSameWindow: url => dispatch(push(url)),
     });
   },
 );
@@ -909,7 +912,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
 
 const dashboardId = handleActions(
   {
-    [INITIALIZE]: { next: (state) => null },
+    [INITIALIZE]: { next: state => null },
     [FETCH_DASHBOARD]: {
       next: (state, { payload: { dashboardId } }) => dashboardId,
     },
@@ -919,7 +922,7 @@ const dashboardId = handleActions(
 
 const isEditing = handleActions(
   {
-    [INITIALIZE]: { next: (state) => false },
+    [INITIALIZE]: { next: state => false },
     [SET_EDITING_DASHBOARD]: { next: (state, { payload }) => payload },
   },
   false,
@@ -928,7 +931,7 @@ const isEditing = handleActions(
 export function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters && before.embedding_params) {
     return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
-      const slugParam = _.find(before.parameters, (param) => {
+      const slugParam = _.find(before.parameters, param => {
         return param.slug === embedSlug;
       });
       if (slugParam) {
@@ -1066,7 +1069,7 @@ const editingParameterId = handleActions(
 const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
-    [INITIALIZE]: { next: (state) => ({}) },
+    [INITIALIZE]: { next: state => ({}) },
     [FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id, card_id, result } }) =>
         assocIn(state, [dashcard_id, card_id], result),
@@ -1120,12 +1123,12 @@ const loadingDashCards = handleActions(
       next: (state, { payload }) => ({
         ...state,
         dashcardIds: Object.values(payload.entities.dashcard || {})
-          .filter((dc) => !isVirtualDashCard(dc))
-          .map((dc) => dc.id),
+          .filter(dc => !isVirtualDashCard(dc))
+          .map(dc => dc.id),
       }),
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
-      next: (state) => ({
+      next: state => ({
         ...state,
         loadingIds: state.dashcardIds,
         startTime:
@@ -1138,7 +1141,7 @@ const loadingDashCards = handleActions(
     },
     [FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id } }) => {
-        const loadingIds = state.loadingIds.filter((id) => id !== dashcard_id);
+        const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
         return {
           ...state,
           loadingIds,
@@ -1148,7 +1151,7 @@ const loadingDashCards = handleActions(
     },
     [CANCEL_FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id } }) => {
-        const loadingIds = state.loadingIds.filter((id) => id !== dashcard_id);
+        const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
         return {
           ...state,
           loadingIds,
@@ -1160,13 +1163,13 @@ const loadingDashCards = handleActions(
   { dashcardIds: [], loadingIds: [], startTime: null },
 );
 
-const loadMetadataForDashboard = (dashCards) => (dispatch, getState) => {
+const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
   const metadata = getMetadata(getState());
 
   const queries = dashCards
-    .filter((dc) => !isVirtualDashCard(dc) && dc.card.dataset_query) // exclude text cards and queries without perms
-    .flatMap((dc) => [dc.card].concat(dc.series || []))
-    .map((card) => new Question(card, metadata).query());
+    .filter(dc => !isVirtualDashCard(dc) && dc.card.dataset_query) // exclude text cards and queries without perms
+    .flatMap(dc => [dc.card].concat(dc.series || []))
+    .map(card => new Question(card, metadata).query());
 
   return dispatch(loadMetadataForQueries(queries));
 };

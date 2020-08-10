@@ -33,7 +33,7 @@ export default class SnippetModal extends React.Component {
               ? t`Editing ${snippet.name}`
               : t`Create your new snippet`
           }
-          onSaved={(savedSnippet) => {
+          onSaved={savedSnippet => {
             if (snippet.id == null) {
               insertSnippet(savedSnippet);
             } else {

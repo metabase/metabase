@@ -15,8 +15,11 @@ function DataStep({ color, query, databases, updateQuery }) {
         databaseQuery={{ saved: true }}
         selectedDatabaseId={query.databaseId()}
         selectedTableId={query.tableId()}
-        setSourceTableFn={(tableId) =>
-          query.setTableId(tableId).setDefaultQuery().update(updateQuery)
+        setSourceTableFn={tableId =>
+          query
+            .setTableId(tableId)
+            .setDefaultQuery()
+            .update(updateQuery)
         }
         isInitiallyOpen={!query.tableId()}
         triggerElement={
@@ -42,7 +45,7 @@ function DataStep({ color, query, databases, updateQuery }) {
   );
 }
 
-export default connect((state) => ({ databases: getDatabasesList(state) }))(
+export default connect(state => ({ databases: getDatabasesList(state) }))(
   DataStep,
 );
 
@@ -51,7 +54,7 @@ import FieldsPicker from "./FieldsPicker";
 const DataFieldsPicker = ({ className, query, updateQuery }) => {
   const dimensions = query.tableDimensions();
   const selectedDimensions = query.columnDimensions();
-  const selected = new Set(selectedDimensions.map((d) => d.key()));
+  const selected = new Set(selectedDimensions.map(d => d.key()));
   const fields = query.fields();
   return (
     <FieldsPicker
@@ -64,14 +67,14 @@ const DataFieldsPicker = ({ className, query, updateQuery }) => {
         query
           .setFields(
             dimensions
-              .filter((d) => {
+              .filter(d => {
                 if (d === dimension) {
                   return !selected.has(d.key());
                 } else {
                   return selected.has(d.key());
                 }
               })
-              .map((d) => d.mbql()),
+              .map(d => d.mbql()),
           )
           .update(updateQuery);
       }}

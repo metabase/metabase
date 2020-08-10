@@ -26,7 +26,7 @@ export const loadMemberships = createAction(LOAD_MEMBERSHIPS, async () =>
   _.chain(await PermissionsApi.memberships())
     .values()
     .flatten()
-    .map((m) => [m.membership_id, m])
+    .map(m => [m.membership_id, m])
     .object()
     .value(),
 );

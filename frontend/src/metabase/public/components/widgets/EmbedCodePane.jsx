@@ -70,7 +70,7 @@ export default class EmbedCodePane extends Component {
                 params,
                 displayOptions,
               })}
-              onChangeOption={(option) => {
+              onChangeOption={option => {
                 if (
                   option &&
                   option.embedOption &&
@@ -83,7 +83,7 @@ export default class EmbedCodePane extends Component {
             />
             <CodeSample
               className="mt2"
-              ref={(embedSample) => (this._embedSample = embedSample)}
+              ref={embedSample => (this._embedSample = embedSample)}
               title={t`Then insert this code snippet in your HTML template or single page app.`}
               options={getSignedEmbedOptions({ iframeUrl })}
             />

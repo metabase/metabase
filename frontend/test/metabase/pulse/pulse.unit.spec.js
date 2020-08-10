@@ -29,7 +29,12 @@ describe("recipient picker", () => {
         />,
       );
 
-      expect(wrapper.find(TokenField).dive().state().isFocused).toBe(true);
+      expect(
+        wrapper
+          .find(TokenField)
+          .dive()
+          .state().isFocused,
+      ).toBe(true);
     });
     it("should not be focused if there are existing recipients", () => {
       const wrapper = shallow(
@@ -41,7 +46,12 @@ describe("recipient picker", () => {
         />,
       );
 
-      expect(wrapper.find(TokenField).dive().state().isFocused).toBe(false);
+      expect(
+        wrapper
+          .find(TokenField)
+          .dive()
+          .state().isFocused,
+      ).toBe(false);
     });
   });
 });

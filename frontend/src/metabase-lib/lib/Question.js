@@ -327,8 +327,8 @@ export default class Question {
       // TODO: move to StructuredQuery?
       const aggregations = query.aggregations();
       const breakouts = query.breakouts();
-      const breakoutDimensions = breakouts.map((b) => b.dimension());
-      const breakoutFields = breakoutDimensions.map((d) => d.field());
+      const breakoutDimensions = breakouts.map(b => b.dimension());
+      const breakoutFields = breakoutDimensions.map(d => d.field());
       if (aggregations.length === 0 && breakouts.length === 0) {
         return this.setDisplay("table");
       }
@@ -367,7 +367,7 @@ export default class Question {
         }
       }
       if (aggregations.length === 1 && breakouts.length === 2) {
-        if (_.any(breakoutFields, (f) => f.isDate())) {
+        if (_.any(breakoutFields, f => f.isDate())) {
           return this.setDisplay("line");
         }
         if (
@@ -378,7 +378,7 @@ export default class Question {
             "map.type": "grid",
           });
         }
-        if (_.all(breakoutFields, (f) => f.isCategory())) {
+        if (_.all(breakoutFields, f => f.isCategory())) {
           return this.setDisplay("bar");
         }
       }
@@ -387,7 +387,9 @@ export default class Question {
   }
 
   setDefaultQuery() {
-    return this.query().setDefaultQuery().question();
+    return this.query()
+      .setDefaultQuery()
+      .question();
   }
 
   settings(): VisualizationSettings {
@@ -556,7 +558,7 @@ export default class Question {
         removedColumnNames.length === 0
       ) {
         const addedMetricColumnNames = addedColumnNames.filter(
-          (name) =>
+          name =>
             query.columnDimensionWithName(name) instanceof AggregationDimension,
         );
         if (addedMetricColumnNames.length > 0) {
@@ -577,7 +579,7 @@ export default class Question {
         return this.updateSettings({
           "table.columns": [
             ...this.setting("table.columns"),
-            ...addedColumnNames.map((name) => {
+            ...addedColumnNames.map(name => {
               const dimension = query.columnDimensionWithName(name);
               return {
                 name: name,
@@ -615,7 +617,7 @@ export default class Question {
         column: clicked.column && query.topLevelColumn(clicked.column),
         dimensions:
           clicked.dimensions &&
-          clicked.dimensions.map((dimension) => ({
+          clicked.dimensions.map(dimension => ({
             ...dimension,
             column: dimension.column && query.topLevelColumn(dimension.column),
           })),
@@ -802,9 +804,9 @@ export default class Question {
 
     const parameters = this.parametersList()
       // include only parameters that have a value applied
-      .filter((param) => _.has(param, "value"))
+      .filter(param => _.has(param, "value"))
       // only the superset of parameters object that API expects
-      .map((param) => _.pick(param, "type", "target", "value"));
+      .map(param => _.pick(param, "type", "target", "value"));
 
     if (canUseCardApiEndpoint) {
       const queryParams = {
@@ -819,7 +821,7 @@ export default class Question {
         }),
       ];
     } else {
-      const getDatasetQueryResult = (datasetQuery) => {
+      const getDatasetQueryResult = datasetQuery => {
         const datasetQueryWithParameters = {
           ...datasetQuery,
           parameters,
@@ -831,7 +833,7 @@ export default class Question {
         );
       };
 
-      const datasetQueries = this.atomicQueries().map((query) =>
+      const datasetQueries = this.atomicQueries().map(query =>
         query.datasetQuery(),
       );
       return Promise.all(datasetQueries.map(getDatasetQueryResult));

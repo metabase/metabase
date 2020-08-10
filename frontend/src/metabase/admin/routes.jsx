@@ -143,7 +143,7 @@ const getRoutes = (store, IsAdmin) => (
     {getAdminPermissionsRoutes(store)}
 
     {/* PLUGINS */}
-    {PLUGIN_ADMIN_ROUTES.map((getRoutes) => getRoutes(store))}
+    {PLUGIN_ADMIN_ROUTES.map(getRoutes => getRoutes(store))}
   </Route>
 );
 

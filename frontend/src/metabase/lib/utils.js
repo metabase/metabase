@@ -181,7 +181,7 @@ const MetabaseUtils = {
       rc: -1,
     };
 
-    const getComponents = (x) =>
+    const getComponents = x =>
       // v1.2.3-BETA1
       x
         .toLowerCase()
@@ -189,9 +189,9 @@ const MetabaseUtils = {
         .replace(/^v/, "")
         // 1.2.3-beta1
         .split(/[.-]*([0-9]+)[.-]*/)
-        .filter((c) => c)
+        .filter(c => c)
         // ["1", "2", "3", "beta", "1"]
-        .map((c) => SPECIAL_COMPONENTS[c] || parseInt(c, 10));
+        .map(c => SPECIAL_COMPONENTS[c] || parseInt(c, 10));
     // [1, 2, 3, -2, 1]
 
     const aComponents = getComponents(aVersion);

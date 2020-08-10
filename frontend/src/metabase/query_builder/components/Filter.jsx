@@ -44,7 +44,7 @@ const DEFAULT_FILTER_RENDERER: FilterRenderer = ({
   return (
     <span>
       {items
-        .filter((f) => f)
+        .filter(f => f)
         .map((item, index, array) => (
           <span>
             {item}

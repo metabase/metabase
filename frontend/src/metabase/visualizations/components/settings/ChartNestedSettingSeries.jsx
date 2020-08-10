@@ -25,7 +25,7 @@ export default class ChartNestedSettingSeries extends React.Component {
       settings,
     } = this.props;
     const objectKey = object && getObjectKey(object);
-    const isSelected = (single) => objectKey === getObjectKey(single);
+    const isSelected = single => objectKey === getObjectKey(single);
 
     const display = object && object.card.display;
     const isLineAreaBar = ["line", "area", "bar", "combo"].includes(display);
@@ -34,7 +34,7 @@ export default class ChartNestedSettingSeries extends React.Component {
     return (
       <div>
         {objects.length < 100 &&
-          objects.map((single) => {
+          objects.map(single => {
             const key = getObjectKey(single);
             const settings = allComputedSettings[key] || {};
             return (
@@ -46,7 +46,7 @@ export default class ChartNestedSettingSeries extends React.Component {
                   <ColorPicker
                     value={settings.color}
                     triggerSize={21}
-                    onChange={(value) =>
+                    onChange={value =>
                       onChangeObjectSettings(single, { color: value })
                     }
                   />
@@ -56,7 +56,7 @@ export default class ChartNestedSettingSeries extends React.Component {
                     style={{ paddingTop: 0, paddingBottom: 0 }}
                     size={1}
                     value={settings.title}
-                    onChange={(e) =>
+                    onChange={e =>
                       onChangeObjectSettings(single, { title: e.target.value })
                     }
                   />
@@ -65,9 +65,9 @@ export default class ChartNestedSettingSeries extends React.Component {
                       className="ml1 align-self-stretch"
                       value={settings.display}
                       options={["line", "area", "bar"]}
-                      optionValueFn={(o) => o}
-                      optionNameFn={(o) => <Icon name={o} />}
-                      onChange={(value) =>
+                      optionValueFn={o => o}
+                      optionNameFn={o => <Icon name={o} />}
+                      onChange={value =>
                         onChangeObjectSettings(single, { display: value })
                       }
                     />

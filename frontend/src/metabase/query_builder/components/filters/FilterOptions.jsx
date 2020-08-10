@@ -8,7 +8,7 @@ import CheckBox from "metabase/components/CheckBox";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 const OPTION_NAMES = {
-  "include-current": (filter) => {
+  "include-current": filter => {
     const period = (
       <strong key="notsurewhythisneedsakey">
         {getCurrentIntervalName(filter)}

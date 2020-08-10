@@ -28,7 +28,10 @@ const mapDispatchToProps = {
   updateEmbeddingParams,
 };
 
-@connect(null, mapDispatchToProps)
+@connect(
+  null,
+  mapDispatchToProps,
+)
 export default class DashboardEmbedWidget extends Component {
   _modal: ?ModalWithTrigger;
 
@@ -44,7 +47,7 @@ export default class DashboardEmbedWidget extends Component {
     } = this.props;
     return (
       <ModalWithTrigger
-        ref={(m) => (this._modal = m)}
+        ref={m => (this._modal = m)}
         full
         triggerElement={
           <Tooltip tooltip={t`Sharing and embedding`}>
@@ -71,10 +74,10 @@ export default class DashboardEmbedWidget extends Component {
           resourceType="dashboard"
           onCreatePublicLink={() => createPublicLink(dashboard)}
           onDisablePublicLink={() => deletePublicLink(dashboard)}
-          onUpdateEnableEmbedding={(enableEmbedding) =>
+          onUpdateEnableEmbedding={enableEmbedding =>
             updateEnableEmbedding(dashboard, enableEmbedding)
           }
-          onUpdateEmbeddingParams={(embeddingParams) =>
+          onUpdateEmbeddingParams={embeddingParams =>
             updateEmbeddingParams(dashboard, embeddingParams)
           }
           onClose={() => {

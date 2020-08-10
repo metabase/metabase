@@ -24,7 +24,7 @@ export const CardApi = {
   list: GET("/api/card", (cards, { data }) =>
     // HACK: support for the "q" query param until backend implements it
     cards.filter(
-      (card) =>
+      card =>
         !data.q || card.name.toLowerCase().indexOf(data.q.toLowerCase()) >= 0,
     ),
   ),
@@ -149,23 +149,23 @@ export const MetabaseApi = {
   // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
   table_query_metadata: GET(
     "/api/table/:tableId/query_metadata",
-    async (table) => {
+    async table => {
       // HACK: inject GA metadata that we don't have intergrated on the backend yet
       if (table && table.db && table.db.engine === "googleanalytics") {
         const GA = await getGAMetadata();
-        table.fields = table.fields.map((field) => ({
+        table.fields = table.fields.map(field => ({
           ...field,
           ...GA.fields[field.name],
         }));
         table.metrics.push(
-          ...GA.metrics.map((metric) => ({
+          ...GA.metrics.map(metric => ({
             ...metric,
             table_id: table.id,
             googleAnalyics: true,
           })),
         );
         table.segments.push(
-          ...GA.segments.map((segment) => ({
+          ...GA.segments.map(segment => ({
             ...segment,
             table_id: table.id,
             googleAnalyics: true,
@@ -178,7 +178,7 @@ export const MetabaseApi = {
         for (const field of table.fields) {
           if (field.dimension_options) {
             field.dimension_options = field.dimension_options.map(
-              (id) => table.dimension_options[id],
+              id => table.dimension_options[id],
             );
           }
           if (field.default_dimension_option) {

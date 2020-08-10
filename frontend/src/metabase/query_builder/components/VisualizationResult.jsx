@@ -20,7 +20,7 @@ type Props = {
   results: any[],
   isDirty: boolean,
   lastRunDatasetQuery: DatasetQuery,
-  navigateToNewCardInsideQB: (any) => void,
+  navigateToNewCardInsideQB: any => void,
   rawSeries: any,
 
   onOpenChartSettings: () => void,

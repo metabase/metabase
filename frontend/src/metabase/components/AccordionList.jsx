@@ -88,7 +88,7 @@ export default class AccordionList extends Component {
   static defaultProps = {
     style: {},
     width: 300,
-    searchable: (section) => section.items && section.items.length > 10,
+    searchable: section => section.items && section.items.length > 10,
     searchProp: "name",
     searchCaseInsensitive: true,
     searchFuzzy: true,
@@ -97,17 +97,17 @@ export default class AccordionList extends Component {
     hideSingleSectionTitle: false,
 
     // section getters/render props
-    renderSectionIcon: (section) =>
+    renderSectionIcon: section =>
       section.icon && <Icon name={section.icon} size={18} />,
 
     // item getters/render props
-    itemIsClickable: (item) => true,
-    itemIsSelected: (item) => false,
-    renderItemName: (item) => item.name,
-    renderItemDescription: (item) => item.description,
-    renderItemExtra: (item) => null,
-    renderItemIcon: (item) => item.icon && <Icon name={item.icon} size={18} />,
-    getItemClassName: (item) => item.className,
+    itemIsClickable: item => true,
+    itemIsSelected: item => false,
+    renderItemName: item => item.name,
+    renderItemDescription: item => item.description,
+    renderItemExtra: item => null,
+    renderItemIcon: item => item.icon && <Icon name={item.icon} size={18} />,
+    getItemClassName: item => item.className,
   };
 
   componentDidMount() {
@@ -169,7 +169,7 @@ export default class AccordionList extends Component {
     }
   }
 
-  toggleSection = (sectionIndex) => {
+  toggleSection = sectionIndex => {
     const { sections, onChangeSection } = this.props;
     if (onChangeSection) {
       if (onChangeSection(sections[sectionIndex], sectionIndex) === false) {
@@ -205,9 +205,7 @@ export default class AccordionList extends Component {
     const { sections } = this.props;
     let selectedSection = null;
     for (let i = 0; i < sections.length; i++) {
-      if (
-        _.some(sections[i].items, (item) => this.props.itemIsSelected(item))
-      ) {
+      if (_.some(sections[i].items, item => this.props.itemIsSelected(item))) {
         selectedSection = i;
         break;
       }
@@ -215,13 +213,13 @@ export default class AccordionList extends Component {
     return selectedSection === sectionIndex;
   }
 
-  handleChange = (item) => {
+  handleChange = item => {
     if (this.props.onChange) {
       this.props.onChange(item);
     }
   };
 
-  handleChangeSearchText = (searchText) => {
+  handleChangeSearchText = searchText => {
     this.setState({ searchText });
   };
 
@@ -241,18 +239,18 @@ export default class AccordionList extends Component {
     } = this.props;
 
     const openSection = this.getOpenSection();
-    const sectionIsExpanded = (sectionIndex) =>
+    const sectionIsExpanded = sectionIndex =>
       alwaysExpanded || openSection === sectionIndex;
-    const sectionIsSearchable = (sectionIndex) =>
+    const sectionIsSearchable = sectionIndex =>
       searchable &&
       (typeof searchable !== "function" || searchable(sections[sectionIndex]));
-    const sectionIsTogglable = (sectionIndex) =>
+    const sectionIsTogglable = sectionIndex =>
       alwaysTogglable || sections.length > 1;
 
     let { searchText } = this.state;
     let searchFilter = () => true;
     if (searchText) {
-      searchFilter = (item) => {
+      searchFilter = item => {
         let itemText = String(item[searchProp] || "");
         if (searchCaseInsensitive) {
           itemText = itemText.toLowerCase();
@@ -350,7 +348,7 @@ export default class AccordionList extends Component {
             ...style,
           }}
         >
-          {rows.map((row) => (
+          {rows.map(row => (
             <AccordionListCell
               {...this.props}
               row={row}
@@ -390,7 +388,7 @@ export default class AccordionList extends Component {
     return (
       <List
         id={id}
-        ref={(list) => (this._list = list)}
+        ref={list => (this._list = list)}
         className={className}
         style={{ ...defaultListStyle, ...style }}
         width={width}

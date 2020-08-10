@@ -14,7 +14,7 @@ function QueryDefinition({ className, object, metadata }) {
   const filters = query.filters();
   return (
     <div className={className} style={{ pointerEvents: "none" }}>
-      {aggregations.map((aggregation) => aggregation.displayName())}
+      {aggregations.map(aggregation => aggregation.displayName())}
       {filters.length > 0 && (
         <FilterList filters={filters} maxDisplayValues={Infinity} />
       )}
@@ -22,6 +22,6 @@ function QueryDefinition({ className, object, metadata }) {
   );
 }
 
-export default connect((state) => ({ metadata: getMetadata(state) }))(
+export default connect(state => ({ metadata: getMetadata(state) }))(
   QueryDefinition,
 );

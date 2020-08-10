@@ -12,9 +12,12 @@ import { login } from "../auth";
 
 const mapDispatchToProps = { login };
 
-@connect(null, mapDispatchToProps)
+@connect(
+  null,
+  mapDispatchToProps,
+)
 export default class LdapAndEmailForm extends Component {
-  onSubmit = async (credentials) => {
+  onSubmit = async credentials => {
     const { login, location } = this.props;
     await login(credentials, location.query.redirect);
   };
@@ -69,7 +72,7 @@ const ForgotPasswordLink = ({ credentials = {} }) => (
         : "")
     }
     className="text-right ml-auto link"
-    onClick={(e) => {
+    onClick={e => {
       window.OSX ? window.OSX.resetPassword() : null;
     }}
   >

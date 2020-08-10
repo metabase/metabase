@@ -91,7 +91,7 @@ export class PredefinedRelativeDatePicker extends Component {
             </span>
           ))}
         </section>
-        {Object.keys(RELATIVE_SHORTCUTS).map((sectionName) => (
+        {Object.keys(RELATIVE_SHORTCUTS).map(sectionName => (
           <section key={sectionName}>
             <div
               style={{}}
@@ -191,7 +191,7 @@ export default class DateRelativeWidget extends Component {
   static propTypes = {};
   static defaultProps = {};
 
-  static format = (value) => (FILTERS[value] ? FILTERS[value].name : "");
+  static format = value => (FILTERS[value] ? FILTERS[value].name : "");
 
   render() {
     const { value, setValue, onClose } = this.props;
@@ -199,8 +199,8 @@ export default class DateRelativeWidget extends Component {
       <div className="px1" style={{ maxWidth: 300 }}>
         <PredefinedRelativeDatePicker
           filter={FILTERS[value] ? FILTERS[value].mapping : [null, null]}
-          onFilterChange={(filter) => {
-            setValue(_.findKey(FILTERS, (f) => _.isEqual(f.mapping, filter)));
+          onFilterChange={filter => {
+            setValue(_.findKey(FILTERS, f => _.isEqual(f.mapping, filter)));
             onClose();
           }}
         />

@@ -17,11 +17,11 @@ export default function FilterStep({
       color={color}
       initialAddText={t`Add filters to narrow your answer`}
       items={query.filters()}
-      renderPopover={(filter) => (
+      renderPopover={filter => (
         <FilterPopover
           query={query}
           filter={filter}
-          onChangeFilter={(newFilter) =>
+          onChangeFilter={newFilter =>
             filter
               ? filter.replace(newFilter).update(updateQuery)
               : query.filter(newFilter).update(updateQuery)
@@ -29,7 +29,7 @@ export default function FilterStep({
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={(filter) => filter.remove().update(updateQuery)}
+      onRemove={filter => filter.remove().update(updateQuery)}
     />
   );
 }

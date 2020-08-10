@@ -136,8 +136,7 @@ const mapStateToProps = (state, props) => {
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
 
-    autocompleteResultsFn: (prefix) =>
-      autocompleteResults(state.qb.card, prefix),
+    autocompleteResultsFn: prefix => autocompleteResults(state.qb.card, prefix),
     instanceSettings: getSettings(state),
 
     initialCollectionId: Collections.selectors.getInitialCollectionId(
@@ -157,7 +156,10 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ card }) => (card && card.name) || t`Question`)
 @titleWithLoadingTime("queryStartTime")
 @fitViewport
@@ -231,7 +233,7 @@ export default class QueryBuilder extends Component {
 
   // When the window is resized we need to re-render, mainly so that our visualization pane updates
   // Debounce the function to improve resizing performance.
-  handleResize = (e) => {
+  handleResize = e => {
     this.forceUpdateDebounced();
     const viz = ReactDOM.findDOMNode(this.refs.viz);
     if (viz) {
@@ -240,14 +242,14 @@ export default class QueryBuilder extends Component {
   };
 
   // NOTE: these were lifted from QueryHeader. Move to Redux?
-  openModal = (modal) => {
+  openModal = modal => {
     this.props.setUIControls({ modal });
   };
   closeModal = () => {
     this.props.setUIControls({ modal: null });
   };
 
-  setRecentlySaved = (recentlySaved) => {
+  setRecentlySaved = recentlySaved => {
     this.props.setUIControls({ recentlySaved });
     clearTimeout(this.timeout);
     this.timeout = setTimeout(() => {
@@ -255,7 +257,7 @@ export default class QueryBuilder extends Component {
     }, 5000);
   };
 
-  handleCreate = async (card) => {
+  handleCreate = async card => {
     const { question, apiCreateQuestion } = this.props;
     const questionWithUpdatedCard = question.setCard(card);
     await apiCreateQuestion(questionWithUpdatedCard);
@@ -263,7 +265,7 @@ export default class QueryBuilder extends Component {
     this.setRecentlySaved("created");
   };
 
-  handleSave = async (card) => {
+  handleSave = async card => {
     const { question, apiUpdateQuestion } = this.props;
     const questionWithUpdatedCard = question.setCard(card);
     await apiUpdateQuestion(questionWithUpdatedCard);

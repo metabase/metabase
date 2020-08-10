@@ -40,8 +40,12 @@ describe("metabase-smoketest > admin", () => {
       cy.findByLabelText("Email").type(admin.username);
       cy.findByLabelText("Your company or team name").type("Epic Team");
 
-      cy.findByLabelText("Create a password").clear().type(admin.password);
-      cy.findByLabelText("Confirm your password").clear().type(admin.password);
+      cy.findByLabelText("Create a password")
+        .clear()
+        .type(admin.password);
+      cy.findByLabelText("Confirm your password")
+        .clear()
+        .type(admin.password);
       cy.findByText("Next").click();
 
       // Database
@@ -101,15 +105,21 @@ describe("metabase-smoketest > admin", () => {
       // Filter for created within previous 5 years
 
       cy.findByText("Filter").click();
-      cy.findAllByText("Created At").last().click();
+      cy.findAllByText("Created At")
+        .last()
+        .click();
       cy.get("input[type='text']").type("{selectall}{del}5");
       cy.findByText("Days").click();
       cy.findByText("Years").click();
-      sidebar().findByText("Add filter").click();
+      sidebar()
+        .findByText("Add filter")
+        .click();
 
       // Summarize by source
 
-      cy.get(".Button").contains("Summarize").click();
+      cy.get(".Button")
+        .contains("Summarize")
+        .click();
       cy.findByText("Source").click();
       cy.findByText("Done").click();
 
@@ -120,7 +130,9 @@ describe("metabase-smoketest > admin", () => {
 
     it("should add question to a new dashboard in my personal collection as admin", () => {
       cy.findByText("Save").click();
-      cy.findByLabelText("Name").clear().type("People per Source");
+      cy.findByLabelText("Name")
+        .clear()
+        .type("People per Source");
       cy.findByLabelText("Description").type(
         "Bar graph illustrating where our customers come from",
       );
@@ -129,7 +141,9 @@ describe("metabase-smoketest > admin", () => {
       // cy.findByText("Our analytics").click();
       // cy.findByText("My personal collection").click();
       // cy.contains("My personal collection");
-      cy.findAllByText("Save").last().click();
+      cy.findAllByText("Save")
+        .last()
+        .click();
       cy.findByText("Yes please!").click();
       cy.findByText("Create a new dashboard").click();
       cy.findByLabelText("Name").type("Demo Dash");
@@ -162,7 +176,9 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Visualize").click();
 
       // Summarize by State
-      cy.findAllByText("Summarize").first().click();
+      cy.findAllByText("Summarize")
+        .first()
+        .click();
       cy.findByText("State").click();
       cy.findByText("Done").click();
 
@@ -171,8 +187,12 @@ describe("metabase-smoketest > admin", () => {
 
       // Save question (not to a dashboard)
       cy.findByText("Save").click();
-      cy.findByLabelText("Name").clear().type("Order Totals by State");
-      cy.findAllByText("Save").last().click();
+      cy.findByLabelText("Name")
+        .clear()
+        .type("Order Totals by State");
+      cy.findAllByText("Save")
+        .last()
+        .click();
       cy.findByText("Not now").click();
     });
 
@@ -191,16 +211,25 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Pick your data").should("not.exist");
 
       // Summarize by date ordered
-      cy.findAllByText("Summarize").first().click();
-      sidebar().contains("Created At").click();
+      cy.findAllByText("Summarize")
+        .first()
+        .click();
+      sidebar()
+        .contains("Created At")
+        .click();
       cy.findByText("Done").click();
 
       cy.get(".Icon-line").should("have.length", 2);
 
       // Save question (not to a dashboard)
       cy.findByText("Save").click();
-      cy.findByLabelText("Name").clear().type("Orders Over Time");
-      cy.get(".ModalContent").get(".Button").contains("Save").click();
+      cy.findByLabelText("Name")
+        .clear()
+        .type("Orders Over Time");
+      cy.get(".ModalContent")
+        .get(".Button")
+        .contains("Save")
+        .click();
       cy.findByText("Not now").click();
     });
 
@@ -255,7 +284,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByLabelText("Email").type(new_user.username);
       cy.findByText("Create").click();
 
-      cy.wait("@createUser").then((xhr) => {
+      cy.wait("@createUser").then(xhr => {
         cy.wrap(xhr.request.body.password).as("password");
       });
 
@@ -270,7 +299,7 @@ describe("metabase-smoketest > admin", () => {
       // ==============
 
       signOut();
-      cy.get("@password").then((pass) => {
+      cy.get("@password").then(pass => {
         cy.visit("/");
         cy.findByLabelText("Email address").type(new_user.username);
         cy.findByLabelText("Password").type(pass);
@@ -315,8 +344,12 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Sample Dataset").click();
         cy.findByText("Reviews").click();
 
-        cy.get(".Button").findByText("Summarize").click();
-        cy.findAllByText("Rating").last().click();
+        cy.get(".Button")
+          .findByText("Summarize")
+          .click();
+        cy.findAllByText("Rating")
+          .last()
+          .click();
         cy.findByText("Done").click();
 
         cy.contains("Auto binned");
@@ -327,10 +360,14 @@ describe("metabase-smoketest > admin", () => {
           .clear()
           .type("Number of Reviews by Range of Rating");
         cy.get(".Icon-chevrondown").click();
-        cy.findAllByText("Our analytics").last().click();
+        cy.findAllByText("Our analytics")
+          .last()
+          .click();
         // *** Won't save into personal collection (Issue #12718)
         // cy.findByText("My personal collection").click();
-        cy.findAllByText("Save").last().click();
+        cy.findAllByText("Save")
+          .last()
+          .click();
         cy.findByText("Not now").click();
 
         // =================
@@ -340,15 +377,21 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("New dashboard").click();
         cy.findByLabelText("Name").type("New User Demo Dash");
         cy.findByLabelText("Description").type("This is my own demo dash!");
-        cy.get(".ModalBody").find(".Icon-chevrondown").click();
-        cy.findAllByText("Our analytics").last().click();
+        cy.get(".ModalBody")
+          .find(".Icon-chevrondown")
+          .click();
+        cy.findAllByText("Our analytics")
+          .last()
+          .click();
         // *** Won't save into personal collection (Issue #12718)
         cy.findByText("Create").click();
 
         cy.findByText("This dashboard is looking empty.");
         cy.contains("Number of").should("not.exist");
 
-        cy.get(".Icon-add").last().click();
+        cy.get(".Icon-add")
+          .last()
+          .click();
         cy.findByText("Number of Reviews by Range of Rating").click();
         cy.findByText("Save").click();
 

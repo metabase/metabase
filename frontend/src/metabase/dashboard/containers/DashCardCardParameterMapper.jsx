@@ -53,7 +53,10 @@ const mapDispatchToProps = {
   fetchDatabaseMetadata,
 };
 
-@connect(makeMapStateToProps, mapDispatchToProps)
+@connect(
+  makeMapStateToProps,
+  mapDispatchToProps,
+)
 export default class DashCardCardParameterMapper extends Component {
   props: {
     card: Card,
@@ -177,7 +180,7 @@ export default class DashCardCardParameterMapper extends Component {
                     className="flex-align-right"
                     name="close"
                     size={16}
-                    onClick={(e) => {
+                    onClick={e => {
                       this.handleChangeTarget(null);
                       e.stopPropagation();
                     }}

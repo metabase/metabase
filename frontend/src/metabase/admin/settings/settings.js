@@ -23,7 +23,7 @@ export const refreshSettingsList = createAction(
   REFRESH_SETTINGS_LIST,
   async () => {
     const settingsList = await SettingsApi.list();
-    return settingsList.map((setting) => ({
+    return settingsList.map(setting => ({
       ...setting,
       originalValue: setting.value,
     }));
@@ -45,10 +45,10 @@ export const initializeSettings = createThunkAction(
 );
 
 export const UPDATE_SETTING = "metabase/admin/settings/UPDATE_SETTING";
-export const updateSetting = createThunkAction(UPDATE_SETTING, function (
+export const updateSetting = createThunkAction(UPDATE_SETTING, function(
   setting,
 ) {
-  return async function (dispatch, getState) {
+  return async function(dispatch, getState) {
     try {
       await SettingsApi.put(setting);
     } catch (error) {
@@ -61,10 +61,10 @@ export const updateSetting = createThunkAction(UPDATE_SETTING, function (
 });
 
 export const UPDATE_SETTINGS = "metabase/admin/settings/UPDATE_SETTINGS";
-export const updateSettings = createThunkAction(UPDATE_SETTINGS, function (
+export const updateSettings = createThunkAction(UPDATE_SETTINGS, function(
   settings,
 ) {
-  return async function (dispatch, getState) {
+  return async function(dispatch, getState) {
     try {
       await SettingsApi.putAll(settings);
     } catch (error) {
@@ -80,8 +80,8 @@ export const UPDATE_EMAIL_SETTINGS =
   "metabase/admin/settings/UPDATE_EMAIL_SETTINGS";
 export const updateEmailSettings = createThunkAction(
   UPDATE_EMAIL_SETTINGS,
-  function (settings) {
-    return async function (dispatch, getState) {
+  function(settings) {
+    return async function(dispatch, getState) {
       try {
         return await EmailApi.updateSettings(settings);
       } catch (error) {
@@ -95,8 +95,8 @@ export const updateEmailSettings = createThunkAction(
 );
 
 export const SEND_TEST_EMAIL = "metabase/admin/settings/SEND_TEST_EMAIL";
-export const sendTestEmail = createThunkAction(SEND_TEST_EMAIL, function () {
-  return async function (dispatch, getState) {
+export const sendTestEmail = createThunkAction(SEND_TEST_EMAIL, function() {
+  return async function(dispatch, getState) {
     try {
       await EmailApi.sendTest();
     } catch (error) {
@@ -117,8 +117,8 @@ export const UPDATE_SLACK_SETTINGS =
   "metabase/admin/settings/UPDATE_SLACK_SETTINGS";
 export const updateSlackSettings = createThunkAction(
   UPDATE_SLACK_SETTINGS,
-  function (settings) {
-    return async function (dispatch, getState) {
+  function(settings) {
+    return async function(dispatch, getState) {
       try {
         await SlackApi.updateSettings(settings);
       } catch (error) {
@@ -136,8 +136,8 @@ export const UPDATE_LDAP_SETTINGS =
   "metabase/admin/settings/UPDATE_LDAP_SETTINGS";
 export const updateLdapSettings = createThunkAction(
   UPDATE_LDAP_SETTINGS,
-  function (settings) {
-    return async function (dispatch, getState) {
+  function(settings) {
+    return async function(dispatch, getState) {
       try {
         await LdapApi.updateSettings(settings);
       } catch (error) {

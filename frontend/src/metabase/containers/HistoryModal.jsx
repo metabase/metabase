@@ -18,7 +18,7 @@ export default class HistoryModalContainer extends React.Component {
     return (
       <HistoryModal
         revisions={revisions}
-        onRevert={async (revision) => {
+        onRevert={async revision => {
           await revision.revert();
           if (onReverted) {
             onReverted();

@@ -31,7 +31,9 @@ describe("scenarios > pulse", () => {
 
     cy.visit("/pulse/create");
 
-    cy.get('[placeholder="Important metrics"]').wait(100).type("pulse title");
+    cy.get('[placeholder="Important metrics"]')
+      .wait(100)
+      .type("pulse title");
 
     cy.contains("Select a question").click();
     cy.contains("Orders, Count").click();
@@ -53,7 +55,9 @@ describe("scenarios > pulse", () => {
 
   it("should edit existing pulses", () => {
     cy.visit("/pulse/1");
-    cy.get('[placeholder="Important metrics"]').clear().type("new pulse title");
+    cy.get('[placeholder="Important metrics"]')
+      .clear()
+      .type("new pulse title");
 
     cy.contains("Save changes").click();
     cy.url().should("match", /\/collection\/root$/);

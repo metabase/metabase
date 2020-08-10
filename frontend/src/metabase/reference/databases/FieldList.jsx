@@ -63,7 +63,10 @@ const validate = (values, props) => {
   return {};
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "fields",
   validate,
@@ -113,7 +116,7 @@ export default class FieldList extends Component {
         style={style}
         className="full"
         onSubmit={handleSubmit(
-          async (formFields) =>
+          async formFields =>
             await actions.rUpdateFields(
               this.props.entities,
               formFields,
@@ -162,7 +165,7 @@ export default class FieldList extends Component {
                       // respect the column sort order
                       .sort((a, b) => a.position - b.position)
                       .map(
-                        (entity) =>
+                        entity =>
                           entity &&
                           entity.id &&
                           entity.name && (

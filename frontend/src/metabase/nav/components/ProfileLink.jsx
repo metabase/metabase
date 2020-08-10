@@ -26,7 +26,7 @@ export default class ProfileLink extends Component {
     context: PropTypes.string.isRequired,
   };
 
-  openModal = (modalName) => {
+  openModal = modalName => {
     this.setState({ dropdownOpen: false, modalOpen: modalName });
   };
 

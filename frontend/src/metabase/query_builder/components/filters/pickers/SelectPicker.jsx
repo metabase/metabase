@@ -66,14 +66,14 @@ export default class SelectPicker extends Component {
   selectValue(key: string, selected: boolean) {
     let values;
     if (this.props.multi) {
-      values = this.props.values.slice().filter((v) => v != null);
+      values = this.props.values.slice().filter(v => v != null);
     } else {
       values = [];
     }
     if (selected) {
       values.push(key);
     } else {
-      values = values.filter((v) => v !== key);
+      values = values.filter(v => v !== key);
     }
     this.props.onValuesChange(values);
   }

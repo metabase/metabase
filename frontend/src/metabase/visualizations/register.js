@@ -20,7 +20,7 @@ import Funnel from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
 import ObjectDetail from "./visualizations/ObjectDetail";
 
-export default function () {
+export default function() {
   registerVisualization(Scalar);
   registerVisualization(SmartScalar);
   registerVisualization(Progress);

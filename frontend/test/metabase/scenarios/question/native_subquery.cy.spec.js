@@ -22,7 +22,7 @@ describe("scenarios > question > native subquery", () => {
       result_metadata: null,
       metadata_checksum: null,
     })
-      .then((response) => {
+      .then(response => {
         cy.wrap(response.body.id).as("nestedQuestionId");
         const tagID = `#${response.body.id}`;
 
@@ -52,7 +52,7 @@ describe("scenarios > question > native subquery", () => {
           metadata_checksum: null,
         });
       })
-      .then((response) => {
+      .then(response => {
         cy.wrap(response.body.id).as("toplevelQuestionId");
 
         cy.visit(`/question/${response.body.id}`);
@@ -63,12 +63,12 @@ describe("scenarios > question > native subquery", () => {
     signIn("nodata");
 
     // They should be able to access both questions
-    cy.get("@nestedQuestionId").then((nestedQuestionId) => {
+    cy.get("@nestedQuestionId").then(nestedQuestionId => {
       cy.visit(`/question/${nestedQuestionId}`);
       cy.contains("Showing 41 rows");
     });
 
-    cy.get("@toplevelQuestionId").then((toplevelQuestionId) => {
+    cy.get("@toplevelQuestionId").then(toplevelQuestionId => {
       cy.visit(`/question/${toplevelQuestionId}`);
       cy.contains("41");
     });

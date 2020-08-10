@@ -49,7 +49,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 // types
 import type { AlertType } from "metabase-lib/lib/Alert";
 
-const getScheduleFromChannel = (channel) =>
+const getScheduleFromChannel = channel =>
   _.pick(
     channel,
     "schedule_day",
@@ -62,7 +62,7 @@ const textStyle = {
 };
 
 @connect(
-  (state) => ({
+  state => ({
     question: getQuestion(state),
     visualizationSettings: getVisualizationSettings(state),
     isAdmin: getUserIsAdmin(state),
@@ -110,7 +110,7 @@ export class CreateAlertModalContent extends Component {
     this.props.fetchPulseFormInput();
   }
 
-  onAlertChange = (alert) => this.setState({ alert });
+  onAlertChange = alert => this.setState({ alert });
 
   onCreateAlert = async () => {
     const { createAlert, apiUpdateQuestion, onAlertCreated } = this.props;
@@ -266,7 +266,7 @@ export class AlertEducationalScreen extends Component {
 }
 
 @connect(
-  (state) => ({
+  state => ({
     user: getUser(state),
     isAdmin: getUserIsAdmin(state),
     question: getQuestion(state),
@@ -278,9 +278,9 @@ export class UpdateAlertModalContent extends Component {
   props: {
     alert: any,
     onCancel: boolean,
-    onAlertUpdated: (any) => void,
-    updateAlert: (any) => void,
-    deleteAlert: (any) => void,
+    onAlertUpdated: any => void,
+    updateAlert: any => void,
+    deleteAlert: any => void,
     isAdmin: boolean,
   };
 
@@ -291,7 +291,7 @@ export class UpdateAlertModalContent extends Component {
     };
   }
 
-  onAlertChange = (modifiedAlert) => this.setState({ modifiedAlert });
+  onAlertChange = modifiedAlert => this.setState({ modifiedAlert });
 
   onUpdateAlert = async () => {
     const { apiUpdateQuestion, updateAlert, onAlertUpdated } = this.props;
@@ -368,11 +368,11 @@ export class DeleteAlertSection extends Component {
 
   getConfirmItems() {
     // same as in PulseEdit but with some changes to copy
-    return this.props.alert.channels.map((c) =>
+    return this.props.alert.channels.map(c =>
       c.channel_type === "email" ? (
         <span>{jt`This alert will no longer be emailed to ${(
           <strong>
-            {((n) => ngettext(msgid`${n} address`, `${n} addresses`, n))(
+            {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
               c.recipients.length,
             )}
           </strong>
@@ -403,7 +403,7 @@ export class DeleteAlertSection extends Component {
           <div className="flex">
             <p className="h4 pr2">{jt`Stop delivery and delete this alert. There's no undo, so be careful.`}</p>
             <ModalWithTrigger
-              ref={(ref) => (this.deleteModal = ref)}
+              ref={ref => (this.deleteModal = ref)}
               triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
               triggerElement="Delete this Alert"
             >
@@ -432,22 +432,25 @@ const AlertModalTitle = ({ text }) => (
   </div>
 );
 
-@connect((state) => ({ isAdmin: getUserIsAdmin(state) }), null)
+@connect(
+  state => ({ isAdmin: getUserIsAdmin(state) }),
+  null,
+)
 export class AlertEditForm extends Component {
   props: {
     alertType: AlertType,
     alert: any,
-    onAlertChange: (any) => void,
+    onAlertChange: any => void,
     isAdmin: boolean,
   };
 
-  onScheduleChange = (schedule) => {
+  onScheduleChange = schedule => {
     const { alert, onAlertChange } = this.props;
 
     // update the same schedule to all channels at once
     onAlertChange({
       ...alert,
-      channels: alert.channels.map((channel) => ({ ...channel, ...schedule })),
+      channels: alert.channels.map(channel => ({ ...channel, ...schedule })),
     });
   };
 
@@ -518,11 +521,11 @@ export const AlertGoalToggles = ({ alertType, alert, onAlertChange }) => {
   );
 };
 
-export const AlertAboveGoalToggle = (props) => (
+export const AlertAboveGoalToggle = props => (
   <AlertSettingToggle {...props} setting="alert_above_goal" />
 );
 
-export const AlertFirstOnlyToggle = (props) => (
+export const AlertFirstOnlyToggle = props => (
   <AlertSettingToggle {...props} setting="alert_first_only" />
 );
 
@@ -538,7 +541,7 @@ export const AlertSettingToggle = ({
     <h3 className="text-dark mb1">{title}</h3>
     <Radio
       value={alert[setting]}
-      onChange={(value) => onAlertChange({ ...alert, [setting]: value })}
+      onChange={value => onAlertChange({ ...alert, [setting]: value })}
       options={[
         { name: trueText, value: true },
         { name: falseText, value: false },
@@ -585,7 +588,7 @@ export class AlertEditSchedule extends Component {
 )
 export class AlertEditChannels extends Component {
   props: {
-    onChannelsChange: (any) => void,
+    onChannelsChange: any => void,
     user: any,
     users: any[],
     // this stupidly named property contains different channel options, nothing else
@@ -598,16 +601,16 @@ export class AlertEditChannels extends Component {
   }
 
   // Technically pulse definition is equal to alert definition
-  onSetPulse = (alert) => {
+  onSetPulse = alert => {
     // If the pulse channel has been added, it PulseEditChannels puts the default schedule to it
     // We want to have same schedule for all channels
     const schedule = getScheduleFromChannel(
-      alert.channels.find((c) => c.channel_type === "email"),
+      alert.channels.find(c => c.channel_type === "email"),
     );
 
     this.props.onAlertChange({
       ...alert,
-      channels: alert.channels.map((channel) => ({ ...channel, ...schedule })),
+      channels: alert.channels.map(channel => ({ ...channel, ...schedule })),
     });
   };
 
@@ -635,7 +638,7 @@ export class AlertEditChannels extends Component {
 }
 
 // TODO: Not sure how to translate text with formatting properly
-@connect((state) => ({
+@connect(state => ({
   question: getQuestion(state),
   visualizationSettings: getVisualizationSettings(state),
 }))

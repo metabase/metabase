@@ -31,7 +31,7 @@ export default class BreakoutWidget extends Component {
     enableSubDimensions: true,
   };
 
-  handleChangeBreakout = (value) => {
+  handleChangeBreakout = value => {
     this.props.onChangeBreakout(value);
     this.handleClose();
   };

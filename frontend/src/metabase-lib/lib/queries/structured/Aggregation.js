@@ -47,7 +47,9 @@ export default class Aggregation extends MBQLClause {
   }
 
   canRemove(): boolean {
-    return this.remove().clean().isValid();
+    return this.remove()
+      .clean()
+      .isValid();
   }
 
   /**
@@ -190,7 +192,7 @@ export default class Aggregation extends MBQLClause {
     }
     return this._query
       .aggregationOperators()
-      .find((option) => option.short === operatorName);
+      .find(option => option.short === operatorName);
   }
 
   /**

@@ -18,7 +18,7 @@ export default function SortStep({
       renderName={(sort, index) => (
         <span
           className="flex align-center"
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation();
             query
               .updateSort(index, [sort[0] === "asc" ? "desc" : "asc", sort[1]])
@@ -36,7 +36,7 @@ export default function SortStep({
         <SortPopover
           query={query}
           sort={sort}
-          onChangeSort={(newSort) =>
+          onChangeSort={newSort =>
             sort
               ? query.updateSort(index, newSort).update(updateQuery)
               : query.sort(newSort).update(updateQuery)
@@ -85,7 +85,7 @@ const SortPopover = ({
       maxHeight={maxHeight}
       field={sort && sort[1]}
       fieldOptions={sortOptions || query.sortOptions(sort && sort[1])}
-      onFieldChange={(field) => {
+      onFieldChange={field => {
         onChangeSort([sort[0], field]);
         if (onClose) {
           onClose();

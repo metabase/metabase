@@ -23,7 +23,7 @@ export default class RevisionHistory extends Component {
     let userColorAssignments = {};
     if (revisions) {
       userColorAssignments = assignUserColors(
-        revisions.map((r) => r.user.id),
+        revisions.map(r => r.user.id),
         user.id,
       );
     }
@@ -46,7 +46,7 @@ export default class RevisionHistory extends Component {
                 {t`Revision History for`} "{object.name}"
               </h2>
               <ol>
-                {revisions.map((revision) => (
+                {revisions.map(revision => (
                   <Revision
                     revision={revision}
                     objectName={object.name}

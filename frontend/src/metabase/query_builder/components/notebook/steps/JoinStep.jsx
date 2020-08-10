@@ -35,7 +35,7 @@ export default function JoinStep({
   if (joins.length === 0) {
     joins = [new Join({ fields: "all" }, query.joins().length, query)];
   }
-  const valid = _.all(joins, (join) => join.isValid());
+  const valid = _.all(joins, join => join.isValid());
   return (
     <NotebookCell color={color} flexWrap="nowrap">
       <Flex flexDirection="column" className="flex-full">
@@ -109,8 +109,11 @@ class JoinClause extends React.Component {
           {({ onClose }) => (
             <JoinTypeSelect
               value={strategyOption && strategyOption.value}
-              onChange={(strategy) => {
-                join.setStrategy(strategy).parent().update(updateQuery);
+              onChange={strategy => {
+                join
+                  .setStrategy(strategy)
+                  .parent()
+                  .update(updateQuery);
                 onClose();
               }}
               options={join.strategyOptions()}
@@ -122,11 +125,11 @@ class JoinClause extends React.Component {
           databases={[
             query.database(),
             query.database().savedQuestionsDatabase(),
-          ].filter((d) => d)}
-          tableFilter={(table) => table.db_id === query.database().id}
+          ].filter(d => d)}
+          tableFilter={table => table.db_id === query.database().id}
           selectedDatabaseId={query.databaseId()}
           selectedTableId={join.joinSourceTableId()}
-          setSourceTableFn={(tableId) => {
+          setSourceTableFn={tableId => {
             const newJoin = join
               .setJoinSourceTableId(tableId)
               .setDefaultCondition()
@@ -160,7 +163,7 @@ class JoinClause extends React.Component {
               query={query}
               dimension={join.parentDimension()}
               options={join.parentDimensionOptions()}
-              onChange={(fieldRef) => {
+              onChange={fieldRef => {
                 join
                   .setParentDimension(fieldRef)
                   .setDefaultAlias()
@@ -170,7 +173,7 @@ class JoinClause extends React.Component {
                   this._joinDimensionPicker.open();
                 }
               }}
-              ref={(ref) => (this._parentDimensionPicker = ref)}
+              ref={ref => (this._parentDimensionPicker = ref)}
             />
 
             <span className="text-medium text-bold mr1">=</span>
@@ -180,10 +183,13 @@ class JoinClause extends React.Component {
               query={query}
               dimension={join.joinDimension()}
               options={join.joinDimensionOptions()}
-              onChange={(fieldRef) => {
-                join.setJoinDimension(fieldRef).parent().update(updateQuery);
+              onChange={fieldRef => {
+                join
+                  .setJoinDimension(fieldRef)
+                  .parent()
+                  .update(updateQuery);
               }}
-              ref={(ref) => (this._joinDimensionPicker = ref)}
+              ref={ref => (this._joinDimensionPicker = ref)}
             />
           </Flex>
         )}
@@ -212,7 +218,7 @@ class JoinClause extends React.Component {
 function JoinTypeSelect({ value, onChange, options }) {
   return (
     <div className="px1 pt1">
-      {options.map((option) => (
+      {options.map(option => (
         <JoinTypeOption
           {...option}
           selected={value === option.value}
@@ -253,7 +259,7 @@ class JoinDimensionPicker extends React.Component {
     const { dimension, onChange, options, query, color } = this.props;
     return (
       <PopoverWithTrigger
-        ref={(ref) => (this._popover = ref)}
+        ref={ref => (this._popover = ref)}
         triggerElement={
           <NotebookCellItem
             color={color}
@@ -271,7 +277,7 @@ class JoinDimensionPicker extends React.Component {
             fieldOptions={options}
             table={query.table()}
             query={query}
-            onFieldChange={(field) => {
+            onFieldChange={field => {
               onChange(field);
               onClose();
             }}
@@ -287,7 +293,7 @@ import FieldsPicker from "./FieldsPicker";
 const JoinFieldsPicker = ({ className, join, updateQuery }) => {
   const dimensions = join.joinedDimensions();
   const selectedDimensions = join.fieldsDimensions();
-  const selected = new Set(selectedDimensions.map((d) => d.key()));
+  const selected = new Set(selectedDimensions.map(d => d.key()));
   return (
     <FieldsPicker
       className={className}
@@ -295,20 +301,30 @@ const JoinFieldsPicker = ({ className, join, updateQuery }) => {
       selectedDimensions={selectedDimensions}
       isAll={join.fields === "all"}
       isNone={join.fields === "none"}
-      onSelectAll={() => join.setFields("all").parent().update(updateQuery)}
-      onSelectNone={() => join.setFields("none").parent().update(updateQuery)}
+      onSelectAll={() =>
+        join
+          .setFields("all")
+          .parent()
+          .update(updateQuery)
+      }
+      onSelectNone={() =>
+        join
+          .setFields("none")
+          .parent()
+          .update(updateQuery)
+      }
       onToggleDimension={(dimension, enable) => {
         join
           .setFields(
             dimensions
-              .filter((d) => {
+              .filter(d => {
                 if (d === dimension) {
                   return !selected.has(d.key());
                 } else {
                   return selected.has(d.key());
                 }
               })
-              .map((d) => d.mbql()),
+              .map(d => d.mbql()),
           )
           .parent()
           .update(updateQuery);

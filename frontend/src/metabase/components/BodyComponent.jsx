@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
-export default (ComposedComponent) =>
+export default ComposedComponent =>
   class extends Component {
     static displayName =
       "BodyComponent[" +
@@ -46,7 +46,7 @@ export default (ComposedComponent) =>
  * A modified version of BodyComponent HOC for Jest/Enzyme tests.
  * Simply renders the component inline instead of mutating DOM root.
  */
-export const TestBodyComponent = (ComposedComponent) =>
+export const TestBodyComponent = ComposedComponent =>
   class extends Component {
     static displayName =
       "TestBodyComponent[" +
@@ -58,7 +58,7 @@ export const TestBodyComponent = (ComposedComponent) =>
         <div
           // because popover is normally directly attached to body element, other elements should not need
           // to care about clicks that happen inside the popover
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation();
           }}
         >
