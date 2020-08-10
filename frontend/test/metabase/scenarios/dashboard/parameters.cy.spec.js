@@ -1,4 +1,10 @@
-import { signInAsAdmin, modal, popover, restore, openOrdersTable } from "__support__/cypress";
+import {
+  signInAsAdmin,
+  modal,
+  popover,
+  restore,
+  openOrdersTable,
+} from "__support__/cypress";
 
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 
@@ -85,8 +91,9 @@ describe("scenarios > dashboard > parameters", () => {
       .click();
     cy.findByText("Yes please!").click();
     cy.findByText("Create a new dashboard").click();
-    cy.findByPlaceholderText("What is the name of your dashboard?")
-      .type("Test Dashboard")
+    cy.findByPlaceholderText("What is the name of your dashboard?").type(
+      "Test Dashboard",
+    );
     cy.findByText("Create").click();
 
     // Add filter
@@ -99,7 +106,7 @@ describe("scenarios > dashboard > parameters", () => {
       .first()
       .click({ force: true });
     cy.findByText("Select…").should("not.exist");
-    
+
     cy.findByText("Select a default value…").click();
     cy.findByText("Yesterday").click();
 
