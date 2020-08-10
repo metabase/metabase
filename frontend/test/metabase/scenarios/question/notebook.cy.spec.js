@@ -98,7 +98,7 @@ describe("scenarios > question > notebook", () => {
       cy.contains("Showing 1 row");
     });
 
-    it.skip("should show correct column title with foreign keys (Issue #11452)", () => {
+    it.only("should show correct column title with foreign keys (Issue #11452)", () => {
       // Join tables with foreign keys
       openOrdersTable();
       cy.get(".Icon-notebook").click();
@@ -110,10 +110,14 @@ describe("scenarios > question > notebook", () => {
       });
 
       // Column titles should not include 'Product'
-      cy.get(".QueryBuilder .Icon-sum").click();
+      cy.findByText("Summarize").click();
       cy.findByText("Pick a column to group by").click();
-      cy.get(".ReactVirtualized__List").within(() => {
-        cy.findAllByText("Product").should("not.exist");
+      popover().within(() => {
+        cy.get(".Icon-join_left_outer")
+          .parent()
+          .parent()
+          .contains("Product")
+          .should("not.exist");
       });
     });
 
