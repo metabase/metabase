@@ -40,8 +40,8 @@ type Props = {
   parameterValues: { [id: ParameterId]: any },
   embeddingParams: EmbeddingParams,
 
-  onChangeDisplayOptions: DisplayOptions => void,
-  onChangeEmbeddingParameters: EmbeddingParams => void,
+  onChangeDisplayOptions: (DisplayOptions) => void,
+  onChangeEmbeddingParameters: (EmbeddingParams) => void,
   onChangeParameterValue: (id: ParameterId, value: any) => void,
   onChangePane: (pane: Pane) => void,
   onSave: () => Promise<void>,

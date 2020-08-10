@@ -29,19 +29,19 @@ type Props = {
   tableMetadata?: Table,
   tableForeignKeys?: [],
   tableForeignKeyReferences?: {},
-  onUpdateVisualizationSettings: any => void,
-  onReplaceAllVisualizationSettings: any => void,
-  onOpenChartSettings: any => void,
-  cellIsClickableFn?: any => void,
-  cellClickedFn?: any => void,
+  onUpdateVisualizationSettings: (any) => void,
+  onReplaceAllVisualizationSettings: (any) => void,
+  onOpenChartSettings: (any) => void,
+  cellIsClickableFn?: (any) => void,
+  cellClickedFn?: (any) => void,
   isRunning: boolean,
   isRunnable: boolean,
   isAdmin: boolean,
   isResultDirty: boolean,
   isObjectDetail: boolean,
   isNativeEditorOpen: boolean,
-  runQuestionQuery: any => void,
-  cancelQuery?: any => void,
+  runQuestionQuery: (any) => void,
+  cancelQuery?: (any) => void,
   className: string,
 };
 
@@ -85,7 +85,7 @@ export default class QueryVisualization extends Component {
     this.props.runQuestionQuery({ ignoreCache: !isResultDirty });
   };
 
-  handleUpdateWarnings = warnings => {
+  handleUpdateWarnings = (warnings) => {
     this.setState({ warnings });
   };
 

@@ -17,9 +17,7 @@ describe("scenarios > question > trendline", () => {
     cy.findByText("Average of ...").click();
     cy.findByText("Subtotal").click();
 
-    cy.get(".Icon-add")
-      .last()
-      .click();
+    cy.get(".Icon-add").last().click();
     cy.findByText("Sum of ...").click();
     cy.findByText("Total").click();
 
@@ -42,11 +40,7 @@ describe("scenarios > question > trendline", () => {
       cy.get(".Icon-line").click();
     });
     cy.findByText("Display").click();
-    cy.findByText("Trend line")
-      .parent()
-      .children()
-      .last()
-      .click();
+    cy.findByText("Trend line").parent().children().last().click();
 
     // Check graph is still there
     cy.get("rect");
@@ -54,9 +48,7 @@ describe("scenarios > question > trendline", () => {
     // Remove sum of total
     cy.findByText("Data").click();
     sidebar().within(() => {
-      cy.get(".Icon-close")
-        .last()
-        .click();
+      cy.get(".Icon-close").last().click();
       cy.findByText("Done").click();
     });
 

@@ -21,7 +21,7 @@ export const IconWrapper = styled("div")`
   height: 40px;
   border-radius: 99px;
   cursor: pointer;
-  color: ${props => (props.open ? c("brand") : "inherit")};
+  color: ${(props) => (props.open ? c("brand") : "inherit")};
   // special cases for certain icons
   // Icon-share has a taller viewvbox than most so to optically center
   // the icon we need to translate it upwards

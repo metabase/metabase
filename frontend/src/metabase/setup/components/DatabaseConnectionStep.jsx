@@ -24,12 +24,12 @@ export default class DatabaseConnectionStep extends Component {
     setDatabaseDetails: PropTypes.func.isRequired,
   };
 
-  chooseDatabaseEngine = e => {
+  chooseDatabaseEngine = (e) => {
     // FIXME:
     // MetabaseAnalytics.trackEvent("Setup", "Choose Database", engine);
   };
 
-  handleSubmit = async database => {
+  handleSubmit = async (database) => {
     // validate the details before we move forward
     let formError;
     try {
@@ -54,7 +54,7 @@ export default class DatabaseConnectionStep extends Component {
           "database validation: " + database.engine,
         );
         // NOTE: need to nest field errors under `details` to get them to appear on the correct fields
-        formError = updateIn(formError, ["data", "errors"], errors => ({
+        formError = updateIn(formError, ["data", "errors"], (errors) => ({
           details: errors,
         }));
         throw formError;

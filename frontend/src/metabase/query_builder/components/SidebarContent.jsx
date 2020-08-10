@@ -43,7 +43,7 @@ export default function SidebarContent({
   );
 }
 
-const FooterButton = props => (
+const FooterButton = (props) => (
   <ViewButton
     active
     px={4}

@@ -105,7 +105,7 @@ describe("DataSelector", () => {
     const { rerender, getByText } = render(<DataSelector {...props} />);
 
     // we call rerenderWith to add more data after a fetch function was called
-    const rerenderWith = data => {
+    const rerenderWith = (data) => {
       const metadata = makeMetadata({ ...emptyMetadata, ...data });
       rerender(
         <DataSelector
@@ -388,7 +388,7 @@ function unconnectedFixtureData() {
 
   // removes "tables" from something like: {"1": {name:"foo", tables: [1,2,3]}}
   const stripKeysFromValues = (entity, keys) =>
-    _.mapObject(entity, o => _.omit(o, keys));
+    _.mapObject(entity, (o) => _.omit(o, keys));
 
   const databases = stripKeysFromValues(entities.databases, ["tables"]);
   const { schemas } = entities;

@@ -13,7 +13,7 @@ import { color } from "metabase/lib/colors";
 
 import DisplayOptionsPane from "./DisplayOptionsPane";
 
-const getIconForParameter = parameter =>
+const getIconForParameter = (parameter) =>
   parameter.type === "category"
     ? "string"
     : parameter.type.indexOf("date/") === 0
@@ -37,13 +37,13 @@ type Props = {
   resourceParameters: Parameter[],
 
   embeddingParams: EmbeddingParams,
-  onChangeEmbeddingParameters: EmbeddingParams => void,
+  onChangeEmbeddingParameters: (EmbeddingParams) => void,
 
   displayOptions: DisplayOptions,
   previewParameters: Parameter[],
   parameterValues: { [id: ParameterId]: any },
 
-  onChangeDisplayOptions: DisplayOptions => void,
+  onChangeDisplayOptions: (DisplayOptions) => void,
   onChangeParameterValue: (id: ParameterId, value: any) => void,
   onUnpublish: () => Promise<void>,
 };
@@ -83,7 +83,7 @@ const AdvancedSettingsPane = ({
         ) : (
           <p>{t`This ${resourceType} doesn't have any parameters to configure yet.`}</p>
         )}
-        {resourceParameters.map(parameter => (
+        {resourceParameters.map((parameter) => (
           <div className="flex align-center my1">
             <Icon
               name={getIconForParameter(parameter)}
@@ -94,7 +94,7 @@ const AdvancedSettingsPane = ({
             <Select
               className="ml-auto bg-white"
               value={embeddingParams[parameter.slug] || "disabled"}
-              onChange={e =>
+              onChange={(e) =>
                 onChangeEmbeddingParameters({
                   ...embeddingParams,
                   [parameter.slug]: e.target.value,

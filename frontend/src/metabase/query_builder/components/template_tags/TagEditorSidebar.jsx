@@ -133,7 +133,7 @@ const SettingsPane = ({
   setDatasetQuery,
 }) => (
   <div>
-    {tags.map(tag => (
+    {tags.map((tag) => (
       <div key={tags.name}>
         {tag.type === "card" ? (
           <CardTagEditor

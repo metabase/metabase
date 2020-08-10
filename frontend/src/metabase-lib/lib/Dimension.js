@@ -139,10 +139,10 @@ export default class Dimension {
   dimensions(DimensionTypes?: typeof Dimension[]): Dimension[] {
     const dimensionOptions = this.field().dimension_options;
     if (!DimensionTypes && dimensionOptions) {
-      return dimensionOptions.map(option => this._dimensionForOption(option));
+      return dimensionOptions.map((option) => this._dimensionForOption(option));
     } else {
       return [].concat(
-        ...(DimensionTypes || []).map(DimensionType =>
+        ...(DimensionTypes || []).map((DimensionType) =>
           DimensionType.dimensions(this),
         ),
       );
@@ -502,7 +502,7 @@ export class FieldLiteralDimension extends FieldDimension {
     if (this._query) {
       const query = this._query.sourceQuery();
       const columnNames = query.columnNames();
-      const index = _.findIndex(columnNames, name => this._args[0] === name);
+      const index = _.findIndex(columnNames, (name) => this._args[0] === name);
       if (index >= 0) {
         return query.columnDimensions()[index];
       }
@@ -563,7 +563,7 @@ export class FKDimension extends FieldDimension {
       const field = parent.field();
       if (field.target && field.target.table) {
         return field.target.table.fields.map(
-          field =>
+          (field) =>
             new FKDimension(
               parent,
               [field.id],
@@ -620,7 +620,7 @@ export class FKDimension extends FieldDimension {
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
 import type Aggregation from "./queries/structured/Aggregation";
 
-const isFieldDimension = dimension =>
+const isFieldDimension = (dimension) =>
   dimension instanceof FieldIDDimension || dimension instanceof FKDimension;
 
 /**
@@ -657,7 +657,7 @@ export class DatetimeFieldDimension extends FieldDimension {
   static dimensions(parent: Dimension): Dimension[] {
     if (isFieldDimension(parent) && parent.field().isDate()) {
       return DATETIME_UNITS.map(
-        unit =>
+        (unit) =>
           new DatetimeFieldDimension(
             parent,
             [unit],

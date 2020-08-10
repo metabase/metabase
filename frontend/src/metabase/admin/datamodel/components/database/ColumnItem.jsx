@@ -27,7 +27,7 @@ export default class Column extends Component {
     dragHandle: PropTypes.node,
   };
 
-  updateField = properties => {
+  updateField = (properties) => {
     this.props.updateField({ ...this.props.field, ...properties });
   };
 
@@ -105,7 +105,7 @@ export default class Column extends Component {
 export class FieldVisibilityPicker extends Component {
   props: {
     field: Field,
-    updateField: Field => void,
+    updateField: (Field) => void,
     className?: string,
   };
 
@@ -122,7 +122,7 @@ export class FieldVisibilityPicker extends Component {
         value={field.visibility_type}
         onChange={this.handleChangeVisibility}
         options={MetabaseCore.field_visibility_types}
-        optionValueFn={o => o.id}
+        optionValueFn={(o) => o.id}
         placeholder={t`Select a field visibility`}
       />
     );
@@ -132,7 +132,7 @@ export class FieldVisibilityPicker extends Component {
 export class SpecialTypeAndTargetPicker extends Component {
   props: {
     field: Field,
-    updateField: Field => void,
+    updateField: (Field) => void,
     className?: string,
     selectSeparator?: React$Element<any>,
   };
@@ -190,7 +190,7 @@ export class SpecialTypeAndTargetPicker extends Component {
     ];
     // if we don't have a numeric base-type then prevent the options for unix timestamp conversion (#823)
     if (!isNumericBaseType(field)) {
-      specialTypes = specialTypes.filter(f => !isa(f.id, TYPE.UNIXTimestamp));
+      specialTypes = specialTypes.filter((f) => !isa(f.id, TYPE.UNIXTimestamp));
     }
 
     const showFKTargetSelect = isFK(field.special_type);
@@ -202,9 +202,9 @@ export class SpecialTypeAndTargetPicker extends Component {
     // If all FK target fields are in the same schema (like `PUBLIC` for sample dataset)
     // or if there are no schemas at all, omit the schema name
     const includeSchema =
-      _.uniq(idfields.map(idField => idField.table.schema_name)).length > 1;
+      _.uniq(idfields.map((idField) => idField.table.schema_name)).length > 1;
 
-    idfields = _.sortBy(idfields, field =>
+    idfields = _.sortBy(idfields, (field) =>
       field.displayName({ includeTable: true, includeSchema }),
     );
 
@@ -215,42 +215,44 @@ export class SpecialTypeAndTargetPicker extends Component {
           value={field.special_type}
           onChange={this.handleChangeSpecialType}
           options={specialTypes}
-          optionValueFn={o => o.id}
-          optionSectionFn={o => o.section}
+          optionValueFn={(o) => o.id}
+          optionSectionFn={(o) => o.section}
           placeholder={t`Select a special type`}
           searchProp="name"
         />
         {showCurrencyTypeSelect && selectSeparator}
-        {// TODO - now that we have multiple "nested" options like choosing a
-        // FK table and a currency type we should make this more generic and
-        // handle a "secondary" input more elegantly
-        showCurrencyTypeSelect && (
-          <Select
-            className={cx(
-              "TableEditor-field-target inline-block",
-              selectSeparator ? "mt0" : "mt1",
-              className,
-            )}
-            value={
-              (field.settings && field.settings.currency) ||
-              getGlobalSettingsForColumn(field).currency ||
-              "USD"
-            }
-            onChange={this.handleChangeCurrency}
-            placeholder={t`Select a currency type`}
-            searchProp="name"
-            searchCaseSensitive={false}
-          >
-            {Object.values(currency).map(c => (
-              <Option name={c.name} value={c.code} key={c.code}>
-                <span className="flex full align-center">
-                  <span>{c.name}</span>
-                  <span className="text-bold text-light ml1">{c.symbol}</span>
-                </span>
-              </Option>
-            ))}
-          </Select>
-        )}
+        {
+          // TODO - now that we have multiple "nested" options like choosing a
+          // FK table and a currency type we should make this more generic and
+          // handle a "secondary" input more elegantly
+          showCurrencyTypeSelect && (
+            <Select
+              className={cx(
+                "TableEditor-field-target inline-block",
+                selectSeparator ? "mt0" : "mt1",
+                className,
+              )}
+              value={
+                (field.settings && field.settings.currency) ||
+                getGlobalSettingsForColumn(field).currency ||
+                "USD"
+              }
+              onChange={this.handleChangeCurrency}
+              placeholder={t`Select a currency type`}
+              searchProp="name"
+              searchCaseSensitive={false}
+            >
+              {Object.values(currency).map((c) => (
+                <Option name={c.name} value={c.code} key={c.code}>
+                  <span className="flex full align-center">
+                    <span>{c.name}</span>
+                    <span className="text-bold text-light ml1">{c.symbol}</span>
+                  </span>
+                </Option>
+              ))}
+            </Select>
+          )
+        }
         {showFKTargetSelect && selectSeparator}
         {showFKTargetSelect && (
           <Select
@@ -264,11 +266,11 @@ export class SpecialTypeAndTargetPicker extends Component {
             value={field.fk_target_field_id}
             onChange={this.handleChangeTarget}
             options={idfields}
-            optionValueFn={field => field.id}
-            optionNameFn={field =>
+            optionValueFn={(field) => field.id}
+            optionNameFn={(field) =>
               field.displayName({ includeTable: true, includeSchema })
             }
-            optionIconFn={field => null}
+            optionIconFn={(field) => null}
           />
         )}
       </div>

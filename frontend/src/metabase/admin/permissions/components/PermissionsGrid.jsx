@@ -172,7 +172,7 @@ const PermissionsCell = ({
       isFirstRow,
     })}
   >
-    {permissions.map(permission => (
+    {permissions.map((permission) => (
       <GroupPermissionCell
         key={permission.id}
         permission={permission}
@@ -189,7 +189,7 @@ const PermissionsCell = ({
 
 const ActionsList = connect()(({ actions, dispatch }) => (
   <ul className="border-top">
-    {actions.map(action => (
+    {actions.map((action) => (
       <li>
         {typeof action === "function" ? (
           action()
@@ -244,7 +244,7 @@ class GroupPermissionCell extends Component {
 
     const isEditable =
       this.props.isEditable &&
-      options.filter(option => option.value !== value).length > 0;
+      options.filter((option) => option.value !== value).length > 0;
     const option = _.findWhere(options, { value }) || DEFAULT_OPTION;
 
     return (
@@ -317,7 +317,7 @@ class GroupPermissionCell extends Component {
           value={value}
           options={options}
           permission={permission}
-          onChange={value => {
+          onChange={(value) => {
             const confirmAction = () => {
               onUpdatePermission({
                 groupId: group.id,
@@ -331,7 +331,7 @@ class GroupPermissionCell extends Component {
               (permission.confirm &&
                 permission.confirm(group.id, entity.id, value)) ||
               []
-            ).filter(c => c);
+            ).filter((c) => c);
             if (confirmations.length > 0) {
               this.setState({ confirmations, confirmAction });
             } else {
@@ -370,7 +370,7 @@ const AccessOption = ({ value, option, onChange }) => (
 
 const AccessOptionList = ({ value, options, onChange }) => (
   <ul className="py1">
-    {options.map(option => {
+    {options.map((option) => {
       if (value !== option.value) {
         return (
           <li key={option.value}>
@@ -392,9 +392,9 @@ const PermissionsGrid = ({
   showHeader = true,
   cellHeight = DEFAULT_CELL_HEIGHT,
 }) => {
-  const permissions = Object.entries(grid.permissions).map(
-    ([id, permission]) => ({ id: id, ...permission }),
-  );
+  const permissions = Object.entries(
+    grid.permissions,
+  ).map(([id, permission]) => ({ id: id, ...permission }));
 
   let rowCount, columnCount, headerHeight;
   if (isPivoted) {
@@ -404,7 +404,7 @@ const PermissionsGrid = ({
       HEADER_HEIGHT +
       Math.max(
         ...grid.entities.map(
-          entity => (entity.subtitle ? 15 : 0) + (entity.link ? 15 : 0),
+          (entity) => (entity.subtitle ? 15 : 0) + (entity.link ? 15 : 0),
         ),
       );
   } else {

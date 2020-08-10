@@ -29,13 +29,13 @@ export function onRenderValueLabels(
   );
 
   if (
-    showSeries.every(s => s === false) || // every series setting is off
+    showSeries.every((s) => s === false) || // every series setting is off
     chart.settings["stackable.stack_type"] === "normalized" // chart is normalized
   ) {
     return;
   }
 
-  let displays = seriesSettings.map(settings => settings.display);
+  let displays = seriesSettings.map((settings) => settings.display);
   if (chart.settings["stackable.stack_type"] === "stacked") {
     // When stacked, flatten datas into one series. We'll sum values on the same x point later.
     datas = [datas.flat()];
@@ -47,18 +47,15 @@ export function onRenderValueLabels(
   const showAll = chart.settings["graph.label_value_frequency"] === "all";
 
   let barWidth;
-  const barCount = displays.filter(d => d === "bar").length;
+  const barCount = displays.filter((d) => d === "bar").length;
   if (barCount > 0) {
     barWidth = parseFloat(
-      chart
-        .svg()
-        .select("rect.bar")[0][0]
-        .getAttribute("width"),
+      chart.svg().select("rect.bar")[0][0].getAttribute("width"),
     );
   }
 
   const xScale = chart.x();
-  const yScaleForSeries = index =>
+  const yScaleForSeries = (index) =>
     yAxisSplit[0].includes(index) ? chart.y() : chart.rightY();
 
   // Update datas to use named x/y and include `showLabelBelow`.
@@ -75,7 +72,7 @@ export function onRenderValueLabels(
     data = _.chain(data)
       .groupBy(([x]) => xScale(x))
       .values()
-      .map(data => {
+      .map((data) => {
         const [[x]] = data;
         const y = data.reduce((sum, [, y]) => sum + y, 0);
         return [x, y];
@@ -95,14 +92,14 @@ export function onRenderValueLabels(
           !showAll && barCount > 1 && display === "bar" && barWidth < 20;
         return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
       })
-      .filter(d => !(display === "bar" && d.y === 0));
+      .filter((d) => !(display === "bar" && d.y === 0));
   });
 
   // Count max points in a single series to estimate when labels should be hidden
-  const maxSeriesLength = Math.max(...datas.map(d => d.length));
+  const maxSeriesLength = Math.max(...datas.map((d) => d.length));
 
   const formattingSetting = chart.settings["graph.label_value_formatting"];
-  const compactForSeries = datas.map(data => {
+  const compactForSeries = datas.map((data) => {
     if (formattingSetting === "compact") {
       return true;
     }
@@ -110,7 +107,7 @@ export function onRenderValueLabels(
       return false;
     }
     // for "auto" we use compact if it shortens avg label length by >3 chars
-    const getAvgLength = compact => {
+    const getAvgLength = (compact) => {
       const options = {
         compact,
         // We include compact currency options here for both compact and
@@ -121,7 +118,7 @@ export function onRenderValueLabels(
         // _numberFormatter would take precedence.
         _numberFormatter: undefined,
       };
-      const lengths = data.map(d => formatYValue(d.y, options).length);
+      const lengths = data.map((d) => formatYValue(d.y, options).length);
       return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
     };
     return getAvgLength(true) < getAvgLength(false) - 3;
@@ -135,7 +132,7 @@ export function onRenderValueLabels(
     if (display !== "bar") {
       return 0;
     }
-    const barIndex = displays.slice(0, index).filter(d => d === "bar").length;
+    const barIndex = displays.slice(0, index).filter((d) => d === "bar").length;
     let xShift = 0;
 
     if (xScale.rangeBand) {
@@ -145,7 +142,10 @@ export function onRenderValueLabels(
       } else {
         xShift += xScale.rangeBand() / 2;
       }
-      if (displays.some(d => d === "bar") && displays.some(d => d !== "bar")) {
+      if (
+        displays.some((d) => d === "bar") &&
+        displays.some((d) => d !== "bar")
+      ) {
         xShift += (chart._rangeBandPadding() * xScale.rangeBand()) / 2;
       }
     } else if (
@@ -170,7 +170,7 @@ export function onRenderValueLabels(
         .svg()
         .selectAll("rect")
         .flat()
-        .map(r => parseFloat(r.getAttribute("x")));
+        .map((r) => parseFloat(r.getAttribute("x")));
       const barWidth = x2 - x1;
       xShift += barWidth / 2;
     }
@@ -200,9 +200,9 @@ export function onRenderValueLabels(
     parent.select(".value-labels").remove();
 
     data = data
-      .map(d => ({ ...d, ...xyPos(d) }))
+      .map((d) => ({ ...d, ...xyPos(d) }))
       // remove rotated labels when the bar is too short
-      .filter(d => !(d.rotated && d.yHeight < MIN_ROTATED_HEIGHT));
+      .filter((d) => !(d.rotated && d.yHeight < MIN_ROTATED_HEIGHT));
 
     const labelGroups = parent
       .append("svg:g")
@@ -211,8 +211,8 @@ export function onRenderValueLabels(
       .data(data)
       .enter()
       .append("g")
-      .attr("text-anchor", d => (d.rotated ? "end" : "middle"))
-      .attr("transform", d => {
+      .attr("text-anchor", (d) => (d.rotated ? "end" : "middle"))
+      .attr("transform", (d) => {
         const transforms = [`translate(${d.xPos}, ${d.yPos})`];
         if (d.rotated) {
           transforms.push("rotate(-90)", `translate(-15, 4)`);
@@ -224,17 +224,19 @@ export function onRenderValueLabels(
     // For outlined labels, Safari had an issue with rendering paint-order: stroke.
     // To work around that, we create two text labels: one for the the black text
     // and another for the white outline behind it.
-    ["value-label-outline", "value-label", "value-label-white"].forEach(klass =>
-      labelGroups
-        .append("text")
-        // only create labels for the correct class(es) given the type of label
-        .filter(d => !(d.rotated ^ (klass === "value-label-white")))
-        .attr("class", klass)
-        .text(({ y, seriesIndex }) =>
-          formatYValue(y, {
-            compact: compact === null ? compactForSeries[seriesIndex] : compact,
-          }),
-        ),
+    ["value-label-outline", "value-label", "value-label-white"].forEach(
+      (klass) =>
+        labelGroups
+          .append("text")
+          // only create labels for the correct class(es) given the type of label
+          .filter((d) => !(d.rotated ^ (klass === "value-label-white")))
+          .attr("class", klass)
+          .text(({ y, seriesIndex }) =>
+            formatYValue(y, {
+              compact:
+                compact === null ? compactForSeries[seriesIndex] : compact,
+            }),
+          ),
     );
   };
 
@@ -275,13 +277,13 @@ export function onRenderValueLabels(
   _.chain(datas)
     .flatten()
     .filter(
-      d =>
+      (d) =>
         displays[d.seriesIndex] === "line" || displays[d.seriesIndex] === "bar",
     )
-    .map(d => ({ d, ...xyPos(d) }))
+    .map((d) => ({ d, ...xyPos(d) }))
     .groupBy(({ xPos }) => xPos)
     .values()
-    .each(group => {
+    .each((group) => {
       const sortedByY = _.sortBy(group, ({ yPos }) => yPos);
       let prev;
       for (const { d, yPos } of sortedByY) {
@@ -308,15 +310,10 @@ export function onRenderValueLabels(
     });
 
   addLabels(
-    datas.flatMap(data =>
+    datas.flatMap((data) =>
       data.filter((d, i) => i % nthForSeries[d.seriesIndex] === 0 && !d.hidden),
     ),
   );
 
-  moveToFront(
-    chart
-      .svg()
-      .select(".value-labels")
-      .node().parentNode,
-  );
+  moveToFront(chart.svg().select(".value-labels").node().parentNode);
 }

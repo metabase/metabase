@@ -10,9 +10,9 @@ let TOOLTIP_STACK = [];
 
 function pushTooltip(component) {
   // if for some reason the tooltip is already in the stack (it shouldn't be) remove it and we'll add it again as if it wasn't
-  TOOLTIP_STACK = TOOLTIP_STACK.filter(t => t !== component);
+  TOOLTIP_STACK = TOOLTIP_STACK.filter((t) => t !== component);
   // close all other tooltips
-  TOOLTIP_STACK.filter(t => t.state.isOpen).forEach(t =>
+  TOOLTIP_STACK.filter((t) => t.state.isOpen).forEach((t) =>
     t.setState({ isOpen: false }),
   );
   // add this tooltip
@@ -21,7 +21,7 @@ function pushTooltip(component) {
 
 function popTooltip(component) {
   // remove the tooltip from the stack
-  TOOLTIP_STACK = TOOLTIP_STACK.filter(t => t !== component);
+  TOOLTIP_STACK = TOOLTIP_STACK.filter((t) => t !== component);
   // reopen the top tooltip, if any
   const top = TOOLTIP_STACK[TOOLTIP_STACK.length - 1];
   if (top && !top.state.isOpen) {
@@ -121,21 +121,21 @@ export default class Tooltip extends Component {
     clearTimeout(this.timer);
   }
 
-  _onMouseEnter = e => {
+  _onMouseEnter = (e) => {
     pushTooltip(this);
     this.setState({ isOpen: true, isHovered: true });
   };
 
-  _onMouseLeave = e => {
+  _onMouseLeave = (e) => {
     popTooltip(this);
     this.setState({ isOpen: false, isHovered: false });
   };
 
-  _onMouseDown = e => {
+  _onMouseDown = (e) => {
     this.setState({ isOpen: false });
   };
 
-  _onMouseUp = e => {
+  _onMouseUp = (e) => {
     // This is in a timeout to ensure the component has a chance to fully unmount
     this.timer = setTimeout(
       () => this.setState({ isOpen: this.state.isHovered }),
@@ -177,11 +177,11 @@ export class TestTooltip extends Component {
     verticalAttachments: ["top", "bottom"],
   };
 
-  _onMouseEnter = e => {
+  _onMouseEnter = (e) => {
     this.setState({ isOpen: true, isHovered: true });
   };
 
-  _onMouseLeave = e => {
+  _onMouseLeave = (e) => {
     this.setState({ isOpen: false, isHovered: false });
   };
 

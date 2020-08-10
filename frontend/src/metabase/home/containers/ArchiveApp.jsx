@@ -28,11 +28,8 @@ const ROW_HEIGHT = 68;
   reload: true,
   wrapped: true,
 })
-@listSelect({ keyForItem: item => `${item.model}:${item.id}` })
-@connect(
-  mapStateToProps,
-  null,
-)
+@listSelect({ keyForItem: (item) => `${item.model}:${item.id}` })
+@connect(mapStateToProps, null)
 export default class ArchiveApp extends Component {
   render() {
     const {
@@ -115,7 +112,7 @@ const BulkActionControls = ({ selected, reload }) => (
       onClick={async () => {
         try {
           await Promise.all(
-            selected.map(item => item.setArchived && item.setArchived(false)),
+            selected.map((item) => item.setArchived && item.setArchived(false)),
           );
         } finally {
           reload();
@@ -127,7 +124,9 @@ const BulkActionControls = ({ selected, reload }) => (
       medium
       onClick={async () => {
         try {
-          await Promise.all(selected.map(item => item.delete && item.delete()));
+          await Promise.all(
+            selected.map((item) => item.delete && item.delete()),
+          );
         } finally {
           reload();
         }

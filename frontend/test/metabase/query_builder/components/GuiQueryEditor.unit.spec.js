@@ -11,7 +11,7 @@ import {
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-const getGuiQueryEditor = query => (
+const getGuiQueryEditor = (query) => (
   <GuiQueryEditor
     query={query}
     databases={metadata.databasesList()}

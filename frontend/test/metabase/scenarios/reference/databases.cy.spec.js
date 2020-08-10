@@ -44,9 +44,7 @@ describe("scenarios > reference > databases", () => {
   it("should let an admin edit the database name", () => {
     cy.visit("/reference/databases/1");
     cy.contains("Edit").click();
-    cy.get(".wrapper input")
-      .clear()
-      .type("My definitely profitable business");
+    cy.get(".wrapper input").clear().type("My definitely profitable business");
     cy.contains("Save").click();
     cy.contains("My definitely profitable business");
   });

@@ -122,7 +122,10 @@ describe("Query", () => {
       expect(
         Query.removeBreakout(
           {
-            breakout: [["field-id", 2], ["field-id", 1]],
+            breakout: [
+              ["field-id", 2],
+              ["field-id", 1],
+            ],
             "order-by": [["asc", ["field-id", 1]]],
           },
           0,
@@ -137,7 +140,10 @@ describe("Query", () => {
         Query.removeBreakout(
           {
             aggregation: [["count"]],
-            breakout: [["field-id", 2], ["field-id", 1]],
+            breakout: [
+              ["field-id", 2],
+              ["field-id", 1],
+            ],
             "order-by": [["asc", ["aggregation", 0]]],
           },
           0,

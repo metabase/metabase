@@ -99,7 +99,7 @@ export default class Filter extends MBQLClause {
           return false;
         }
         // arguments are non-null/undefined
-        if (!_.all(args, arg => arg != null)) {
+        if (!_.all(args, (arg) => arg != null)) {
           return false;
         }
       }

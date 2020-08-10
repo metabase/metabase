@@ -49,7 +49,7 @@ const getEntityQuery = (state, props) =>
 // memoization cache, but that's probably ok.
 const getMemoizedEntityQuery = createMemoizedSelector(
   [getEntityQuery],
-  entityQuery => entityQuery,
+  (entityQuery) => entityQuery,
 );
 
 @entityType()
@@ -108,9 +108,13 @@ export default class EntityListLoader extends React.Component {
     super(props);
 
     this._getWrappedList = createSelector(
-      [props => props.list, props => props.dispatch, props => props.entityDef],
+      [
+        (props) => props.list,
+        (props) => props.dispatch,
+        (props) => props.entityDef,
+      ],
       (list, dispatch, entityDef) =>
-        list && list.map(object => entityDef.wrapEntity(object, dispatch)),
+        list && list.map((object) => entityDef.wrapEntity(object, dispatch)),
     );
   }
 
@@ -190,7 +194,7 @@ export const entityListLoader = (ellProps: Props) =>
     // eslint-disable-next-line react/display-name
     (props: Props) => (
       <EntityListLoader {...props} {...ellProps}>
-        {childProps => (
+        {(childProps) => (
           <ComposedComponent
             {..._.omit(props, ...CONSUMED_PROPS)}
             {...childProps}

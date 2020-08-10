@@ -35,7 +35,7 @@ type Props = VisualizationProps & {
   height: number,
   className?: string,
   isPivoted: boolean,
-  getColumnTitle: number => string,
+  getColumnTitle: (number) => string,
 };
 
 type State = {
@@ -123,7 +123,7 @@ export default class TableSimple extends Component {
 
     let rowIndexes = _.range(0, rows.length);
     if (sortColumn != null) {
-      rowIndexes = _.sortBy(rowIndexes, rowIndex => {
+      rowIndexes = _.sortBy(rowIndexes, (rowIndex) => {
         let value = rows[rowIndex][sortColumn];
         // for strings we should be case insensitive
         if (typeof value === "string") {
@@ -249,7 +249,7 @@ export default class TableSimple extends Component {
                             })}
                             onClick={
                               isClickable
-                                ? e => {
+                                ? (e) => {
                                     onVisualizationClick({
                                       ...clicked,
                                       element: e.currentTarget,

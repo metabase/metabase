@@ -1,6 +1,9 @@
 import { restore, signIn, signOut, USERS } from "__support__/cypress";
 
-const sizes = [[1280, 800], [640, 360]];
+const sizes = [
+  [1280, 800],
+  [640, 360],
+];
 
 describe("scenarios > auth > signin", () => {
   before(restore);
@@ -56,7 +59,7 @@ describe("scenarios > auth > signin", () => {
     cy.contains("37.65");
   });
 
-  sizes.forEach(size => {
+  sizes.forEach((size) => {
     it(`should redirect from /auth/forgot_password back to /auth/login (viewport: ${size})`, () => {
       if (Cypress._.isArray(size)) {
         cy.viewport(size[0], size[1]);

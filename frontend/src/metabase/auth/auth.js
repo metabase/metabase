@@ -33,11 +33,11 @@ export const login = createThunkAction(
 
 // login Google
 export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
-export const loginGoogle = createThunkAction(LOGIN_GOOGLE, function(
+export const loginGoogle = createThunkAction(LOGIN_GOOGLE, function (
   googleUser,
   redirectUrl,
 ) {
-  return async function(dispatch, getState) {
+  return async function (dispatch, getState) {
     try {
       // NOTE: this request will return a Set-Cookie header for the session
       await SessionApi.createWithGoogleAuth({
@@ -65,8 +65,8 @@ export const loginGoogle = createThunkAction(LOGIN_GOOGLE, function(
 
 // logout
 export const LOGOUT = "metabase/auth/LOGOUT";
-export const logout = createThunkAction(LOGOUT, function() {
-  return async function(dispatch, getState) {
+export const logout = createThunkAction(LOGOUT, function () {
+  return async function (dispatch, getState) {
     // actively delete the session and remove the cookie
     await SessionApi.delete();
 

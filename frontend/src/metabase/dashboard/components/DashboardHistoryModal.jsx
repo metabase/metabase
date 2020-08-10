@@ -8,10 +8,7 @@ import { connect } from "react-redux";
 import { fetchDashboard } from "metabase/dashboard/dashboard";
 
 @withRouter
-@connect(
-  null,
-  { fetchDashboard },
-)
+@connect(null, { fetchDashboard })
 export default class DashboardHistoryModal extends React.Component {
   render() {
     const { fetchDashboard, onClose, location, params } = this.props;

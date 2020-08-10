@@ -36,7 +36,7 @@
 
 ace.require(
   ["ace/lib/oop", "ace/mode/behaviour", "ace/token_iterator", "ace/lib/lang"],
-  function(oop, { Behaviour }, { TokenIterator }, lang) {
+  function (oop, { Behaviour }, { TokenIterator }, lang) {
     const SAFE_INSERT_IN_TOKENS = [
       "text",
       "paren.rparen",
@@ -51,7 +51,7 @@ ace.require(
 
     let context;
     let contextCache = {};
-    const initContext = function(editor) {
+    const initContext = function (editor) {
       let id = -1;
       if (editor.multiSelect) {
         id = editor.selection.index;
@@ -73,7 +73,7 @@ ace.require(
       };
     };
 
-    const getWrapped = function(selection, selected, opening, closing) {
+    const getWrapped = function (selection, selected, opening, closing) {
       const rowDiff = selection.end.row - selection.start.row;
       return {
         text: opening + selected + closing,
@@ -86,9 +86,9 @@ ace.require(
       };
     };
 
-    const SQLBehaviour = function() {
+    const SQLBehaviour = function () {
       function createInsertDeletePair(name, opening, closing) {
-        this.add(name, "insertion", function(
+        this.add(name, "insertion", function (
           state,
           action,
           editor,
@@ -132,7 +132,7 @@ ace.require(
           }
         });
 
-        this.add(name, "deletion", function(
+        this.add(name, "deletion", function (
           state,
           action,
           editor,
@@ -159,7 +159,7 @@ ace.require(
       createInsertDeletePair.call(this, "parens", "(", ")");
       createInsertDeletePair.call(this, "brackets", "[", "]");
 
-      this.add("string_dquotes", "insertion", function(
+      this.add("string_dquotes", "insertion", function (
         state,
         action,
         editor,
@@ -238,7 +238,7 @@ ace.require(
         }
       });
 
-      this.add("string_dquotes", "deletion", function(
+      this.add("string_dquotes", "deletion", function (
         state,
         action,
         editor,
@@ -261,7 +261,7 @@ ace.require(
       });
     };
 
-    SQLBehaviour.isSaneInsertion = function(editor, session) {
+    SQLBehaviour.isSaneInsertion = function (editor, session) {
       const cursor = editor.getCursorPosition();
       const iterator = new TokenIterator(session, cursor.row, cursor.column);
 
@@ -299,11 +299,11 @@ ace.require(
       );
     };
 
-    SQLBehaviour.$matchTokenType = function(token, types) {
+    SQLBehaviour.$matchTokenType = function (token, types) {
       return types.indexOf(token.type || token) > -1;
     };
 
-    SQLBehaviour.recordAutoInsert = function(editor, session, bracket) {
+    SQLBehaviour.recordAutoInsert = function (editor, session, bracket) {
       const cursor = editor.getCursorPosition();
       const line = session.doc.getLine(cursor.row);
       // Reset previous state if text or context changed too much
@@ -321,7 +321,7 @@ ace.require(
       context.autoInsertedBrackets++;
     };
 
-    SQLBehaviour.recordMaybeInsert = function(editor, session, bracket) {
+    SQLBehaviour.recordMaybeInsert = function (editor, session, bracket) {
       const cursor = editor.getCursorPosition();
       const line = session.doc.getLine(cursor.row);
       if (!this.isMaybeInsertedClosing(cursor, line)) {
@@ -333,7 +333,7 @@ ace.require(
       context.maybeInsertedBrackets++;
     };
 
-    SQLBehaviour.isAutoInsertedClosing = function(cursor, line, bracket) {
+    SQLBehaviour.isAutoInsertedClosing = function (cursor, line, bracket) {
       return (
         context.autoInsertedBrackets > 0 &&
         cursor.row === context.autoInsertedRow &&
@@ -342,7 +342,7 @@ ace.require(
       );
     };
 
-    SQLBehaviour.isMaybeInsertedClosing = function(cursor, line) {
+    SQLBehaviour.isMaybeInsertedClosing = function (cursor, line) {
       return (
         context.maybeInsertedBrackets > 0 &&
         cursor.row === context.maybeInsertedRow &&
@@ -351,12 +351,12 @@ ace.require(
       );
     };
 
-    SQLBehaviour.popAutoInsertedClosing = function() {
+    SQLBehaviour.popAutoInsertedClosing = function () {
       context.autoInsertedLineEnd = context.autoInsertedLineEnd.substr(1);
       context.autoInsertedBrackets--;
     };
 
-    SQLBehaviour.clearMaybeInsertedClosing = function() {
+    SQLBehaviour.clearMaybeInsertedClosing = function () {
       if (context) {
         context.maybeInsertedBrackets = 0;
         context.maybeInsertedRow = -1;

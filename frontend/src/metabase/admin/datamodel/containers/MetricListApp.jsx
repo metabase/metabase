@@ -31,7 +31,7 @@ class MetricListApp extends React.Component {
             </tr>
           </thead>
           <tbody>
-            {metrics.map(metric => (
+            {metrics.map((metric) => (
               <MetricItem
                 key={metric.id}
                 onRetire={() => metric.setArchived(true)}

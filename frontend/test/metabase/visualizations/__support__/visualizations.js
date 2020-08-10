@@ -108,7 +108,10 @@ export const LineCard = (name, ...overrides) =>
           StringColumn({ name: name + "_col0" }),
           NumberColumn({ name: name + "_col1" }),
         ],
-        rows: [["a", 0], ["b", 1]],
+        rows: [
+          ["a", 0],
+          ["b", 1],
+        ],
       },
     },
     ...overrides,

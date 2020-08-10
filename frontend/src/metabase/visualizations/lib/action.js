@@ -54,7 +54,7 @@ export function performDefaultAction(
   }
 
   // "defaultAlways" action even if there's more than one
-  const action = _.find(actions, action => action.defaultAlways === true);
+  const action = _.find(actions, (action) => action.defaultAlways === true);
   if (action) {
     return performAction(action, props);
   }

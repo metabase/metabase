@@ -119,11 +119,11 @@ const AddUserRow = ({
         value={text}
         isValid={selectedUsers.length}
         placeholder="Julie McMemberson"
-        onChange={e => onTextChange(e.target.value)}
+        onChange={(e) => onTextChange(e.target.value)}
         onDone={onDone}
         onCancel={onCancel}
       >
-        {selectedUsers.map(user => (
+        {selectedUsers.map((user) => (
           <div className="bg-medium p1 px2 mr1 rounded flex align-center">
             {user.common_name}
             <Icon
@@ -179,7 +179,7 @@ const MembersTable = ({
 }) => {
   // you can't remove people from Default and you can't remove the last user from Admin
   const isCurrentUser = ({ user_id }) => user_id === currentUserId;
-  const showRemoveMemeberButton = user =>
+  const showRemoveMemeberButton = (user) =>
     !isDefaultGroup(group) && !(isAdminGroup(group) && isCurrentUser(user));
 
   return (
@@ -258,7 +258,7 @@ export default class GroupDetail extends Component {
     });
     try {
       await Promise.all(
-        this.state.selectedUsers.map(async user => {
+        this.state.selectedUsers.map(async (user) => {
           const members = await PermissionsApi.createMembership({
             group_id: this.props.group.id,
             user_id: user.id,
@@ -286,7 +286,7 @@ export default class GroupDetail extends Component {
 
   onRemoveUserFromSelection(user) {
     this.setState({
-      selectedUsers: this.state.selectedUsers.filter(u => u.id !== user.id),
+      selectedUsers: this.state.selectedUsers.filter((u) => u.id !== user.id),
     });
   }
 
@@ -295,7 +295,7 @@ export default class GroupDetail extends Component {
       await PermissionsApi.deleteMembership({ id: membership.membership_id });
       const newMembers = _.reject(
         this.getMembers(),
-        m => m.user_id === membership.user_id,
+        (m) => m.user_id === membership.user_id,
       );
       this.setState({ members: newMembers });
     } catch (error) {
@@ -330,7 +330,7 @@ export default class GroupDetail extends Component {
       usedUsers[user.id] = true;
     }
     const filteredUsers = Object.values(users).filter(
-      user => !usedUsers[user.id],
+      (user) => !usedUsers[user.id],
     );
 
     return (

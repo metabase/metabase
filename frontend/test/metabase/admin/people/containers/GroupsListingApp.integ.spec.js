@@ -20,7 +20,7 @@ describe("GroupsListingApp", () => {
 
     const { wrapper } = mountWithStore(<GroupsListingApp />);
 
-    expect((await wrapper.async.find("tr td")).map(td => td.text())).toEqual([
+    expect((await wrapper.async.find("tr td")).map((td) => td.text())).toEqual([
       // NOTE: the extra "A"s are from the circle icon
       "AAdministrators",
       "1",

@@ -27,7 +27,7 @@ export default class DateMonthYearWidget extends React.Component {
   static propTypes = {};
   static defaultProps = {};
 
-  static format = value => {
+  static format = (value) => {
     const m = moment(value, "YYYY-MM");
     return m.isValid() ? m.format("MMMM, YYYY") : "";
   };
@@ -35,10 +35,7 @@ export default class DateMonthYearWidget extends React.Component {
   componentWillUnmount() {
     const { month, year } = this.state;
     if (month != null && year != null) {
-      const value = moment()
-        .year(year)
-        .month(month)
-        .format("YYYY-MM");
+      const value = moment().year(year).month(month).format("YYYY-MM");
       if (this.props.value !== value) {
         this.props.setValue(value);
       }
@@ -53,11 +50,11 @@ export default class DateMonthYearWidget extends React.Component {
         <div className="border-bottom flex justify-center py1">
           <YearPicker
             value={year}
-            onChange={year => this.setState({ year: year })}
+            onChange={(year) => this.setState({ year: year })}
           />
         </div>
         <Flex flexWrap="wrap" w="100%" p={1}>
-          {_.range(0, 12).map(m => (
+          {_.range(0, 12).map((m) => (
             <Flex w={1 / 3} align="center" justifyContent="center">
               <Month
                 key={m}
@@ -84,8 +81,6 @@ const Month = ({ month, selected, onClick }) => (
     )}
     onClick={onClick}
   >
-    {moment()
-      .month(month)
-      .format("MMMM")}
+    {moment().month(month).format("MMMM")}
   </div>
 );

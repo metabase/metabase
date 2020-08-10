@@ -24,7 +24,7 @@ import cx from "classnames";
       "definition",
       "revision_message",
     ],
-    validate: values => {
+    validate: (values) => {
       const errors = {};
       if (!values.name) {
         errors.name = t`Name is required`;

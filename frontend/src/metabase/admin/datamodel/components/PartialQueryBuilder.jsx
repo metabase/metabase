@@ -65,7 +65,7 @@ export default class PartialQueryBuilder extends Component {
     // const table = query.table();
     let queryWithFilters;
     if (table.entity_type === "entity/GoogleAnalyticsTable") {
-      const dateField = table.fields.find(f => f.name === "ga:date");
+      const dateField = table.fields.find((f) => f.name === "ga:date");
       if (dateField) {
         queryWithFilters = query
           .filter(["time-interval", ["field-id", dateField.id], -365, "day"])
@@ -80,7 +80,7 @@ export default class PartialQueryBuilder extends Component {
     }
   }
 
-  setDatasetQuery = datasetQuery => {
+  setDatasetQuery = (datasetQuery) => {
     this.props.onChange(datasetQuery.query);
     this.props.updatePreviewSummary(datasetQuery);
   };

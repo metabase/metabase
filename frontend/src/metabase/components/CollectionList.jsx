@@ -16,10 +16,7 @@ import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
-@connect(
-  ({ currentUser }) => ({ currentUser }),
-  null,
-)
+@connect(({ currentUser }) => ({ currentUser }), null)
 class CollectionList extends React.Component {
   render() {
     const {
@@ -35,8 +32,8 @@ class CollectionList extends React.Component {
       <Box className="relative">
         <Grid>
           {collections
-            .filter(c => c.id !== currentUser.personal_collection_id)
-            .map(collection => (
+            .filter((c) => c.id !== currentUser.personal_collection_id)
+            .map((collection) => (
               <GridItem w={w} key={collection.id}>
                 <CollectionDropTarget collection={collection}>
                   {({ highlighted, hovered }) => (

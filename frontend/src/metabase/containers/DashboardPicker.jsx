@@ -7,7 +7,7 @@ const DashboardPicker = ({ value, onChange, ...props }) => (
   <ItemPicker
     {...props}
     value={value === undefined ? undefined : { model: "dashboard", id: value }}
-    onChange={dashboard => onChange(dashboard ? dashboard.id : undefined)}
+    onChange={(dashboard) => onChange(dashboard ? dashboard.id : undefined)}
     models={["dashboard"]}
   />
 );

@@ -44,7 +44,7 @@ const mapStateToProps = (state, props) => {
         guide.metric_important_fields &&
         guide.metric_important_fields[entity.id] &&
         guide.metric_important_fields[entity.id].map(
-          fieldId => fields[fieldId],
+          (fieldId) => fields[fieldId],
         )) ||
       [],
   };
@@ -76,10 +76,7 @@ const validate = (values, props) =>
     ? { revision_message: t`Please enter a revision message` }
     : {};
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
   form: "details",
   fields: [
@@ -154,7 +151,7 @@ export default class MetricDetail extends Component {
     } = this.props;
 
     const onSubmit = handleSubmit(
-      async fields =>
+      async (fields) =>
         await actions.rUpdateMetricDetail(
           this.props.entity,
           this.props.guide,
@@ -259,7 +256,7 @@ export default class MetricDetail extends Component {
                         guide &&
                         guide.metric_important_fields[entity.id] &&
                         Object.values(guide.metric_important_fields[entity.id])
-                          .map(fieldId => metadataFields[fieldId])
+                          .map((fieldId) => metadataFields[fieldId])
                           .reduce(
                             (map, field) => ({ ...map, [field.id]: field }),
                             {},
@@ -278,14 +275,14 @@ export default class MetricDetail extends Component {
                       <FieldsToGroupBy
                         fields={table.fields
                           .filter(
-                            fieldId =>
+                            (fieldId) =>
                               !guide ||
                               !guide.metric_important_fields[entity.id] ||
                               !guide.metric_important_fields[
                                 entity.id
                               ].includes(fieldId),
                           )
-                          .map(fieldId => metadataFields[fieldId])
+                          .map((fieldId) => metadataFields[fieldId])
                           .reduce(
                             (map, field) => ({ ...map, [field.id]: field }),
                             {},

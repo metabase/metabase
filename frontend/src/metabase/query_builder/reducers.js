@@ -149,7 +149,7 @@ export const uiControls = handleActions(
       next: (state, { payload }) => ({ ...state, isEditing: false }),
     },
 
-    [RUN_QUERY]: state => ({ ...state, isRunning: true }),
+    [RUN_QUERY]: (state) => ({ ...state, isRunning: true }),
     [CANCEL_QUERY]: {
       next: (state, { payload }) => ({ ...state, isRunning: false }),
     },
@@ -168,21 +168,21 @@ export const uiControls = handleActions(
       }),
     },
     // AGGREGATION
-    [onEditSummary]: state => ({
+    [onEditSummary]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       isShowingSummarySidebar: true,
     }),
-    [onCloseSummary]: state => ({
+    [onCloseSummary]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
-    [onAddFilter]: state => ({
+    [onAddFilter]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       isShowingFilterSidebar: true,
     }),
-    [onCloseFilter]: state => ({
+    [onCloseFilter]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
@@ -192,20 +192,20 @@ export const uiControls = handleActions(
       isShowingChartSettingsSidebar: true,
       initialChartSetting: initial,
     }),
-    [onCloseChartSettings]: state => ({
+    [onCloseChartSettings]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
-    [onOpenChartType]: state => ({
+    [onOpenChartType]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       isShowingChartTypeSidebar: true,
     }),
-    [onCloseChartType]: state => ({
+    [onCloseChartType]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
-    [onCloseSidebars]: state => ({
+    [onCloseSidebars]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),

@@ -56,7 +56,7 @@ type Props = {
   removeSelected?: boolean,
   filterOption: (option: Option, searchValue: string) => boolean,
 
-  onInputChange?: string => string,
+  onInputChange?: (string) => string,
   onInputKeyDown?: (event: SyntheticKeyboardEvent) => void,
   onFocus?: () => void,
   onBlur?: () => void,
@@ -115,9 +115,9 @@ export default class TokenField extends Component {
     valueKey: "value",
     labelKey: "label",
 
-    valueRenderer: value => <span>{value}</span>,
-    optionRenderer: option => <span>{option}</span>,
-    layoutRenderer: props => <DefaultTokenFieldLayout {...props} />,
+    valueRenderer: (value) => <span>{value}</span>,
+    optionRenderer: (option) => <span>{option}</span>,
+    layoutRenderer: (props) => <DefaultTokenFieldLayout {...props} />,
 
     color: "brand",
 
@@ -175,7 +175,7 @@ export default class TokenField extends Component {
   _updateFilteredValues = (props: Props) => {
     let { options, value, removeSelected, filterOption } = props;
     let { searchValue, selectedOptionValue } = this.state;
-    const selectedValues = new Set(value.map(v => JSON.stringify(v)));
+    const selectedValues = new Set(value.map((v) => JSON.stringify(v)));
 
     if (!filterOption) {
       filterOption = (option, searchValue) =>
@@ -183,7 +183,7 @@ export default class TokenField extends Component {
     }
 
     let selectedCount = 0;
-    const filteredOptions = options.filter(option => {
+    const filteredOptions = options.filter((option) => {
       const isSelected = selectedValues.has(
         JSON.stringify(this._value(option)),
       );
@@ -209,7 +209,7 @@ export default class TokenField extends Component {
 
     if (
       selectedOptionValue == null ||
-      !_.find(filteredOptions, option =>
+      !_.find(filteredOptions, (option) =>
         this._valueIsEqual(selectedOptionValue, this._value(option)),
       )
     ) {
@@ -287,7 +287,7 @@ export default class TokenField extends Component {
     } else if (event.keyCode === KEYCODE_UP) {
       // up arrow
       event.preventDefault();
-      const index = _.findIndex(filteredOptions, option =>
+      const index = _.findIndex(filteredOptions, (option) =>
         this._valueIsEqual(selectedOptionValue, this._value(option)),
       );
       if (index > 0) {
@@ -298,7 +298,7 @@ export default class TokenField extends Component {
     } else if (keyCode === KEYCODE_DOWN) {
       // down arrow
       event.preventDefault();
-      const index = _.findIndex(filteredOptions, option =>
+      const index = _.findIndex(filteredOptions, (option) =>
         this._valueIsEqual(selectedOptionValue, this._value(option)),
       );
       if (index >= 0 && index < filteredOptions.length - 1) {
@@ -350,7 +350,7 @@ export default class TokenField extends Component {
         ? string
             .split(/\n|,/g)
             .map(this.props.parseFreeformValue)
-            .filter(s => s)
+            .filter((s) => s)
         : [string];
       if (values.length > 0) {
         this.addValue(values);
@@ -375,7 +375,7 @@ export default class TokenField extends Component {
     const { multi } = this.props;
     const { filteredOptions, selectedOptionValue } = this.state;
     const input = findDOMNode(this.refs.input);
-    const option = _.find(filteredOptions, option =>
+    const option = _.find(filteredOptions, (option) =>
       this._valueIsEqual(selectedOptionValue, this._value(option)),
     );
     if (option) {
@@ -440,7 +440,7 @@ export default class TokenField extends Component {
 
   removeValue(valueToRemove: Value) {
     const { value, onChange } = this.props;
-    const values = value.filter(v => !this._valueIsEqual(v, valueToRemove));
+    const values = value.filter((v) => !this._valueIsEqual(v, valueToRemove));
     onChange(values);
     // reset the input value
     // this.setInputValue("");
@@ -553,11 +553,11 @@ export default class TokenField extends Component {
             {multi && (
               <a
                 className="text-medium text-default-hover px1"
-                onClick={e => {
+                onClick={(e) => {
                   e.preventDefault();
                   this.removeValue(v);
                 }}
-                onMouseDown={e => e.preventDefault()}
+                onMouseDown={(e) => e.preventDefault()}
               >
                 <Icon name="close" size={12} />
               </a>
@@ -595,12 +595,12 @@ export default class TokenField extends Component {
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
         >
-          {filteredOptions.map(option => (
+          {filteredOptions.map((option) => (
             <li className="mr1" key={this._key(option)}>
               <div
                 ref={
                   this._valueIsEqual(selectedOptionValue, this._value(option))
-                    ? _ => (this.scrollElement = _)
+                    ? (_) => (this.scrollElement = _)
                     : null
                 }
                 className={cx(
@@ -615,13 +615,13 @@ export default class TokenField extends Component {
                       ),
                   },
                 )}
-                onClick={e => {
+                onClick={(e) => {
                   this.addOption(option);
                   // clear the input value, and search value if last option
                   this.clearInputValue(filteredOptions.length === 1);
                   e.preventDefault();
                 }}
-                onMouseDown={e => e.preventDefault()}
+                onMouseDown={(e) => e.preventDefault()}
               >
                 {optionRenderer(option)}
               </div>
@@ -641,7 +641,7 @@ export default class TokenField extends Component {
   }
 }
 
-const dedup = array => Array.from(new Set(array));
+const dedup = (array) => Array.from(new Set(array));
 
 const DefaultTokenFieldLayout = ({
   valuesList,

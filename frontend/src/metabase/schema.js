@@ -71,10 +71,10 @@ MetricSchema.define({
 });
 
 // backend returns model = "card" instead of "question"
-export const entityTypeForModel = model =>
+export const entityTypeForModel = (model) =>
   model === "card" ? "questions" : `${model}s`;
 
-export const entityTypeForObject = object =>
+export const entityTypeForObject = (object) =>
   object && entityTypeForModel(object.model);
 
 export const ENTITIES_SCHEMA_MAP = {
@@ -97,6 +97,6 @@ CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
 
-export const parseSchemaId = id => String(id || "").split(":");
+export const parseSchemaId = (id) => String(id || "").split(":");
 export const generateSchemaId = (dbId, schemaName) =>
   `${dbId}:${schemaName || ""}`;

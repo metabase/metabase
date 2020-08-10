@@ -31,10 +31,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class HomepageApp extends Component {
   static propTypes = {
     onChangeLocation: PropTypes.func.isRequired,

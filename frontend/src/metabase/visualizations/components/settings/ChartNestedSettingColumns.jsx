@@ -4,7 +4,7 @@ import React from "react";
 
 import ColumnItem from "./ColumnItem";
 
-const displayNameForColumn = column =>
+const displayNameForColumn = (column) =>
   column ? column.display_name || column.name : "[Unknown]";
 
 import type { NestedSettingComponentProps } from "./ChartSettingNestedSettings";
@@ -20,7 +20,7 @@ export default class ChartNestedSettingColumns extends React.Component {
     } else {
       return (
         <div>
-          {objects.map(column => (
+          {objects.map((column) => (
             <ColumnItem
               title={displayNameForColumn(column)}
               onEdit={() => onChangeEditingObject(column)}

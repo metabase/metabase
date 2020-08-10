@@ -28,13 +28,10 @@ type Props = {
   database: Database,
   databases: Database[],
   metadata: Metadata,
-  fetchField: FieldId => void,
+  fetchField: (FieldId) => void,
 };
 
-@connect(
-  state => ({ metadata: getMetadata(state) }),
-  { fetchField },
-)
+@connect((state) => ({ metadata: getMetadata(state) }), { fetchField })
 export default class TagEditorParam extends Component {
   props: Props;
 
@@ -135,7 +132,7 @@ export default class TagEditorParam extends Component {
           <Select
             className="block"
             value={tag.type}
-            onChange={e => this.setType(e.target.value)}
+            onChange={(e) => this.setType(e.target.value)}
             isInitiallyOpen={!tag.type}
             placeholder={t`Select…`}
             height={300}
@@ -165,7 +162,7 @@ export default class TagEditorParam extends Component {
                 selectedFieldId={
                   hasSelectedDimensionField ? tag.dimension[1] : null
                 }
-                setFieldFn={fieldId => this.setDimension(fieldId)}
+                setFieldFn={(fieldId) => this.setDimension(fieldId)}
                 className="AdminSelect flex align-center"
                 isInitiallyOpen={!tag.dimension}
                 triggerIconSize={12}
@@ -181,7 +178,7 @@ export default class TagEditorParam extends Component {
             <Select
               className="block"
               value={tag["widget-type"]}
-              onChange={e =>
+              onChange={(e) =>
                 this.setParameterAttribute("widget-type", e.target.value)
               }
               isInitiallyOpen={!tag["widget-type"] && hasWidgetOptions}
@@ -189,7 +186,7 @@ export default class TagEditorParam extends Component {
             >
               {[{ name: "None", type: undefined }]
                 .concat(widgetOptions)
-                .map(widgetOption => (
+                .map((widgetOption) => (
                   <Option key={widgetOption.type} value={widgetOption.type}>
                     {widgetOption.name}
                   </Option>
@@ -220,7 +217,7 @@ export default class TagEditorParam extends Component {
               type="text"
               value={tag["display-name"]}
               className="AdminSelect p1 text-bold text-dark bordered border-medium rounded full"
-              onBlurChange={e =>
+              onBlurChange={(e) =>
                 this.setParameterAttribute("display-name", e.target.value)
               }
             />
@@ -231,12 +228,13 @@ export default class TagEditorParam extends Component {
           <h4 className="text-medium pb1">{t`Required?`}</h4>
           <Toggle
             value={tag.required}
-            onChange={value => this.setRequired(value)}
+            onChange={(value) => this.setRequired(value)}
           />
         </div>
 
         {((tag.type !== "dimension" && tag.required) ||
-          (tag.type === "dimension" || tag["widget-type"])) && (
+          tag.type === "dimension" ||
+          tag["widget-type"]) && (
           <div className="pb3">
             <h4 className="text-medium pb1">{t`Default filter widget value`}</h4>
             <ParameterValueWidget
@@ -246,7 +244,7 @@ export default class TagEditorParam extends Component {
                   (tag.type === "date" ? "date/single" : null),
               }}
               value={tag.default}
-              setValue={value => this.setParameterAttribute("default", value)}
+              setValue={(value) => this.setParameterAttribute("default", value)}
               className="AdminSelect p1 text-bold text-medium bordered border-medium rounded bg-white"
               isEditing
               commitImmediately

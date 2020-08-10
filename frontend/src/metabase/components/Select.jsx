@@ -56,31 +56,30 @@ export default class Select extends Component {
   };
 
   static defaultProps = {
-    optionNameFn: option => option.children || option.name,
-    optionValueFn: option => option.value,
-    optionDescriptionFn: option => option.description,
-    optionDisabledFn: option => option.disabled,
-    optionIconFn: option => option.icon,
+    optionNameFn: (option) => option.children || option.name,
+    optionValueFn: (option) => option.value,
+    optionDescriptionFn: (option) => option.description,
+    optionDisabledFn: (option) => option.disabled,
+    optionIconFn: (option) => option.icon,
   };
 
   constructor(props) {
     super(props);
 
     // reselect selectors
-    const _getValue = props =>
+    const _getValue = (props) =>
       // If a defaultValue is passed, replace a null value with it.
       // Otherwise, allow null values since we sometimes want them.
       props.hasOwnProperty("defaultValue") && props.value == null
         ? props.defaultValue
         : props.value;
 
-    const _getValues = createSelector(
-      [_getValue],
-      value => (Array.isArray(value) ? value : [value]),
+    const _getValues = createSelector([_getValue], (value) =>
+      Array.isArray(value) ? value : [value],
     );
     const _getValuesSet = createSelector(
       [_getValues],
-      values => new Set(values),
+      (values) => new Set(values),
     );
     this._getValues = () => _getValues(this.props);
     this._getValuesSet = () => _getValuesSet(this.props);
@@ -90,10 +89,10 @@ export default class Select extends Component {
     // normalize `children`/`options` into same format as `sections`
     const { children, sections, options } = this.props;
     if (children) {
-      const optionToItem = option => option.props;
+      const optionToItem = (option) => option.props;
       const first = Array.isArray(children) ? children[0] : children;
       if (first && first.type === OptionSection) {
-        return React.Children.map(children, child => ({
+        return React.Children.map(children, (child) => ({
           ...child.props,
           items: React.Children.map(child.props.children, optionToItem),
         }));
@@ -116,21 +115,21 @@ export default class Select extends Component {
     return [];
   }
 
-  itemIsSelected = option => {
+  itemIsSelected = (option) => {
     const optionValue = this.props.optionValueFn(option);
     return this._getValuesSet().has(optionValue);
   };
 
-  itemIsClickable = option => !this.props.optionDisabledFn(option);
+  itemIsClickable = (option) => !this.props.optionDisabledFn(option);
 
-  handleChange = option => {
+  handleChange = (option) => {
     const { multiple, onChange } = this.props;
     const optionValue = this.props.optionValueFn(option);
     let value;
     if (multiple) {
       const values = this._getValues();
       value = this.itemIsSelected(option)
-        ? values.filter(value => value !== optionValue)
+        ? values.filter((value) => value !== optionValue)
         : [...values, optionValue];
     } else {
       value = optionValue;
@@ -141,7 +140,7 @@ export default class Select extends Component {
     }
   };
 
-  renderItemIcon = item => {
+  renderItemIcon = (item) => {
     if (this.itemIsSelected(item)) {
       return (
         <Icon
@@ -179,15 +178,15 @@ export default class Select extends Component {
 
     const sections = this._getSections();
     const selectedNames = sections
-      .map(section =>
+      .map((section) =>
         section.items.filter(this.itemIsSelected).map(this.props.optionNameFn),
       )
       .flat()
-      .filter(n => n);
+      .filter((n) => n);
 
     return (
       <PopoverWithTrigger
-        ref={ref => (this._popover = ref)}
+        ref={(ref) => (this._popover = ref)}
         triggerElement={
           this.props.triggerElement || (
             <SelectButton

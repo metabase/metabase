@@ -122,14 +122,14 @@ const saveError = handleActions(
   {
     [RESET]: { next: () => null },
     [SAVE_PERMISSIONS]: {
-      next: state => null,
+      next: (state) => null,
       throw: (state, { payload }) =>
         (payload && typeof payload.data === "string"
           ? payload.data
           : payload.data.message) || t`Sorry, an error occurred.`,
     },
     [LOAD_PERMISSIONS]: {
-      next: state => null,
+      next: (state) => null,
     },
     [CLEAR_SAVE_ERROR]: { next: () => null },
   },

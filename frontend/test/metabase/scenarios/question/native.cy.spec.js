@@ -48,9 +48,7 @@ describe("scenarios > question > native", () => {
     });
 
     // Mark field as required and add a default text value.
-    cy.contains("Required?")
-      .next()
-      .click();
+    cy.contains("Required?").next().click();
     cy.contains("Default filter widget value")
       .next()
       .find("input")
@@ -61,9 +59,7 @@ describe("scenarios > question > native", () => {
     cy.contains(`Data conversion error converting "some text"`);
 
     // Oh wait! That doesn't match the total column, so we'll change the parameter to a number.
-    cy.contains("Variable type")
-      .next()
-      .click();
+    cy.contains("Variable type").next().click();
     cy.contains("Number").click();
 
     // When we run it again, the default has been cleared out so we get the right error.
@@ -90,29 +86,18 @@ describe("scenarios > question > native", () => {
       .as("variableLabels");
 
     // ensure they're in the right order to start
-    cy.get("@variableLabels")
-      .first()
-      .should("have.text", "foo");
-    cy.get("@variableLabels")
-      .last()
-      .should("have.text", "bar");
+    cy.get("@variableLabels").first().should("have.text", "foo");
+    cy.get("@variableLabels").last().should("have.text", "bar");
 
     // change the parameter to a number.
-    cy.contains("Variable type")
-      .first()
-      .next()
-      .as("variableType");
+    cy.contains("Variable type").first().next().as("variableType");
     cy.get("@variableType").click();
     cy.contains("Number").click();
     cy.get("@variableType").should("have.text", "Number");
 
     // ensure they're still in the right order
-    cy.get("@variableLabels")
-      .first()
-      .should("have.text", "foo");
-    cy.get("@variableLabels")
-      .last()
-      .should("have.text", "bar");
+    cy.get("@variableLabels").first().should("have.text", "foo");
+    cy.get("@variableLabels").last().should("have.text", "bar");
   });
 
   it("should show referenced cards in the template tag sidebar", () => {
@@ -132,9 +117,7 @@ describe("scenarios > question > native", () => {
       .click({ force: true });
 
     // selecting a question should update the query
-    popover()
-      .contains("Orders")
-      .click();
+    popover().contains("Orders").click();
 
     cy.contains("select * from {{#1}}");
 
@@ -147,10 +130,7 @@ describe("scenarios > question > native", () => {
     cy.get(".ace_content:visible").type("{leftarrow}{leftarrow}{backspace}2");
 
     // sidebar should show updated question title and name
-    cy.contains("Question #2")
-      .parent()
-      .parent()
-      .contains("Orders, Count");
+    cy.contains("Question #2").parent().parent().contains("Orders, Count");
 
     // run query again and see new result
     cy.get(".NativeQueryEditor .Icon-play").click();
@@ -184,7 +164,7 @@ describe("scenarios > question > native", () => {
         collection_id: null,
         result_metadata: null,
         metadata_checksum: null,
-      }).then(response => {
+      }).then((response) => {
         cy.visit(`/question/${response.body.id}?created_at=2020-01`);
         cy.contains("580");
       });

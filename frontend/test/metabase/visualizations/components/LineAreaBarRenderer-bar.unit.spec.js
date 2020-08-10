@@ -77,13 +77,13 @@ function ExtraSeries(count = 2) {
 
 describe("LineAreaBarRenderer-bar", () => {
   let element;
-  const qsa = selector => [...element.querySelectorAll(selector)];
+  const qsa = (selector) => [...element.querySelectorAll(selector)];
 
-  beforeEach(function() {
+  beforeEach(function () {
     element = createFixture();
   });
 
-  afterEach(function() {
+  afterEach(function () {
     cleanupFixture(element);
   });
 
@@ -191,7 +191,7 @@ describe("LineAreaBarRenderer-bar", () => {
     dispatchUIEvent(qsa(".bar, .dot")[1], "mousemove");
 
     const values = onHoverChange.mock.calls.map(
-      call => getDataKeyValues(call[0])[1].value,
+      (call) => getDataKeyValues(call[0])[1].value,
     );
     expect(values).toEqual(["0.1%", "99.9%"]);
   });
@@ -266,7 +266,7 @@ describe("LineAreaBarRenderer-bar", () => {
       MainSeries("bar", settings, { value: 100 }),
       ExtraSeries(1000),
     ]);
-    const ticks = qsa(".axis.y .tick text").map(n => n.textContent);
+    const ticks = qsa(".axis.y .tick text").map((n) => n.textContent);
     const lastTickValue = parseInt(ticks[ticks.length - 1]);
     // if there are no ticks above 500, we're incorrectly using only the
     // first series to determine the y axis domain

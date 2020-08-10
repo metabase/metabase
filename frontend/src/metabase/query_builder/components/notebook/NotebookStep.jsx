@@ -112,11 +112,11 @@ export default class NotebookStep extends React.Component {
 
     const largeActionButtons =
       isLastStep &&
-      _.any(step.actions, action => !STEP_UI[action.type].compact);
+      _.any(step.actions, (action) => !STEP_UI[action.type].compact);
 
     const actions = [];
     actions.push(
-      ...step.actions.map(action => ({
+      ...step.actions.map((action) => ({
         priority: (STEP_UI[action.type] || {}).priority,
         button: (
           <ActionButton
@@ -132,7 +132,7 @@ export default class NotebookStep extends React.Component {
     );
 
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
-    const actionButtons = actions.map(action => action.button);
+    const actionButtons = actions.map((action) => action.button);
 
     let onRemove = null;
     if (step.revert) {

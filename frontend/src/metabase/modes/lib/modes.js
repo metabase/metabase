@@ -33,7 +33,7 @@ export function getMode(question: ?Question): ?QueryMode {
     const filters = query.filters();
 
     if (aggregations.length === 0 && breakouts.length === 0) {
-      const isPKFilterWithOneID = filter => {
+      const isPKFilterWithOneID = (filter) => {
         if (filter.isFieldFilter()) {
           const field = filter.field();
           if (
@@ -59,7 +59,7 @@ export function getMode(question: ?Question): ?QueryMode {
       return MetricMode;
     }
     if (aggregations.length > 0 && breakouts.length > 0) {
-      const breakoutFields = breakouts.map(b => b.field());
+      const breakoutFields = breakouts.map((b) => b.field());
       if (
         (breakoutFields.length === 1 && breakoutFields[0].isDate()) ||
         (breakoutFields.length === 2 &&

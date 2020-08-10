@@ -7,7 +7,7 @@ const ChartSettingInput = ({ value, onChange, ...props }) => (
     {...props}
     className="input block full"
     value={value}
-    onBlurChange={e => onChange(e.target.value)}
+    onBlurChange={(e) => onChange(e.target.value)}
   />
 );
 

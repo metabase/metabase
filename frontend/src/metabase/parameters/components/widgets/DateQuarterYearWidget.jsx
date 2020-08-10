@@ -31,7 +31,7 @@ export default class DateQuarterYearWidget extends Component {
   static propTypes = {};
   static defaultProps = {};
 
-  static format = value => {
+  static format = (value) => {
     const m = moment(value, "[Q]Q-YYYY");
     return m.isValid() ? m.format("[Q]Q, YYYY") : "";
   };
@@ -39,10 +39,7 @@ export default class DateQuarterYearWidget extends Component {
   componentWillUnmount() {
     const { quarter, year } = this.state;
     if (quarter != null && year != null) {
-      const value = moment()
-        .year(year)
-        .quarter(quarter)
-        .format("[Q]Q-YYYY");
+      const value = moment().year(year).quarter(quarter).format("[Q]Q-YYYY");
       if (this.props.value !== value) {
         this.props.setValue(value);
       }
@@ -57,14 +54,14 @@ export default class DateQuarterYearWidget extends Component {
         <div className="flex flex-column align-center px1">
           <YearPicker
             value={year}
-            onChange={year => this.setState({ year: year })}
+            onChange={(year) => this.setState({ year: year })}
           />
         </div>
         <ol
           className="flex flex-wrap bordered mx2 text-bold rounded"
           style={{ width: 150 }}
         >
-          {_.range(1, 5).map(q => (
+          {_.range(1, 5).map((q) => (
             <Quarter
               quarter={q}
               selected={q === quarter}
@@ -86,8 +83,6 @@ const Quarter = ({ quarter, selected, onClick }) => (
     style={{ width: 75, height: 75 }}
     onClick={onClick}
   >
-    {moment()
-      .quarter(quarter)
-      .format(QUARTER_FORMAT_STRING)}
+    {moment().quarter(quarter).format(QUARTER_FORMAT_STRING)}
   </li>
 );

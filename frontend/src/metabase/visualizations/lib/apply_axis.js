@@ -90,7 +90,7 @@ export function applyChartTimeseriesXAxis(
   // $FlowFixMe
   const firstSeries: SingleSeries = _.find(
     series,
-    s => !datasetContainsNoResults(s.data),
+    (s) => !datasetContainsNoResults(s.data),
   );
 
   // setup an x-axis where the dimension is a timeseries
@@ -122,7 +122,7 @@ export function applyChartTimeseriesXAxis(
     // special handling for weeks
     // TODO: are there any other cases where we should do this?
     let tickFormatUnit = dimensionColumn.unit;
-    const tickFormat = timestamp => {
+    const tickFormat = (timestamp) => {
       const { column, ...columnSettings } = chart.settings.column(
         dimensionColumn,
       );
@@ -210,7 +210,7 @@ export function applyChartQuantitativeXAxis(
   // $FlowFixMe
   const firstSeries: SingleSeries = _.find(
     series,
-    s => !datasetContainsNoResults(s.data),
+    (s) => !datasetContainsNoResults(s.data),
   );
   const dimensionColumn = firstSeries.data.cols[0];
 
@@ -227,7 +227,7 @@ export function applyChartQuantitativeXAxis(
     );
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
-    chart.xAxis().tickFormat(d => {
+    chart.xAxis().tickFormat((d) => {
       // don't show ticks that aren't multiples of xInterval
       if (isMultipleOf(d, xInterval)) {
         return formatValue(d, {
@@ -274,7 +274,7 @@ export function applyChartOrdinalXAxis(
   // $FlowFixMe
   const firstSeries: SingleSeries = _.find(
     series,
-    s => !datasetContainsNoResults(s.data),
+    (s) => !datasetContainsNoResults(s.data),
   );
 
   const dimensionColumn = firstSeries.data.cols[0];
@@ -293,7 +293,7 @@ export function applyChartOrdinalXAxis(
     chart.xAxis().ticks(xValues.length);
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
-    chart.xAxis().tickFormat(d =>
+    chart.xAxis().tickFormat((d) =>
       formatValue(d, {
         ...chart.settings.column(dimensionColumn),
         type: "axis",
@@ -332,14 +332,14 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
       scale: (...args) => chart.y(...args),
       axis: (...args) => chart.yAxis(...args),
       label: (...args) => chart.yAxisLabel(...args),
-      setting: name => chart.settings["graph.y_axis." + name],
+      setting: (name) => chart.settings["graph.y_axis." + name],
     };
   } else {
     axis = {
       scale: (...args) => chart.rightY(...args),
       axis: (...args) => chart.rightYAxis(...args),
       label: (...args) => chart.rightYAxisLabel(...args),
-      setting: name => chart.settings["graph.y_axis." + name], // TODO: right axis settings
+      setting: (name) => chart.settings["graph.y_axis." + name], // TODO: right axis settings
     };
   }
 
@@ -350,7 +350,7 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     } else {
       // only use the column name if all in the series are the same
       const labels = _.uniq(
-        series.map(single => chart.settings.series(single).title),
+        series.map((single) => chart.settings.series(single).title),
       );
       if (labels.length === 1) {
         axis.label(labels[0], Y_LABEL_PADDING);
@@ -381,9 +381,9 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
   // However, dc.js passes its own after we give it the scael, so instead we
   // overwrite the scale's interpolate method. That let's us use theirs but
   // special case values withing one pixel of the edge.
-  if (series.every(s => s.card.display === "bar")) {
+  if (series.every((s) => s.card.display === "bar")) {
     const _interpolate = scale.interpolate.bind(scale);
-    scale.interpolate = customInterpolatorFactory =>
+    scale.interpolate = (customInterpolatorFactory) =>
       _interpolate((a, b) => {
         // dc.js uses a rounding interpolator. We want to use the factory they
         // pass in, but we also need to create d3's default interpolator. We use
@@ -391,7 +391,7 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
         // rounded value, 0.49 would round to 0 and we wouldn't bump it up to 1.
         const custom = customInterpolatorFactory(a, b);
         const unrounded = d3.interpolate(a, b);
-        return t => {
+        return (t) => {
           const value = unrounded(t);
           const onePixelUp = custom(0) - 1;
           // y goes from top to bottom, so "onePixelUp" is actually the largest value
@@ -419,7 +419,7 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
       // With chart.elasticY, the y axis adjusts to show the beginning of the
       // bars. If there are any bar series, we try to do the same with the log
       // scale. We start at ±1 because things get wacky in (0, ±1].
-      const noBarSeries = series.every(s => s.card.display !== "bar");
+      const noBarSeries = series.every((s) => s.card.display !== "bar");
       if (noBarSeries) {
         scale.domain([min, max]);
       } else if (min < 0) {
@@ -452,7 +452,7 @@ export function getYValueFormatter(chart, series, yExtent) {
   // for normalized stacked charts the y-axis is a percentage number. In Javascript, 0.07 * 100.0 = 7.000000000000001 (try it) so we
   // round that number to get something nice like "7". Then we append "%" to get a nice tick like "7%"
   if (chart.settings["stackable.stack_type"] === "normalized") {
-    return value => Math.round(value * 100) + "%";
+    return (value) => Math.round(value * 100) + "%";
   }
   const metricColumn = series[0].data.cols[1];
   const columnSettings = chart.settings.column(metricColumn);

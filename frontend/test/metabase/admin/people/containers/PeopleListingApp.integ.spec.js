@@ -74,7 +74,7 @@ describe("PeopleListingApp", () => {
     store.dispatch(refreshCurrentUser());
 
     const users = await wrapper.async.find(UserAvatar);
-    expect(users.map(u => u.text())).toEqual(["DA", "TM"]);
+    expect(users.map((u) => u.text())).toEqual(["DA", "TM"]);
   });
 
   it("should load inactive users", async () => {
@@ -89,7 +89,7 @@ describe("PeopleListingApp", () => {
     click(radio.find("input[value=true]"));
 
     const users = await wrapper.async.find(UserAvatar);
-    expect(users.map(u => u.text())).toEqual(["HM"]);
+    expect(users.map((u) => u.text())).toEqual(["HM"]);
   });
 
   it("should not let the current user deactivate themselves", async () => {
@@ -105,7 +105,7 @@ describe("PeopleListingApp", () => {
     // the current user is at index 1 because of sorting
     click(menus.at(1).find(EntityMenuTrigger));
     const menuItems = await wrapper.async.find(EntityMenuItem);
-    const menuItemLabels = menuItems.map(mi => mi.text());
+    const menuItemLabels = menuItems.map((mi) => mi.text());
     expect(menuItemLabels).toEqual(["Edit user", "Reset password"]);
   });
 
@@ -121,7 +121,7 @@ describe("PeopleListingApp", () => {
 
     click(menus.at(0).find(EntityMenuTrigger));
     const menuItems = await wrapper.async.find(EntityMenuItem);
-    const menuItemLabels = menuItems.map(mi => mi.text());
+    const menuItemLabels = menuItems.map((mi) => mi.text());
     expect(menuItemLabels).toEqual([
       "Edit user",
       "Reset password",

@@ -62,13 +62,13 @@ Object.values(SECTIONS).map((section, index) => {
   section.index = index;
 });
 
-const getGALabelForAction = action =>
+const getGALabelForAction = (action) =>
   action ? `${action.section || ""}:${action.name || ""}` : null;
 
 type Props = {
   clicked: ?ClickObject,
   clickActions: ?(ClickAction[]),
-  onChangeCardAndRun: Object => void,
+  onChangeCardAndRun: (Object) => void,
   onClose: () => void,
 };
 

@@ -36,7 +36,7 @@ export default class Expressions extends Component {
         </div>
 
         {sortedNames &&
-          sortedNames.map(name => (
+          sortedNames.map((name) => (
             <div
               key={name}
               className="pb1 text-brand text-bold cursor-pointer flex flex-row align-center justify-between"

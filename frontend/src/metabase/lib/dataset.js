@@ -51,9 +51,7 @@ export function fieldRefForColumn(column: Column): ?FieldReference {
   // NOTE: matching existing behavior of returning the unwrapped base dimension until we understand the implications of changing this
   return (
     column.field_ref &&
-    Dimension.parseMBQL(column.field_ref)
-      .baseDimension()
-      .mbql()
+    Dimension.parseMBQL(column.field_ref).baseDimension().mbql()
   );
 }
 
@@ -105,7 +103,7 @@ export function findColumnIndexForColumnSetting(
   const fieldRef = normalizeFieldRef(columnSetting.fieldRef);
   // first try to find by fieldRef
   if (fieldRef != null) {
-    const index = _.findIndex(columns, col =>
+    const index = _.findIndex(columns, (col) =>
       _.isEqual(fieldRef, normalizeFieldRef(fieldRefForColumn(col))),
     );
     if (index >= 0) {
@@ -113,7 +111,7 @@ export function findColumnIndexForColumnSetting(
     }
   }
   // if that fails, find by column name
-  return _.findIndex(columns, col => col.name === columnSetting.name);
+  return _.findIndex(columns, (col) => col.name === columnSetting.name);
 }
 
 export function syncTableColumnsToQuery(question: Question): Question {
@@ -139,7 +137,10 @@ export function syncTableColumnsToQuery(question: Question): Question {
         if (columnSetting.fieldRef) {
           fieldRef = columnSetting.fieldRef;
         } else if (columnSetting.name) {
-          const index = _.findIndex(columnNames, n => n === columnSetting.name);
+          const index = _.findIndex(
+            columnNames,
+            (n) => n === columnSetting.name,
+          );
           if (index >= 0) {
             fieldRef = columnDimensions[index].mbql();
           }

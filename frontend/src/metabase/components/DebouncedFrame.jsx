@@ -82,7 +82,7 @@ export default class DebouncedFrame extends React.Component {
         : this.props;
     return (
       <div
-        ref={r => (this._container = r)}
+        ref={(r) => (this._container = r)}
         className={cx(className, "relative")}
         style={{
           overflow: "hidden",

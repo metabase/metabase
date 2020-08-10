@@ -42,7 +42,7 @@ export default class Database extends Base {
   }
 
   schemaNames(): SchemaName[] {
-    return this.schemas.map(s => s.name).sort((a, b) => a.localeCompare(b));
+    return this.schemas.map((s) => s.name).sort((a, b) => a.localeCompare(b));
   }
 
   // TABLES
@@ -82,9 +82,7 @@ export default class Database extends Base {
   // QUESTIONS
 
   newQuestion(): Question {
-    return this.question()
-      .setDefaultQuery()
-      .setDefaultDisplay();
+    return this.question().setDefaultQuery().setDefaultDisplay();
   }
 
   question(query = { "source-table": null }): Question {
@@ -119,6 +117,6 @@ export default class Database extends Base {
 
   /** Returns a database containing only the saved questions from the same database, if any */
   savedQuestionsDatabase(): ?Database {
-    return this.metadata.databasesList().find(db => db.is_saved_questions);
+    return this.metadata.databasesList().find((db) => db.is_saved_questions);
   }
 }

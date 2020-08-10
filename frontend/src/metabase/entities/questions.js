@@ -63,10 +63,10 @@ const Questions = createEntity({
   },
 
   objectSelectors: {
-    getName: question => question && question.name,
-    getUrl: question => question && Urls.question(question.id),
+    getName: (question) => question && question.name,
+    getUrl: (question) => question && Urls.question(question.id),
     getColor: () => color("text-medium"),
-    getIcon: question =>
+    getIcon: (question) =>
       (require("metabase/visualizations").default.get(question.display) || {})
         .iconName || "beaker",
   },

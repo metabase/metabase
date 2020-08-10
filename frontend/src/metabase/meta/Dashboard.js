@@ -164,19 +164,19 @@ function fieldFilterForParameterType(
 }
 
 export function parameterOptionsForField(field: Field): ParameterOption[] {
-  return PARAMETER_OPTIONS.filter(option =>
+  return PARAMETER_OPTIONS.filter((option) =>
     fieldFilterForParameterType(option.type)(field),
   );
 }
 
 function dimensionFilterForParameter(parameter: Parameter): DimensionFilter {
   const fieldFilter = fieldFilterForParameter(parameter);
-  return dimension => fieldFilter(dimension.field());
+  return (dimension) => fieldFilter(dimension.field());
 }
 
 function variableFilterForParameter(parameter: Parameter): VariableFilter {
   const tagFilter = tagFilterForParameter(parameter);
-  return variable => {
+  return (variable) => {
     if (variable instanceof TemplateTagVariable) {
       const tag = variable.tag();
       return tag ? tagFilter(tag) : false;
@@ -220,7 +220,7 @@ export function getParameterMappingOptions(
         parameter ? dimensionFilterForParameter(parameter) : undefined,
       )
       .sections()
-      .flatMap(section =>
+      .flatMap((section) =>
         section.items.map(({ dimension }) => ({
           sectionName: section.name,
           name: dimension.displayName(),
@@ -237,7 +237,7 @@ export function getParameterMappingOptions(
   options.push(
     ...query
       .variables(parameter ? variableFilterForParameter(parameter) : undefined)
-      .map(variable => ({
+      .map((variable) => ({
         sectionName: "Variables",
         name: variable.displayName(),
         icon: variable.icon(),
@@ -255,7 +255,7 @@ export function createParameter(
   let name = option.name;
   let nameIndex = 0;
   // get a unique name
-  while (_.any(parameters, p => p.name === name)) {
+  while (_.any(parameters, (p) => p.name === name)) {
     name = option.name + " " + ++nameIndex;
   }
   const parameter = {

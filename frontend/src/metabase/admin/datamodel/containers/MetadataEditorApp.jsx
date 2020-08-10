@@ -36,15 +36,12 @@ const mapDispatchToProps = {
       : push(`/admin/datamodel/database/${id}`),
   selectTable: ({ id, db_id }) =>
     push(`/admin/datamodel/database/${db_id}/table/${id}`),
-  updateField: field => Fields.actions.update(field),
+  updateField: (field) => Fields.actions.update(field),
   onRetireMetric: ({ id, ...rest }) =>
     Metrics.actions.setArchived({ id }, true, rest),
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class MetadataEditor extends Component {
   constructor(props, context) {
     super(props, context);

@@ -70,7 +70,7 @@ describe("Visualization drill-through", () => {
 
       it("shows the name and lineage correctly", () => {
         // requires writing a new selector for QB
-        const getLineage = store => {};
+        const getLineage = (store) => {};
         expect(getLineage(store.getState())).toBe("some value");
       });
 

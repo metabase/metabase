@@ -124,7 +124,7 @@ export default class SnippetSidebar extends React.Component {
     }
 
     const displayedItems = showSearch
-      ? snippets.filter(snippet =>
+      ? snippets.filter((snippet) =>
           snippet.name.toLowerCase().includes(searchString.toLowerCase()),
         )
       : _.sortBy(search, "model"); // relies on "collection" sorting before "snippet";
@@ -167,12 +167,12 @@ export default class SnippetSidebar extends React.Component {
                 >
                   <input
                     className="input input--borderless p0"
-                    ref={e => (this.searchBox = e)}
-                    onChange={e =>
+                    ref={(e) => (this.searchBox = e)}
+                    onChange={(e) =>
                       this.setState({ searchString: e.target.value })
                     }
                     value={searchString}
-                    onKeyDown={e => {
+                    onKeyDown={(e) => {
                       if (e.key === "Escape") {
                         this.hideSearch();
                       }
@@ -190,7 +190,7 @@ export default class SnippetSidebar extends React.Component {
                         this.props.setSnippetCollectionId(
                           // if this collection's parent isn't in the list, we don't have perms to see it, return to the root instead
                           this.props.snippetCollections.some(
-                            sc =>
+                            (sc) =>
                               canonicalCollectionId(sc.id) ===
                               canonicalCollectionId(parentId),
                           )
@@ -207,7 +207,7 @@ export default class SnippetSidebar extends React.Component {
               </div>
               <div className="flex-align-right flex align-center text-medium no-decoration">
                 {[
-                  ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map(f =>
+                  ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map((f) =>
                     f(this, { className: "mr2" }),
                   ),
                 ]}
@@ -245,7 +245,7 @@ export default class SnippetSidebar extends React.Component {
                             name: t`New snippet`,
                             onClick: openSnippetModalWithSelectedText,
                           },
-                          ...PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.map(f =>
+                          ...PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.map((f) =>
                             f(this),
                           ),
                         ].map(({ icon, name, onClick }) => (
@@ -281,7 +281,7 @@ export default class SnippetSidebar extends React.Component {
             </div>
             <div className="flex-full">
               {displayedItems.length > 0
-                ? displayedItems.map(item => (
+                ? displayedItems.map((item) => (
                     <Row
                       key={`${item.model || "snippet"}-${item.id}`}
                       item={item}
@@ -295,7 +295,7 @@ export default class SnippetSidebar extends React.Component {
             </div>
           </div>
         )}
-        {PLUGIN_SNIPPET_SIDEBAR_MODALS.map(f => f(this))}
+        {PLUGIN_SNIPPET_SIDEBAR_MODALS.map((f) => f(this))}
       </SidebarContent>
     );
   }
@@ -315,7 +315,7 @@ class ArchivedSnippets extends React.Component {
     } = this.props;
     const collectionsById = _.indexBy(
       snippetCollections.concat(archivedSnippetCollections),
-      c => canonicalCollectionId(c.id),
+      (c) => canonicalCollectionId(c.id),
     );
 
     return (
@@ -326,14 +326,14 @@ class ArchivedSnippets extends React.Component {
           onBack={onBack}
         />
 
-        {archivedSnippetCollections.map(collection => (
+        {archivedSnippetCollections.map((collection) => (
           <Row
             key={`collection-${collection.id}`}
             item={collection}
             type="collection"
           />
         ))}
-        {snippets.map(snippet => (
+        {snippets.map((snippet) => (
           <Row
             key={`snippet-${snippet.id}`}
             item={snippet}

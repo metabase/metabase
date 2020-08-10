@@ -34,7 +34,7 @@ const SingleDatePicker = ({
   <SpecificDatePicker
     className={className}
     value={value}
-    onChange={value => onFilterChange([op, field, value])}
+    onChange={(value) => onFilterChange([op, field, value])}
     hideTimeSelectors={hideTimeSelectors}
     calendar
   />
@@ -52,14 +52,14 @@ const MultiDatePicker = ({
         <SpecificDatePicker
           value={startValue}
           hideTimeSelectors={hideTimeSelectors}
-          onChange={value => onFilterChange([op, field, value, endValue])}
+          onChange={(value) => onFilterChange([op, field, value, endValue])}
         />
       </div>
       <div className="Grid-cell">
         <SpecificDatePicker
           value={endValue}
           hideTimeSelectors={hideTimeSelectors}
-          onChange={value => onFilterChange([op, field, startValue, value])}
+          onChange={(value) => onFilterChange([op, field, startValue, value])}
         />
       </div>
     </div>
@@ -76,13 +76,13 @@ const MultiDatePicker = ({
   </div>
 );
 
-const PreviousPicker = props => (
-  <RelativeDatePicker {...props} formatter={value => value * -1} />
+const PreviousPicker = (props) => (
+  <RelativeDatePicker {...props} formatter={(value) => value * -1} />
 );
 
 PreviousPicker.horizontalLayout = true;
 
-const NextPicker = props => <RelativeDatePicker {...props} />;
+const NextPicker = (props) => <RelativeDatePicker {...props} />;
 
 NextPicker.horizontalLayout = true;
 
@@ -117,12 +117,12 @@ class CurrentPicker extends Component {
         className={className}
         value={unit}
         open={this.state.showUnits}
-        onChange={value => {
+        onChange={(value) => {
           onFilterChange([operator, field, intervals, value]);
           this.setState({ showUnits: false });
         }}
         togglePicker={() => this.setState({ showUnits: !this.state.showUnits })}
-        formatter={val => val}
+        formatter={(val) => val}
         periods={DATE_PERIODS}
       />
     );
@@ -136,14 +136,14 @@ const getUnit = ([op, field, value, unit]) =>
 const getOptions = ([op, field, value, unit, options]) =>
   (op === "time-interval" && options) || {};
 
-const getDate = value => {
+const getDate = (value) => {
   if (typeof value !== "string" || !moment(value).isValid()) {
     value = moment().format("YYYY-MM-DD");
   }
   return value;
 };
 
-const hasTime = value =>
+const hasTime = (value) =>
   typeof value === "string" && /T\d{2}:\d{2}:\d{2}$/.test(value);
 
 function getDateTimeField(
@@ -179,7 +179,7 @@ function getDateTimeFieldAndValues(
 ): [ConcreteField, any] {
   const values = filter
     .slice(2, 2 + count)
-    .map(value => value && getDate(value));
+    .map((value) => value && getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
   const field = getDateTimeField(filter[1], bucketing);
   // $FlowFixMe
@@ -211,14 +211,14 @@ const ALL_TIME_OPERATOR = {
   name: "all",
   displayName: t`All Time`,
   init: () => null,
-  test: op => op === null,
+  test: (op) => op === null,
 };
 
 export const DATE_OPERATORS: Operator[] = [
   {
     name: "previous",
     displayName: t`Previous`,
-    init: filter => [
+    init: (filter) => [
       "time-interval",
       getDateTimeField(filter[1]),
       -getIntervals(filter),
@@ -234,7 +234,7 @@ export const DATE_OPERATORS: Operator[] = [
   {
     name: "next",
     displayName: t`Next`,
-    init: filter => [
+    init: (filter) => [
       "time-interval",
       getDateTimeField(filter[1]),
       getIntervals(filter),
@@ -249,7 +249,7 @@ export const DATE_OPERATORS: Operator[] = [
   {
     name: "current",
     displayName: t`Current`,
-    init: filter => [
+    init: (filter) => [
       "time-interval",
       getDateTimeField(filter[1]),
       "current",
@@ -261,28 +261,28 @@ export const DATE_OPERATORS: Operator[] = [
   {
     name: "before",
     displayName: t`Before`,
-    init: filter => ["<", ...getDateTimeFieldAndValues(filter, 1)],
+    init: (filter) => ["<", ...getDateTimeFieldAndValues(filter, 1)],
     test: ([op]) => op === "<",
     widget: SingleDatePicker,
   },
   {
     name: "after",
     displayName: t`After`,
-    init: filter => [">", ...getDateTimeFieldAndValues(filter, 1)],
+    init: (filter) => [">", ...getDateTimeFieldAndValues(filter, 1)],
     test: ([op]) => op === ">",
     widget: SingleDatePicker,
   },
   {
     name: "on",
     displayName: t`On`,
-    init: filter => ["=", ...getDateTimeFieldAndValues(filter, 1)],
+    init: (filter) => ["=", ...getDateTimeFieldAndValues(filter, 1)],
     test: ([op]) => op === "=",
     widget: SingleDatePicker,
   },
   {
     name: "between",
     displayName: t`Between`,
-    init: filter => ["between", ...getDateTimeFieldAndValues(filter, 2)],
+    init: (filter) => ["between", ...getDateTimeFieldAndValues(filter, 2)],
     test: ([op]) => op === "between",
     widget: MultiDatePicker,
   },
@@ -292,13 +292,13 @@ export const EMPTINESS_OPERATORS: Operator[] = [
   {
     name: "empty",
     displayName: t`Is Empty`,
-    init: filter => ["is-null", getDateTimeField(filter[1])],
+    init: (filter) => ["is-null", getDateTimeField(filter[1])],
     test: ([op]) => op === "is-null",
   },
   {
     name: "not-empty",
     displayName: t`Not Empty`,
-    init: filter => ["not-null", getDateTimeField(filter[1])],
+    init: (filter) => ["not-null", getDateTimeField(filter[1])],
     test: ([op]) => op === "not-null",
   },
 ];
@@ -311,7 +311,7 @@ export function getOperator(
   filter: FieldFilter,
   operators?: Operator[] = ALL_OPERATORS,
 ) {
-  return _.find(operators, o => o.test(filter));
+  return _.find(operators, (o) => o.test(filter));
 }
 
 type Props = {
@@ -380,7 +380,7 @@ export default class DatePicker extends Component {
           })}
           operator={operator && operator.name}
           operators={operators}
-          onOperatorChange={operator => onFilterChange(operator.init(filter))}
+          onOperatorChange={(operator) => onFilterChange(operator.init(filter))}
         />
         {Widget && (
           <Widget
@@ -388,7 +388,7 @@ export default class DatePicker extends Component {
             className="flex-full"
             filter={filter}
             hideHoursAndMinutes={this.props.hideTimeSelectors}
-            onFilterChange={filter => {
+            onFilterChange={(filter) => {
               if (operator && operator.init) {
                 onFilterChange(operator.init(filter));
               } else {

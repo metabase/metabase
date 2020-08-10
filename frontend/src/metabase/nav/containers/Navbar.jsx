@@ -71,7 +71,7 @@ const NavHover = {
 };
 
 const SearchWrapper = Flex.extend`
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.active ? ActiveSearchColor : DefaultSearchColor};
   border-radius: 6px;
   flex: 1 1 auto;
@@ -152,12 +152,12 @@ class SearchBar extends React.Component {
             py={2}
             pr={[0, 2]}
             pl={1}
-            ref={ref => (this.searchInput = ref)}
+            ref={(ref) => (this.searchInput = ref)}
             value={searchText}
             placeholder={t`Search` + "…"}
             onClick={() => this.setState({ active: true })}
-            onChange={e => this.setState({ searchText: e.target.value })}
-            onKeyPress={e => {
+            onChange={(e) => this.setState({ searchText: e.target.value })}
+            onKeyPress={(e) => {
               if (e.key === "Enter" && (searchText || "").trim().length > 0) {
                 this.props.onChangeLocation({
                   pathname: "search",
@@ -178,10 +178,7 @@ const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
   // set this to false to prevent a potential spinner on the main nav
   loadingAndErrorWrapper: false,
 })
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
   state = {
     modal: null,

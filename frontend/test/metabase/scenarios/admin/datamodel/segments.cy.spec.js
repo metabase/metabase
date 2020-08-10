@@ -39,9 +39,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.contains("Segments").click();
       cy.contains("New segment").click();
       cy.contains("Select a table").click();
-      popover()
-        .contains("Orders")
-        .click({ force: true }); // this shouldn't be needed, but there were issues with reordering as loads happeend
+      popover().contains("Orders").click({ force: true }); // this shouldn't be needed, but there were issues with reordering as loads happeend
 
       cy.url().should("match", /segment\/create$/);
       cy.contains("Create Your Segment");
@@ -52,9 +50,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.contains("Equal to").click();
       cy.contains("Less than").click();
       cy.get('[placeholder="Enter a number"]').type("100");
-      popover()
-        .contains("Add filter")
-        .click();
+      popover().contains("Add filter").click();
 
       cy.contains("12765 rows");
 
@@ -110,9 +106,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       // Ask question
       cy.visit("/reference/segments/1/questions");
       cy.get(".full .Button").click();
-      cy.findAllByText("Filter")
-        .first()
-        .click();
+      cy.findAllByText("Filter").first().click();
       sidebar().within(() => {
         cy.contains("Product ID").click();
       });
@@ -120,9 +114,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.findByText("Add filter").click();
       cy.findByText("Product ID is 14");
       cy.findByText("Save").click();
-      cy.findAllByText("Save")
-        .last()
-        .click();
+      cy.findAllByText("Save").last().click();
 
       // Check list
       cy.visit("/reference/segments/1/questions");
@@ -148,26 +140,16 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.url().should("match", /segment\/1$/);
       cy.contains("Edit Your Segment");
       cy.contains(/Total\s+is less than/).click();
-      popover()
-        .contains("Less than")
-        .click();
-      popover()
-        .contains("Greater than")
-        .click();
-      popover()
-        .find("input")
-        .type("{SelectAll}10");
-      popover()
-        .contains("Update filter")
-        .click();
+      popover().contains("Less than").click();
+      popover().contains("Greater than").click();
+      popover().find("input").type("{SelectAll}10");
+      popover().contains("Update filter").click();
 
       // confirm that the preview updated
       cy.contains("18703 rows");
 
       // update name and description, set a revision note, and save the update
-      cy.get('[name="name"]')
-        .clear()
-        .type("orders >10");
+      cy.get('[name="name"]').clear().type("orders >10");
       cy.get('[name="description"]')
         .clear()
         .type("All orders with a total over $10.");
@@ -185,12 +167,8 @@ describe("scenarios > admin > datamodel > segments", () => {
         .find(".Icon-ellipsis")
         .click();
       cy.contains("Retire Segment").click();
-      modal()
-        .find("textarea")
-        .type("delete it");
-      modal()
-        .contains("button", "Retire")
-        .click();
+      modal().find("textarea").type("delete it");
+      modal().contains("button", "Retire").click();
     });
   });
 });

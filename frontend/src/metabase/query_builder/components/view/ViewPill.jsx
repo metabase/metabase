@@ -41,7 +41,7 @@ export default function ViewPill({
           name="close"
           size={12}
           className="ml1"
-          onClick={e => {
+          onClick={(e) => {
             e.stopPropagation();
             onRemove();
           }}

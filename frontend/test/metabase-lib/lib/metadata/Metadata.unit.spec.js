@@ -13,12 +13,12 @@ describe("databasesList", () => {
     metadata.databases[savedQuestionDb.id] = savedQuestionDb;
 
     expect(
-      metadata.databasesList().find(d => d.name === "Saved Questions"),
+      metadata.databasesList().find((d) => d.name === "Saved Questions"),
     ).toEqual(savedQuestionDb);
     expect(
       metadata
         .databasesList({ savedQuestions: false })
-        .find(d => d.name === "Saved Questions"),
+        .find((d) => d.name === "Saved Questions"),
     ).toBeUndefined();
   });
 });

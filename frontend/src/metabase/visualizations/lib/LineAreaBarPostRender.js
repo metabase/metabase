@@ -57,7 +57,7 @@ function onRenderMoveContentToTop(chart) {
 
 function onRenderReorderCharts(chart) {
   const displayTypes = chart.series.map(
-    single => chart.settings.series(single).display,
+    (single) => chart.settings.series(single).display,
   );
   const isHeterogenous = _.uniq(displayTypes).length > 0;
   if (isHeterogenous) {
@@ -104,12 +104,12 @@ function onRenderSetLineWidth(chart) {
 
 function onRenderEnableDots(chart) {
   const markerEnabledByIndex = chart.series.map(
-    single => chart.settings.series(single)["line.marker_enabled"],
+    (single) => chart.settings.series(single)["line.marker_enabled"],
   );
 
   // if any settings are auto, determine the correct auto setting
   let enableDotsAuto;
-  const hasAuto = _.any(markerEnabledByIndex, enabled => enabled == null);
+  const hasAuto = _.any(markerEnabledByIndex, (enabled) => enabled == null);
   if (hasAuto) {
     // get all enabled or auto dots
     const dots = [].concat(
@@ -178,11 +178,8 @@ function onRenderVoronoiHover(chart) {
     return;
   }
 
-  const originRect = chart
-    .svg()
-    .node()
-    .getBoundingClientRect();
-  const vertices = dots.map(e => {
+  const originRect = chart.svg().node().getBoundingClientRect();
+  const vertices = dots.map((e) => {
     const { top, left, width, height } = e.getBoundingClientRect();
     const px = left + width / 2 - originRect.left;
     const py = top + height / 2 - originRect.top;
@@ -195,7 +192,10 @@ function onRenderVoronoiHover(chart) {
     ? parent.node().getBBox()
     : { width: 0, height: 0 };
 
-  const voronoi = d3.geom.voronoi().clipExtent([[0, 0], [width, height]]);
+  const voronoi = d3.geom.voronoi().clipExtent([
+    [0, 0],
+    [width, height],
+  ]);
 
   // circular clip paths to limit distance from actual point
   parent
@@ -206,8 +206,8 @@ function onRenderVoronoiHover(chart) {
     .append("svg:clipPath")
     .attr("id", (d, i) => "clip-" + i)
     .append("svg:circle")
-    .attr("cx", d => d[0])
-    .attr("cy", d => d[1])
+    .attr("cx", (d) => d[0])
+    .attr("cy", (d) => d[1])
     .attr("r", VORONOI_TARGET_RADIUS);
 
   // voronoi layout with clip paths applied
@@ -215,11 +215,11 @@ function onRenderVoronoiHover(chart) {
     .append("svg:g")
     .classed("voronoi", true)
     .selectAll("path")
-    .data(voronoi(vertices), d => d && d.join(","))
+    .data(voronoi(vertices), (d) => d && d.join(","))
     .enter()
     .append("svg:path")
-    .filter(d => d != null)
-    .attr("d", d => "M" + d.join("L") + "Z")
+    .filter((d) => d != null)
+    .attr("d", (d) => "M" + d.join("L") + "Z")
     .attr("clip-path", (d, i) => clipPathReference("clip-" + i))
     // in the functions below e is not an event but the circle element being hovered/clicked
     .on("mousemove", ({ point }) => {
@@ -244,7 +244,7 @@ function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
   chart.selectAll(".goal .dot, .trend .dot").remove();
 
   // move to end of the parent node so it's on top
-  chart.selectAll(".goal, .trend").each(function() {
+  chart.selectAll(".goal, .trend").each(function () {
     this.parentNode.appendChild(this);
   });
 
@@ -280,10 +280,10 @@ function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
         "font-weight": "bold",
         fill: color("text-medium"),
       })
-      .on("mouseenter", function() {
+      .on("mouseenter", function () {
         onGoalHover(this);
       })
-      .on("mouseleave", function() {
+      .on("mouseleave", function () {
         onGoalHover(null);
       });
   }
@@ -314,7 +314,7 @@ function onRenderHideBadAxis(chart) {
 }
 
 function onRenderDisableClickFiltering(chart) {
-  chart.selectAll("rect.bar").on("click", d => {
+  chart.selectAll("rect.bar").on("click", (d) => {
     chart.filter(null);
     chart.filter(d.key);
   });
@@ -348,7 +348,7 @@ function getXAxisRotation(chart) {
 function onRenderRotateAxis(chart) {
   const degrees = getXAxisRotation(chart);
   if (degrees !== 0) {
-    chart.selectAll("g.x text").attr("transform", function() {
+    chart.selectAll("g.x text").attr("transform", function () {
       const { width, height } = this.getBBox();
       return (
         // translate left half the width so the right edge is at the tick
@@ -442,10 +442,7 @@ function computeMinHorizontalMargins(chart) {
   const min = { left: 0, right: 0 };
   const ticks = chart.selectAll(".axis.x .tick text")[0];
   if (ticks.length > 0) {
-    const chartRect = chart
-      .select("svg")
-      .node()
-      .getBoundingClientRect();
+    const chartRect = chart.select("svg").node().getBoundingClientRect();
     min.left =
       chart.margins().left -
       (ticks[0].getBoundingClientRect().left - chartRect.left);
@@ -459,7 +456,7 @@ function computeMinHorizontalMargins(chart) {
 function computeXAxisLabelMaxSize(chart) {
   let maxWidth = 0;
   let maxHeight = 0;
-  chart.selectAll("g.x text").each(function() {
+  chart.selectAll("g.x text").each(function () {
     const { width, height } = this.getBBox();
     maxWidth = Math.max(maxWidth, width);
     maxHeight = Math.max(maxHeight, height);

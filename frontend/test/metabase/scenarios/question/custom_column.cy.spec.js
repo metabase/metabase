@@ -25,9 +25,7 @@ describe("scenarios > question > custom columns", () => {
     cy.findByText("Products").click();
     cy.findByText("Visualize").click();
 
-    cy.wait(1000)
-      .findByText("where")
-      .should("not.exist");
+    cy.wait(1000).findByText("where").should("not.exist");
     cy.findByText("Orders + Products");
     cy.findByText("Product → ID");
     firstCell("contain", 1);
@@ -36,16 +34,10 @@ describe("scenarios > question > custom columns", () => {
     // Add custom column formula
     cy.get(".Icon-notebook").click();
     cy.findByText("Custom column").click();
-    popover().within($popover => {
-      cy.get("p")
-        .first()
-        .click();
-      cy.get("[contenteditable='true']")
-        .type("1 + 1")
-        .click();
-      cy.get("input")
-        .last()
-        .type("X");
+    popover().within(($popover) => {
+      cy.get("p").first().click();
+      cy.get("[contenteditable='true']").type("1 + 1").click();
+      cy.get("input").last().type("X");
       cy.findByText("Done").click();
     });
     cy.findByText("Visualize").click();

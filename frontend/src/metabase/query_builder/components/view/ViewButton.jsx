@@ -5,14 +5,14 @@ import styled from "styled-components";
 
 // NOTE: some of this is duplicated from NotebookCell.jsx
 const ViewButton = styled(Button)`
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.active ? props.color : alpha(props.color, 0.2)};
-  color: ${props => (props.active ? "white" : props.color)};
+  color: ${(props) => (props.active ? "white" : props.color)};
   border: none;
   &:hover {
-    background-color: ${props =>
+    background-color: ${(props) =>
       props.active ? alpha(props.color, 0.8) : alpha(props.color, 0.35)};
-    color: ${props => (props.active ? "white" : props.color)};
+    color: ${(props) => (props.active ? "white" : props.color)};
   }
   transition: background 300ms linear, border 300ms linear;
   > .Icon {

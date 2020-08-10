@@ -66,8 +66,8 @@ export class WindowModal extends Component {
     const className = cx(
       this.props.className,
       ...["small", "medium", "wide", "tall"]
-        .filter(type => this.props[type])
-        .map(type => `Modal--${type}`),
+        .filter((type) => this.props[type])
+        .map((type) => `Modal--${type}`),
     );
     return (
       <OnClickOutsideWrapper handleDismissal={this.handleDismissal.bind(this)}>
@@ -171,7 +171,7 @@ export class FullPageModal extends Component {
             : { opacity: spring(0), top: spring(20) }
         }
       >
-        {motionStyle => (
+        {(motionStyle) => (
           <div className="Modal--full">
             {/* Using an OnClickOutsideWrapper is weird since this modal
               occupies the entire screen. We do this to put this modal on top of
@@ -212,7 +212,7 @@ export class TestModal extends Component {
   render() {
     if (this.props.isOpen) {
       return (
-        <div className="test-modal" onClick={e => e.stopPropagation()}>
+        <div className="test-modal" onClick={(e) => e.stopPropagation()}>
           {getModalContent({
             ...this.props,
             fullPageModal: true,

@@ -97,17 +97,17 @@ type OpenSteps = {
 const STEPS: StepDefinition[] = [
   {
     type: "data",
-    valid: query => !query.sourceQuery(),
-    active: query => true,
-    clean: query => query,
+    valid: (query) => !query.sourceQuery(),
+    active: (query) => true,
+    clean: (query) => query,
   },
   {
     type: "join",
-    valid: query => query.hasData() && query.database().hasFeature("join"),
+    valid: (query) => query.hasData() && query.database().hasFeature("join"),
     // active: query => query.hasJoins(),
     // revert: query => query.clearJoins(),
     // clean: query => query.cleanJoins(),
-    subSteps: query => query.joins().length,
+    subSteps: (query) => query.joins().length,
     active: (query, index) => query.joins().length > index,
     revert: (query, index) => query.removeJoin(index),
     clean: (query, index) => {
@@ -117,18 +117,18 @@ const STEPS: StepDefinition[] = [
   },
   {
     type: "expression",
-    valid: query =>
+    valid: (query) =>
       query.hasData() && query.database().hasFeature("expressions"),
-    active: query => query.hasExpressions(),
-    revert: query => query.clearExpressions(),
-    clean: query => query.cleanExpressions(),
+    active: (query) => query.hasExpressions(),
+    revert: (query) => query.clearExpressions(),
+    clean: (query) => query.cleanExpressions(),
   },
   {
     type: "filter",
-    valid: query => query.hasData(),
-    active: query => query.hasFilters(),
-    revert: query => query.clearFilters(),
-    clean: query => query.cleanFilters(),
+    valid: (query) => query.hasData(),
+    active: (query) => query.hasFilters(),
+    revert: (query) => query.clearFilters(),
+    clean: (query) => query.cleanFilters(),
   },
   // {
   //   type: "aggregate",
@@ -147,34 +147,34 @@ const STEPS: StepDefinition[] = [
   {
     // NOTE: summarize is a combination of aggregate and breakout
     type: "summarize",
-    valid: query => query.hasData(),
-    active: query => query.hasAggregations() || query.hasBreakouts(),
-    revert: query =>
+    valid: (query) => query.hasData(),
+    active: (query) => query.hasAggregations() || query.hasBreakouts(),
+    revert: (query) =>
       // only clear if there are aggregations or breakouts because it will also clear `fields`
       query.hasAggregations() || query.hasBreakouts()
         ? query.clearBreakouts().clearAggregations()
         : query,
-    clean: query => query.cleanBreakouts().cleanAggregations(),
+    clean: (query) => query.cleanBreakouts().cleanAggregations(),
   },
   {
     type: "sort",
-    valid: query =>
+    valid: (query) =>
       query.hasData() &&
       (!query.hasAggregations() || query.hasBreakouts()) &&
       (!query.sourceQuery() || query.hasAnyClauses()),
-    active: query => query.hasSorts(),
-    revert: query => query.clearSort(),
-    clean: query => query.cleanSorts(),
+    active: (query) => query.hasSorts(),
+    revert: (query) => query.clearSort(),
+    clean: (query) => query.cleanSorts(),
   },
   {
     type: "limit",
-    valid: query =>
+    valid: (query) =>
       query.hasData() &&
       (!query.hasAggregations() || query.hasBreakouts()) &&
       (!query.sourceQuery() || query.hasAnyClauses()),
-    active: query => query.hasLimit(),
-    revert: query => query.clearLimit(),
-    clean: query => query.cleanLimit(),
+    active: (query) => query.hasLimit(),
+    revert: (query) => query.clearLimit(),
+    clean: (query) => query.cleanLimit(),
   },
 ];
 
@@ -247,9 +247,9 @@ export function getStageSteps(
       visible:
         STEP.valid(stageQuery, itemIndex) &&
         (STEP.active(stageQuery, itemIndex) || openSteps[id]),
-      revert: STEP.revert ? query => STEP.revert(query, itemIndex) : null,
-      clean: query => STEP.clean(query, itemIndex),
-      update: datasetQuery => {
+      revert: STEP.revert ? (query) => STEP.revert(query, itemIndex) : null,
+      clean: (query) => STEP.clean(query, itemIndex),
+      update: (datasetQuery) => {
         let newQuery = stageQuery.setDatasetQuery(datasetQuery);
         // clean each subsequent step individually. we have to do this rather than calling newQuery.clean() in case
         // the current step is in a temporarily invalid state
@@ -278,11 +278,11 @@ export function getStageSteps(
 
   // get the currently visible steps, flattening "items"
   const steps = _.flatten(
-    STEPS.map(STEP => {
+    STEPS.map((STEP) => {
       if (STEP.subSteps) {
         // add 1 for the initial or next action button
         const itemIndexes = _.range(0, STEP.subSteps(stageQuery) + 1);
-        return itemIndexes.map(itemIndex => getStep(STEP, itemIndex));
+        return itemIndexes.map((itemIndex) => getStep(STEP, itemIndex));
       } else {
         return [getStep(STEP)];
       }

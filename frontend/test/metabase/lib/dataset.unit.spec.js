@@ -69,7 +69,7 @@ describe("metabase/util/dataset", () => {
       const query = ORDERS.query();
       const question = syncTableColumnsToQuery(
         query.question().setSettings({
-          "table.columns": query.columnNames().map(name => ({
+          "table.columns": query.columnNames().map((name) => ({
             name,
             enabled: true,
           })),

@@ -21,10 +21,7 @@ const SEND_TEST_BUTTON_STATES = {
   success: t`Sent!`,
 };
 
-@connect(
-  null,
-  { sendTestEmail, updateEmailSettings, clearEmailSettings },
-)
+@connect(null, { sendTestEmail, updateEmailSettings, clearEmailSettings })
 export default class SettingsEmailForm extends Component {
   state = {
     sendingEmail: "default",
@@ -43,7 +40,7 @@ export default class SettingsEmailForm extends Component {
     this._form.setState({ formData: {}, dirty: false });
   };
 
-  sendTestEmail = async e => {
+  sendTestEmail = async (e) => {
     e.preventDefault();
 
     this.setState({ sendingEmail: "working" });
@@ -69,7 +66,7 @@ export default class SettingsEmailForm extends Component {
     const { sendingEmail } = this.state;
     return (
       <SettingsBatchForm
-        ref={form => (this._form = form && form.getWrappedInstance())}
+        ref={(form) => (this._form = form && form.getWrappedInstance())}
         {...this.props}
         updateSettings={this.props.updateEmailSettings}
         disable={sendingEmail !== "default"}

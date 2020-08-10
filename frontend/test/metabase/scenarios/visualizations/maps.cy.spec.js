@@ -17,12 +17,8 @@ describe("scenarios > visualizations > maps", () => {
     cy.contains("Visualization").click();
     cy.get(".Icon-pinmap").click();
 
-    cy.contains("Map type")
-      .next()
-      .click();
-    popover()
-      .contains("Pin map")
-      .click();
+    cy.contains("Map type").next().click();
+    popover().contains("Pin map").click();
 
     // When the settings sidebar opens, both latitude and longitude selects are
     // open. That makes it difficult to select each in Cypress, so we click
@@ -31,19 +27,11 @@ describe("scenarios > visualizations > maps", () => {
     cy.contains("New question").click();
 
     // select both columns
-    cy.contains("Latitude field")
-      .next()
-      .click();
-    popover()
-      .contains("LAT")
-      .click();
+    cy.contains("Latitude field").next().click();
+    popover().contains("LAT").click();
 
-    cy.contains("Longitude field")
-      .next()
-      .click();
-    popover()
-      .contains("LNG")
-      .click();
+    cy.contains("Longitude field").next().click();
+    popover().contains("LNG").click();
 
     // check that a map appears
     cy.get(".leaflet-container");

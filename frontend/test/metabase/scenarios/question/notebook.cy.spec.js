@@ -47,27 +47,15 @@ describe("scenarios > question > notebook", () => {
 
       // join to Reviews on orders.product_id = reviews.product_id
       cy.get(".Icon-join_left_outer").click();
-      popover()
-        .contains("Reviews")
-        .click();
-      popover()
-        .contains("Product ID")
-        .click();
-      popover()
-        .contains("Product ID")
-        .click();
+      popover().contains("Reviews").click();
+      popover().contains("Product ID").click();
+      popover().contains("Product ID").click();
 
       // get the average rating across all rows (not a useful metric)
       cy.contains("Pick the metric you want to see").click();
-      popover()
-        .contains("Average of")
-        .click();
-      popover()
-        .find(".Icon-join_left_outer")
-        .click();
-      popover()
-        .contains("Rating")
-        .click();
+      popover().contains("Average of").click();
+      popover().find(".Icon-join_left_outer").click();
+      popover().contains("Rating").click();
       cy.contains("Visualize").click();
       cy.contains("Orders + Reviews");
       cy.contains("3");
@@ -121,7 +109,9 @@ describe("scenarios > question > notebook", () => {
       popover().within(() => cy.findByText("B_COLUMN").click());
 
       cy.findByText("Visualize").click();
-      cy.queryByText("Visualize").then($el => cy.wrap($el).should("not.exist")); // wait for that screen to disappear to avoid "multiple elements" errors
+      cy.queryByText("Visualize").then(($el) =>
+        cy.wrap($el).should("not.exist"),
+      ); // wait for that screen to disappear to avoid "multiple elements" errors
 
       // check that query worked
       cy.findByText("question a + question b");

@@ -97,7 +97,7 @@ export const resetUIControls = createAction(RESET_UI_CONTROLS);
 export const setQueryBuilderMode = (
   queryBuilderMode,
   { shouldUpdateUrl = true } = {},
-) => async dispatch => {
+) => async (dispatch) => {
   await dispatch(
     setUIControls({
       queryBuilderMode,
@@ -136,7 +136,7 @@ function getQueryBuilderModeFromLocation(location) {
 export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(
   POP_STATE,
-  location => async (dispatch, getState) => {
+  (location) => async (dispatch, getState) => {
     dispatch(cancelQuery());
     const card = getCard(getState());
     if (location.state && location.state.card) {
@@ -361,7 +361,7 @@ export const initializeQB = (location, params) => {
         if (
           Object.values(
             getIn(card, ["dataset_query", "native", "template-tags"]) || {},
-          ).filter(t => t.type === "snippet").length > 0
+          ).filter((t) => t.type === "snippet").length > 0
         ) {
           const dbId = card.database_id;
           let database = Databases.selectors.getObject(getState(), {
@@ -534,7 +534,9 @@ export const toggleTemplateTagsEditor = createAction(
 
 export const SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR =
   "metabase/qb/SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR";
-export const setIsShowingTemplateTagsEditor = isShowingTemplateTagsEditor => ({
+export const setIsShowingTemplateTagsEditor = (
+  isShowingTemplateTagsEditor,
+) => ({
   type: SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
   isShowingTemplateTagsEditor,
 });
@@ -546,17 +548,17 @@ export const toggleSnippetSidebar = createAction(TOGGLE_SNIPPET_SIDEBAR, () => {
 
 export const SET_IS_SHOWING_SNIPPET_SIDEBAR =
   "metabase/qb/SET_IS_SHOWING_SNIPPET_SIDEBAR";
-export const setIsShowingSnippetSidebar = isShowingSnippetSidebar => ({
+export const setIsShowingSnippetSidebar = (isShowingSnippetSidebar) => ({
   type: SET_IS_SHOWING_SNIPPET_SIDEBAR,
   isShowingSnippetSidebar,
 });
 
-export const setIsPreviewing = isPreviewing => ({
+export const setIsPreviewing = (isPreviewing) => ({
   type: SET_UI_CONTROLS,
   payload: { isPreviewing },
 });
 
-export const setIsNativeEditorOpen = isNativeEditorOpen => ({
+export const setIsNativeEditorOpen = (isNativeEditorOpen) => ({
   type: SET_UI_CONTROLS,
   payload: { isNativeEditorOpen },
 });
@@ -585,7 +587,7 @@ export const closeSnippetModal = () => (dispatch, getState) => {
   dispatch(setModalSnippet(null));
 };
 
-export const insertSnippet = snip => (dispatch, getState) => {
+export const insertSnippet = (snip) => (dispatch, getState) => {
   const name = snip.name;
   const question = getQuestion(getState());
   const query = question.query();
@@ -614,7 +616,7 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
   };
 });
 
-export const loadMetadataForCard = card => (dispatch, getState) =>
+export const loadMetadataForCard = (card) => (dispatch, getState) =>
   dispatch(
     loadMetadataForQuery(new Question(card, getMetadata(getState())).query()),
   );
@@ -624,13 +626,13 @@ function hasNewColumns(question, queryResult) {
   // technically this is wrong because you could add and remove two columns with the same name
   const query = question.query();
   const previousColumns =
-    (queryResult && queryResult.data.cols.map(col => col.name)) || [];
+    (queryResult && queryResult.data.cols.map((col) => col.name)) || [];
   const nextColumns =
     query instanceof StructuredQuery ? query.columnNames() : [];
   return _.difference(nextColumns, previousColumns).length > 0;
 }
 
-export const updateCardVisualizationSettings = settings => async (
+export const updateCardVisualizationSettings = (settings) => async (
   dispatch,
   getState,
 ) => {
@@ -643,7 +645,7 @@ export const updateCardVisualizationSettings = settings => async (
   );
 };
 
-export const replaceAllCardVisualizationSettings = settings => async (
+export const replaceAllCardVisualizationSettings = (settings) => async (
   dispatch,
   getState,
 ) => {
@@ -659,7 +661,7 @@ export const replaceAllCardVisualizationSettings = settings => async (
 export const UPDATE_TEMPLATE_TAG = "metabase/qb/UPDATE_TEMPLATE_TAG";
 export const updateTemplateTag = createThunkAction(
   UPDATE_TEMPLATE_TAG,
-  templateTag => {
+  (templateTag) => {
     return (dispatch, getState) => {
       const {
         qb: { card, uiControls },
@@ -678,7 +680,7 @@ export const updateTemplateTag = createThunkAction(
       return updateIn(
         updatedCard,
         ["dataset_query", "native", "template-tags"],
-        tags => {
+        (tags) => {
           const { name } = templateTag;
           const newTag =
             tags[name] && tags[name].type !== templateTag.type
@@ -881,7 +883,7 @@ export const setDatasetQuery = (datasetQuery, options) => (
 };
 
 export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
-export const apiCreateQuestion = question => {
+export const apiCreateQuestion = (question) => {
   return async (dispatch, getState) => {
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
@@ -916,7 +918,7 @@ export const apiCreateQuestion = question => {
 };
 
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
-export const apiUpdateQuestion = question => {
+export const apiUpdateQuestion = (question) => {
   return async (dispatch, getState) => {
     question = question || getQuestion(getState());
 
@@ -1005,8 +1007,8 @@ export const runQuestionQuery = ({
         ignoreCache: ignoreCache,
         isDirty: cardIsDirty,
       })
-      .then(queryResults => {
-        queryTimer(duration =>
+      .then((queryResults) => {
+        queryTimer((duration) =>
           MetabaseAnalytics.trackEvent(
             "QueryBuilder",
             "Run Query",
@@ -1016,7 +1018,7 @@ export const runQuestionQuery = ({
         );
         return dispatch(queryCompleted(question, queryResults));
       })
-      .catch(error => dispatch(queryErrored(startTime, error)));
+      .catch((error) => dispatch(queryErrored(startTime, error)));
 
     // TODO Move this out from Redux action asap
     // HACK: prevent SQL editor from losing focus
@@ -1103,7 +1105,7 @@ export const cancelQuery = () => (dispatch, getState) => {
 };
 
 export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
-export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
+export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, (fk) => {
   return async (dispatch, getState) => {
     // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
     const {
@@ -1246,12 +1248,7 @@ export const viewNextObjectDetail = () => {
     dispatch.action(VIEW_NEXT_OBJECT_DETAIL);
 
     dispatch(
-      updateQuestion(
-        question
-          .query()
-          .updateFilter(0, newFilter)
-          .question(),
-      ),
+      updateQuestion(question.query().updateFilter(0, newFilter).question()),
     );
 
     dispatch(runQuestionQuery());
@@ -1275,12 +1272,7 @@ export const viewPreviousObjectDetail = () => {
     dispatch.action(VIEW_PREVIOUS_OBJECT_DETAIL);
 
     dispatch(
-      updateQuestion(
-        question
-          .query()
-          .updateFilter(0, newFilter)
-          .question(),
-      ),
+      updateQuestion(question.query().updateFilter(0, newFilter).question()),
     );
 
     dispatch(runQuestionQuery());

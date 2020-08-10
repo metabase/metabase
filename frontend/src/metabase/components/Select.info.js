@@ -16,7 +16,7 @@ const EXAMPLE_SECTIONS = _.chain(field_special_types)
   .pairs()
   .map(([section, items]) => ({
     name: section,
-    items: items.map(item => ({
+    items: items.map((item) => ({
       name: item.name,
       value: item.id,
       icon:
@@ -31,7 +31,7 @@ const EXAMPLE_SECTIONS = _.chain(field_special_types)
     })),
   }))
   .value();
-const EXAMPLE_OPTIONS = EXAMPLE_SECTIONS.map(section => section.items).flat();
+const EXAMPLE_OPTIONS = EXAMPLE_SECTIONS.map((section) => section.items).flat();
 
 export const examples = {
   default: (

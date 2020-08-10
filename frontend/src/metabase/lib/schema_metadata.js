@@ -143,59 +143,60 @@ export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isLocation = isFieldType.bind(null, LOCATION);
 
-export const isDimension = col =>
+export const isDimension = (col) =>
   col && col.source !== "aggregation" && !isDescription(col);
-export const isMetric = col =>
+export const isMetric = (col) =>
   col && col.source !== "breakout" && isSummable(col);
 
-export const isFK = field => field && isTypeFK(field.special_type);
-export const isPK = field => field && isTypePK(field.special_type);
-export const isEntityName = field =>
+export const isFK = (field) => field && isTypeFK(field.special_type);
+export const isPK = (field) => field && isTypePK(field.special_type);
+export const isEntityName = (field) =>
   field && isa(field.special_type, TYPE.Name);
 
-export const isAny = col => true;
+export const isAny = (col) => true;
 
-export const isNumericBaseType = field =>
+export const isNumericBaseType = (field) =>
   field && isa(field.base_type, TYPE.Number);
 
 // ZipCode, ID, etc derive from Number but should not be formatted as numbers
-export const isNumber = field =>
+export const isNumber = (field) =>
   field &&
   isNumericBaseType(field) &&
   (field.special_type == null || isa(field.special_type, TYPE.Number));
 
-export const isBinnedNumber = field => isNumber(field) && !!field.binning_info;
+export const isBinnedNumber = (field) =>
+  isNumber(field) && !!field.binning_info;
 
-export const isTime = field => field && isa(field.base_type, TYPE.Time);
+export const isTime = (field) => field && isa(field.base_type, TYPE.Time);
 
-export const isAddress = field =>
+export const isAddress = (field) =>
   field && isa(field.special_type, TYPE.Address);
-export const isCity = field => field && isa(field.special_type, TYPE.City);
-export const isState = field => field && isa(field.special_type, TYPE.State);
-export const isZipCode = field =>
+export const isCity = (field) => field && isa(field.special_type, TYPE.City);
+export const isState = (field) => field && isa(field.special_type, TYPE.State);
+export const isZipCode = (field) =>
   field && isa(field.special_type, TYPE.ZipCode);
-export const isCountry = field =>
+export const isCountry = (field) =>
   field && isa(field.special_type, TYPE.Country);
-export const isCoordinate = field =>
+export const isCoordinate = (field) =>
   field && isa(field.special_type, TYPE.Coordinate);
-export const isLatitude = field =>
+export const isLatitude = (field) =>
   field && isa(field.special_type, TYPE.Latitude);
-export const isLongitude = field =>
+export const isLongitude = (field) =>
   field && isa(field.special_type, TYPE.Longitude);
 
-export const isCurrency = field =>
+export const isCurrency = (field) =>
   field && isa(field.special_type, TYPE.Currency);
 
-export const isDescription = field =>
+export const isDescription = (field) =>
   field && isa(field.special_type, TYPE.Description);
 
-export const isID = field => isFK(field) || isPK(field);
+export const isID = (field) => isFK(field) || isPK(field);
 
-export const isURL = field => field && isa(field.special_type, TYPE.URL);
-export const isEmail = field => field && isa(field.special_type, TYPE.Email);
-export const isAvatarURL = field =>
+export const isURL = (field) => field && isa(field.special_type, TYPE.URL);
+export const isEmail = (field) => field && isa(field.special_type, TYPE.Email);
+export const isAvatarURL = (field) =>
   field && isa(field.special_type, TYPE.AvatarURL);
-export const isImageURL = field =>
+export const isImageURL = (field) =>
   field && isa(field.special_type, TYPE.ImageURL);
 
 // filter operator argument constructors:
@@ -234,7 +235,10 @@ function equivalentArgument(field, table) {
   if (isBoolean(field)) {
     return {
       type: "select",
-      values: [{ key: true, name: t`True` }, { key: false, name: t`False` }],
+      values: [
+        { key: true, name: t`True` },
+        { key: false, name: t`False` },
+      ],
       default: true,
     };
   }
@@ -258,8 +262,8 @@ function equivalentArgument(field, table) {
 
 function longitudeFieldSelectArgument(field, table) {
   const values = table.fields
-    .filter(field => isa(field.special_type, TYPE.Longitude))
-    .map(field => ({
+    .filter((field) => isa(field.special_type, TYPE.Longitude))
+    .map((field) => ({
       key: field.id,
       name: field.display_name,
     }));
@@ -449,7 +453,7 @@ const MORE_VERBOSE_NAMES = {
 export function getFilterOperators(field, table, selected) {
   const type = getFieldType(field) || UNKNOWN;
   return FILTER_OPERATORS_BY_TYPE_ORDERED[type]
-    .map(operatorForType => {
+    .map((operatorForType) => {
       const operator = FIELD_FILTER_OPERATORS[operatorForType.name];
       const verboseNameLower = operatorForType.verboseName.toLowerCase();
       return {
@@ -457,12 +461,12 @@ export function getFilterOperators(field, table, selected) {
         ...operatorForType,
         moreVerboseName:
           MORE_VERBOSE_NAMES[verboseNameLower] || verboseNameLower,
-        fields: operator.validArgumentsFilters.map(validArgumentsFilter =>
+        fields: operator.validArgumentsFilters.map((validArgumentsFilter) =>
           validArgumentsFilter(field, table),
         ),
       };
     })
-    .filter(operator => {
+    .filter((operator) => {
       if (selected === undefined) {
         return true;
       }
@@ -587,7 +591,7 @@ const AGGREGATION_OPERATORS = [
 function populateFields(aggregationOperator, fields) {
   return {
     ...aggregationOperator,
-    fields: aggregationOperator.validFieldsFilters.map(validFieldsFilters =>
+    fields: aggregationOperator.validFieldsFilters.map((validFieldsFilters) =>
       validFieldsFilters(fields),
     ),
   };
@@ -596,7 +600,7 @@ function populateFields(aggregationOperator, fields) {
 // TODO: unit test
 export function getAggregationOperators(table) {
   return AGGREGATION_OPERATORS.filter(
-    aggregationOperator =>
+    (aggregationOperator) =>
       !(
         aggregationOperator.requiredDriverFeature &&
         table.db &&
@@ -605,16 +609,16 @@ export function getAggregationOperators(table) {
           aggregationOperator.requiredDriverFeature,
         )
       ),
-  ).map(aggregationOperator =>
+  ).map((aggregationOperator) =>
     populateFields(aggregationOperator, table.fields),
   );
 }
 
 export function getAggregationOperatorsWithFields(table) {
   return getAggregationOperators(table).filter(
-    aggregation =>
+    (aggregation) =>
       !aggregation.requiresField ||
-      aggregation.fields.every(fields => fields.length > 0),
+      aggregation.fields.every((fields) => fields.length > 0),
   );
 }
 
@@ -628,7 +632,7 @@ export function isCompatibleAggregationOperatorForField(
   field,
 ) {
   return aggregationOperator.validFieldsFilters.every(
-    filter => filter([field]).length === 1,
+    (filter) => filter([field]).length === 1,
   );
 }
 
@@ -660,10 +664,10 @@ export function foreignKeyCountsByOriginTable(fks) {
   }
 
   return fks
-    .map(function(fk) {
+    .map(function (fk) {
       return "origin" in fk ? fk.origin.table.id : null;
     })
-    .reduce(function(prev, curr, idx, array) {
+    .reduce(function (prev, curr, idx, array) {
       if (curr in prev) {
         prev[curr]++;
       } else {

@@ -33,7 +33,7 @@ export default class ParametersPopover extends Component {
       return (
         <ParameterOptionsSectionsPane
           sections={PARAMETER_SECTIONS}
-          onSelectSection={selectedSection => {
+          onSelectSection={(selectedSection) => {
             const parameterSection = _.findWhere(PARAMETER_SECTIONS, {
               id: selectedSection.id,
             });
@@ -51,7 +51,7 @@ export default class ParametersPopover extends Component {
       return (
         <ParameterOptionsPane
           options={parameterSection && parameterSection.options}
-          onSelectOption={option => {
+          onSelectOption={(option) => {
             onAddParameter(option);
             onClose();
           }}
@@ -79,12 +79,12 @@ export const ParameterOptionsSectionsPane = ({
   onSelectSection,
 }: {
   sections: Array<ParameterSection>,
-  onSelectSection: ParameterSection => any,
+  onSelectSection: (ParameterSection) => any,
 }) => (
   <div className="pb2">
     <h3 className="p2">{t`What do you want to filter?`}</h3>
     <ul>
-      {sections.map(section => (
+      {sections.map((section) => (
         <ParameterOptionsSection
           section={section}
           onClick={() => onSelectSection(section)}
@@ -112,13 +112,13 @@ export const ParameterOptionsPane = ({
   onSelectOption,
 }: {
   options: ?Array<ParameterOption>,
-  onSelectOption: ParameterOption => any,
+  onSelectOption: (ParameterOption) => any,
 }) => (
   <div className="pb2">
     <h3 className="p2">{t`What kind of filter?`}</h3>
     <ul>
       {options &&
-        options.map(option => (
+        options.map((option) => (
           <ParameterOptionItem
             option={option}
             onClick={() => onSelectOption(option)}

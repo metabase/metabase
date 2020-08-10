@@ -15,10 +15,7 @@ import RetinaImage from "react-retina-image";
 import _ from "underscore";
 import { t, jt } from "ttag";
 
-@connect(
-  null,
-  { updateSettings: updateSlackSettings },
-)
+@connect(null, { updateSettings: updateSlackSettings })
 export default class SettingsSlackForm extends Component {
   constructor(props, context) {
     super(props, context);
@@ -40,7 +37,7 @@ export default class SettingsSlackForm extends Component {
   componentWillMount() {
     // this gives us an opportunity to load up our formData with any existing values for elements
     const formData = {};
-    this.props.elements.forEach(function(element) {
+    this.props.elements.forEach(function (element) {
       formData[element.key] =
         element.value == null ? element.defaultValue : element.value;
     });
@@ -89,14 +86,14 @@ export default class SettingsSlackForm extends Component {
     let valid = true;
     const validationErrors = {};
 
-    elements.forEach(function(element) {
+    elements.forEach(function (element) {
       // test for required elements
       if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
         valid = false;
       }
 
       if (element.validations) {
-        element.validations.forEach(function(validation) {
+        element.validations.forEach(function (validation) {
           validationErrors[element.key] = this.validateElement(
             validation,
             formData[element.key],
@@ -168,7 +165,7 @@ export default class SettingsSlackForm extends Component {
           // show a confirmation for 3 seconds, then return to normal
           setTimeout(() => this.setState({ submitting: "default" }), 3000);
         },
-        error => {
+        (error) => {
           this.setState({
             submitting: "default",
             formErrors: this.handleFormErrors(error),
@@ -206,7 +203,7 @@ export default class SettingsSlackForm extends Component {
           <SettingsSetting
             key={element.key}
             setting={{ ...element, value }}
-            onChange={value => this.handleChangeEvent(element, value)}
+            onChange={(value) => this.handleChangeEvent(element, value)}
             errorMessage={errorMessage}
             fireOnChange
           />
@@ -216,7 +213,7 @@ export default class SettingsSlackForm extends Component {
           <SettingsSetting
             key={element.key}
             setting={{ ...element, value }}
-            onChange={value => this.handleChangeEvent(element, value)}
+            onChange={(value) => this.handleChangeEvent(element, value)}
             errorMessage={errorMessage}
             disabled={!this.state.formData["slack-token"]}
           />

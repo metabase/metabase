@@ -21,10 +21,10 @@ export const component = Form;
 export const description = `A standard form component.`;
 export const examples = {
   "with form prop": (
-    <Form form={FORM} onSubmit={values => alert(JSON.stringify(values))} />
+    <Form form={FORM} onSubmit={(values) => alert(JSON.stringify(values))} />
   ),
   "with inline fields": (
-    <Form onSubmit={values => alert(JSON.stringify(values))}>
+    <Form onSubmit={(values) => alert(JSON.stringify(values))}>
       <FormField
         name="email"
         placeholder="bob@metabase.com"
@@ -39,7 +39,7 @@ export const examples = {
     </Form>
   ),
   "with form prop and custom layout fields": (
-    <Form form={FORM} onSubmit={values => alert(JSON.stringify(values))}>
+    <Form form={FORM} onSubmit={(values) => alert(JSON.stringify(values))}>
       <FormField name="password" />
       <FormField name="email" />
       <FormFooter />

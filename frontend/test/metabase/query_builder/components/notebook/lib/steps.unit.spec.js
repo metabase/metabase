@@ -36,12 +36,9 @@ const postAggregationFilterQuery = {
   filter: [">", ["field-literal", "count", "type/Integer"], 10],
 };
 
-const getQuestionStepsForMBQLQuery = query =>
+const getQuestionStepsForMBQLQuery = (query) =>
   getQuestionSteps(
-    SAMPLE_DATASET.question()
-      .query()
-      .setQuery(query)
-      .question(),
+    SAMPLE_DATASET.question().query().setQuery(query).question(),
   );
 
 describe("new query", () => {
@@ -49,8 +46,8 @@ describe("new query", () => {
   describe("getQuestionSteps", () => {
     it("should return data step with no actions", () => {
       expect(steps.length).toBe(1);
-      expect(steps.map(s => s.type)).toEqual(["data"]);
-      expect(steps.map(s => s.actions.map(a => a.type))).toEqual([[]]);
+      expect(steps.map((s) => s.type)).toEqual(["data"]);
+      expect(steps.map((s) => s.actions.map((a) => a.type))).toEqual([[]]);
     });
   });
 });
@@ -60,8 +57,8 @@ describe("raw data query", () => {
   describe("getQuestionSteps", () => {
     it("should return data step with actions", () => {
       expect(steps.length).toBe(1);
-      expect(steps.map(s => s.type)).toEqual(["data"]);
-      expect(steps.map(s => s.actions.map(a => a.type))).toEqual([
+      expect(steps.map((s) => s.type)).toEqual(["data"]);
+      expect(steps.map((s) => s.actions.map((a) => a.type))).toEqual([
         ["join", "expression", "filter", "summarize", "sort", "limit"],
       ]);
     });
@@ -72,7 +69,7 @@ describe("filtered and summarized query", () => {
   const steps = getQuestionStepsForMBQLQuery(filteredAndSummarizedQuery);
   describe("getQuestionSteps", () => {
     it("`getQuestionSteps()` should return data, filter, and summarize steps", () => {
-      expect(steps.map(s => s.type)).toEqual(["data", "filter", "summarize"]);
+      expect(steps.map((s) => s.type)).toEqual(["data", "filter", "summarize"]);
     });
   });
   describe("query", () => {
@@ -123,7 +120,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
   const steps = getQuestionStepsForMBQLQuery(postAggregationFilterQuery);
   describe("getQuestionSteps", () => {
     it("`getQuestionSteps()` should return data, filter, summarize, and filter steps", () => {
-      expect(steps.map(s => s.type)).toEqual([
+      expect(steps.map((s) => s.type)).toEqual([
         "data",
         "filter",
         "summarize",

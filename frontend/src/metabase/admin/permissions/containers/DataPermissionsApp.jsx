@@ -8,10 +8,7 @@ import PermissionsApp from "./PermissionsApp";
 import { PermissionsApi } from "metabase/services";
 import { fetchRealDatabases } from "metabase/redux/metadata";
 
-@connect(
-  null,
-  { fetchRealDatabases },
-)
+@connect(null, { fetchRealDatabases })
 @fitViewport
 export default class DataPermissionsApp extends Component {
   componentWillMount() {

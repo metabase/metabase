@@ -43,9 +43,7 @@ export default class Table extends Base {
   }
 
   newQuestion(): Question {
-    return this.question()
-      .setDefaultQuery()
-      .setDefaultDisplay();
+    return this.question().setDefaultQuery().setDefaultDisplay();
   }
 
   question(): Question {
@@ -61,12 +59,12 @@ export default class Table extends Base {
       this.question()
         .query()
         // $FlowFixMe: we know question returns a StructuredQuery but flow doesn't
-        .updateQuery(q => ({ ...q, ...query }))
+        .updateQuery((q) => ({ ...q, ...query }))
     );
   }
 
   dimensions(): Dimension[] {
-    return this.fields.map(field => field.dimension());
+    return this.fields.map((field) => field.dimension());
   }
 
   displayName({ includeSchema } = {}) {
@@ -86,7 +84,7 @@ export default class Table extends Base {
   }
 
   dateFields(): Field[] {
-    return this.fields.filter(field => field.isDate());
+    return this.fields.filter((field) => field.isDate());
   }
 
   // AGGREGATIONS

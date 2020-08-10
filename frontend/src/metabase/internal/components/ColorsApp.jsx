@@ -62,21 +62,21 @@ class ColorSwatch extends React.Component {
             variant="alpha"
             initial={1}
             value={a}
-            onChange={a => this.setState({ a })}
+            onChange={(a) => this.setState({ a })}
           />
           <VariantControl
             name={name}
             variant="lighten"
             initial={0}
             value={l}
-            onChange={l => this.setState({ l })}
+            onChange={(l) => this.setState({ l })}
           />
           <VariantControl
             name={name}
             variant="darken"
             initial={0}
             value={d}
-            onChange={d => this.setState({ d })}
+            onChange={(d) => this.setState({ d })}
           />
         </Controls>
       </Flex>
@@ -116,7 +116,7 @@ const VariantControl = ({ name, variant, value, initial, onChange }) => (
         max={1}
         step={0.05}
         value={value}
-        onChange={e => onChange(parseFloat(e.target.value))}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
       />
     </td>
     <td>{value.toFixed(2)}</td>

@@ -6,7 +6,7 @@ import { add, update, remove, clear } from "./util";
 
 // returns canonical list of Joins, with nulls removed
 export function getJoins(joins: ?JoinClause): Join[] {
-  return (joins || []).filter(b => b != null);
+  return (joins || []).filter((b) => b != null);
 }
 
 // turns a list of Joins into the canonical JoinClause

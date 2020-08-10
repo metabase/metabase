@@ -84,7 +84,7 @@ export function useSharedNormalLogin() {
     id: process.env.TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID,
   };
 }
-export const forBothAdminsAndNormalUsers = tests => {
+export const forBothAdminsAndNormalUsers = (tests) => {
   describe("for admins", () => {
     beforeEach(useSharedAdminLogin);
     tests();
@@ -157,7 +157,7 @@ export const createTestStore = async ({
     ? getEmbedRoutes
     : getNormalRoutes;
   const reducers = publicApp || embedApp ? publicReducers : normalReducers;
-  const store = getStore(reducers, history, undefined, createStore =>
+  const store = getStore(reducers, history, undefined, (createStore) =>
     testStoreEnhancer(createStore, history, getRoutes),
   );
   store._setFinalStoreInstance(store);
@@ -184,7 +184,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 
     // Because we don't have an access to internal actions of react-router,
     // let's create synthetic actions from actual history changes instead
-    history.listen(location => {
+    history.listen((location) => {
       store.dispatch({
         type: `e2e-tests/BROWSER_HISTORY_${location.action}`,
         location: location,
@@ -201,7 +201,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
       /**
        * Redux dispatch method middleware that records all dispatched actions
        */
-      dispatch: action => {
+      dispatch: (action) => {
         events.emit("action", action);
 
         const result = store._originalDispatch(action);
@@ -242,7 +242,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 
         actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes];
 
-        if (_.any(actionTypes, type => !type)) {
+        if (_.any(actionTypes, (type) => !type)) {
           return Promise.reject(
             new Error(
               `You tried to wait for a null or undefined action type (${actionTypes})`,
@@ -251,13 +251,13 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
         }
 
         // supports redux-action style action creator that when cast to a string returns the action name
-        actionTypes = actionTypes.map(actionType => String(actionType));
+        actionTypes = actionTypes.map((actionType) => String(actionType));
 
         // Returns all actions that are triggered after the last action which belongs to `actionTypes
         const getRemainingActions = () => {
           const lastActionIndex = _.findLastIndex(
             store._latestDispatchedActions,
-            action => actionTypes.includes(action.type),
+            (action) => actionTypes.includes(action.type),
           );
           return store._latestDispatchedActions.slice(lastActionIndex + 1);
         };
@@ -265,9 +265,9 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
         const allActionsAreTriggered = () =>
           _.every(
             actionTypes,
-            actionType =>
+            (actionType) =>
               store._latestDispatchedActions.filter(
-                action => action.type === actionType,
+                (action) => action.type === actionType,
               ).length > 0,
           );
 
@@ -337,7 +337,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
       /**
        * Methods for manipulating the simulated browser history
        */
-      pushPath: path => history.push(path),
+      pushPath: (path) => history.push(path),
       goBack: () => history.goBack(),
       getPath: () => urlFormat(history.getCurrentLocation()),
 
@@ -357,7 +357,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
        *
        * This is usually a lot faster than `getAppContainer` but doesn't work well with react-router links.
        */
-      connectContainer: reactContainer => {
+      connectContainer: (reactContainer) => {
         store.warnIfStoreCreationNotComplete();
 
         const routes = createRoutes(getRoutes(store._finalStoreInstance));
@@ -365,7 +365,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
           <Router
             routes={routes}
             history={history}
-            render={props => React.cloneElement(reactContainer, props)}
+            render={(props) => React.cloneElement(reactContainer, props)}
           />,
         );
       },
@@ -385,17 +385,17 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
       },
 
       /** For having internally access to the store with all middlewares included **/
-      _setFinalStoreInstance: finalStore => {
+      _setFinalStoreInstance: (finalStore) => {
         store._finalStoreInstance = finalStore;
       },
 
-      _formatDispatchedAction: action =>
+      _formatDispatchedAction: (action) =>
         moment(action.timestamp).format("hh:mm:ss.SSS") +
         " " +
         chalk.cyan(action.type),
 
       // eslint-disable-next-line react/display-name
-      _connectWithStore: reactContainer => (
+      _connectWithStore: (reactContainer) => (
         <Provider store={store._finalStoreInstance}>{reactContainer}</Provider>
       ),
     };
@@ -406,7 +406,7 @@ const testStoreEnhancer = (createStore, history, getRoutes) => {
 
 // Commonly used question helpers that are temporarily here
 // TODO Atte Keinänen 6/27/17: Put all metabase-lib -related test helpers to one file
-export const createSavedQuestion = async unsavedQuestion => {
+export const createSavedQuestion = async (unsavedQuestion) => {
   const savedQuestion = await unsavedQuestion.apiCreate();
   savedQuestion._card = {
     ...savedQuestion.card(),
@@ -415,7 +415,7 @@ export const createSavedQuestion = async unsavedQuestion => {
   return savedQuestion;
 };
 
-export const createDashboard = async details => {
+export const createDashboard = async (details) => {
   const savedDashboard = await DashboardApi.create(details);
   return savedDashboard;
 };
@@ -451,9 +451,9 @@ export const waitForRequestToComplete = (
       reject(
         new Error(
           `API request ${method} ${urlRegex} wasn't completed within ${timeout}ms.\n` +
-            `Other requests during that time period:\n${skippedApiRequests.join(
-              "\n",
-            ) || "No requests"}`,
+            `Other requests during that time period:\n${
+              skippedApiRequests.join("\n") || "No requests"
+            }`,
         ),
       );
       removeCallback();
@@ -469,7 +469,7 @@ export const waitForRequestToComplete = (
     };
     const removeCallback = () => {
       apiRequestCompletedCallbacks = apiRequestCompletedCallbacks.filter(
-        f => f !== callback,
+        (f) => f !== callback,
       );
     };
     apiRequestCompletedCallbacks.push(callback);
@@ -533,8 +533,8 @@ export const eventually = async (assertion, timeout = 5000, period = 250) => {
   const errors = [];
   const actions = [];
   const requests = [];
-  const addAction = a => actions.push(a);
-  const addRequest = r => requests.push(r);
+  const addAction = (a) => actions.push(a);
+  const addRequest = (r) => requests.push(r);
   events.addListener("action", addAction);
   events.addListener("request", addRequest);
   const cleanup = () => {
@@ -552,9 +552,9 @@ export const eventually = async (assertion, timeout = 5000, period = 250) => {
           "\n + error:\n",
           errors[errors.length - 1],
           "\n + actions:\n    ",
-          actions.map(a => a && a.type).join("\n     "),
+          actions.map((a) => a && a.type).join("\n     "),
           "\n + requests:\n    ",
-          requests.map(r => r && r.url).join("\n     "),
+          requests.map((r) => r && r.url).join("\n     "),
         );
       }
       cleanup();
@@ -581,29 +581,29 @@ export const eventually = async (assertion, timeout = 5000, period = 250) => {
 export const cleanup = () => {
   useSharedAdminLogin();
   Promise.all(
-    cleanup.actions.splice(0, cleanup.actions.length).map(action => action()),
+    cleanup.actions.splice(0, cleanup.actions.length).map((action) => action()),
   );
 };
 cleanup.actions = [];
-cleanup.fn = action => cleanup.actions.push(action);
-cleanup.metric = metric => cleanup.fn(() => deleteMetric(metric));
-cleanup.segment = segment => cleanup.fn(() => deleteSegment(segment));
-cleanup.question = question => cleanup.fn(() => deleteQuestion(question));
-cleanup.dashboard = dashboard => cleanup.fn(() => deleteDashboard(dashboard));
-cleanup.collection = c => cleanup.fn(() => deleteCollection(c));
+cleanup.fn = (action) => cleanup.actions.push(action);
+cleanup.metric = (metric) => cleanup.fn(() => deleteMetric(metric));
+cleanup.segment = (segment) => cleanup.fn(() => deleteSegment(segment));
+cleanup.question = (question) => cleanup.fn(() => deleteQuestion(question));
+cleanup.dashboard = (dashboard) => cleanup.fn(() => deleteDashboard(dashboard));
+cleanup.collection = (c) => cleanup.fn(() => deleteCollection(c));
 
-export const deleteQuestion = question =>
+export const deleteQuestion = (question) =>
   CardApi.delete({ cardId: getId(question) });
-export const deleteDashboard = dashboard =>
+export const deleteDashboard = (dashboard) =>
   DashboardApi.delete({ dashId: getId(dashboard) });
-export const deleteSegment = segment =>
+export const deleteSegment = (segment) =>
   SegmentApi.delete({ segmentId: getId(segment), revision_message: "Please" });
-export const deleteMetric = metric =>
+export const deleteMetric = (metric) =>
   MetricApi.delete({ metricId: getId(metric), revision_message: "Please" });
-export const deleteCollection = collection =>
+export const deleteCollection = (collection) =>
   CollectionsApi.update({ id: getId(collection), archived: true });
 
-const getId = o =>
+const getId = (o) =>
   typeof o === "object" && o != null
     ? typeof o.id === "function"
       ? o.id()
@@ -667,7 +667,7 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
       resultBody = JSON.parse(resultBody);
     } catch (e) {}
 
-    apiRequestCompletedCallbacks.forEach(f =>
+    apiRequestCompletedCallbacks.forEach((f) =>
       setTimeout(() => f(method, url), 0),
     );
 

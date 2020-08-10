@@ -81,7 +81,7 @@ export default class AggregationPopover extends Component {
     }
   }
 
-  commitAggregation = aggregation => {
+  commitAggregation = (aggregation) => {
     this.props.onChangeAggregation(aggregation);
     if (this.props.onClose) {
       this.props.onClose();
@@ -97,7 +97,7 @@ export default class AggregationPopover extends Component {
     }
   }
 
-  onPickAggregation = item => {
+  onPickAggregation = (item) => {
     const { dimension } = this.props;
     const aggregation = this._getAggregation();
 
@@ -126,7 +126,7 @@ export default class AggregationPopover extends Component {
     }
   };
 
-  onPickField = fieldId => {
+  onPickField = (fieldId) => {
     this.commitAggregation(
       AGGREGATION.setField(this.state.aggregation, fieldId),
     );
@@ -145,7 +145,7 @@ export default class AggregationPopover extends Component {
       aggregationOperators ||
       (dimension && dimension.aggregationOperators()) ||
       query.table().aggregationOperators()
-    ).filter(agg => showRawData || agg.short !== "rows");
+    ).filter((agg) => showRawData || agg.short !== "rows");
   }
 
   itemIsSelected(item) {
@@ -213,12 +213,12 @@ export default class AggregationPopover extends Component {
       });
     }
 
-    const aggregationItems = aggregationOperators.map(aggregation => ({
+    const aggregationItems = aggregationOperators.map((aggregation) => ({
       name: dimension
         ? aggregation.name.replace("of ...", "")
         : aggregation.name,
-      value: [aggregation.short, ...aggregation.fields.map(field => null)],
-      isSelected: agg =>
+      value: [aggregation.short, ...aggregation.fields.map((field) => null)],
+      isSelected: (agg) =>
         AGGREGATION.isStandard(agg) &&
         AGGREGATION.getOperator(agg) === aggregation.short,
       aggregation: aggregation,
@@ -227,7 +227,7 @@ export default class AggregationPopover extends Component {
     // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
     // retired metric then we include it in the list to maintain continuity
     const metrics = table.metrics
-      ? table.metrics.filter(metric =>
+      ? table.metrics.filter((metric) =>
           showMetrics
             ? !metric.archived ||
               (selectedAggregation && selectedAggregation.id === metric.id)
@@ -235,10 +235,10 @@ export default class AggregationPopover extends Component {
               metric.googleAnalyics,
         )
       : [];
-    const metricItems = metrics.map(metric => ({
+    const metricItems = metrics.map((metric) => ({
       name: metric.name,
       value: ["metric", metric.id],
-      isSelected: aggregation =>
+      isSelected: (aggregation) =>
         AGGREGATION.getMetric(aggregation) === metric.id,
       metric: metric,
     }));
@@ -263,9 +263,11 @@ export default class AggregationPopover extends Component {
 
     // slightly different layout of "basic" and "common" metrics for alwaysExpanded=true
     if (alwaysExpanded && sections.length > 1) {
-      const [commonAggregationItems, basicAggregationItems] = _.partition(
-        aggregationItems,
-        item => COMMON_AGGREGATIONS.has(item.aggregation.short),
+      const [
+        commonAggregationItems,
+        basicAggregationItems,
+      ] = _.partition(aggregationItems, (item) =>
+        COMMON_AGGREGATIONS.has(item.aggregation.short),
       );
       // move COMMON_AGGREGATIONS into the "common metrics" section
       sections[0].items = basicAggregationItems;
@@ -286,7 +288,7 @@ export default class AggregationPopover extends Component {
           {
             name: t`Custom…`,
             custom: true,
-            isSelected: agg => AGGREGATION.isCustom(agg),
+            isSelected: (agg) => AGGREGATION.isCustom(agg),
           },
         ];
       }
@@ -303,7 +305,7 @@ export default class AggregationPopover extends Component {
           query={query}
           expression={aggregation}
           startRule="aggregation"
-          onChange={parsedExpression =>
+          onChange={(parsedExpression) =>
             this.setState({
               aggregation: AGGREGATION.setContent(
                 this.state.aggregation,
@@ -315,7 +317,7 @@ export default class AggregationPopover extends Component {
           onBack={this.onClearAggregation}
           onDone={() => this.commitAggregation(this.state.aggregation)}
           name={AGGREGATION.getName(this.state.aggregation)}
-          onChangeName={name =>
+          onChangeName={(name) =>
             this.setState({
               aggregation: name
                 ? AGGREGATION.setName(aggregation, name)
@@ -329,7 +331,7 @@ export default class AggregationPopover extends Component {
       return (
         <div style={{ minWidth: 300 }}>
           <div
-            ref={_ => (this._header = _)}
+            ref={(_) => (this._header = _)}
             className="text-medium p1 py2 border-bottom flex align-center"
           >
             <a
@@ -362,9 +364,9 @@ export default class AggregationPopover extends Component {
           sections={sections}
           onChange={this.onPickAggregation}
           itemIsSelected={this.itemIsSelected.bind(this)}
-          renderSectionIcon={s => <Icon name={s.icon} size={18} />}
+          renderSectionIcon={(s) => <Icon name={s.icon} size={18} />}
           renderItemExtra={this.renderItemExtra.bind(this)}
-          getItemClassName={item =>
+          getItemClassName={(item) =>
             item.metric && item.metric.archived ? "text-medium" : null
           }
           onChangeSection={(section, sectionIndex) => {

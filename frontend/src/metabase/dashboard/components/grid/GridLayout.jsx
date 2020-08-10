@@ -71,7 +71,7 @@ export default class GridLayout extends Component {
     let newLayout;
     if (placeholderLayout) {
       const { x, y, w, h } = placeholderLayout;
-      newLayout = this.state.layout.map(l =>
+      newLayout = this.state.layout.map((l) =>
         l.i === i ? { ...l, x, y, w, h } : l,
       );
     }
@@ -125,7 +125,7 @@ export default class GridLayout extends Component {
 
   onResizeStop(i, { size }) {
     const { x, y, w, h } = this.state.placeholderLayout;
-    const newLayout = this.state.layout.map(l =>
+    const newLayout = this.state.layout.map((l) =>
       l.i === i ? { ...l, x, y, w, h } : l,
     );
     this.setState({ resizing: false, placeholderLayout: null }, () =>
@@ -234,16 +234,17 @@ export default class GridLayout extends Component {
     const { margin, cols } = this.props;
     const cellSize = this.getCellSize();
     const svg =
-      `<svg xmlns='http://www.w3.org/2000/svg' width='${cellSize.width *
-        cols}' height='${cellSize.height}'>` +
+      `<svg xmlns='http://www.w3.org/2000/svg' width='${
+        cellSize.width * cols
+      }' height='${cellSize.height}'>` +
       _(cols)
         .times(
-          i =>
+          (i) =>
             `<rect stroke='${color(
               "border",
-            )}' stroke-width='1' fill='none' x='${Math.round(
-              margin / 2 + i * cellSize.width,
-            ) + 1.5}' y='${margin / 2 + 1.5}' width='${Math.round(
+            )}' stroke-width='1' fill='none' x='${
+              Math.round(margin / 2 + i * cellSize.width) + 1.5
+            }' y='${margin / 2 + 1.5}' width='${Math.round(
               cellSize.width - margin - 3,
             )}' height='${cellSize.height - margin - 3}'/>`,
         )
@@ -256,7 +257,7 @@ export default class GridLayout extends Component {
     const { className, layout, cols, margin, isEditing } = this.props;
 
     const cellSize = this.getCellSize();
-    let bottom = Math.max(...layout.map(l => l.y + l.h));
+    let bottom = Math.max(...layout.map((l) => l.y + l.h));
 
     let backgroundImage;
     if (isEditing) {
@@ -282,7 +283,7 @@ export default class GridLayout extends Component {
           marginRight: -margin / 2,
         }}
       >
-        {this.props.children.map(child => this.renderChild(child))}
+        {this.props.children.map((child) => this.renderChild(child))}
         {this.renderPlaceholder()}
       </div>
     );

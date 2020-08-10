@@ -48,10 +48,10 @@ export default function DefaultPicker({
         (operator.placeholders && operator.placeholders[index]) || undefined;
       if (operator.multi) {
         values = filter.arguments();
-        onValuesChange = values => setValues(values);
+        onValuesChange = (values) => setValues(values);
       } else {
         values = [filter.arguments()[index]];
-        onValuesChange = values => setValue(index, values[0]);
+        onValuesChange = (values) => setValue(index, values[0]);
       }
       if (operatorField.type === "hidden") {
         return null;
@@ -116,7 +116,7 @@ export default function DefaultPicker({
       }
       return null;
     })
-    .filter(f => f);
+    .filter((f) => f);
   if (fieldWidgets.length > 0) {
     const Layout = DefaultLayout;
     // TODO: custom layouts for different operators

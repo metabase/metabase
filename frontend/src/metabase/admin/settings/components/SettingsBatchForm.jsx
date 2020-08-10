@@ -15,11 +15,11 @@ import { updateSettings } from "../settings";
 
 const VALIDATIONS = {
   email: {
-    validate: value => MetabaseUtils.validEmail(value),
+    validate: (value) => MetabaseUtils.validEmail(value),
     message: t`That's not a valid email address`,
   },
   integer: {
-    validate: value => !isNaN(parseInt(value)),
+    validate: (value) => !isNaN(parseInt(value)),
     message: t`That's not a valid integer`,
   },
 };
@@ -117,14 +117,14 @@ export default class SettingsBatchForm extends Component {
 
     // Validate form only if LDAP is enabled
     if (!enabledKey || formData[enabledKey]) {
-      elements.forEach(function(element) {
+      elements.forEach(function (element) {
         // test for required elements
         if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
           valid = false;
         }
 
         if (element.validations) {
-          element.validations.forEach(function(validation) {
+          element.validations.forEach(function (validation) {
             validationErrors[element.key] = this.validateElement(
               validation,
               formData[element.key],
@@ -147,7 +147,7 @@ export default class SettingsBatchForm extends Component {
   }
 
   handleChangeEvent = (key, value) => {
-    this.setState(previousState => {
+    this.setState((previousState) => {
       const settingsValues = {
         ...previousState.formData,
         [key]: value,
@@ -187,7 +187,7 @@ export default class SettingsBatchForm extends Component {
     return formErrors;
   }
 
-  updateSettings = e => {
+  updateSettings = (e) => {
     e.preventDefault();
 
     const { formData, valid } = this.state;
@@ -205,7 +205,7 @@ export default class SettingsBatchForm extends Component {
           // show a confirmation for 3 seconds, then return to normal
           setTimeout(() => this.setState({ submitting: "default" }), 3000);
         },
-        error => {
+        (error) => {
           this.setState({
             submitting: "default",
             formErrors: this.handleFormErrors(error),
@@ -227,11 +227,11 @@ export default class SettingsBatchForm extends Component {
     } = this.state;
 
     const layout = this.props.layout || [
-      { settings: elements.map(element => element.key) },
+      { settings: elements.map((element) => element.key) },
     ];
     const settings = _.indexBy(elements, "key");
 
-    const getSetting = key => {
+    const getSetting = (key) => {
       const element = settings[key];
       if (!element) {
         console.warn("Missing setting", element);
@@ -251,7 +251,7 @@ export default class SettingsBatchForm extends Component {
         <SettingsSetting
           key={element.key}
           setting={{ ...element, value }}
-          onChange={value => this.handleChangeEvent(element.key, value)}
+          onChange={(value) => this.handleChangeEvent(element.key, value)}
           settingValues={settingValues}
           onChangeSetting={(key, value) => this.handleChangeEvent(key, value)}
           errorMessage={errorMessage}
@@ -269,11 +269,11 @@ export default class SettingsBatchForm extends Component {
         {layout.map((section, index) =>
           section.collapse ? (
             <CollapsibleSection title={section.title} key={index}>
-              {section.settings.map(key => getSetting(key))}
+              {section.settings.map((key) => getSetting(key))}
             </CollapsibleSection>
           ) : (
             <StandardSection title={section.title} key={index}>
-              {section.settings.map(key => getSetting(key))}
+              {section.settings.map((key) => getSetting(key))}
             </StandardSection>
           ),
         )}
@@ -319,7 +319,7 @@ class CollapsibleSection extends React.Component {
   };
 
   handleToggle() {
-    this.setState(previousState => ({
+    this.setState((previousState) => ({
       show: !previousState.show,
     }));
   }

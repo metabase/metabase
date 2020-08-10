@@ -160,10 +160,10 @@ export function seriesSetting({
     // colors must be computed as a whole rather than individually
     [colorSettingId]: {
       getValue(series, settings) {
-        const keys = series.map(single => keyForSingleSeries(single));
+        const keys = series.map((single) => keyForSingleSeries(single));
 
         const assignments = _.chain(keys)
-          .map(key => [key, getIn(settings, [settingId, key, "color"])])
+          .map((key) => [key, getIn(settings, [settingId, key, "color"])])
           .filter(([key, color]) => color != null)
           .object()
           .value();

@@ -34,7 +34,7 @@ export default class MetadataSchemaList extends Component {
     const { searchRegex } = this.state;
 
     const filteredSchemas = searchRegex
-      ? schemas.filter(s => searchRegex.test(s))
+      ? schemas.filter((s) => searchRegex.test(s))
       : schemas;
     return (
       <div className="MetadataEditor-table-list AdminList flex-no-shrink">
@@ -50,11 +50,11 @@ export default class MetadataSchemaList extends Component {
         </div>
         <ul className="AdminList-items">
           <li className="AdminList-section">
-            {(n => ngettext(msgid`${n} schema`, `${n} schemas`, n))(
+            {((n) => ngettext(msgid`${n} schema`, `${n} schemas`, n))(
               filteredSchemas.length,
             )}
           </li>
-          {filteredSchemas.map(schema => (
+          {filteredSchemas.map((schema) => (
             <li key={schema}>
               <a
                 className={cx(

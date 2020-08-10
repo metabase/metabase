@@ -18,7 +18,7 @@ import MetabaseSettings from "metabase/lib/settings";
   loadingAndErrorWrapper: false,
 })
 export default class CardTagEditor extends Component {
-  handleQuestionSelection = id => {
+  handleQuestionSelection = (id) => {
     const { question, query, setDatasetQuery } = this.props;
     setDatasetQuery(
       query.replaceCardId(question ? question.id : "", id).datasetQuery(),
@@ -84,7 +84,7 @@ export default class CardTagEditor extends Component {
           <LoadingSpinner />
         ) : (
           <PopoverWithTrigger
-            ref={ref => (this._popover = ref)}
+            ref={(ref) => (this._popover = ref)}
             triggerElement={this.triggerElement()}
             verticalAttachments={["top", "bottom"]}
             horizontalAttachments={["right", "left"]}

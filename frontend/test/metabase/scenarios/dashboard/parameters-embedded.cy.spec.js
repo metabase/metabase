@@ -25,7 +25,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     restore();
     signInAsAdmin();
 
-    withSampleDataset(SAMPLE_DATASET => {
+    withSampleDataset((SAMPLE_DATASET) => {
       cy.log(SAMPLE_DATASET);
       const { ORDERS, PEOPLE } = SAMPLE_DATASET;
       cy.request("POST", `/api/field/${ORDERS.USER_ID}/dimension`, {
@@ -34,15 +34,15 @@ describe("scenarios > dashboard > parameters-embedded", () => {
         human_readable_field_id: PEOPLE.NAME,
       });
 
-      [ORDERS.USER_ID, PEOPLE.NAME, PEOPLE.ID].forEach(id =>
+      [ORDERS.USER_ID, PEOPLE.NAME, PEOPLE.ID].forEach((id) =>
         cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
       );
 
-      createQuestion(SAMPLE_DATASET).then(res => {
+      createQuestion(SAMPLE_DATASET).then((res) => {
         questionId = res.body.id;
-        createDashboard().then(res => {
+        createDashboard().then((res) => {
           dashboardId = res.body.id;
-          addCardToDashboard({ dashboardId, questionId }).then(res => {
+          addCardToDashboard({ dashboardId, questionId }).then((res) => {
             dashcardId = res.body.id;
             mapParameters({ dashboardId, questionId, dashcardId });
           });
@@ -73,7 +73,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     before(() => {
       signInAsAdmin();
       cy.request("POST", `/api/card/${questionId}/public_link`).then(
-        res => (uuid = res.body.uuid),
+        (res) => (uuid = res.body.uuid),
       );
       signOut();
     });
@@ -125,7 +125,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     before(() => {
       signInAsAdmin();
       cy.request("POST", `/api/dashboard/${dashboardId}/public_link`).then(
-        res => (uuid = res.body.uuid),
+        (res) => (uuid = res.body.uuid),
       );
       signOut();
     });
@@ -166,18 +166,14 @@ function sharedParametersTests(visitUrl) {
   it("should allow searching PEOPLE.ID by PEOPLE.NAME", () => {
     visitUrl();
     cy.contains("Id").click();
-    popover()
-      .find('[placeholder="Search by Name or enter an ID"]')
-      .type("Aly");
+    popover().find('[placeholder="Search by Name or enter an ID"]').type("Aly");
     popover().contains("Alycia Collins - 541");
   });
 
   it("should allow searching PEOPLE.NAME by PEOPLE.NAME", () => {
     visitUrl();
     cy.contains("Name").click();
-    popover()
-      .find('[placeholder="Search by Name"]')
-      .type("Aly");
+    popover().find('[placeholder="Search by Name"]').type("Aly");
     popover().contains("Alycia Collins");
   });
 
@@ -191,15 +187,13 @@ function sharedParametersTests(visitUrl) {
   it("should allow searching ORDER.USER_ID by PEOPLE.NAME", () => {
     visitUrl();
     cy.contains("User").click();
-    popover()
-      .find('[placeholder="Search by Name or enter an ID"]')
-      .type("Aly");
+    popover().find('[placeholder="Search by Name or enter an ID"]').type("Aly");
     popover().contains("Alycia Collins - 541");
   });
 
   it("should accept url parameters", () => {
     visitUrl();
-    cy.url().then(url => cy.visit(url + "?id=1&id=3"));
+    cy.url().then((url) => cy.visit(url + "?id=1&id=3"));
     cy.contains(".ScalarValue", "2");
   });
 }

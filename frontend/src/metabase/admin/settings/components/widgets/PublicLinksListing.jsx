@@ -95,7 +95,7 @@ export default class PublicLinksListing extends Component {
             </thead>
             <tbody>
               {list &&
-                list.map(link => (
+                list.map((link) => (
                   <tr>
                     <td>
                       <Link

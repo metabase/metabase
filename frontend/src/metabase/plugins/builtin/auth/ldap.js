@@ -8,18 +8,18 @@ import AuthenticationOption from "metabase/admin/settings/components/widgets/Aut
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(
-  sections =>
-    updateIn(sections, ["authentication", "settings"], settings => [
+  (sections) =>
+    updateIn(sections, ["authentication", "settings"], (settings) => [
       ...settings,
       {
         authName: t`LDAP`,
         authDescription: t`Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups.`,
         authType: "ldap",
-        authEnabled: settings => settings["ldap-enabled"],
+        authEnabled: (settings) => settings["ldap-enabled"],
         widget: AuthenticationOption,
       },
     ]),
-  sections => ({
+  (sections) => ({
     ...sections,
     "authentication/ldap": {
       sidebar: false,
@@ -75,7 +75,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
           display_name: t`User filter`,
           type: "string",
           validations: [
-            value =>
+            (value) =>
               (value.match(/\(/g) || []).length !==
               (value.match(/\)/g) || []).length
                 ? t`Check your parentheses`

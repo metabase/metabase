@@ -25,7 +25,7 @@ import * as Q from "metabase/lib/query/query";
       "revision_message",
       "show_in_getting_started",
     ],
-    validate: values => {
+    validate: (values) => {
       const errors = {};
       if (!values.name) {
         errors.name = t`Name is required`;

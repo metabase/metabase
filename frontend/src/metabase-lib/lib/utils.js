@@ -1,6 +1,6 @@
 export function nyi(target, key, descriptor) {
   const method = descriptor.value;
-  descriptor.value = function() {
+  descriptor.value = function () {
     console.warn(
       "Method not yet implemented: " + target.constructor.name + "::" + key,
     );
@@ -22,7 +22,7 @@ function getWithFallback(map, key, fallback) {
 const memoized = new WeakMap();
 export function memoize(target, name, descriptor) {
   const method = target[name];
-  descriptor.value = function(...args) {
+  descriptor.value = function (...args) {
     const path = [this, method, args.length, ...args];
     const last = path.pop();
     const map = path.reduce(

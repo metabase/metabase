@@ -33,21 +33,15 @@ const mapDispatchToProps = {
   onUpdatePermission: updatePermission,
   onSave: savePermissions,
   onCancel: loadPermissions,
-  onChangeTab: tab => push(`/admin/permissions/${tab}`),
+  onChangeTab: (tab) => push(`/admin/permissions/${tab}`),
 };
 
-const Editor = connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(PermissionsEditor);
+const Editor = connect(mapStateToProps, mapDispatchToProps)(PermissionsEditor);
 
-@connect(
-  null,
-  {
-    loadCollections: Collections.actions.fetchList,
-    push,
-  },
-)
+@connect(null, {
+  loadCollections: Collections.actions.fetchList,
+  push,
+})
 @fitViewport
 export default class CollectionsPermissionsApp extends Component {
   componentWillMount() {

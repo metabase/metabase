@@ -73,7 +73,7 @@ export const hideDashboardModal = createAction(HIDE_DASHBOARD_MODAL);
 // Helper functions. This is meant to be a transitional state to get things out of tryFetchData() and friends
 
 const fetchDataWrapper = (props, fn) => {
-  return async argument => {
+  return async (argument) => {
     props.clearError();
     props.startLoading();
     try {
@@ -86,7 +86,7 @@ const fetchDataWrapper = (props, fn) => {
     props.endLoading();
   };
 };
-export const wrappedFetchGuide = async props => {
+export const wrappedFetchGuide = async (props) => {
   fetchDataWrapper(props, async () => {
     await Promise.all([
       props.fetchGuide(),
@@ -105,7 +105,7 @@ export const wrappedFetchDatabaseMetadataAndQuestion = async (
   props,
   databaseID,
 ) => {
-  fetchDataWrapper(props, async dbID => {
+  fetchDataWrapper(props, async (dbID) => {
     await Promise.all([
       props.fetchDatabaseMetadata(dbID),
       props.fetchQuestions(),
@@ -113,7 +113,7 @@ export const wrappedFetchDatabaseMetadataAndQuestion = async (
   })(databaseID);
 };
 export const wrappedFetchMetricDetail = async (props, metricID) => {
-  fetchDataWrapper(props, async mID => {
+  fetchDataWrapper(props, async (mID) => {
     await Promise.all([
       props.fetchMetricTable(mID),
       props.fetchMetrics(),
@@ -122,7 +122,7 @@ export const wrappedFetchMetricDetail = async (props, metricID) => {
   })(metricID);
 };
 export const wrappedFetchMetricQuestions = async (props, metricID) => {
-  fetchDataWrapper(props, async mID => {
+  fetchDataWrapper(props, async (mID) => {
     await Promise.all([
       props.fetchMetricTable(mID),
       props.fetchMetrics(),
@@ -131,7 +131,7 @@ export const wrappedFetchMetricQuestions = async (props, metricID) => {
   })(metricID);
 };
 export const wrappedFetchMetricRevisions = async (props, metricID) => {
-  fetchDataWrapper(props, async mID => {
+  fetchDataWrapper(props, async (mID) => {
     await Promise.all([props.fetchMetricRevisions(mID), props.fetchMetrics()]);
   })(metricID);
 };
@@ -153,14 +153,14 @@ export const wrappedFetchMetricRevisions = async (props, metricID) => {
 //         endLoading();
 // }
 
-export const wrappedFetchDatabases = props => {
+export const wrappedFetchDatabases = (props) => {
   fetchDataWrapper(props, props.fetchRealDatabases)({});
 };
-export const wrappedFetchMetrics = props => {
+export const wrappedFetchMetrics = (props) => {
   fetchDataWrapper(props, props.fetchMetrics)({});
 };
 
-export const wrappedFetchSegments = props => {
+export const wrappedFetchSegments = (props) => {
   fetchDataWrapper(props, props.fetchSegments)({});
 };
 
@@ -169,13 +169,13 @@ export const wrappedFetchSegmentDetail = (props, segmentID) => {
 };
 
 export const wrappedFetchSegmentQuestions = async (props, segmentID) => {
-  fetchDataWrapper(props, async sID => {
+  fetchDataWrapper(props, async (sID) => {
     await props.fetchSegments(sID);
     await Promise.all([props.fetchSegmentTable(sID), props.fetchQuestions()]);
   })(segmentID);
 };
 export const wrappedFetchSegmentRevisions = async (props, segmentID) => {
-  fetchDataWrapper(props, async sID => {
+  fetchDataWrapper(props, async (sID) => {
     await props.fetchSegments(sID);
     await Promise.all([
       props.fetchSegmentRevisions(sID),
@@ -184,7 +184,7 @@ export const wrappedFetchSegmentRevisions = async (props, segmentID) => {
   })(segmentID);
 };
 export const wrappedFetchSegmentFields = async (props, segmentID) => {
-  fetchDataWrapper(props, async sID => {
+  fetchDataWrapper(props, async (sID) => {
     await props.fetchSegments(sID);
     await Promise.all([
       props.fetchSegmentFields(sID),
@@ -196,7 +196,7 @@ export const wrappedFetchSegmentFields = async (props, segmentID) => {
 // This is called when a component gets a new set of props.
 // I *think* this is un-necessary in all cases as we're using multiple
 // components where the old code re-used the same component
-export const clearState = props => {
+export const clearState = (props) => {
   props.endEditing();
   props.endLoading();
   props.clearError();
@@ -204,7 +204,7 @@ export const clearState = props => {
 };
 
 // This is called on the success or failure of a form triggered update
-const resetForm = props => {
+const resetForm = (props) => {
   props.resetForm();
   props.endLoading();
   props.endEditing();
@@ -217,7 +217,7 @@ const resetForm = props => {
 // of that component
 
 const updateDataWrapper = (props, fn) => {
-  return async fields => {
+  return async (fields) => {
     props.clearError();
     props.startLoading();
     try {
@@ -259,7 +259,7 @@ export const rUpdateMetricDetail = async (metric, guide, formFields, props) => {
       await props.updateMetric(newMetric);
 
       const importantFieldIds = formFields.important_fields.map(
-        field => field.id,
+        (field) => field.id,
       );
       const existingImportantFieldIds =
         guide.metric_important_fields &&
@@ -268,7 +268,7 @@ export const rUpdateMetricDetail = async (metric, guide, formFields, props) => {
       const areFieldIdsIdentitical =
         existingImportantFieldIds &&
         existingImportantFieldIds.length === importantFieldIds.length &&
-        existingImportantFieldIds.every(id => importantFieldIds.includes(id));
+        existingImportantFieldIds.every((id) => importantFieldIds.includes(id));
 
       if (!areFieldIdsIdentitical) {
         await props.updateMetricImportantFields(metric.id, importantFieldIds);
@@ -287,7 +287,7 @@ export const rUpdateFields = async (fields, formFields, props) => {
   props.startLoading();
   try {
     const updatedFields = Object.keys(formFields)
-      .map(fieldId => ({
+      .map((fieldId) => ({
         field: fields[fieldId],
         formField: filterUntouchedFields(formFields[fieldId], fields[fieldId]),
       }))
@@ -328,7 +328,7 @@ export const tryUpdateGuide = async (formFields, props) => {
   startLoading();
   try {
     const updateNewEntities = ({ entities, formFields, updateEntity }) =>
-      formFields.map(formField => {
+      formFields.map((formField) => {
         if (!formField.id) {
           return [];
         }
@@ -360,8 +360,8 @@ export const tryUpdateGuide = async (formFields, props) => {
       updateEntity,
     }) =>
       oldEntityIds
-        .filter(oldEntityId => !newEntityIds.includes(oldEntityId))
-        .map(oldEntityId => {
+        .filter((oldEntityId) => !newEntityIds.includes(oldEntityId))
+        .map((oldEntityId) => {
           const oldEntity = entities[oldEntityId];
 
           const updatedOldEntity = assoc(
@@ -376,7 +376,7 @@ export const tryUpdateGuide = async (formFields, props) => {
         });
     //FIXME: necessary because revision_message is a mandatory field
     // even though we don't actually keep track of changes to caveats/points_of_interest yet
-    const updateWithRevisionMessage = updateEntity => entity =>
+    const updateWithRevisionMessage = (updateEntity) => (entity) =>
       updateEntity(
         assoc(entity, "revision_message", "Updated in Getting Started guide."),
       );
@@ -405,7 +405,7 @@ export const tryUpdateGuide = async (formFields, props) => {
     }).concat(
       updateOldEntities({
         newEntityIds: formFields.important_metrics.map(
-          formField => formField.id,
+          (formField) => formField.id,
         ),
         oldEntityIds: guide.important_metrics,
         entities: metrics,
@@ -414,12 +414,12 @@ export const tryUpdateGuide = async (formFields, props) => {
     );
 
     const updatingMetricImportantFields = formFields.important_metrics.map(
-      metricFormField => {
+      (metricFormField) => {
         if (!metricFormField.id || !metricFormField.important_fields) {
           return [];
         }
         const importantFieldIds = metricFormField.important_fields.map(
-          field => field.id,
+          (field) => field.id,
         );
         const existingImportantFieldIds =
           guide.metric_important_fields[metricFormField.id];
@@ -427,7 +427,9 @@ export const tryUpdateGuide = async (formFields, props) => {
         const areFieldIdsIdentitical =
           existingImportantFieldIds &&
           existingImportantFieldIds.length === importantFieldIds.length &&
-          existingImportantFieldIds.every(id => importantFieldIds.includes(id));
+          existingImportantFieldIds.every((id) =>
+            importantFieldIds.includes(id),
+          );
         if (areFieldIdsIdentitical) {
           return [];
         }
@@ -439,7 +441,7 @@ export const tryUpdateGuide = async (formFields, props) => {
     );
 
     const segmentFields = formFields.important_segments_and_tables.filter(
-      field => field.type === "segment",
+      (field) => field.type === "segment",
     );
 
     const updatingSegments = updateNewEntities({
@@ -448,7 +450,7 @@ export const tryUpdateGuide = async (formFields, props) => {
       updateEntity: updateWithRevisionMessage(updateSegment),
     }).concat(
       updateOldEntities({
-        newEntityIds: segmentFields.map(formField => formField.id),
+        newEntityIds: segmentFields.map((formField) => formField.id),
         oldEntityIds: guide.important_segments,
         entities: segments,
         updateEntity: updateWithRevisionMessage(updateSegment),
@@ -456,7 +458,7 @@ export const tryUpdateGuide = async (formFields, props) => {
     );
 
     const tableFields = formFields.important_segments_and_tables.filter(
-      field => field.type === "table",
+      (field) => field.type === "table",
     );
 
     const updatingTables = updateNewEntities({
@@ -465,7 +467,7 @@ export const tryUpdateGuide = async (formFields, props) => {
       updateEntity: updateTable,
     }).concat(
       updateOldEntities({
-        newEntityIds: tableFields.map(formField => formField.id),
+        newEntityIds: tableFields.map((formField) => formField.id),
         oldEntityIds: guide.important_tables,
         entities: tables,
         updateEntity: updateTable,
@@ -550,31 +552,31 @@ export default handleActions(
       throw: (state, { payload }) => assoc(state, "error", payload),
     },
     [CLEAR_ERROR]: {
-      next: state => assoc(state, "error", null),
+      next: (state) => assoc(state, "error", null),
     },
     [START_LOADING]: {
-      next: state => assoc(state, "isLoading", true),
+      next: (state) => assoc(state, "isLoading", true),
     },
     [END_LOADING]: {
-      next: state => assoc(state, "isLoading", false),
+      next: (state) => assoc(state, "isLoading", false),
     },
     [START_EDITING]: {
-      next: state => assoc(state, "isEditing", true),
+      next: (state) => assoc(state, "isEditing", true),
     },
     [END_EDITING]: {
-      next: state => assoc(state, "isEditing", false),
+      next: (state) => assoc(state, "isEditing", false),
     },
     [EXPAND_FORMULA]: {
-      next: state => assoc(state, "isFormulaExpanded", true),
+      next: (state) => assoc(state, "isFormulaExpanded", true),
     },
     [COLLAPSE_FORMULA]: {
-      next: state => assoc(state, "isFormulaExpanded", false),
+      next: (state) => assoc(state, "isFormulaExpanded", false),
     },
     [SHOW_DASHBOARD_MODAL]: {
-      next: state => assoc(state, "isDashboardModalOpen", true),
+      next: (state) => assoc(state, "isDashboardModalOpen", true),
     },
     [HIDE_DASHBOARD_MODAL]: {
-      next: state => assoc(state, "isDashboardModalOpen", false),
+      next: (state) => assoc(state, "isDashboardModalOpen", false),
     },
   },
   initialState,

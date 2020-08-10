@@ -223,16 +223,16 @@ export function createEntity(def: EntityDefinition): Entity {
     };
   }
 
-  const getIdForQuery = entityQuery => JSON.stringify(entityQuery || null);
+  const getIdForQuery = (entityQuery) => JSON.stringify(entityQuery || null);
 
-  const getObjectStatePath = entityId => ["entities", entity.name, entityId];
-  const getListStatePath = entityQuery =>
+  const getObjectStatePath = (entityId) => ["entities", entity.name, entityId];
+  const getListStatePath = (entityQuery) =>
     ["entities", entity.name + "_list"].concat(getIdForQuery(entityQuery));
 
   entity.getObjectStatePath = getObjectStatePath;
   entity.getListStatePath = getListStatePath;
 
-  const getWritableProperties = object =>
+  const getWritableProperties = (object) =>
     entity.writableProperties != null
       ? _.pick(object, "id", ...entity.writableProperties)
       : object;
@@ -298,7 +298,7 @@ export function createEntity(def: EntityDefinition): Entity {
   }
 
   function withEntityActionDecorators(action) {
-    return entity.actionDecorators[action] || (_ => _);
+    return entity.actionDecorators[action] || ((_) => _);
   }
 
   entity.objectActions = {
@@ -309,7 +309,7 @@ export function createEntity(def: EntityDefinition): Entity {
         ({ id }) => [...getObjectStatePath(id), "fetch"],
       ),
       withEntityActionDecorators("fetch"),
-    )(entityObject => async (dispatch, getState) =>
+    )((entityObject) => async (dispatch, getState) =>
       entity.normalize(await entity.api.get({ id: entityObject.id })),
     ),
 
@@ -318,7 +318,7 @@ export function createEntity(def: EntityDefinition): Entity {
       withEntityAnalytics("create"),
       withEntityRequestState(() => ["create"]),
       withEntityActionDecorators("create"),
-    )(entityObject => async (dispatch, getState) => {
+    )((entityObject) => async (dispatch, getState) => {
       return entity.normalize(
         await entity.api.create(getWritableProperties(entityObject)),
       );
@@ -327,7 +327,7 @@ export function createEntity(def: EntityDefinition): Entity {
     update: compose(
       withAction(UPDATE_ACTION),
       withEntityAnalytics("update"),
-      withEntityRequestState(object => [object.id, "update"]),
+      withEntityRequestState((object) => [object.id, "update"]),
       withEntityActionDecorators("update"),
     )(
       (entityObject, updatedObject = null, { notify } = {}) => async (
@@ -382,9 +382,9 @@ export function createEntity(def: EntityDefinition): Entity {
     delete: compose(
       withAction(DELETE_ACTION),
       withEntityAnalytics("delete"),
-      withEntityRequestState(object => [object.id, "delete"]),
+      withEntityRequestState((object) => [object.id, "delete"]),
       withEntityActionDecorators("delete"),
-    )(entityObject => async (dispatch, getState) => {
+    )((entityObject) => async (dispatch, getState) => {
       await entity.api.delete({ id: entityObject.id });
       return {
         entities: { [entity.name]: { [entityObject.id]: null } },
@@ -401,8 +401,8 @@ export function createEntity(def: EntityDefinition): Entity {
     fetchList: compose(
       withAction(FETCH_LIST_ACTION),
       withCachedDataAndRequestState(
-        entityQuery => [...getListStatePath(entityQuery)],
-        entityQuery => [...getListStatePath(entityQuery), "fetch"],
+        (entityQuery) => [...getListStatePath(entityQuery)],
+        (entityQuery) => [...getListStatePath(entityQuery), "fetch"],
       ),
     )((entityQuery = null) => async (dispatch, getState) => {
       const fetched = await entity.api.list(entityQuery || {});
@@ -443,7 +443,7 @@ export function createEntity(def: EntityDefinition): Entity {
   entity.HACK_getObjectFromAction = ({ payload }) => {
     if (payload && "entities" in payload && "result" in payload) {
       if (Array.isArray(payload.result)) {
-        return payload.result.map(id => payload.entities[entity.name][id]);
+        return payload.result.map((id) => payload.entities[entity.name][id]);
       } else {
         return payload.entities[entity.name][payload.result];
       }
@@ -454,7 +454,7 @@ export function createEntity(def: EntityDefinition): Entity {
 
   // SELECTORS
 
-  const getEntities = state => state.entities;
+  const getEntities = (state) => state.entities;
 
   // OBJECT SELECTORS
 
@@ -475,7 +475,7 @@ export function createEntity(def: EntityDefinition): Entity {
 
   const getEntityLists = createSelector(
     [getEntities],
-    entities => entities[`${entity.name}_list`],
+    (entities) => entities[`${entity.name}_list`],
   );
 
   const getEntityIds = createSelector(
@@ -484,13 +484,13 @@ export function createEntity(def: EntityDefinition): Entity {
   );
 
   const getList = createSelector(
-    [state => state, getEntityIds],
+    [(state) => state, getEntityIds],
     // delegate to getObject
     (state, entityIds) =>
       entityIds &&
       entityIds
-        .map(entityId => entity.selectors.getObject(state, { entityId }))
-        .filter(e => e != null), // deleted entities might remain in lists
+        .map((entityId) => entity.selectors.getObject(state, { entityId }))
+        .filter((e) => e != null), // deleted entities might remain in lists
   );
 
   // REQUEST STATE SELECTORS
@@ -515,19 +515,19 @@ export function createEntity(def: EntityDefinition): Entity {
 
   const getLoading = createSelector(
     [getRequestState],
-    requestState => requestState.loading,
+    (requestState) => requestState.loading,
   );
   const getLoaded = createSelector(
     [getRequestState],
-    requestState => requestState.loaded,
+    (requestState) => requestState.loaded,
   );
   const getFetched = createSelector(
     [getRequestState],
-    requestState => requestState.fetched,
+    (requestState) => requestState.fetched,
   );
   const getError = createSelector(
     [getRequestState],
-    requestState => requestState.error,
+    (requestState) => requestState.error,
   );
 
   const defaultSelectors = {
@@ -588,7 +588,7 @@ export function createEntity(def: EntityDefinition): Entity {
     } else if (type === DELETE_ACTION && state[""]) {
       return {
         ...state,
-        "": state[""].filter(id => id !== payload.result),
+        "": state[""].filter((id) => id !== payload.result),
       };
     }
     return state;
@@ -601,7 +601,7 @@ export function createEntity(def: EntityDefinition): Entity {
   // above. This will be difficult with pagination
 
   if (!entity.actionShouldInvalidateLists) {
-    entity.actionShouldInvalidateLists = action =>
+    entity.actionShouldInvalidateLists = (action) =>
       action.type === CREATE_ACTION ||
       action.type === DELETE_ACTION ||
       action.type === UPDATE_ACTION ||
@@ -642,7 +642,7 @@ export function createEntity(def: EntityDefinition): Entity {
     for (const [methodName, method] of Object.entries(entity.objectSelectors)) {
       if (method) {
         // $FlowFixMe
-        EntityWrapper.prototype[methodName] = function(...args) {
+        EntityWrapper.prototype[methodName] = function (...args) {
           // $FlowFixMe
           return method(this, ...args);
         };
@@ -652,7 +652,7 @@ export function createEntity(def: EntityDefinition): Entity {
     for (const [methodName, method] of Object.entries(entity.objectActions)) {
       if (method) {
         // $FlowFixMe
-        EntityWrapper.prototype[methodName] = function(...args) {
+        EntityWrapper.prototype[methodName] = function (...args) {
           if (this._dispatch) {
             // if dispatch was provided to the constructor go ahead and dispatch
             // $FlowFixMe

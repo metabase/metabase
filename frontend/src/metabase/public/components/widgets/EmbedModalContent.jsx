@@ -169,7 +169,7 @@ export default class EmbedModalContent extends Component {
     const params = this.getPreviewParams();
 
     const previewParameters = resourceParameters.filter(
-      p => embeddingParams[p.slug] === "locked",
+      (p) => embeddingParams[p.slug] === "locked",
     );
 
     return (
@@ -218,7 +218,7 @@ export default class EmbedModalContent extends Component {
                   resource.public_uuid,
                   displayOptions,
                 )}
-                onChangeEmbedType={embedType => this.setState({ embedType })}
+                onChangeEmbedType={(embedType) => this.setState({ embedType })}
               />
             </div>
           </div>
@@ -253,10 +253,10 @@ export default class EmbedModalContent extends Component {
               parameterValues={parameterValues}
               resourceParameters={resourceParameters}
               embeddingParams={embeddingParams}
-              onChangeDisplayOptions={displayOptions =>
+              onChangeDisplayOptions={(displayOptions) =>
                 this.setState({ displayOptions })
               }
-              onChangeEmbeddingParameters={embeddingParams =>
+              onChangeEmbeddingParameters={(embeddingParams) =>
                 this.setState({ embeddingParams })
               }
               onChangeParameterValue={(id, value) =>
@@ -267,7 +267,7 @@ export default class EmbedModalContent extends Component {
                   },
                 })
               }
-              onChangePane={pane => this.setState({ pane })}
+              onChangePane={(pane) => this.setState({ pane })}
               onSave={this.handleSave}
               onUnpublish={this.handleUnpublish}
               onDiscard={this.handleDiscard}

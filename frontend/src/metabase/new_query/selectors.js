@@ -8,12 +8,14 @@ import { getMetadata, getDatabases } from "metabase/selectors/metadata";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Question from "metabase-lib/lib/Question";
 
-export const getPlainNativeQuery = state => {
+export const getPlainNativeQuery = (state) => {
   const metadata = getMetadata(state);
   const question = Question.create({ metadata: getMetadata(state) });
   const databases = metadata
     .databasesList()
-    .filter(db => !db.is_saved_questions && db.native_permissions === "write");
+    .filter(
+      (db) => !db.is_saved_questions && db.native_permissions === "write",
+    );
 
   // If we only have a single database, then default to that
   // (native query editor doesn't currently show the db selector if there is only one database available)
@@ -26,11 +28,11 @@ export const getPlainNativeQuery = state => {
 
 export const getHasDataAccess = createSelector(
   [getDatabases],
-  databases => databases && Object.values(databases).length > 0,
+  (databases) => databases && Object.values(databases).length > 0,
 );
 export const getHasNativeWrite = createSelector(
   [getDatabases],
-  databases =>
+  (databases) =>
     databases &&
-    Object.values(databases).some(d => d.native_permissions === "write"),
+    Object.values(databases).some((d) => d.native_permissions === "write"),
 );

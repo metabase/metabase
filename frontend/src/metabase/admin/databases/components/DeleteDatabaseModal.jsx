@@ -68,7 +68,7 @@ export default class DeleteDatabaseModal extends Component {
           <input
             className="Form-input"
             type="text"
-            onChange={e => this.setState({ confirmValue: e.target.value })}
+            onChange={(e) => this.setState({ confirmValue: e.target.value })}
             autoFocus
           />
         </div>

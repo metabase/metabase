@@ -29,10 +29,10 @@ import { isNumericBaseType } from "metabase/lib/schema_metadata";
 export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
   return tags
     .filter(
-      tag =>
+      (tag) =>
         tag.type != null && (tag["widget-type"] || tag.type !== "dimension"),
     )
-    .map(tag => ({
+    .map((tag) => ({
       id: tag.id,
       type:
         tag["widget-type"] ||
@@ -158,7 +158,7 @@ export function dateParameterValueToMBQL(
   fieldRef: LocalFieldReference | ForeignFieldReference,
 ): ?FieldFilter {
   const deserializer: ?Deserializer = timeParameterValueDeserializers.find(
-    des => des.testRegex.test(parameterValue),
+    (des) => des.testRegex.test(parameterValue),
   );
 
   if (deserializer) {

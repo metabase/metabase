@@ -68,9 +68,7 @@ export default class Field extends Base {
       displayName += this.table.displayName({ includeSchema }) + " → ";
     }
     if (includePath) {
-      displayName += this.path()
-        .map(formatField)
-        .join(": ");
+      displayName += this.path().map(formatField).join(": ");
     } else {
       displayName += formatField(this);
     }
@@ -224,7 +222,7 @@ export default class Field extends Base {
       ? this.table
           .aggregationOperators()
           .filter(
-            aggregation =>
+            (aggregation) =>
               aggregation.validFieldsFilters[0] &&
               aggregation.validFieldsFilters[0]([this]).length === 1,
           )

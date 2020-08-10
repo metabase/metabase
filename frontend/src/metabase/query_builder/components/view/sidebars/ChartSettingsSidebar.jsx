@@ -8,7 +8,7 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 export default class ChartSettingsSidebar extends React.Component {
   state = { sidebarPropsOverride: null };
 
-  setSidebarPropsOverride = sidebarPropsOverride =>
+  setSidebarPropsOverride = (sidebarPropsOverride) =>
     this.setState({ sidebarPropsOverride });
 
   render() {

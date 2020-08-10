@@ -22,7 +22,7 @@ import {
 
 import Database from "metabase/entities/databases";
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   hasDataAccess: getHasDataAccess(state),
   hasNativeWrite: getHasNativeWrite(state),
 });
@@ -36,10 +36,7 @@ const mapDispatchToProps = {
 const PAGE_PADDING = [1, 4];
 
 @fitViewport
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class NewQueryOptions extends Component {
   props: Props;
 

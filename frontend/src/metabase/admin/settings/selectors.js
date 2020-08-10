@@ -253,13 +253,13 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "-public-sharing-dashboards",
         display_name: t`Shared Dashboards`,
         widget: PublicLinksDashboardListing,
-        getHidden: settings => !settings["enable-public-sharing"],
+        getHidden: (settings) => !settings["enable-public-sharing"],
       },
       {
         key: "-public-sharing-questions",
         display_name: t`Shared Questions`,
         widget: PublicLinksQuestionListing,
-        getHidden: settings => !settings["enable-public-sharing"],
+        getHidden: (settings) => !settings["enable-public-sharing"],
       },
     ],
   },
@@ -270,7 +270,7 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "enable-embedding",
         description: null,
         widget: EmbeddingLegalese,
-        getHidden: settings => settings["enable-embedding"],
+        getHidden: (settings) => settings["enable-embedding"],
         onChanged: async (
           oldValue,
           newValue,
@@ -292,29 +292,29 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "enable-embedding",
         display_name: t`Enable Embedding Metabase in other Applications`,
         type: "boolean",
-        getHidden: settings => !settings["enable-embedding"],
+        getHidden: (settings) => !settings["enable-embedding"],
       },
       {
         widget: EmbeddingLevel,
-        getHidden: settings => !settings["enable-embedding"],
+        getHidden: (settings) => !settings["enable-embedding"],
       },
       {
         key: "embedding-secret-key",
         display_name: t`Embedding secret key`,
         widget: SecretKeyWidget,
-        getHidden: settings => !settings["enable-embedding"],
+        getHidden: (settings) => !settings["enable-embedding"],
       },
       {
         key: "-embedded-dashboards",
         display_name: t`Embedded Dashboards`,
         widget: EmbeddedDashboardListing,
-        getHidden: settings => !settings["enable-embedding"],
+        getHidden: (settings) => !settings["enable-embedding"],
       },
       {
         key: "-embedded-questions",
         display_name: t`Embedded Questions`,
         widget: EmbeddedQuestionListing,
-        getHidden: settings => !settings["enable-embedding"],
+        getHidden: (settings) => !settings["enable-embedding"],
       },
     ],
   },
@@ -330,21 +330,21 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "query-caching-min-ttl",
         display_name: t`Minimum Query Duration`,
         type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
+        getHidden: (settings) => !settings["enable-query-caching"],
         allowValueCollection: true,
       },
       {
         key: "query-caching-ttl-ratio",
         display_name: t`Cache Time-To-Live (TTL) multiplier`,
         type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
+        getHidden: (settings) => !settings["enable-query-caching"],
         allowValueCollection: true,
       },
       {
         key: "query-caching-max-kb",
         display_name: t`Max Cache Entry Size`,
         type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
+        getHidden: (settings) => !settings["enable-query-caching"],
         allowValueCollection: true,
       },
     ],
@@ -352,62 +352,56 @@ const SECTIONS = updateSectionsWithPlugins({
 });
 
 export const getSettings = createSelector(
-  state => state.admin.settings.settings,
-  state => state.admin.settings.warnings,
+  (state) => state.admin.settings.settings,
+  (state) => state.admin.settings.warnings,
   (settings, warnings) =>
-    settings.map(setting =>
+    settings.map((setting) =>
       warnings[setting.key]
         ? { ...setting, warning: warnings[setting.key] }
         : setting,
     ),
 );
 
-export const getSettingValues = createSelector(
-  getSettings,
-  settings => {
-    const settingValues = {};
-    for (const setting of settings) {
-      settingValues[setting.key] = setting.value;
-    }
-    return settingValues;
-  },
-);
+export const getSettingValues = createSelector(getSettings, (settings) => {
+  const settingValues = {};
+  for (const setting of settings) {
+    settingValues[setting.key] = setting.value;
+  }
+  return settingValues;
+});
 
 export const getNewVersionAvailable = createSelector(
   getSettings,
-  settings => {
+  (settings) => {
     return MetabaseSettings.newVersionAvailable(settings);
   },
 );
 
-export const getSections = createSelector(
-  getSettings,
-  settings => {
-    if (!settings || _.isEmpty(settings)) {
-      return [];
-    }
+export const getSections = createSelector(getSettings, (settings) => {
+  if (!settings || _.isEmpty(settings)) {
+    return [];
+  }
 
-    const settingsByKey = _.groupBy(settings, "key");
-    const sectionsWithAPISettings = {};
-    for (const [slug, section] of Object.entries(SECTIONS)) {
-      const settings = section.settings.map(function(setting) {
-        const apiSetting =
-          settingsByKey[setting.key] && settingsByKey[setting.key][0];
-        if (apiSetting) {
-          return {
-            placeholder: apiSetting.default,
-            ...apiSetting,
-            ...setting,
-          };
-        } else {
-          return setting;
-        }
-      });
-      sectionsWithAPISettings[slug] = { ...section, settings };
-    }
-    return sectionsWithAPISettings;
-  },
-);
+  const settingsByKey = _.groupBy(settings, "key");
+  const sectionsWithAPISettings = {};
+  for (const [slug, section] of Object.entries(SECTIONS)) {
+    const settings = section.settings.map(function (setting) {
+      const apiSetting =
+        settingsByKey[setting.key] && settingsByKey[setting.key][0];
+      if (apiSetting) {
+        return {
+          placeholder: apiSetting.default,
+          ...apiSetting,
+          ...setting,
+        };
+      } else {
+        return setting;
+      }
+    });
+    sectionsWithAPISettings[slug] = { ...section, settings };
+  }
+  return sectionsWithAPISettings;
+});
 
 export const getActiveSectionName = (state, props) => props.params.splat;
 

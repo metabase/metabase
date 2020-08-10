@@ -50,7 +50,7 @@ export default class View extends React.Component {
     ...DEFAULT_POPOVER_STATE,
   };
 
-  handleAddSeries = e => {
+  handleAddSeries = (e) => {
     this.setState({
       ...DEFAULT_POPOVER_STATE,
       aggregationPopoverTarget: e.target,
@@ -322,7 +322,7 @@ export default class View extends React.Component {
                   ? query.aggregations()[aggregationIndex]
                   : 0
               }
-              onChangeAggregation={aggregation => {
+              onChangeAggregation={(aggregation) => {
                 if (aggregationIndex != null) {
                   query
                     .updateAggregation(aggregationIndex, aggregation)
@@ -347,7 +347,7 @@ export default class View extends React.Component {
               breakout={
                 breakoutIndex >= 0 ? query.breakouts()[breakoutIndex] : 0
               }
-              onChangeBreakout={breakout => {
+              onChangeBreakout={(breakout) => {
                 if (breakoutIndex != null) {
                   query
                     .updateBreakout(breakoutIndex, breakout)

@@ -88,22 +88,14 @@ describe("mongodb > user > query", () => {
     cy.get(".Icon-contract").click();
 
     cy.contains("Save").click();
-    modal()
-      .findByLabelText("Name")
-      .focus()
-      .type("mongo count");
-    modal()
-      .contains("button", "Save")
-      .should("not.be.disabled")
-      .click();
+    modal().findByLabelText("Name").focus().type("mongo count");
+    modal().contains("button", "Save").should("not.be.disabled").click();
 
     cy.wait("@createQuestion").then(({ status }) => {
       expect(status).to.equal(202);
     });
 
-    modal()
-      .contains("Not now")
-      .click();
+    modal().contains("Not now").click();
 
     cy.url().should("match", /\/question\/\d+$/);
   });

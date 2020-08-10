@@ -42,14 +42,14 @@ const PAGE_PADDING = [1, 2, 4];
 // use reselect select to avoid re-render if list doesn't change
 const getParitionedCollections = createSelector(
   [(state, props) => props.list],
-  list => {
+  (list) => {
     const [collections, items] = _.partition(
       list,
-      item => item.model === "collection",
+      (item) => item.model === "collection",
     );
     const [pinned, unpinned] = _.partition(
       items,
-      item => item.collection_position != null,
+      (item) => item.collection_position != null,
     );
 
     // sort the pinned items by collection_position
@@ -98,7 +98,7 @@ class Overworld extends React.Component {
         <CollectionItemsLoader collectionId="root">
           {({ items }) => {
             const pinnedDashboards = items.filter(
-              d => d.model === "dashboard" && d.collection_position != null,
+              (d) => d.model === "dashboard" && d.collection_position != null,
             );
 
             if (showHomepageXrays && !pinnedDashboards.length > 0) {
@@ -136,7 +136,7 @@ class Overworld extends React.Component {
                                   footer={
                                     <Button
                                       danger
-                                      onClick={onClose => {
+                                      onClick={(onClose) => {
                                         updateSetting({
                                           key: "show-homepage-xrays",
                                           value: false,
@@ -179,7 +179,7 @@ class Overworld extends React.Component {
               <Box px={PAGE_PADDING} mt={2}>
                 <SectionHeading>{t`Start here`}</SectionHeading>
                 <Grid>
-                  {pinnedDashboards.map(pin => {
+                  {pinnedDashboards.map((pin) => {
                     return (
                       <GridItem
                         w={[1, 1 / 2, 1 / 3]}
@@ -214,7 +214,7 @@ class Overworld extends React.Component {
           <SectionHeading>{ROOT_COLLECTION.name}</SectionHeading>
           <Box p={[1, 2]} mt={2} bg={color("bg-medium")}>
             {this.props.collections.filter(
-              c => c.id !== user.personal_collection_id,
+              (c) => c.id !== user.personal_collection_id,
             ).length > 0 ? (
               <CollectionList
                 collections={this.props.collections}
@@ -283,7 +283,7 @@ class Overworld extends React.Component {
                           footer={
                             <Button
                               danger
-                              onClick={onClose => {
+                              onClick={(onClose) => {
                                 updateSetting({
                                   key: "show-homepage-data",
                                   value: false,
@@ -303,7 +303,7 @@ class Overworld extends React.Component {
                   </SectionHeading>
                   <Box mb={4}>
                     <Grid>
-                      {databases.map(database => (
+                      {databases.map((database) => (
                         <GridItem w={[1, 1 / 3]} key={database.id}>
                           <Link
                             to={`browse/${database.id}`}

@@ -8,12 +8,12 @@ export const activity = "/activity";
 
 export const newQuestionFlow = () => "/question/new";
 
-export const newDashboard = collectionId =>
+export const newDashboard = (collectionId) =>
   `collection/${collectionId}/new_dashboard`;
 
 export const newPulse = () => `/pulse/create`;
 
-export const newCollection = collectionId =>
+export const newCollection = (collectionId) =>
   `collection/${collectionId}/new_collection`;
 
 export function question(cardId, hash = "", query = "") {
@@ -22,7 +22,7 @@ export function question(cardId, hash = "", query = "") {
   }
   if (query && typeof query === "object") {
     query = extractQueryParams(query)
-      .map(kv => kv.map(encodeURIComponent).join("="))
+      .map((kv) => kv.map(encodeURIComponent).join("="))
       .join("&");
   }
   if (hash && hash.charAt(0) !== "#") {
@@ -43,7 +43,7 @@ export const extractQueryParams = (query: Object): Array => {
 
 const flattenParam = ([key, value]) => {
   if (value instanceof Array) {
-    return value.map(p => [key, p]);
+    return value.map((p) => [key, p]);
   }
 
   return [[key, value]];

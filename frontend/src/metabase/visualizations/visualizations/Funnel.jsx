@@ -73,7 +73,7 @@ export default class Funnel extends Component {
     ["Tiers Page", 700],
     ["Trial Form", 200],
     ["Trial Confirmation", 40],
-  ].map(row => ({
+  ].map((row) => ({
     card: {
       display: "funnel",
       visualization_settings: {
@@ -124,7 +124,7 @@ export default class Funnel extends Component {
         ],
       },
       // legacy "bar" funnel was only previously available via multiseries
-      getDefault: series => (series.length > 1 ? "bar" : "funnel"),
+      getDefault: (series) => (series.length > 1 ? "bar" : "funnel"),
       useRawSeries: true,
     },
   };
@@ -141,11 +141,11 @@ export default class Funnel extends Component {
 
     const dimensionIndex = _.findIndex(
       cols,
-      col => col.name === settings["funnel.dimension"],
+      (col) => col.name === settings["funnel.dimension"],
     );
     const metricIndex = _.findIndex(
       cols,
-      col => col.name === settings["funnel.metric"],
+      (col) => col.name === settings["funnel.metric"],
     );
 
     if (
@@ -155,7 +155,7 @@ export default class Funnel extends Component {
       dimensionIndex >= 0 &&
       metricIndex >= 0
     ) {
-      return rows.map(row => ({
+      return rows.map((row) => ({
         card: {
           ...card,
           name: formatValue(row[dimensionIndex], {

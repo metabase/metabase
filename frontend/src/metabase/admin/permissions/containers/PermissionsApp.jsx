@@ -24,10 +24,7 @@ const mapDispatchToProps = {
 };
 
 @withRouter
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class PermissionsApp extends Component {
   static propTypes = {
     load: PropTypes.func.isRequired,
@@ -45,7 +42,7 @@ export default class PermissionsApp extends Component {
     this.props.initialize(this.props.load, this.props.save);
     this.props.router.setRouteLeaveHook(this.props.route, this.routerWillLeave);
   }
-  routerWillLeave = nextLocation => {
+  routerWillLeave = (nextLocation) => {
     if (this.props.isDirty && !this.state.confirmed) {
       this.setState({ nextLocation: nextLocation, confirmed: false });
       return false;

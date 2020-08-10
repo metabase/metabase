@@ -44,7 +44,7 @@ const BreakoutPopover = ({
       width={width}
       field={breakout}
       fieldOptions={breakoutOptions || query.breakoutOptions(breakout)}
-      onFieldChange={field => {
+      onFieldChange={(field) => {
         onChangeBreakout(field);
         if (onClose) {
           onClose();

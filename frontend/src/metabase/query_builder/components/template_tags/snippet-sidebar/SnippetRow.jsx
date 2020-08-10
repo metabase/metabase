@@ -41,7 +41,7 @@ class SnippetRow extends React.Component {
             onClick={
               snippet.archived
                 ? () => this.setState({ isOpen: true })
-                : e => {
+                : (e) => {
                     e.stopPropagation();
                     insertSnippet(snippet);
                   }

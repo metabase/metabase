@@ -9,7 +9,10 @@ A standard radio button group.
 
 const PROPS = {
   value: 0,
-  options: [{ name: "Gadget", value: 0 }, { name: "Gizmo", value: 1 }],
+  options: [
+    { name: "Gadget", value: 0 },
+    { name: "Gizmo", value: 1 },
+  ],
 };
 
 export const examples = {

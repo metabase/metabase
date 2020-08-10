@@ -171,16 +171,15 @@ export default class Form extends React.Component {
           ...formDef,
           fields: (...args) =>
             // merge inlineFields in
-            getValue(formDef.fields, ...args).map(fieldDef => ({
+            getValue(formDef.fields, ...args).map((fieldDef) => ({
               ...fieldDef,
               ...inlineFields[fieldDef.name],
             })),
         };
       },
     );
-    const getFormObject = createSelector(
-      [getFormDefinition],
-      formDef => makeFormObject(formDef),
+    const getFormObject = createSelector([getFormDefinition], (formDef) =>
+      makeFormObject(formDef),
     );
     const getInitialValues = createSelector(
       [
@@ -251,7 +250,7 @@ export default class Form extends React.Component {
   _registerFormField = (field: FormFieldDefinition) => {
     if (!_.isEqual(this.state.inlineFields[field.name], field)) {
       // console.log("_registerFormField", field.name);
-      this.setState(prevState =>
+      this.setState((prevState) =>
         assocIn(prevState, ["inlineFields", field.name], field),
       );
     }
@@ -303,7 +302,9 @@ export default class Form extends React.Component {
         // if there are errors for fields we don't know about then inject a generic top-level _error key
         const fieldNames = new Set(this._getFieldNames());
         const errorNames = Object.keys(error.data.errors);
-        const hasUnknownFields = errorNames.some(name => !fieldNames.has(name));
+        const hasUnknownFields = errorNames.some(
+          (name) => !fieldNames.has(name),
+        );
         throw {
           _error: hasUnknownFields ? t`An error occurred` : null,
           ...error.data.errors,
@@ -392,20 +393,20 @@ function getValue(fnOrValue, ...args): any {
 function makeFormObject(formDef: FormDefinition): FormObject {
   const form = {
     ...formDef,
-    fields: values => getValue(formDef.fields, values),
-    fieldNames: values => [
+    fields: (values) => getValue(formDef.fields, values),
+    fieldNames: (values) => [
       "id",
-      ...form.fields(values).map(field => field.name),
+      ...form.fields(values).map((field) => field.name),
     ],
   };
   // for validating the object, or individual values
   makeFormMethod(form, "validate", {}, (a, b) =>
-    [a, b].filter(a => a).join(", "),
+    [a, b].filter((a) => a).join(", "),
   );
   // for getting the initial values object, or getting individual values
   makeFormMethod(form, "initial");
   // for normalizeing the object before submitting, or normalizeing individual values
-  makeFormMethod(form, "normalize", object => object);
+  makeFormMethod(form, "normalize", (object) => object);
   makeFormMethod(form, "hidden");
   return form;
 }

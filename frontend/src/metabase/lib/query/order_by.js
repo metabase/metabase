@@ -6,7 +6,7 @@ import { add, update, remove, clear } from "./util";
 
 // returns canonical list of OrderBys, with nulls removed
 export function getOrderBys(breakout: ?OrderByClause): OrderBy[] {
-  return (breakout || []).filter(b => b != null);
+  return (breakout || []).filter((b) => b != null);
 }
 
 // turns a list of OrderBys into the canonical OrderByClause

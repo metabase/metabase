@@ -71,8 +71,8 @@ describe("operators in questions", () => {
       });
 
       popover().within(() => {
-        expected.text.expected.map(e => cy.contains(e).should("exist"));
-        expected.text.unexpected.map(e => cy.contains(e).should("not.exist"));
+        expected.text.expected.map((e) => cy.contains(e).should("exist"));
+        expected.text.unexpected.map((e) => cy.contains(e).should("not.exist"));
       });
     });
 
@@ -90,8 +90,10 @@ describe("operators in questions", () => {
       });
 
       popover().within(() => {
-        expected.number.expected.map(e => cy.contains(e).should("exist"));
-        expected.number.unexpected.map(e => cy.contains(e).should("not.exist"));
+        expected.number.expected.map((e) => cy.contains(e).should("exist"));
+        expected.number.unexpected.map((e) =>
+          cy.contains(e).should("not.exist"),
+        );
       });
     });
 
@@ -109,8 +111,8 @@ describe("operators in questions", () => {
       });
 
       popover().within(() => {
-        expected.date.expected.map(e => cy.contains(e).should("exist"));
-        expected.date.unexpected.map(e => cy.contains(e).should("not.exist"));
+        expected.date.expected.map((e) => cy.contains(e).should("exist"));
+        expected.date.unexpected.map((e) => cy.contains(e).should("not.exist"));
       });
     });
 
@@ -128,8 +130,8 @@ describe("operators in questions", () => {
       });
 
       popover().within(() => {
-        expected.id.expected.map(e => cy.contains(e).should("exist"));
-        expected.id.unexpected.map(e => cy.contains(e).should("not.exist"));
+        expected.id.expected.map((e) => cy.contains(e).should("exist"));
+        expected.id.unexpected.map((e) => cy.contains(e).should("not.exist"));
       });
     });
 
@@ -147,8 +149,8 @@ describe("operators in questions", () => {
       });
 
       popover().within(() => {
-        expected.geo.expected.map(e => cy.contains(e).should("exist"));
-        expected.geo.unexpected.map(e => cy.contains(e).should("not.exist"));
+        expected.geo.expected.map((e) => cy.contains(e).should("exist"));
+        expected.geo.unexpected.map((e) => cy.contains(e).should("not.exist"));
       });
     });
   });

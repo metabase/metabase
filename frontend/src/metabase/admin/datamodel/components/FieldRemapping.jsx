@@ -38,7 +38,7 @@ export default class FieldRemapping extends React.Component {
     super(props, context);
   }
 
-  getMappingTypeForField = field => {
+  getMappingTypeForField = (field) => {
     if (this.state.isChoosingInitialFkTarget) {
       return MAP_OPTIONS.foreign;
     }
@@ -67,7 +67,7 @@ export default class FieldRemapping extends React.Component {
     const hasMappableNumeralValues =
       field.remapping.size > 0 &&
       [...field.remapping.keys()].every(
-        key => typeof key === "number" || key === null,
+        (key) => typeof key === "number" || key === null,
       );
 
     return [
@@ -79,12 +79,13 @@ export default class FieldRemapping extends React.Component {
 
   getFKTargetTableEntityNameOrNull = () => {
     const fks = this.getForeignKeys();
-    const fkTargetFields = fks[0] && fks[0].dimensions.map(dim => dim.field());
+    const fkTargetFields =
+      fks[0] && fks[0].dimensions.map((dim) => dim.field());
 
     if (fkTargetFields) {
       // TODO Atte Keinänen 7/11/17: Should there be `isName(field)` in Field.js?
       const nameField = fkTargetFields.find(
-        field => field.special_type === "type/Name",
+        (field) => field.special_type === "type/Name",
       );
       return nameField ? nameField.id : null;
     } else {
@@ -169,7 +170,7 @@ export default class FieldRemapping extends React.Component {
     await fetchTableMetadata({ id: table.id }, { reload: true });
   };
 
-  onForeignKeyFieldChange = async foreignKeyClause => {
+  onForeignKeyFieldChange = async (foreignKeyClause) => {
     const {
       table,
       field,
@@ -200,13 +201,13 @@ export default class FieldRemapping extends React.Component {
     }
   };
 
-  onUpdateRemappings = remappings => {
+  onUpdateRemappings = (remappings) => {
     const { field, updateFieldValues } = this.props;
     return updateFieldValues({ id: field.id }, Array.from(remappings));
   };
 
   // TODO Atte Keinänen 7/11/17: Should we have stricter criteria for valid remapping targets?
-  isValidFKRemappingTarget = dimension =>
+  isValidFKRemappingTarget = (dimension) =>
     !(dimension.defaultDimension() instanceof DatetimeFieldDimension);
 
   getForeignKeys = () => {
@@ -223,9 +224,9 @@ export default class FieldRemapping extends React.Component {
       .query()
       .fieldOptions();
     const unfilteredFks = fieldOptions.fks;
-    const filteredFKs = unfilteredFks.filter(fk => fk.field.id === field.id);
+    const filteredFKs = unfilteredFks.filter((fk) => fk.field.id === field.id);
 
-    return filteredFKs.map(filteredFK => ({
+    return filteredFKs.map((filteredFK) => ({
       field: filteredFK.field,
       dimension: filteredFK.dimension,
       dimensions: filteredFK.dimensions.filter(this.isValidFKRemappingTarget),
@@ -262,7 +263,7 @@ export default class FieldRemapping extends React.Component {
             value={mappingType}
             onChange={this.handleChangeMappingType}
             options={this.getAvailableMappingTypes()}
-            optionValueFn={o => o}
+            optionValueFn={(o) => o}
             className="inline-block"
           />
           {mappingType === MAP_OPTIONS.foreign && [
@@ -333,12 +334,14 @@ export class ValueRemappings extends React.Component {
   componentDidUpdate(prevProps) {
     const { remappings } = this.props;
     if (
-      !// check if the Maps are different
-      (
-        prevProps.remappings &&
-        remappings &&
-        prevProps.remappings.size === remappings.size &&
-        [...remappings].every(([k, v]) => prevProps.remappings.get(k) === v)
+      !(
+        // check if the Maps are different
+        (
+          prevProps.remappings &&
+          remappings &&
+          prevProps.remappings.size === remappings.size &&
+          [...remappings].every(([k, v]) => prevProps.remappings.get(k) === v)
+        )
       )
     ) {
       this._updateEditingRemappings(remappings);
@@ -393,7 +396,7 @@ export class ValueRemappings extends React.Component {
 
   customValuesAreNonEmpty = () => {
     return Array.from(this.state.editingRemappings.values()).every(
-      value => value !== "",
+      (value) => value !== "",
     );
   };
 
@@ -412,7 +415,7 @@ export class ValueRemappings extends React.Component {
               <FieldValueMapping
                 original={original}
                 mapped={mapped}
-                setMapping={newMapped =>
+                setMapping={(newMapped) =>
                   this.onSetRemapping(original, newMapped)
                 }
               />
@@ -434,7 +437,7 @@ export class ValueRemappings extends React.Component {
 }
 
 export class FieldValueMapping extends React.Component {
-  onInputChange = e => {
+  onInputChange = (e) => {
     this.props.setMapping(e.target.value);
   };
 

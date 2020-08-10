@@ -10,7 +10,7 @@ export default class ChartSettingColorsPicker extends Component {
         {seriesTitles.map((title, index) => (
           <ChartSettingColorPicker
             key={index}
-            onChange={color =>
+            onChange={(color) =>
               onChange({
                 ...value,
                 [title]: color,

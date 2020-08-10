@@ -19,20 +19,14 @@ export { drillDownForDimensions } from "./drilldown";
 export function aggregate(question: Question, aggregation): ?Question {
   const query = question.query();
   if (query instanceof StructuredQuery) {
-    return query
-      .aggregate(aggregation)
-      .question()
-      .setDefaultDisplay();
+    return query.aggregate(aggregation).question().setDefaultDisplay();
   }
 }
 
 export function breakout(question: Question, breakout): ?Question {
   const query = question.query();
   if (query instanceof StructuredQuery) {
-    return query
-      .breakout(breakout)
-      .question()
-      .setDefaultDisplay();
+    return query.breakout(breakout).question().setDefaultDisplay();
   }
 }
 
@@ -163,7 +157,7 @@ export function addOrUpdateFilter(
 const MIN_INTERVALS = 4;
 
 const UNITS = ["minute", "hour", "day", "week", "month", "quarter", "year"];
-const getNextUnit = unit => {
+const getNextUnit = (unit) => {
   return UNITS[Math.max(0, UNITS.indexOf(unit) - 1)];
 };
 

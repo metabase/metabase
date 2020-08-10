@@ -2,7 +2,7 @@ import React, { Component } from "react";
 
 import Tooltip from "metabase/components/Tooltip";
 
-const Tooltipify = ComposedComponent =>
+const Tooltipify = (ComposedComponent) =>
   class extends Component {
     static displayName =
       "Tooltipify[" +

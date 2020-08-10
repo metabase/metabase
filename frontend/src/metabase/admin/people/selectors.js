@@ -5,25 +5,25 @@ import { isMetaBotGroup } from "metabase/lib/groups";
 
 import Group from "metabase/entities/groups";
 
-export const getMemberships = state => state.admin.people.memberships;
+export const getMemberships = (state) => state.admin.people.memberships;
 
 export const getGroupsWithoutMetabot = createSelector(
   [Group.selectors.getList],
-  groups => groups.filter(group => !isMetaBotGroup(group)),
+  (groups) => groups.filter((group) => !isMetaBotGroup(group)),
 );
 
 export const getUsersWithMemberships = createSelector(
-  [state => state.entities.users, getMemberships],
+  [(state) => state.entities.users, getMemberships],
   (users, memberships) =>
     users &&
-    _.mapObject(users, user => ({
+    _.mapObject(users, (user) => ({
       ...user,
       memberships:
         memberships &&
         _.chain(memberships)
           .values()
-          .filter(m => m.user_id === user.id)
-          .map(m => [m.group_id, m])
+          .filter((m) => m.user_id === user.id)
+          .map((m) => [m.group_id, m])
           .object()
           .value(),
     })),
@@ -36,7 +36,7 @@ const compareNames = (a, b) =>
 
 export const getSortedUsersWithMemberships = createSelector(
   [getUsersWithMemberships],
-  users =>
+  (users) =>
     users &&
     _.values(users).sort(
       (a, b) =>

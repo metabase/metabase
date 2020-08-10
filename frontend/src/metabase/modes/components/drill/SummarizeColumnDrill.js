@@ -69,7 +69,7 @@ export default ({
           .aggregate([aggregator.short, fieldRefForColumn(column)])
           .question()
           .setDefaultDisplay(),
-      action: () => dispatch => {
+      action: () => (dispatch) => {
         // HACK: drill through closes sidebars, so open sidebar asynchronously
         setTimeout(() => {
           dispatch({ type: "metabase/qb/EDIT_SUMMARY" });

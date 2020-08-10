@@ -31,7 +31,7 @@ class SegmentListApp extends React.Component {
             </tr>
           </thead>
           <tbody>
-            {segments.map(segment => (
+            {segments.map((segment) => (
               <SegmentItem
                 key={segment.id}
                 onRetire={() => segment.setArchived(true)}

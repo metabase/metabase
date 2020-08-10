@@ -34,7 +34,7 @@ describe("scenarios > visualizations > chart drill", () => {
         },
         display: "line",
         visualization_settings: {},
-      }).then(response => {
+      }).then((response) => {
         cy.visit(`/question/${response.body.id}`);
 
         // wait for chart to expand and display legend/labels
@@ -89,19 +89,13 @@ describe("scenarios > visualizations > chart drill", () => {
     cy.contains("CA People").click();
     cy.contains("Hudson Borer");
     cy.contains("Summarize").click();
-    cy.contains("Summarize by")
-      .parent()
-      .parent()
-      .contains("City")
-      .click();
+    cy.contains("Summarize by").parent().parent().contains("City").click();
 
     // wait for chart to load
     cy.wait("@dataset");
     cy.contains("Count by City");
     // drill into the first bar
-    cy.get(".bar")
-      .first()
-      .click({ force: true });
+    cy.get(".bar").first().click({ force: true });
     cy.contains("View this CA Person").click();
 
     // check that filter is applied and person displayed

@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 
-export default ComposedComponent => {
+export default (ComposedComponent) => {
   class TableMetadataLoader extends Component {
     componentDidMount() {
       const { table } = this.props;

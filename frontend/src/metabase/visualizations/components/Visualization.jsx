@@ -152,7 +152,7 @@ export default class Visualization extends React.PureComponent {
     isSettings: false,
     onUpdateVisualizationSettings: () => {},
     // prefer passing in a function that doesn't cause the application to reload
-    onChangeLocation: location => {
+    onChangeLocation: (location) => {
       window.location = location;
     },
   };
@@ -200,9 +200,9 @@ export default class Visualization extends React.PureComponent {
     if (state.series && state.series[0].card.display !== "table") {
       warnings = warnings.concat(
         props.rawSeries
-          .filter(s => s.data && s.data.rows_truncated != null)
+          .filter((s) => s.data && s.data.rows_truncated != null)
           .map(
-            s =>
+            (s) =>
               t`Data truncated to ${formatNumber(s.data.rows_truncated)} rows.`,
           ),
       );
@@ -237,12 +237,12 @@ export default class Visualization extends React.PureComponent {
     });
   }
 
-  handleHoverChange = hovered => {
+  handleHoverChange = (hovered) => {
     if (hovered) {
       const { yAxisSplit } = this.state;
       // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
       if (yAxisSplit) {
-        const axisIndex = _.findIndex(yAxisSplit, indexes =>
+        const axisIndex = _.findIndex(yAxisSplit, (indexes) =>
           _.contains(indexes, hovered.index),
         );
         hovered = assoc(hovered, "axisIndex", axisIndex);
@@ -344,7 +344,7 @@ export default class Visualization extends React.PureComponent {
     this.setState({ yAxisSplit, warnings });
   };
 
-  onRenderError = error => {
+  onRenderError = (error) => {
     console.error(error);
     this.setState({ error });
   };
@@ -388,7 +388,7 @@ export default class Visualization extends React.PureComponent {
       series.length > 0 &&
       _.every(
         series,
-        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
+        (s) => s.data || _.isObject(s.card.visualization_settings.virtual_card),
       )
     );
     let noResults = false;
@@ -443,7 +443,7 @@ export default class Visualization extends React.PureComponent {
       noResults = _.every(
         // $FlowFixMe
         series,
-        s => s && s.data && datasetContainsNoResults(s.data),
+        (s) => s && s.data && datasetContainsNoResults(s.data),
       );
     }
 

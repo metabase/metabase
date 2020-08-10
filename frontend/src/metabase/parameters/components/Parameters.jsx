@@ -54,7 +54,7 @@ type Props = {
   setEditingParameter?: (parameterId: ParameterId) => void,
 };
 
-@connect(state => ({ metadata: getMetadata(state) }))
+@connect((state) => ({ metadata: getMetadata(state) }))
 export default class Parameters extends Component {
   props: Props;
 
@@ -85,7 +85,7 @@ export default class Parameters extends Component {
           // field IDs can be either ["field-id", <id>] or ["field-literal", <name>, <type>]
           const fieldIds = parameter.field_ids || [];
           const fields = fieldIds.map(
-            id =>
+            (id) =>
               // $FlowFixMe
               metadata.field(id) || Dimension.parseMBQL(id, metadata).field(),
           );
@@ -122,7 +122,7 @@ export default class Parameters extends Component {
   _parametersWithValues() {
     const { parameters, parameterValues } = this.props;
     if (parameterValues) {
-      return parameters.map(p => ({
+      return parameters.map((p) => ({
         ...p,
         value: parameterValues[p.id],
       }));
@@ -190,7 +190,7 @@ export default class Parameters extends Component {
         onSortEnd={this.handleSortEnd}
       >
         {parameters
-          .filter(p => !hiddenParameters.has(p.slug))
+          .filter((p) => !hiddenParameters.has(p.slug))
           .map((parameter, index) => (
             <ParameterWidget
               key={parameter.id}
@@ -207,15 +207,15 @@ export default class Parameters extends Component {
               index={index}
               setName={
                 setParameterName &&
-                (name => setParameterName(parameter.id, name))
+                ((name) => setParameterName(parameter.id, name))
               }
               setValue={
                 setParameterValue &&
-                (value => setParameterValue(parameter.id, value))
+                ((value) => setParameterValue(parameter.id, value))
               }
               setDefaultValue={
                 setParameterDefaultValue &&
-                (value => setParameterDefaultValue(parameter.id, value))
+                ((value) => setParameterDefaultValue(parameter.id, value))
               }
               remove={removeParameter && (() => removeParameter(parameter.id))}
               commitImmediately={commitImmediately}
@@ -264,15 +264,15 @@ export function parseQueryParam(
   fields: Field[],
 ): any {
   if (Array.isArray(value)) {
-    return value.map(v => parseQueryParam(v, fields));
+    return value.map((v) => parseQueryParam(v, fields));
   }
   // [].every is always true, so only check if there are some fields
   if (fields.length > 0) {
     // unix dates fields are numeric but query params shouldn't be parsed as numbers
-    if (fields.every(f => f.isNumeric() && !f.isDate())) {
+    if (fields.every((f) => f.isNumeric() && !f.isDate())) {
       return parseFloat(value);
     }
-    if (fields.every(f => f.isBoolean())) {
+    if (fields.every((f) => f.isBoolean())) {
       return value === "true" ? true : value === "false" ? false : value;
     }
   }

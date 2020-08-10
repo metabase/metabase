@@ -87,7 +87,7 @@ export default class DashCard extends Component {
     const cards = [mainCard].concat(dashcard.series || []);
     const dashboardId = dashcard.dashboard_id;
     const isEmbed = Utils.isJWT(dashboardId);
-    const series = cards.map(card => ({
+    const series = cards.map((card) => ({
       ...getIn(dashcardData, [dashcard.id, card.id]),
       card: card,
       isSlow: slowCards[card.id],
@@ -96,19 +96,19 @@ export default class DashCard extends Component {
         card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD,
     }));
 
-    const loading = !(series.length > 0 && _.every(series, s => s.data));
+    const loading = !(series.length > 0 && _.every(series, (s) => s.data));
     const expectedDuration = Math.max(
-      ...series.map(s => s.card.query_average_duration || 0),
+      ...series.map((s) => s.card.query_average_duration || 0),
     );
-    const usuallyFast = _.every(series, s => s.isUsuallyFast);
+    const usuallyFast = _.every(series, (s) => s.isUsuallyFast);
     const isSlow =
       loading &&
-      _.some(series, s => s.isSlow) &&
+      _.some(series, (s) => s.isSlow) &&
       (usuallyFast ? "usually-fast" : "usually-slow");
-    const errors = series.map(s => s.error).filter(e => e);
+    const errors = series.map((s) => s.error).filter((e) => e);
 
     let errorMessage, errorIcon;
-    if (_.any(errors, e => e && e.status === 403)) {
+    if (_.any(errors, (e) => e && e.status === 403)) {
       errorMessage = ERROR_MESSAGE_PERMISSION;
       errorIcon = "key";
     } else if (errors.length > 0) {
@@ -178,9 +178,7 @@ export default class DashCard extends Component {
                 token={dashcard.dashboard_id}
                 icon="download"
               />
-            ) : (
-              undefined
-            )
+            ) : undefined
           }
           onUpdateVisualizationSettings={
             this.props.onUpdateVisualizationSettings

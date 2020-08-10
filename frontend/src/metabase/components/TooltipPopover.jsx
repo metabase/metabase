@@ -9,7 +9,7 @@ import Popover from "./Popover";
 // we use the number of words as an approximation
 const CONDITIONAL_WORD_COUNT = 10;
 
-const wordCount = string => string.split(" ").length;
+const wordCount = (string) => string.split(" ").length;
 
 const TooltipPopover = ({ children, maxWidth, ...props }) => {
   let popoverContent;

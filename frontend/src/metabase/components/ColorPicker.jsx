@@ -58,7 +58,7 @@ class ColorPicker extends Component {
               <div className="rounded overflow-hidden">
                 <SketchPicker
                   color={value}
-                  onChangeComplete={color => {
+                  onChangeComplete={(color) => {
                     onChange(color.hex);
                   }}
                 />

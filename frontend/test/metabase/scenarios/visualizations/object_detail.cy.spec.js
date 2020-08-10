@@ -9,11 +9,7 @@ describe("scenarios > visualizations > object detail", () => {
     // click on product #1's id
     cy.contains(/^1$/).click();
     // check that the correct counts of related tables appear
-    cy.contains("Orders")
-      .parent()
-      .contains("93");
-    cy.contains("Reviews")
-      .parent()
-      .contains("8");
+    cy.contains("Orders").parent().contains("93");
+    cy.contains("Reviews").parent().contains("8");
   });
 });

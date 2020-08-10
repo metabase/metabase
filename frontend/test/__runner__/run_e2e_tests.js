@@ -1,6 +1,6 @@
 // Provide custom afterAll implementation for letting shared-resouce.js set method for doing cleanup
 let jasmineAfterAllCleanup = async () => {};
-global.afterAll = method => {
+global.afterAll = (method) => {
   jasmineAfterAllCleanup = method;
 };
 
@@ -22,7 +22,7 @@ const userArgs = process.argv.slice(2);
 const isJestWatchMode = userArgs[0] === "--watch";
 
 function readFile(fileName) {
-  return new Promise(function(resolve, reject) {
+  return new Promise(function (resolve, reject) {
     fs.readFile(fileName, "utf8", (err, data) => {
       if (err) {
         reject(err);
@@ -150,7 +150,7 @@ const cleanup = async (exitCode = 0) => {
   process.exit(exitCode);
 };
 
-const askWhetherToQuit = exitCode => {
+const askWhetherToQuit = (exitCode) => {
   console.log(
     chalk.bold(
       "Jest process exited. Press [ctrl-c] to quit the e2e test runner or any other key to restart Jest.",
@@ -162,7 +162,7 @@ const askWhetherToQuit = exitCode => {
 const launch = () =>
   init()
     .then(isJestWatchMode ? askWhetherToQuit : cleanup)
-    .catch(e => {
+    .catch((e) => {
       console.error(e);
       cleanup(1);
     });

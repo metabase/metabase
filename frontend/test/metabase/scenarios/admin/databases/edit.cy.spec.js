@@ -14,7 +14,7 @@ describe("scenarios > admin > databases > edit", () => {
     it("shows the connection settings for sample dataset correctly", () => {
       cy.visit("/admin/databases/1");
       cy.findByLabelText("Name").should("have.value", "Sample Dataset");
-      cy.findByLabelText("Connection String").should($input =>
+      cy.findByLabelText("Connection String").should(($input) =>
         expect($input[0].value).to.match(/sample-dataset\.db/),
       );
     });
@@ -48,9 +48,7 @@ describe("scenarios > admin > databases > edit", () => {
 
       cy.findByText("Scheduling").click();
 
-      cy.findByText("Database syncing")
-        .parent()
-        .findByText("Hourly");
+      cy.findByText("Database syncing").parent().findByText("Hourly");
 
       cy.findByText("Regularly, on a schedule")
         .closest("div")
@@ -62,13 +60,9 @@ describe("scenarios > admin > databases > edit", () => {
 
       cy.findByText("Scheduling").click();
 
-      cy.findByText("Database syncing")
-        .parent()
-        .as("sync");
+      cy.findByText("Database syncing").parent().as("sync");
 
-      cy.get("@sync")
-        .findByText("Hourly")
-        .click();
+      cy.get("@sync").findByText("Hourly").click();
       popover().within(() => {
         cy.findByText("Daily").click({ force: true });
       });

@@ -18,10 +18,7 @@ import Icon from "metabase/components/Icon";
 
 // set the display automatically then run
 function updateAndRun(query) {
-  query
-    .question()
-    .setDefaultDisplay()
-    .update(null, { run: true });
+  query.question().setDefaultDisplay().update(null, { run: true });
 }
 
 export default class SummarizeSidebar extends React.Component {
@@ -112,7 +109,7 @@ const SummarizeAggregation = ({ className, aggregation, index, query }) => {
           <AggregationPopover
             query={query}
             aggregation={aggregation}
-            onChangeAggregation={newAggregation => {
+            onChangeAggregation={(newAggregation) => {
               updateAndRun(query.updateAggregation(index, newAggregation));
               onClose();
             }}
@@ -136,13 +133,14 @@ const AggregationToken = styled(Flex).attrs({
   font-weight: bold;
   border: 2px solid transparent;
   border-radius: 6px;
-  color: ${props => (props.inactive ? props.color : "white")};
-  background-color: ${props => (props.inactive ? "transparent" : props.color)};
-  border-color: ${props =>
+  color: ${(props) => (props.inactive ? props.color : "white")};
+  background-color: ${(props) =>
+    props.inactive ? "transparent" : props.color};
+  border-color: ${(props) =>
     props.inactive ? alpha(props.color, 0.25) : "transparent"};
   &:hover {
-    background-color: ${props => !props.inactive && alpha(props.color, 0.8)};
-    border-color: ${props => props.inactive && alpha(props.color, 0.8)};
+    background-color: ${(props) => !props.inactive && alpha(props.color, 0.8)};
+    border-color: ${(props) => props.inactive && alpha(props.color, 0.8)};
   }
   transition: background 300ms linear, border 300ms linear;
 `;
@@ -171,7 +169,7 @@ const SummarizeAggregationAdd = ({ className, query }) => {
       {({ onClose }) => (
         <AggregationPopover
           query={query}
-          onChangeAggregation={newAggregation => {
+          onChangeAggregation={(newAggregation) => {
             updateAndRun(query.aggregate(newAggregation));
             onClose();
           }}
@@ -185,14 +183,14 @@ const SummarizeAggregationAdd = ({ className, query }) => {
 };
 
 const SummarizeBreakouts = ({ className, query }) => {
-  const dimensions = query.breakouts().map(b => b.dimension());
+  const dimensions = query.breakouts().map((b) => b.dimension());
   return (
     <DimensionList
       className="text-green mx1"
       dimensions={dimensions}
       sections={query.breakoutOptions(true).sections()}
-      onChangeDimension={dimension => {
-        const index = _.findIndex(dimensions, d =>
+      onChangeDimension={(dimension) => {
+        const index = _.findIndex(dimensions, (d) =>
           d.isSameBaseDimension(dimension),
         );
         if (index >= 0) {
@@ -201,10 +199,10 @@ const SummarizeBreakouts = ({ className, query }) => {
           updateAndRun(query.clearBreakouts().breakout(dimension.mbql()));
         }
       }}
-      onAddDimension={dimension => {
+      onAddDimension={(dimension) => {
         updateAndRun(query.breakout(dimension.mbql()));
       }}
-      onRemoveDimension={dimension => {
+      onRemoveDimension={(dimension) => {
         for (const [index, existing] of dimensions.entries()) {
           if (dimension.isSameBaseDimension(existing)) {
             updateAndRun(query.removeBreakout(index));

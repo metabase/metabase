@@ -86,9 +86,9 @@ export default class EntityObjectLoader extends React.Component {
 
     this._getWrappedObject = createSelector(
       [
-        props => props.object,
-        props => props.dispatch,
-        props => props.entityDef,
+        (props) => props.object,
+        (props) => props.dispatch,
+        (props) => props.entityDef,
       ],
       (object, dispatch, entityDef) =>
         object && entityDef.wrapEntity(object, dispatch),
@@ -171,7 +171,7 @@ export const entityObjectLoader = (eolProps: Props) =>
     // eslint-disable-next-line react/display-name
     (props: Props) => (
       <EntityObjectLoader {...props} {...eolProps}>
-        {childProps => (
+        {(childProps) => (
           <ComposedComponent
             {..._.omit(props, ...CONSUMED_PROPS)}
             {...childProps}

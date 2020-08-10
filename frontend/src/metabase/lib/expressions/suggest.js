@@ -59,11 +59,11 @@ const FUNCTIONS_BY_TYPE = {};
 const OPERATORS_BY_TYPE = {};
 for (const type of EXPRESSION_TYPES) {
   FUNCTIONS_BY_TYPE[type] = Array.from(FUNCTIONS)
-    .filter(name => isExpressionType(MBQL_CLAUSES[name].type, type))
-    .map(name => MBQL_CLAUSES[name]);
+    .filter((name) => isExpressionType(MBQL_CLAUSES[name].type, type))
+    .map((name) => MBQL_CLAUSES[name]);
   OPERATORS_BY_TYPE[type] = Array.from(OPERATORS)
-    .filter(name => isExpressionType(MBQL_CLAUSES[name].type, type))
-    .map(name => MBQL_CLAUSES[name]);
+    .filter((name) => isExpressionType(MBQL_CLAUSES[name].type, type))
+    .map((name) => MBQL_CLAUSES[name]);
 }
 
 export function suggest({
@@ -156,7 +156,7 @@ export function suggest({
         ) {
           dimensions = query.aggregationFieldOptions(context.clause.name).all();
         } else {
-          const dimensionFilter = dimension => {
+          const dimensionFilter = (dimension) => {
             // not itself
             if (
               dimension instanceof ExpressionDimension &&
@@ -176,11 +176,11 @@ export function suggest({
           dimensions = query.dimensionOptions(dimensionFilter).all();
         }
         finalSuggestions.push(
-          ...dimensions.map(dimension => ({
+          ...dimensions.map((dimension) => ({
             type: "fields",
             name: getDimensionName(dimension),
             text: formatDimensionName(dimension) + " ",
-            alternates: EDITOR_FK_SYMBOLS.symbols.map(symbol =>
+            alternates: EDITOR_FK_SYMBOLS.symbols.map((symbol) =>
               getDimensionName(dimension, symbol),
             ),
             ...identifierTrimOptions,
@@ -189,7 +189,7 @@ export function suggest({
       }
       if (isSegment) {
         finalSuggestions.push(
-          ...query.table().segments.map(segment => ({
+          ...query.table().segments.map((segment) => ({
             type: "segments",
             name: segment.name,
             text: formatSegmentName(segment),
@@ -199,7 +199,7 @@ export function suggest({
       }
       if (isMetric) {
         finalSuggestions.push(
-          ...query.table().metrics.map(metric => ({
+          ...query.table().metrics.map((metric) => ({
             type: "metrics",
             name: metric.name,
             text: formatMetricName(metric),
@@ -219,7 +219,7 @@ export function suggest({
       ) {
         const tokenTypes = getSubTokenTypes(nextTokenType);
         finalSuggestions.push(
-          ...tokenTypes.map(tokenType =>
+          ...tokenTypes.map((tokenType) =>
             operatorSuggestion(CLAUSE_TOKENS.get(tokenType).name),
           ),
         );
@@ -232,7 +232,7 @@ export function suggest({
       if (isExpressionType(expectedType, "boolean")) {
         const tokenTypes = getSubTokenTypes(nextTokenType);
         finalSuggestions.push(
-          ...tokenTypes.map(tokenType =>
+          ...tokenTypes.map((tokenType) =>
             operatorSuggestion(CLAUSE_TOKENS.get(tokenType).name),
           ),
         );
@@ -257,8 +257,8 @@ export function suggest({
           //     ),
           //   ),
           ...FUNCTIONS_BY_TYPE["aggregation"]
-            .filter(clause => database.hasFeature(clause.requiresFeature))
-            .map(clause =>
+            .filter((clause) => database.hasFeature(clause.requiresFeature))
+            .map((clause) =>
               functionSuggestion(
                 "aggregations",
                 clause.name,
@@ -267,7 +267,7 @@ export function suggest({
             ),
         );
         finalSuggestions.push(
-          ...["sum-where", "count-where", "share"].map(short =>
+          ...["sum-where", "count-where", "share"].map((short) =>
             functionSuggestion("aggregations", short, true),
           ),
         );
@@ -277,8 +277,8 @@ export function suggest({
       }
       finalSuggestions.push(
         ...functions
-          .filter(clause => database.hasFeature(clause.requiresFeature))
-          .map(clause => functionSuggestion("functions", clause.name)),
+          .filter((clause) => database.hasFeature(clause.requiresFeature))
+          .map((clause) => functionSuggestion("functions", clause.name)),
       );
     } else if (nextTokenType === LParen) {
       finalSuggestions.push({
@@ -350,7 +350,9 @@ export function suggest({
         }
       }
     }
-    finalSuggestions = finalSuggestions.filter(suggestion => suggestion.range);
+    finalSuggestions = finalSuggestions.filter(
+      (suggestion) => suggestion.range,
+    );
   }
   for (const suggestion of finalSuggestions) {
     suggestion.index = targetOffset;
@@ -362,7 +364,7 @@ export function suggest({
   // deduplicate suggestions and sort by type then name
   return {
     suggestions: _.chain(finalSuggestions)
-      .uniq(suggestion => suggestion.text)
+      .uniq((suggestion) => suggestion.text)
       .sortBy("name")
       .sortBy("type")
       .value(),
@@ -420,7 +422,7 @@ export function getContext({
 function findNextTextualToken(tokenVector, prevTokenEndOffset) {
   // The TokenVector is sorted, so we could use a BinarySearch to optimize performance
   const prevTokenIdx = tokenVector.findIndex(
-    tok => tok.endOffset === prevTokenEndOffset,
+    (tok) => tok.endOffset === prevTokenEndOffset,
   );
   for (let i = prevTokenIdx + 1; i >= 0 && i < tokenVector.length; i++) {
     if (!/^\s+$/.test(tokenVector[i].image)) {
@@ -548,7 +550,7 @@ const TYPE_RULES = new Set([
 ]);
 
 for (const rule of ALL_RULES) {
-  ExpressionContextVisitor.prototype[rule] = function(ctx, currentContext) {
+  ExpressionContextVisitor.prototype[rule] = function (ctx, currentContext) {
     if (!currentContext && TYPE_RULES.has(rule)) {
       currentContext = { expectedType: rule };
     }

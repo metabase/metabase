@@ -23,7 +23,7 @@ export default class UserStep extends Component {
     validatePassword: PropTypes.func.isRequired,
   };
 
-  handleAsyncValidate = async values => {
+  handleAsyncValidate = async (values) => {
     try {
       await this.props.validatePassword(values.password);
       return {};
@@ -33,7 +33,7 @@ export default class UserStep extends Component {
     }
   };
 
-  handleSubmit = values => {
+  handleSubmit = (values) => {
     this.props.setUserDetails({
       nextStep: this.props.stepNumber + 1,
       details: _.omit(values, "password_confirm"),

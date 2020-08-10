@@ -1,3 +1,3 @@
-const MockRemapped = ComposedComponent => ComposedComponent;
+const MockRemapped = (ComposedComponent) => ComposedComponent;
 
 export default MockRemapped;

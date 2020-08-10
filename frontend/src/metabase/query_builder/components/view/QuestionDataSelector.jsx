@@ -8,11 +8,8 @@ export default function QuestionDataSelector({ query, triggerElement }) {
       databaseQuery={{ saved: true }}
       selectedDatabaseId={query.databaseId()}
       selectedTableId={query.tableId()}
-      setSourceTableFn={tableId =>
-        query
-          .setTableId(tableId)
-          .setDefaultQuery()
-          .update(null, { run: true })
+      setSourceTableFn={(tableId) =>
+        query.setTableId(tableId).setDefaultQuery().update(null, { run: true })
       }
       triggerElement={triggerElement}
       isOpen

@@ -64,7 +64,7 @@ export default class ChartWithLegend extends Component {
       type = "horizontal";
       LegendComponent = LegendVertical;
       if (gridSize && gridSize.width < 6) {
-        legendTitles = legendTitles.map(title =>
+        legendTitles = legendTitles.map((title) =>
           Array.isArray(title) ? title.slice(0, 1) : title,
         );
       }
@@ -81,7 +81,7 @@ export default class ChartWithLegend extends Component {
     ) {
       type = "vertical";
       LegendComponent = LegendHorizontal;
-      legendTitles = legendTitles.map(title =>
+      legendTitles = legendTitles.map((title) =>
         Array.isArray(title) ? title[0] : title,
       );
       const desiredHeight = width * (1 / aspectRatio);

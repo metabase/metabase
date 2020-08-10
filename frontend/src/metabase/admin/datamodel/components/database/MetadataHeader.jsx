@@ -71,7 +71,7 @@ export default class MetadataHeader extends Component {
         <div className="MetadataEditor-headerSection py2 h2">
           <DatabaseDataSelector
             selectedDatabaseId={this.props.databaseId}
-            setDatabaseFn={id => this.props.selectDatabase({ id })}
+            setDatabaseFn={(id) => this.props.selectDatabase({ id })}
           />
         </div>
         <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">

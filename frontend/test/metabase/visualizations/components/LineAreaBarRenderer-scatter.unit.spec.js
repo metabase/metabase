@@ -21,15 +21,15 @@ const DEFAULT_SETTINGS = {
 
 describe("LineAreaBarRenderer-scatter", () => {
   let element;
-  const qsa = selector => [
+  const qsa = (selector) => [
     ...window.document.documentElement.querySelectorAll(selector),
   ];
 
-  beforeEach(function() {
+  beforeEach(function () {
     element = createFixture();
   });
 
-  afterEach(function() {
+  afterEach(function () {
     cleanupFixture(element);
   });
 

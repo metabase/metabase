@@ -103,11 +103,11 @@ const EMPTY_STATES = {
   // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
   const [collections, items] = _.partition(
     props.list,
-    item => item.model === "collection",
+    (item) => item.model === "collection",
   );
   const [pinned, unpinned] = _.partition(
     items,
-    item => item.collection_position != null,
+    (item) => item.collection_position != null,
   );
   // sort the pinned items by collection_position
   pinned.sort((a, b) => a.collection_position - b.collection_position);
@@ -121,7 +121,7 @@ const EMPTY_STATES = {
 // only apply bulk actions to unpinned items
 @listSelect({
   listProp: "unpinned",
-  keyForItem: item => `${item.model}:${item.id}`,
+  keyForItem: (item) => `${item.model}:${item.id}`,
 })
 @withRouter
 class DefaultLanding extends React.Component {
@@ -133,7 +133,7 @@ class DefaultLanding extends React.Component {
   handleBulkArchive = async () => {
     try {
       await Promise.all(
-        this.props.selected.map(item => item.setArchived(true)),
+        this.props.selected.map((item) => item.setArchived(true)),
       );
     } finally {
       this.handleBulkActionSuccess();
@@ -147,10 +147,10 @@ class DefaultLanding extends React.Component {
     });
   };
 
-  handleBulkMove = async collection => {
+  handleBulkMove = async (collection) => {
     try {
       await Promise.all(
-        this.state.selectedItems.map(item => item.setCollection(collection)),
+        this.state.selectedItems.map((item) => item.setCollection(collection)),
       );
       this.handleCloseModal();
     } finally {
@@ -195,7 +195,7 @@ class DefaultLanding extends React.Component {
     let unpinnedItems = unpinned;
 
     if (location.query.type) {
-      unpinnedItems = unpinned.filter(u => u.model === location.query.type);
+      unpinnedItems = unpinned.filter((u) => u.model === location.query.type);
     }
 
     const collectionIsEmpty =
@@ -224,7 +224,7 @@ class DefaultLanding extends React.Component {
                 <BrowserCrumbs
                   analyticsContext={ANALYTICS_CONTEXT}
                   crumbs={[
-                    ...ancestors.map(ancestor => ({
+                    ...ancestors.map((ancestor) => ({
                       title: (
                         <CollectionDropTarget collection={ancestor} margin={8}>
                           {ancestor.name}
@@ -393,13 +393,13 @@ class DefaultLanding extends React.Component {
                                           collection={collection}
                                           selection={selection}
                                           onToggleSelected={onToggleSelected}
-                                          onMove={selectedItems =>
+                                          onMove={(selectedItems) =>
                                             this.setState({
                                               selectedItems,
                                               selectedAction: "move",
                                             })
                                           }
-                                          onCopy={selectedItems =>
+                                          onCopy={(selectedItems) =>
                                             this.setState({
                                               selectedItems,
                                               selectedAction: "copy",
@@ -473,12 +473,12 @@ class DefaultLanding extends React.Component {
                       <SelectionControls {...this.props} />
                       <BulkActionControls
                         onArchive={
-                          _.all(selected, item => item.setArchived)
+                          _.all(selected, (item) => item.setArchived)
                             ? this.handleBulkArchive
                             : null
                         }
                         onMove={
-                          _.all(selected, item => item.setCollection)
+                          _.all(selected, (item) => item.setCollection)
                             ? this.handleBulkMoveStart
                             : null
                         }
@@ -502,7 +502,7 @@ class DefaultLanding extends React.Component {
             <CollectionCopyEntityModal
               entityObject={selectedItems[0]}
               onClose={this.handleCloseModal}
-              onSaved={newEntityObject => {
+              onSaved={(newEntityObject) => {
                 this.handleCloseModal();
                 this.handleBulkActionSuccess();
               }}
@@ -592,7 +592,7 @@ const PinnedItem = ({ item, index, collection }) => (
             ml="auto"
             className="hover-child"
             data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Unpin;${item.model}`}
-            onClick={ev => {
+            onClick={(ev) => {
               ev.preventDefault();
               item.setPinned(false);
             }}
@@ -725,11 +725,11 @@ class CollectionCopyEntityModal extends React.Component {
       <EntityCopyModal
         entityType={entityTypeForObject(entityObject)}
         entityObject={entityObject}
-        copy={async values => {
+        copy={async (values) => {
           return entityObject.copy(dissoc(values, "id"));
         }}
         onClose={onClose}
-        onSaved={newEntityObject => {
+        onSaved={(newEntityObject) => {
           triggerToast(
             <div className="flex align-center">
               {t`Duplicated ${entityObject.model}`}

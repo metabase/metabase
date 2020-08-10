@@ -56,7 +56,7 @@ const testAddEventListener = jest.fn((event, listener) => {
 });
 const testRemoveEventListener = jest.fn((event, listener) => {
   eventListeners[event] = (eventListeners[event] || []).filter(
-    l => l !== listener,
+    (l) => l !== listener,
   );
 });
 

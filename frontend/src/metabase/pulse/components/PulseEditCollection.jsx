@@ -14,7 +14,7 @@ export default class PulseEditCollection extends React.Component {
         <Box my={2} width={400}>
           <CollectionSelect
             value={pulse.collection_id}
-            onChange={collection_id =>
+            onChange={(collection_id) =>
               setPulse({
                 ...pulse,
                 collection_id,

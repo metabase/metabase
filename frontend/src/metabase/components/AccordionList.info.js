@@ -26,14 +26,14 @@ export const examples = {
     <AccordionList
       className="text-brand full"
       sections={sections}
-      itemIsSelected={item => item.name === "Foo"}
+      itemIsSelected={(item) => item.name === "Foo"}
     />
   ),
   "Always Expanded": (
     <AccordionList
       className="text-brand full"
       sections={sections}
-      itemIsSelected={item => item.name === "Foo"}
+      itemIsSelected={(item) => item.name === "Foo"}
       alwaysExpanded
     />
   ),
@@ -41,7 +41,7 @@ export const examples = {
     <AccordionList
       className="text-brand full"
       sections={sections}
-      itemIsSelected={item => item.name === "Foo"}
+      itemIsSelected={(item) => item.name === "Foo"}
       searchable
     />
   ),
@@ -49,7 +49,7 @@ export const examples = {
     <AccordionList
       className="text-brand full"
       sections={sections.slice(0, 1)}
-      itemIsSelected={item => item.name === "Foo"}
+      itemIsSelected={(item) => item.name === "Foo"}
       hideSingleSectionTitle
     />
   ),

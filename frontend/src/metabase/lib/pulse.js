@@ -48,7 +48,7 @@ export function pulseIsValid(pulse, channelSpecs) {
   return (
     (pulse.name &&
       pulse.cards.length > 0 &&
-      pulse.channels.filter(c =>
+      pulse.channels.filter((c) =>
         channelIsValid(c, channelSpecs && channelSpecs[c.channel_type]),
       ).length > 0) ||
     false
@@ -57,15 +57,15 @@ export function pulseIsValid(pulse, channelSpecs) {
 
 export function emailIsEnabled(pulse) {
   return (
-    pulse.channels.filter(c => c.channel_type === "email" && c.enabled).length >
-    0
+    pulse.channels.filter((c) => c.channel_type === "email" && c.enabled)
+      .length > 0
   );
 }
 
 export function cleanPulse(pulse, channelSpecs) {
   return {
     ...pulse,
-    channels: pulse.channels.filter(c =>
+    channels: pulse.channels.filter((c) =>
       channelIsValid(c, channelSpecs && channelSpecs[c.channel_type]),
     ),
   };

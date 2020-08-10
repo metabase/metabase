@@ -34,7 +34,7 @@ describe("StructuredQuery behavioral tests", () => {
   it("is able to filter by field which is already used for the query breakout", () => {
     const breakoutDimensionOptions = query.breakoutOptions().dimensions;
     const breakoutDimension = breakoutDimensionOptions.find(
-      d => d.field().id === ORDERS.TOTAL.id,
+      (d) => d.field().id === ORDERS.TOTAL.id,
     );
 
     expect(breakoutDimension).toBeDefined();
@@ -44,7 +44,7 @@ describe("StructuredQuery behavioral tests", () => {
     const filterDimensionOptions = queryWithBreakout.filterDimensionOptions()
       .dimensions;
     const filterDimension = filterDimensionOptions.find(
-      d => d.field().id === ORDERS.TOTAL.id,
+      (d) => d.field().id === ORDERS.TOTAL.id,
     );
 
     expect(filterDimension).toBeDefined();
@@ -242,9 +242,7 @@ describe("StructuredQuery", () => {
       });
       it("returns a standard aggregation name", () => {
         expect(
-          makeQueryWithAggregation(["count"])
-            .aggregations()[0]
-            .displayName(),
+          makeQueryWithAggregation(["count"]).aggregations()[0].displayName(),
         ).toBe("Count");
       });
       it("returns a standard aggregation name with field", () => {
@@ -550,7 +548,7 @@ describe("StructuredQuery", () => {
       xit("does not include foreign key fields in the dimensions list", () => {
         const dimensions = query.fieldOptions().dimensions;
         const fkDimensions = dimensions.filter(
-          dim => dim.field() && dim.field().isFK(),
+          (dim) => dim.field() && dim.field().isFK(),
         );
         expect(fkDimensions.length).toBe(0);
       });
