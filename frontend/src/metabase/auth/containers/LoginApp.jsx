@@ -1,14 +1,10 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
 import { connect } from "react-redux";
-
-import { Flex } from "grid-styled"
-import Card from "metabase/components/Card"
-
 import { t } from "ttag";
 import _ from "underscore";
-import AuthScene from "../components/AuthScene";
-import LogoIcon from "metabase/components/LogoIcon";
+
+import AuthLayout from "metabase/auth/components/AuthLayout";
 
 import { getAuthProviders } from "../selectors";
 
@@ -27,30 +23,24 @@ export default class LoginApp extends Component {
     const visibleProviders = selected ? [selected] : providers;
 
     return (
-      <Flex flexDirection="column" flex={1} justifyContent='center' alignItems="center" className="overflow-hidden relative">
-        <Flex mt={-4} flexDirection="column">
-          <LogoIcon height={65} />
-          <Card p={3} mt={3} className="relative z2" w={420}>
-            <h2 className="text-centered mb3">{t`Sign in to Metabase`}</h2>
-            {visibleProviders.length === 1 && visibleProviders[0].Panel ? (
-              this.renderPanel(visibleProviders[0])
-            ) : (
-              <div className="pt2 relative">
-                {visibleProviders.map(provider =>
-                  <Link
-                    key={provider.name}
-                    to={provider.Panel ? `/auth/login/${provider.name}` : null}
-                    className="mt2 block"
-                  >
-                    <provider.Button {...this.props} />
-                  </Link>
-                )}
-              </div>
-            )}
-          </Card>
-        </Flex>
-        <AuthScene />
-      </Flex>
+      <AuthLayout>
+        <h2 className="text-centered mb3">{t`Sign in to Metabase`}</h2>
+        {visibleProviders.length === 1 && visibleProviders[0].Panel ? (
+          this.renderPanel(visibleProviders[0])
+        ) : (
+          <div className="pt2 relative">
+            {visibleProviders.map(provider => (
+              <Link
+                key={provider.name}
+                to={provider.Panel ? `/auth/login/${provider.name}` : null}
+                className="mt2 block"
+              >
+                <provider.Button {...this.props} />
+              </Link>
+            ))}
+          </div>
+        )}
+      </AuthLayout>
     );
   }
 }
