@@ -1,7 +1,9 @@
 (ns metabase.api.query-description
   "Functions for generating human friendly query descriptions"
   (:require [clojure.string :as str]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.mbql
+             [predicates :as mbql.preds]
+             [util :as mbql.u]]
             [metabase.models
              [field :refer [Field]]
              [metric :refer [Metric]]
@@ -12,17 +14,20 @@
   [metadata query]
   {:table (:display_name metadata)})
 
-(defn- get-aggregation-description
+(defn- get-aggregation-details
   [metadata query]
-  (let [field-name (fn [match] (map
-                                (fn [m] (:display_name (Field (mbql.u/field-clause->id-or-literal m))))
-                                (mbql.u/match match :field-id)))]
+  (let [field-name (fn [match] (or (when (mbql.preds/Field? match)
+                                     (:display_name (Field (mbql.u/field-clause->id-or-literal match))))
+                                   (flatten (get-aggregation-details metadata match))))]
     (when-let [agg-matches (mbql.u/match query
                              [:aggregation-options _ (options :guard :display-name)]
                              {:type :aggregation :arg (:display-name options)}
 
                              [:aggregation-options ag _]
                              (recur ag)
+
+                             [(operator :guard #{:+ :- :/ :*}) & args]
+                             (interpose (name operator) (map field-name args))
 
                              [:metric arg]    {:type :metric
                                                :arg  (let [metric (Metric arg)]
@@ -39,7 +44,12 @@
                              [:cum-sum arg]   {:type :cum-sum :arg (field-name arg)}
                              [:max arg]       {:type :max :arg (field-name arg)}
                              [:min arg]       {:type :min :arg (field-name arg)})]
-      {:aggregation agg-matches})))
+      agg-matches)))
+
+(defn- get-aggregation-description
+  [metadata query]
+  (when-let [details (get-aggregation-details metadata query)]
+    {:aggregation details}))
 
 (defn- get-breakout-description
   [metadata query]
