@@ -1,10 +1,17 @@
-import { signInAsAdmin, modal, popover, restore } from "__support__/cypress";
+import {
+  signInAsAdmin,
+  modal,
+  popover,
+  restore,
+  openOrdersTable,
+} from "__support__/cypress";
 
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 
 describe("scenarios > dashboard > parameters", () => {
   before(restore);
   beforeEach(signInAsAdmin);
+
   it("should search across multiple fields", () => {
     // create a new dashboard
     cy.visit("/");
@@ -62,6 +69,59 @@ describe("scenarios > dashboard > parameters", () => {
     cy.get(".DashCard")
       .last()
       .contains("4,939");
+  });
+
+  it("should filter on a UNIX timestamp", () => {
+    // Set datatype of Quantity to UNIX Timestamp
+    cy.visit("/admin/datamodel/database/1/table/2");
+    cy.findByText("Quantity").click();
+    cy.scrollTo("bottom");
+    cy.findByText("UNIX Timestamp (Seconds)").click();
+
+    // Create a question
+    openOrdersTable();
+    cy.findByText("Summarize").click();
+    cy.findByText("Summarize by");
+    cy.findByText("Done").click();
+
+    // Add to a dashboard
+    cy.findByText("Save").click();
+    cy.findAllByText("Save")
+      .last()
+      .click();
+    cy.findByText("Yes please!").click();
+    cy.findByText("Create a new dashboard").click();
+    cy.findByPlaceholderText("What is the name of your dashboard?").type(
+      "Test Dashboard",
+    );
+    cy.findByText("Create").click();
+
+    // Add filter
+    cy.get(".Icon-funnel_add").click();
+    cy.findByText("Time").click();
+    cy.findByText("Relative Date").click();
+
+    cy.findByText("Select…").click();
+    cy.get(".List-item .cursor-pointer")
+      .first()
+      .click({ force: true });
+    cy.findByText("Select…").should("not.exist");
+
+    cy.findByText("Select a default value…").click();
+    cy.findByText("Yesterday").click();
+
+    // Save dashboard
+    cy.findByText("Done").click();
+    cy.findByText("Save").click({ force: true });
+    cy.findByText("Save").should("not.exist");
+    cy.findByText("0");
+
+    // Open dashboard from collections
+    cy.visit("/collection/root");
+    cy.findByText("Test Dashboard").click();
+    cy.findByText("Relative Date");
+    cy.findByText("18,760").should("not.exist");
+    cy.findByText("0");
   });
 });
 
