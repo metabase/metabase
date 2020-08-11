@@ -59,6 +59,30 @@
                                         "FROM `v2_test_data.checkins` "
                                         "LIMIT 2")}
                  :type     :native
+                 :database (mt/id)})))))
+
+    (testing "queries with array result columns deserialize properly (issue #10275)"
+      (is (= [[["foo" "bar"]
+               [1 2]
+               [3.14159265359 0.5772156649]
+               [1234M 5678M]
+               [#t "2018-01-01T00:00Z[UTC]" #t "2018-12-31T00:00Z[UTC]"]
+               [#t "12:34" #t "20:01:13.230"]
+               [#t "1957-05-17T03:35Z[UTC]" #t "2018-06-01T01:15:34.120Z[UTC]"]
+               [#t "2014-09-27T20:30:00.450Z[UTC]" #t "2020-09-27T14:57:00.450Z[UTC]"]
+               []]]
+             (mt/rows
+              (qp/process-query
+               {:native   {:query (str "SELECT ['foo', 'bar'], "
+                                       "[1, 2], "
+                                       "[3.14159265359, 0.5772156649], "
+                                       "[NUMERIC '1234', NUMERIC '5678'], "
+                                       "[DATE '2018-01-01', DATE '2018-12-31'], "
+                                       "[TIME '12:34:00.00', TIME '20:01:13.23'], "
+                                       "[DATETIME '1957-05-17 03:35:00.00', DATETIME '2018-06-01 01:15:34.12'], "
+                                       "[TIMESTAMP '2014-09-27 12:30:00.45-08', TIMESTAMP '2020-09-27 09:57:00.45-05'], "
+                                       "[]")}
+                 :type     :native
                  :database (mt/id)})))))))
 
 (deftest aggregations-test
