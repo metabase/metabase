@@ -23,8 +23,7 @@
              "Strict-Transport-Security"         "max-age=31536000"
              "X-Content-Type-Options"            "nosniff"
              "X-Frame-Options"                   "DENY"
-             "X-Permitted-Cross-Domain-Policies" "none"
-             "X-XSS-Protection"                  "1; mode=block"}})
+             "X-Permitted-Cross-Domain-Policies" "none"}})
 
 (defn- mock-api-fn [response-fn]
   ((-> (fn [request respond _]

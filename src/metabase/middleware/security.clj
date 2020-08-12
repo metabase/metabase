@@ -102,9 +102,7 @@
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 "DENY"})
-   { ;; Tell browser to block suspected XSS attacks
-    "X-XSS-Protection"                  "1; mode=block"
-    ;; Prevent Flash / PDF files from including content from site.
+   { ;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
     "X-Content-Type-Options"            "nosniff"}))
