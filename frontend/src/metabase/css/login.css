@@ -24,6 +24,7 @@
 #BridgeImg {
   position: relative;
   left: -1240px;
+  bottom: -3px;
 }
 
 @media screen and (min-width: 800px) {
