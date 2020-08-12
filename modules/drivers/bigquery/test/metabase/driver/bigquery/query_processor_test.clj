@@ -622,3 +622,20 @@
                   (mt/native-query
                     {:query  "SELECT count(*) AS `count` FROM `v2_test_data.venues` WHERE `v2_test_data.venues`.`name` = ?"
                      :params ["x\\\\' OR 1 = 1 -- "]})))))))))
+
+(deftest acceptable-dataset-test
+  (mt/test-driver :bigquery
+    (testing "Make sure validation of dataset's name works correctly"
+      (testing "acceptable names"
+        (are [name] (= true (#'bigquery.qp/valid-bigquery-identifier?' name))
+              "0"
+              "a"
+              "apple"
+              (repeat 1024 "a")
+              "_"))
+      (testing "rejected names"
+        (are [name] (= false (#'bigquery.qp/valid-bigquery-identifier?' name))
+              "have-dataset"
+              "have:dataset"
+              ""
+              (repeat 1025 "a"))))))
