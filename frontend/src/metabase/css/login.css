@@ -20,3 +20,33 @@
   margin-top: 1em;
   text-align: center;
 }
+
+#BridgeImg {
+  position: relative;
+  left: -1240px;
+}
+
+@media screen and (min-width: 800px) {
+  #BridgeImg {
+    left: -1040px;
+  }
+}
+
+@media screen and (min-width: 1200px) {
+  #BridgeImg {
+    left: -840px;
+  }
+}
+
+@media screen and (min-width: 1600px) {
+  #BridgeImg {
+    left: -640px;
+  }
+}
+
+@media screen and (min-width: 1920px) {
+  #BridgeImg {
+    width: 100%; /* ensure the image always stretches the full width */
+    left: 0px;
+  }
+}
