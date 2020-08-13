@@ -64,7 +64,9 @@
     :exclusions [commons-codec
                  commons-io
                  slingshot]]
-   [clojure.java-time "0.3.2"]                                        ; Java 8 java.time wrapper
+   ;; fork to address #13102 - see upstream PR: https://github.com/dm3/clojure.java-time/pull/60
+   ;; TODO: switch back to the upstream once a version is released with the above patch
+   [robdaemon/clojure.java-time "0.3.3-SNAPSHOT"]                     ; Java 8 java.time wrapper
    [clojurewerkz/quartzite "2.1.0"                                    ; scheduling library
     :exclusions [c3p0]]
    [colorize "0.1.1" :exclusions [org.clojure/clojure]]               ; string output with ANSI color codes (for logging)
