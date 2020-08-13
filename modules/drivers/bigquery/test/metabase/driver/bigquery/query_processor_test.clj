@@ -630,12 +630,12 @@
         (are [name] (= true (#'bigquery.qp/valid-bigquery-identifier?' name))
               "0"
               "a"
+              "_"
               "apple"
-              (repeat 1024 "a")
-              "_"))
+              (repeat 128 "a")))
       (testing "rejected names"
         (are [name] (= false (#'bigquery.qp/valid-bigquery-identifier?' name))
               "have-dataset"
               "have:dataset"
               ""
-              (repeat 1025 "a"))))))
+              (repeat 129 "a"))))))
