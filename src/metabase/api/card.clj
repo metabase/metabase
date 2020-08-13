@@ -611,8 +611,9 @@
                             (qp/process-query-and-save-execution! query info context)))}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card  (api/read-check (Card card-id))
-        query (assoc (query-for-card card parameters constraints middleware)
-                     :async? true)
+        query (-> (assoc (query-for-card card parameters constraints middleware)
+                         :async? true)
+                  (update :middleware #(assoc % :js-int-to-string? true)))
         info  {:executed-by  api/*current-user-id*
                :context      context
                :card-id      card-id
