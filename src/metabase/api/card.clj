@@ -613,7 +613,7 @@
   (let [card  (api/read-check (Card card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware)
                          :async? true)
-                  (update :middleware #(assoc % :js-int-to-string? true)))
+                  (assoc-in [:middleware :js-int-to-string?] true))
         info  {:executed-by  api/*current-user-id*
                :context      context
                :card-id      card-id
