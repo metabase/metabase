@@ -627,14 +627,14 @@
   (mt/test-driver :bigquery
     (testing "Make sure validation of dataset's name works correctly"
       (testing "acceptable names"
-        (are [name] (= true (#'bigquery.qp/valid-bigquery-identifier?' name))
+        (are [name] (= true (#'bigquery.qp/valid-bigquery-identifier? name))
               "0"
               "a"
               "_"
               "apple"
               (repeat 128 "a")))
       (testing "rejected names"
-        (are [name] (= false (#'bigquery.qp/valid-bigquery-identifier?' name))
+        (are [name] (= false (#'bigquery.qp/valid-bigquery-identifier? name))
               "have-dataset"
               "have:dataset"
               ""
