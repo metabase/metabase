@@ -134,6 +134,32 @@
                (db/update! Database (u/get-id database)
                  k "2 CANS PER DAY"))))))))
 
+(defrecord MockJobExecutionContext [job-data-map]
+  org.quartz.JobExecutionContext
+  (getMergedJobDataMap [this] (org.quartz.JobDataMap. job-data-map))
+
+  clojurewerkz.quartzite.conversion/JobDataMapConversion
+  (from-job-data [this]
+    (.getMergedJobDataMap this)))
+
+(deftest check-orphaned-jobs-removed-test
+  (testing "jobs for orphaned databases are removed during sync run"
+    (with-scheduler-setup
+      (doseq [sync-fn [sync-db/update-field-values sync-db/sync-and-analyze-database]]
+        (testing (str sync-fn)
+          (tt/with-temp Database [database {:engine :postgres}]
+            (let [db-id (:id database)]
+              (is (= [sync-job fv-job]
+                     (current-tasks-for-db database)))
+
+              (db/delete! Database :id db-id)
+              (let [ctx (MockJobExecutionContext. {"db-id" db-id})]
+                (sync-fn ctx))
+
+              (is (= [(update sync-job :triggers empty)
+                      (update fv-job :triggers empty)]
+                     (current-tasks-for-db database))))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    CHECKING THAT SYNC TASKS RUN CORRECT FNS                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
