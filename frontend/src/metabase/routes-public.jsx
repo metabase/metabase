@@ -2,7 +2,8 @@
 
 import React from "react";
 
-import { Route } from "react-router";
+import { Route } from "metabase/hoc/Title";
+import { t } from "ttag";
 
 import PublicNotFound from "metabase/public/components/PublicNotFound";
 
@@ -11,7 +12,7 @@ import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
 
 export const getRoutes = store => (
-  <Route>
+  <Route title={t`Metabase`}>
     <Route path="public" component={PublicApp}>
       <Route path="question/:uuid" component={PublicQuestion} />
       <Route path="dashboard/:uuid" component={PublicDashboard} />
