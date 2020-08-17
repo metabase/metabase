@@ -221,6 +221,7 @@ function getFieldsForEngine(engine, details, id) {
         name: `details.${field.name}`,
         title: field["display-name"],
         type: field.type,
+        description: field.description,
         placeholder: field.placeholder || field.default,
         options: field.options,
         validate: value => (field.required && !value ? t`required` : null),
