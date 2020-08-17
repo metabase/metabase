@@ -2,13 +2,11 @@
 import {
   restore,
   signInAsAdmin,
-  signInAsNormalUser,
   withSampleDataset,
 } from "__support__/cypress";
 
 let dash_name_var
 let dash_num
-let question_id
 
 function addCardToNewDash(dash_name, card_id) {
   dash_name_var = dash_name
@@ -135,56 +133,11 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       it("results in a correct url", () => {
         cy.url().should("include", "/question/4");
       });
-      // it("shows the name and lineage correctly", () => {});
+
       it("results in correct query result", () => {
         cy.get(".dot");
         cy.findByText("Affiliate");
       });
-    });
-
-    // *** Not sure what this one is
-    describe("from an aggregation multiscalar legend", () => {
-      before(() => {
-        signInAsAdmin();
-
-        // Create aggregated card
-        withSampleDataset(({ REVIEWS_ID, PRODUCTS_ID }) => {
-          cy.request("POST", "/api/card", {
-            "visualization_settings": {},
-            name: "Aggregated question",
-            dataset_query: {
-              database: 1,
-              query: {
-                "source-query": {
-                  "source-table": PRODUCTS_ID,
-                  aggregation: [["count"]],
-                  breakout: [["field-id", REVIEWS_ID]]
-                },
-                filter: [
-                  "=",
-                  ["field-literal", "CATEGORY", "type/Text"],
-                  "Gadget" 
-                ]
-              },
-              type: "query"
-            },
-            display: "table"
-          }).then(( body ) => {
-            // Add card to new Database]
-            addCardToNewDash("Aggregated Dash", body.id)
-          });
-        });
-
-        cy.visit("/collection/root?type=dashboard")
-        cy.findAllByText(dash_name_var).click();
-      });
-
-      it("results in a correct url", () => {
-        cy.pause();
-        cy.url().should("include", "/dashboard/4")
-      });
-      // it("shows the name and lineage correctly", () => {});
-      it("results in correct query result", () => {});
     });
   });
 });

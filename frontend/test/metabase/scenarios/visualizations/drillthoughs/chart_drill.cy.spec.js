@@ -102,4 +102,33 @@ describe("scenarios > visualizations > chart drill", () => {
     cy.contains("City is Beaver Dams");
     cy.contains("Dominique Leffler");
   });
+
+  describe("for an unsaved question", () => {
+    before(() => {
+      restore();
+      signInAsAdmin();
+      // Build question without saving
+      openProductsTable();
+      cy.findByText("Summarize").click();
+      sidebar().within(() => {
+        cy.contains("Category").click();
+      })
+
+      // Drill-through last bar
+      cy.get(".bar")
+        .last()
+        .click({ force: true });
+      cy.findByText("View these Products").click();
+    })
+    
+    it("should result in a correct url", () => {
+      cy.url().should("include", "/question#" )
+    });
+    // it("shows the name and lineage correctly", () => {});
+    it("should result in correct query result", () => {
+      cy.findAllByText("Widget");
+      cy.findByText("Gizmo").should("not.exist");
+      cy.findByText("Doohickey").should("not.exist");
+    });
+  });
 });
