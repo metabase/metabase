@@ -3,109 +3,187 @@ import {
   restore,
   signInAsAdmin,
   signInAsNormalUser,
+  withSampleDataset,
 } from "__support__/cypress";
 
-const dash_name = "Drill Test Dashboard";
+let dash_name_var
+let dash_num
+let question_id
+
+function addCardToNewDash(dash_name, card_id) {
+  dash_name_var = dash_name
+  cy.request("POST", "/api/dashboard", {
+    name: dash_name,
+    parameters: [],
+  })
+  cy.request("POST", `/api/dashboard/${dash_num}/cards`, {
+    id: dash_num,
+    cardId: card_id,
+    parameter_mappings: [],
+  });
+}      
 
 describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
-  before(() => {
-    restore();
-    signInAsAdmin();
-
-    // // Make 3rd question a bar visualization
-    // cy.visit("/question/2");
-    // cy.findByText("Visualization").click();
-    // cy.findByText("Choose a visualization");
-    // cy.get(".Icon-bar").click();
-    // cy.findByText("Save");
-    // cy.findAllByText("Save")
-    //     .last()
-    //     .click();
-
-    // // Add 3rd question to a new dashboard
-    // cy.request("POST", "/api/dashboard", {
-    //     name: dash_name,
-    //     parameters: [],
-    // })
-    // cy.request("POST", "/api/dashboard/2/cards", {
-    //     id: 2,
-    //     cardId: 3,
-    //     parameter_mappings: [],
-    // })
-
-    // // Expand view of card
-    // cy.visit("/dashboard/2");
-    // cy.get(".Icon-pencil").click()
-    // cy.get(".DashCard")
-    //     .trigger("mousedown", "bottomRight")
-    //     .trigger("mousemove", { clientX: 500, clientY: 350 })
-    //     .trigger("mouseup");
-    // cy.findByText("Save").click();;
-    // cy.findByText("Save").should("not.exist");
-
-    // Make second question scalar
-    cy.visit("/question/1");
-    cy.findByText("Visualization").click();
-    cy.get(".Icon-number").click();
-    cy.findByText("Save").click();
-    cy.findAllByText("Save").last().click();
-    cy.findAllByText("Save").should("not.exist");
-
-    // Add it to a new dashboard
-    cy.request("POST", "/api/dashboard", {
-      name: dash_name,
-      parameters: [],
-    });
-    cy.request("POST", "/api/dashboard/2/cards", {
-      id: 2,
-      cardId: 2,
-      parameter_mappings: [],
-    });
-  });
-  beforeEach(signInAsNormalUser);
-
   describe("title click action", () => {
-    describe("from a scalar card title", () => {
-      it("results in a correct url", () => {
-        cy.visit("/dashboard/2");
-        cy.findByText(dash_name);
+    before(restore);
+
+    describe("from a scalar card", () => {
+      before(() => {
+        signInAsAdmin();
+
+        // Make second question scalar
+        cy.visit("/question/1");
+        cy.findByText("Visualization").click();
+        cy.get(".Icon-number").click();
+        cy.findByText("Save").click();
+        cy.findAllByText("Save").last().click();
+        cy.findAllByText("Save").should("not.exist");
+
+        // Add it to a new dashboard
+        dash_num = 2
+        addCardToNewDash("Scalar Dash", 2);
+        
+        // Click to question from Dashboard
+        cy.wait(200)
+        cy.visit(`/dashboard/${dash_num}`);
+        cy.findByText(dash_name_var);
         cy.findByText("Orders, Count").click();
+      })
+      
+      it("results in a correct url", () => {
         cy.url().should("include", "/question/2");
-        // cy.findByText("Orders, Count, Grouped by Created At (year)").click();
-        // cy.findByText(dash_name).should("not.exist");
-        // cy.url().should("eq", "/question/3");
       });
-      it("shows the name lineage correctly", () => {
-        // *** What is name lineage?
+
+      it("results in correct query result", () => {
+        cy.contains("18,760");
       });
-      it("results in correct query result", () => {});
     });
-
-    // *** maybe put this in a different file?
-    describe("from a dashcard multiscalar legend", () => {
-      it("results in a correct url", () => {});
-      it("shows the name and lineage correctly", () => {});
-      it("results in correct query result", () => {});
-    });
-  });
-
-  describe("drill-through action from dashboard", () => {
-    describe("from a scalar card value", () => {
-      it("results in a correct url", () => {});
-      it("shows the name and lineage correctly", () => {});
-      it("results in correct query result", () => {});
-    });
-
+    
     describe("from a scalar with active filter applied", () => {
-      it("results in a correct url", () => {});
-      it("shows the name and lineage correctly", () => {});
-      it("results in correct query result", () => {});
+      before(() => {
+        signInAsAdmin();
+
+        // Apply filter to scalar question
+        cy.visit("/question/3");
+        cy.findByText("Filter").click();
+        cy.findByText("Quantity").click();
+        cy.findByText("2").click();
+        cy.findByText("Add filter").click();
+        cy.findByText("1,000");
+        cy.findByText("6,000").should("not.exist");
+        
+        cy.findByText("Save").click();
+        cy.findAllByText("Save")
+          .last()
+          .click();
+
+        // Add it to a new dashboard
+        dash_num = 3
+        addCardToNewDash("Scalar w Filter Dash", 3);
+
+        // Go to dashboard
+        cy.visit(`/dashboard/${dash_num}`);
+        cy.findByText(dash_name_var);
+        cy.contains("Orders,").click();
+      });
+
+      it("results in a correct url", () => {
+        cy.url().should("include", "/question/3");
+      });
+
+      it("results in correct query result", () => {
+        cy.findByText("1,000");
+        cy.findByText("6,000").should("not.exist");
+      });
     });
 
-    // *** Not sure what this one is either
-    describe("from a aggregation multiscalar legend", () => {
-      it("results in a correct url", () => {});
-      it("shows the name and lineage correctly", () => {});
+    describe("from a dashcard multiscalar legend", () => {
+      before(() => {
+        signInAsAdmin();
+
+        // Create muliscalar card
+        withSampleDataset(({ PEOPLE, PEOPLE_ID }) => {
+          cy.request("POST", "/api/card", {
+            "visualization_settings": {},
+            name: "Multiscalar question",
+            dataset_query: {
+              database: 1,
+              query: {
+                "source-table": PEOPLE_ID,
+                aggregation: [[ "count" ]],
+                breakout: [
+                  [ "field-id", PEOPLE.SOURCE ],
+                  [ "datetime-field", 
+                      ["field-id", PEOPLE.CREATED_AT],
+                  "month" ]
+                ]
+              },
+              type: "query"
+            },
+            display: "line"
+          })
+
+          addCardToNewDash("Multiscalar Dash", 4)
+        });
+
+        cy.visit("collection/root?type=dashboard");
+        cy.findByText(dash_name_var).click();
+        cy.findByText("All personal collection").should("not.exist");
+        cy.contains("Multiscalar question").click({ force: true });
+      });
+
+      it("results in a correct url", () => {
+        cy.url().should("include", "/question/4");
+      });
+      // it("shows the name and lineage correctly", () => {});
+      it("results in correct query result", () => {
+        cy.get(".dot");
+        cy.findByText("Affiliate");
+      });
+    });
+
+    // *** Not sure what this one is
+    describe("from an aggregation multiscalar legend", () => {
+      before(() => {
+        signInAsAdmin();
+
+        // Create aggregated card
+        withSampleDataset(({ REVIEWS_ID, PRODUCTS_ID }) => {
+          cy.request("POST", "/api/card", {
+            "visualization_settings": {},
+            name: "Aggregated question",
+            dataset_query: {
+              database: 1,
+              query: {
+                "source-query": {
+                  "source-table": PRODUCTS_ID,
+                  aggregation: [["count"]],
+                  breakout: [["field-id", REVIEWS_ID]]
+                },
+                filter: [
+                  "=",
+                  ["field-literal", "CATEGORY", "type/Text"],
+                  "Gadget" 
+                ]
+              },
+              type: "query"
+            },
+            display: "table"
+          }).then(( body ) => {
+            // Add card to new Database]
+            addCardToNewDash("Aggregated Dash", body.id)
+          });
+        });
+
+        cy.visit("/collection/root?type=dashboard")
+        cy.findAllByText(dash_name_var).click();
+      });
+
+      it("results in a correct url", () => {
+        cy.pause();
+        cy.url().should("include", "/dashboard/4")
+      });
+      // it("shows the name and lineage correctly", () => {});
       it("results in correct query result", () => {});
     });
   });
