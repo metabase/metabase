@@ -1,4 +1,10 @@
-import { signInAsAdmin, restore, withSampleDataset } from "__support__/cypress";
+import {
+  signInAsAdmin,
+  restore,
+  withSampleDataset,
+  openProductsTable,
+  sidebar,
+} from "__support__/cypress";
 
 describe("scenarios > visualizations > chart drill", () => {
   before(restore);
@@ -112,17 +118,15 @@ describe("scenarios > visualizations > chart drill", () => {
       cy.findByText("Summarize").click();
       sidebar().within(() => {
         cy.contains("Category").click();
-      })
+      });
 
       // Drill-through last bar
-      cy.get(".bar")
-        .last()
-        .click({ force: true });
+      cy.get(".bar").last().click({ force: true });
       cy.findByText("View these Products").click();
-    })
-    
+    });
+
     it("should result in a correct url", () => {
-      cy.url().should("include", "/question#" )
+      cy.url().should("include", "/question#");
     });
     // it("shows the name and lineage correctly", () => {});
     it("should result in correct query result", () => {

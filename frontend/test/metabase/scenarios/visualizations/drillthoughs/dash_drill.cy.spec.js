@@ -1,25 +1,21 @@
 // Imported from drillthroughs.e2e.spec.js
-import {
-  restore,
-  signInAsAdmin,
-  withSampleDataset,
-} from "__support__/cypress";
+import { restore, signInAsAdmin, withSampleDataset } from "__support__/cypress";
 
-let dash_name_var
-let dash_num
+let dash_name_var;
+let dash_num;
 
 function addCardToNewDash(dash_name, card_id) {
-  dash_name_var = dash_name
+  dash_name_var = dash_name;
   cy.request("POST", "/api/dashboard", {
     name: dash_name,
     parameters: [],
-  })
+  });
   cy.request("POST", `/api/dashboard/${dash_num}/cards`, {
     id: dash_num,
     cardId: card_id,
     parameter_mappings: [],
   });
-}      
+}
 
 describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
   describe("title click action", () => {
@@ -31,6 +27,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 
         // Make second question scalar
         cy.visit("/question/1");
+        cy.findAllByText("Orders");
         cy.findByText("Visualization").click();
         cy.get(".Icon-number").click();
         cy.findByText("Save").click();
@@ -38,16 +35,16 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
         cy.findAllByText("Save").should("not.exist");
 
         // Add it to a new dashboard
-        dash_num = 2
+        dash_num = 2;
         addCardToNewDash("Scalar Dash", 2);
-        
+
         // Click to question from Dashboard
-        cy.wait(200)
+        cy.wait(200);
         cy.visit(`/dashboard/${dash_num}`);
         cy.findByText(dash_name_var);
         cy.findByText("Orders, Count").click();
-      })
-      
+      });
+
       it("results in a correct url", () => {
         cy.url().should("include", "/question/2");
       });
@@ -56,7 +53,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
         cy.contains("18,760");
       });
     });
-    
+
     describe("from a scalar with active filter applied", () => {
       before(() => {
         signInAsAdmin();
@@ -69,14 +66,12 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
         cy.findByText("Add filter").click();
         cy.findByText("1,000");
         cy.findByText("6,000").should("not.exist");
-        
+
         cy.findByText("Save").click();
-        cy.findAllByText("Save")
-          .last()
-          .click();
+        cy.findAllByText("Save").last().click();
 
         // Add it to a new dashboard
-        dash_num = 3
+        dash_num = 3;
         addCardToNewDash("Scalar w Filter Dash", 3);
 
         // Go to dashboard
@@ -102,26 +97,24 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
         // Create muliscalar card
         withSampleDataset(({ PEOPLE, PEOPLE_ID }) => {
           cy.request("POST", "/api/card", {
-            "visualization_settings": {},
+            visualization_settings: {},
             name: "Multiscalar question",
             dataset_query: {
               database: 1,
               query: {
                 "source-table": PEOPLE_ID,
-                aggregation: [[ "count" ]],
+                aggregation: [["count"]],
                 breakout: [
-                  [ "field-id", PEOPLE.SOURCE ],
-                  [ "datetime-field", 
-                      ["field-id", PEOPLE.CREATED_AT],
-                  "month" ]
-                ]
+                  ["field-id", PEOPLE.SOURCE],
+                  ["datetime-field", ["field-id", PEOPLE.CREATED_AT], "month"],
+                ],
               },
-              type: "query"
+              type: "query",
             },
-            display: "line"
-          })
+            display: "line",
+          });
 
-          addCardToNewDash("Multiscalar Dash", 4)
+          addCardToNewDash("Multiscalar Dash", 4);
         });
 
         cy.visit("collection/root?type=dashboard");
