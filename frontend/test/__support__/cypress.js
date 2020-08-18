@@ -54,7 +54,7 @@ export function restore(name = "default") {
   cy.request("POST", `/api/testing/restore/${name}`);
 }
 
-// various Metabase-specific "scoping" functions like inside popover/modal/navbar/main content area
+// various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
 export function popover() {
   return cy.get(".PopoverContainer.PopoverContainer--open");
 }
@@ -67,6 +67,9 @@ export function nav() {
 export function main() {
   return cy.get("nav").next();
 }
+export function sidebar() {
+  return cy.get(".scroll-y");
+}
 
 // Metabase utility functions for commonly-used patterns
 
@@ -76,6 +79,23 @@ export function openOrdersTable() {
 
 export function openProductsTable() {
   cy.visit("/question/new?database=1&table=1");
+}
+
+export function setupLocalHostEmail() {
+  // Email info
+  cy.findByPlaceholderText("smtp.yourservice.com").type("localhost");
+  cy.findByPlaceholderText("587").type("1025");
+  cy.findByText("None").click();
+  // Leaves password and username blank
+  cy.findByPlaceholderText("metabase@yourcompany.com").type("test@local.host");
+
+  // *** Unnecessary click (Issue #12692)
+  cy.findByPlaceholderText("smtp.yourservice.com").click();
+
+  cy.findByText("Save changes").click();
+  cy.findByText("Changes saved!");
+
+  cy.findByText("Send test email").click();
 }
 
 // Find a text field by label text, type it in, then blur the field.
@@ -88,3 +108,41 @@ export function typeAndBlurUsingLabel(label, value) {
 }
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
+
+export function withDatabase(databaseId, f) {
+  cy.request("GET", `/api/database/${databaseId}/metadata`).then(({ body }) => {
+    const database = {};
+    for (const table of body.tables) {
+      const fields = {};
+      for (const field of table.fields) {
+        fields[field.name] = field.id;
+      }
+      database[table.name] = fields;
+      database[table.name + "_ID"] = table.id;
+    }
+    f(database);
+  });
+}
+
+export function withSampleDataset(f) {
+  return withDatabase(1, f);
+}
+
+export function visitAlias(alias) {
+  cy.get(alias).then(url => {
+    cy.visit(url);
+  });
+}
+
+export function createNativeQuestion(name, query) {
+  return cy.request("POST", "/api/card", {
+    name,
+    dataset_query: {
+      type: "native",
+      native: { query },
+      database: 1,
+    },
+    display: "table",
+    visualization_settings: {},
+  });
+}

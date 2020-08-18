@@ -42,7 +42,7 @@ const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
 const PERCENT_REGEX = /percent/i;
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 export default class PieChart extends Component {
   props: VisualizationProps;

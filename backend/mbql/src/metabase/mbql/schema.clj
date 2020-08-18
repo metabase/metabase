@@ -505,6 +505,11 @@
 (defclause ^:sugar is-null,  field Field)
 (defclause ^:sugar not-null, field Field)
 
+;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and
+;; `[:and [:not= <field> nil] [:not= <field> ""]]`
+(defclause ^:sugar is-empty,  field Field)
+(defclause ^:sugar not-empty, field Field)
+
 (def ^:private StringFilterOptions
   {(s/optional-key :case-sensitive) s/Bool}) ; default true
 
@@ -557,7 +562,7 @@
     ;; filters drivers must implement
     and or not = != < > <= >= between starts-with ends-with contains
     ;; SUGAR filters drivers do not need to implement
-    does-not-contain inside is-null not-null time-interval segment)))
+    does-not-contain inside is-empty not-empty is-null not-null time-interval segment)))
 
 (def Filter
   "Schema for a valid MBQL `:filter` clause."

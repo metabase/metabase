@@ -6,6 +6,7 @@ Thanks to our amazing user community, Metabase has been translated into a variet
 
 The available languages as of the 0.35 release are:
 
+- English (default)
 - Catalan
 - Chinese, simplified
 - Chinese, traditional
@@ -17,14 +18,14 @@ The available languages as of the 0.35 release are:
 - Persian
 - Polish
 - Portuguese
-- Spanish
 - Russian
 - Slovak
+- Spanish
+- Turkish
 
 Some translations were previously available in Metabase, but have been removed as they are no longer complete:
 
 - Norwegian Bokmål
-- Turkish
 - Ukrainian
 - Vietnamese
 

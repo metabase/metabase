@@ -1,14 +1,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import MetricsList from "./MetricsList";
 import ColumnsList from "./ColumnsList";
-import SegmentsList from "./SegmentsList";
 import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
-import withTableMetadataLoaded from "metabase/admin/datamodel/withTableMetadataLoaded";
+import withTableMetadataLoaded from "metabase/admin/datamodel/hoc/withTableMetadataLoaded";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -32,8 +30,6 @@ export default class MetadataTable extends Component {
     table: PropTypes.object,
     idfields: PropTypes.array,
     updateField: PropTypes.func.isRequired,
-    onRetireMetric: PropTypes.func.isRequired,
-    onRetireSegment: PropTypes.func.isRequired,
   };
 
   componentWillMount() {
@@ -116,7 +112,7 @@ export default class MetadataTable extends Component {
   }
 
   render() {
-    const { table, onRetireMetric, onRetireSegment } = this.props;
+    const { table } = this.props;
     if (!table) {
       return false;
     }
@@ -145,11 +141,9 @@ export default class MetadataTable extends Component {
           {this.renderVisibilityWidget()}
         </div>
         <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>
-          <SegmentsList onRetire={onRetireSegment} tableMetadata={table} />
-          <MetricsList onRetire={onRetireMetric} tableMetadata={table} />
           {this.props.idfields && (
             <ColumnsList
-              fields={table.fields}
+              table={table}
               updateField={this.props.updateField}
               idfields={this.props.idfields}
             />

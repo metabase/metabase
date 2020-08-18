@@ -34,11 +34,11 @@
       (mt/with-temp-copy-of-db
         (try
           (bigquery.tx/execute!
-           (str "CREATE VIEW `test_data.%s` "
+           (str "CREATE VIEW `v2_test_data.%s` "
                 "AS "
                 "SELECT v.id AS id, v.name AS venue_name, c.name AS category_name "
-                "FROM `%s.test_data.venues` v "
-                "LEFT JOIN `%s.test_data.categories` c "
+                "FROM `%s.v2_test_data.venues` v "
+                "LEFT JOIN `%s.v2_test_data.categories` c "
                 "ON v.category_id = c.id "
                 "ORDER BY v.id ASC "
                 "LIMIT 3")
@@ -47,7 +47,7 @@
            (bigquery.tx/project-id))
           (f view-name)
           (finally
-            (bigquery.tx/execute! "DROP VIEW IF EXISTS `test_data.%s`" view-name)))))))
+            (bigquery.tx/execute! "DROP VIEW IF EXISTS `v2_test_data.%s`" view-name)))))))
 
 (defmacro ^:private with-view [[view-name-binding] & body]
   `(do-with-view (fn [~(or view-name-binding '_)] ~@body)))
@@ -60,16 +60,16 @@
           "`describe-database` should see the view")
       (is (= {:schema nil
               :name   view-name
-              :fields #{{:name "id", :database-type "INTEGER", :base-type :type/Integer}
-                        {:name "venue_name", :database-type "STRING", :base-type :type/Text}
-                        {:name "category_name", :database-type "STRING", :base-type :type/Text}}}
+              :fields #{{:name "id", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
+                        {:name "venue_name", :database-type "STRING", :base-type :type/Text, :database-position 1}
+                        {:name "category_name", :database-type "STRING", :base-type :type/Text, :database-position 2}}}
              (driver/describe-table :bigquery (mt/db) {:name view-name}))
           "`describe-tables` should see the fields in the view")
       (sync/sync-database! (mt/db))
       (testing "We should be able to run queries against the view (#3414)"
-        (is (= [[1 "Asian" "Red Medicine"]
-                [2 "Burger" "Stout Burgers & Beers"]
-                [3 "Burger" "The Apple Pan"]]
+        (is (= [[1 "Red Medicine" "Asian" ]
+                [2 "Stout Burgers & Beers" "Burger"]
+                [3 "The Apple Pan" "Burger"]]
                (mt/rows
                  (qp/process-query
                   {:database (mt/id)

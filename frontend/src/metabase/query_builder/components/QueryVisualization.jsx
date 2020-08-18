@@ -15,18 +15,18 @@ import Utils from "metabase/lib/utils";
 import cx from "classnames";
 
 import Question from "metabase-lib/lib/Question";
-import type { Database } from "metabase/meta/types/Database";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
-import type { DatasetQuery } from "metabase/meta/types/Card";
+import type Database from "metabase-lib/lib/metadata/Database";
+import type Table from "metabase-lib/lib/metadata/Table";
+import type { DatasetQuery } from "metabase-types/types/Card";
 
-import type { ParameterValues } from "metabase/meta/types/Parameter";
+import type { ParameterValues } from "metabase-types/types/Parameter";
 
 type Props = {
   question: Question,
   originalQuestion: Question,
   result?: Object,
   databases?: Database[],
-  tableMetadata?: TableMetadata,
+  tableMetadata?: Table,
   tableForeignKeys?: [],
   tableForeignKeyReferences?: {},
   onUpdateVisualizationSettings: any => void,

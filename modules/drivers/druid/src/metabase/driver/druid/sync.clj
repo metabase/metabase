@@ -1,5 +1,6 @@
 (ns metabase.driver.druid.sync
-  (:require [metabase.driver.druid.client :as client]
+  (:require [medley.core :as m]
+            [metabase.driver.druid.client :as client]
             [metabase.util.ssh :as ssh]))
 
 (defn- do-segment-metadata-query [details datasource]
@@ -30,17 +31,19 @@
        :name   (:name table)
        :fields (set (cons
                      ;; every Druid table is an event stream w/ a timestamp field
-                     {:name          "timestamp"
-                      :database-type "timestamp"
-                      :base-type     :type/Instant
-                      :pk?           false}
-                     (for [[field-name {field-type :type}] (dissoc columns :__time)
-                           :let                            [metric? (contains? metric-column-names field-name)]]
-                       {:name          (name field-name)
-                        :base-type     (druid-type->base-type field-type)
-                        :database-type (if metric?
-                                         (format "%s [metric]" field-type)
-                                         field-type)})))})))
+                     {:name              "timestamp"
+                      :database-type     "timestamp"
+                      :base-type         :type/Instant
+                      :pk?               false
+                      :database-position 0}
+                     (for [[idx [field-name {field-type :type}]] (m/indexed (dissoc columns :__time))
+                           :let                                  [metric? (contains? metric-column-names field-name)]]
+                       {:name              (name field-name)
+                        :base-type         (druid-type->base-type field-type)
+                        :database-type     (if metric?
+                                             (format "%s [metric]" field-type)
+                                             field-type)
+                        :database-position (inc idx)})))})))
 
 (defn describe-database
   "Impl of `driver/describe-database` for Druid."

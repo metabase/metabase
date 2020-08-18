@@ -16,18 +16,10 @@
   (driver/add-parent! driver :sql-jdbc/test-extensions)
   (println "Added SQL JDBC test extensions for" driver "➕"))
 
-(defmethod tx/create-db! :sql-jdbc/test-extensions [& args]
+(defmethod tx/create-db! :sql-jdbc/test-extensions
+  [& args]
   (apply load-data/create-db! args))
 
-(defmethod tx/aggregate-column-info :sqlserver
-  ([driver ag-type]
-   (merge
-    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type)
-    (when (#{:count :cum-count} ag-type)
-      {:base_type :type/Integer})))
-
-  ([driver ag-type field]
-   (merge
-    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
-    (when (#{:count :cum-count} ag-type)
-      {:base_type :type/Integer}))))
+(defmethod tx/destroy-db! :sql-jdbc/test-extensions
+  [driver dbdef]
+  (load-data/destroy-db! driver dbdef))

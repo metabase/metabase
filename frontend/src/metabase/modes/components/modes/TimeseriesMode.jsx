@@ -11,17 +11,15 @@ import { getDefaultDrills } from "../drill";
 import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
 import PivotByLocationDrill from "../drill/PivotByLocationDrill";
 
-import type { QueryMode } from "metabase/meta/types/Visualization";
+import type { QueryMode } from "metabase-types/types/Visualization";
 import type {
   Card as CardObject,
   DatasetQuery,
-} from "metabase/meta/types/Card";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+} from "metabase-types/types/Card";
 import TimeseriesGroupingWidget from "metabase/modes/components/TimeseriesGroupingWidget";
 
 type Props = {
   lastRunCard: CardObject,
-  tableMetadata: TableMetadata,
   setDatasetQuery: (datasetQuery: DatasetQuery) => void,
   runQuestionQuery: () => void,
 };

@@ -21,13 +21,17 @@
              [permissions-group :as group]
              [query-execution :refer [QueryExecution]]]
             [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
              [users :as test-users]]
-            [metabase.test.util :as tu]
             [schema.core :as s]
             [toucan.db :as db])
   (:import com.fasterxml.jackson.core.JsonGenerator))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- format-response [m]
   (when-not (map? m)
@@ -48,7 +52,8 @@
        :else
        [k v]))))
 
-(defn- most-recent-query-execution [] (db/select-one QueryExecution {:order-by [[:id :desc]]}))
+(defn- most-recent-query-execution []
+  (db/select-one QueryExecution {:order-by [[:started_at :desc]]}))
 
 (def ^:private query-defaults
   {:middleware {:add-default-userland-constraints? true}})

@@ -55,8 +55,8 @@ export default class LanguageStep extends React.Component {
           </p>
           <div className="overflow-hidden mb4">
             <ol
-              className="overflow-scroll text-dark text-bold bordered rounded px2 py1"
-              style={{ height: 280 }}
+              className="scroll-y text-dark text-bold bordered rounded px2 py1"
+              style={{ maxHeight: 280 }}
             >
               {_.sortBy(
                 MetabaseSettings.get("available-locales") || [

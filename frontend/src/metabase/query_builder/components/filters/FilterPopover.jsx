@@ -171,7 +171,9 @@ export default class ViewFilterPopover extends Component {
                 : (
                     (filter && filter.query()) ||
                     query
-                  ).filterFieldOptionSections(filter)
+                  ).filterFieldOptionSections(filter, {
+                    includeSegments: showCustom,
+                  })
             }
             onChangeDimension={dimension =>
               this.handleDimensionChange(dimension)

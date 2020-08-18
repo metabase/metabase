@@ -1,6 +1,6 @@
 (ns metabase.models.pulse-test
   (:require [clojure.test :refer :all]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [test :as mt]
@@ -128,10 +128,10 @@
                           (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})
   (mt/with-temp Pulse [{:keys [id]}]
     (update-notification-channels! {:id id} [{:enabled       true
-                                       :channel_type  :email
-                                       :schedule_type :daily
-                                       :schedule_hour 4
-                                       :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}])
+                                              :channel_type  :email
+                                              :schedule_type :daily
+                                              :schedule_hour 4
+                                              :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}])
     (-> (PulseChannel :pulse_id id)
         (hydrate :recipients)
         (dissoc :id :pulse_id :created_at :updated_at)
@@ -258,3 +258,22 @@
   (with-pulse-in-collection [db _ pulse]
     (binding [api/*current-user-permissions-set* (atom #{(perms/object-path (u/get-id db))})]
       (mi/can-read? pulse))))
+
+(deftest validate-collection-namespace-test
+  (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]
+    (testing "Shouldn't be able to create a Pulse in a non-normal Collection"
+      (let [pulse-name (mt/random-name)]
+        (try
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"A Pulse can only go in Collections in the \"default\" namespace"
+               (db/insert! Pulse (assoc (tt/with-temp-defaults Pulse) :collection_id collection-id, :name pulse-name))))
+          (finally
+            (db/delete! Pulse :name pulse-name)))))
+
+    (testing "Shouldn't be able to move a Pulse to a non-normal Collection"
+      (mt/with-temp Pulse [{card-id :id}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"A Pulse can only go in Collections in the \"default\" namespace"
+             (db/update! Pulse card-id {:collection_id collection-id})))))))

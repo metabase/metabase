@@ -43,14 +43,14 @@ import Mode from "metabase-lib/lib/Mode";
 import type {
   Card as CardObject,
   VisualizationSettings,
-} from "metabase/meta/types/Card";
+} from "metabase-types/types/Card";
 import type {
   HoverObject,
   ClickObject,
   Series,
   RawSeries,
   OnChangeCardAndRun,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { memoize } from "metabase-lib/lib/utils";
 

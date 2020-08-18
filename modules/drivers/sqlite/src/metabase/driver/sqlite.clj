@@ -27,9 +27,22 @@
 
 (driver/register! :sqlite, :parent :sql-jdbc)
 
-(defmethod driver/supports? [:sqlite :regex] [_ _] false)
-(defmethod driver/supports? [:sqlite :percentile-aggregations] [_ _] false)
-(defmethod driver/supports? [:sqlite :advanced-math-expressions] [_ _] false)
+;; SQLite does not support a lot of features, so do not show the options in the interface
+(doseq [[feature supported?] {:right-join                             false
+                              :full-join                              false
+                              :regex                                  false
+                              :percentile-aggregations                false
+                              :advanced-math-expressions              false
+                              :standard-deviation-aggregations        false}]
+  (defmethod driver/supports? [:sqlite feature] [_ _] supported?))
+
+;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
+;; we have this 'feature' so the frontend doesn't try to present the option to you.
+(defmethod driver/supports? [:sqlite :case-sensitivity-string-filter-options] [_ _] false)
+
+;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this so
+;; for now we'll just skip the foreign key stuff in the tests.
+(defmethod driver/supports? [:sqlite :foreign-keys] [_ _] (not config/is-test?))
 
 (defmethod sql-jdbc.conn/connection-details->spec :sqlite
   [_ {:keys [db]
@@ -43,22 +56,23 @@
 ;; e.g. NVARCHAR(100) or NUMERIC(10,5) See also http://www.sqlite.org/datatype3.html
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
-   [[#"BIGINT"   :type/BigInteger]
-    [#"BIG INT"  :type/BigInteger]
-    [#"INT"      :type/Integer]
-    [#"CHAR"     :type/Text]
-    [#"TEXT"     :type/Text]
-    [#"CLOB"     :type/Text]
-    [#"BLOB"     :type/*]
-    [#"REAL"     :type/Float]
-    [#"DOUB"     :type/Float]
-    [#"FLOA"     :type/Float]
-    [#"NUMERIC"  :type/Float]
-    [#"DECIMAL"  :type/Decimal]
-    [#"BOOLEAN"  :type/Boolean]
-    [#"DATETIME" :type/DateTime]
-    [#"DATE"     :type/Date]
-    [#"TIME"     :type/Time]]))
+   [[#"BIGINT"    :type/BigInteger]
+    [#"BIG INT"   :type/BigInteger]
+    [#"INT"       :type/Integer]
+    [#"CHAR"      :type/Text]
+    [#"TEXT"      :type/Text]
+    [#"CLOB"      :type/Text]
+    [#"BLOB"      :type/*]
+    [#"REAL"      :type/Float]
+    [#"DOUB"      :type/Float]
+    [#"FLOA"      :type/Float]
+    [#"NUMERIC"   :type/Float]
+    [#"DECIMAL"   :type/Decimal]
+    [#"BOOLEAN"   :type/Boolean]
+    [#"TIMESTAMP" :type/DateTime]
+    [#"DATETIME"  :type/DateTime]
+    [#"DATE"      :type/Date]
+    [#"TIME"      :type/Time]]))
 
 (defmethod sql-jdbc.sync/database-type->base-type :sqlite
   [_ database-type]
@@ -279,17 +293,6 @@
   (if (zero-time? t)
     (sql.qp/->honeysql driver (t/local-date t))
     (hsql/call :datetime (hx/literal (u.date/format-sql t)))))
-
-;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
-;; we have this 'feature' so the frontend doesn't try to present the option to you.
-(defmethod driver/supports? [:sqlite :case-sensitivity-string-filter-options] [_ _] false)
-
-;; SQLite doesn't have a standard deviation function
-(defmethod driver/supports? [:sqlite :standard-deviation-aggregations] [_ _] false)
-
-;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this so
-;; for now we'll just skip the foreign key stuff in the tests.
-(defmethod driver/supports? [:sqlite :foreign-keys] [_ _] (not config/is-test?))
 
 ;; SQLite defaults everything to UTC
 (defmethod driver.common/current-db-time-date-formatters :sqlite

@@ -59,6 +59,7 @@ export default class QuestionEmbedWidget extends Component {
         getPublicUrl={({ public_uuid }, extension) =>
           Urls.publicQuestion(public_uuid, extension)
         }
+        extensions={Urls.exportFormats}
       />
     );
   }

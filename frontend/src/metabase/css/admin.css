@@ -327,6 +327,10 @@
   opacity: 1;
 }
 
+.ColumnSortHelper {
+  box-shadow: 0 7px 20px var(--color-shadow);
+}
+
 #formField-details-port .Form-input,
 #formField-details-tunnel-port .Form-input {
   max-width: 200px !important;

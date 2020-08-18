@@ -37,16 +37,12 @@
                   :visualization_settings {}}]
     (merge defaults dashcard)))
 
-(defn- pre-delete [{:keys [id]}]
-  (db/delete! 'DashboardCardSeries :dashboardcard_id id))
-
 (u/strict-extend (class DashboardCard)
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true})
           :types       (constantly {:parameter_mappings :parameter-mappings, :visualization_settings :json})
           :pre-insert  pre-insert
-          :pre-delete  pre-delete
           :post-select (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults

@@ -134,10 +134,10 @@ export const updateData = async ({
 export function mergeEntities(entities, newEntities) {
   entities = { ...entities };
   for (const id in newEntities) {
-    if (id in entities) {
-      entities[id] = { ...entities[id], ...newEntities[id] };
+    if (newEntities[id] === null) {
+      delete entities[id];
     } else {
-      entities[id] = newEntities[id];
+      entities[id] = { ...entities[id], ...newEntities[id] };
     }
   }
   return entities;

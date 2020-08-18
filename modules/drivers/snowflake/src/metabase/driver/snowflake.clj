@@ -28,16 +28,26 @@
              [i18n :refer [tru]]])
   (:import [java.sql ResultSet Types]
            [java.time OffsetDateTime ZonedDateTime]
-           metabase.util.honeysql_extensions.Identifier
-           net.snowflake.client.jdbc.SnowflakeSQLException))
+           metabase.util.honeysql_extensions.Identifier))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/humanize-connection-error-message :snowflake
+  [_ message]
+  (log/spy :error (type message))
+  (condp re-matches message
+    #"(?s).*Object does not exist.*$"
+    (driver.common/connection-error-messages :database-name-incorrect)
+
+    #"(?s).*" ; default - the Snowflake errors have a \n in them
+    message))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account regionid], :as opts}]
   (let [host (if regionid
                (str account "." regionid)
-               account)]
+               account)
+        upcase-not-nil (fn [s] (when s (u/upper-case-en s)))]
     ;; it appears to be the case that their JDBC driver ignores `db` -- see my bug report at
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
     (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
@@ -58,6 +68,9 @@
                    ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead of
                    ;; `db`. If we run across `dbname`, correct our behavior
                    (set/rename-keys {:dbname :db})
+                   ;; see https://github.com/metabase/metabase/issues/9511
+                   (update :warehouse upcase-not-nil)
+                   (update :schema upcase-not-nil)
                    (dissoc :host :port :timezone)))
         (sql-jdbc.common/handle-additional-options opts))))
 
@@ -219,8 +232,17 @@
 
 (defmethod driver/describe-database :snowflake
   [driver database]
-  {:tables (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-             (sql-jdbc.sync/fast-active-tables driver metadata (db-name database)))})
+  ;; using the JDBC `.getTables` method seems to be pretty buggy -- it works sometimes but other times randomly
+  ;; returns nothing
+  (let [db-name          (db-name database)
+        excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
+    {:tables (set (for [table (jdbc/query
+                               (sql-jdbc.conn/db->pooled-connection-spec database)
+                               (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name))
+                        :when (not (contains? excluded-schemas (:schema_name table)))]
+                    {:name        (:name table)
+                     :schema      (:schema_name table)
+                     :description (not-empty (:comment table))}))}))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
@@ -264,12 +286,8 @@
   (and ((get-method driver/can-connect? :sql-jdbc) driver details)
        (let [spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)
              sql  (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
-         (try
-           (jdbc/query spec sql)
-           true
-           (catch SnowflakeSQLException e
-             (log/error e (tru "Snowflake Database does not exist."))
-             false)))))
+         (jdbc/query spec sql)
+         true)))
 
 (defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
   [_ t]
@@ -281,19 +299,21 @@
 
 ;; Like Vertica, Snowflake doesn't seem to be able to return a LocalTime/OffsetTime like everyone else, but it can
 ;; return a String that we can parse
-(defmethod sql-jdbc.execute/read-column [:snowflake Types/TIME]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [t (u.date/parse s)]
-      (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/TIME]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i (pr-str s) (pr-str t))
+        t))))
 
-(defmethod sql-jdbc.execute/read-column [:snowflake Types/TIME_WITH_TIMEZONE]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [t (u.date/parse s)]
-      (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/TIME_WITH_TIMEZONE]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i (pr-str s) (pr-str t))
+        t))))
 
 ;; TODO ­ would it make more sense to use functions like `timestamp_tz_from_parts` directly instead of JDBC parameters?
 

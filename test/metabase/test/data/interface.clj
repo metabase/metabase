@@ -95,7 +95,7 @@
 ;;; |                                            Loading Test Extensions                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(declare before-run after-run)
+(declare before-run)
 
 (defonce ^:private has-done-before-run (atom #{}))
 
@@ -247,7 +247,6 @@
 
 (defmethod before-run ::test-extensions [_]) ; default-impl is a no-op
 
-
 (defmulti dbdef->connection-details
   "Return the connection details map that should be used to connect to the Database we will create for
   `database-definition`.
@@ -270,6 +269,14 @@
   Optional `options` as third param. Currently supported options include `skip-drop-db?`. If unspecified,
   `skip-drop-db?` should default to `false`."
   {:arglists '([driver database-definition & {:keys [skip-drop-db?]}])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti destroy-db!
+  "Destroy the database created for `database-definition`, if one exists. This is only called if loading data fails for
+  one reason or another, to revert the changes made thus far; implementations should clean up everything related to
+  the database in question."
+  {:arglists '([driver database-definition])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 

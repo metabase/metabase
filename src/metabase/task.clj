@@ -216,12 +216,12 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- job-detail->info [^JobDetail job-detail]
-  {:key                                (-> (.getKey job-detail) .getName)
-   :class                              (-> (.getJobClass job-detail) .getCanonicalName)
-   :description                        (.getDescription job-detail)
-   :concurrent-executation-disallowed? (.isConcurrentExectionDisallowed job-detail)
-   :durable?                           (.isDurable job-detail)
-   :requests-recovery?                 (.requestsRecovery job-detail)})
+  {:key                              (-> (.getKey job-detail) .getName)
+   :class                            (-> (.getJobClass job-detail) .getCanonicalName)
+   :description                      (.getDescription job-detail)
+   :concurrent-execution-disallowed? (.isConcurrentExectionDisallowed job-detail)
+   :durable?                         (.isDurable job-detail)
+   :requests-recovery?               (.requestsRecovery job-detail)})
 
 (defmulti ^:private trigger->info
   {:arglists '([trigger])}
@@ -238,32 +238,53 @@
    :previous-fire-time (.getPreviousFireTime trigger)
    :priority           (.getPriority trigger)
    :start-time         (.getStartTime trigger)
-   :may-fire-again?    (.mayFireAgain trigger)})
+   :may-fire-again?    (.mayFireAgain trigger)
+   :data               (.getJobDataMap trigger)})
 
 (defmethod trigger->info CronTrigger
   [^CronTrigger trigger]
-  (merge
+  (assoc
    ((get-method trigger->info Trigger) trigger)
-   {:misfire-instruction
-    ;; not 100% sure why `case` doesn't work here...
-    (condp = (.getMisfireInstruction trigger)
-      CronTrigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY "IGNORE_MISFIRE_POLICY"
-      CronTrigger/MISFIRE_INSTRUCTION_SMART_POLICY          "SMART_POLICY"
-      CronTrigger/MISFIRE_INSTRUCTION_FIRE_ONCE_NOW         "FIRE_ONCE_NOW"
-      CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING            "DO_NOTHING"
-      (format "UNKNOWN: %d" (.getMisfireInstruction trigger)))}))
+   :schedule
+   (.getCronExpression trigger)
+
+   :misfire-instruction
+   ;; not 100% sure why `case` doesn't work here...
+   (condp = (.getMisfireInstruction trigger)
+     CronTrigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY "IGNORE_MISFIRE_POLICY"
+     CronTrigger/MISFIRE_INSTRUCTION_SMART_POLICY          "SMART_POLICY"
+     CronTrigger/MISFIRE_INSTRUCTION_FIRE_ONCE_NOW         "FIRE_ONCE_NOW"
+     CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING            "DO_NOTHING"
+     (format "UNKNOWN: %d" (.getMisfireInstruction trigger)))))
+
+(defn- ->job-key ^JobKey [x]
+  (cond
+    (instance? JobKey x) x
+    (string? x)          (JobKey. ^String x)))
+
+(defn job-info
+  "Get info about a specific Job (`job-key` can be either a String or `JobKey`).
+
+    (task/job-info \"metabase.task.sync-and-analyze.job\")"
+  [job-key]
+  (let [job-key (->job-key job-key)]
+    (try
+      (assoc (job-detail->info (qs/get-job (scheduler) job-key))
+             :triggers (for [trigger (sort-by #(-> ^Trigger % .getKey .getName)
+                                              (qs/get-triggers-of-job (scheduler) job-key))]
+                         (trigger->info trigger)))
+      (catch Throwable e
+        (log/warn e (trs "Error fetching details for Job: {0}" (.getName job-key)))))))
+
+(defn- jobs-info []
+  (->> (some-> (scheduler) (.getJobKeys nil))
+       (sort-by #(.getName ^JobKey %))
+       (map job-info)
+       (filter some?)))
 
 (defn scheduler-info
   "Return raw data about all the scheduler and scheduled tasks (i.e. Jobs and Triggers). Primarily for debugging
   purposes."
   []
-  {:scheduler
-   (str/split-lines (.getSummary (.getMetaData (scheduler))))
-
-   :jobs
-   (for [^JobKey job-key (->> (.getJobKeys (scheduler) nil)
-                              (sort-by #(.getName ^JobKey %) ))]
-     (assoc (job-detail->info (qs/get-job (scheduler) job-key))
-       :triggers (for [trigger (->> (qs/get-triggers-of-job (scheduler) job-key)
-                                    (sort-by #(-> ^Trigger % .getKey .getName)))]
-                   (trigger->info trigger))))})
+  {:scheduler (some-> (scheduler) .getMetaData .getSummary str/split-lines)
+   :jobs      (jobs-info)})

@@ -11,6 +11,7 @@
              [core :as hsql]
              [helpers :as h]]
             [java-time :as t]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -248,10 +249,11 @@
         {:keys [rows]} (execute-presto-query-for-sync details sql)]
     {:schema schema
      :name   table-name
-     :fields (set (for [[name type] rows]
-                    {:name          name
-                     :database-type type
-                     :base-type     (presto-type->base-type type)}))}))
+     :fields (set (for [[idx [name type]] (m/indexed rows)]
+                    {:name              name
+                     :database-type     type
+                     :base-type         (presto-type->base-type type)
+                     :database-position idx}))}))
 
 (defmethod sql.qp/->honeysql [:presto Boolean]
   [_ bool]

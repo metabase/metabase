@@ -52,8 +52,8 @@ export default class LdapAndEmailForm extends Component {
               horizontal
             />
             <FormMessage />
-            <div className="Form-actions flex align-center">
-              <FormSubmit>{t`Sign in`}</FormSubmit>
+            <div className="Form-actions text-centered">
+              <FormSubmit className="block full mb2">{t`Sign in`}</FormSubmit>
               <ForgotPasswordLink credentials={values} />
             </div>
           </Form>
@@ -71,7 +71,7 @@ const ForgotPasswordLink = ({ credentials = {} }) => (
         ? "?email=" + encodeURIComponent(credentials.username)
         : "")
     }
-    className="text-right ml-auto link"
+    className="text-light text-brand-hover"
     onClick={e => {
       window.OSX ? window.OSX.resetPassword() : null;
     }}
