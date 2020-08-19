@@ -68,12 +68,15 @@ export default class MetadataHeader extends Component {
   render() {
     return (
       <div className="MetadataEditor-header flex align-center flex-no-shrink pb2">
-        <Icon className="flex align-center flex-no-shrink text-medium" name="database" />
+        <Icon
+          className="flex align-center flex-no-shrink text-medium"
+          name="database"
+        />
         <div className="MetadataEditor-headerSection h2">
           <DatabaseDataSelector
             selectedDatabaseId={this.props.databaseId}
             setDatabaseFn={id => this.props.selectDatabase({ id })}
-            style={{padding: 0, paddingLeft: 8}}
+            style={{ padding: 0, paddingLeft: 8 }}
           />
         </div>
         <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
