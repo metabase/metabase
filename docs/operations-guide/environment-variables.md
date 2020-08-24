@@ -429,14 +429,6 @@ Default: `true`
 
 Blocks the thread until server ends.
 
-#### `MB_JETTY_MAX_REQUEST_HEADER_SIZE`
-
-Type: integer<br>
-Default: `8192`<br>
-Since: 0.36.0
-
-Maximum size of a request header, in bytes. Increase this value if you are experiencing errors like "Request Header Fields Too Large".
-
 #### `MB_JETTY_MAXIDLETIME`
 
 Type: integer<br>
@@ -477,6 +469,14 @@ Type: integer<br>
 Default: `3000`
 
 Configure which port to use for HTTP. It will listen on the interface specified in [MB_JETTY_HOST](#mb_jetty_host).
+
+#### `MB_JETTY_REQUEST_HEADER_SIZE`
+
+Type: integer<br>
+Default: `8192`<br>
+Since: 0.36.0
+
+Maximum size of a request header, in bytes. Increase this value if you are experiencing errors like "Request Header Fields Too Large".
 
 #### `MB_JETTY_SSL`
 
