@@ -103,12 +103,12 @@ const init = async () => {
 
   console.log(chalk.bold("3/4 Creating a shared login session for backend 1"));
   const sharedAdminLoginSession = await login(testFixtureBackendHost, {
-    username: "bob@metabase.com",
-    password: "12341234",
+    username: "johnny.appleseed@metabase.com",
+    password: "Password1234",
   });
   const sharedNormalLoginSession = await login(testFixtureBackendHost, {
-    username: "robert@metabase.com",
-    password: "12341234",
+    username: "bobby.tables@metabase.com",
+    password: "JsdR704zw2TLcZ",
   });
 
   console.log(chalk.bold("4/4 Starting Jest"));
