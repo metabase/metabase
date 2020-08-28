@@ -9,7 +9,7 @@
             [metabase
              [task :as task]
              [util :as u]]
-            [metabase.models.database :as mdb :refer [Database]]
+            [metabase.models.database :as database :refer [Database]]
             [metabase.sync
              [analyze :as analyze]
              [field-values :as field-values]
@@ -44,7 +44,7 @@
     (log/info (trs "Starting sync task for Database {0}." database-id))
     (when-let [database (or (Database database-id)
                             (do
-                              (unschedule-tasks-for-db! (mdb/map->DatabaseInstance {:id database-id}))
+                              (unschedule-tasks-for-db! (database/map->DatabaseInstance {:id database-id}))
                               (log/warn (trs "Cannot sync Database {0}: Database does not exist." database-id))))]
       (sync-metadata/sync-db-metadata! database)
       ;; only run analysis if this is a "full sync" database
@@ -61,7 +61,7 @@
     (log/info (trs "Update Field values task triggered for Database {0}." database-id))
     (when-let [database (or (Database database-id)
                             (do
-                              (unschedule-tasks-for-db! (mdb/map->DatabaseInstance {:id database-id}))
+                              (unschedule-tasks-for-db! (database/map->DatabaseInstance {:id database-id}))
                               (log/warn "Cannot update Field values for Database {0}: Database does not exist." database-id)))]
       (if (:is_full_sync database)
         (field-values/update-field-values! database)
