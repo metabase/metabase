@@ -5,6 +5,7 @@
             [metabase
              [types :as types]
              [util :as u]]
+            [metabase.driver.common :as driver.common]
             [metabase.driver.druid.js :as js]
             [metabase.mbql
              [schema :as mbql.s]
@@ -825,13 +826,13 @@
     :day             (extract:timeFormat "yyyy-MM-dd'T'00:00:00ZZ")
     :day-of-week     (extract:js "function (timestamp) {"
                                  "  var date = new Date(timestamp);"
-                                 "  return date.getDay() + 1;"
+                                 (format "  return date.getDay() + 1 + %s;" (driver.common/start-of-week-offset :druid))
                                  "}")
     :day-of-month    (extract:timeFormat "dd")
     :day-of-year     (extract:timeFormat "DDD")
     :week            (extract:js "function (timestamp) {"
                                  "  var date     = new Date(timestamp);"
-                                 "  var firstDOW = new Date(date - (date.getDay() * 86400000));"
+                                 (format "  var firstDOW = new Date(date - ((date.getDay() + %s)  * 86400000));" (driver.common/start-of-week-offset :druid))
                                  "  var month    = firstDOW.getMonth() + 1;"
                                  "  var day      = firstDOW.getDate();"
                                  "  return '' + firstDOW.getFullYear() + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;"

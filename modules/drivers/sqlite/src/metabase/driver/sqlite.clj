@@ -44,6 +44,10 @@
 ;; for now we'll just skip the foreign key stuff in the tests.
 (defmethod driver/supports? [:sqlite :foreign-keys] [_ _] (not config/is-test?))
 
+(defmethod driver/db-start-of-week :sqlite
+  [_]
+  :sunday)
+
 (defmethod sql-jdbc.conn/connection-details->spec :sqlite
   [_ {:keys [db]
       :or   {db "sqlite.db"}
@@ -123,7 +127,7 @@
 ;; SQLite day of week (%w) is Sunday = 0 <-> Saturday = 6. We want 1 - 7 so add 1
 (defmethod sql.qp/date [:sqlite :day-of-week]
   [driver _ expr]
-  (hx/->integer (hx/inc (strftime "%w" (sql.qp/->honeysql driver expr)))))
+  (hx/->integer (hx/+ (strftime "%w" (sql.qp/->honeysql driver expr)) 1 (driver.common/start-of-week-offset))))
 
 (defmethod sql.qp/date [:sqlite :day-of-month]
   [driver _ expr]
@@ -133,10 +137,14 @@
   [driver _ expr]
   (hx/->integer (strftime "%j" (sql.qp/->honeysql driver expr))))
 
-;; Move back 6 days, then forward to the next Sunday
 (defmethod sql.qp/date [:sqlite :week]
-  [driver _ expr]
-  (->date (sql.qp/->honeysql driver expr) (hx/literal "-6 days") (hx/literal "weekday 0")))
+  [_ _ expr]
+  (let [week-extract-fn (fn [expr]
+                          ;; Move back 6 days, then forward to the next Sunday
+                          (->date (sql.qp/->honeysql driver expr)
+                                  (hx/literal "-6 days")
+                                  (hx/literal "weekday 0")))]
+    (sql.qp/adjust-start-of-week :sqlite week-extract-fn expr)))
 
 ;; SQLite first week of year is 0, so add 1
 (defmethod sql.qp/date [:sqlite :week-of-year]

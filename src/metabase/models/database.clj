@@ -103,7 +103,8 @@
                                        :options                     :json
                                        :engine                      :keyword
                                        :metadata_sync_schedule      :cron-string
-                                       :cache_field_values_schedule :cron-string})
+                                       :cache_field_values_schedule :cron-string
+                                       :start_of_week               :keyword})
           :properties     (constantly {:timestamped? true})
           :post-insert    post-insert
           :post-select    post-select

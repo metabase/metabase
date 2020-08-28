@@ -262,3 +262,7 @@
 ;; BigQuery is always in UTC
 (defmethod driver/db-default-timezone :bigquery [_ _]
   "UTC")
+
+(defmethod driver/db-start-of-week :postgres
+  [_]
+  :sunday)

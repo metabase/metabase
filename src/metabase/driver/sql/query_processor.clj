@@ -9,6 +9,7 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.common :as driver.common]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
@@ -106,6 +107,14 @@
 
 (defmethod add-interval-honeysql-form :sql [driver hsql-form amount unit]
   (driver/date-add driver hsql-form amount unit))
+
+(defn adjust-start-of-week
+  "Truncate to the day the week starts on."
+  [driver truncate-fn expr]
+  (let [offset (driver.common/start-of-week-offset driver)]
+    (add-interval-honeysql-form driver
+     (truncate-fn (add-interval-honeysql-form driver expr offset :day))
+     (- offset) :day)))
 
 (defmulti field->identifier
   "Return a HoneySQL form that should be used as the identifier for `field`, an instance of the Field model. The default

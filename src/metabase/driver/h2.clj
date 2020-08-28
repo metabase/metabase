@@ -43,6 +43,11 @@
     :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
     :required     true}])
 
+(defmethod driver/db-start-of-week :postgres
+  [_]
+  :sunday)
+
+
 ;; TODO - it would be better not to put all the options in the connection string in the first place?
 (defn- connection-string->file+options
   "Explode a `connection-string` like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
@@ -155,15 +160,23 @@
 (defmethod sql.qp/date [:h2 :hour]            [_ _ expr] (trunc-with-format "yyyyMMddHH" expr))
 (defmethod sql.qp/date [:h2 :hour-of-day]     [_ _ expr] (hx/hour expr))
 (defmethod sql.qp/date [:h2 :day]             [_ _ expr] (hx/->date expr))
-(defmethod sql.qp/date [:h2 :day-of-week]     [_ _ expr] (hsql/call :day_of_week expr))
 (defmethod sql.qp/date [:h2 :day-of-month]    [_ _ expr] (hsql/call :day_of_month expr))
 (defmethod sql.qp/date [:h2 :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
-(defmethod sql.qp/date [:h2 :week]            [_ _ expr] (trunc-with-format "YYYYww" expr)) ; Y = week year; w = week in year
-(defmethod sql.qp/date [:h2 :week-of-year]    [_ _ expr] (hx/week expr))
 (defmethod sql.qp/date [:h2 :month]           [_ _ expr] (trunc-with-format "yyyyMM" expr))
 (defmethod sql.qp/date [:h2 :month-of-year]   [_ _ expr] (hx/month expr))
 (defmethod sql.qp/date [:h2 :quarter-of-year] [_ _ expr] (hx/quarter expr))
 (defmethod sql.qp/date [:h2 :year]            [_ _ expr] (parse-datetime "yyyy" (hx/year expr)))
+
+(defmethod sql.qp/date [:h2 :day-of-week]     [_ _ expr]
+  (hx/+ (hsql/call :day_of_week expr)
+        (driver.common/start-of-week-offset :h2)))
+
+(defmethod sql.qp/date [:h2 :week]
+  [_ _ expr]
+  (let [week-extract-fn (partial trunc-with-format "YYYYww")]  ; Y = week year; w = week in year
+    (sql.qp/adjust-start-of-week :h2 week-extract-fn expr))
+
+  (defmethod sql.qp/date [:h2 :week-of-year]    [_ _ expr] (hx/week expr))
 
 ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
 ;; *  extract the year and quarter from the date;

@@ -184,3 +184,7 @@
   (defmethod driver/supports? [:sparksql :foreign-keys] [_ _] true))
 
 (defmethod sql.qp/quote-style :sparksql [_] :mysql)
+
+(defmethod driver/db-start-of-week :sparksql
+  [_]
+  :monday)

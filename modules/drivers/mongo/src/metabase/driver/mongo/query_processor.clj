@@ -7,6 +7,7 @@
             [clojure.tools.logging :as log]
             [flatland.ordered.map :as ordered-map]
             [java-time :as t]
+            [metabase.driver.common :as driver.common]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
@@ -189,7 +190,8 @@
           :hour            (stringify "%Y-%m-%dT%H:00:00")
           :hour-of-day     {$hour column}
           :day             (stringify "%Y-%m-%d")
-          :day-of-week     {$dayOfWeek column}
+          :day-of-week     {$add [{$dayOfWeek column}
+                                  (driver.common/start-of-week-offset :mongo)]}
           :day-of-month    {$dayOfMonth column}
           :day-of-year     {$dayOfYear column}
           :week            (stringify "%Y-%m-%d" {$subtract [column

@@ -86,6 +86,11 @@
   [& args]
   (apply driver.common/current-db-time args))
 
+(defmethod driver/db-start-of-week :redshift
+  [_]
+  :sunday)
+
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |

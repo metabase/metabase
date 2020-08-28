@@ -301,3 +301,9 @@
                   (assert (some-> (site-url) (str/starts-with? "https:"))
                           (tru "Cannot redirect requests to HTTPS unless `site-url` is HTTPS.")))
                 (setting/set-boolean! :redirect-all-requests-to-https new-value)))
+
+(defsetting start-of-week
+  "Start of week for user queries"
+  :visibility :public
+  :type       :keyword
+  :default    :sunday)
