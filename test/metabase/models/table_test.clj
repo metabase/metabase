@@ -1,10 +1,10 @@
 (ns metabase.models.table-test
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
-            [metabase.models.table :as table :refer [Table]]
             [metabase
              [sync :as sync]
              [test :as mt]]
+            [metabase.models.table :as table]
             [metabase.test.data.one-off-dbs :as one-off-dbs]))
 
 (deftest valud-field-order?-test
