@@ -26,6 +26,19 @@
              (mt/rows
                (qp/process-query (assoc query :middleware {})))))))
 
+  (let [query (mt/mbql-query users
+                {:fields   [$name]
+                 :order-by [[:asc $name]]
+                 :limit    5})]
+    (testing "handle when there are no ID columns in the query but the middleware is enabled"
+      (is (= [["Broen Olujimi"]
+              ["Conchúr Tihomir"]
+              ["Dwight Gresham"]
+              ["Felipinho Asklepios"]
+              ["Frans Hevel"]]
+             (mt/rows
+               (qp/process-query (assoc query :middleware {:js-int-to-string? true})))))))
+
   (let [query (mt/mbql-query venues
                 {:order-by [[:asc $id]]
                  :limit    5})]

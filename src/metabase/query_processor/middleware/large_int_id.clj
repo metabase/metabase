@@ -41,7 +41,7 @@
                                                        (isa? (:special_type val) :type/FK))
                                                    (isa? (:base_type val) :type/Integer))
                                           idx)) fields)]
-      (qp query (if js-int-to-string?
+      (qp query (if (and js-int-to-string? (seq field-indexes))
                   #(result-int->string field-indexes (rff %))
                   rff)
           context))))
