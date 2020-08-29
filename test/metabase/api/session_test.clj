@@ -55,11 +55,11 @@
     (testing "Test for inactive user (user shouldn't be able to login if :is_active = false)"
       ;; Return same error as incorrect password to avoid leaking existence of user
       (is (= {:errors {:password "did not match stored password"}}
-             (mt/client :post 400 "session" (mt/user->credentials :trashbird)))))
+             (mt/client :post 401 "session" (mt/user->credentials :trashbird)))))
 
     (testing "Test for password checking"
       (is (= {:errors {:password "did not match stored password"}}
-             (mt/client :post 400 "session" (-> (mt/user->credentials :rasta)
+             (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
                                              (assoc :password "something else"))))))))
 
 (deftest login-throttling-test
@@ -103,7 +103,7 @@
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
               status-code (:status response)]
-          (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
+          (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
       (let [error (fn []
                     (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
                         :body
@@ -123,7 +123,7 @@
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
               status-code (:status response)]
-          (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
+          (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
       (dotimes [n 50]
         (let [response    (send-login-request (format "round2-user-%d" n)) ; no x-forwarded-for
               status-code (:status response)]
@@ -223,7 +223,7 @@
                                                                          :password (:new password)}))))
               (testing "Old creds should no longer work"
                 (is (= {:errors {:password "did not match stored password"}}
-                       (mt/client :post 400 "session" (:old creds)))))
+                       (mt/client :post 401 "session" (:old creds)))))
               (testing "New creds *should* work"
                 (is (schema= SessionResponse
                              (mt/client :post 200 "session" (:new creds)))))

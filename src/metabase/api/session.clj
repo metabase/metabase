@@ -110,7 +110,7 @@
       ;; Don't leak whether the account doesn't exist or the password was incorrect
       (throw
        (ex-info (str password-fail-message)
-         {:status-code 400
+         {:status-code 401
           :errors      {:password password-fail-snippet}}))))
 
 (defn- source-address
@@ -138,6 +138,18 @@
   [& body]
   `(do-http-400-on-error (fn [] ~@body)))
 
+(defn- do-http-400-on-error-if-status-not-specified [f]
+  (try
+    (f)
+    (catch clojure.lang.ExceptionInfo e
+      (throw (ex-info (ex-message e)
+                      (merge {:status-code 400} (ex-data e)))))))
+
+(defmacro http-400-on-error-if-status-not-specified
+  "Add `{:status-code 400}` to exception data thrown by `body` if the error does not already contain status code data."
+  [& body]
+  `(do-http-400-on-error-if-status-not-specified (fn [] ~@body)))
+
 (api/defendpoint POST "/"
   "Login."
   [:as {{:keys [username password]} :body, :as request}]
@@ -146,7 +158,7 @@
   (let [request-source (source-address request)]
     (if throttling-disabled?
       (do-login username password request)
-      (http-400-on-error
+      (http-400-on-error-if-status-not-specified
         (throttle/with-throttling [(login-throttlers :ip-address) request-source
                                    (login-throttlers :username)   username]
           (do-login username password request))))))

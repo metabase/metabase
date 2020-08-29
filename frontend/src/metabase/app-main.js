@@ -24,6 +24,9 @@ init(reducers, getRoutes, store => {
     if (url.indexOf("/api/user/current") >= 0) {
       return;
     }
+    if (url.indexOf("/api/session") >= 0) {
+      return;
+    }
     store.dispatch(clearCurrentUser());
     store.dispatch(push("/auth/login"));
   });
