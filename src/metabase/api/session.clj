@@ -149,6 +149,18 @@
   [& body]
   `(do-http-400-on-error (fn [] ~@body)))
 
+(defn- do-http-400-if-status-not-specified-on-error [f]
+  (try
+    (f)
+    (catch clojure.lang.ExceptionInfo e
+      (throw (ex-info (ex-message e)
+                      (merge {:status-code 400} (ex-data e)))))))
+
+(defmacro http-400-if-status-not-specified-on-error
+  "Add `{:status-code 400}` to exception data thrown by `body`, if status-code is not set already."
+  [& body]
+  `(do-http-400-if-status-not-specified-on-error (fn [] ~@body)))
+
 (api/defendpoint POST "/"
   "Login."
   [:as {{:keys [username password]} :body, :as request}]
@@ -352,7 +364,7 @@
   ;; Verify the token is valid with Google
   (if throttling-disabled?
     (do-google-auth token)
-    (http-400-on-error
+    (http-400-if-status-not-specified-on-error
       (throttle/with-throttling [(login-throttlers :ip-address) (source-address request)]
         (do-google-auth request)))))
 
