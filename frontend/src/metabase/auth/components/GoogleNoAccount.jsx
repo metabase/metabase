@@ -6,7 +6,7 @@ import BackToLogin from "./BackToLogin";
 
 const GoogleNoAccount = () => (
   <div className="full-height flex flex-column flex-full md-layout-centered">
-    <div className="wrapper">
+    <div className="z2 wrapper">
       <div className="Login-wrapper Grid  Grid--full md-Grid--1of2">
         <div className="Grid-cell flex layout-centered text-brand">
           <LogoIcon className="Logo my4 sm-my0" height={65} />
