@@ -141,7 +141,7 @@
   [_ _ expr]
   (let [week-extract-fn (fn [expr]
                           ;; Move back 6 days, then forward to the next Sunday
-                          (->date (sql.qp/->honeysql driver expr)
+                          (->date (sql.qp/->honeysql :sqlite expr)
                                   (hx/literal "-6 days")
                                   (hx/literal "weekday 0")))]
     (sql.qp/adjust-start-of-week :sqlite week-extract-fn expr)))

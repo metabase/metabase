@@ -7660,11 +7660,11 @@ databaseChangeLog:
        comment: Added 0.37.0
        changes:
          -  addColumn:
-            tableName: metabase_database
-            columns:
-              - column:
-                  name: start_of_week
-                  type: varchar(32)
-                  defaultValue: sunday
-                  constraints:
-                    nullable: false
+              tableName: metabase_database
+              columns:
+                - column:
+                    name: start_of_week
+                    type: varchar(32)
+                    defaultValue: sunday
+                    constraints:
+                      nullable: false
