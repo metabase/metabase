@@ -303,7 +303,7 @@
                 (setting/set-boolean! :redirect-all-requests-to-https new-value)))
 
 (defsetting start-of-week
-  "Start of week for user queries"
+  (deferred-tru "Start of week for user queries")
   :visibility :public
   :type       :keyword
   :default    :sunday)
