@@ -1,7 +1,8 @@
 (ns metabase.query-processor.middleware.large-int-id
   "Middleware for handling conversion of IDs to strings for proper display of large numbers"
-  (:require [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.store :as qp.store]))
+  (:require [clojure.tools.logging :as log]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.field :refer [Field]]))
 
 (defn- result-int->string
   [field-indexes rf]
@@ -31,15 +32,16 @@
     ;; like: `:fields [[:field-literal "PRICE" :type/Integer] [:field-literal "some_generated_name" :type/BigInteger]]`
     ;; so, short of turning all `:type/Integer` derived values into strings, this is the best approximation
     ;; of a fix that can be accomplished.
-    (let [fields        (mbql.u/match (:fields (:query query)) #{:field-id :fk->}
-                                      (qp.store/field (mbql.u/field-clause->id-or-literal &match)))
-          field-indexes (keep-indexed
-                         (fn [idx val]
-                           (when (and (or (isa? (:special_type val) :type/PK)
-                                          (isa? (:special_type val) :type/FK))
-                                      (isa? (:base_type val) :type/Integer))
-                             idx))
-                         fields)]
+    (let [field-indexes (keep-indexed
+                          (fn [idx val]
+                            (let [field-id (mbql.u/field-clause->id-or-literal val)]
+                              (when-let [field (when (number? field-id)
+                                                 (Field field-id))]
+                                (when (and (or (isa? (:special_type field) :type/PK)
+                                               (isa? (:special_type field) :type/FK))
+                                           (isa? (:base_type field) :type/Integer))
+                                  idx))))
+                          (log/spy :error (:fields (:query query))))]
       (qp query (if (and js-int-to-string? (seq field-indexes))
                   #(result-int->string field-indexes (rff %))
                   rff)
