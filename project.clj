@@ -48,7 +48,7 @@
    [org.clojure/math.combinatorics "0.1.4"]                           ; combinatorics functions
    [org.clojure/math.numeric-tower "0.0.4"]                           ; math functions like `ceil`
    [org.clojure/tools.logging "1.1.0"]                                ; logging framework
-   [org.clojure/tools.namespace "0.2.11"]
+   [org.clojure/tools.namespace "1.0.0"]
    [org.clojure/tools.trace "0.7.10"]                                 ; function tracing
    [amalloy/ring-buffer "1.2.2"
     :exclusions [org.clojure/clojure
