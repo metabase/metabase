@@ -60,6 +60,19 @@
              (mt/rows
                (qp/process-query (assoc query :middleware {})))))))
 
+  (let [query (mt/mbql-query checkins
+                {:fields   [$id $user_id->users.id $user_id->users.name $venue_id->venues.id $venue_id->venues.name]
+                 :order-by [[:asc $id]]
+                 :limit    5})]
+    (testing "joins work correctly"
+      (is (= [["1" "5" "Quentin Sören" "12" "The Misfit Restaurant + Bar"]
+	      ["2" "1" "Plato Yeshua" "31" "Bludso's BBQ"]
+	      ["3" "8" "Szymon Theutrich" "56" "Philippe the Original"]
+	      ["4" "5" "Quentin Sören" "4" "Wurstküche"]
+	      ["5" "3" "Kaneonuskatew Eiran" "49" "Hotel Biron"]]
+             (mt/rows
+               (qp/process-query (assoc query :middleware {:js-int-to-string? true})))))))
+
   (let [query (mt/mbql-query venues
                 {:source-query {:source-table $$venues
                                 :aggregation  [[:aggregation-options

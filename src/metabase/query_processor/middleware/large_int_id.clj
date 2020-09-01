@@ -9,10 +9,7 @@
     ([] (rf))
     ([result] (rf result))
     ([result row]
-     (if (and (seq field-indexes)
-              row)
-       (rf result (reduce #(update %1 %2 str) row field-indexes))
-       (rf result row)))))
+     (rf result (reduce #(update-in %1 [%2] str) row field-indexes)))))
 
 (defn convert-id-to-string
   "Converts any ID (:type/PK and :type/FK) in a result to a string to handle a number > 2^51
@@ -34,13 +31,15 @@
     ;; like: `:fields [[:field-literal "PRICE" :type/Integer] [:field-literal "some_generated_name" :type/BigInteger]]`
     ;; so, short of turning all `:type/Integer` derived values into strings, this is the best approximation
     ;; of a fix that can be accomplished.
-    (let [fields        (mbql.u/match (:fields (:query query)) [:field-id id]
-                                      (qp.store/field id))
-          field-indexes (keep-indexed (fn [idx val]
-                                        (when (and (or (isa? (:special_type val) :type/PK)
-                                                       (isa? (:special_type val) :type/FK))
-                                                   (isa? (:base_type val) :type/Integer))
-                                          idx)) fields)]
+    (let [fields        (mbql.u/match (:fields (:query query)) #{:field-id :fk->}
+                                      (qp.store/field (mbql.u/field-clause->id-or-literal &match)))
+          field-indexes (keep-indexed
+                         (fn [idx val]
+                           (when (and (or (isa? (:special_type val) :type/PK)
+                                          (isa? (:special_type val) :type/FK))
+                                      (isa? (:base_type val) :type/Integer))
+                             idx))
+                         fields)]
       (qp query (if (and js-int-to-string? (seq field-indexes))
                   #(result-int->string field-indexes (rff %))
                   rff)
