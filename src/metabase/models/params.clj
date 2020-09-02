@@ -62,7 +62,7 @@
   [[_ tag] dashcard]
   (get-in dashcard [:card :dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
-(s/defn ^:private param-target->field-clause :- (s/maybe FieldIDOrLiteral)
+(s/defn param-target->field-clause :- (s/maybe FieldIDOrLiteral)
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target dashcard]
@@ -75,7 +75,6 @@
            dimension))
         (catch Throwable e
           (log/error e (tru "Could not find matching Field ID for target:") target))))))
-
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."

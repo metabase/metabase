@@ -279,6 +279,20 @@
   [field]
   (str/join \. (qualified-name-components field)))
 
+(def ^{:arglists '([field-id])} field-id->table-id
+  "Return the ID of the Table this Field belongs to."
+  (memoize
+   (fn [field-id]
+     {:pre [(integer? field-id)]}
+     (db/select-one-field :table_id Field, :id field-id))))
+
+(defn field-id->database-id
+  "Return the ID of the Database this Field belongs to."
+  [field-id]
+  {:pre [(integer? field-id)]}
+  (let [table-id (field-id->table-id field-id)]
+    ((requiring-resolve 'metabase.models.table/table-id->database-id) table-id)))
+
 (defn table
   "Return the `Table` associated with this `Field`."
   {:arglists '([field])}

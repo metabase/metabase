@@ -9,6 +9,7 @@
              [models :refer [Field Table]]]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models.field :as field]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
             [metabase.query-processor.store :as qp.store]
             [toucan.db :as db]))
@@ -99,11 +100,15 @@
       (catch Throwable e
         (throw (ex-info "Error compiling HoneySQL form" {:honeysql honeysql} e))))))
 
-(defn chain-filter [database-id field-id field->value & options]
-  (qp.store/with-store
-    (qp.store/fetch-and-store-database! database-id)
-    (driver/with-driver (:engine (qp.store/database))
-      (let [spec (sql-jdbc.conn/connection-details->spec driver/*driver* (:details (qp.store/database)))
-            sql  (chain-filter-sql field-id field->value options)]
-        (println "sql:" (pr-str sql))   ; NOCOMMIT
-        (map :v (jdbc/query spec sql))))))
+(defn chain-filter
+  ([field-id field->value]
+   (chain-filter (field/field-id->database-id field-id) field-id field->value))
+
+  ([database-id field-id field->value & options]
+   (qp.store/with-store
+     (qp.store/fetch-and-store-database! database-id)
+     (driver/with-driver (:engine (qp.store/database))
+       (let [spec (sql-jdbc.conn/connection-details->spec driver/*driver* (:details (qp.store/database)))
+             sql  (chain-filter-sql field-id field->value options)]
+         (println "sql:" (pr-str sql))  ; NOCOMMIT
+         (map :v (jdbc/query spec sql)))))))
