@@ -20,6 +20,15 @@
             "Sushi Yasuda"
             "Tanoshi Sushi & Sake Bar"]
            (❤chain-filter❤ venues.name {venues.price 4}))))
+  (testing "Show me categories that have expensive restaurants"
+    (is (= ["Japanese" "Steakhouse"]
+           (❤chain-filter❤ categories.name {venues.price 4})))
+    (testing "Should work with string versions of param values"
+      (is (= ["Japanese" "Steakhouse"]
+             (❤chain-filter❤ categories.name {venues.price "4"})))))
+  (testing "Show me categories starting with s (case-insensitive) that have expensive restaurants"
+    (is (= ["Steakhouse"]
+           (❤chain-filter❤ categories.name {venues.price 4, categories.name [:starts-with "s" {:case-sensitive false}]}))))
   (testing "Show me cheap Thai restaurants"
     (is (= ["Kinaree Thai Bistro" "Krua Siri"]
            (❤chain-filter❤ venues.name {venues.price 1, categories.name "Thai"}))))
