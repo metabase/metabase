@@ -43,7 +43,7 @@
     :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
     :required     true}])
 
-(defmethod driver/db-start-of-week :postgres
+(defmethod driver/db-start-of-week :h2
   [_]
   :sunday)
 
