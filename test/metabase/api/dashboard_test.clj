@@ -131,49 +131,54 @@
    :show_in_getting_started false
    :updated_at              true})
 
-(expect
- (merge dashboard-defaults
-        {:name          "Test Create Dashboard"
-         :creator_id    (mt/user->id :rasta)
-         :parameters    [{:hash "abc123", :name "test", :type "date"}]
-         :updated_at    true
-         :created_at    true
-         :collection_id true})
- (mt/with-non-admin-groups-no-root-collection-perms
-   (mt/with-model-cleanup [Dashboard]
-     (tt/with-temp Collection [collection]
-       (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-       (-> ((mt/user->client :rasta) :post 200 "dashboard" {:name          "Test Create Dashboard"
-                                                            :parameters    [{:hash "abc123", :name "test", :type "date"}]
-                                                            :collection_id (u/get-id collection)})
-           dashboard-response)))))
+(deftest create-dashboard-test
+  (testing "POST /api/dashboard"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (tt/with-temp Collection [collection]
+        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+        (let [test-dashboard-name "Test Create Dashboard"]
+          (try
+            (is (= (merge
+                    dashboard-defaults
+                    {:name          test-dashboard-name
+                     :creator_id    (mt/user->id :rasta)
+                     :parameters    [{:hash "abc123", :name "test", :type "date"}]
+                     :updated_at    true
+                     :created_at    true
+                     :collection_id true})
+                   (-> ((mt/user->client :rasta) :post 200 "dashboard" {:name          test-dashboard-name
+                                                                        :parameters    [{:hash "abc123", :name "test", :type "date"}]
+                                                                        :collection_id (u/get-id collection)})
+                       dashboard-response)))
+            (finally
+              (db/delete! Dashboard :name test-dashboard-name))))))))
 
-;; Make sure we can create a Dashboard with a Collection position
-(expect
- #metabase.models.dashboard.DashboardInstance{:collection_id true, :collection_position 1000}
- (mt/with-non-admin-groups-no-root-collection-perms
-   (mt/with-model-cleanup [Dashboard]
-     (let [dashboard-name (mt/random-name)]
-       (tt/with-temp Collection [collection]
-         (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-         ((mt/user->client :rasta) :post 200 "dashboard" {:name                dashboard-name
-                                                          :collection_id       (u/get-id collection)
-                                                          :collection_position 1000})
-         (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
-                 (update :collection_id (partial = (u/get-id collection)))))))))
+(deftest create-dashboard-with-collection-position-test
+  (testing "POST /api/dashboard"
+    (testing "Make sure we can create a Dashboard with a Collection position"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (tt/with-temp Collection [collection]
+          (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+          (let [dashboard-name (mt/random-name)]
+            (try
+              ((mt/user->client :rasta) :post 200 "dashboard" {:name                dashboard-name
+                                                               :collection_id       (u/get-id collection)
+                                                               :collection_position 1000})
+              (is (= #metabase.models.dashboard.DashboardInstance{:collection_id true, :collection_position 1000}
+                     (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
+                             (update :collection_id (partial = (u/get-id collection))))))
+              (finally
+                (db/delete! Dashboard :name dashboard-name)))))
 
-;; ...but not if we don't have permissions for the Collection
-(expect
- nil
- (mt/with-non-admin-groups-no-root-collection-perms
-   (mt/with-model-cleanup [Dashboard]
-     (let [dashboard-name (mt/random-name)]
-       (tt/with-temp Collection [collection]
-         ((mt/user->client :rasta) :post 403 "dashboard" {:name                dashboard-name
-                                                          :collection_id       (u/get-id collection)
-                                                          :collection_position 1000})
-         (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
-                 (update :collection_id (partial = (u/get-id collection)))))))))
+        (testing "..but not if we don't have permissions for the Collection"
+          (tt/with-temp Collection [collection]
+            (let [dashboard-name (mt/random-name)]
+              ((mt/user->client :rasta) :post 403 "dashboard" {:name                dashboard-name
+                                                               :collection_id       (u/get-id collection)
+                                                               :collection_position 1000})
+              (is (= nil
+                     (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
+                             (update :collection_id (partial = (u/get-id collection)))))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -381,7 +386,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                              UPDATING DASHBOARD COLLECTION POSITIONS                                           |
+;;; |                                    UPDATING DASHBOARD COLLECTION POSITIONS                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest update-dashboard-change-collection-position-test
@@ -533,52 +538,56 @@
           ;; "a" is now first, all other dashboards in collection-2 bumped down 1
           (card-api-test/get-name->collection-position :rasta collection-2)])))))
 
-;; Check that adding a new card at position 3 will cause the existing card at 3 to be incremented
-(expect
- [{"a" 1
-   "b" 2
-   "d" 3}
-  {"a" 1
-   "b" 2
-   "c" 3
-   "d" 4}]
- (mt/with-non-admin-groups-no-root-collection-perms
-   (tt/with-temp Collection [collection]
-     (mt/with-model-cleanup [Dashboard]
-       (card-api-test/with-ordered-items collection [Card  a
-                                                     Pulse b
-                                                     Card  d]
-         (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-         [(card-api-test/get-name->collection-position :rasta collection)
-          (do
-            ((mt/user->client :rasta) :post 200 "dashboard" {:name                "c"
-                                                             :parameters          [{}]
-                                                             :collection_id       (u/get-id collection)
-                                                             :collection_position 3})
-            (card-api-test/get-name->collection-position :rasta collection))])))))
+(deftest insert-dashboard-increment-existing-collection-position-test
+  (testing "POST /api/dashboard"
+    (testing "Check that adding a new Dashboard at Collection position 3 will increment position of the existing item at position 3"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (tt/with-temp Collection [collection]
+          (card-api-test/with-ordered-items collection [Card  a
+                                                        Pulse b
+                                                        Card  d]
+            (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+            (is (= {"a" 1
+                    "b" 2
+                    "d" 3}
+                   (card-api-test/get-name->collection-position :rasta collection)))
+            (try
+              ((mt/user->client :rasta) :post 200 "dashboard" {:name                "c"
+                                                               :parameters          [{}]
+                                                               :collection_id       (u/get-id collection)
+                                                               :collection_position 3})
+              (is (= {"a" 1
+                      "b" 2
+                      "c" 3
+                      "d" 4}
+                     (card-api-test/get-name->collection-position :rasta collection)))
+              (finally
+                (db/delete! Dashboard :collection_id (u/get-id collection))))))))))
 
-;; Check that adding a new card without a position, leaves the existing positions unchanged
-(expect
- [{"a" 1
-   "b" 2
-   "d" 3}
-  {"a" 1
-   "b" 2
-   "c" nil
-   "d" 3}]
- (mt/with-non-admin-groups-no-root-collection-perms
-   (tt/with-temp Collection [collection]
-     (mt/with-model-cleanup [Dashboard]
-       (card-api-test/with-ordered-items collection [Dashboard a
-                                                     Card      b
-                                                     Pulse     d]
-         (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-         [(card-api-test/get-name->collection-position :rasta collection)
-          (do
-            ((mt/user->client :rasta) :post 200 "dashboard" {:name          "c"
-                                                             :parameters    [{}]
-                                                             :collection_id (u/get-id collection)})
-            (card-api-test/get-name->collection-position :rasta collection))])))))
+(deftest insert-dashboard-no-position-test
+  (testing "POST /api/dashboard"
+    (testing "Check that adding a new Dashboard without a position, leaves the existing positions unchanged"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (tt/with-temp Collection [collection]
+          (card-api-test/with-ordered-items collection [Dashboard a
+                                                        Card      b
+                                                        Pulse     d]
+            (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+            (is (= {"a" 1
+                    "b" 2
+                    "d" 3}
+                   (card-api-test/get-name->collection-position :rasta collection)))
+            (try
+              ((mt/user->client :rasta) :post 200 "dashboard" {:name          "c"
+                                                               :parameters    [{}]
+                                                               :collection_id (u/get-id collection)})
+              (is (= {"a" 1
+                      "b" 2
+                      "c" nil
+                      "d" 3}
+                     (card-api-test/get-name->collection-position :rasta collection)))
+              (finally
+                (db/delete! Dashboard :collection_id (u/get-id collection))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -594,58 +603,76 @@
              (Dashboard dashboard-id))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         COPY /api/dashboard/:id/copy                                           |
+;;; |                                         POST /api/dashboard/:id/copy                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; A plain copy with nothing special
-(expect (merge dashboard-defaults
-               {:name               "Test Dashboard"
-                :description        "A description"
-                :creator_id         (mt/user->id :rasta)
-                :collection_id      false})
-        (tt/with-temp Dashboard  [{dashboard-id :id} {:name         "Test Dashboard"
-                                                      :description  "A description"
-                                                      :creator_id   (mt/user->id :rasta)}]
-          (mt/with-model-cleanup [Dashboard]
-            (dashboard-response ((mt/user->client :rasta) :post 200 (format "dashboard/%d/copy" dashboard-id))))))
+(deftest copy-dashboard-test
+  (testing "POST /api/dashboard/:id/copy"
+    (testing "A plain copy with nothing special"
+      (tt/with-temp Dashboard [{dashboard-id :id} {:name        "Test Dashboard"
+                                                   :description "A description"
+                                                   :creator_id  (mt/user->id :rasta)}]
+        (let [response ((mt/user->client :rasta) :post 200 (format "dashboard/%d/copy" dashboard-id))]
+          (try
+            (is (= (merge
+                    dashboard-defaults
+                    {:name          "Test Dashboard"
+                     :description   "A description"
+                     :creator_id    (mt/user->id :rasta)
+                     :collection_id false})
+                   (dashboard-response response)))
+            (finally
+              (db/delete! Dashboard :id (u/get-id response)))))))
 
-;; Ensure name / description / user set when copying
-(expect (merge dashboard-defaults
-               {:name           "Test Dashboard - Duplicate"
-                :description    "A new description"
-                :creator_id     (mt/user->id :crowberto)
-                :collection_id  false})
-        (tt/with-temp Dashboard [{dashboard-id :id}  {:name           "Test Dashboard"
-                                                      :description    "An old description"}]
-          (mt/with-model-cleanup [Dashboard]
-            (dashboard-response ((mt/user->client :crowberto) :post 200 (format "dashboard/%d/copy" dashboard-id)
-                                 {:name             "Test Dashboard - Duplicate"
-                                  :description      "A new description"})))))
+    (testing "Ensure name / description / user set when copying"
+      (tt/with-temp Dashboard [{dashboard-id :id}  {:name        "Test Dashboard"
+                                                    :description "An old description"}]
+        (let [response ((mt/user->client :crowberto) :post 200 (format "dashboard/%d/copy" dashboard-id)
+                        {:name        "Test Dashboard - Duplicate"
+                         :description "A new description"})]
+          (try
+            (is (= (merge
+                    dashboard-defaults
+                    {:name          "Test Dashboard - Duplicate"
+                     :description   "A new description"
+                     :creator_id    (mt/user->id :crowberto)
+                     :collection_id false})
+                   (dashboard-response response)))
+            (finally
+              (db/delete! Dashboard :id (u/get-id response)))))))))
 
-;; Ensure dashboard cards are copied
-(expect
- 2
- (tt/with-temp* [Dashboard     [{dashboard-id :id}  {:name "Test Dashboard"}]
-                 Card          [{card-id :id}]
-                 Card          [{card-id2 :id}]
-                 DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                 DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id2}]]
-   (mt/with-model-cleanup [Dashboard]
-     (count (db/select-ids DashboardCard, :dashboard_id
-                           (u/get-id ((mt/user->client :rasta) :post 200 (format "dashboard/%d/copy" dashboard-id))))))))
+(deftest copy-dashboard-cards-test
+  (testing "POST /api/dashboard/:id/copy"
+    (testing "Ensure dashboard cards are copied"
+      (tt/with-temp* [Dashboard     [{dashboard-id :id}  {:name "Test Dashboard"}]
+                      Card          [{card-id :id}]
+                      Card          [{card-id2 :id}]
+                      DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                      DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id2}]]
+        (let [copy-id (u/get-id ((mt/user->client :rasta) :post 200 (format "dashboard/%d/copy" dashboard-id)))]
+          (try
+            (is (= 2
+                   (count (db/select-ids DashboardCard, :dashboard_id copy-id))))
+            (finally
+              (db/delete! Dashboard :id copy-id))))))))
 
-;; Ensure the correct collection is set when copying
-(expect
- (mt/with-model-cleanup [Dashboard]
-   (dashboard-test/with-dash-in-collection [db collection dash]
-     (tt/with-temp Collection [new-collection]
-       ;; grant Permissions for both new and old collections
-       (doseq [coll [collection new-collection]]
-         (perms/grant-collection-readwrite-permissions! (group/all-users) coll))
-       ;; Check to make sure the ID of the collection is correct
-       (= (db/select-one-field :collection_id Dashboard :id
-                               (u/get-id ((mt/user->client :rasta) :post 200 (format "dashboard/%d/copy" (u/get-id dash)) {:collection_id (u/get-id new-collection)})))
-          (u/get-id new-collection))))))
+(deftest copy-dashboard-into-correct-collection-test
+  (testing "POST /api/dashboard/:id/copy"
+    (testing "Ensure the correct collection is set when copying"
+      (dashboard-test/with-dash-in-collection [db collection dash]
+        (tt/with-temp Collection [new-collection]
+          ;; grant Permissions for both new and old collections
+          (doseq [coll [collection new-collection]]
+            (perms/grant-collection-readwrite-permissions! (group/all-users) coll))
+          (let [response ((mt/user->client :rasta) :post 200 (format "dashboard/%d/copy" (u/get-id dash)) {:collection_id (u/get-id new-collection)})]
+            (try
+              ;; Check to make sure the ID of the collection is correct
+              (is (= (db/select-one-field :collection_id Dashboard :id
+                                          (u/get-id response))
+                     (u/get-id new-collection)))
+              (finally
+                (db/delete! Dashboard :id (u/get-id response))))))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         POST /api/dashboard/:id/cards                                          |
