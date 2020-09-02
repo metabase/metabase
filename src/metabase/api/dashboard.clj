@@ -8,6 +8,7 @@
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.populate :as magic.populate]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
              [collection :as collection]
@@ -15,11 +16,15 @@
              [dashboard-card :refer [DashboardCard delete-dashboard-card!]]
              [dashboard-favorite :refer [DashboardFavorite]]
              [interface :as mi]
+             [params :as params]
              [query :as query :refer [Query]]
              [revision :as revision]]
+            [metabase.models.params.chain-filter :as chain-filter]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.util :as qp-util]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -449,6 +454,98 @@
                                  :personal_owner_id api/*current-user-id*))]
     (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
          (events/publish-event! :dashboard-create))))
+
+
+;;; ------------------------------------- Chain-filtering param value endpoints --------------------------------------
+
+(defn ^{:hydrate :resolved-params} dashboard->resolved-params
+  "Return map of Dashboard parameter key -> param with resolved `:mappings`.
+
+    (dashboard->resolved-params (Dashboard 62))
+    ;; ->
+    {\"ee876336\" {:name     \"Category Name\"
+                   :slug     \"category_name\"
+                   :id       \"ee876336\"
+                   :type     \"category\"
+                   :mappings #{{:parameter_id \"ee876336\"
+                                :card_id      66
+                                :dashcard     ...
+                                :target       [:dimension [:fk-> [:field-id 263] [:field-id 276]]]}}},
+     \"6f10a41f\" {:name     \"Price\"
+                   :slug     \"price\"
+                   :id       \"6f10a41f\"
+                   :type     \"category\"
+                   :mappings #{{:parameter_id \"6f10a41f\"
+                                :card_id      66
+                                :dashcard     ...
+                                :target       [:dimension [:field-id 264]]}}}}"
+  [dashboard]
+  (let [dashboard           (hydrate dashboard [:ordered_cards :card])
+        param-key->mappings (apply
+                             merge-with conj
+                             (for [dashcard (:ordered_cards dashboard)
+                                   param    (:parameter_mappings dashcard)]
+                               {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
+    (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
+               [param-key (assoc param :mappings (get param-key->mappings param-key))]))))
+
+(defn- param-key->field-ids
+  "Get Field ID(s) associated with a parameter in a Dashboard.
+
+    (param-key->field-ids (Dashboard 62) \"ee876336\")
+    ;; -> #{276}"
+  [dashboard param-key]
+  {:pre [(string? param-key)]}
+  (let [{:keys [resolved-params]} (hydrate dashboard :resolved-params)]
+    (->> (get resolved-params param-key)
+         :mappings
+         (map (fn [param]
+                (params/param-target->field-clause (:target param) (:dashcard param))))
+         (map mbql.u/field-clause->id-or-literal)
+         (filter integer?)
+         set)))
+
+(defn- chain-filter-constraints [dashboard constraint-param-key->value]
+  (into {} (for [[param-key value] constraint-param-key->value
+                 field-id          (param-key->field-ids dashboard param-key)]
+             [field-id value])))
+
+(defn- chain-filter❤
+  "C H A I N filters!
+
+    ;; show me categories
+    (chain-filter❤ 62 \"ee876336\" {})
+    ;; -> (\"African\" \"American\" \"Artisan\" ...)
+
+    ;; show me categories that have expensive restaurants
+    (chain-filter❤ 62 \"ee876336\" {\"6f10a41f\" 4})
+    ;; -> (\"Japanese\" \"Steakhouse\")"
+  [dashboard param-key constraint-param-key->value & [prefix]]
+  {:pre [(map? dashboard) (string? param-key) (map? constraint-param-key->value) (or (not prefix) (string? prefix))]}
+  (let [dashboard   (hydrate dashboard :resolved-params)
+        constraints (chain-filter-constraints dashboard constraint-param-key->value)
+        field-ids   (param-key->field-ids dashboard param-key)]
+    (when (empty? field-ids)
+      (throw (ex-info (tru "No matching fields found for param with key {0}" (pr-str param-key))
+                      {:resolved-params (:resolved-params dashboard)})))
+    (sort
+     (distinct
+      (mapcat (fn [field-id]
+                (let [prefix-constraint (when prefix
+                                          {field-id [:starts-with prefix {:case-sensitive false}]})
+                      constraints       (merge constraints prefix-constraint)]
+                  (chain-filter/chain-filter field-id constraints)))
+              field-ids)))))
+
+(api/defendpoint GET "/:id/params/:param-key/values"
+  [id param-key :as {:keys [query-params]}]
+  (let [dashboard (api/read-check Dashboard id)]
+    (chain-filter❤ dashboard param-key query-params)))
+
+(api/defendpoint GET "/:id/params/:param-key/search/:prefix"
+  [id param-key prefix :as {:keys [query-params]}]
+  (let [dashboard (api/read-check Dashboard id)]
+    (chain-filter❤ dashboard param-key query-params prefix)))
 
 
 (api/define-routes)

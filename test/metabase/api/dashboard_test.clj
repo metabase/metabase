@@ -1127,3 +1127,95 @@
   (tt/with-temp Dashboard [{dashboard-id :id}]
     (is (= #{:cards}
            (-> ((mt/user->client :crowberto) :get 200 (format "dashboard/%s/related" dashboard-id)) keys set)))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             Chain Filter Endpoints                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- do-with-chain-filter-fixtures
+  ([f]
+   (do-with-chain-filter-fixtures nil f))
+
+  ([dashboard-values f]
+   (mt/with-temp* [Dashboard     [dashboard (merge {:parameters [{:name "Category Name"
+                                                                  :slug "category_name"
+                                                                  :id   "8e8eafa7"
+                                                                  :type "category"}
+                                                                 {:name "Price"
+                                                                  :slug "price"
+                                                                  :id   "637169c8"
+                                                                  :type "category"}]}
+                                                   dashboard-values)]
+                   Card          [card {:database_id   (mt/id)
+                                        :table_id      (mt/id :venues)
+                                        :dataset_query (mt/mbql-query venues)}]
+                   DashboardCard [_ {:card_id            (:id card)
+                                     :dashboard_id       (:id dashboard)
+                                     :parameter_mappings [{:parameter_id "8e8eafa7"
+                                                           :card_id      (:id card)
+                                                           :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
+                                                          {:parameter_id "637169c8"
+                                                           :card_id      (:id card)
+                                                           :target       [:dimension (mt/$ids venues $price)]}]}]]
+     (f {:dashboard  dashboard
+         :card       card
+         :param-keys {:category-name "8e8eafa7"
+                      :price         "637169c8"}}))))
+
+(deftest param-values-test
+  (testing "GET /api/dashboard/:id/params/:param-key/values"
+    (do-with-chain-filter-fixtures
+     (fn [{:keys [dashboard param-keys]}]
+       (testing "Show me names of categories"
+         (is (= ["African" "American" "Artisan"]
+                (take 3 ((mt/user->client :rasta) :get 200 (format "dashboard/%d/params/%s/values"
+                                                                   (:id dashboard)
+                                                                   (:category-name param-keys)))))))
+
+       (testing "?<price-param>=4"
+         (testing "Show me names of categories that have expensive venues (price = 4)"
+           (is (= ["Japanese" "Steakhouse"]
+                  (take 3 ((mt/user->client :rasta) :get 200 (format "dashboard/%d/params/%s/values?%s=4"
+                                                                     (:id dashboard)
+                                                                     (:category-name param-keys)
+                                                                     (:price param-keys))))))))))
+    (testing "Should require perms for the Dashboard"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp Collection [collection]
+          (do-with-chain-filter-fixtures
+           {:collection_id (:id collection)}
+           (fn [{:keys [dashboard param-keys]}]
+             (is (= "You don't have permissions to do that."
+                    ((mt/user->client :rasta) :get 403 (format "dashboard/%d/params/%s/values"
+                                                               (:id dashboard)
+                                                               (:category-name param-keys))))))))))))
+
+(deftest param-search-test
+  (testing "GET /api/dashboard/:id/params/:param-key/search/:prefix"
+    (do-with-chain-filter-fixtures
+     (fn [{:keys [dashboard param-keys]}]
+       (testing "Show me names of categories that start with 's' (case-insensitive)"
+         (is (= ["Scandinavian" "Seafood" "South Pacific"]
+                (take 3 ((mt/user->client :rasta) :get 200 (format "dashboard/%d/params/%s/search/s"
+                                                                   (:id dashboard)
+                                                                   (:category-name param-keys)))))))
+
+       (testing "?<price-param>=4"
+         (testing "Show me names of categories that start with 's' that have expensive venues (price = 4)"
+           (is (= ["Steakhouse"]
+                  (take 3 ((mt/user->client :rasta) :get 200 (format "dashboard/%d/params/%s/search/s?%s=4"
+                                                                     (:id dashboard)
+                                                                     (:category-name param-keys)
+                                                                     (:price param-keys))))))))))
+
+    (testing "Should require perms for the Dashboard"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp Collection [collection]
+          (do-with-chain-filter-fixtures
+           {:collection_id (:id collection)}
+           (fn [{:keys [dashboard param-keys]}]
+             (is (= "You don't have permissions to do that."
+                    ((mt/user->client :rasta) :get 403 (format "dashboard/%d/params/%s/search/s"
+                                                               (:id dashboard)
+                                                               (:category-name param-keys))))))))))))
