@@ -34,6 +34,14 @@ describe("scenarios > auth > signin", () => {
     cy.findByText("Sign in").click();
     cy.contains(/[a-z ]+, Bob/i);
   });
+  
+  it("should allow login regardless of login email case", () => {
+    cy.visit("/auth/login");
+    cy.findByLabelText("Email address").type(USERS.admin.username.toUpperCase());
+    cy.findByLabelText("Password").type(USERS.admin.password);
+    cy.findByText("Sign in").click();
+    cy.contains(/[a-z ]+, Bob/i);
+  });
 
   it("should redirect to a unsaved question after login", () => {
     signIn();
