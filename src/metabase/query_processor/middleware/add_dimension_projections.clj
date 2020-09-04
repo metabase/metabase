@@ -23,8 +23,7 @@
   appropriate `:remapped_from` and `:remapped_to` attributes in the result `:cols` in post-processing.
   `:remapped_from` and `:remapped_to` are the names of the columns, e.g. `category_id` is `:remapped_to` `name`, and
   `name` is `:remapped_from` `:category_id`."
-  (:require [medley.core :as m]
-            [metabase.mbql
+  (:require [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models
@@ -43,8 +42,9 @@
   {:name                                       su/NonBlankString       ; display name for the remapping
    :field_id                                   su/IntGreaterThanZero   ; ID of the Field being remapped
    :human_readable_field_id                    su/IntGreaterThanZero   ; ID of the FK Field to remap values to
-   (s/optional-key :field_name)                s/Str
-   (s/optional-key :human_readable_field_name) s/Str})
+   (s/optional-key :field_name)                su/NonBlankString       ; Name of the Field being remapped
+   (s/optional-key :human_readable_field_name) su/NonBlankString       ; Name of the FK field to remap values to
+   })
 
 
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
@@ -67,7 +67,7 @@
   get hidden when displayed anyway?)"
   [fields :- [mbql.s/Field]]
   (when-let [field-id->remapping-dimension (fields->field-id->remapping-dimension fields)]
-    (let [unique-name-fn (mbql.u/unique-name-generator)]
+    (let [unique-name (comp (mbql.u/unique-name-generator) :name Field)]
       (vec
        (mbql.u/match fields
          ;; don't match Field IDs nested in other clauses
@@ -78,8 +78,8 @@
            [&match
             [:fk-> &match [:field-id (:human_readable_field_id dimension)]]
             (assoc dimension
-              :field_name                (-> dimension :field_id Field :name unique-name-fn)
-              :human_readable_field_name (-> dimension :human_readable_field_id Field :name unique-name-fn))]))))))
+              :field_name                (-> dimension :field_id unique-name)
+              :human_readable_field_name (-> dimension :human_readable_field_id unique-name))]))))))
 
 (s/defn ^:private update-remapped-order-by :- [mbql.s/OrderBy]
   "Order by clauses that include an external remapped column should be replace that original column in the order by with
