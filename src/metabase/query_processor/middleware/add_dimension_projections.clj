@@ -43,8 +43,7 @@
    :field_id                                   su/IntGreaterThanZero   ; ID of the Field being remapped
    :human_readable_field_id                    su/IntGreaterThanZero   ; ID of the FK Field to remap values to
    (s/optional-key :field_name)                su/NonBlankString       ; Name of the Field being remapped
-   (s/optional-key :human_readable_field_name) su/NonBlankString       ; Name of the FK field to remap values to
-   })
+   (s/optional-key :human_readable_field_name) su/NonBlankString})     ; Name of the FK field to remap values to
 
 
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------

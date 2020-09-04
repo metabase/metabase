@@ -63,7 +63,16 @@
                                     [:field-id (mt/id :categories :name)]]))]
               (-> example-query
                   (assoc-in [:query :order-by] [[:asc [:field-id (mt/id :venues :category_id)]]])
-                  (#'add-dim-projections/add-fk-remaps))))))))
+                  (#'add-dim-projections/add-fk-remaps)))))
+
+     (testing "make sure FK remaps work with nested queries"
+       (let [example-query (assoc example-query :query {:source-query (:query example-query)})]
+         (is (= [[remapped-field]
+                 (update-in example-query [:query :source-query :fields]
+                            conj [:fk-> [:field-id (mt/id :venues :category_id)] [:field-id (mt/id :categories :name)]])]
+                (#'add-dim-projections/add-fk-remaps example-query))))))))
+
+
 
 
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
