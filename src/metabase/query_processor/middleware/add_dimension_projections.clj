@@ -97,7 +97,7 @@
   clause as needed. Returns a pair like `[external-remapping-dimensions updated-query]`."
   [{{:keys [fields order-by source-query]} :query, :as query} :- mbql.s/Query]
   (let [[source-query-remappings query]
-        (if source-query
+        (if (:query source-query) ;; Only do lifting if source is MBQL query
           (let [[source-query-remappings source-query] (add-fk-remaps (assoc query :query source-query))]
             [source-query-remappings (assoc-in query [:query :source-query] (:query source-query))])
           [nil query])]
