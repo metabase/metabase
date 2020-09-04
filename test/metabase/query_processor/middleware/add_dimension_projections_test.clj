@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
   (:require [clojure.test :refer :all]
+            [metabase.models :refer [Field]]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -35,19 +36,24 @@
 (deftest add-fk-remaps-test
   (do-with-fake-remappings-for-field-3
    (fn []
-     (testing "make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]"
-       (is (= [[{:name "Product", :field_id 3, :human_readable_field_id 4}]
-               (update-in example-query [:query :fields]
-                          conj [:fk-> [:field-id 3] [:field-id 4]])]
-              (#'add-dim-projections/add-fk-remaps example-query))))
+     (let [remapped-field {:name                      "Product"
+                           :field_id                  3
+                           :human_readable_field_id   4
+                           :field_name                (-> 3 Field :name)
+                           :human_readable_field_name (-> 4 Field :name)}]
+       (testing "make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]"
+         (is (= [[remapped-field]
+                 (update-in example-query [:query :fields]
+                            conj [:fk-> [:field-id 3] [:field-id 4]])]
+                (#'add-dim-projections/add-fk-remaps example-query))))
 
-     (testing "adding FK remaps should replace any existing order-bys for a field with order bys for the FK remapping Field"
-       (is (= [[{:name "Product", :field_id 3, :human_readable_field_id 4}]
-               (-> example-query
-                   (assoc-in [:query :order-by] [[:asc [:fk-> [:field-id 3] [:field-id 4]]]])
-                   (update-in [:query :fields]
-                              conj [:fk-> [:field-id 3] [:field-id 4]]))]
-              (#'add-dim-projections/add-fk-remaps (assoc-in example-query [:query :order-by] [[:asc [:field-id 3]]]))))))))
+       (testing "adding FK remaps should replace any existing order-bys for a field with order bys for the FK remapping Field"
+         (is (= [[remapped-field]
+                 (-> example-query
+                     (assoc-in [:query :order-by] [[:asc [:fk-> [:field-id 3] [:field-id 4]]]])
+                     (update-in [:query :fields]
+                                conj [:fk-> [:field-id 3] [:field-id 4]]))]
+                (#'add-dim-projections/add-fk-remaps (assoc-in example-query [:query :order-by] [[:asc [:field-id 3]]])))))))))
 
 
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------

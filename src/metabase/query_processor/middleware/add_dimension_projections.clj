@@ -67,18 +67,19 @@
   get hidden when displayed anyway?)"
   [fields :- [mbql.s/Field]]
   (when-let [field-id->remapping-dimension (fields->field-id->remapping-dimension fields)]
-    (vec
-     (mbql.u/match fields
-       ;; don't match Field IDs nested in other clauses
-       [(_ :guard keyword?) [:field-id _] & _] nil
+    (let [unique-name-fn (mbql.u/unique-name-generator)]
+      (vec
+       (mbql.u/match fields
+         ;; don't match Field IDs nested in other clauses
+         [(_ :guard keyword?) [:field-id _] & _] nil
 
-       [:field-id (id :guard field-id->remapping-dimension)]
-       (let [dimension (field-id->remapping-dimension id)]
-         [&match
-          [:fk-> &match [:field-id (:human_readable_field_id dimension)]]
-          (assoc dimension
-            :field_name                (-> dimension :field_id Field :name)
-            :human_readable_field_name (-> dimension :human_readable_field_id Field :name))])))))
+         [:field-id (id :guard field-id->remapping-dimension)]
+         (let [dimension (field-id->remapping-dimension id)]
+           [&match
+            [:fk-> &match [:field-id (:human_readable_field_id dimension)]]
+            (assoc dimension
+              :field_name                (-> dimension :field_id Field :name unique-name-fn)
+              :human_readable_field_name (-> dimension :human_readable_field_id Field :name unique-name-fn))]))))))
 
 (s/defn ^:private update-remapped-order-by :- [mbql.s/OrderBy]
   "Order by clauses that include an external remapped column should be replace that original column in the order by with
@@ -97,7 +98,7 @@
   clause as needed. Returns a pair like `[external-remapping-dimensions updated-query]`."
   [{{:keys [fields order-by source-query]} :query, :as query} :- mbql.s/Query]
   (let [[source-query-remappings query]
-        (if (:query source-query) ;; Only do lifting if source is MBQL query
+        (if (and source-query (not (:native source-query))) ;; Only do lifting if source is MBQL query
           (let [[source-query-remappings source-query] (add-fk-remaps (assoc query :query source-query))]
             [source-query-remappings (assoc-in query [:query :source-query] (:query source-query))])
           [nil query])]
@@ -135,14 +136,13 @@
   ;; TODO:
   ;; Matching by name is brittle and might produce wrong results when there are name clashes
   ;; in the source fields.
-  (let [column-id->column              (merge (u/key-by :id columns)
-                                              (u/key-by :name columns))
+  (let [column-id->column              (u/key-by (some-fn :id :name) columns)
         name->internal-remapped-to-col (u/key-by :remapped_from internal-remap-columns)
         id->remapped-to-dimension      (merge (u/key-by :field_id remapping-dimensions)
                                               (u/key-by :field_name remapping-dimensions))
         id->remapped-from-dimension    (merge (u/key-by :human_readable_field_id remapping-dimensions)
                                               (u/key-by :human_readable_field_name remapping-dimensions))
-        get-any-key                    (fn [m & ks]
+        get-first-key                  (fn [m & ks]
                                          (some-> (m/find-first m ks) m))]
     (for [{:keys [id], column-name :name, :as column} columns]
       (merge
@@ -156,16 +156,16 @@
        ;; an entry noting the name of the Field it gets remapped to
        (when-let [{remapped-to-id :human_readable_field_id
                    remapped-to-name :human_readable_field_name}
-                  (get-any-key id->remapped-to-dimension id column-name)]
-         {:remapped_to (:name (get-any-key column-id->column remapped-to-id remapped-to-name))})
+                  (get-first-key id->remapped-to-dimension id column-name)]
+         {:remapped_to (:name (get-first-key column-id->column remapped-to-id remapped-to-name))})
        ;; if the pre-processing remapping Dimension info contains an entry where this Field's ID is
        ;; `:human_readable_field_id`, add an entry noting the name of the Field it gets remapped from, and use the
        ;; `:display_name` of the Dimension
        (when-let [{dimension-name :name
                    remapped-from-id :field_id
-                   remapped-from-name :field_name} (get-any-key id->remapped-from-dimension id column-name)]
+                   remapped-from-name :field_name} (get-first-key id->remapped-from-dimension id column-name)]
          {:display_name  dimension-name
-          :remapped_from (:name (get-any-key column-id->column remapped-from-id remapped-from-name))})))))
+          :remapped_from (:name (get-first-key column-id->column remapped-from-id remapped-from-name))})))))
 
 (defn- create-remapped-col [col-name remapped-from base-type]
   {:description   nil
@@ -183,14 +183,14 @@
   "Converts `values` to a type compatible with the base_type found for `col`. These values should be directly comparable
   with the values returned from the database for the given `col`."
   [{:keys [base_type] :as col} values]
-  (map (condp #(isa? %2 %1) base_type
-         :type/Decimal    bigdec
-         :type/Float      double
-         :type/BigInteger bigint
-         :type/Integer    int
-         :type/Text       str
-         identity)
-       values))
+  (let [transform (condp #(isa? %2 %1) base_type
+                    :type/Decimal    bigdec
+                    :type/Float      double
+                    :type/BigInteger bigint
+                    :type/Integer    int
+                    :type/Text       str
+                    identity)]
+    (map #(some-> % transform) values)))
 
 (def ^:private InternalDimensionInfo
   {;; index of original column
