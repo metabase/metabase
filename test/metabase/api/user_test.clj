@@ -242,6 +242,24 @@
          ;; clean up after ourselves
          (db/delete! User :email email))))))
 
+;; Test that we can create a new User with a mixed case email and the email is normalized to lower case
+(let [user-name (random-name)
+      email     (str user-name "@metabase.com")
+      cap-email (clojure.string/capitalize email)]
+  (expect
+   (clojure.string/lower-case email)
+   (:email (et/with-fake-inbox
+     (try
+       (tu/boolean-ids-and-timestamps
+        ((mt/user->client :crowberto) :post 200 "user"
+         {:first_name       user-name
+          :last_name        user-name
+          :email            cap-email
+          :login_attributes {:test "value"}}))
+       (finally
+         ;; clean up after ourselves
+         (db/delete! User :email email)))))))
+
 ;; Check that non-superusers are denied access
 (expect
   "You don't have permissions to do that."
@@ -257,6 +275,14 @@
    {:first_name "Something"
     :last_name  "Random"
     :email      (:email (mt/fetch-user :rasta))}))
+
+;; Attempting to create a new user with an email with case mutations of an existing email should fail
+(expect
+  {:errors {:email "Email address already in use."}}
+  ((mt/user->client :crowberto) :post 400 "user"
+   {:first_name "Something"
+    :last_name  "Random"
+    :email      (clojure.string/capitalize (:email (mt/fetch-user :rasta)))}))
 
 ;; Test input validations
 (expect
@@ -428,6 +454,14 @@
             rasta     (mt/fetch-user :rasta)]
         (is (= {:errors {:email "Email address already associated to another user."}}
                ((mt/user->client :crowberto) :put 400 (str "user/" (u/get-id rasta)) (select-keys trashbird [:email]))))))))
+
+(deftest update-existing-email-case-mutation-test
+  (testing "PUT /api/user/:id"
+    (testing "test that updating a user's email by mutating case fails"
+      (let [trashbird         (mt/fetch-user :trashbird)
+            trashbird-mutated (update trashbird :email clojure.string/capitalize)]
+        (is (= {:errors {:email "Email address already associated to another user."}}
+               ((mt/user->client :crowberto) :put 400 (str "user/" (u/get-id trashbird-mutated)) (select-keys trashbird [:email]))))))))
 
 (deftest update-superuser-status-test
   (testing "PUT /api/user/:id"
