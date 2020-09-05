@@ -24,7 +24,7 @@ msgstr "不用，谢谢"
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:42
 msgid "Explore this data"
-msgstr "探索数据"
+msgstr "浏览数据"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseEditForms.jsx:42
 msgid "Select a database type"
@@ -49,7 +49,7 @@ msgstr "保存"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:122
 msgid "To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
-msgstr "为了做一些神奇的事情，Metabase 需要扫描你的数据库。我们将会定期扫描，来保持源数据是最新的。你也可以在周期的扫描之前，手工来控制扫描。"
+msgstr "Metabase 需要扫描你的数据库。我们将会定期扫描，来保持源数据是最新的。你也可以在周期的扫描之前，手工来控制扫描。"
 
 #: frontend/src/metabase/entities/databases/forms.js:290
 msgid "Database syncing"
@@ -116,7 +116,7 @@ msgstr "是否要删除这个数据库？"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:61
 msgid "All saved questions, metrics, and segments that rely on this database will be lost."
-msgstr "所有依赖这个数据库保存的问题，指标，数据段将要丢失。"
+msgstr "所有依赖这个数据库保存的图表，指标，数据段将要丢失。"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:62
 msgid "This cannot be undone."
@@ -338,7 +338,7 @@ msgstr "作废{0}？"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:37
 msgid "Saved questions and other things that depend on this {0} will continue to work, but this {1} will no longer be selectable from the query builder."
-msgstr "保存的问题和依赖于此{0}的其他内容将继续有效，但不再可以从查询构建器中选择此{1}。"
+msgstr "保存的图表和依赖于此{0}的其他内容将继续有效，但不再可以从查询构建器中选择此{1}。"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:38
 msgid "If you're sure you want to retire this {0}, please write a quick explanation of why it's being retired:"
@@ -669,7 +669,7 @@ msgstr "缓存字段值"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:353
 msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
-msgstr "Metabase 通过扫描该字段，以启用仪表盘和问题的多选框筛选。"
+msgstr "Metabase 通过扫描该字段，以启用仪表盘和图表的多选框筛选。"
 
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:14
 msgid "Re-scan this field"
@@ -829,7 +829,7 @@ msgstr "设置"
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:84
 msgid "Metabase can scan the values in this table to enable checkbox filters in dashboards and questions."
-msgstr "Metabase扫描此表中的值以启用仪表板和问题中的复选框过滤器。"
+msgstr "Metabase扫描此表中的值以启用仪表板和图表中的复选框过滤器。"
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:89
 msgid "Re-scan this table"
@@ -1384,7 +1384,7 @@ msgstr "更改已保存！"
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:180
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:139
 msgid "Looks like we ran into some problems"
-msgstr "看起来我们遇到了一些问题"
+msgstr "看起来我们遇到了一些错误"
 
 #: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:19
 msgid "Send test email"
@@ -1600,7 +1600,7 @@ msgstr "输入你从Metabase商店购买的token"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:53
 msgid "Premium embedding lets you disable \"Powered by Metabase\" on your embedded dashboards and questions."
-msgstr "高级嵌入允许您在嵌入式仪表板和问题上禁用“Powered by Metabase”。"
+msgstr "高级嵌入允许您在嵌入式仪表板和图表上禁用“Powered by Metabase”。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:60
 msgid "Buy a token"
@@ -1662,7 +1662,7 @@ msgstr "公共卡片列表"
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:165
 msgid "No questions have been publicly shared yet."
-msgstr "还没有公开分享任何问题。"
+msgstr "还没有公开分享任何图表。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:174
 msgid "Embedded Dashboard Listing"
@@ -1935,7 +1935,7 @@ msgstr "嵌入的仪表板"
 
 #: frontend/src/metabase/admin/settings/selectors.js:315
 msgid "Embedded Questions"
-msgstr "嵌入的问题"
+msgstr "嵌入的图表"
 
 #: frontend/src/metabase/admin/settings/selectors.js:322
 msgid "Caching"
@@ -2220,7 +2220,7 @@ msgstr "这个集合空空如也，什么都没有"
 
 #: frontend/src/metabase/components/CollectionEmptyState.jsx:16
 msgid "You can use collections to organize and group dashboards, questions and pulses for your team or yourself"
-msgstr "您可以使用集合来为您的团队或您自己组织和分组仪表板、问题和定时通知。"
+msgstr "您可以使用集合来为您的团队或您自己组织和分组仪表板、图表和定时通知。"
 
 #: frontend/src/metabase/components/CollectionEmptyState.jsx:28
 msgid "Create another collection"
@@ -2236,7 +2236,7 @@ msgstr "定时通知允许您通过电子邮件或Slack向团队发送最新数�
 
 #: frontend/src/metabase/components/CollectionLanding.jsx:86
 msgid "Questions are a saved look at your data."
-msgstr "问题是对保存的数据查看。"
+msgstr "图表是对保存的数据查看。"
 
 #: frontend/src/metabase/components/CollectionLanding.jsx:286
 msgid "Pins"
@@ -2501,7 +2501,7 @@ msgstr "包括每个选项在你的过滤器中很可能将不会起很大作用
 
 #: frontend/src/metabase/containers/ErrorPages.jsx:26
 msgid "Something's gone wrong"
-msgstr "有些问题发生了"
+msgstr "有些错误发生了"
 
 #: frontend/src/metabase/containers/ErrorPages.jsx:27
 msgid "We've run into an error. You can try refreshing the page, or just go back."
@@ -2587,12 +2587,12 @@ msgstr "仪表盘"
 
 #: frontend/src/metabase/components/ItemTypeFilterBar.jsx:23
 msgid "Questions"
-msgstr "问题"
+msgstr "图表"
 
 #: frontend/src/metabase/components/ItemTypeFilterBar.jsx:28
 #: frontend/src/metabase/routes.jsx:311
 msgid "Pulses"
-msgstr "定时任务"
+msgstr "定时推送"
 
 #: frontend/src/metabase/components/LeftNavPane.jsx:36
 #: frontend/src/metabase/query_builder/components/SidebarHeader.jsx:16
@@ -2820,19 +2820,19 @@ msgstr "替换还是保存为新的？"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:167
 msgid "Replace original question, \"{0}\""
-msgstr "替换原始问题“{0}”"
+msgstr "替换原始图表“{0}”"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:171
 msgid "Save as new question"
-msgstr "保存为新问题"
+msgstr "保存为新图表"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:92
 msgid "First, save your question"
-msgstr "首先，保存您的问题"
+msgstr "首先，保存您的图表"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:93
 msgid "Save question"
-msgstr "保存问题"
+msgstr "保存图表"
 
 #: frontend/src/metabase/containers/SaveQuestionModal.jsx:132
 msgid "What is the name of your card?"
@@ -2888,11 +2888,11 @@ msgstr "正在使用的图表"
 
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:270
 msgid "That question isn't compatible"
-msgstr "那个问题不兼容"
+msgstr "那个图表不兼容"
 
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:309
 msgid "Search for a question"
-msgstr "查找问题"
+msgstr "查找图表"
 
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:343
 msgid "We're not sure if this question is compatible"
@@ -2912,7 +2912,7 @@ msgstr "这个仪表盘看起来是空的"
 
 #: frontend/src/metabase/dashboard/components/Dashboard.jsx:282
 msgid "Add a question to start making it useful!"
-msgstr "添加一个疑问来让它变得有用"
+msgstr "添加一个图表来让它变得有用"
 
 #: frontend/src/metabase/dashboard/components/DashboardActions.jsx:38
 msgid "Daytime mode"
@@ -2937,7 +2937,7 @@ msgstr "保存中"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:220
 msgid "Add a question"
-msgstr "添加一个问题"
+msgstr "添加一个图表"
 
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:223
 msgid "Add a question to this dashboard"
@@ -3032,7 +3032,7 @@ msgstr "刷新于"
 
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:30
 msgid "Remove this question?"
-msgstr "移除这个疑问？"
+msgstr "移除这个图表？"
 
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:74
 msgid "Your dashboard was saved"
@@ -3092,15 +3092,15 @@ msgstr "删除一个关于……的警报"
 
 #: frontend/src/metabase/home/components/Activity.jsx:155
 msgid "saved a question about "
-msgstr "保存一个关于……的疑问"
+msgstr "保存一个关于……的图表"
 
 #: frontend/src/metabase/home/components/Activity.jsx:168
 msgid "saved a question"
-msgstr "存储一个疑问"
+msgstr "存储一个图表"
 
 #: frontend/src/metabase/home/components/Activity.jsx:172
 msgid "deleted a question"
-msgstr "删除一个疑问"
+msgstr "删除一个图表"
 
 #: frontend/src/metabase/home/components/Activity.jsx:175
 msgid "created a dashboard"
@@ -3113,12 +3113,12 @@ msgstr "删除一个仪表盘"
 #: frontend/src/metabase/home/components/Activity.jsx:184
 #: frontend/src/metabase/home/components/Activity.jsx:199
 msgid "added a question to the dashboard - "
-msgstr "添加一个疑问到仪表盘"
+msgstr "添加一个图表到仪表盘"
 
 #: frontend/src/metabase/home/components/Activity.jsx:209
 #: frontend/src/metabase/home/components/Activity.jsx:224
 msgid "removed a question from the dashboard - "
-msgstr "从仪表盘中移除一个问题"
+msgstr "从仪表盘中移除一个图表"
 
 #: frontend/src/metabase/home/components/Activity.jsx:234
 #: frontend/src/metabase/home/components/Activity.jsx:241
@@ -3202,7 +3202,7 @@ msgstr "嗯……无事发生"
 
 #: frontend/src/metabase/home/components/Activity.jsx:535
 msgid "Save a question and get this baby going!"
-msgstr "存储一个问题并让它运行"
+msgstr "存储一个图表并让它运行"
 
 #: frontend/src/metabase/home/components/NewUserOnboardingModal.jsx:19
 msgid "Ask questions and explore"
@@ -3269,7 +3269,7 @@ msgstr "{0}的结果"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:138
 msgid "Pulse"
-msgstr "定时任务"
+msgstr "定时推送"
 
 #: frontend/src/metabase/lib/core.js:8
 msgid "Entity Key"
@@ -4106,7 +4106,7 @@ msgstr "Metabase管理员"
 #: frontend/src/metabase/reference/metrics/MetricQuestions.jsx:36
 #: frontend/src/metabase/reference/segments/SegmentQuestions.jsx:36
 msgid "Ask a question"
-msgstr "创建问题"
+msgstr "创建图表"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:379
 msgid "New dashboard"
@@ -4115,7 +4115,7 @@ msgstr "新仪表盘"
 #: frontend/src/metabase/nav/containers/Navbar.jsx:385
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:129
 msgid "New pulse"
-msgstr "新定时任务"
+msgstr "新定时推送"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:323
 msgid "Reference"
@@ -4144,11 +4144,11 @@ msgstr "自定义"
 #: frontend/src/metabase/query_builder/components/view/QuestionDescription.jsx:50
 #: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:157
 msgid "New question"
-msgstr "新的疑问"
+msgstr "新的图表"
 
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:152
 msgid "Use the simple question builder to see trends, lists of things, or to create your own metrics."
-msgstr "使用简单的疑问创建器来查看趋势、列表或者事物，或者创建你自己的指标。"
+msgstr "使用简单的图表创建器来查看趋势、列表或者事物，或者创建你自己的指标。"
 
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:110
 #: src/metabase/automagic_dashboards/core.clj
@@ -4158,7 +4158,7 @@ msgstr "原生查询"
 
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:111
 msgid "For more complicated questions, you can write your own SQL or native query."
-msgstr "为了回答更多复杂的疑问，你可以写下你自己的SQL语句或者原生查询。"
+msgstr "为了回答更多复杂的图表，你可以写下你自己的SQL语句或者原生查询。"
 
 #: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:242
 msgid "Select a default value…"
@@ -4427,11 +4427,11 @@ msgstr "图表会被添加文件附件"
 
 #: frontend/src/metabase/pulse/components/PulseCardPreview.jsx:127
 msgid "This question won't be included in your Pulse"
-msgstr "这个图表不会包含在你的定时任务中"
+msgstr "这个图表不会包含在你的定时推送中"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:91
 msgid "This pulse will no longer be emailed to {0} {1}"
-msgstr "这个定时任务不再发送给{0}{1}"
+msgstr "这个定时推送不再发送给{0}{1}"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:93
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:375
@@ -4445,15 +4445,15 @@ msgstr "Slack通道{0}将不再接收此定时通知{1}"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:111
 msgid "Channel {0} will no longer receive this pulse {1}"
-msgstr "{0}不会再收到定时任务{1}"
+msgstr "{0}不会再收到定时推送{1}"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:129
 msgid "Edit pulse"
-msgstr "编辑定时任务"
+msgstr "编辑定时推送"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:133
 msgid "What's a Pulse?"
-msgstr "什么是定时任务"
+msgstr "什么是定时推送"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:143
 msgid "Got it"
@@ -4477,7 +4477,7 @@ msgstr "已取消归档"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:184
 msgid "Create pulse"
-msgstr "创建定时任务"
+msgstr "创建定时推送"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:91
 msgid "Attachment"
@@ -4491,19 +4491,19 @@ msgstr "小心"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:106
 msgid "We'll show the first 10 columns and 20 rows of this table in your Pulse. If you email this, we'll add a file attachment with all columns and up to 2,000 rows."
-msgstr "会在你的定时任务展示前20行前10列的表。如果邮件发送，会添加一个2000行所有列的文件附件。"
+msgstr "会在你的定时推送展示前20行前10列的表。如果邮件发送，会添加一个2000行所有列的文件附件。"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:113
 msgid "Raw data questions can only be included as email attachments"
-msgstr "原始数据疑问仅能以邮件附件的形式包含在内"
+msgstr "原始数据图表仅能以邮件附件的形式包含在内"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:120
 msgid "Looks like this pulse is getting big"
-msgstr "似乎这个定时任务正在变大。"
+msgstr "似乎这个定时推送正在变大。"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:121
 msgid "We recommend keeping pulses small and focused to help keep them digestible and useful to the whole team."
-msgstr "推荐精简定时任务，方便整个团队理解和使用。"
+msgstr "推荐精简定时推送，方便整个团队理解和使用。"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:161
 #: frontend/src/metabase/query_builder/components/view/View.jsx:133
@@ -4512,7 +4512,7 @@ msgstr "选择你的数据"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:163
 msgid "Choose questions you'd like to send in this pulse"
-msgstr "挑选你想在这个定时任务里发送的图表。"
+msgstr "挑选你想在这个定时推送里发送的图表。"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:27
 msgid "Emails"
@@ -4552,11 +4552,11 @@ msgstr "发送失败"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:246
 msgid "Didn’t send because the pulse has no results."
-msgstr "未发送，因为定时任务没有结果。"
+msgstr "未发送，因为定时推送没有结果。"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:247
 msgid "Pulse sent"
-msgstr "定时任务已发送。"
+msgstr "定时推送已发送。"
 
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:286
 msgid "{0} needs to be set up by an administrator."
@@ -4572,11 +4572,11 @@ msgstr "将这个定时通知放到哪个集合中？"
 
 #: frontend/src/metabase/pulse/components/PulseEditName.jsx:35
 msgid "Name your pulse"
-msgstr "命名定时任务"
+msgstr "命名定时推送"
 
 #: frontend/src/metabase/pulse/components/PulseEditName.jsx:37
 msgid "Give your pulse a name to help others understand what it's about"
-msgstr "命名定时任务方便其他人理解"
+msgstr "命名定时推送方便其他人理解"
 
 #: frontend/src/metabase/pulse/components/PulseEditName.jsx:49
 msgid "Important metrics"
@@ -4588,7 +4588,7 @@ msgstr "如果没有结果就跳过"
 
 #: frontend/src/metabase/pulse/components/PulseEditSkip.jsx:24
 msgid "Skip a scheduled Pulse if none of its questions have any results"
-msgstr "如果都没有结果，跳过该定时任务"
+msgstr "如果都没有结果，跳过该定时推送"
 
 #: frontend/src/metabase/pulse/components/RecipientPicker.jsx:65
 msgid "Enter email addresses you'd like this data to go to"
@@ -4663,7 +4663,7 @@ msgstr "查看下层的{0}记录"
 
 #: frontend/src/metabase/modes/components/actions/XRayCard.jsx:20
 msgid "X-Ray this question"
-msgstr "透视这个疑问"
+msgstr "透视这个图表"
 
 #: frontend/src/metabase/qb/components/drill/AutomaticDashboardDrill.jsx:32
 msgid "X-ray {0} {1}"
@@ -4914,7 +4914,7 @@ msgstr "结果"
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:681
 msgid "{0} This kind of alert is most useful when your saved question doesn’t {1} return any results, but you want to know when it does."
-msgstr "{0}这种类型的警报是最有效果的，当你存储疑问没有"
+msgstr "{0}这种类型的警报是最有效果的，当你存储图表没有"
 
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:682
 msgid "Tip"
@@ -5049,7 +5049,7 @@ msgstr "没有"
 
 #: frontend/src/metabase/query_builder/components/NativeQueryEditor.jsx:538
 msgid "This question is written in {0}."
-msgstr "这个疑问已经被写入{0}"
+msgstr "这个图表已经被写入{0}"
 
 #: frontend/src/metabase/query_builder/components/NativeQueryEditor.jsx:384
 msgid "Hide Editor"
@@ -5201,11 +5201,11 @@ msgstr "得到答案"
 
 #: frontend/src/metabase/query_builder/components/SavedQuestionIntroModal.jsx:12
 msgid "It's okay to play around with saved questions"
-msgstr "随便看看已经存储的疑问吧"
+msgstr "随便看看已经存储的图表吧"
 
 #: frontend/src/metabase/query_builder/components/SavedQuestionIntroModal.jsx:14
 msgid "You won't make any permanent changes to a saved question unless you click the edit icon in the top-right."
-msgstr "除非您单击右上角的编辑图标，否则您不会对保存的问题进行任何永久性更改。"
+msgstr "除非您单击右上角的编辑图标，否则您不会对保存的图表进行任何永久性更改。"
 
 #: frontend/src/metabase/query_builder/components/SearchBar.jsx:28
 msgid "Search for"
@@ -5217,7 +5217,7 @@ msgstr "高级的……"
 
 #: frontend/src/metabase/query_builder/components/SelectionModule.jsx:167
 msgid "Sorry. Something went wrong."
-msgstr "对不起，出现问题了。"
+msgstr "系统出现了一些错误。"
 
 #: frontend/src/metabase/query_builder/components/TimeGroupingPopover.jsx:40
 msgid "Group time by"
@@ -5225,23 +5225,23 @@ msgstr "时间分组"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:50
 msgid "Your question took too long"
-msgstr "你的疑问花了很长时间"
+msgstr "你的图表花了很长时间"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:51
 msgid "We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know."
-msgstr "并没有及时从数据库里获取结果，因此停止。可以过段时间再尝试，或者问题依旧存在，可以联系管理员。"
+msgstr "并没有及时从数据库里获取结果，因此停止。可以过段时间再尝试，或者图表依旧存在，可以联系管理员。"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:60
 msgid "We're experiencing server issues"
-msgstr "我们碰到了服务器问题"
+msgstr "我们碰到了服务器故障"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:61
 msgid "Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin."
-msgstr "等待一两分钟后，再刷新页面。如果问题依旧存在，请联系管理员。"
+msgstr "等待一两分钟后，再刷新页面。如果错误依旧存在，请联系管理员。"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:95
 msgid "There was a problem with your question"
-msgstr "你的疑问有故障"
+msgstr "你的图表有故障"
 
 #: frontend/src/metabase/query_builder/components/VisualizationError.jsx:96
 msgid "Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query."
@@ -5273,11 +5273,11 @@ msgstr "没有设置描述"
 
 #: frontend/src/metabase/query_builder/components/dataref/DetailPane.jsx:21
 msgid "Use for current question"
-msgstr "为当前疑问使用"
+msgstr "为当前图表使用"
 
 #: frontend/src/metabase/reference/components/UsefulQuestions.jsx:14
 msgid "Potentially useful questions"
-msgstr "有潜在价值的疑问"
+msgstr "有潜在价值的图表"
 
 #: frontend/src/metabase/query_builder/components/dataref/FieldPane.jsx:169
 msgid "Group by {0}"
@@ -5313,12 +5313,12 @@ msgstr "数据参考"
 
 #: frontend/src/metabase/query_builder/components/dataref/MainPane.jsx:13
 msgid "Learn more about your data structure to ask more useful questions"
-msgstr "了解更多关于你的数据结构并提出更多有用的疑问"
+msgstr "了解更多关于你的数据结构并提出更多有用的图表"
 
 #: frontend/src/metabase/query_builder/components/dataref/MetricPane.jsx:65
 #: frontend/src/metabase/query_builder/components/dataref/SegmentPane.jsx:91
 msgid "Could not find the table metadata prior to creating a new question"
-msgstr "在创建一个新的疑问之前不能找到表单元数据"
+msgstr "在创建一个新的图表之前不能找到表单元数据"
 
 #: frontend/src/metabase/query_builder/components/dataref/MetricPane.jsx:87
 msgid "See {0}"
@@ -5502,7 +5502,7 @@ msgstr "原生查询中的变量允许使用筛选组件或URL参数来动态替
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:136
 msgid "{0} creates a variable in this SQL template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the SQL template."
-msgstr "{0}会在此SQL模板中创建一个名为“variable_name”的变量。该变量可以在侧边栏中选择类型，来改变变量填充的效果。除了“字段筛选条件”之外的所有变量类型都将会在此问题上面自动生成对应的过滤器窗口小部件;字段筛选条件可以设置为是否必填项。填充此过滤器窗口小部件时，该值将替换SQL模板中对应的变量。"
+msgstr "{0}会在此SQL模板中创建一个名为“variable_name”的变量。该变量可以在侧边栏中选择类型，来改变变量填充的效果。除了“字段筛选条件”之外的所有变量类型都将会在此图表上面自动生成对应的过滤器窗口小部件;字段筛选条件可以设置为是否必填项。填充此过滤器窗口小部件时，该值将替换SQL模板中对应的变量。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:259
 msgid "Field Filters"
@@ -5514,7 +5514,7 @@ msgstr "为变量提供“字段过滤器”类型将允许您链接SQL卡到仪
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:264
 msgid "When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a \"WHERE\" clause."
-msgstr "添加“字段过滤器”变量时，您需要将其映射到特定字段。 然后，您可以选择在问题上显示过滤组件，但即使不这样做，现在可以在将此问题添加到仪表板时将“字段过滤器”变量映射到仪表盘过滤器。 字段过滤器应在“WHERE”子句中使用。"
+msgstr "添加“字段过滤器”变量时，您需要将其映射到特定字段。 然后，您可以选择在图表上显示过滤组件，但即使不这样做，现在可以在将此图表添加到仪表板时将“字段过滤器”变量映射到仪表盘过滤器。 字段过滤器应在“WHERE”子句中使用。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:271
 msgid "Optional Clauses"
@@ -5574,15 +5574,15 @@ msgstr "归档图表？"
 
 #: frontend/src/metabase/query_builder/containers/ArchiveQuestionModal.jsx:20
 msgid "This question will be removed from any dashboards or pulses using it."
-msgstr "这个图表会从已引用的仪表盘或定时任务中移除"
+msgstr "这个图表会从已引用的仪表盘或定时推送中移除"
 
 #: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:164
 msgid "Question"
-msgstr "疑问"
+msgstr "图表"
 
 #: frontend/src/metabase/dashboard/components/AddToDashSelectQuestionModal.jsx:31
 msgid "Pick a question to add"
-msgstr "选择一个疑问来添加"
+msgstr "选择一个图表来添加"
 
 #: frontend/src/metabase/reference/components/EditHeader.jsx:19
 msgid "You are editing this page"
@@ -5833,14 +5833,14 @@ msgstr "当在这个数据库中添加表单时，它们将会出现在这里"
 
 #: frontend/src/metabase/reference/databases/TableQuestions.jsx:33
 msgid "Questions about this table will appear here as they're added"
-msgstr "当关于这个表单的疑问被添加时，它们将会出现在这里"
+msgstr "当关于这个表单的图表被添加时，它们将会出现在这里"
 
 #: frontend/src/metabase/reference/databases/TableQuestions.jsx:73
 #: frontend/src/metabase/reference/metrics/MetricQuestions.jsx:77
 #: frontend/src/metabase/reference/metrics/MetricSidebar.jsx:37
 #: frontend/src/metabase/reference/segments/SegmentQuestions.jsx:76
 msgid "Questions about {0}"
-msgstr "关于{0}的疑问"
+msgstr "关于{0}的图表"
 
 #: frontend/src/metabase/reference/databases/TableQuestions.jsx:95
 #: frontend/src/metabase/reference/metrics/MetricQuestions.jsx:99
@@ -5854,7 +5854,7 @@ msgstr "在这个表中的字段"
 
 #: frontend/src/metabase/reference/databases/TableSidebar.jsx:46
 msgid "Questions about this table"
-msgstr "关于这个表的疑问"
+msgstr "关于这个表的图表"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:158
 msgid "Help your team get started with your data."
@@ -5926,7 +5926,7 @@ msgstr "探索我们的数据"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:322
 msgid "Have questions?"
-msgstr "有问题吗？"
+msgstr "有什么问题吗？"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuide.jsx:327
 msgid "Contact {0}"
@@ -6089,7 +6089,7 @@ msgstr "学习如何创建区段"
 
 #: frontend/src/metabase/reference/segments/SegmentQuestions.jsx:34
 msgid "Questions about this segment will appear here as they're added"
-msgstr "当它们被添加时，关于这个区段的疑问将会出现在这里"
+msgstr "当它们被添加时，关于这个区段的图表将会出现在这里"
 
 #: frontend/src/metabase/reference/segments/SegmentRevisions.jsx:28
 msgid "There are no revisions for this segment"
@@ -6101,7 +6101,7 @@ msgstr "在这个区段中的字段"
 
 #: frontend/src/metabase/reference/segments/SegmentSidebar.jsx:43
 msgid "Questions about this segment"
-msgstr "有关这个区段的疑问"
+msgstr "有关这个区段的图表"
 
 #: frontend/src/metabase/reference/segments/SegmentSidebar.jsx:50
 msgid "X-ray this segment"
@@ -6124,7 +6124,7 @@ msgstr "仪表盘"
 
 #: frontend/src/metabase/routes.jsx:227
 msgid "New Question"
-msgstr "新疑问"
+msgstr "新图表"
 
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:127
 msgid "Select the type of Database you use"
@@ -6311,7 +6311,7 @@ msgstr "欢迎使用报表设计器！"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:22
 msgid "The Query Builder lets you assemble questions (or \"queries\") to ask about your data."
-msgstr "查询创建器允许你收集问题（或者“查询”）来向你的数据提问。"
+msgstr "查询创建器允许你收集图表（或者“查询”）来向你的数据提问。"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:26
 msgid "Tell me more"
@@ -6319,7 +6319,7 @@ msgstr "告诉我更多"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:43
 msgid "Start by picking the table with the data that you have a question about."
-msgstr "选择你有相关疑问的数据表单来开始吧"
+msgstr "选择你有相关图表的数据表单来开始吧"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:45
 msgid "Go ahead and select the \"Orders\" table from the dropdown menu."
@@ -6395,11 +6395,11 @@ msgstr "感谢"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:235
 msgid "Save Your Questions"
-msgstr "保存你的疑问"
+msgstr "保存你的图表"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:237
 msgid "By the way, you can save your questions so you can refer to them later. Saved Questions can also be put into dashboards or Pulses."
-msgstr "环比，你可以存储你的疑问，你以后可以引用他们。已存储的疑问统一能够被放进仪表盘或者波动中。"
+msgstr "顺便说一句，你可以存储你的图表，你以后可以引用他们。已存储的图表统一能够被放进仪表盘或者波动中。"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:241
 msgid "Sounds good"
@@ -7343,7 +7343,7 @@ msgstr "与存储的密码不匹配"
 
 #: src/metabase/api/session.clj
 msgid "Problem connecting to LDAP server, will fallback to local authentication {0}"
-msgstr "连接到LDAP服务器时出现问题，将会完全返回本地授权验证。"
+msgstr "连接到LDAP服务器时出故障，将会完全返回本地授权验证。"
 
 #: src/metabase/api/session.clj
 msgid "Invalid reset token"
@@ -7399,7 +7399,7 @@ msgstr "设置Slack凭证"
 
 #: src/metabase/api/setup.clj
 msgid "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with MetaBot."
-msgstr "你的团队是否使用Slack？如果使用，您可以通过定时通知发送自动更新并通过MetaBot创建问题。"
+msgstr "你的团队是否使用Slack？如果使用，您可以通过定时通知发送自动更新并通过MetaBot创建图表。"
 
 #: src/metabase/api/setup.clj
 msgid "Invite team members"
@@ -7423,11 +7423,11 @@ msgstr "如果你的数据包含技术性的或者相关的信息，你可以隐
 
 #: src/metabase/api/setup.clj
 msgid "Organize questions"
-msgstr "组织疑问"
+msgstr "组织图表"
 
 #: src/metabase/api/setup.clj
 msgid "Have a lot of saved questions in {0}? Create collections to help manage them and add context."
-msgstr "在{0}中有很多已保存的问题？创建集合以帮助管理它们并添加上下文。"
+msgstr "在{0}中有很多已保存的图表？创建集合以帮助管理它们并添加上下文。"
 
 #. This is the very first log message that will get printed.
 #. It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
@@ -7651,7 +7651,7 @@ msgstr "字段 {0}"
 
 #: src/metabase/automagic_dashboards/core.clj
 msgid "\"{0}\" question"
-msgstr "问题 “{0}”"
+msgstr "图表 “{0}”"
 
 #: src/metabase/automagic_dashboards/comparison.clj
 #: src/metabase/automagic_dashboards/core.clj
@@ -8117,7 +8117,7 @@ msgstr "从 https://api.slack.com/web#authentication 获取的Slack API的不记
 
 #: src/metabase/metabot.clj
 msgid "Enable MetaBot, which lets you search for and view your saved questions directly via Slack."
-msgstr "启用MetaBot，可让您直接通过Slack搜索和查看已保存的问题。"
+msgstr "启用MetaBot，可让您直接通过Slack搜索和查看已保存的图表。"
 
 #: src/metabase/metabot/instance.clj
 msgid "Last MetaBot checkin was {0} ago."
@@ -8221,7 +8221,7 @@ msgstr "查看{0}获取更多信息。"
 
 #: src/metabase/models/card.clj
 msgid "Cannot save Question: source query has circular references."
-msgstr "不能保存疑问：源查询拥有循环引用。"
+msgstr "不能保存图表：源查询拥有循环引用。"
 
 #: src/metabase/models/card.clj src/metabase/models/query/permissions.clj
 #: src/metabase/query_processor/middleware/fetch_source_query.clj
@@ -8514,7 +8514,7 @@ msgstr "这个只应用于邮箱、趋势及其他。用户的浏览器将指定
 
 #: src/metabase/public_settings.clj
 msgid "The email address users should be referred to if they encounter a problem."
-msgstr "如果碰到问题，可以使用用户的邮件地址"
+msgstr "如果碰问题，可以使用用户的邮件地址"
 
 #: src/metabase/public_settings.clj
 msgid "Enable the collection of anonymous usage data in order to help Metabase improve."
@@ -8526,7 +8526,7 @@ msgstr "采用可视化地图的过程中，要使用地图服务器的url模板
 
 #: src/metabase/public_settings.clj
 msgid "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?"
-msgstr "启用管理员来为疑问和仪表盘创建公开的可浏览链接（并且可嵌入的iframes框架）吗？"
+msgstr "启用管理员来为图表和仪表盘创建公开的可浏览链接（并且可嵌入的iframes框架）吗？"
 
 #: src/metabase/public_settings.clj
 msgid "Allow admins to securely embed questions and dashboards within other applications?"
@@ -8534,7 +8534,7 @@ msgstr "允许管理员在其他应用程序中安全地嵌入报表和仪表板
 
 #: src/metabase/public_settings.clj
 msgid "Allow using a saved question as the source for other queries?"
-msgstr "允许使用一个已经存储的疑问作为"
+msgstr "允许使用一个已经存储的图表作为"
 
 #: src/metabase/public_settings.clj
 msgid "Enabling caching will save the results of queries that take a long time to run."
@@ -8550,7 +8550,7 @@ msgstr "保留任何缓存查询结果的绝对最长时间（以秒为单位）
 
 #: src/metabase/public_settings.clj
 msgid "Metabase will cache all saved questions with an average query execution time longer than this many seconds:"
-msgstr "Metabase会捕捉所有平均查询时间大于这么多秒的已保存问题"
+msgstr "Metabase会捕捉所有平均查询时间大于这么多秒的已保存图表"
 
 #: src/metabase/public_settings.clj
 msgid "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here."
@@ -8612,7 +8612,7 @@ msgstr "无法将结果与警报目标进行比较"
 
 #: src/metabase/pulse.clj
 msgid "Question ID is ''{0}'' with visualization settings ''{1}''"
-msgstr "疑问ID是“{0}”，可视化设置是“{1}”"
+msgstr "图表ID是“{0}”，可视化设置是“{1}”"
 
 #: src/metabase/pulse.clj
 msgid "Unrecognized alert with condition ''{0}''"
@@ -8995,11 +8995,11 @@ msgstr "选择{0}"
 
 #: frontend/src/metabase/containers/Overworld.jsx:234
 msgid "Save dashboards, questions, and collections in \"{0}\""
-msgstr "在“{0}”中保存仪表板，问题和集合"
+msgstr "在“{0}”中保存仪表板，图表和集合"
 
 #: frontend/src/metabase/containers/Overworld.jsx:235
 msgid "Access dashboards, questions, and collections in \"{0}\""
-msgstr "访问“{0}”中的仪表板，问题和集合"
+msgstr "访问“{0}”中的仪表板，图表和集合"
 
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp.jsx:223
 msgid "Compare"
@@ -9310,7 +9310,7 @@ msgstr "根据你的数据试试这些透视。"
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:38
 msgid "There was a problem displaying this chart."
-msgstr "显示这个图表有一个问题。"
+msgstr "显示图表出错。"
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:39
 msgid "Sorry, you don't have permission to see this card."
@@ -9322,7 +9322,7 @@ msgstr "只是提个醒："
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:63
 msgid "{0} without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, but any questions you've saved using this data will be lost."
-msgstr "{0}没有样本数据集，查询创建器教程将不会工作。你可以总是重新存储样本数据集，但是任何你已经保存的问题将会丢失。"
+msgstr "{0}没有样本数据集，查询创建器教程将不会工作。你可以总是重新存储样本数据集，但是任何你已经保存的图表将会丢失。"
 
 #: frontend/src/metabase/modes/components/drill/AutomaticDashboardDrill.jsx:33
 msgid "X-ray"
@@ -10912,7 +10912,7 @@ msgstr "每产品分类销售"
 
 #: resources/automagic_dashboards/question/GenericQuestion.yaml
 msgid "A closer look at the metrics and dimensions used in this saved question."
-msgstr "仔细查看此已保存问题中使用的指标和维度。"
+msgstr "仔细查看此已保存图表中使用的指标和维度。"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[this.short-name]] per [[GenericCategoryMedium]]"
@@ -11242,7 +11242,7 @@ msgstr "看起来似乎Metabase不是很适合您使用。"
 
 #: src/metabase/email/messages.clj
 msgid "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
-msgstr "为了帮助Metabase团队改进产品，请参与完成包含5个简单问题的调查，谢谢。"
+msgstr "为了帮助Metabase团队改进产品，请参与完成包含5个简单的调查，谢谢。"
 
 #: src/metabase/email/messages.clj
 msgid "We hope you''ve been enjoying Metabase."
@@ -11250,7 +11250,7 @@ msgstr "我们希望您能对Metabase满意。"
 
 #: src/metabase/email/messages.clj
 msgid "Would you mind taking a fast 6 question survey to tell us how it’s going?"
-msgstr "您是否愿意帮助我们来快速填写一个有着6个问题的调查问卷？"
+msgstr "您是否愿意帮助我们来快速填写一个有着6个题的调查问卷？"
 
 #: src/metabase/email/messages.clj
 msgid "{0} created a Metabase account"
@@ -11575,7 +11575,7 @@ msgstr " 不能连接到 Metabase {0} 数据库。"
 
 #: src/metabase/db/migrations.clj
 msgid "Error adding legacy SQL directive to BigQuery saved Question"
-msgstr "将遗留SQL指令添加到BigQuery保存问题时出错"
+msgstr "将遗留SQL指令添加到BigQuery保存图表时出错"
 
 #: src/metabase/driver.clj
 msgid "Failed to notify {0} Database {1} updated"
@@ -11919,7 +11919,7 @@ msgstr "初始化任务 {0} 异常"
 
 #: src/metabase/task/follow_up_emails.clj
 msgid "Problem sending abandonment email"
-msgstr "发送放弃邮件的问题"
+msgstr "发送邮件出错"
 
 #: src/metabase/task/send_anonymous_stats.clj
 msgid "Sending anonymous usage stats."
@@ -11931,15 +11931,15 @@ msgstr "发送匿名使用统计信息失败"
 
 #: src/metabase/task/send_pulses.clj
 msgid "Error sending Pulse {0}"
-msgstr "发送定时任务报告失败"
+msgstr "发送定时推送报告失败"
 
 #: src/metabase/task/send_pulses.clj
 msgid "Sending scheduled pulses..."
-msgstr "正在发送定时任务报告..."
+msgstr "正在发送定时推送报告..."
 
 #: src/metabase/task/send_pulses.clj
 msgid "SendPulses task failed"
-msgstr "发送定时任务失败"
+msgstr "发送定时推送失败"
 
 #: src/metabase/task/sync_databases.clj
 msgid "Failed to scheduler tasks for Database {0}"
@@ -12569,11 +12569,11 @@ msgstr "查看原生查询"
 
 #: frontend/src/metabase/query_builder/components/view/NativeQueryButton.jsx:17
 msgid "Native query for this question"
-msgstr "这个问题的原生查询"
+msgstr "这个图表的原生查询"
 
 #: frontend/src/metabase/query_builder/components/view/NativeQueryButton.jsx:18
 msgid "Convert this question to a native query"
-msgstr "将这个问题转换为原生查询"
+msgstr "将这个图表转换为原生查询"
 
 #: frontend/src/metabase/query_builder/components/view/NativeQueryButton.jsx:22
 msgid "SQL for this question"
@@ -12841,11 +12841,11 @@ msgstr "其它的结果被放在附件中"
 
 #: src/metabase/pulse/render/body.clj
 msgid "This question has been included as a file attachment"
-msgstr "这个问题包含在附件中"
+msgstr "这个图表包含在附件中"
 
 #: src/metabase/pulse/render/body.clj
 msgid "We were unable to display this Pulse."
-msgstr "我们无法展示这个定时任务"
+msgstr "我们无法展示这个定时推送"
 
 #: src/metabase/pulse/render/body.clj
 msgid "Please view this card in Metabase."
@@ -13157,7 +13157,7 @@ msgstr "在完成Google身份验证之前，该窗口已关闭"
 
 #: frontend/src/metabase/auth/components/GoogleButton.jsx:51
 msgid "There was an issue signing in with Google. Pleast contact an administrator."
-msgstr "使用Google登录时出现问题。 请与管理员联系。"
+msgstr "使用Google登录时出现错误。 请与管理员联系。"
 
 #: frontend/src/metabase/plugins/builtin/auth/password.js:9
 msgid "Sign in with email"
@@ -13233,7 +13233,7 @@ msgstr "不包含"
 
 #: frontend/src/metabase/lib/core.js:304
 msgid "This field won't be visible or selectable in questions created with the GUI interfaces. It will still be accessible in SQL/native queries."
-msgstr "在使用GUI界面创建的问题中，该字段将不可见或不可选择。 在SQL /本地查询中仍然可以访问。"
+msgstr "在使用GUI界面创建的图表中，该字段将不可见或不可选择。 在SQL /本地查询中仍然可以访问。"
 
 #: frontend/src/metabase/lib/schema_metadata.js:512
 msgid "Cumulative sum"
@@ -13277,7 +13277,7 @@ msgstr "您的结果将会在这出现"
 
 #: frontend/src/metabase/query_builder/components/SavedQuestionIntroModal.jsx:16
 msgid "You won't make any permanent changes to a saved question unless you click Save and choose to replace the original question."
-msgstr "除非您单击“保存”并选择替换原始问题，否则您不会对已保存的问题进行任何更改。"
+msgstr "除非您单击“保存”并选择替换原始图表，否则您不会对已保存的图表进行任何更改。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:200
 msgid "There aren't any filter widgets for this type of field yet."
@@ -13641,7 +13641,7 @@ msgstr "提交错误报告"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:119
 msgid "Create a GitHub issue (includes the diagnostic info below)"
-msgstr "建立一个Github问题 （包括下面的诊断信息）"
+msgstr "建立一个Github issue （包括下面的诊断信息）"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:127
 msgid "Please include these details in support requests. Thank you!"
@@ -13706,7 +13706,7 @@ msgstr "这是一个轻量级的过程，用于检查对该数据库架构的更
 
 #: frontend/src/metabase/entities/databases/forms.js:299
 msgid "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
-msgstr "Metabase可以扫描此数据库中每个字段中存在的值，以启用仪表板和问题中的复选框过滤器。这可能会占用一些资源，特别是如果您的数据库很大。"
+msgstr "Metabase可以扫描此数据库中每个字段中存在的值，以启用仪表板和图表中的复选框过滤器。这可能会占用一些资源，特别是如果您的数据库很大。"
 
 #: frontend/src/metabase/entities/questions.js:95
 msgid "Collection"
@@ -14257,19 +14257,19 @@ msgstr "至："
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:39
 msgid "This question can't be used because it's based on a different database."
-msgstr "由于该问题基于其他数据库，因此无法使用。"
+msgstr "由于该图表基于其他数据库，因此无法使用。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:43
 msgid "Couldn't find a saved question with that ID number."
-msgstr "找不到具有该ID号的已保存问题。"
+msgstr "找不到具有该ID号的已保存图表。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:54
 msgid "Pick a saved question"
-msgstr "选择一个已保存的问题"
+msgstr "选择一个已保存的图表"
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:56
 msgid "Pick a different question"
-msgstr "选择一个不同的问题"
+msgstr "选择一个不同的图表"
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:61
 msgid "Loading…"
@@ -14281,7 +14281,7 @@ msgstr "题 ＃…"
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:80
 msgid "Question #{0}"
-msgstr "问题＃{0}"
+msgstr "图表＃{0}"
 
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:114
 msgid "Last edited {0}"
@@ -14289,11 +14289,11 @@ msgstr "上次编辑的{0}"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:250
 msgid "{0} creates a variable in this query template called \"variable_name\". Variables can be given types in the side panel, which changes their behavior. All variable types other than \"Field Filter\" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template."
-msgstr "{0}在此查询模板中创建一个名为“ variable_name”的变量。可以在侧面板中为变量指定类型，从而更改其行为。除“字段过滤器”以外的所有变量类型都将自动导致将过滤器小部件放置在此问题上；对于字段过滤器，这是可选的。填写此过滤器小部件后，该值将替换查询模板中的变量。"
+msgstr "{0}在此查询模板中创建一个名为“ variable_name”的变量。可以在侧面板中为变量指定类型，从而更改其行为。除“字段过滤器”以外的所有变量类型都将自动导致将过滤器小部件放置在此图表上；对于字段过滤器，这是可选的。填写此过滤器小部件后，该值将替换查询模板中的变量。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:261
 msgid "Giving a variable the \"Field Filter\" type allows you to link questions to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
-msgstr "通过为变量指定“字段过滤器”类型，您可以将问题链接到仪表板过滤器小部件，或在SQL问题上使用更多类型的过滤器小部件。在现有列上添加过滤器时，“字段过滤器”变量将插入与GUI查询构建器生成的SQL相似的SQL。"
+msgstr "通过为变量指定“字段过滤器”类型，您可以将图表链接到仪表板过滤器小部件，或在SQL图表上使用更多类型的过滤器小部件。在现有列上添加过滤器时，“字段过滤器”变量将插入与GUI查询构建器生成的SQL相似的SQL。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:130
 msgid "Variable name"
@@ -14448,7 +14448,7 @@ msgstr "不知道如何解析日期参数“ {0}”-无效格式"
 
 #: src/metabase/driver/common/parameters/values.clj
 msgid "The sub-query from referenced question #{0} failed with the following error: {1}"
-msgstr "引用问题＃{0}的子查询失败，出现以下错误：{1}"
+msgstr "引用图表＃{0}的子查询失败，出现以下错误：{1}"
 
 #: src/metabase/driver/mysql.clj
 msgid "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
@@ -14634,7 +14634,7 @@ msgstr "无法解析驱动程序进行查询"
 
 #: src/metabase/query_processor/middleware/resolve_referenced.clj
 msgid "Referenced question #{0} could not be found"
-msgstr "找不到参考问题＃{0}"
+msgstr "找不到参考图表＃{0}"
 
 #: src/metabase/query_processor/middleware/resolve_referenced.clj
 msgid "Referenced query is from a different database"
@@ -14646,7 +14646,7 @@ msgstr "该查询具有循环引用子查询。 "
 
 #: src/metabase/query_processor/middleware/resolve_referenced.clj
 msgid "These questions seem to be part of the problem: \"{0}\" and \"{1}\"."
-msgstr "这些问题似乎是问题的一部分：“ {0}”和“ {1}”。"
+msgstr "这些图表好像出错了：“ {0}”和“ {1}”。"
 
 #: src/metabase/query_processor/middleware/results_metadata.clj
 msgid "Error recording results metadata for query"
@@ -14893,7 +14893,7 @@ msgstr "显示该系列的值"
 
 #: src/metabase/api/card.clj
 msgid "Question''s average execution duration is {0}; using ''magic'' TTL of {1}"
-msgstr "问题的平均执行持续时间为{0}；使用{1}的“魔术” TTL"
+msgstr "图表的平均执行持续时间为{0}；使用{1}的“魔术” TTL"
 
 #: src/metabase/api/native_query_snippet.clj
 msgid "A snippet with that name already exists. Please pick a different name."
@@ -15057,7 +15057,7 @@ msgstr "注册字体时出错：Metabase无法发送Pulse。"
 
 #: src/metabase/pulse/render/png.clj
 msgid "This is a known issue with certain JVMs. See {0} and for more details."
-msgstr "这是某些JVM的已知问题。有关更多详细信息，请参见{0}。"
+msgstr "这是某些JVM的已知错误。有关更多详细信息，请参见{0}。"
 
 #: src/metabase/pulse/render/png.clj
 msgid "Error rendering Pulse"
