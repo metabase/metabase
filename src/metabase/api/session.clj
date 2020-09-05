@@ -87,7 +87,7 @@
 (s/defn ^:private email-login :- (s/maybe UUID)
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username password]
-  (when-let [user (db/select-one [User :id :password_salt :password :last_login], :email username, :is_active true)]
+  (when-let [user (db/select-one [User :id :password_salt :password :last_login], :%lower.email (u/lower-case-en username), :is_active true)]
     (when (pass/verify-password password (:password_salt user) (:password user))
       (create-session! :password user))))
 
@@ -179,7 +179,7 @@
     (throttle-check (forgot-password-throttlers :ip-address) source-address)
     (throttle-check (forgot-password-throttlers :email)      email)
     (when-let [{user-id :id, google-auth? :google_auth} (db/select-one [User :id :google_auth]
-                                                                       :email email, :is_active true)]
+                                                                       :%lower.email (u/lower-case-en email), :is_active true)]
       (let [reset-token        (user/set-password-reset-token! user-id)
             password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
         (email/send-password-reset-email! email google-auth? server-name password-reset-url)
@@ -308,7 +308,7 @@
 
 (s/defn ^:private google-auth-fetch-or-create-user! :- (s/maybe UUID)
   [first-name last-name email]
-  (when-let [user (or (db/select-one [User :id :last_login] :email email)
+  (when-let [user (or (db/select-one [User :id :last_login] :%lower.email (u/lower-case-en email))
                       (google-auth-create-new-user! {:first_name first-name
                                                      :last_name  last-name
                                                      :email      email}))]

@@ -219,7 +219,7 @@
 ;; ## POST /api/user
 ;; Test that we can create a new User
 (let [user-name (random-name)
-      email     (str user-name "@metabase.com")]
+      email     (tu/random-email)]
   (expect
    (merge user-defaults
           (merge
@@ -244,17 +244,16 @@
 
 ;; Test that we can create a new User with a mixed case email and the email is normalized to lower case
 (let [user-name (random-name)
-      email     (str user-name "@metabase.com")
-      cap-email (clojure.string/capitalize email)]
+      email     (tu/random-email)]
   (expect
-   (clojure.string/lower-case email)
+   email
    (:email (et/with-fake-inbox
      (try
        (tu/boolean-ids-and-timestamps
         ((mt/user->client :crowberto) :post 200 "user"
          {:first_name       user-name
           :last_name        user-name
-          :email            cap-email
+          :email            (u/upper-case-en email)
           :login_attributes {:test "value"}}))
        (finally
          ;; clean up after ourselves
@@ -282,7 +281,7 @@
   ((mt/user->client :crowberto) :post 400 "user"
    {:first_name "Something"
     :last_name  "Random"
-    :email      (clojure.string/capitalize (:email (mt/fetch-user :rasta)))}))
+    :email      (u/upper-case-en (:email (mt/fetch-user :rasta)))}))
 
 ;; Test input validations
 (expect
@@ -342,12 +341,12 @@
         :last_name  "Era"
         :email      email
         :group_ids  [(u/get-id group)]})
-      (db/exists? User :email email))))
+      (db/exists? User :%lower.email (u/lower-case-en email)))))
 
 (defn- superuser-and-admin-pgm-info [email]
   {:is-superuser? (db/select-one-field :is_superuser User :email email)
    :pgm-exists?   (db/exists? PermissionsGroupMembership
-                    :user_id  (db/select-one-id User :email email)
+                    :user_id  (db/select-one-id User :%lower.email (u/lower-case-en email))
                     :group_id (u/get-id (group/admin)))})
 
 ;; We should be able to put someone in the Admin group when we create them by including the admin group in group_ids
@@ -459,9 +458,9 @@
   (testing "PUT /api/user/:id"
     (testing "test that updating a user's email by mutating case fails"
       (let [trashbird         (mt/fetch-user :trashbird)
-            trashbird-mutated (update trashbird :email clojure.string/capitalize)]
+            trashbird-mutated (update trashbird :email u/upper-case-en)]
         (is (= {:errors {:email "Email address already associated to another user."}}
-               ((mt/user->client :crowberto) :put 400 (str "user/" (u/get-id trashbird-mutated)) (select-keys trashbird [:email]))))))))
+               ((mt/user->client :crowberto) :put 400 (str "user/" (u/get-id trashbird)) (select-keys trashbird-mutated [:email]))))))))
 
 (deftest update-superuser-status-test
   (testing "PUT /api/user/:id"
@@ -703,12 +702,12 @@
 (defn- user-can-reset-password? [superuser?]
   (mt/with-temp User [user {:password "def", :is_superuser (boolean superuser?)}]
     (let [creds           {:username (:email user), :password "def"}
-          hashed-password (db/select-one-field :password User, :email (:email user))]
+          hashed-password (db/select-one-field :password User, :%lower.email (u/lower-case-en (:email user)))]
       ;; use API to reset the users password
       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
                                                                         :old_password "def"})
       ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
-      (not= hashed-password (db/select-one-field :password User, :email (:email user))))))
+      (not= hashed-password (db/select-one-field :password User, :%lower.email (u/lower-case-en (:email user)))))))
 
 (deftest can-reset-password-test
   (testing "PUT /api/user/:id/password"

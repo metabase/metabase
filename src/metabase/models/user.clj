@@ -47,6 +47,8 @@
      user
      {:password_salt salt
       :password      (creds/hash-bcrypt (str salt password))}
+     ;; lower-case the email before saving
+     {:email (u/lower-case-en email)}
      ;; if there's a reset token encrypt that as well
      (when reset_token
        {:reset_token (creds/hash-bcrypt reset_token)})
@@ -96,7 +98,8 @@
   ;; If we're setting the reset_token then encrypt it before it goes into the DB
   (cond-> user
     reset_token (update :reset_token creds/hash-bcrypt)
-    locale      (update :locale i18n/normalized-locale-string)))
+    locale      (update :locale i18n/normalized-locale-string)
+    email       (update :email u/lower-case-en)))
 
 (defn add-common-name
   "Add a `:common_name` key to `user` by combining their first and last names."

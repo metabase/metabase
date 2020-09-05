@@ -2,7 +2,9 @@
   "Tests for /api/session"
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
-            [clojure.test :refer :all]
+            [clojure
+             [string :as str]
+             [test :refer :all]]
             [metabase
              [email-test :as et]
              [http-client :as http-client]
@@ -43,7 +45,7 @@
       (is (schema= SessionResponse
                    (mt/client :post 200 "session" (mt/user->credentials :rasta)))))
     (testing "Test that we can login with email of mixed case"
-      (let [creds (update (mt/user->credentials :rasta) :username clojure.string/capitalize)]
+      (let [creds (update (mt/user->credentials :rasta) :username u/upper-case-en)]
         (is (schema= SessionResponse
                      (mt/client :post 200 "session" creds)))))))
 

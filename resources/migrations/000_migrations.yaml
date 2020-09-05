@@ -7653,3 +7653,72 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_view_log_ref_user_id
             onDelete: CASCADE
+
+# these group of changesets allow for the use of lowercasing emails (GH issue 3047) 
+#  - changeSet:
+#      id: 268
+#      author: rlotun
+#      comment: Added 0.37.0   # drop unique constraint on email
+#      changes:
+#        - dropUniqueConstraint:
+#            columnDataType: varchar(254)
+#            constraintName: email
+#            tableName: core_user
+
+#   - changeSet:
+#      id: 269
+#      author: rlotun
+#      comment: Added 0.37.0 # drop index on email
+#      changes:
+#        - dropIndex:
+#          columnDataType: varchar(254)
+#          indexName: email
+#          columnName: lower(email)
+#          tableName: metabase_user
+
+  - changeSet:
+      id: 270
+      author: rlotun
+      comment: Added 0.37.0  # set email to lower email
+      changes:
+        - sql :
+          sql : update core_user set email = lower(email)
+
+  - changeSet:
+      id: 271
+      author: rlotun
+      comment: Added 0.37.0 # PG and H2 only - convert column to citext / VARCHAR IGNORECASE=TRUE (?)
+      changes:
+        - modifyDataType:
+            dbms: h2
+            tableName: core_user
+            columnName: email
+            newDataType: VARCHAR_IGNORECASE(254)
+
+#        - modifyDataType:
+#            dbms: postgresql
+#            tableName: core_user
+#            columnName: email
+#            newDataType: CITEXT
+#- changeSet:
+#      id: 272
+#      author: rlotun
+#      comment: Added 0.37.0  # create index on lower(email)
+#      changes:
+#        - createIndex:
+#            columns:
+#              - column:
+#                name: lower(email)
+#                type: varchar(254)
+#            tableName: metabase_user
+#            indexName: email
+
+  - changeSet:
+      id: 273
+      author: rlotun
+      comment: Added 0.37.0  # add unique constraint on lower(email)
+      changes:
+        - addUniqueConstraint:
+            columnNames: email
+            constraintName: idx_unique_email
+            tableName: core_user
