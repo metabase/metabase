@@ -140,7 +140,9 @@
         id->remapped-to-dimension      (merge (u/key-by :field_id remapping-dimensions)
                                               (u/key-by :field_name remapping-dimensions))
         id->remapped-from-dimension    (merge (u/key-by :human_readable_field_id remapping-dimensions)
-                                              (u/key-by :human_readable_field_name remapping-dimensions))]
+                                              (u/key-by :human_readable_field_name remapping-dimensions))
+        get-first-key                  (fn [m & ks]
+                                         (some-> (m/find-first m ks) m))]
     (for [{:keys [id], column-name :name, :as column} columns]
       (merge
        {:base_type :type/*}
@@ -154,7 +156,7 @@
        (when-let [{remapped-to-id :human_readable_field_id
                    remapped-to-name :human_readable_field_name}
                   (id->remapped-to-dimension (or id column-name))]
-         {:remapped_to (:name (column-id->column (or remapped-to-id remapped-to-name)))})
+         {:remapped_to (:name (get-first-key column-id->column remapped-to-id remapped-to-name))})
        ;; if the pre-processing remapping Dimension info contains an entry where this Field's ID is
        ;; `:human_readable_field_id`, add an entry noting the name of the Field it gets remapped from, and use the
        ;; `:display_name` of the Dimension
@@ -162,7 +164,7 @@
                    remapped-from-id :field_id
                    remapped-from-name :field_name} (id->remapped-from-dimension (or id column-name))]
          {:display_name  dimension-name
-          :remapped_from (:name (column-id->column (or remapped-from-id remapped-from-name)))})))))
+          :remapped_from (:name (get-first-key column-id->column remapped-from-id remapped-from-name))})))))
 
 (defn- create-remapped-col [col-name remapped-from base-type]
   {:description   nil
