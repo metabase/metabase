@@ -23,7 +23,8 @@
   appropriate `:remapped_from` and `:remapped_to` attributes in the result `:cols` in post-processing.
   `:remapped_from` and `:remapped_to` are the names of the columns, e.g. `category_id` is `:remapped_to` `name`, and
   `name` is `:remapped_from` `:category_id`."
-  (:require [metabase.mbql
+  (:require [medley.core :as m]
+            [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models
