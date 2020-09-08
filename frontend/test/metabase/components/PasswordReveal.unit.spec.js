@@ -1,25 +1,21 @@
-import { click } from "__support__/enzyme";
-
 import React from "react";
+import { render, fireEvent, cleanup } from "@testing-library/react";
 import PasswordReveal from "metabase/components/PasswordReveal";
-import CopyButton from "metabase/components/CopyButton";
 
-import { shallow } from "enzyme";
+// This shouldn't be needed from version 9.0.0 of react-testing-library (TODO: remove after update)
+afterEach(cleanup);
 
 describe("password reveal", () => {
-  let wrapper;
-
-  beforeEach(() => {
-    wrapper = shallow(<PasswordReveal />);
-  });
-
   it("should toggle the visibility state when hide / show are clicked", () => {
-    expect(wrapper.state().visible).toEqual(false);
-    click(wrapper.find("a"));
-    expect(wrapper.state().visible).toEqual(true);
+    const { getByText } = render(<PasswordReveal />);
+
+    fireEvent.click(getByText("Show"));
+    getByText("Hide");
   });
 
   it("should render a copy button", () => {
-    expect(wrapper.find(CopyButton).length).toEqual(1);
+    const { getByTestId } = render(<PasswordReveal />);
+    // implicit assertion => it will throw an error if element is not found
+    getByTestId("copy-button");
   });
 });
