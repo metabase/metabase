@@ -67,6 +67,7 @@
   get hidden when displayed anyway?)"
   [fields :- [mbql.s/Field]]
   (when-let [field-id->remapping-dimension (fields->field-id->remapping-dimension fields)]
+    ;; Reconstruct how we uniquify names in `metabase.query-processor.middleware.annotate`
     (let [unique-name (comp (mbql.u/unique-name-generator) :name Field)]
       (vec
        (mbql.u/match fields

@@ -30,6 +30,31 @@
                     :order-by [[:asc $name]]
                     :limit    4}))))))))
 
+(deftest nested-remapping-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+    (mt/with-temp-objects
+      (data/create-venue-category-remapping! "Foo")
+      (is (= {:rows [["20th Century Cafe"               12 "Café"]
+                     ["25°"                             11 "Burger"]
+                     ["33 Taps"                          7 "Bar"]
+                     ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
+              :cols [(-> (qp.test/col :venues :name)
+                         (assoc :field_ref [:field-literal "NAME" :type/Text])
+                         (dissoc :description :parent_id :visibility_type))
+                     (-> (qp.test/col :venues :category_id)
+                         (assoc :remapped_to "Foo")
+                         (assoc :field_ref [:field-literal "CATEGORY_ID" :type/Integer])
+                         (dissoc :description :parent_id :visibility_type))
+                     (#'add-dimension-projections/create-remapped-col "Foo" (mt/format-name "category_id") :type/Text)]}
+             (qp.test/rows-and-cols
+               (qp.test/format-rows-by [str int str]
+                 (mt/run-mbql-query venues
+                   {:source-query {:source-table (mt/id :venues)
+                                   :fields       [[:field-id (mt/id :venues :name)]
+                                                  [:field-id  (mt/id :venues :category_id)]]
+                                   :order-by     [[:asc [:field-id (mt/id :venues :name)]]]
+                                   :limit        4}}))))))))
+
 (defn- select-columns
   "Focuses the given resultset to columns that return true when passed to `columns-pred`. Typically this would be done
   as part of the query, however there's a bug currently preventing that from working when remapped. This allows the
