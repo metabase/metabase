@@ -2,9 +2,7 @@
   "Tests for /api/session"
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
-            [clojure
-             [string :as str]
-             [test :refer :all]]
+            [clojure.test :refer :all]
             [metabase
              [email-test :as et]
              [http-client :as http-client]
