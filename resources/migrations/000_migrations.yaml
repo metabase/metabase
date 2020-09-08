@@ -7654,71 +7654,60 @@ databaseChangeLog:
             constraintName: fk_view_log_ref_user_id
             onDelete: CASCADE
 
-# these group of changesets allow for the use of lowercasing emails (GH issue 3047) 
-#  - changeSet:
-#      id: 268
-#      author: rlotun
-#      comment: Added 0.37.0   # drop unique constraint on email
-#      changes:
-#        - dropUniqueConstraint:
-#            columnDataType: varchar(254)
-#            constraintName: email
-#            tableName: core_user
-
-#   - changeSet:
-#      id: 269
-#      author: rlotun
-#      comment: Added 0.37.0 # drop index on email
-#      changes:
-#        - dropIndex:
-#          columnDataType: varchar(254)
-#          indexName: email
-#          columnName: lower(email)
-#          tableName: metabase_user
-
+# changesets 268-272 allow for handling user account emails in lowercase (GH issue 3047)
   - changeSet:
-      id: 270
+      id: 268
+      author: rlotun
+      comment: Added 0.37.0   # drop unique constraint on email - this will also remove supporting indexes
+      changes:
+        - dropUniqueConstraint:
+            columnDataType: varchar(254)
+            constraintName: constraint_4
+            tableName: core_user
+  - changeSet:
+      id: 269
       author: rlotun
       comment: Added 0.37.0  # set email to lower email
       changes:
         - sql :
           sql : update core_user set email = lower(email)
-
+  - property:
+      name: email_c_type
+      value: varchar_ignorecase(254)
+      dbms: h2
+  - property:
+      name: email_c_type
+      value: citext
+      dbms: postgresql
   - changeSet:
-      id: 271
+      id: 270
       author: rlotun
-      comment: Added 0.37.0 # PG and H2 only - convert column to citext / VARCHAR IGNORECASE=TRUE (?)
+      comment: Added 0.37.0 # PG and H2 only - convert column to citext / VARCHAR IGNORECASE=TRUE
       changes:
         - modifyDataType:
-            dbms: h2
             tableName: core_user
             columnName: email
-            newDataType: VARCHAR_IGNORECASE(254)
-
-#        - modifyDataType:
-#            dbms: postgresql
-#            tableName: core_user
-#            columnName: email
-#            newDataType: CITEXT
-#- changeSet:
-#      id: 272
-#      author: rlotun
-#      comment: Added 0.37.0  # create index on lower(email)
-#      changes:
-#        - createIndex:
-#            columns:
-#              - column:
-#                name: lower(email)
-#                type: varchar(254)
-#            tableName: metabase_user
-#            indexName: email
-
+            newDataType: ${email_c_type}
   - changeSet:
-      id: 273
+      id: 271
       author: rlotun
       comment: Added 0.37.0  # add unique constraint on lower(email)
       changes:
         - addUniqueConstraint:
             columnNames: email
-            constraintName: idx_unique_email
+            constraintName: constraint_email_unique
             tableName: core_user
+  - changeSet:
+      id: 272
+      author: rlotun
+      comment: Added 0.37.0  # create index on lower(email)
+      preConditions:
+        - onFail: MARK_RAN
+      changes:
+        - createIndex:
+            columns:
+             - column:
+                 name: email
+                 type: varchar(254)
+            tableName: core_user
+            indexName: idx_constraint_email_unique
