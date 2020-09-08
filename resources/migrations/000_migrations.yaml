@@ -7670,7 +7670,7 @@ databaseChangeLog:
       comment: Added 0.37.0  # set email to lower email
       changes:
         - sql :
-          sql : update core_user set email = lower(email)
+            sql : update core_user set email = lower(email)
   - property:
       name: email_c_type
       value: varchar_ignorecase(254)
