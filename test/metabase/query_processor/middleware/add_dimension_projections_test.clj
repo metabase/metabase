@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -65,6 +66,20 @@
                   (assoc-in [:query :order-by] [[:asc [:field-id (mt/id :venues :category_id)]]])
                   (#'add-dim-projections/add-fk-remaps)))))
 
+     (testing "adding FK remaps should replace any existing breakouts for a field with order bys for the FK remapping Field"
+       (is (= [[remapped-field]
+               (-> example-query
+                   (assoc-in [:query :aggregation] [[:count]])
+                   (assoc-in [:query :breakout]
+                             [[:fk-> [:field-id (mt/id :venues :category_id)]
+                               [:field-id (mt/id :categories :name)]]])
+                   (m/dissoc-in [:query :fields]) )]
+              (-> example-query
+                  (m/dissoc-in [:query :fields])
+                  (assoc-in [:query :aggregation] [[:count]])
+                  (assoc-in [:query :breakout] [[:field-id (mt/id :venues :category_id)]])
+                  (#'add-dim-projections/add-fk-remaps)))))
+
      (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
        (testing "make sure FK remaps work with nested queries"
          (let [example-query (assoc example-query :query {:source-query (:query example-query)})]
@@ -73,8 +88,6 @@
                               conj [:fk-> [:field-id (mt/id :venues :category_id)]
                                     [:field-id (mt/id :categories :name)]])]
                   (#'add-dim-projections/add-fk-remaps example-query)))))))))
-
-
 
 
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------

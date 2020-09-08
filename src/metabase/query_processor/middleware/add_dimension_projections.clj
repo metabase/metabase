@@ -9,7 +9,7 @@
   of values happens on the frontend, so this middleware simply adds the column to be used for replacement (e.g.
   `category.name`) to the `:fields` clause in pre-processing, so the Field will be fetched. Recall that Fields
   referenced via with `:fk->` clauses imply that JOINs will take place, which are automatically handled later in the
-  Query Processor pipeline. Additionally, this middleware will swap out and `:order-by` clauses referencing the
+  Query Processor pipeline. Additionally, this middleware will swap out `:breakout` and `:order-by` clauses referencing the
   original Field with ones referencing the remapped Field (for example, so we would sort by `category.name` instead of
   `category_id`).
 
@@ -93,29 +93,35 @@
        [direction remapped-col]
        order-by-clause))))
 
+(defn- update-remapped-breakout
+  [field->remapped-col breakout-clause]
+  (mapv #(get field->remapped-col % %) breakout-clause))
+
 (s/defn ^:private add-fk-remaps :- [(s/one (s/maybe [ExternalRemappingDimension]) "external remapping dimensions")
                                     (s/one mbql.s/Query "query")]
   "Add any Fields needed for `:external` remappings to the `:fields` clause of the query, and update `:order-by`
-  clause as needed. Returns a pair like `[external-remapping-dimensions updated-query]`."
-  [{{:keys [fields order-by source-query]} :query, :as query} :- mbql.s/Query]
+  and `breakout` clauses as needed. Returns a pair like `[external-remapping-dimensions updated-query]`."
+  [{{:keys [fields order-by breakout source-query]} :query, :as query} :- mbql.s/Query]
   (let [[source-query-remappings query]
         (if (and source-query (not (:native source-query))) ;; Only do lifting if source is MBQL query
           (let [[source-query-remappings source-query] (add-fk-remaps (assoc query :query source-query))]
             [source-query-remappings (assoc-in query [:query :source-query] (:query source-query))])
           [nil query])]
-    ;; TODO - I think we need to handle Fields in `:breakout` here as well...
     ;; fetch remapping column pairs if any exist...
-    (if-let [remap-col-tuples (seq (create-remap-col-tuples fields))]
-      ;; if they do, update `:fields` and `:order-by` clauses accordingly and add to the query
-      (let [new-fields   (vec (concat fields (map second remap-col-tuples)))
+    (if-let [remap-col-tuples (seq (create-remap-col-tuples (concat fields breakout)))]
+      ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
+      (let [new-fields          (vec (concat fields (map second remap-col-tuples)))
             ;; make a map of field-id-clause -> fk-clause from the tuples
-            new-order-by (update-remapped-order-by (into {} (for [[field-clause fk-clause] remap-col-tuples]
-                                                              [field-clause fk-clause]))
-                                                   order-by)]
+            field->remapped-col (into {} (for [[field-clause fk-clause] remap-col-tuples]
+                                           [field-clause fk-clause]))
+            new-breakout        (update-remapped-breakout field->remapped-col breakout)
+            new-order-by        (update-remapped-order-by field->remapped-col order-by)]
         ;; return the Dimensions we are using and the query
         [(concat source-query-remappings (map last remap-col-tuples))
-         (cond-> (assoc-in query [:query :fields] new-fields)
-           (seq new-order-by) (assoc-in [:query :order-by] new-order-by))])
+         (cond-> query
+           (seq fields)       (assoc-in [:query :fields] new-fields)
+           (seq new-order-by) (assoc-in [:query :order-by] new-order-by)
+           (seq new-breakout) (assoc-in [:query :breakout] new-breakout))])
       ;; otherwise return query as-is
       [source-query-remappings query])))
 

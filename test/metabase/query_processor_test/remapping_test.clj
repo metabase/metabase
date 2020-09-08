@@ -118,7 +118,7 @@
            :order-by [[:asc $name]]
            :limit    4})))))
 
-;; Test that we can remap inside an MBQL nested query
+;; Test that we can remap inside an MBQL query
 (datasets/expect-with-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
   ["Kinaree Thai Bistro" "Ruen Pair Thai Restaurant" "Yamashiro Hollywood" "Spitz Eagle Rock" "The Gumbo Pot"]
   (mt/with-temp-objects
