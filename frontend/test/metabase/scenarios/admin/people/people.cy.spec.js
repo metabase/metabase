@@ -4,7 +4,7 @@ describe("scenarios > admin > people", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
-  var email = `testy${Math.round(Math.random() * 100000)}@metabase.com`;
+  const email = `testy${Math.round(Math.random() * 100000)}@metabase.com`;
 
   describe("user management", () => {
     it("should render", () => {
@@ -43,7 +43,6 @@ describe("scenarios > admin > people", () => {
       cy.findByLabelText("Email").type(email.toUpperCase());
       cy.findByText("Create").click();
       cy.contains("Email address already in use.");
-
     });
   });
 });
