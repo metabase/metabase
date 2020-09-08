@@ -261,28 +261,4 @@
                       example-result-cols-category-id
                       example-result-cols-price
                       example-result-cols-category]}
-              [])))))
-
-  (testing "test that external remappings in source query get the appropriate `:remapped_from`/`:remapped_to` info"
-    (is (= {:status    :completed
-            :row_count 0
-            :data      {:rows []
-                        :cols [example-result-cols-id
-                               example-result-cols-name
-                               (assoc example-result-cols-category-id
-                                      :remapped_to "CATEGORY")
-                               example-result-cols-price
-                               (assoc example-result-cols-category
-                                      :remapped_from "CATEGORY_ID"
-                                      :display_name  "My Venue Category")]}}
-           (with-redefs [add-dim-projections/add-fk-remaps (fn [query]
-                                                             [[{:name "My Venue Category", :field_id 11, :human_readable_field_id 27}]
-                                                              query])]
-             (add-remapping
-              {:source-query {:table-id }}
-              {:cols [example-result-cols-id
-                      example-result-cols-name
-                      example-result-cols-category-id
-                      example-result-cols-price
-                      example-result-cols-category]}
               []))))))
