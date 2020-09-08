@@ -34,7 +34,7 @@ describe("scenarios > auth > signin", () => {
     cy.findByText("Sign in").click();
     cy.contains(/[a-z ]+, Bob/i);
   });
-  
+
   it("should allow login regardless of login email case", () => {
     cy.visit("/auth/login");
     cy.findByLabelText("Email address").type(USERS.admin.username.toUpperCase());

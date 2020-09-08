@@ -242,23 +242,6 @@
          ;; clean up after ourselves
          (db/delete! User :email email))))))
 
-;; Test that we can create a new User with a mixed case email and the email is normalized to lower case
-(let [user-name (random-name)
-      email     (tu/random-email)]
-  (expect
-   email
-   (:email (et/with-fake-inbox
-     (try
-       (tu/boolean-ids-and-timestamps
-        ((mt/user->client :crowberto) :post 200 "user"
-         {:first_name       user-name
-          :last_name        user-name
-          :email            (u/upper-case-en email)
-          :login_attributes {:test "value"}}))
-       (finally
-         ;; clean up after ourselves
-         (db/delete! User :email email)))))))
-
 ;; Check that non-superusers are denied access
 (expect
   "You don't have permissions to do that."
@@ -274,14 +257,6 @@
    {:first_name "Something"
     :last_name  "Random"
     :email      (:email (mt/fetch-user :rasta))}))
-
-;; Attempting to create a new user with an email with case mutations of an existing email should fail
-(expect
-  {:errors {:email "Email address already in use."}}
-  ((mt/user->client :crowberto) :post 400 "user"
-   {:first_name "Something"
-    :last_name  "Random"
-    :email      (u/upper-case-en (:email (mt/fetch-user :rasta)))}))
 
 ;; Test input validations
 (expect
@@ -344,7 +319,7 @@
       (db/exists? User :%lower.email (u/lower-case-en email)))))
 
 (defn- superuser-and-admin-pgm-info [email]
-  {:is-superuser? (db/select-one-field :is_superuser User :email email)
+  {:is-superuser? (db/select-one-field :is_superuser User :%lower.email (u/lower-case-en email))
    :pgm-exists?   (db/exists? PermissionsGroupMembership
                     :user_id  (db/select-one-id User :%lower.email (u/lower-case-en email))
                     :group_id (u/get-id (group/admin)))})
@@ -371,6 +346,31 @@
       :email        email
       :is_superuser true})
     (superuser-and-admin-pgm-info email)))
+
+(deftest create-user-mixed-case-email
+  (testing "POST /api/user/:id"
+    (testing "can create a new User with a mixed case email and the email is normalized to lower case"
+      (let [user-name (random-name)
+            email     (tu/random-email)]
+        (is (= email
+              (:email (et/with-fake-inbox
+                   (try
+                     (tu/boolean-ids-and-timestamps
+                      ((mt/user->client :crowberto) :post 200 "user"
+                       {:first_name       user-name
+                        :last_name        user-name
+                        :email            (u/upper-case-en email)
+                        :login_attributes {:test "value"}}))
+                     (finally
+                       ;; clean up after ourselves
+                       (db/delete! User :email email)))))))))
+
+    (testing "attempting to create a new user with an email with case mutations of an existing email should fail"
+      (is (= {:errors {:email "Email address already in use."}}
+            ((mt/user->client :crowberto) :post 400 "user"
+               {:first_name "Something"
+                :last_name  "Random"
+                :email      (u/upper-case-en (:email (mt/fetch-user :rasta)))}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -456,11 +456,12 @@
 
 (deftest update-existing-email-case-mutation-test
   (testing "PUT /api/user/:id"
-    (testing "test that updating a user's email by mutating case fails"
+    (testing "test that updating a user's email to an an existing inactive email by mutating case fails"
       (let [trashbird         (mt/fetch-user :trashbird)
+            rasta             (mt/fetch-user :rasta)
             trashbird-mutated (update trashbird :email u/upper-case-en)]
         (is (= {:errors {:email "Email address already associated to another user."}}
-               ((mt/user->client :crowberto) :put 400 (str "user/" (u/get-id trashbird)) (select-keys trashbird-mutated [:email]))))))))
+               ((mt/user->client :crowberto) :put 400 (str "user/" (u/get-id rasta)) (select-keys trashbird-mutated [:email]))))))))
 
 (deftest update-superuser-status-test
   (testing "PUT /api/user/:id"
