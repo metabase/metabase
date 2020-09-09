@@ -34,8 +34,7 @@
       (data/create-venue-category-fk-remapping! "Name")
       (is (= {:rows [["American" 2 8]
                      ["Artisan"  3 2]
-                     ["Asian"    4 2]
-                     ["BBQ"      5 7]]
+                     ["Asian"    4 2]]
               :cols [(-> (qp.test/col :categories :name)
                          (assoc :remapped_from (mt/format-name "category_id"))
                          (assoc :field_ref [:fk-> [:field-id (mt/id :venues :category_id)]
@@ -54,7 +53,7 @@
                    (mt/run-mbql-query venues
                      {:aggregation [[:count]]
                       :breakout    [$category_id]
-                      :limit       4}))
+                      :limit       3}))
                  qp.test/rows-and-cols
                  (update :cols (fn [[c1 c2 agg]]
                                  [c1 c2 (dissoc agg :base_type)]))))))))
