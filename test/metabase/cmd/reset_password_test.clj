@@ -1,9 +1,9 @@
 (ns metabase.cmd.reset-password-test
   (:require [clojure.test :refer :all]
-            [metabase.cmd.reset-password :as reset-password]
             [metabase
              [test :as mt]
              [util :as u]]
+            [metabase.cmd.reset-password :as reset-password]
             [metabase.models.user :refer [User]]))
 
 (deftest reset-password-test
