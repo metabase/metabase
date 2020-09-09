@@ -71,9 +71,9 @@
                (-> example-query
                    (assoc-in [:query :aggregation] [[:count]])
                    (assoc-in [:query :breakout]
-                             [[:field-id (mt/id :venues :category_id)]
-                              [:fk-> [:field-id (mt/id :venues :category_id)]
-                               [:field-id (mt/id :categories :name)]]])
+                             [[:fk-> [:field-id (mt/id :venues :category_id)]
+                               [:field-id (mt/id :categories :name)]]
+                              [:field-id (mt/id :venues :category_id)]])
                    (m/dissoc-in [:query :fields]))]
               (-> example-query
                   (m/dissoc-in [:query :fields])
