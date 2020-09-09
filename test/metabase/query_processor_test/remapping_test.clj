@@ -28,7 +28,34 @@
                  (mt/run-mbql-query venues
                    {:fields   [$name $category_id]
                     :order-by [[:asc $name]]
-                    :limit    4}))))))))
+                    :limit    4}))))))
+    (mt/with-temp-objects
+      (data/create-venue-category-fk-remapping! "Name")
+      (is (= {:rows [["American" 2 8]
+                     ["Artisan"  3 2]
+                     ["Asian"    4 2]
+                     ["BBQ"      5 7]]
+              :cols [(-> (qp.test/col :categories :name)
+                         (assoc :remapped_from "CATEGORY_ID")
+                         (assoc :field_ref [:fk-> [:field-id (mt/id :venues :category_id)]
+                                            [:field-id (mt/id :categories :name)]])
+                         (assoc :fk_field_id (mt/id :venues :category_id))
+                         (assoc :source :breakout))
+                     (-> (qp.test/col :venues :category_id)
+                         (assoc :remapped_to "NAME")
+                         (assoc :source :breakout))
+                     {:field_ref    [:aggregation 0]
+                      :source       :aggregation
+                      :display_name "Count"
+                      :name         "count"
+                      :special_type :type/Number
+                      :base_type    :type/BigInteger}]}
+             (qp.test/rows-and-cols
+               (qp.test/format-rows-by [str int int]
+                 (mt/run-mbql-query venues
+                   {:aggregation [[:count]]
+                    :breakout    [$category_id]
+                    :limit       4}))))))))
 
 (deftest nested-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)

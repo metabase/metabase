@@ -95,7 +95,11 @@
 
 (defn- update-remapped-breakout
   [field->remapped-col breakout-clause]
-  (mapv #(get field->remapped-col % %) breakout-clause))
+  (mapcat (fn [field]
+            (if-let [remapped-col (get field->remapped-col field)]
+              [remapped-col field]
+              [field]))
+          breakout-clause))
 
 (s/defn ^:private add-fk-remaps :- [(s/one (s/maybe [ExternalRemappingDimension]) "external remapping dimensions")
                                     (s/one mbql.s/Query "query")]
@@ -110,7 +114,7 @@
     ;; fetch remapping column pairs if any exist...
     (if-let [remap-col-tuples (seq (create-remap-col-tuples (concat fields breakout)))]
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
-      (let [new-fields          (vec (concat fields (map second remap-col-tuples)))
+      (let [new-fields          (into fields (map second) remap-col-tuples)
             ;; make a map of field-id-clause -> fk-clause from the tuples
             field->remapped-col (into {} (for [[field-clause fk-clause] remap-col-tuples]
                                            [field-clause fk-clause]))
@@ -119,9 +123,9 @@
         ;; return the Dimensions we are using and the query
         [(concat source-query-remappings (map last remap-col-tuples))
          (cond-> query
-           (seq fields)       (assoc-in [:query :fields] new-fields)
-           (seq new-order-by) (assoc-in [:query :order-by] new-order-by)
-           (seq new-breakout) (assoc-in [:query :breakout] new-breakout))])
+           (seq fields)   (assoc-in [:query :fields] new-fields)
+           (seq order-by) (assoc-in [:query :order-by] new-order-by)
+           (seq breakout) (assoc-in [:query :breakout] new-breakout))])
       ;; otherwise return query as-is
       [source-query-remappings query])))
 
