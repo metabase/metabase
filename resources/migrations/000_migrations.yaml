@@ -7655,14 +7655,36 @@ databaseChangeLog:
             onDelete: CASCADE
 
 # changesets 268-272 allow for handling user account emails in lowercase (GH issue 3047)
+  - property:
+      name: email_constraint_name
+      value: constraint_4
+      dbms: h2
+  - property:
+      name: email_constraint_name
+      value: core_user_email_key
+      dbms: postgresql
+  - property:
+      name: email_constraint_name
+      value: email
+      dbms: mysql,mariadb
   - changeSet:
       id: 268
       author: rlotun
       comment: Added 0.37.0   # drop unique constraint on email - this will also remove supporting indexes
+      preConditions:
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+              - dbms:
+                    type: postgresql
+              - dbms:
+                    type: h2
       changes:
         - dropUniqueConstraint:
             columnDataType: varchar(254)
-            constraintName: constraint_4
+            constraintName: ${email_constraint_name}
             tableName: core_user
   - changeSet:
       id: 269
@@ -7675,14 +7697,15 @@ databaseChangeLog:
       name: email_c_type
       value: varchar_ignorecase(254)
       dbms: h2
-  - property:
-      name: email_c_type
-      value: citext
-      dbms: postgresql
   - changeSet:
       id: 270
       author: rlotun
-      comment: Added 0.37.0 # PG and H2 only - convert column to citext / VARCHAR IGNORECASE=TRUE
+      comment: Added 0.37.0 # for H2 convert column to VARCHAR IGNORECASE=TRUE (PG needs citext extension installed)
+      failOnError: false
+      preConditions:
+          - or:
+              - dbms:
+                    type: h2
       changes:
         - modifyDataType:
             tableName: core_user
@@ -7701,6 +7724,7 @@ databaseChangeLog:
       id: 272
       author: rlotun
       comment: Added 0.37.0  # create index on lower(email)
+      failOnError: false
       preConditions:
         - onFail: MARK_RAN
       changes:
