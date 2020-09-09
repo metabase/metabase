@@ -28,7 +28,8 @@
                  (mt/run-mbql-query venues
                    {:fields   [$name $category_id]
                     :order-by [[:asc $name]]
-                    :limit    4}))))))
+                    :limit    4})))))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (mt/with-temp-objects
       (data/create-venue-category-fk-remapping! "Name")
       (is (= {:rows [["American" 2 8]
@@ -36,26 +37,27 @@
                      ["Asian"    4 2]
                      ["BBQ"      5 7]]
               :cols [(-> (qp.test/col :categories :name)
-                         (assoc :remapped_from "CATEGORY_ID")
+                         (assoc :remapped_from (mt/format-name "CATEGORY_ID"))
                          (assoc :field_ref [:fk-> [:field-id (mt/id :venues :category_id)]
                                             [:field-id (mt/id :categories :name)]])
                          (assoc :fk_field_id (mt/id :venues :category_id))
                          (assoc :source :breakout))
                      (-> (qp.test/col :venues :category_id)
-                         (assoc :remapped_to "NAME")
+                         (assoc :remapped_to (mt/format-name "NAME"))
                          (assoc :source :breakout))
                      {:field_ref    [:aggregation 0]
                       :source       :aggregation
                       :display_name "Count"
                       :name         "count"
-                      :special_type :type/Number
-                      :base_type    :type/BigInteger}]}
-             (qp.test/rows-and-cols
-               (qp.test/format-rows-by [str int int]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:count]]
-                    :breakout    [$category_id]
-                    :limit       4}))))))))
+                      :special_type :type/Number}]}
+             (-> (qp.test/format-rows-by [str int int]
+                   (mt/run-mbql-query venues
+                     {:aggregation [[:count]]
+                      :breakout    [$category_id]
+                      :limit       4}))
+                 qp.test/rows-and-cols
+                 (update :cols (fn [[c1 c2 agg]]
+                                 [c1 c2 (dissoc agg :base_type)]))))))))
 
 (deftest nested-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -66,11 +68,11 @@
                      ["33 Taps"                          7 "Bar"]
                      ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
               :cols [(-> (qp.test/col :venues :name)
-                         (assoc :field_ref [:field-literal "NAME" :type/Text])
+                         (assoc :field_ref [:field-literal (mt/format-name "NAME") :type/Text])
                          (dissoc :description :parent_id :visibility_type))
                      (-> (qp.test/col :venues :category_id)
                          (assoc :remapped_to "Foo")
-                         (assoc :field_ref [:field-literal "CATEGORY_ID" :type/Integer])
+                         (assoc :field_ref [:field-literal (mt/format-name"CATEGORY_ID") :type/Integer])
                          (dissoc :description :parent_id :visibility_type))
                      (#'add-dimension-projections/create-remapped-col "Foo" (mt/format-name "category_id") :type/Text)]}
              (qp.test/rows-and-cols
