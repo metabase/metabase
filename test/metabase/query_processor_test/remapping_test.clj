@@ -37,13 +37,13 @@
                      ["Asian"    4 2]
                      ["BBQ"      5 7]]
               :cols [(-> (qp.test/col :categories :name)
-                         (assoc :remapped_from (mt/format-name "CATEGORY_ID"))
+                         (assoc :remapped_from (mt/format-name "category_id"))
                          (assoc :field_ref [:fk-> [:field-id (mt/id :venues :category_id)]
                                             [:field-id (mt/id :categories :name)]])
                          (assoc :fk_field_id (mt/id :venues :category_id))
                          (assoc :source :breakout))
                      (-> (qp.test/col :venues :category_id)
-                         (assoc :remapped_to (mt/format-name "NAME"))
+                         (assoc :remapped_to (mt/format-name "name"))
                          (assoc :source :breakout))
                      {:field_ref    [:aggregation 0]
                       :source       :aggregation
@@ -68,21 +68,23 @@
                      ["33 Taps"                          7 "Bar"]
                      ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
               :cols [(-> (qp.test/col :venues :name)
-                         (assoc :field_ref [:field-literal (mt/format-name "NAME") :type/Text])
+                         (assoc :field_ref [:field-literal (mt/format-name "name") :type/Text])
                          (dissoc :description :parent_id :visibility_type))
                      (-> (qp.test/col :venues :category_id)
                          (assoc :remapped_to "Foo")
-                         (assoc :field_ref [:field-literal (mt/format-name"CATEGORY_ID") :type/Integer])
+                         (assoc :field_ref [:field-literal (mt/format-name"category_id")])
                          (dissoc :description :parent_id :visibility_type))
                      (#'add-dimension-projections/create-remapped-col "Foo" (mt/format-name "category_id") :type/Text)]}
-             (qp.test/rows-and-cols
-               (qp.test/format-rows-by [str int str]
-                 (mt/run-mbql-query venues
-                   {:source-query {:source-table (mt/id :venues)
-                                   :fields       [[:field-id (mt/id :venues :name)]
-                                                  [:field-id  (mt/id :venues :category_id)]]
-                                   :order-by     [[:asc [:field-id (mt/id :venues :name)]]]
-                                   :limit        4}}))))))))
+             (-> (qp.test/format-rows-by [str int str]
+                   (mt/run-mbql-query venues
+                     {:source-query {:source-table (mt/id :venues)
+                                     :fields       [[:field-id (mt/id :venues :name)]
+                                                    [:field-id  (mt/id :venues :category_id)]]
+                                     :order-by     [[:asc [:field-id (mt/id :venues :name)]]]
+                                     :limit        4}}))
+                 qp.test/rows-and-cols
+                 (update :cols (fn [[c1 c2 c3]]
+                                 [c1 (update c2 :field_ref (comp vec butlast)) c3]))))))))
 
 (defn- select-columns
   "Focuses the given resultset to columns that return true when passed to `columns-pred`. Typically this would be done
