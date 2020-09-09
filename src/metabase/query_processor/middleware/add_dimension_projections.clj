@@ -95,11 +95,11 @@
 
 (defn- update-remapped-breakout
   [field->remapped-col breakout-clause]
-  (mapcat (fn [field]
-            (if-let [remapped-col (get field->remapped-col field)]
-              [remapped-col field]
-              [field]))
-          breakout-clause))
+  (vec (mapcat (fn [field]
+                 (if-let [remapped-col (get field->remapped-col field)]
+                   [remapped-col field]
+                   [field]))
+               breakout-clause)))
 
 (s/defn ^:private add-fk-remaps :- [(s/one (s/maybe [ExternalRemappingDimension]) "external remapping dimensions")
                                     (s/one mbql.s/Query "query")]
