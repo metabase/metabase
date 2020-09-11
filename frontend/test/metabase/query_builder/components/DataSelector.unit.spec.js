@@ -1,5 +1,5 @@
 import React from "react";
-import { render, cleanup, fireEvent } from "@testing-library/react";
+import { render, fireEvent } from "@testing-library/react";
 
 import _ from "underscore";
 
@@ -26,7 +26,6 @@ describe("DataSelector", () => {
 
   afterEach(() => {
     jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
-    cleanup();
   });
 
   const emptyMetadata = {

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, cleanup, fireEvent } from "@testing-library/react";
+import { render, fireEvent } from "@testing-library/react";
 
 import { NumberColumn, StringColumn } from "../__support__/visualizations";
 
@@ -14,8 +14,6 @@ const series = rows => {
 };
 
 describe("pie chart", () => {
-  afterEach(cleanup);
-
   it("should render correct percentages in legend", () => {
     const rows = [["foo", 1], ["bar", 2], ["baz", 2]];
     const { getAllByText } = render(<Visualization rawSeries={series(rows)} />);
