@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.large-int-id
   "Middleware for handling conversion of IDs to strings for proper display of large numbers"
-  (:require [clojure.tools.logging :as log]
-            [metabase.mbql.util :as mbql.u]
+  (:require [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]))
 
 (defn- result-int->string
@@ -41,7 +40,7 @@
                                                (isa? (:special_type field) :type/FK))
                                            (isa? (:base_type field) :type/Integer))
                                   idx))))
-                          (log/spy :error (:fields (:query query))))]
+                          (:fields (:query query)))]
       (qp query (if (and js-int-to-string? (seq field-indexes))
                   #(result-int->string field-indexes (rff %))
                   rff)
