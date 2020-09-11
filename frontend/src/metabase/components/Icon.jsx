@@ -62,6 +62,10 @@ class BaseIcon extends Component {
       return <span />;
     }
 
+    const { ariaLabel } = icon.attrs;
+    // must be removed to avoid "Unknown prop" warning
+    delete icon.attrs.ariaLabel;
+
     const props = {
       ...icon.attrs,
       ...stripLayoutProps(rest),
@@ -92,10 +96,16 @@ class BaseIcon extends Component {
         />
       );
     } else if (icon.svg) {
-      return <svg {...props} dangerouslySetInnerHTML={{ __html: icon.svg }} />;
+      return (
+        <svg
+          {...props}
+          aria-label={ariaLabel}
+          dangerouslySetInnerHTML={{ __html: icon.svg }}
+        />
+      );
     } else if (icon.path) {
       return (
-        <svg {...props}>
+        <svg {...props} aria-label={ariaLabel}>
           <path d={icon.path} />
         </svg>
       );
