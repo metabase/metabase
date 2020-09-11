@@ -6,11 +6,9 @@ import { ICON_PATHS, loadIcon, parseViewBox } from "metabase/icon_paths";
 import Icon from "metabase/components/Icon";
 
 // find the first icon with a non standard viewBox
-const NON_STANDARD_VIEWBOX_ICON = Object.keys(ICON_PATHS).filter(key => {
-  if (ICON_PATHS[key].attrs && ICON_PATHS[key].attrs.viewBox) {
-    return ICON_PATHS[key];
-  }
-})[0];
+const NON_STANDARD_VIEWBOX_ICON = Object.keys(ICON_PATHS).find(key => {
+  return ICON_PATHS[key].attrs && ICON_PATHS[key].attrs.viewBox;
+});
 
 describe("Icon", () => {
   describe("parseViewBox", () => {
