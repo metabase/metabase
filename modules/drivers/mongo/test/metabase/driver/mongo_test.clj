@@ -219,15 +219,23 @@
      [{:field-name "name", :base-type :type/Text}
       {:field-name "bird_id", :base-type :type/MongoBSONID}]
      [["Rasta Toucan" (ObjectId. "012345678901234567890123")]
-      ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]]])
+      ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]
+      ["Unlucky Raven" nil]]]])
 
 (deftest bson-ids-test
   (mt/test-driver :mongo
-    (is (= [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
-           (rows (mt/dataset with-bson-ids
-                   (mt/run-mbql-query birds
-                     {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]}))))
-        "Check that we support Mongo BSON ID and can filter by it (#1367)")))
+    (testing "BSON IDs"
+     (is (= [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
+            (rows (mt/dataset with-bson-ids
+                    (mt/run-mbql-query birds
+                      {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]}))))
+         "Check that we support Mongo BSON ID and can filter by it (#1367)")
+
+     (is (= [[3 "Unlucky Raven" nil]]
+            (rows (mt/dataset with-bson-ids
+                    (mt/run-mbql-query birds
+                      {:filter [:is-null $bird_id]}))))
+         "handle null ObjectId queries properly (#11134)"))))
 
 (deftest bson-fn-call-forms-test
   (mt/test-driver :mongo

@@ -56,7 +56,8 @@
   (db/select-one QueryExecution {:order-by [[:started_at :desc]]}))
 
 (def ^:private query-defaults
-  {:middleware {:add-default-userland-constraints? true}})
+  {:middleware {:add-default-userland-constraints? true
+                :js-int-to-string? true}})
 
 (deftest basic-query-test
   (testing "POST /api/dataset"

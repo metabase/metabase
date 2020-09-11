@@ -5,7 +5,6 @@
   (:require [clojure
              [string :as str]
              [test :refer :all]]
-            [expectations :refer [expect]]
             [metabase.models.database :refer [Database]]
             [metabase.task.sync-databases :as sync-db]
             [metabase.test.util :as tu]
@@ -64,62 +63,59 @@
                   :data          {"db-id" "<id>"}}]})
 
 ;; Check that a newly created database automatically gets scheduled
-(expect
-  [sync-job fv-job]
-  (with-scheduler-setup
-    (tt/with-temp Database [database {:engine :postgres}]
-      (current-tasks-for-db database))))
-
+(deftest new-db-jobs-scheduled-test
+  (is (= [sync-job fv-job]
+         (with-scheduler-setup
+           (tt/with-temp Database [database {:engine :postgres}]
+             (current-tasks-for-db database))))))
 
 ;; Check that a custom schedule is respected when creating a new Database
-(expect
-  [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 30 4,16 * * ? *")
-   (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 15 10 ? * 6#3")]
-  (with-scheduler-setup
-    (tt/with-temp Database [database {:engine                      :postgres
-                                      :metadata_sync_schedule      "0 30 4,16 * * ? *" ; 4:30 AM and PM daily
-                                      :cache_field_values_schedule "0 15 10 ? * 6#3"}] ; 10:15 on the 3rd Friday of the Month
-      (current-tasks-for-db database))))
-
+(deftest custom-schedule-test
+  (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 30 4,16 * * ? *")
+          (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 15 10 ? * 6#3")]
+         (with-scheduler-setup
+           (tt/with-temp Database [database {:engine                      :postgres
+                                             :metadata_sync_schedule      "0 30 4,16 * * ? *" ; 4:30 AM and PM daily
+                                             :cache_field_values_schedule "0 15 10 ? * 6#3"}] ; 10:15 on the 3rd Friday of the Month
+             (current-tasks-for-db database))))))
 
 ;; Check that a deleted database gets unscheduled
-(expect
-  [(update sync-job :triggers empty)
-   (update fv-job   :triggers empty)]
-  (with-scheduler-setup
-    (tt/with-temp Database [database {:engine :postgres}]
-      (db/delete! Database :id (u/get-id database))
-      (current-tasks-for-db database))))
+(deftest unschedule-deleted-database-test
+  (is (= [(update sync-job :triggers empty)
+          (update fv-job   :triggers empty)]
+        (with-scheduler-setup
+          (tt/with-temp Database [database {:engine :postgres}]
+            (db/delete! Database :id (u/get-id database))
+            (current-tasks-for-db database))))))
 
 ;; Check that changing the schedule column(s) for a DB properly updates the scheduled tasks
-(expect
-  [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
-   (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 11 11 11 11 ?")]
-  (with-scheduler-setup
-    (tt/with-temp Database [database {:engine :postgres}]
-      (db/update! Database (u/get-id database)
-        :metadata_sync_schedule      "0 15 10 ? * MON-FRI" ; 10:15 AM every weekday
-        :cache_field_values_schedule "0 11 11 11 11 ?")    ; Every November 11th at 11:11 AM
-      (current-tasks-for-db database))))
+(deftest schedule-change-test
+  (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
+          (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 11 11 11 11 ?")]
+         (with-scheduler-setup
+           (tt/with-temp Database [database {:engine :postgres}]
+             (db/update! Database (u/get-id database)
+               :metadata_sync_schedule      "0 15 10 ? * MON-FRI" ; 10:15 AM every weekday
+               :cache_field_values_schedule "0 11 11 11 11 ?")    ; Every November 11th at 11:11 AM
+             (current-tasks-for-db database))))))
 
 ;; Check that changing one schedule doesn't affect the other
-(expect
-  [sync-job
-   (assoc-in fv-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")]
-  (with-scheduler-setup
-    (tt/with-temp Database [database {:engine :postgres}]
-      (db/update! Database (u/get-id database)
-        :cache_field_values_schedule "0 15 10 ? * MON-FRI")
-      (current-tasks-for-db database))))
+(deftest schedule-changes-only-expected-test
+  (is (= [sync-job
+          (assoc-in fv-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")]
+        (with-scheduler-setup
+          (tt/with-temp Database [database {:engine :postgres}]
+            (db/update! Database (u/get-id database)
+              :cache_field_values_schedule "0 15 10 ? * MON-FRI")
+            (current-tasks-for-db database)))))
 
-(expect
-  [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
-   fv-job]
-  (with-scheduler-setup
-    (tt/with-temp Database [database {:engine :postgres}]
-      (db/update! Database (u/get-id database)
-        :metadata_sync_schedule "0 15 10 ? * MON-FRI")
-      (current-tasks-for-db database))))
+  (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
+          fv-job]
+         (with-scheduler-setup
+           (tt/with-temp Database [database {:engine :postgres}]
+             (db/update! Database (u/get-id database)
+               :metadata_sync_schedule "0 15 10 ? * MON-FRI")
+             (current-tasks-for-db database))))))
 
 (deftest validate-schedules-test
   (testing "Check that you can't INSERT a DB with an invalid schedule"
@@ -137,6 +133,32 @@
                Exception
                (db/update! Database (u/get-id database)
                  k "2 CANS PER DAY"))))))))
+
+(defrecord MockJobExecutionContext [job-data-map]
+  org.quartz.JobExecutionContext
+  (getMergedJobDataMap [this] (org.quartz.JobDataMap. job-data-map))
+
+  clojurewerkz.quartzite.conversion/JobDataMapConversion
+  (from-job-data [this]
+    (.getMergedJobDataMap this)))
+
+(deftest check-orphaned-jobs-removed-test
+  (testing "jobs for orphaned databases are removed during sync run"
+    (with-scheduler-setup
+      (doseq [sync-fn [sync-db/update-field-values sync-db/sync-and-analyze-database]]
+        (testing (str sync-fn)
+          (tt/with-temp Database [database {:engine :postgres}]
+            (let [db-id (:id database)]
+              (is (= [sync-job fv-job]
+                     (current-tasks-for-db database)))
+
+              (db/delete! Database :id db-id)
+              (let [ctx (MockJobExecutionContext. {"db-id" db-id})]
+                (sync-fn ctx))
+
+              (is (= [(update sync-job :triggers empty)
+                      (update fv-job :triggers empty)]
+                     (current-tasks-for-db database))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    CHECKING THAT SYNC TASKS RUN CORRECT FNS                                    |
