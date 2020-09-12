@@ -6,6 +6,7 @@ import {
   formatValue,
   formatUrl,
   formatDateTimeWithUnit,
+  slugify,
 } from "metabase/lib/formatting";
 import ExternalLink from "metabase/components/ExternalLink";
 import { TYPE } from "metabase/lib/types";
@@ -342,6 +343,26 @@ describe("formatting", () => {
         // globally reset locale
         moment.locale(false);
       }
+    });
+  });
+
+  describe("slugify", () => {
+    it("should slugify Chinese", () => {
+      expect(slugify("類型")).toEqual("%E9%A1%9E%E5%9E%8B");
+    });
+
+    it("should slugify multiple words", () => {
+      expect(slugify("Test Parameter")).toEqual("test_parameter");
+    });
+
+    it("should slugify Russian", () => {
+      expect(slugify("русский язык")).toEqual(
+        "%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9_%D1%8F%D0%B7%D1%8B%D0%BA",
+      );
+    });
+
+    it("should slugify diacritics", () => {
+      expect(slugify("än umlaut")).toEqual("%C3%A4n_umlaut");
     });
   });
 });

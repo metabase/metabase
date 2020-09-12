@@ -29,6 +29,7 @@
              [expand-macros :as expand-macros]
              [fetch-source-query :as fetch-source-query]
              [format-rows :as format-rows]
+             [large-int-id :as large-int-id]
              [limit :as limit]
              [mbql-to-native :as mbql-to-native]
              [normalize-query :as normalize]
@@ -68,6 +69,7 @@
    #'cumulative-ags/handle-cumulative-aggregations
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
+   #'large-int-id/convert-id-to-string
    #'limit/limit
    #'format-rows/format-rows
    #'desugar/desugar

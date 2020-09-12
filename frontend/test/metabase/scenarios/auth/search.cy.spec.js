@@ -16,7 +16,7 @@ describe("scenarios > auth > search", () => {
       cy.findByText("PRODUCTS");
     });
 
-    it.skip("should work for user with permissions (Issue #12332)", () => {
+    it("should work for user with permissions (Issue #12332)", () => {
       signInAsNormalUser();
       cy.visit("/");
       cy.findByPlaceholderText("Search…").type("product{enter}");
