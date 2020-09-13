@@ -7672,15 +7672,15 @@ databaseChangeLog:
       author: rlotun
       comment: Added 0.37.0   # drop unique constraint on email - this will also remove supporting indexes
       preConditions:
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
-              - dbms:
-                    type: postgresql
-              - dbms:
-                    type: h2
+        - or:
+            - dbms:
+                type: mysql
+            - dbms:
+                type: mariadb
+            - dbms:
+                type: postgresql
+            - dbms:
+                type: h2
       changes:
         - dropUniqueConstraint:
             columnDataType: varchar(254)
@@ -7689,30 +7689,57 @@ databaseChangeLog:
   - changeSet:
       id: 269
       author: rlotun
-      comment: Added 0.37.0  # set email to lower email
+      comment: Added 0.37.0  # set email values to lower email
       changes:
         - sql :
-            sql : update core_user set email = lower(email)
-  - property:
-      name: email_c_type
-      value: varchar_ignorecase(254)
-      dbms: h2
+            sql : UPDATE core_user SET email = lower(email)
   - changeSet:
       id: 270
       author: rlotun
-      comment: Added 0.37.0 # for H2 convert column to VARCHAR IGNORECASE=TRUE (PG needs citext extension installed)
+      comment: Added 0.37.0 # try to install citext extension on psql (user requires privileges on postgres)
       failOnError: false
       preConditions:
-          - or:
-              - dbms:
-                    type: h2
+        - onFail: MARK_RAN
+        - or:
+            - dbms:
+                type: postgresql
+      changes:
+        - sql :
+            sql : CREATE EXTENSION IF NOT EXISTS citext
+  - changeSet:
+      id: 271
+      author: rlotun
+      comment: Added 0.37.0 # try to convert email column to citext on postgres, if citext extension installed
+      failOnError: false
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - dbms:
+                type: postgresql
+            - sqlCheck:
+                expectedResult: 1
+                sql: SELECT count(*) FROM pg_extension WHERE extname = 'citext'
       changes:
         - modifyDataType:
             tableName: core_user
             columnName: email
-            newDataType: ${email_c_type}
+            newDataType: citext
   - changeSet:
-      id: 271
+      id: 272
+      author: rlotun
+      comment: Added 0.37.0 # for H2 convert column to VARCHAR_IGNORECASE
+      failOnError: false
+      preConditions:
+         - or:
+             - dbms:
+                   type: h2
+      changes:
+        - modifyDataType:
+            tableName: core_user
+            columnName: email
+            newDataType: varchar_ignorecase(254)
+  - changeSet:
+      id: 273
       author: rlotun
       comment: Added 0.37.0  # add unique constraint on lower(email)
       changes:
@@ -7721,7 +7748,7 @@ databaseChangeLog:
             constraintName: constraint_email_unique
             tableName: core_user
   - changeSet:
-      id: 272
+      id: 274
       author: rlotun
       comment: Added 0.37.0  # create index on lower(email)
       failOnError: false
@@ -7731,7 +7758,7 @@ databaseChangeLog:
         - createIndex:
             columns:
              - column:
-                 name: email
+                 name: lower(email)
                  type: varchar(254)
             tableName: core_user
-            indexName: idx_constraint_email_unique
+            indexName: idx_constraint_lower_email_unique

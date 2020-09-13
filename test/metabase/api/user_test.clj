@@ -354,20 +354,20 @@
             email     (tu/random-email)]
         (is (= email
               (:email (et/with-fake-inbox
-                   (try
-                     (tu/boolean-ids-and-timestamps
-                      ((mt/user->client :crowberto) :post 200 "user"
-                       {:first_name       user-name
-                        :last_name        user-name
-                        :email            (u/upper-case-en email)
-                        :login_attributes {:test "value"}}))
-                     (finally
-                       ;; clean up after ourselves
-                       (db/delete! User :email email)))))))))
+                        (try
+                          (tu/boolean-ids-and-timestamps
+                            ((mt/user->client :crowberto) :post 200 "user"
+                             {:first_name       user-name
+                              :last_name        user-name
+                              :email            (u/upper-case-en email)
+                              :login_attributes {:test "value"}}))
+                          (finally
+                             ;; clean up after ourselves
+                             (db/delete! User :email email)))))))))
 
     (testing "attempting to create a new user with an email with case mutations of an existing email should fail"
       (is (= {:errors {:email "Email address already in use."}}
-            ((mt/user->client :crowberto) :post 400 "user"
+             ((mt/user->client :crowberto) :post 400 "user"
                {:first_name "Something"
                 :last_name  "Random"
                 :email      (u/upper-case-en (:email (mt/fetch-user :rasta)))}))))))
