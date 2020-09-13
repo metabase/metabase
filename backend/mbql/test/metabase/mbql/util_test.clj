@@ -1059,3 +1059,15 @@
                                 :query    {:source-query {:expressions  {:two [:+ 1 1]}
                                                           :source-table 1}}}
                                "two"))
+
+(expect
+  1
+  (mbql.u/field-clause->id-or-literal [:field-id 1]))
+
+(expect
+  "foo"
+  (mbql.u/field-clause->id-or-literal [:field-value "foo"]))
+
+(expect
+  "foo"
+  (mbql.u/field-clause->id-or-literal [:expression "foo"]))
