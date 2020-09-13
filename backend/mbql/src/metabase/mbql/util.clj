@@ -453,8 +453,7 @@
     (field-clause->id-or-literal [:datetime-field [:field-id 100] ...]) ; -> 100
     (field-clause->id-or-literal [:field-id 100])                       ; -> 100
 
-  For expressions (or any other clauses) this returns the clause as-is, so as to facilitate the primary use case of
-  comparing Field clauses."
+  For expressions returns the expression name."
   [clause :- mbql.s/Field]
   (second (maybe-unwrap-field-clause clause)))
 
