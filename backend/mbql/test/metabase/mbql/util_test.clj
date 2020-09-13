@@ -1066,7 +1066,7 @@
 
 (expect
   "foo"
-  (mbql.u/field-clause->id-or-literal [:field-literal "foo"]))
+  (mbql.u/field-clause->id-or-literal [:field-literal "foo" :type/Integer]))
 
 (expect
   "foo"
