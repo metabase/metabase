@@ -49,7 +49,8 @@
         info           {:executed-by api/*current-user-id*
                         :context     :ad-hoc
                         :card-id     source-card-id
-                        :nested?     (boolean source-card-id)}]
+                        :nested?     (boolean source-card-id)}
+        query          (update query :middleware assoc :js-int-to-string? true)]
     (qp.streaming/streaming-response [context :api]
       (qp/process-query-and-save-with-max-results-constraints! query info context))))
 

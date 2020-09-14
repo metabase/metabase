@@ -28,7 +28,62 @@
                  (mt/run-mbql-query venues
                    {:fields   [$name $category_id]
                     :order-by [[:asc $name]]
-                    :limit    4}))))))))
+                    :limit    4})))))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+    (mt/with-temp-objects
+      (data/create-venue-category-fk-remapping! "Name")
+      (is (= {:rows [["American" 2 8]
+                     ["Artisan"  3 2]
+                     ["Asian"    4 2]]
+              :cols [(-> (qp.test/col :categories :name)
+                         (assoc :remapped_from (mt/format-name "category_id"))
+                         (assoc :field_ref [:fk-> [:field-id (mt/id :venues :category_id)]
+                                            [:field-id (mt/id :categories :name)]])
+                         (assoc :fk_field_id (mt/id :venues :category_id))
+                         (assoc :source :breakout))
+                     (-> (qp.test/col :venues :category_id)
+                         (assoc :remapped_to (mt/format-name "name"))
+                         (assoc :source :breakout))
+                     {:field_ref    [:aggregation 0]
+                      :source       :aggregation
+                      :display_name "Count"
+                      :name         "count"
+                      :special_type :type/Number}]}
+             (-> (qp.test/format-rows-by [str int int]
+                   (mt/run-mbql-query venues
+                     {:aggregation [[:count]]
+                      :breakout    [$category_id]
+                      :limit       3}))
+                 qp.test/rows-and-cols
+                 (update :cols (fn [[c1 c2 agg]]
+                                 [c1 c2 (dissoc agg :base_type)]))))))))
+
+(deftest nested-remapping-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+    (mt/with-temp-objects
+      (data/create-venue-category-remapping! "Foo")
+      (is (= {:rows [["20th Century Cafe"               12 "Café"]
+                     ["25°"                             11 "Burger"]
+                     ["33 Taps"                          7 "Bar"]
+                     ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
+              :cols [(-> (qp.test/col :venues :name)
+                         (assoc :field_ref [:field-literal (mt/format-name "name") :type/Text])
+                         (dissoc :description :parent_id :visibility_type))
+                     (-> (qp.test/col :venues :category_id)
+                         (assoc :remapped_to "Foo")
+                         (assoc :field_ref [:field-literal (mt/format-name"category_id")])
+                         (dissoc :description :parent_id :visibility_type))
+                     (#'add-dimension-projections/create-remapped-col "Foo" (mt/format-name "category_id") :type/Text)]}
+             (-> (qp.test/format-rows-by [str int str]
+                   (mt/run-mbql-query venues
+                     {:source-query {:source-table (mt/id :venues)
+                                     :fields       [[:field-id (mt/id :venues :name)]
+                                                    [:field-id  (mt/id :venues :category_id)]]
+                                     :order-by     [[:asc [:field-id (mt/id :venues :name)]]]
+                                     :limit        4}}))
+                 qp.test/rows-and-cols
+                 (update :cols (fn [[c1 c2 c3]]
+                                 [c1 (update c2 :field_ref (comp vec butlast)) c3]))))))))
 
 (defn- select-columns
   "Focuses the given resultset to columns that return true when passed to `columns-pred`. Typically this would be done
@@ -93,7 +148,7 @@
            :order-by [[:asc $name]]
            :limit    4})))))
 
-;; Test that we can remap inside an MBQL nested query
+;; Test that we can remap inside an MBQL query
 (datasets/expect-with-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
   ["Kinaree Thai Bistro" "Ruen Pair Thai Restaurant" "Yamashiro Hollywood" "Spitz Eagle Rock" "The Gumbo Pot"]
   (mt/with-temp-objects

@@ -12,39 +12,41 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models
              [database :refer [Database]]
-             [field :refer [Field]]]
+             [field :refer [Field]]
+             [table :refer [Table]]]
             [metabase.test.data.interface :as tx]
-            [toucan.db :as db]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
 
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
     (testing (str "MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL "
-                  "when returning them like we asked"))
-    (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
-      (try
-        ;; Create the DB
-        (doseq [sql ["DROP DATABASE IF EXISTS all_zero_dates;"
-                     "CREATE DATABASE all_zero_dates;"]]
-          (jdbc/execute! spec [sql]))
-        ;; Create Table & add data
-        (let [details (tx/dbdef->connection-details :mysql :db {:database-name "all_zero_dates"})
-              spec    (-> (sql-jdbc.conn/connection-details->spec :mysql details)
-                          ;; allow inserting dates where value is '0000-00-00' -- this is disallowed by default on newer
-                          ;; versions of MySQL, but we still want to test that we can handle it correctly for older ones
-                          (assoc :sessionVariables "sql_mode='ALLOW_INVALID_DATES'"))]
-          (doseq [sql ["CREATE TABLE `exciting-moments-in-history` (`id` integer, `moment` timestamp);"
-                       "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
+                  "when returning them like we asked")
+      (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
+        (try
+          ;; Create the DB
+          (doseq [sql ["DROP DATABASE IF EXISTS all_zero_dates;"
+                       "CREATE DATABASE all_zero_dates;"]]
             (jdbc/execute! spec [sql]))
-          ;; create & sync MB DB
-          (tt/with-temp Database [database {:engine "mysql", :details details}]
-            (sync/sync-database! database)
-            (mt/with-db database
-              ;; run the query
-              (is (= [[1 nil]]
-                     (mt/rows
-                       (mt/run-mbql-query exciting-moments-in-history)))))))))))
-
+          ;; Create Table & add data
+          (let [details (tx/dbdef->connection-details :mysql :db {:database-name "all_zero_dates"})
+                spec    (-> (sql-jdbc.conn/connection-details->spec :mysql details)
+                            ;; allow inserting dates where value is '0000-00-00' -- this is disallowed by default on newer
+                            ;; versions of MySQL, but we still want to test that we can handle it correctly for older ones
+                            (assoc :sessionVariables "sql_mode='ALLOW_INVALID_DATES'"))]
+            (doseq [sql ["CREATE TABLE `exciting-moments-in-history` (`id` integer, `moment` timestamp);"
+                         "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
+              (jdbc/execute! spec [sql]))
+            ;; create & sync MB DB
+            (tt/with-temp Database [database {:engine "mysql", :details details}]
+              (sync/sync-database! database)
+              (mt/with-db database
+                ;; run the query
+                (is (= [[1 nil]]
+                       (mt/rows
+                         (mt/run-mbql-query exciting-moments-in-history))))))))))))
 
 ;; Test how TINYINT(1) columns are interpreted. By default, they should be interpreted as integers, but with the
 ;; correct additional options, we should be able to change that -- see
@@ -208,3 +210,51 @@
                            ;; disable the middleware that normally converts `LocalTime` to `Strings` so we can verify
                            ;; our driver is actually doing the right thing
                            :middleware {:format-rows? false}))))))))))
+
+(defn- table-fingerprint
+  [{:keys [fields name]}]
+  {:name   name
+   :fields (map #(select-keys % [:name :base_type]) fields)})
+
+(deftest system-versioned-tables-test
+  (mt/test-driver :mysql
+    (testing "system versioned tables appear during a sync"
+      (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
+       (try
+         ;; Create the DB
+         (doseq [sql ["DROP DATABASE IF EXISTS versioned_tables;"
+                      "CREATE DATABASE versioned_tables;"]]
+           (jdbc/execute! spec [sql]))
+         ;; Create Table & add data
+         (let [details (tx/dbdef->connection-details :mysql :db {:database-name "versioned_tables"})
+               spec    (sql-jdbc.conn/connection-details->spec :mysql details)
+               compat  (try
+                         (doseq [sql ["CREATE TABLE IF NOT EXISTS src1 (id INTEGER, t TEXT);"
+                                      "CREATE TABLE IF NOT EXISTS src2 (id INTEGER, t TEXT);"
+                                      "ALTER TABLE src2 ADD SYSTEM VERSIONING;"
+                                      "INSERT INTO src1 VALUES (1, '2020-03-01 12:20:35');"
+                                      "INSERT INTO src2 VALUES (1, '2020-03-01 12:20:35');"]]
+                           (jdbc/execute! spec [sql]))
+                         true
+                         (catch java.sql.SQLSyntaxErrorException se
+                           ;; if an error is received with SYSTEM VERSIONING mentioned, the version
+                           ;; of mysql or mariadb being tested against does not support system versioning,
+                           ;; so do not continue
+                           (if (re-matches #".*VERSIONING'.*" (.getMessage se))
+                             false
+                             (throw se))))]
+           (when compat
+             (tt/with-temp Database [database {:engine "mysql", :details details}]
+               (sync/sync-database! database)
+               (is (= [{:name   "src1"
+                        :fields [{:name      "id"
+                                  :base_type :type/Integer}
+                                 {:name      "t"
+                                  :base_type :type/Text}]}
+                       {:name   "src2"
+                        :fields [{:name      "id"
+                                  :base_type :type/Integer}
+                                 {:name      "t"
+                                  :base_type :type/Text}]}]
+                      (->> (hydrate (db/select Table :db_id (:id database) {:order-by [:name]}) :fields)
+                           (map table-fingerprint))))))))))))
