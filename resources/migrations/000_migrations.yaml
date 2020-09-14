@@ -7654,7 +7654,7 @@ databaseChangeLog:
             constraintName: fk_view_log_ref_user_id
             onDelete: CASCADE
 
-# changesets 268-272 allow for handling user account emails in lowercase (GH issue 3047)
+# changesets 268-274 allow for handling user account emails in lowercase (GH issue 3047)
   - property:
       name: email_constraint_name
       value: constraint_4
