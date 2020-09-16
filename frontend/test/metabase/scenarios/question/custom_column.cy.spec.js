@@ -8,10 +8,6 @@ import {
 
 const customFormulas = [
   {
-    customFormula: "1 + 1",
-    columnName: "Simple math",
-  },
-  {
     customFormula: "[Quantity] * 2",
     columnName: "Double Qt",
   },
@@ -70,9 +66,30 @@ describe("scenarios > question > custom columns", () => {
     firstCell("not.contain", 14);
   });
 
-  customFormulas.forEach(({ customFormula, columnName }) => {
-    it("should allow the use of a custom formula (Issue #13241)", () => {
-      // go straight to "orders" in custom questions
+  it("can create a custom column (metabase#13241)", () => {
+    const columnName = "Simple Math";
+    // go straight to "orders" in custom questions
+    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    cy.get(".Icon-add_data").click();
+
+    popover().within(() => {
+      _typeUsingGet("[contenteditable='true']", "1 + 1");
+      _typeUsingPlaceholder("Something nice and descriptive", columnName);
+
+      cy.findByText("Done").click();
+    });
+
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    cy.findByText("Visualize").click();
+    cy.wait("@dataset");
+    cy.findByText("There was a problem with your question").should("not.exist");
+    cy.get(".Visualization").contains(columnName);
+  });
+
+  it("can create a custom column with an existing column name", () => {
+    customFormulas.forEach(({ customFormula, columnName }) => {
       cy.visit("/question/new?database=1&table=2&mode=notebook");
       cy.get(".Icon-add_data").click();
 
@@ -83,10 +100,12 @@ describe("scenarios > question > custom columns", () => {
         cy.findByText("Done").click();
       });
 
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
       cy.findByText("Visualize").click();
-      // wait for visualization to render (Note: anti-pattern)
-      cy.wait(2000);
-      cy.findByText(columnName);
+      cy.wait("@dataset");
+      cy.get(".Visualization").contains(columnName);
     });
   });
 });
