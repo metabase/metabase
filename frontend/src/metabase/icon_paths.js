@@ -441,7 +441,7 @@ export function loadIcon(name: string) {
       height: 16,
       fill: "currentcolor",
       role: "img",
-      ariaLabel: name + " icon",
+      "aria-label": name + " icon",
     },
     svg: undefined,
     path: undefined,
