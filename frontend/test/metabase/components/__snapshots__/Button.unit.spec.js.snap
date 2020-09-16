@@ -26,9 +26,11 @@ exports[`Button should render correctly with an icon 1`] = `
     style={null}
   >
     <svg
+      aria-label="star icon"
       className="Icon Icon-star Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={14}
+      role="img"
       viewBox="0 0 32 32"
       width={14}
     >
