@@ -7679,7 +7679,7 @@ databaseChangeLog:
       comment: Added 0.37.0  # set email values to lower(email) but do so defensively and in a way that works on postgres and mysql - skip over those that would introduce duplicates (e.g. Reza@email.com and reza@email.com)
       changes:
         - sql :
-            sql : UPDATE core_user SET email = lower(email) WHERE lower(email) NOT IN (SELECT * FROM (SELECT lower(email) FROM core_user GROUP BY lower(email) HAVING count(email) > 1) as e);
+            sql : UPDATE core_user SET email = lower(email) WHERE lower(email) NOT IN (SELECT * FROM (SELECT lower(email) FROM core_user GROUP BY lower(email) HAVING count(email) > 1) as e)
   - changeSet:
       id: 270
       author: rlotun
