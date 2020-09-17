@@ -12,7 +12,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- jdbc-execute! [db-spec sql]
-  (log/tracef "[execute] %s" (pr-str sql))
+  (log/tracef "[execute %s] %s" driver/*driver* (pr-str sql))
   (jdbc/execute! db-spec [sql] {:transaction? false, :multi? true}))
 
 (defn default-execute-sql! [driver context dbdef sql & {:keys [execute!]

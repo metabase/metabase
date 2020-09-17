@@ -32,19 +32,18 @@
   ;; closing the `LiquibaseConnection`/`Database` closes the parent JDBC `Connection`, so only use it in combination
   ;; with `with-open` *if* we are opening a new JDBC `Connection` from a JDBC spec. If we're passed in a `Connection`,
   ;; it's safe to assume the caller is managing its lifecycle.
-  (letfn []
-    (cond
-      (instance? java.sql.Connection jdbc-spec-or-conn)
-      (f (-> jdbc-spec-or-conn liquibase-connection database liquibase))
+  (cond
+    (instance? java.sql.Connection jdbc-spec-or-conn)
+    (f (-> jdbc-spec-or-conn liquibase-connection database liquibase))
 
-      (:connection jdbc-spec-or-conn)
-      (recur (:connection jdbc-spec-or-conn) f)
+    (:connection jdbc-spec-or-conn)
+    (recur (:connection jdbc-spec-or-conn) f)
 
-      :else
-      (with-open [jdbc-conn      (jdbc/get-connection jdbc-spec-or-conn)
-                  liquibase-conn (liquibase-connection jdbc-conn)
-                  database       (database liquibase-conn)]
-        (f (liquibase database))))))
+    :else
+    (with-open [jdbc-conn      (jdbc/get-connection jdbc-spec-or-conn)
+                liquibase-conn (liquibase-connection jdbc-conn)
+                database       (database liquibase-conn)]
+      (f (liquibase database)))))
 
 (defmacro with-liquibase
   "Execute body with an instance of a `Liquibase` bound to `liquibase-binding`.
@@ -73,7 +72,7 @@
   filter out blank / comment lines. Even though this is not necessary for H2 or Postgres go ahead and do it anyway
   because it keeps the code simple and doesn't make a significant performance difference.
 
-  As of 0.31.1 this is only used for printing the migrations without running or using force migrating."
+  As of 0.31.1 this is only used for printing the migrations without running or when force migrating."
   [^Liquibase liquibase]
   (for [line  (str/split-lines (migrations-sql liquibase))
         :when (not (or (str/blank? line)

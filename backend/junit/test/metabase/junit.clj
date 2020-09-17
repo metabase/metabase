@@ -3,6 +3,7 @@
   (:require [clojure
              [pprint :as pp]
              [string :as str]]
+            [metabase.util :as u]
             [pjstadig.print :as p]
             [test-report-junit-xml.core :as junit-xml]))
 
@@ -15,30 +16,31 @@
      (str "\n" message))))
 
 (defn- result-output [{:keys [expected actual diffs message], :as event}]
-  (with-out-str
-    (println (event-description event))
-    ;; this code is adapted from `pjstadig.util`
-    (p/with-pretty-writer
-      (fn []
-        (let [print-expected (fn [actual]
-                               (p/rprint "expected: ")
-                               (pp/pprint expected)
-                               (p/rprint "  actual: ")
-                               (pp/pprint actual)
-                               (p/clear))]
-          (if (seq diffs)
-            (doseq [[actual [a b]] diffs]
-              (print-expected actual)
-              (p/rprint "    diff:")
-              (if a
-                (do (p/rprint " - ")
-                    (pp/pprint a)
-                    (p/rprint "          + "))
-                (p/rprint " + "))
-              (when b
-                (pp/pprint b))
-              (p/clear))
-            (print-expected actual)))))))
+  (with-redefs [u/colorize? (constantly false)]
+    (with-out-str
+      (println (event-description event))
+      ;; this code is adapted from `pjstadig.util`
+      (p/with-pretty-writer
+        (fn []
+          (let [print-expected (fn [actual]
+                                 (p/rprint "expected: ")
+                                 (pp/pprint expected)
+                                 (p/rprint "  actual: ")
+                                 (pp/pprint actual)
+                                 (p/clear))]
+            (if (seq diffs)
+              (doseq [[actual [a b]] diffs]
+                (print-expected actual)
+                (p/rprint "    diff:")
+                (if a
+                  (do (p/rprint " - ")
+                      (pp/pprint a)
+                      (p/rprint "          + "))
+                  (p/rprint " + "))
+                (when b
+                  (pp/pprint b))
+                (p/clear))
+              (print-expected actual))))))))
 
 (defmulti format-result
   {:arglists '([event])}

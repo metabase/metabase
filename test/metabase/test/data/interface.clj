@@ -170,7 +170,7 @@
   []
   (the-driver-with-test-extensions (or driver/*driver* :h2)))
 
-(defn escaped-name
+(defn escaped-database-name
   "Return escaped version of database name suitable for use as a filename / database name / etc."
   ^String [^DatabaseDefinition {:keys [database-name]}]
   {:pre [(string? database-name)]}
@@ -261,13 +261,18 @@
 
 (defmulti create-db!
   "Create a new database from `database-definition`, including adding tables, fields, and foreign key constraints,
-  and add the appropriate data. This method should drop existing databases with the same name if applicable, unless
-  the skip-drop-db? arg is true. This is to workaround a scenario where the postgres driver terminates the connection
-  before dropping the DB and causes some tests to fail. (This refers to creating the actual *DBMS* database itself,
-  *not* a Metabase `Database` object.)
+  and load the appropriate data. (This refers to creating the actual *DBMS* database itself, *not* a Metabase
+  `Database` object.)
 
   Optional `options` as third param. Currently supported options include `skip-drop-db?`. If unspecified,
-  `skip-drop-db?` should default to `false`."
+  `skip-drop-db?` should default to `false`.
+
+  This method should drop existing databases with the same name if applicable, unless the `skip-drop-db?` arg is
+  truthy. This is to work around a scenario where the Postgres driver terminates the connection before dropping the DB
+  and causes some tests to fail.
+
+  This method is not expected to return anything; use `dbdef->connection-details` to get connection details for this
+  database after you create it."
   {:arglists '([driver database-definition & {:keys [skip-drop-db?]}])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
