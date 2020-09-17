@@ -92,11 +92,12 @@
 ;;; --------------------------------------------------- Public Fns ---------------------------------------------------
 
 (defn dump-to-h2!
-  "Transfer data from existing database specified by connection string
-  to the H2 DB specified by env vars.  Intended as a tool for migrating
-  from one instance to another using H2 as serialization target.
+  "Transfer data from existing database specified by connection string to the H2 DB specified by env vars. Intended as a
+  tool for migrating from one instance to another using H2 as serialization target.
 
-  Defaults to using `@metabase.db/db-file` as the connection string."
+  Defaults to using `@metabase.db/db-file` as the connection string.
+
+  Target H2 DB will be deleted if it exists, unless `keep-existing` is truthy."
   [h2-filename keep-existing]
   (let [h2-filename (or h2-filename "metabase_dump.h2")]
     (println "Dumping to " h2-filename)
