@@ -9,7 +9,7 @@ describe("scenarios > question > filter", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
-  it.skip("should load needed data (Issue #12985)", () => {
+  it.skip("should load needed data (metabase#12985)", () => {
     // Save a Question
     openProductsTable();
     cy.findByText("Save").click();

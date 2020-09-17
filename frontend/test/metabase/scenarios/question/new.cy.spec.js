@@ -31,7 +31,7 @@ describe("scenarios > question > new", () => {
       cy.contains("37.65");
     });
 
-    it.skip("should remove `/notebook` from URL when converting question to SQL/Native (Issue #12651)", () => {
+    it.skip("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
       openOrdersTable();
