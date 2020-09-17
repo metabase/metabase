@@ -97,12 +97,13 @@
   from one instance to another using H2 as serialization target.
 
   Defaults to using `@metabase.db/db-file` as the connection string."
-  [h2-filename]
+  [h2-filename keep-existing]
   (let [h2-filename (or h2-filename "metabase_dump.h2")]
     (println "Dumping to " h2-filename)
     (doseq [filename [h2-filename
                     (str h2-filename ".mv.db")]]
-      (when (.exists (io/file filename))
+      (when (and (.exists (io/file filename))
+                 (not keep-existing))
         (fs/delete filename)
         (println (u/format-color 'red (trs "Output H2 database already exists: %s, removing.") filename))))
 
