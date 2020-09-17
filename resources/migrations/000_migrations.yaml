@@ -7654,49 +7654,36 @@ databaseChangeLog:
             constraintName: fk_view_log_ref_user_id
             onDelete: CASCADE
 
-# changesets 268-274 allow for handling user account emails in lowercase (GH issue 3047)
-  - property:
-      name: email_constraint_name
-      value: constraint_4
-      dbms: h2
-  - property:
-      name: email_constraint_name
-      value: core_user_email_key
-      dbms: postgresql
-  - property:
-      name: email_constraint_name
-      value: email
-      dbms: mysql,mariadb
+# changesets 268-272 allow for handling user account emails in lowercase (GH issue 3047)
   - changeSet:
       id: 268
       author: rlotun
-      comment: Added 0.37.0   # drop unique constraint on email - this will also remove supporting indexes
+      comment: Added 0.37.0  # create index on lower(email), for performance reasons (not availble on h2 and only on more recent versions of mysql)
+      failOnError: false
       preConditions:
-        - or:
+        - onFail: MARK_RAN
+        - and:
             - dbms:
-                type: mysql
-            - dbms:
-                type: mariadb
-            - dbms:
-                type: postgresql
-            - dbms:
-                type: h2
+                type: postgresql,mysql,mariadb
       changes:
-        - dropUniqueConstraint:
-            columnDataType: varchar(254)
-            constraintName: ${email_constraint_name}
+        - createIndex:
+            columns:
+             - column:
+                 name: lower(email)
+                 type: varchar(254)
             tableName: core_user
+            indexName: idx_lower_email
   - changeSet:
       id: 269
       author: rlotun
-      comment: Added 0.37.0  # set email values to lower email
+      comment: Added 0.37.0  # set email values to lower(email) but do so defensively - skip over those that would introduce duplicates (e.g. Reza@email.com and reza@email.com)
       changes:
         - sql :
-            sql : UPDATE core_user SET email = lower(email)
+            sql : UPDATE core_user SET email = lower(email) WHERE lower(email) IN (SELECT lower(email) from core_user GROUP BY lower(email) HAVING COUNT(email) = 1) AND email <> lower(email)
   - changeSet:
       id: 270
       author: rlotun
-      comment: Added 0.37.0 # try to install citext extension on psql (user requires privileges on postgres)
+      comment: Added 0.37.0 # try to install citext extension on posgres (user requires privileges on postgres)
       failOnError: false
       preConditions:
         - onFail: MARK_RAN
@@ -7738,27 +7725,3 @@ databaseChangeLog:
             tableName: core_user
             columnName: email
             newDataType: varchar_ignorecase(254)
-  - changeSet:
-      id: 273
-      author: rlotun
-      comment: Added 0.37.0  # add unique constraint on lower(email)
-      changes:
-        - addUniqueConstraint:
-            columnNames: email
-            constraintName: constraint_email_unique
-            tableName: core_user
-  - changeSet:
-      id: 274
-      author: rlotun
-      comment: Added 0.37.0  # create index on lower(email)
-      failOnError: false
-      preConditions:
-        - onFail: MARK_RAN
-      changes:
-        - createIndex:
-            columns:
-             - column:
-                 name: lower(email)
-                 type: varchar(254)
-            tableName: core_user
-            indexName: idx_constraint_lower_email_unique
