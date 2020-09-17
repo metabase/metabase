@@ -57,7 +57,7 @@ describe("scenarios > auth > signin", () => {
   });
 
   sizes.forEach(size => {
-    it(`should redirect from /auth/forgot_password back to /auth/login (viewport: ${size})`, () => {
+    it(`should redirect from /auth/forgot_password back to /auth/login (viewport: ${size}) (metabase#12658)`, () => {
       if (Cypress._.isArray(size)) {
         cy.viewport(size[0], size[1]);
       } else {
