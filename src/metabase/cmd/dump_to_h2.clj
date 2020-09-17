@@ -79,7 +79,7 @@
   (println-ok))
 
 (defn- load-data! [target-db-conn]
-  (println "Source db:" (mdb/jdbc-spec))
+  (println "Source db:" (dissoc (mdb/jdbc-spec) :password))
   (jdbc/with-db-connection [db-conn (mdb/jdbc-spec)]
     (doseq [{table-name :table, :as e} entities
             :let [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
