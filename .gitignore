@@ -12,6 +12,7 @@
 .idea/
 .nrepl-port
 .vscode
+.clj-kondo
 /*.h2.db
 /*.lock.db
 /*.mv.db
