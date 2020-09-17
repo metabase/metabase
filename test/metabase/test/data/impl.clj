@@ -93,10 +93,11 @@
       (tu.tz/with-system-timezone-id "UTC"
         (tx/create-db! driver database-definition)))
     ;; Add DB object to Metabase DB
-    (let [db (db/insert! Database
-               :name    database-name
-               :engine  (name driver)
-               :details (tx/dbdef->connection-details driver :db database-definition))]
+    (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
+          db                 (db/insert! Database
+                               :name    database-name
+                               :engine  (name driver)
+                               :details connection-details)]
       (try
         ;; sync newly added DB
         (u/with-timeout sync-timeout-ms
@@ -112,16 +113,23 @@
         (Database (u/get-id db))
         (catch Throwable e
           (db/delete! Database :id (u/get-id db))
-          (throw e))))
+          (throw (ex-info "Failed to create test database"
+                          {:driver             driver
+                           :database-name      database-name
+                           :connection-details connection-details}
+                          e)))))
     (catch Throwable e
-      (printf "Failed to create %s '%s' test database:\n" driver database-name)
-      (println e)
-      (if config/is-test?
-        (System/exit -1)
-        (do
-          (println (u/format-color 'red "create-database! failed; destroying %s database %s" driver (pr-str database-name)))
-          (tx/destroy-db! driver database-definition)
-          (throw e))))))
+      (let [message (format "Failed to create %s '%s' test database" driver database-name)]
+        (println message "\n" e)
+        (if config/is-test?
+          (System/exit -1)
+          (do
+            (println (u/format-color 'red "create-database! failed; destroying %s database %s" driver (pr-str database-name)))
+            (tx/destroy-db! driver database-definition)
+            (throw (ex-info message
+                            {:driver        driver
+                             :database-name database-name}
+                            e))))))))
 
 (defmethod get-or-create-database! :default
   [driver dbdef]
