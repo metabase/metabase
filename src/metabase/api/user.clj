@@ -182,7 +182,7 @@
     :is_active     true
     :is_superuser  false
     ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
-    ;; (see Issue #3323)
+    ;; (see metabase#3323)
     :google_auth   (boolean (and (:google_auth existing-user)
                                  ;; if google-auth-client-id is set it means Google Auth is enabled
                                  (session-api/google-auth-client-id)))
