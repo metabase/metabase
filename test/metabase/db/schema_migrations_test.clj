@@ -61,7 +61,7 @@
           (is (= true
                  (db/exists? User :email (u/lower-case-en e1))))))))
   (testing "Migration 268-272: lowercasing `email` in `core_user` but skip cases causing duplicates"
-    (impl/test-migrations [268 272] [migrate!]
+    (impl/test-migrations [268 272 #{:h2 :postgres}] [migrate!]
       (let [e1 "Foo@email.com"
             e2 "boo@email.com"
             e3 "foo@email.com"

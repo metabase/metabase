@@ -112,16 +112,17 @@
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 
 (defn test-migrations*
-  [migration-range f]
-  ;; make sure the normal Metabase application DB is set up before running the tests so things don't get confused and
-  ;; try to initialize it while the mock DB is bound
-  (initialize/initialize-if-needed! :db)
-  (let [[start-id end-id] (if (sequential? migration-range)
-                            migration-range
-                            [migration-range migration-range])]
-    (testing (format "Migrations %d-%d" start-id end-id)
-      (mt/test-drivers #{:h2 :mysql :postgres}
-        (test-migrations-for-driver driver/*driver* [start-id end-id] f)))))
+  ([migration-range f] (test-migrations* migration-range f #{:h2 :mysql :postgres}))
+  ([migration-range f drivers]
+    ;; make sure the normal Metabase application DB is set up before running the tests so things don't get confused and
+    ;; try to initialize it while the mock DB is bound
+    (initialize/initialize-if-needed! :db)
+    (let [[start-id end-id] (if (sequential? migration-range)
+                              migration-range
+                              [migration-range migration-range])]
+      (testing (format "Migrations %d-%d" start-id end-id)
+        (mt/test-drivers drivers
+          (test-migrations-for-driver driver/*driver* [start-id end-id] f))))))
 
 (defmacro test-migrations
   "Util macro for running tests for a set of Liquibase schema migration(s).
