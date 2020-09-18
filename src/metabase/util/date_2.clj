@@ -144,7 +144,7 @@
    (t/as t (case unit
              :minute-of-hour   :minute-of-hour
              :hour-of-day      :hour-of-day
-             :day-of-week      (+ (.dayOfWeek (week-fields :sunday-start)) (driver.common/start-of-week-offset))
+             :day-of-week      (.dayOfWeek (week-fields :sunday-start))
              :iso-day-of-week  (.dayOfWeek (week-fields :iso))
              :day-of-month     :day-of-month
              :day-of-year      :day-of-year
