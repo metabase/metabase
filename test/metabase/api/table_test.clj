@@ -39,6 +39,7 @@
   (merge
    (select-keys (mt/db) [:id :created_at :updated_at :timezone])
    {:engine                      "h2"
+    :start_of_week               "sunday"
     :name                        "test-data"
     :is_sample                   false
     :is_full_sync                true

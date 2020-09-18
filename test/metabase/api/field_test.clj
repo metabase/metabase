@@ -23,10 +23,11 @@
   (merge
    (select-keys (mt/db) [:id :timezone])
    (dissoc (mt/object-defaults Database) :details)
-   {:engine   "h2"
-    :name     "test-data"
-    :features (mapv u/qualified-name (driver.u/features :h2))
-    :timezone "UTC"}))
+   {:engine        "h2"
+    :start_of_week "sunday"
+    :name          "test-data"
+    :features      (mapv u/qualified-name (driver.u/features :h2))
+    :timezone      "UTC"}))
 
 (deftest get-field-test
   (testing "GET /api/field/:id"

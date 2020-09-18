@@ -91,7 +91,9 @@
   (testing "GET /api/database/:id"
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
-        (is (= (add-schedules (dissoc (db-details) :details))
+        (is (= (add-schedules (-> (db-details)
+                                  (update :start_of_week name)
+                                  (dissoc :details)))
                ((mt/user->client :rasta) :get 200 (format "database/%d" (mt/id))))))
 
       (testing "Superusers should see DB details"
