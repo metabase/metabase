@@ -368,7 +368,7 @@
 (defmethod sql.qp/date [:presto :hour-of-day]     [_ _ expr] (hsql/call :hour expr))
 (defmethod sql.qp/date [:presto :day]             [_ _ expr] (hsql/call :date_trunc (hx/literal :day) expr))
 ;; Presto is ISO compliant, so we need to offset Monday = 1 to Sunday = 1
-(defmethod sql.qp/date [:presto :day-of-week]     [_ _ expr] (hx/+ (hsql/call :day_of_week expr) (driver.common/start-of-week-offset)))
+(defmethod sql.qp/date [:presto :day-of-week]     [_ _ expr] (hx/+ (hsql/call :day_of_week expr) (driver.common/start-of-week-offset :presto)))
 (defmethod sql.qp/date [:presto :day-of-month]    [_ _ expr] (hsql/call :day expr))
 (defmethod sql.qp/date [:presto :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
 

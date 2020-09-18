@@ -359,7 +359,7 @@
 (defmethod sql.qp/date [:bigquery :week-of-year]
   [_ _ expr]
   ;; BigQuery's impl of `week` uses 0 for the first week; we use 1
-  (->> expr (sql.qp/date :bigquery :week expr) (extract :week) hx/inc))
+  (->> expr (sql.qp/date :bigquery :week) (extract :week) hx/inc))
 
 (doseq [[unix-timestamp-type bigquery-fn] {:seconds      :timestamp_seconds
                                            :milliseconds :timestamp_millis}]
