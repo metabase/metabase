@@ -9,9 +9,14 @@
 
   See `metabase.db.schema-migrations-test.impl` for the implementation of this functionality."
   (:require [clojure.test :refer :all]
+            [metabase
+             [models :refer [Database Field Table]]
+             [util :as u]]
             [metabase.db.schema-migrations-test.impl :as impl]
-            [metabase.models :refer [Database Field Table]]
-            [toucan.db :as db]))
+            [metabase.models.user :refer [User]]
+            [metabase.test.util :as tu]
+            [toucan.db :as db])
+  (:import java.util.UUID))
 
 (deftest database-position-test
   (testing "Migration 165: add `database_position` to Field"
@@ -31,3 +36,47 @@
           (testing (format "Field %d" id)
             (is (= id
                    (db/select-one-field :database_position Field :id id)))))))))
+
+(defn- create-raw-user [email]
+  "create a user but skip pre and post insert steps"
+  (db/simple-insert! User
+    :email        email
+    :first_name   (tu/random-name)
+    :last_name    (tu/random-name)
+    :password     (str (UUID/randomUUID))
+    :date_joined  :%now
+    :is_active    true
+    :is_superuser false))
+
+(deftest email-lowercasing-test
+  (testing "Migration 268-272: basic lowercasing `email` in `core_user`"
+    (impl/test-migrations [268 272] [migrate!]
+      (let [e1 "Foo@email.com"
+            e2 "boo@email.com"]
+        (doseq [e [e1 e2]]
+          (create-raw-user e))
+        ;; Run migrations 268 - 272
+        (migrate!)
+        (doseq [e [e1 e2]]
+          (is (= true
+                 (db/exists? User :email (u/lower-case-en e1))))))))
+  (testing "Migration 268-272: lowercasing `email` in `core_user` but skip cases causing duplicates"
+    (impl/test-migrations [268 272] [migrate!]
+      (let [e1 "Foo@email.com"
+            e2 "boo@email.com"
+            e3 "foo@email.com"
+            e4 "TEST@email.com"]
+        (doseq [e [e1 e2 e3 e4]]
+          (create-raw-user e))
+        ;; Run migrations 268 - 272
+        (migrate!)
+        (testing "emails that have upper case characters that collide to other emails shouldn't be touched"
+          (is (= true
+                 (db/exists? User :email "Foo@email.com")))
+          (is (= true
+                 (db/exists? User :email "foo@email.com"))))
+        (testing "emails that should have been lowercased are"
+          (is (= true
+                 (db/exists? User :email (u/lower-case-en e2))))
+          (is (= true
+                 (db/exists? User :email (u/lower-case-en e4)))))))))

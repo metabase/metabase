@@ -84,7 +84,7 @@
 (defn random-email
   "Generate a random email address."
   []
-  (str (random-name) "@metabase.com"))
+  (str (u/lower-case-en (random-name)) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
   "Useful for unit test comparisons. Converts map keys found in `DATA`

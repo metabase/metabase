@@ -9,7 +9,7 @@
 (deftest first-session-for-user-test
   (tt/with-temp User [{user-id :id} {:first_name (tu/random-name)
                                      :last_name  (tu/random-name)
-                                     :email      (str (tu/random-name) "@metabase.com")
+                                     :email      (tu/random-email)
                                      :password   "nada"}]
     (db/simple-insert-many! Session
       [{:id         "the-greatest-day-ever"
