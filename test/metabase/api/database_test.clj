@@ -97,7 +97,8 @@
                ((mt/user->client :rasta) :get 200 (format "database/%d" (mt/id))))))
 
       (testing "Superusers should see DB details"
-        (is (= (add-schedules (db-details))
+        (is (= (add-schedules (-> (db-details)
+                                  (update :start_of_week name)))
                ((mt/user->client :crowberto) :get 200 (format "database/%d" (mt/id)))))))
 
     (mt/with-temp* [Database [db {:name "My DB", :engine ::test-driver}]
