@@ -87,19 +87,22 @@
   the newly remapped column. This should order by the text of the remapped column vs. the id of the source column
   before the remapping"
   [field->remapped-col :- {mbql.s/field-id, mbql.s/fk->}, order-by-clauses :- [mbql.s/OrderBy]]
-  (vec
-   (for [[direction field, :as order-by-clause] order-by-clauses]
-     (if-let [remapped-col (get field->remapped-col field)]
-       [direction remapped-col]
-       order-by-clause))))
+  (->> (for [[direction field, :as order-by-clause] order-by-clauses]
+         (if-let [remapped-col (get field->remapped-col field)]
+           [direction remapped-col]
+           order-by-clause))
+       distinct
+       vec))
 
 (defn- update-remapped-breakout
   [field->remapped-col breakout-clause]
-  (vec (mapcat (fn [field]
-                 (if-let [remapped-col (get field->remapped-col field)]
-                   [remapped-col field]
-                   [field]))
-               breakout-clause)))
+  (->> breakout-clause
+       (mapcat (fn [field]
+              (if-let [remapped-col (get field->remapped-col field)]
+                [remapped-col field]
+                [field])))
+       distinct
+       vec))
 
 (s/defn ^:private add-fk-remaps :- [(s/one (s/maybe [ExternalRemappingDimension]) "external remapping dimensions")
                                     (s/one mbql.s/Query "query")]
@@ -114,7 +117,11 @@
     ;; fetch remapping column pairs if any exist...
     (if-let [remap-col-tuples (seq (create-remap-col-tuples (concat fields breakout)))]
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
-      (let [new-fields          (into fields (map second) remap-col-tuples)
+      (let [new-fields          (->> remap-col-tuples
+                                     (map second)
+                                     (concat fields)
+                                     distinct
+                                     vec)
             ;; make a map of field-id-clause -> fk-clause from the tuples
             field->remapped-col (into {} (for [[field-clause fk-clause] remap-col-tuples]
                                            [field-clause fk-clause]))

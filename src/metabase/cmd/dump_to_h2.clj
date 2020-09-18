@@ -78,7 +78,7 @@
   (println-ok))
 
 (defn- load-data! [target-db-conn]
-  (println "Source db:" (mdb/jdbc-spec))
+  (println "Source db:" (dissoc (mdb/jdbc-spec) :password))
   (jdbc/with-db-connection [db-conn (mdb/jdbc-spec)]
     (doseq [{table-name :table, :as e} entities
             :let [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
@@ -91,16 +91,19 @@
 ;;; --------------------------------------------------- Public Fns ---------------------------------------------------
 
 (defn dump-to-h2!
-  "Transfer data from existing database specified by connection string
-  to the H2 DB specified by env vars.  Intended as a tool for migrating
-  from one instance to another using H2 as serialization target.
+  "Transfer data from existing database specified by connection string to the H2 DB specified by env vars. Intended as a
+  tool for migrating from one instance to another using H2 as serialization target.
 
-  Defaults to using `@metabase.db/db-file` as the connection string."
-  [h2-filename]
+  Defaults to using `@metabase.db/db-file` as the connection string.
+
+  Target H2 DB will be deleted if it exists, unless `keep-existing` is truthy."
+  [h2-filename keep-existing]
   (let [h2-filename (or h2-filename "metabase_dump.h2")]
-    (println "Dumping to" h2-filename)
-    (doseq [filename [h2-filename (str h2-filename ".mv.db")]]
-      (when (.exists (io/file filename))
+    (println "Dumping to " h2-filename)
+    (doseq [filename [h2-filename
+                    (str h2-filename ".mv.db")]]
+      (when (and (.exists (io/file filename))
+                 (not keep-existing))
         (io/delete-file filename)
         (println (u/format-color 'red (trs "Output H2 database already exists: %s, removing.") filename))))
 
