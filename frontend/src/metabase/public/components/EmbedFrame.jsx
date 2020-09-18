@@ -8,6 +8,7 @@ import { parseHashOptions } from "metabase/lib/browser";
 
 import MetabaseSettings from "metabase/lib/settings";
 
+import TitleAndDescription from "metabase/components/TitleAndDescription";
 import Parameters from "metabase/parameters/components/Parameters";
 import LogoBadge from "./LogoBadge";
 
@@ -53,6 +54,7 @@ export default class EmbedFrame extends Component {
     const {
       className,
       children,
+      description,
       actionButtons,
       location,
       parameters,
@@ -61,9 +63,7 @@ export default class EmbedFrame extends Component {
     } = this.props;
     const { innerScroll } = this.state;
 
-    const showFooter =
-      !MetabaseSettings.hideEmbedBranding() ||
-      (actionButtons && actionButtons.length > 0);
+    const showFooter = !MetabaseSettings.hideEmbedBranding() || actionButtons;
 
     const { bordered, titled, theme, hide_parameters } = {
       ...DEFAULT_OPTIONS,
@@ -87,7 +87,9 @@ export default class EmbedFrame extends Component {
         >
           {name || (parameters && parameters.length > 0) ? (
             <div className="EmbedFrame-header flex align-center p1 sm-p2 lg-p3">
-              {name && <div className="h4 text-bold sm-h3 md-h2">{name}</div>}
+              {name && (
+                <TitleAndDescription title={name} description={description} />
+              )}
               {parameters && parameters.length > 0 ? (
                 <div className="flex ml-auto">
                   <Parameters

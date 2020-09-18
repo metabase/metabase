@@ -23,18 +23,26 @@
 (defmethod drop-db-ddl-statements :sql/test-extensions
   [driver dbdef & {:keys [skip-drop-db?]}]
   (when-not skip-drop-db?
-    ;; Exec SQL for creating the DB
-    [(sql.tx/drop-db-if-exists-sql driver dbdef)
-     (sql.tx/create-db-sql driver dbdef)]))
+    (try
+      [(sql.tx/drop-db-if-exists-sql driver dbdef)]
+      (catch Throwable e
+        (throw (ex-info "Error generating DDL statements for dropping database"
+                        {:driver driver}
+                        e))))))
 
+(defn create-db-ddl-statements
+  "DDL statements to create the DB itself (does not include statements to drop the DB if it already exists)."
+  [driver dbdef]
+  [(sql.tx/create-db-sql driver dbdef)])
 
-(defmulti create-db-ddl-statements
-  "Return a default sequence of DDL statements for creating a DB (not including dropping it)."
+(defmulti create-db-tables-ddl-statements
+  "Return a default sequence of DDL statements for creating the tables/columns/etc. inside a Database. DOES NOT INCLUDE
+  STATEMENTS FOR CREATING (OR DROPPING) THE DATABASE ITSELF."
   {:arglists '([driver dbdef & {:as options}])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmethod create-db-ddl-statements :sql/test-extensions
+(defmethod create-db-tables-ddl-statements :sql/test-extensions
   [driver {:keys [table-definitions], :as dbdef} & _]
   ;; Build combined statement for creating tables + FKs + comments
   (let [statements (atom [])
@@ -60,7 +68,6 @@
         (when field-comment
           (add! (sql.tx/standalone-column-comment-sql driver dbdef tabledef fielddef)))))
     @statements))
-
 
 ;; The methods below are currently only used by `:sql-jdbc` drivers, but you can use them to help implement your
 ;; `:sql` driver test extensions as well because there's nothing JDBC specific about them

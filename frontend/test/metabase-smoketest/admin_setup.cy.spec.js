@@ -1,11 +1,12 @@
 import {
+  popover,
   restore,
-  signInAsAdmin,
-  USERS,
-  signOut,
-  signInAsNormalUser,
-  signIn,
   setupLocalHostEmail,
+  signIn,
+  signInAsAdmin,
+  signInAsNormalUser,
+  signOut,
+  USERS,
 } from "__support__/cypress";
 
 const new_user = {
@@ -685,37 +686,41 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should add sub-collection and change its permissions as admin", () => {
-      // Adds sub-collection
+      const subCollectionName = "test sub-collection";
 
       signOut();
       signInAsAdmin();
+
       cy.visit("/collection/root");
 
       cy.findByText("Our analytics");
 
       cy.findByText("New collection").click();
-      cy.findByLabelText("Name").type("test sub-collection");
-      cy.findByLabelText("Description")
-        .wait(1)
-        .type("very descriptive of test sub-collection");
-      cy.get(".Icon-chevrondown").click();
-      cy.findAllByText("Our analytics")
-        .last()
-        .click();
 
+      cy.get(".Modal").within(() => {
+        cy.findByLabelText("Name").type(subCollectionName);
+        cy.findByLabelText("Description")
+          .wait(1)
+          .type(`Very nice description for ${subCollectionName}`);
+
+        cy.get(".Icon-chevrondown").click();
+      });
+
+      popover().within(() => {
+        cy.findAllByText("Our analytics")
+          .last()
+          .click();
+      });
       cy.findByText("Create").click();
 
-      cy.get(".Icon-all");
-
       // Changes permissions of sub-collection
-
-      cy.findByText("test sub-collection").click();
+      cy.findByText(subCollectionName).click();
 
       cy.findByText("This collection is empty, like a blank canvas");
 
       cy.get(".Icon-lock").click();
 
-      cy.findByText("Permissions for this collection");
+      cy.findByText(`Permissions for ${subCollectionName}`);
 
       // Collection can no longer access sub-collection
       cy.wait(1)

@@ -102,7 +102,10 @@
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
-  (= (db/select-ids Field :table_id (u/get-id table)) (set field-ordering)))
+  (= (db/select-ids Field
+       :table_id (u/get-id table)
+       :active   true)
+     (set field-ordering)))
 
 (defn custom-order-fields!
   "Set field order to `field-order`."

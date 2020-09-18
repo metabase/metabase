@@ -4,17 +4,18 @@
              [string :as str]
              [test :refer :all]]
             [metabase
-             [email-test :as email-test]
              [http-client :as http]
              [test :as mt]
              [util :as u]]
             [metabase.models
              [collection :as collection :refer [Collection]]
              [collection-test :as collection-test]
+             [database :refer [Database]]
              [permissions :as perms]
              [permissions-group :as group :refer [PermissionsGroup]]
              [permissions-group-membership :refer [PermissionsGroupMembership]]
              [session :refer [Session]]
+             [table :refer [Table]]
              [user :as user :refer [User]]]
             [metabase.test.data.users :as test-users]
             [metabase.util.password :as u.password]
@@ -65,13 +66,25 @@
                     remove-non-collection-perms
                     (collection-test/perms-path-ids->names [child-collection grandchild-collection])))))))))
 
+(deftest group-data-permissions-test
+  (testing "If a User is a member of a Group with data permissions for an object, `permissions-set` should return the perms"
+    (mt/with-temp* [Database                   [{db-id :id}]
+                    Table                      [table {:name "Round Table", :db_id db-id}]
+                    PermissionsGroup           [{group-id :id}]
+                    PermissionsGroupMembership [_ {:group_id group-id, :user_id (mt/user->id :rasta)}]]
+      (perms/revoke-permissions! (group/all-users) db-id (:schema table) (:id table))
+      (perms/grant-permissions! group-id (perms/table-read-path table))
+      (is (set/subset?
+           #{(perms/table-read-path table)}
+           (metabase.models.user/permissions-set (mt/user->id :rasta)))))))
+
 ;;; Tests for invite-user and create-new-google-auth-user!
 
 (defn- maybe-accept-invite!
   "Accept an invite if applicable. Look in the body of the content of the invite email for the reset token since this is
   the only place to get it (the token stored in the DB is an encrypted hash)."
   [new-user-email-address]
-  (when-let [[{[{invite-email :content}] :body}] (get @email-test/inbox new-user-email-address)]
+  (when-let [[{[{invite-email :content}] :body}] (get @mt/inbox new-user-email-address)]
     (let [[_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)#new" invite-email)]
       (http/client :post 200 "session/reset_password" {:token    reset-token
                                                        :password "ABC123"}))))
@@ -80,7 +93,7 @@
   "Fetch the emails that have been sent in the form of a map of email address -> sequence of email subjects.
   For test-writing convenience the random email and names assigned to the new user are replaced with `<New User>`."
   [new-user-email-address new-user-first-name new-user-last-name]
-  (into {} (for [[address emails] @email-test/inbox
+  (into {} (for [[address emails] @mt/inbox
                  :let             [address (if (= address new-user-email-address)
                                              "<New User>"
                                              address)]]
@@ -94,7 +107,7 @@
   [& {:keys [google-auth? accept-invite? password invitor]
       :or   {accept-invite? true}}]
   (mt/with-temporary-setting-values [site-name "Metabase"]
-    (email-test/with-fake-inbox
+    (mt/with-fake-inbox
       (let [new-user-email      (mt/random-email)
             new-user-first-name (mt/random-name)
             new-user-last-name  (mt/random-name)

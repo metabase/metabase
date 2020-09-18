@@ -7668,3 +7668,75 @@ databaseChangeLog:
                     defaultValue: sunday
                     constraints:
                       nullable: false
+
+# changesets 268-272 allow for handling user account emails in lowercase (GH issue 3047)
+  - changeSet:
+      id: 268
+      author: rlotun
+      comment: Added 0.37.0  # create index on lower(email), for performance reasons (not availble on h2 and only on more recent versions of mysql)
+      failOnError: false
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - dbms:
+                type: postgresql,mysql,mariadb
+      changes:
+        - createIndex:
+            columns:
+             - column:
+                 name: lower(email)
+                 type: varchar(254)
+            tableName: core_user
+            indexName: idx_lower_email
+  - changeSet:
+      id: 269
+      author: rlotun
+      comment: Added 0.37.0  # set email values to lower(email) but do so defensively and in a way that works on postgres and mysql - skip over those that would introduce duplicates (e.g. Reza@email.com and reza@email.com)
+      changes:
+        - sql :
+            sql : UPDATE core_user SET email = lower(email) WHERE lower(email) NOT IN (SELECT * FROM (SELECT lower(email) FROM core_user GROUP BY lower(email) HAVING count(email) > 1) as e)
+  - changeSet:
+      id: 270
+      author: rlotun
+      comment: Added 0.37.0 # try to install citext extension on posgres (user requires privileges on postgres)
+      failOnError: false
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - dbms:
+                type: postgresql
+      changes:
+        - sql :
+            sql : CREATE EXTENSION IF NOT EXISTS citext
+  - changeSet:
+      id: 271
+      author: rlotun
+      comment: Added 0.37.0 # try to convert email column to citext on postgres, if citext extension installed
+      failOnError: false
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - dbms:
+                type: postgresql
+            - sqlCheck:
+                expectedResult: 1
+                sql: SELECT count(*) FROM pg_extension WHERE extname = 'citext'
+      changes:
+        - modifyDataType:
+            tableName: core_user
+            columnName: email
+            newDataType: citext
+  - changeSet:
+      id: 272
+      author: rlotun
+      comment: Added 0.37.0 # for H2 convert column to VARCHAR_IGNORECASE
+      failOnError: false
+      preConditions:
+         - or:
+             - dbms:
+                   type: h2
+      changes:
+        - modifyDataType:
+            tableName: core_user
+            columnName: email
+            newDataType: varchar_ignorecase(254)

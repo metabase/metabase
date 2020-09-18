@@ -1,5 +1,5 @@
 import React from "react";
-import { render, cleanup } from "@testing-library/react";
+import { render } from "@testing-library/react";
 
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 
@@ -16,8 +16,6 @@ const settings = {
 };
 
 describe("MetricForm", () => {
-  afterEach(cleanup);
-
   it("should render title on dashboards", () => {
     const { getByText } = render(
       <Scalar
