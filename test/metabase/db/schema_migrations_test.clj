@@ -59,24 +59,4 @@
         (migrate!)
         (doseq [e [e1 e2]]
           (is (= true
-                 (db/exists? User :email (u/lower-case-en e1))))))))
-  (testing "Migration 268-272: lowercasing `email` in `core_user` but skip cases causing duplicates"
-    (impl/test-migrations [268 272 #{:h2 :postgres}] [migrate!]
-      (let [e1 "Foo@email.com"
-            e2 "boo@email.com"
-            e3 "foo@email.com"
-            e4 "TEST@email.com"]
-        (doseq [e [e1 e2 e3 e4]]
-          (create-raw-user e))
-        ;; Run migrations 268 - 272
-        (migrate!)
-        (testing "emails that have upper case characters that collide to other emails shouldn't be touched"
-          (is (= true
-                 (db/exists? User :email "Foo@email.com")))
-          (is (= true
-                 (db/exists? User :email "foo@email.com"))))
-        (testing "emails that should have been lowercased are"
-          (is (= true
-                 (db/exists? User :email (u/lower-case-en e2))))
-          (is (= true
-                 (db/exists? User :email (u/lower-case-en e4)))))))))
+                 (db/exists? User :email (u/lower-case-en e1)))))))))
