@@ -19,10 +19,10 @@ ENV LC_CTYPE en_US.UTF-8
 # gettext: translations
 # java-cacerts: installs updated cacerts to /etc/ssl/certs/java/cacerts
 
-RUN apk add --update coreutils bash yarn git wget curl make gettext java-cacerts
+RUN apk add --no-cache coreutils bash yarn git wget curl make gettext java-cacerts
 
 # lein:    backend dependencies and building
-ADD https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
+COPY https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
 RUN chmod 744 /usr/local/bin/lein
 RUN lein upgrade
 
@@ -34,21 +34,21 @@ RUN /tmp/linux-install-1.10.1.708.sh
 # install dependencies before adding the rest of the source to maximize caching
 
 # backend dependencies
-ADD project.clj .
+COPY project.clj .
 RUN lein deps
 
 # frontend dependencies
-ADD yarn.lock package.json .yarnrc ./
+COPY yarn.lock package.json .yarnrc ./
 RUN yarn
 
 # add the rest of the source
-ADD . .
+COPY . .
 
 # build the app
 RUN INTERACTIVE=false bin/build
 
 # import AWS RDS cert into /etc/ssl/certs/java/cacerts
-ADD https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem .
+COPY https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem .
 RUN keytool -noprompt -import -trustcacerts -alias aws-rds \
   -file rds-combined-ca-bundle.pem \
   -keystore /etc/ssl/certs/java/cacerts \
@@ -66,7 +66,7 @@ ENV FC_LANG en-US
 ENV LC_CTYPE en_US.UTF-8
 
 # dependencies
-RUN apk add --update bash ttf-dejavu fontconfig
+RUN apk add --no-cache bash ttf-dejavu fontconfig
 
 # add fixed cacerts
 COPY --from=builder /etc/ssl/certs/java/cacerts /opt/java/openjdk/lib/security/cacerts
