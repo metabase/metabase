@@ -50,8 +50,19 @@
      (testing "make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]"
        (is (= [[remapped-field]
                (update-in example-query [:query :fields]
-                          conj [:fk-> [:field-id (mt/id :venues :category_id)] [:field-id (mt/id :categories :name)]])]
+                          conj [:fk-> [:field-id (mt/id :venues :category_id)]
+                                [:field-id (mt/id :categories :name)]])]
               (#'add-dim-projections/add-fk-remaps example-query))))
+
+     (testing "make sure we don't duplicate remappings"
+       (is (= [[remapped-field]
+               (update-in example-query [:query :fields]
+                          conj [:fk-> [:field-id (mt/id :venues :category_id)]
+                                [:field-id (mt/id :categories :name)]])]
+              (#'add-dim-projections/add-fk-remaps
+               (update-in example-query [:query :fields]
+                          conj [:fk-> [:field-id (mt/id :venues :category_id)]
+                                [:field-id (mt/id :categories :name)]])))))
 
      (testing "adding FK remaps should replace any existing order-bys for a field with order bys for the FK remapping Field"
        (is (= [[remapped-field]
