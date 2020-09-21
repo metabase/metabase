@@ -67,7 +67,8 @@ describe("scenarios > question > custom columns", () => {
       cy.findByText("Subtotal").click();
     });
 
-    // There isn't a single unique parent that can be used to scope this icon within
+    // TODO: There isn't a single unique parent that can be used to scope this icon within
+    // (a good candidate would be `.NotebookCell`)
     cy.get(".Icon-add")
       .last() // This is brittle.
       .click();
@@ -81,6 +82,7 @@ describe("scenarios > question > custom columns", () => {
     cy.findByText("Created At").click();
 
     // Add custom column based on previous aggregates
+    const columnName = "MegaTotal";
     cy.findByText("Custom column").click();
     popover().within(() => {
       cy.get("[contenteditable='true']")
@@ -88,7 +90,7 @@ describe("scenarios > question > custom columns", () => {
         .type("[Sum of Subtotal] + [Sum of Total]");
       cy.findByPlaceholderText("Something nice and descriptive")
         .click()
-        .type("MegaTotal");
+        .type(columnName);
       cy.findByText("Done").click();
     });
 
@@ -98,5 +100,8 @@ describe("scenarios > question > custom columns", () => {
     cy.findByText("Visualize").click();
     cy.wait("@dataset");
     cy.findByText("There was a problem with your question").should("not.exist");
+    // This is a pre-save state of the question but the column name should appear
+    // both in tabular and graph views (regardless of which one is currently selected)
+    cy.get(".Visualization").contains(columnName);
   });
 });
