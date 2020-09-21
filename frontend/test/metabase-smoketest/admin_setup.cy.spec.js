@@ -147,7 +147,7 @@ describe("smoketest > admin_setup", () => {
 
       // Check member count
 
-      // *** Unnecessary click (Issue #12693)
+      // *** Unnecessary click (metabase#12693)
       cy.findAllByText("People")
         .last()
         .click();
@@ -190,7 +190,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText(new_user.first_name + " " + new_user.last_name);
       cy.findAllByText("2 other groups").should("have.length", 3);
 
-      // *** Unnecessary click (Issue #12693)
+      // *** Unnecessary click (metabase#12693)
       cy.findAllByText("Groups")
         .first()
         .click();

@@ -89,7 +89,7 @@ export function setupLocalHostEmail() {
   // Leaves password and username blank
   cy.findByPlaceholderText("metabase@yourcompany.com").type("test@local.host");
 
-  // *** Unnecessary click (Issue #12692)
+  // *** Unnecessary click (metabase#12692)
   cy.findByPlaceholderText("smtp.yourservice.com").click();
 
   cy.findByText("Save changes").click();

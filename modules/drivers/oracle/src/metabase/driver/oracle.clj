@@ -203,7 +203,7 @@
 ;; )
 ;; WHERE __rownum__ >= 100;
 ;;
-;; See issue #3568 and the Oracle documentation for more details:
+;; See metabase#3568 and the Oracle documentation for more details:
 ;; http://docs.oracle.com/cd/B19306_01/server.102/b14200/pseudocolumns009.htm
 (defmethod sql.qp/apply-top-level-clause [:oracle :limit]
   [_ _ honeysql-query {value :limit}]

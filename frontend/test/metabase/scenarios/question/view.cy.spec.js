@@ -195,8 +195,7 @@ describe("scenarios > question > view", () => {
       });
     });
 
-    it.skip("should be able to filter Q by Category as no data user (from Q link)", () => {
-      // *** Test will fail until Issue #12654 is resolved
+    it.skip("should be able to filter Q by Category as no data user (from Q link) (metabase#12654)", () => {
       signIn("nodata");
       cy.visit("/question/4");
 
@@ -208,8 +207,7 @@ describe("scenarios > question > view", () => {
       cy.findByText("Gizmo").should("not.exist");
     });
 
-    it.skip("should be able to filter Q by Vendor as user (from Dashboard)", () => {
-      // *** Test will fail until Issue #12654 is resolved
+    it.skip("should be able to filter Q by Vendor as user (from Dashboard) (metabase#12654)", () => {
       // Navigate to Q from Dashboard
       signIn("nodata");
       cy.visit("/dashboard/2");
