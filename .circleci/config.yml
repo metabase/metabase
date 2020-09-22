@@ -173,7 +173,7 @@ executors:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: metabase/qa-databases:mongo-sample-4.0
+      - image: circleci/mongo:4.0
 
   fe-postgres-12:
     working_directory: /home/circleci/metabase/metabase/
