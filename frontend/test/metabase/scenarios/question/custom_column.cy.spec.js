@@ -108,4 +108,53 @@ describe("scenarios > question > custom columns", () => {
       cy.get(".Visualization").contains(columnName);
     });
   });
+
+  it.skip("should create custom column with fields from aggregated data (metabase#12762)", () => {
+    // go straight to "orders" in custom questions
+    cy.visit("/question/new?database=1&table=2&mode=notebook");
+
+    cy.findByText("Summarize").click();
+
+    popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText("Subtotal").click();
+    });
+
+    // TODO: There isn't a single unique parent that can be used to scope this icon within
+    // (a good candidate would be `.NotebookCell`)
+    cy.get(".Icon-add")
+      .last() // This is brittle.
+      .click();
+
+    popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText("Total").click();
+    });
+
+    cy.findByText("Pick a column to group by").click();
+    cy.findByText("Created At").click();
+
+    // Add custom column based on previous aggregates
+    const columnName = "MegaTotal";
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']")
+        .click()
+        .type("[Sum of Subtotal] + [Sum of Total]");
+      cy.findByPlaceholderText("Something nice and descriptive")
+        .click()
+        .type(columnName);
+      cy.findByText("Done").click();
+    });
+
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    cy.findByText("Visualize").click();
+    cy.wait("@dataset");
+    cy.findByText("There was a problem with your question").should("not.exist");
+    // This is a pre-save state of the question but the column name should appear
+    // both in tabular and graph views (regardless of which one is currently selected)
+    cy.get(".Visualization").contains(columnName);
+  });
 });
