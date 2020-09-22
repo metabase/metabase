@@ -173,8 +173,13 @@ executors:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/mongo:4.0
+      - image: metabase/qa-databases:mongo-sample-4.0
 
+  fe-postgres-12:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: metabase/qa-databases:postgres-sample-12
 
 ########################################################################################################################
 #                                                       COMMANDS                                                       #
@@ -979,6 +984,16 @@ workflows:
           driver: mongo
           only-single-database: true
           test-files-location: frontend/test/metabase-db/mongo
+
+      - fe-tests-cypress:
+          name: fe-tests-cypress-postgres-12
+          requires:
+            - build-uberjar
+            - fe-deps
+          e: fe-postgres-12
+          cypress-group: "postgres"
+          only-single-database: true
+          test-files-location: frontend/test/metabase-db/postgres
 
       - deploy-master:
           requires:
