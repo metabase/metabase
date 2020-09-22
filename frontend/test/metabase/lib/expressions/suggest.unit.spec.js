@@ -86,7 +86,6 @@ const BINARY_BOOLEAN_OPERATORS = [
   { text: " OR ", type: "operators" },
 ];
 const OPEN_PAREN = { type: "other", text: " (" };
-const CLOSE_PAREN = { type: "other", text: ") " };
 
 // custom metadata defined in __support__/expressions
 const METRICS_CUSTOM = [{ type: "metrics", text: "[metric]" }];
