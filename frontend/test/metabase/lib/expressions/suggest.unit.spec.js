@@ -318,24 +318,6 @@ describe("metabase/lib/expression/suggest", () => {
           OPEN_PAREN,
         ]);
       });
-      it("should suggest fields after an aggregation without closing paren", () => {
-        expect(suggest({ source: "Average(", ...aggregationOpts })).toEqual([
-          ...FIELDS_CUSTOM,
-          ...NUMERIC_FUNCTIONS,
-          OPEN_PAREN,
-          CLOSE_PAREN,
-        ]);
-      });
-      it("should suggest fields after an aggregation with closing paren", () => {
-        expect(
-          suggest({ source: "Average()", ...aggregationOpts, targetOffset: 8 }),
-        ).toEqual([
-          ...FIELDS_CUSTOM,
-          ...NUMERIC_FUNCTIONS,
-          OPEN_PAREN,
-          CLOSE_PAREN,
-        ]);
-      });
       it("should suggest partial matches in aggregation", () => {
         expect(suggest({ source: "1 + C", ...aggregationOpts })).toEqual([
           { type: "aggregations", text: "Count " },

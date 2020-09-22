@@ -146,7 +146,7 @@ export const MBQL_CLAUSES = {
     args: ["string", "string", "string"],
   },
   length: { displayName: `length`, type: "number", args: ["string"] },
-  trim: { displayName: `trim`, type: "string", args: ["string"] },
+  trim: { displayName: `trim`, type: "string", args: ["string", "string"] },
   rtrim: { displayName: `rtrim`, type: "string", args: ["string"] },
   ltrim: { displayName: `ltrim`, type: "string", args: ["string"] },
   // numeric functions
