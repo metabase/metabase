@@ -66,6 +66,9 @@
 (def ^:private password-fail-message (deferred-tru "Password did not match stored password."))
 (def ^:private password-fail-snippet (deferred-tru "did not match stored password"))
 
+(def ^:private disabled-account-message (deferred-tru "Your account is disabled. Please contact your administrator."))
+(def ^:private disabled-account-snippet (deferred-tru "Your account is disabled."))
+
 (s/defn ^:private ldap-login :- (s/maybe UUID)
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
@@ -87,7 +90,7 @@
 (s/defn ^:private email-login :- (s/maybe UUID)
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username password]
-  (when-let [user (db/select-one [User :id :password_salt :password :last_login], :email username, :is_active true)]
+  (when-let [user (db/select-one [User :id :password_salt :password :last_login], :%lower.email (u/lower-case-en username), :is_active true)]
     (when (pass/verify-password password (:password_salt user) (:password user))
       (create-session! :password user))))
 
@@ -179,7 +182,7 @@
     (throttle-check (forgot-password-throttlers :ip-address) source-address)
     (throttle-check (forgot-password-throttlers :email)      email)
     (when-let [{user-id :id, google-auth? :google_auth} (db/select-one [User :id :google_auth]
-                                                                       :email email, :is_active true)]
+                                                                       :%lower.email (u/lower-case-en email), :is_active true)]
       (let [reset-token        (user/set-password-reset-token! user-id)
             password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
         (email/send-password-reset-email! email google-auth? server-name password-reset-url)
@@ -308,19 +311,26 @@
 
 (s/defn ^:private google-auth-fetch-or-create-user! :- (s/maybe UUID)
   [first-name last-name email]
-  (when-let [user (or (db/select-one [User :id :last_login] :email email)
+  (when-let [user (or (db/select-one [User :id :last_login] :%lower.email (u/lower-case-en email))
                       (google-auth-create-new-user! {:first_name first-name
                                                      :last_name  last-name
                                                      :email      email}))]
     (create-session! :sso user)))
 
-(defn- do-google-auth [{{:keys [token]} :body :as request}]
+(defn do-google-auth
+  "Call to Google to perform an authentication"
+  [{{:keys [token]} :body :as request}]
   (let [token-info-response                    (http/post (format google-auth-token-info-url token))
         {:keys [given_name family_name email]} (google-auth-token-info token-info-response)]
     (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
     (let [session-id (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email))
-          response   {:id session-id}]
-      (mw.session/set-session-cookie request response session-id))))
+          response   {:id session-id}
+          user       (db/select-one [User :id :is_active], :email email)]
+      (if (and user (:is_active user))
+        (mw.session/set-session-cookie request response session-id)
+        (throw (ex-info (str disabled-account-message)
+                        {:status-code 400
+                         :errors      {:account disabled-account-snippet}}))))))
 
 (api/defendpoint POST "/google_auth"
   "Login with Google Auth."

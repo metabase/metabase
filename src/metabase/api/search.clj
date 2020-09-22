@@ -326,19 +326,22 @@
     (let [base-query (base-query-for-model Table search-ctx)]
       (if (contains? current-user-perms "/")
         base-query
-        {:select (:select base-query)
-         :from   [[(merge
-                    base-query
-                    {:select [:id :schema :db_id :name :description :display_name
-                              [(hx/concat (hx/literal "/db/") :db_id (hx/literal "/")
-                                          (hsql/call :case [:not= :schema nil] :schema :else (hx/literal "")) (hx/literal "/")
-                                          :id (hx/literal "/"))
-                               :path]]})
-                   :table]]
-         :where  (cons
-                  :or
-                  (for [path current-user-perms]
-                    [:like :path (str path "%")]))}))))
+        (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
+          (when (seq data-perms)
+            {:select (:select base-query)
+             :from   [[(merge
+                        base-query
+                        {:select [:id :schema :db_id :name :description :display_name
+                                  [(hx/concat (hx/literal "/db/") :db_id
+                                              (hx/literal "/schema/") (hsql/call :case
+                                                                        [:not= :schema nil] :schema
+                                                                        :else               (hx/literal ""))
+                                              (hx/literal "/table/") :id
+                                              (hx/literal "/read/"))
+                                   :path]]})
+                       :table]]
+             :where  (into [:or] (for [path data-perms]
+                                   [:like :path (str path "%")]))}))))))
 
 (defmulti ^:private check-permissions-for-model
   {:arglists '([search-result])}
@@ -385,7 +388,7 @@
 ;;; |                                                    Endpoint                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private make-search-context :- SearchContext
+(s/defn ^:private search-context :- SearchContext
   [search-string :- (s/maybe su/NonBlankString), archived-string :- (s/maybe su/BooleanString)]
   {:search-string      search-string
    :archived?          (Boolean/parseBoolean archived-string)
@@ -396,6 +399,6 @@
   [q archived]
   {q        (s/maybe su/NonBlankString)
    archived (s/maybe su/BooleanString)}
-  (search (make-search-context q archived)))
+  (search (search-context q archived)))
 
 (api/define-routes)

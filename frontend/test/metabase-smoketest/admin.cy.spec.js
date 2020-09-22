@@ -108,11 +108,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findAllByText("Created At")
         .last()
         .click();
-      cy.get("input[type='text']")
-        .wait(1)
-        .clear()
-        .wait(1)
-        .type("5");
+      cy.get("input[type='text']").type("{selectall}{del}5");
       cy.findByText("Days").click();
       cy.findByText("Years").click();
       sidebar()
@@ -141,7 +137,7 @@ describe("metabase-smoketest > admin", () => {
         "Bar graph illustrating where our customers come from",
       );
 
-      // *** Cannot select 'My personal collection' (Issue #12718)
+      // *** Cannot select 'My personal collection' (metabase#12718)
       // cy.findByText("Our analytics").click();
       // cy.findByText("My personal collection").click();
       // cy.contains("My personal collection");
@@ -367,7 +363,7 @@ describe("metabase-smoketest > admin", () => {
         cy.findAllByText("Our analytics")
           .last()
           .click();
-        // *** Won't save into personal collection (Issue #12718)
+        // *** Won't save into personal collection (metabase#12718)
         // cy.findByText("My personal collection").click();
         cy.findAllByText("Save")
           .last()
@@ -387,7 +383,7 @@ describe("metabase-smoketest > admin", () => {
         cy.findAllByText("Our analytics")
           .last()
           .click();
-        // *** Won't save into personal collection (Issue #12718)
+        // *** Won't save into personal collection (metabase#12718)
         cy.findByText("Create").click();
 
         cy.findByText("This dashboard is looking empty.");

@@ -55,7 +55,8 @@
             s
             (str "http://" s))]
     ;; check that the URL is valid
-    (assert (u/url? s) (tru "Invalid site URL: {0}" (pr-str s)))
+    (when-not (u/url? s)
+      (throw (ex-info (tru "Invalid site URL: {0}" (pr-str s)) {:url (pr-str s)})))
     s))
 
 (declare redirect-all-requests-to-https)
@@ -68,7 +69,7 @@
   :getter (fn []
             (try
               (some-> (setting/get-string :site-url) normalize-site-url)
-              (catch AssertionError e
+              (catch clojure.lang.ExceptionInfo e
                 (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
   :setter (fn [new-value]
             (let [new-value (some-> new-value normalize-site-url)

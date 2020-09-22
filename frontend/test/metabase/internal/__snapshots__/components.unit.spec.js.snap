@@ -43,9 +43,11 @@ exports[`Button should render "with an icon" correctly 1`] = `
     style={null}
   >
     <svg
+      aria-label="star icon"
       className="Icon Icon-star Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={14}
+      role="img"
       viewBox="0 0 32 32"
       width={14}
     >
@@ -259,9 +261,11 @@ exports[`CheckBox should render "Green" correctly 1`] = `
   }
 >
   <svg
+    aria-label="check icon"
     className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -291,9 +295,11 @@ exports[`CheckBox should render "On - Default blue" correctly 1`] = `
   }
 >
   <svg
+    aria-label="check icon"
     className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -323,9 +329,11 @@ exports[`CheckBox should render "Purple" correctly 1`] = `
   }
 >
   <svg
+    aria-label="check icon"
     className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -355,9 +363,11 @@ exports[`CheckBox should render "Red" correctly 1`] = `
   }
 >
   <svg
+    aria-label="check icon"
     className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -387,9 +397,11 @@ exports[`CheckBox should render "Yellow" correctly 1`] = `
   }
 >
   <svg
+    aria-label="check icon"
     className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -420,9 +432,11 @@ exports[`EntityMenu should render "Edit menu" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
+          aria-label="pencil icon"
           className="Icon Icon-pencil Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           height={18}
+          role="img"
           viewBox="0 0 32 32"
           width={18}
         >
@@ -454,9 +468,11 @@ exports[`EntityMenu should render "More menu" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
+          aria-label="burger icon"
           className="Icon Icon-burger Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           height={18}
+          role="img"
           viewBox="0 0 32 32"
           width={18}
         >
@@ -488,9 +504,11 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
+          aria-label="pencil icon"
           className="Icon Icon-pencil Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           height={18}
+          role="img"
           viewBox="0 0 32 32"
           width={18}
         >
@@ -511,10 +529,12 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
+          aria-label="share icon"
           className="Icon Icon-share Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           fillRule="evenodd"
           height={18}
+          role="img"
           viewBox="0 0 32 41"
           width={18}
         >
@@ -535,9 +555,11 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
+          aria-label="burger icon"
           className="Icon Icon-burger Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           height={18}
+          role="img"
           viewBox="0 0 32 32"
           width={18}
         >
@@ -569,10 +591,12 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
+          aria-label="share icon"
           className="Icon Icon-share Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           fillRule="evenodd"
           height={18}
+          role="img"
           viewBox="0 0 32 41"
           width={18}
         >
@@ -598,10 +622,12 @@ exports[`ModalContent should render "default" correctly 1`] = `
     id={undefined}
   >
     <svg
+      aria-label="close icon"
       className="Icon Icon-close text-light text-medium-hover cursor-pointer absolute z2 m2 p2 top right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={16}
       onClick={[Function]}
+      role="img"
       viewBox="0 0 32 32"
       width={16}
     >
@@ -975,7 +1001,7 @@ exports[`Select should render "default" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -987,9 +1013,11 @@ exports[`Select should render "default" correctly 1`] = `
       </span>
     </span>
     <svg
+      aria-label="chevrondown icon"
       className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1012,7 +1040,7 @@ exports[`Select should render "kitchen_sink" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1028,9 +1056,11 @@ exports[`Select should render "kitchen_sink" correctly 1`] = `
       </span>
     </span>
     <svg
+      aria-label="chevrondown icon"
       className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1053,7 +1083,7 @@ exports[`Select should render "multiple" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1069,9 +1099,11 @@ exports[`Select should render "multiple" correctly 1`] = `
       </span>
     </span>
     <svg
+      aria-label="chevrondown icon"
       className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1094,7 +1126,7 @@ exports[`Select should render "search" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1106,9 +1138,11 @@ exports[`Select should render "search" correctly 1`] = `
       </span>
     </span>
     <svg
+      aria-label="chevrondown icon"
       className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1131,7 +1165,7 @@ exports[`Select should render "sections" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1143,9 +1177,11 @@ exports[`Select should render "sections" correctly 1`] = `
       </span>
     </span>
     <svg
+      aria-label="chevrondown icon"
       className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1182,9 +1218,11 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
     }
   >
     <svg
+      aria-label="check icon"
       className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       style={
         Object {
           "color": "white",
@@ -1238,9 +1276,11 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
     }
   >
     <svg
+      aria-label="check icon"
       className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       style={
         Object {
           "color": "white",

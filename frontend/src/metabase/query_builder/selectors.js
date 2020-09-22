@@ -393,6 +393,11 @@ export const getModalSnippet = createSelector(
   uiControls => uiControls && uiControls.modalSnippet,
 );
 
+export const getSnippetCollectionId = createSelector(
+  [getUiControls],
+  uiControls => uiControls && uiControls.snippetCollectionId,
+);
+
 /**
  * Returns whether the query can be "preview", i.e. native query editor is open and visualization is table
  * NOTE: completely disabled for now

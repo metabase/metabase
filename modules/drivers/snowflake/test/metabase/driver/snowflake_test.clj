@@ -50,8 +50,8 @@
                 FOREIGN KEY (\"user_id\") REFERENCES \"v2_test-data\".\"PUBLIC\".\"users\" (\"id\");"
                "ALTER TABLE \"v2_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"kins_venue_id_venues_621212269\"
                 FOREIGN KEY (\"venue_id\") REFERENCES \"v2_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
-             (ddl/create-db-ddl-statements :snowflake (-> (mt/get-dataset-definition dataset-defs/test-data)
-                                                          (update :database-name #(str "v2_" %)))))))))
+             (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition dataset-defs/test-data)
+                                                                 (update :database-name #(str "v2_" %)))))))))
 
 ;; TODO -- disabled because these are randomly failing, will figure out when I'm back from vacation. I think it's a
 ;; bug in the JDBC driver -- Cam
@@ -129,10 +129,10 @@
       (is (= true
              (can-connect? (:details (mt/db))))
           "can-connect? should return true for normal Snowflake DB details")
-      (is (= false
-             (mt/suppress-output
-               (can-connect? (assoc (:details (mt/db)) :db (mt/random-name)))))
-          "can-connect? should return false for Snowflake databases that don't exist (#9041)"))))
+      (is (thrown? net.snowflake.client.jdbc.SnowflakeSQLException
+                   (mt/suppress-output
+                    (can-connect? (assoc (:details (mt/db)) :db (mt/random-name)))))
+          "can-connect? should throw for Snowflake databases that don't exist (#9511)"))))
 
 (deftest report-timezone-test
   (mt/test-driver :snowflake
