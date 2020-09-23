@@ -178,7 +178,7 @@
 
 (defmethod sql.qp/date [:h2 :week-of-year]
   [_ _ expr]
-  (hx/week (sql.qp/date :h2 :week expr)))
+  (hsql/call :iso-week (sql.qp/date :h2 :week expr)))
 
 ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
 ;; *  extract the year and quarter from the date;
