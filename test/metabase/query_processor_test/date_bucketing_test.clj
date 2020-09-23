@@ -744,24 +744,9 @@
              (mt/with-system-timezone-id (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :week :pacific)))))))
 
-;; TODO — Group by `:iso-week` test!
-
 (deftest group-by-week-of-year-test
   (mt/test-drivers (mt/normal-drivers)
-    (is (= ;; Not really sure why different drivers have different opinions on these </3
-         (cond
-           (= :snowflake driver/*driver*)
-           [[22 46] [23 47] [24 40] [25 60] [26 7]]
-
-           (#{:sqlserver :sqlite :oracle :sparksql} driver/*driver*)
-           [[23 54] [24 46] [25 39] [26 61]]
-
-           (and (qp.test/supports-report-timezone? driver/*driver*)
-                (not (= :redshift driver/*driver*)))
-           [[23 49] [24 47] [25 39] [26 58] [27 7]]
-
-           :else
-           [[23 46] [24 47] [25 40] [26 60] [27 7]])
+    (is (= [[22 46] [23 47] [24 40] [25 60] [26 7]]
          (sad-toucan-incidents-with-bucketing :week-of-year :pacific)))))
 
 ;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
