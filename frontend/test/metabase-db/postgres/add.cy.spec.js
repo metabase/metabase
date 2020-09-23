@@ -53,4 +53,43 @@ describe("postgres > admin > add", () => {
       .contains("I'm good thanks")
       .click();
   });
+
+  it.skip("should show row details when clicked on its entity key (metabase#13263)", () => {
+    cy.route({
+      method: "POST",
+      url: "/api/database",
+    }).as("createDatabase");
+
+    addPostgresDatabase();
+
+    cy.wait("@createDatabase");
+
+    cy.url().should("match", /\/admin\/databases\?created=\d+$/);
+    cy.contains("Your database has been added!");
+    modal()
+      .contains("I'm good thanks")
+      .click();
+
+    // Repro starts here
+    cy.visit("/");
+    cy.findByText("Ask a question").click();
+    cy.findByText("Simple question").click();
+    cy.findByText("QA Postgres12").click();
+    cy.findByText("Orders").click();
+
+    // We're clicking on ID: 1 (the first order) => do not change!
+    // It is tightly coupled to the assertion ("37.65"), which is "Subtotal" value for that order.
+    cy.get(".Table-ID")
+      .eq(0)
+      .click();
+
+    // Couldn't "catch" error message in the DOM any other way.
+    // Tried cy.route(post, dataset) and then waiting for @dataset,
+    // but the error message assertion still passes somehow.
+    cy.wait(500);
+    // Admitedly, this could be omitted because real test is searching for "37.65" on the page
+    cy.findByText("There was a problem with your question").should("not.exist");
+    // Assertion
+    cy.contains("37.65");
+  });
 });
