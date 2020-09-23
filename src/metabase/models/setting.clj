@@ -225,7 +225,7 @@
 (defn get-keyword
   "Get value of (presumably `:string`) `setting-definition-or-name` as keyword. This is the default getter for `:keyword` settings."
   ^clojure.lang.Keyword [setting-definition-or-name]
-  (some-> setting-definition-or-name get-string keyword))
+  (some-> setting-definition-or-name get-string (subs 1) keyword))
 
 (defn get-json
   "Get the string value of `setting-definition-or-name` and parse it as JSON."
@@ -452,7 +452,6 @@
               (dissoc setting :name :type :default)))
     (s/validate SettingDefinition <>)
     (swap! registered-settings assoc setting-name <>)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                defsetting macro                                                |
