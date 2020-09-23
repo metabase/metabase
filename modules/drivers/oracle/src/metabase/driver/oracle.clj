@@ -129,9 +129,9 @@
 
 ;; subtract number of days between today and first day of week, then add one since first day of week = 1
 (defmethod sql.qp/date [:oracle :day-of-week] [driver _ v]
-  (hx/add (hx/inc (hx/- (sql.qp/date driver :day v)
-                        (sql.qp/date driver :week v)))
-          (driver.common/start-of-week-offset :oracle)))
+  (hx/+ (hx/inc (hx/- (sql.qp/date driver :day v)
+                      (sql.qp/date driver :week v)))
+        (driver.common/start-of-week-offset :oracle)))
 
 (def ^:private now (hsql/raw "SYSDATE"))
 

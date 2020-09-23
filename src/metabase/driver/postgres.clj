@@ -148,7 +148,7 @@
 (defmethod sql.qp/date [:postgres :day-of-week]
   [_ _ expr]
   (hx/+ (extract-integer :dow expr)
-        (driver.common/start-of-week-offset :postgress)))
+        (driver.common/start-of-week-offset :postgres)))
 
 (defmethod sql.qp/date [:postgres :week]
   [_ _ expr]
@@ -156,7 +156,7 @@
 
 (defmethod sql.qp/date [:postgres :week-of-year]
   [_ _ expr]
-  (extract-integer :week (sql.qp/date :postgress :week expr)))
+  (extract-integer :week (sql.qp/date :postgres :week expr)))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
