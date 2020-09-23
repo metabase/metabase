@@ -157,4 +157,57 @@ describe("scenarios > question > custom columns", () => {
     // both in tabular and graph views (regardless of which one is currently selected)
     cy.get(".Visualization").contains(columnName);
   });
+
+  it.skip("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289)", () => {
+    const columnName = "TestColumn";
+    // go straight to "orders" in custom questions
+    cy.visit("/question/new?database=1&table=2&mode=notebook");
+
+    // Add custom column that will be used later in summarize (group by)
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      _typeUsingGet("[contenteditable='true']", "1 + 1");
+      _typeUsingPlaceholder("Something nice and descriptive", columnName);
+
+      cy.findByText("Done").click();
+    });
+
+    cy.findByText("Summarize").click();
+    popover().within(() => {
+      cy.findByText("Count of rows").click();
+    });
+
+    cy.findByText("Pick a column to group by").click();
+    popover().within(() => {
+      cy.findByText(columnName).click();
+    });
+
+    cy.get(".Icon-add")
+      .last()
+      .click();
+
+    popover().within(() => {
+      cy.findByText("Created At").click();
+    });
+
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
+    cy.findByText("Visualize").click();
+    cy.wait("@dataset");
+
+    cy.get(".Visualization").within(() => {
+      cy.get("circle")
+        .eq(5) // random circle in the graph (there is no specific reason for this index)
+        .click({ force: true });
+    });
+
+    // Test should work even without this request, but it reduces a chance for a flake
+    cy.route("POST", "/api/dataset").as("zoom-in-dataset");
+
+    cy.findByText("Zoom in").click();
+    cy.wait("@zoom-in-dataset");
+
+    cy.findByText("There was a problem with your question").should("not.exist");
+  });
 });
