@@ -102,16 +102,16 @@
                  org.yaml/snakeyaml]]
    [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
    [kixi/stats "0.4.4" :exclusions [org.clojure/data.avl]]            ; Various statistic measures implemented as transducers
-   [log4j/log4j "1.2.17"                                              ; logging framework. TODO - consider upgrading to Log4j 2 -- see https://logging.apache.org/log4j/log4j-2.6.1/manual/migration.html
-    :exclusions [javax.mail/mail
-                 javax.jms/jms
-                 com.sun.jdmk/jmxtools
-                 com.sun.jmx/jmxri]]
+   [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
    [medley "1.3.0"]                                                   ; lightweight lib of useful functions
    [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.10"]                          ; helper methods for working with java.lang stuff
+   [org.apache.logging.log4j/log4j-1.2-api "2.13.3"]                  ; API shim between log4j 1.2 and log4j 2.x
+   [org.apache.logging.log4j/log4j-api "2.13.3"]                      ; apache logging framework
+   [org.apache.logging.log4j/log4j-core "2.13.3"]                     ; ^^
+   [org.apache.logging.log4j/log4j-slf4j-impl "2.13.3"]               ; allows the slf4j API to work with log4j 2
    [org.apache.sshd/sshd-core "2.4.0"]                                ; ssh tunneling and test server
    [org.bouncycastle/bcprov-jdk15on "1.65"]                           ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
@@ -368,14 +368,13 @@
 
    :cloverage
    [:test-common
-    ;; Using Cam's fork of Cloverage until 1.2.1 of the main repo is out. Once that's released we can switch back.
     {:dependencies [[camsaul/cloverage "1.2.1.1" :exclusions [riddley]]]
      :plugins      [[camsaul/lein-cloverage  "1.2.1.1"]]
      :source-paths ^:replace ["src" "backend/mbql/src"]
      :test-paths   ^:replace ["test" "backend/mbql/test"]
      :cloverage    {:fail-threshold 69
                     :exclude-call
-                    [ ;; don't instrument logging forms, since they won't get executed as part of tests anyway
+                    [;; don't instrument logging forms, since they won't get executed as part of tests anyway
                      ;; log calls expand to these
                      clojure.tools.logging/logf
                      clojure.tools.logging/logp

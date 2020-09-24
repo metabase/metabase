@@ -2,12 +2,12 @@
   "Utils for controlling the logging that goes on when running tests."
   (:import java.io.PrintStream
            [org.apache.commons.io.output NullOutputStream NullWriter]
-           [org.apache.log4j Level Logger LogManager]))
+           [org.apache.logging.log4j Level LogManager]
+           org.apache.logging.log4j.core.Logger))
 
 (def ^:private logger->original-level
-  (let [loggers (cons
-                 (Logger/getRootLogger)
-                 (enumeration-seq (LogManager/getCurrentLoggers)))]
+  (let [loggers (.. (LogManager/getContext false)
+                    (getLoggers))]
     (into {} (for [^Logger logger loggers]
                [logger (.getLevel logger)]))))
 
