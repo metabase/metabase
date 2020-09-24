@@ -4,8 +4,9 @@
              [coerce :as coerce]
              [format :as time]]
             [metabase.config :refer [local-process-uuid]])
-  (:import [org.apache.log4j Appender AppenderSkeleton Logger]
-           org.apache.log4j.spi.LoggingEvent))
+  (:import [org.apache.logging.log4j.core Appender LogEvent]
+           [org.apache.logging.log4j.core.config AppenderRef LoggerConfig]
+           org.apache.logging.log4j.LogManager))
 
 (def ^:private ^:const max-log-entries 2500)
 
@@ -16,7 +17,7 @@
   []
   (reverse (seq @messages*)))
 
-(defn- event->log-data [^LoggingEvent event]
+(defn- event->log-data [^LogEvent event]
   {:timestamp    (time/unparse (time/formatter :date-time)
                                (coerce/from-long (.getTimeStamp event)))
    :level        (.getLevel event)
@@ -26,18 +27,32 @@
    :process_uuid local-process-uuid})
 
 (defn- metabase-appender ^Appender []
-  (proxy [AppenderSkeleton] []
+  (proxy [Appender] []
     (append [event]
       (swap! messages* conj (event->log-data event))
       nil)
-    (close []
-      nil)
-    (requiresLayout []
-      false)))
+
+    (getName []
+      "metabase")))
 
 (defonce ^:private has-added-appender? (atom false))
 
 (when-not *compile-files*
   (when-not @has-added-appender?
     (reset! has-added-appender? true)
-    (.addAppender (Logger/getRootLogger) (metabase-appender))))
+    ;; this is painful. see: https://logging.apache.org/log4j/2.x/manual/customconfig.html#AddingToCurrent
+    (let [ctx          (LogManager/getContext false)
+          config       (.getConfiguration ctx)
+          appender     (metabase-appender)
+          appender-ref (AppenderRef/createAppenderRef "metabase" nil nil)
+          logger-cfg   (LoggerConfig/createLogger true
+                                                  nil
+                                                  "metabase"
+                                                  "true"
+                                                  (into-array AppenderRef [appender-ref])
+                                                  nil
+                                                  config
+                                                  nil)]
+      (.addAppender config appender)
+      (.addAppender logger-cfg appender nil nil)
+      (.updateLoggers ctx))))

@@ -11,9 +11,7 @@
             [java-time :as t]
             [metabase
              [driver :as driver]
-             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric
-                             NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel Revision
-                             Segment Table TaskHistory User]]
+             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel Revision Segment Table TaskHistory User]]
              [task :as task]
              [util :as u]]
             [metabase.models
@@ -30,7 +28,8 @@
             [toucan.util.test :as tt])
   (:import java.util.concurrent.TimeoutException
            java.util.Locale
-           org.apache.log4j.Logger
+           org.apache.logging.log4j.core.Logger
+           org.apache.logging.log4j.LogManager
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 (defmethod assert-expr 're= [msg [_ pattern actual]]
@@ -410,17 +409,17 @@
 (def level-kwd->level
   "Conversion from a keyword log level to the Log4J constance mapped to that log level.
    Not intended for use outside of the `with-log-messages-for-level` macro."
-  {:error org.apache.log4j.Level/ERROR
-   :warn  org.apache.log4j.Level/WARN
-   :info  org.apache.log4j.Level/INFO
-   :debug org.apache.log4j.Level/DEBUG
-   :trace org.apache.log4j.Level/TRACE})
+  {:error org.apache.logging.log4j.Level/ERROR
+   :warn  org.apache.logging.log4j.Level/WARN
+   :info  org.apache.logging.log4j.Level/INFO
+   :debug org.apache.logging.log4j.Level/DEBUG
+   :trace org.apache.logging.log4j.Level/TRACE})
 
 (defn ^Logger metabase-logger
   "Gets the root logger for all metabase namespaces. Not intended for use outside of the
   `with-log-messages-for-level` macro."
   []
-  (Logger/getLogger "metabase"))
+  (LogManager/getLogger "metabase"))
 
 (defn do-with-log-messages-for-level [level thunk]
   (let [original-level (.getLevel (metabase-logger))
