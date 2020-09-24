@@ -307,4 +307,4 @@
   (deferred-tru "Start of week for user queries")
   :visibility :public
   :type       :keyword
-  :default    :sunday)
+  :default    "sunday")

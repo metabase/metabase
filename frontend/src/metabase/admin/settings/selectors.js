@@ -104,6 +104,21 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`Enable X-ray features`,
         type: "boolean",
       },
+      {
+        key: "start-of-week",
+        display_name: t`Start of week`,
+        type: "select",
+        options: [
+            { value: "sunday", name: t`Sunday` },
+            { value: "monday", name: t`Monday` },
+            { value: "tuesday", name: t`Tuesday` },
+            { value: "wednesday", name: t`Wednesday` },
+            { value: "thursday", name: t`Thursday` },
+            { value: "friday", name: t`Friday` },
+            { value: "saturday", name: t`Saturday` },
+        ],
+        defaultValue: "Sunday",
+      },
     ],
   },
   updates: {

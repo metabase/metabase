@@ -45,7 +45,7 @@
 
 (defmethod driver/db-start-of-week :h2
   [_]
-  :sunday)
+  :monday)
 
 
 ;; TODO - it would be better not to put all the options in the connection string in the first place?
@@ -168,7 +168,7 @@
 (defmethod sql.qp/date [:h2 :year]            [_ _ expr] (parse-datetime "yyyy" (hx/year expr)))
 
 (defmethod sql.qp/date [:h2 :day-of-week]     [_ _ expr]
-  (hx/+ (hsql/call :day_of_week expr)
+  (hx/+ (hsql/call :iso_day_of_week expr)
         (driver.common/start-of-week-offset :h2)))
 
 (defmethod sql.qp/date [:h2 :week]

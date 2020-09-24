@@ -49,7 +49,7 @@
             [toucan
              [db :as db]
              [models :as models]])
-  (:import clojure.lang.Symbol
+  (:import (clojure.lang Keyword Symbol)
            java.io.StringWriter))
 
 (models/defmodel Setting
@@ -76,7 +76,7 @@
    :integer   `Long
    :double    `Double
    :timestamp 'java.time.temporal.Temporal
-   :keyword   'clojure.lang.Keyword})
+   :keyword   'Keyword})
 
 (def ^:private SettingDefinition
   {:name        s/Keyword
@@ -225,7 +225,7 @@
 (defn get-keyword
   "Get value of (presumably `:string`) `setting-definition-or-name` as keyword. This is the default getter for `:keyword` settings."
   ^clojure.lang.Keyword [setting-definition-or-name]
-  (some-> setting-definition-or-name get-string (subs 1) keyword))
+  (some-> setting-definition-or-name get-string keyword))
 
 (defn get-json
   "Get the string value of `setting-definition-or-name` and parse it as JSON."
