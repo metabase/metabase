@@ -2,8 +2,11 @@ import {
   createNativeQuestion,
   restore,
   signInAsAdmin,
+  openOrdersTable,
+  openProductsTable,
   popover,
   modal,
+  typeAndBlurUsingLabel,
 } from "__support__/cypress";
 
 describe("scenarios > question > notebook", () => {
@@ -128,6 +131,98 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("A_COLUMN");
       cy.findByText("Question 5 → B Column");
       cy.findByText("Showing 1 row");
+    });
+
+    it("should allow joins based on saved questions (metabase#13000)", () => {
+      cy.log("**Prepare Question 1**");
+      openOrdersTable();
+
+      cy.findByText("Summarize").click();
+
+      cy.findByText("Add a metric").click();
+      cy.findByText("Sum of ...").click();
+      popover()
+        .contains("Total")
+        .click();
+      cy.findByText("Product ID").click();
+
+      // Remove Count that was pre-selected
+      cy.findAllByText("Count")
+        .last()
+        .next() // ".Icon-close"
+        .click();
+      cy.findByText("Done").click();
+      cy.findByText("Save").click();
+      // Save as Q2
+      modal().within(() => {
+        typeAndBlurUsingLabel("Name", "Q1");
+        cy.findByText("Save").click();
+        cy.findByText("Not now").click();
+      });
+
+      cy.log("**Prepare Question 2**");
+      openProductsTable();
+
+      cy.findByText("Summarize").click();
+
+      cy.findByText("Add a metric").click();
+      cy.findByText("Sum of ...").click();
+      popover()
+        .contains("Rating")
+        .click();
+      cy.findByText("ID").click();
+
+      // Remove Count that was pre-selected
+      cy.findAllByText("Count")
+        .last()
+        .next() // ".Icon-close"
+        .click();
+      cy.findByText("Done").click();
+      // Save as Q2
+      cy.findByText("Save").click();
+      modal().within(() => {
+        typeAndBlurUsingLabel("Name", "Q2");
+        cy.findByText("Save").click();
+        cy.findByText("Not now").click();
+      });
+
+      cy.log("**Create Question 3 based on 2 previously saved questions**");
+
+      cy.findByText("Ask a question").click();
+      cy.findByText("Custom question").click();
+      // Choose Q1
+      popover().within(() => {
+        cy.findByText("Saved Questions").click();
+        cy.findByText("Q1").click();
+      });
+      // and join it
+      cy.get(".Icon-join_left_outer").click();
+      // with Q2
+      popover().within(() => {
+        cy.findByText("Sample Dataset").click();
+        cy.findByText("Saved Questions").click();
+        cy.findByText("Q2").click();
+      });
+      // on Product ID = ID
+      popover()
+        .contains("Product ID")
+        .click();
+      popover()
+        .contains("ID")
+        .click();
+      // Save as Q3
+      cy.findByText("Save").click();
+      cy.get(".Modal").within(() => {
+        typeAndBlurUsingLabel("Name", "Q3");
+        cy.findByText("Save").click();
+        cy.findByText("Not now").click();
+      });
+
+      cy.log("**Assert that the Q3 is in 'Our analytics'**");
+
+      cy.visit("/");
+      cy.findByText("Browse all items").click();
+      cy.contains("Q3").click({ force: true });
     });
   });
 
