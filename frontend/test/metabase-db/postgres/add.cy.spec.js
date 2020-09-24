@@ -83,13 +83,14 @@ describe("postgres > admin > add", () => {
       .eq(0)
       .click();
 
-    // Couldn't "catch" error message in the DOM any other way.
-    // Tried cy.route(post, dataset) and then waiting for @dataset,
-    // but the error message assertion still passes somehow.
-    cy.wait(500);
-    // Admitedly, this could be omitted because real test is searching for "37.65" on the page
+    // Wait until "doing science" spinner disappears (DOM is ready for assertions)
+    // TODO: if this proves to be reliable, extract it as a helper function for waiting on DOM to render
+    cy.get(".LoadingSpinner").should("not.exist");
+
+    // Assertions
+    cy.log("**Fails in v0.36.6**");
+    // This could be omitted because real test is searching for "37.65" on the page
     cy.findByText("There was a problem with your question").should("not.exist");
-    // Assertion
     cy.contains("37.65");
   });
 });
