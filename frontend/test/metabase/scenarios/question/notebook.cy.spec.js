@@ -222,7 +222,17 @@ describe("scenarios > question > notebook", () => {
 
       cy.visit("/");
       cy.findByText("Browse all items").click();
+
+      cy.server();
+      cy.route("POST", "/api/card/6/query").as("card");
+
       cy.contains("Q3").click({ force: true });
+      cy.wait("@card");
+
+      cy.log("**The point where bug originated in v0.36.0**");
+      cy.get(".Icon-notebook").click();
+      cy.url().should("contain", "/notebook");
+      cy.findByText("Visualize").should("exist");
     });
   });
 
