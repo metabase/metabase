@@ -37,6 +37,10 @@
   background-color: var(--color-bg-black);
   border: none;
   pointer-events: none;
+  max-width: 120px;
+  font-size: 12px;
+  line-height: 1.26;
+  padding: 10px 12px;
 }
 
 /* shared arrow styles */
