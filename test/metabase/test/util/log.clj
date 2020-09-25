@@ -3,10 +3,10 @@
   (:import java.io.PrintStream
            [org.apache.commons.io.output NullOutputStream NullWriter]
            [org.apache.logging.log4j Level LogManager]
-           org.apache.logging.log4j.core.Logger))
+           [org.apache.logging.log4j.core Logger LoggerContext]))
 
 (def ^:private logger->original-level
-  (let [loggers (.. (LogManager/getContext false)
+  (let [loggers (.. ^LoggerContext (LogManager/getContext false)
                     (getLoggers))]
     (into {} (for [^Logger logger loggers]
                [logger (.getLevel logger)]))))
