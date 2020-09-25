@@ -1,11 +1,8 @@
 import { signInAsNormalUser, restore, modal } from "__support__/cypress";
 
-function _clearAndRecursivelyTypeUsingLabel(label, string) {
-  // Cypress throws an error when trying to type an empty string
-  if (!string) {
-    return;
-  }
-
+// HACK which lets us type (even very long words) without losing focus
+// this is needed for fields where autocomplete suggestions are enabled
+function _clearAndIterativelyTypeUsingLabel(label, string) {
   cy.findByLabelText(label).clear();
 
   for (const char of string) {
@@ -18,21 +15,13 @@ describe("scenarios > question > snippets", () => {
   beforeEach(signInAsNormalUser);
 
   it("should let you create and use a snippet", () => {
-    const snippet = {
-      name: "stuff-snippet",
-      sql: "stuff",
-    };
-    // Single quotes are easy to miss here, but are very important!
-    // We're not using SQL keywords or actual tables, so our string must be escaped.
-    const escapedSQL = `'${snippet.sql}'`;
-
     cy.visit("/question/new");
     cy.contains("Native query").click();
 
     // type a query and highlight some of the text
     cy.get(".ace_content").as("ace");
     cy.get("@ace").type(
-      `select ${escapedSQL}` + `{shift}{leftarrow}`.repeat(escapedSQL.length),
+      "select 'stuff'" + "{shift}{leftarrow}".repeat("'stuff'".length),
     );
 
     // add a snippet of that text
@@ -41,56 +30,42 @@ describe("scenarios > question > snippets", () => {
 
     modal()
       .find("input[name=name]")
-      .type(snippet.name);
+      .type("stuff-snippet");
     modal()
       .contains("Save")
       .click();
 
     // SQL editor should get updated automatically
-    cy.get("@ace").contains(`select {{snippet: ${snippet.name}}}`);
+    cy.get("@ace").contains("select {{snippet: stuff-snippet}}");
 
     // run the query and check the displayed scalar
     cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.get(".ScalarValue").contains(snippet.sql);
+    cy.get(".ScalarValue").contains("stuff");
   });
 
   it("should let you edit snippet", () => {
-    const snippet = {
-      name: "foo-snippet",
-      sql: "some extremely very very loooong snippet",
-    };
-    const escapedSQL = `'${snippet.sql}'`;
-
     // open the snippet edit modal
     cy.get(".Icon-chevrondown").click({ force: true });
     cy.findByText("Edit").click();
-
-    cy.server();
-    cy.route("put", "/api/native-query-snippet/*").as("update-snippet");
 
     // update the name and content
     modal().within(() => {
       cy.findByText("Editing stuff-snippet");
 
-      _clearAndRecursivelyTypeUsingLabel(
+      _clearAndIterativelyTypeUsingLabel(
         "Enter some SQL here so you can reuse it later",
-        escapedSQL,
+        "1+1",
       );
-      _clearAndRecursivelyTypeUsingLabel(
-        "Give your snippet a name",
-        snippet.name,
-      );
+      _clearAndIterativelyTypeUsingLabel("Give your snippet a name", "Math");
 
       cy.findByText("Save").click();
     });
 
-    cy.wait("@update-snippet");
-
     // SQL editor should get updated automatically
-    cy.get(".ace_content").contains(`select {{snippet: ${snippet.name}}}`);
+    cy.get(".ace_content").contains("select {{snippet: Math}}");
 
     // run the query and check the displayed scalar
     cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.get(".ScalarValue").contains(snippet.sql);
+    cy.get(".ScalarValue").contains("2");
   });
 });
