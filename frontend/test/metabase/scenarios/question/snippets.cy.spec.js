@@ -1,5 +1,15 @@
 import { signInAsNormalUser, restore, modal } from "__support__/cypress";
 
+// HACK which lets us type (even very long words) without losing focus
+// this is needed for fields where autocomplete suggestions are enabled
+function _clearAndIterativelyTypeUsingLabel(label, string) {
+  cy.findByLabelText(label).clear();
+
+  for (const char of string) {
+    cy.findByLabelText(label).type(char);
+  }
+}
+
 describe("scenarios > question > snippets", () => {
   before(restore);
   beforeEach(signInAsNormalUser);
@@ -17,6 +27,7 @@ describe("scenarios > question > snippets", () => {
     // add a snippet of that text
     cy.get(".Icon-snippet").click();
     cy.contains("Create a snippet").click();
+
     modal()
       .find("input[name=name]")
       .type("stuff-snippet");
@@ -40,20 +51,21 @@ describe("scenarios > question > snippets", () => {
     // update the name and content
     modal().within(() => {
       cy.findByText("Editing stuff-snippet");
-      cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
-        "{selectall}{del}'foo'",
+
+      _clearAndIterativelyTypeUsingLabel(
+        "Enter some SQL here so you can reuse it later",
+        "1+1",
       );
-      cy.findByLabelText("Give your snippet a name").type(
-        "{selectall}{del}foo",
-      );
+      _clearAndIterativelyTypeUsingLabel("Give your snippet a name", "Math");
+
       cy.findByText("Save").click();
     });
 
     // SQL editor should get updated automatically
-    cy.get(".ace_content").contains("select {{snippet: foo}}");
+    cy.get(".ace_content").contains("select {{snippet: Math}}");
 
     // run the query and check the displayed scalar
     cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.get(".ScalarValue").contains("foo");
+    cy.get(".ScalarValue").contains("2");
   });
 });
