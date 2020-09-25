@@ -167,18 +167,15 @@
 (defmethod sql.qp/date [:h2 :quarter-of-year] [_ _ expr] (hx/quarter expr))
 (defmethod sql.qp/date [:h2 :year]            [_ _ expr] (parse-datetime "yyyy" (hx/year expr)))
 
-(defmethod sql.qp/date [:h2 :day-of-week]     [_ _ expr]
-  (hx/+ (hsql/call :iso_day_of_week expr)
-        (driver.common/start-of-week-offset :h2)))
+(defmethod sql.qp/date [:h2 :day-of-week]
+  [_ _ expr]
+  (sql.qp/adjust-day-of-week :h2 (hsql/call :iso_day_of_week expr)))
 
 (defmethod sql.qp/date [:h2 :week]
   [_ _ expr]
   (let [week-extract-fn (partial trunc-with-format "YYYYww")]  ; Y = week year; w = week in year
     (sql.qp/adjust-start-of-week :h2 week-extract-fn expr)))
 
-(defmethod sql.qp/date [:h2 :week-of-year]
-  [_ _ expr]
-  (hsql/call :iso_week (sql.qp/date :h2 :week expr)))
 
 ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
 ;; *  extract the year and quarter from the date;

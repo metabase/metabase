@@ -115,13 +115,6 @@
 (defmethod sql.qp/date [:oracle :day-of-year] [driver _ v]
   (hx/inc (hx/- (sql.qp/date driver :day v) (trunc :year v))))
 
-;; iw = same day of the week as first day of the ISO year
-;; iy = ISO year
-(defmethod sql.qp/date [:oracle :week-of-year] [_ _ v]
-  (hx/inc (hx// (hx/- (trunc :iw v)
-                      (trunc :iy v))
-                7)))
-
 (defmethod sql.qp/date [:oracle :quarter-of-year] [driver _ v]
   (hx// (hx/+ (sql.qp/date driver :month-of-year (sql.qp/date driver :quarter v))
               2)
@@ -129,9 +122,8 @@
 
 ;; subtract number of days between today and first day of week, then add one since first day of week = 1
 (defmethod sql.qp/date [:oracle :day-of-week] [driver _ v]
-  (hx/+ (hx/inc (hx/- (sql.qp/date driver :day v)
-                      (sql.qp/date driver :week v)))
-        (driver.common/start-of-week-offset :oracle)))
+  (sql.qp/adjust-day-of-week :oracle (hx/inc (hx/- (sql.qp/date driver :day v)
+                                                   (sql.qp/date driver :week v)))))
 
 (def ^:private now (hsql/raw "SYSDATE"))
 

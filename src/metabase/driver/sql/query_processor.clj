@@ -94,6 +94,11 @@
 ;; default implementation for `:default` bucketing returns expression as-is
 (defmethod date [:sql :default] [_ _ expr] expr)
 
+;; We have to roll our own to account for arbitrary start of week
+(defmethod date [:sql :week-of-year]
+  [driver _ expr]
+  (hsql/call :ceil (hx// (date driver :day-of-year (date driver :week expr)) 7)))
+
 
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
@@ -117,6 +122,14 @@
                                   (truncate-fn (add-interval-honeysql-form driver expr offset :day))
                                   (- offset) :day)
       (truncate-fn expr))))
+
+(defn adjust-day-of-week
+  "Adjust day of week wrt start of week setting."
+  [driver day-of-week]
+  (let [offset (driver.common/start-of-week-offset driver)]
+    (if (not= offset 0)
+      (hx/mod (hx/+ day-of-week offset) 7)
+      day-of-week)))
 
 (defmulti field->identifier
   "Return a HoneySQL form that should be used as the identifier for `field`, an instance of the Field model. The default

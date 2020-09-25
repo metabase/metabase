@@ -141,7 +141,7 @@
 
 (defmethod sql.qp/date [:sqlserver :day-of-week]
   [_ _ expr]
-  (hx/+ (date-part :weekday expr) (driver.common/start-of-week-offset :sqlserver)))
+  (sql.qp/adjust-day-of-week :sqlserver (date-part :weekday expr)))
 
 (defmethod sql.qp/date [:sqlserver :day-of-month]
   [_ _ expr]
@@ -160,10 +160,6 @@
    (date-add :day
              (hx/- 1 (date-part :weekday expr) (driver.common/start-of-week-offset :sqlserver))
              (hx/->date expr))))
-
-(defmethod sql.qp/date [:sqlserver :week-of-year]
-  [_ _ expr]
-  (date-part :iso_week (sql.qp/date :sqlserver :week expr)))
 
 (defmethod sql.qp/date [:sqlserver :month]
   [_ _ expr]

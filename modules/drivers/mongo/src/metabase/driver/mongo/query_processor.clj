@@ -190,8 +190,9 @@
           :hour            (stringify "%Y-%m-%dT%H:00:00")
           :hour-of-day     {$hour column}
           :day             (stringify "%Y-%m-%d")
-          :day-of-week     {$add [{$dayOfWeek column}
-                                  (driver.common/start-of-week-offset :mongo)]}
+          :day-of-week     {$mod [{$add [{$dayOfWeek column}
+                                         (driver.common/start-of-week-offset :mongo)]}
+                                  7]}
           :day-of-month    {$dayOfMonth column}
           :day-of-year     {$dayOfYear column}
           :week            (stringify "%Y-%m-%d" {$subtract [column

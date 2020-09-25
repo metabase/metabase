@@ -153,11 +153,7 @@
 
 (defmethod sql.qp/date [:snowflake :day-of-week]
   [_ _ expr]
-  (hx/+ (extract :dayofweek expr) (driver.common/start-of-week-offset :snowflake)))
-
-(defmethod sql.qp/date [:snowflake :week-of-year]
-  [_ _ expr]
-  (extract :week (sql.qp/date :snowflake :week expr)))
+  (sql.qp/adjust-day-of-week :snowflake (extract :dayofweek expr)))
 
 (defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
   [driver [_ arg pattern]]

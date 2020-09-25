@@ -349,17 +349,11 @@
 
 (defmethod sql.qp/date [:bigquery :day-of-week]
   [_ _ expr]
-  (hx/+ (extract :dayofweek expr)
-        (driver/db-start-of-week :bigquery)))
+  (sql.qp/adjust-day-of-week :bigquery (extract :dayofweek expr)))
 
 (defmethod sql.qp/date [:bigquery :week]
   [_ _ expr]
   (trunc (keyword (format "week(%s)" (setting/get-keyword :start-of-week))) expr))
-
-(defmethod sql.qp/date [:bigquery :week-of-year]
-  [_ _ expr]
-  ;; BigQuery's impl of `week` uses 0 for the first week; we use 1
-  (->> expr (sql.qp/date :bigquery :week) (extract :week) hx/inc))
 
 (doseq [[unix-timestamp-type bigquery-fn] {:seconds      :timestamp_seconds
                                            :milliseconds :timestamp_millis}]

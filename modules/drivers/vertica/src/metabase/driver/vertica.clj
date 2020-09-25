@@ -87,7 +87,6 @@
 (defmethod sql.qp/date [:vertica :day]             [_ _ expr] (hx/->date expr))
 (defmethod sql.qp/date [:vertica :day-of-month]    [_ _ expr] (extract-integer :day expr))
 (defmethod sql.qp/date [:vertica :day-of-year]     [_ _ expr] (extract-integer :doy expr))
-(defmethod sql.qp/date [:vertica :week-of-year]    [_ _ expr] (hx/week expr))
 (defmethod sql.qp/date [:vertica :month]           [_ _ expr] (date-trunc :month expr))
 (defmethod sql.qp/date [:vertica :month-of-year]   [_ _ expr] (extract-integer :month expr))
 (defmethod sql.qp/date [:vertica :quarter]         [_ _ expr] (date-trunc :quarter expr))
@@ -100,7 +99,7 @@
 
 (defmethod sql.qp/date [:vertica :day-of-week]
   [_ _ expr]
-  (hx/inc (hx/+ (extract-integer :dow expr) (driver.common/start-of-week-offset :vertica))))
+  (sql.qp/adjust-day-of-week :vertica (hx/inc (extract-integer :dow expr))))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
   [driver [_ & args]]

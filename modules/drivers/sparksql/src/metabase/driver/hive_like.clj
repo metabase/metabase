@@ -94,9 +94,7 @@
 
 (defmethod sql.qp/date [:hive-like :day-of-week]
   [_ _ expr]
-  (hx/->integer (date-format "u"
-                             (hx/+ (hx/->timestamp expr)
-                                   (hsql/raw (format "interval '%s' day" (driver.common/start-of-week-offset :hive-like)))))))
+  (sql.qp/adjust-day-of-week :hive-like (hx/->integer (date-format "u" (hx/->timestamp expr)))))
 
 (defmethod sql.qp/date [:hive-like :week]
   [_ _ expr]
@@ -108,10 +106,6 @@
                                                   (hx/+ (hx/->timestamp expr)
                                                         (hsql/raw "interval '1' day")))))]
     (sql.qp/adjust-start-of-week :hive-like week-extract-fn expr)))
-
-(defmethod sql.qp/date [:hive-like :week-of-year]
-  [_ _ expr]
-  (hsql/call :weekofyear (sql.qp/date :hive-like :week expr)))
 
 (defmethod sql.qp/date [:hive-like :quarter]
   [_ _ expr]
