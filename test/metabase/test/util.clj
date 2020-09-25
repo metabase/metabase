@@ -11,7 +11,9 @@
             [java-time :as t]
             [metabase
              [driver :as driver]
-             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel Revision Segment Table TaskHistory User]]
+             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric
+                             NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel Revision
+                             Segment Table TaskHistory User]]
              [task :as task]
              [util :as u]]
             [metabase.models
