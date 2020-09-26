@@ -59,7 +59,7 @@
    [buddy/buddy-core "1.5.0"                                          ; various cryptograhpic functions
     :exclusions [commons-codec]]
    [buddy/buddy-sign "3.0.0"]                                         ; JSON Web Tokens; High-Level message signing library
-   [cheshire "5.8.1"]                                                 ; fast JSON encoding (used by Ring JSON middleware)
+   [cheshire "5.10.0"]                                                ; fast JSON encoding (used by Ring JSON middleware)
    [clj-http "3.10.3"                                                 ; HTTP client
     :exclusions [commons-codec
                  commons-io
