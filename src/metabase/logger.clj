@@ -6,8 +6,7 @@
             [metabase.config :refer [local-process-uuid]])
   (:import org.apache.commons.lang3.exception.ExceptionUtils
            [org.apache.logging.log4j Level LogManager]
-           [org.apache.logging.log4j.core Appender Filter LogEvent LoggerContext]
-           [org.apache.logging.log4j.core.config AppenderRef LoggerConfig Property]))
+           [org.apache.logging.log4j.core Appender Filter LogEvent LoggerContext]))
 
 (def ^:private ^:const max-log-entries 2500)
 
