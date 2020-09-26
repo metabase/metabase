@@ -42,22 +42,9 @@
 (when-not *compile-files*
   (when-not @has-added-appender?
     (reset! has-added-appender? true)
-    ;; this is painful. see: https://logging.apache.org/log4j/2.x/manual/customconfig.html#AddingToCurrent
-    (let [^LoggerContext ctx       (LogManager/getContext false)
-          config                   (.getConfiguration ctx)
-          appender                 (metabase-appender)
-          appender-ref             (AppenderRef/createAppenderRef "metabase" nil nil)
-          ^Filter filter           nil ; here because of a reflection warning
-          ^LoggerConfig logger-cfg (LoggerConfig/createLogger true
-                                                              Level/ALL
-                                                              "metabase"
-                                                              "true"
-                                                              ^"[Lorg.apache.logging.log4j.core.config.AppenderRef;"
-                                                              (into-array AppenderRef [appender-ref])
-                                                              ^"[Lorg.apache.logging.log4j.core.config.Property;"
-                                                              (into-array Property nil)
-                                                              config
-                                                              filter)]
-      (.addAppender config appender)
-      (.addAppender logger-cfg appender nil nil)
+    (let [^LoggerContext ctx (LogManager/getContext false)
+          config             (.getConfiguration ctx)
+          appender           (metabase-appender)
+          ^Filter filter     nil]
+      (.addAppender (.getRootLogger config) appender Level/ALL filter)
       (.updateLoggers ctx))))

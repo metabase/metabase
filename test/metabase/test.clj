@@ -154,7 +154,6 @@
   discard-setting-changes
   doall-recursive
   is-uuid-string?
-  metabase-logger
   obj->json->obj
   postwalk-pred
   random-email

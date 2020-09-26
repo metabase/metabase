@@ -2,7 +2,9 @@
 <Configuration>
   <Appenders>
     <Console name="STDOUT" target="SYSTEM_OUT">
-      <PatternLayout pattern="%d{MM-dd HH:mm:ss} %highlight{%p} %style{%c{2}}{bright} :: %m%n"/>
+      <PatternLayout pattern="%d{MM-dd HH:mm:ss} %highlight{%p} %style{%c{2}}{bright} :: %m%n">
+        <replace regex=":basic-auth \\[.*\\]" replacement=":basic-auth [redacted]"/>
+      </PatternLayout>
     </Console>
 
     <RollingFile name="FILE" fileName="${logfile.path}/metabase.log" filePattern="${logfile.path}/metabase.log.%i">
@@ -10,7 +12,9 @@
         <SizeBasedTriggeringPolicy size="500 MB"/>
       </Policies>
       <DefaultRolloverStrategy max="2"/>
-      <PatternLayout pattern="%d [%t] %-5p%c - %m%n"/>
+      <PatternLayout pattern="%d [%t] %-5p%c - %m%n">
+        <replace regex=":basic-auth \\[.*\\]" replacement=":basic-auth [redacted]"/>
+      </PatternLayout>
     </RollingFile>
   </Appenders>
 

@@ -60,7 +60,7 @@
     :exclusions [commons-codec]]
    [buddy/buddy-sign "3.0.0"]                                         ; JSON Web Tokens; High-Level message signing library
    [cheshire "5.8.1"]                                                 ; fast JSON encoding (used by Ring JSON middleware)
-   [clj-http "3.9.1"                                                  ; HTTP client
+   [clj-http "3.10.3"                                                 ; HTTP client
     :exclusions [commons-codec
                  commons-io
                  slingshot]]
@@ -81,7 +81,6 @@
    [com.draines/postal "2.0.3"]                                       ; SMTP library
    [com.google.guava/guava "28.2-jre"]                                ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
-   [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
    [commons-codec/commons-codec "1.14"]                               ; Apache Commons -- useful codec util fns
    [commons-io/commons-io "2.6"]                                      ; Apache Commons -- useful IO util fns
@@ -108,9 +107,11 @@
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.10"]                          ; helper methods for working with java.lang stuff
-   [org.apache.logging.log4j/log4j-1.2-api "2.13.3"]                  ; API shim between log4j 1.2 and log4j 2.x
    [org.apache.logging.log4j/log4j-api "2.13.3"]                      ; apache logging framework
-   [org.apache.logging.log4j/log4j-core "2.13.3"]                     ; ^^
+   [org.apache.logging.log4j/log4j-1.2-api "2.13.3"]                  ; add compatibility with log4j 1.2
+   [org.apache.logging.log4j/log4j-core "2.13.3"]                     ; apache logging framework
+   [org.apache.logging.log4j/log4j-jcl "2.13.3"]                      ; allows the commons-logging API to work with log4j 2
+   [org.apache.logging.log4j/log4j-liquibase "2.13.3"]                ; liquibase logging via log4j 2
    [org.apache.logging.log4j/log4j-slf4j-impl "2.13.3"]               ; allows the slf4j API to work with log4j 2
    [org.apache.sshd/sshd-core "2.4.0"]                                ; ssh tunneling and test server
    [org.bouncycastle/bcprov-jdk15on "1.65"]                           ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
