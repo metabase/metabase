@@ -99,7 +99,7 @@
     (recur driver hsql-form (* amount 1000.0) :millisecond)
 
     :else
-    (hsql/call :dateadd (hx/literal unit) (long amount) hsql-form)))
+    (hsql/call :dateadd (hx/literal unit) (hx/cast :long amount) hsql-form)))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ message]
@@ -173,17 +173,16 @@
 
 (defmethod sql.qp/date [:h2 :week]
   [_ _ expr]
-  (if (not= (driver.common/start-of-week-offset :h2) 0)
-    (sql.qp/add-interval-honeysql-form :h2 (sql.qp/date :h2 :day expr) (hx/- (hx/- (sql.qp/date :h2 :day-of-week expr) 1)) :day)
-    (sql.qp/date :h2 :day expr)))
-
+  (sql.qp/add-interval-honeysql-form :h2 (sql.qp/date :h2 :day expr)
+                                     (hx/- 1 (sql.qp/date :h2 :day-of-week expr))
+                                     :day))
 
 ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
 ;; *  extract the year and quarter from the date;
 ;; *  convert the quarter (1 - 4) to the corresponding starting month (1, 4, 7, or 10).
-;;    (do this by multiplying by 3, giving us [3 6 9 12]. Then subtract 2 to get [1 4 7 10])
-;; *  Concatenate the year and quarter start month together to create a yyyyMM date string;
-;; *  Parse the string as a date. :sunglasses:
+;;    (do this by multiplying by 3, giving us [3 6 9 12]. Then subtract 2 to get [1 4 7 10]);
+;; *  concatenate the year and quarter start month together to create a yyyymm date string;
+;; *  parse the string as a date. :sunglasses:
 ;;
 ;; Postgres DATE_TRUNC('quarter', x)
 ;; becomes  PARSEDATETIME(CONCAT(YEAR(x), ((QUARTER(x) * 3) - 2)), 'yyyyMM')

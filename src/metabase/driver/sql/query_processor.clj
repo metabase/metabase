@@ -128,7 +128,9 @@
   [driver day-of-week]
   (let [offset (driver.common/start-of-week-offset driver)]
     (if (not= offset 0)
-      (hx/mod (hx/+ day-of-week offset) 7)
+      (hsql/call :case
+        (hsql/call := (hx/mod (hx/+ day-of-week offset) 7) 0) 7
+        :else                                                 (hx/mod (hx/+ day-of-week offset) 7))
       day-of-week)))
 
 (defmulti field->identifier
