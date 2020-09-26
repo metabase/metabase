@@ -30,7 +30,8 @@
             [toucan.util.test :as tt])
   (:import java.util.concurrent.TimeoutException
            java.util.Locale
-           org.apache.logging.log4j.core.Logger
+           [org.apache.logging.log4j.core Logger LoggerContext]
+           org.apache.logging.log4j.core.config.Configurator
            org.apache.logging.log4j.LogManager
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
@@ -417,20 +418,19 @@
    :debug org.apache.logging.log4j.Level/DEBUG
    :trace org.apache.logging.log4j.Level/TRACE})
 
-(defn ^Logger metabase-logger
-  "Gets the root logger for all metabase namespaces. Not intended for use outside of the
-  `with-log-messages-for-level` macro."
-  []
-  (LogManager/getLogger "metabase"))
-
 (defn do-with-log-messages-for-level [level thunk]
-  (let [original-level (.getLevel (metabase-logger))
-        new-level      (get level-kwd->level (keyword level))]
+  (let [new-level (get level-kwd->level (keyword level))
+        ctx       ^LoggerContext (LogManager/getContext true)
+        cfg       (.getConfiguration ctx)
+        mb-logger (.getLoggerConfig cfg "metabase")]
     (try
-      (.setLevel (metabase-logger) new-level)
+      (.setLevel mb-logger new-level)
+      (.updateLoggers ctx)
       (thunk)
       (finally
-        (.setLevel (metabase-logger) original-level)))))
+        ;; this is pretty heavyweight, but it causes log4j
+        ;; to completely dump its config and restore it
+        (Configurator/reconfigure)))))
 
 (defmacro with-log-level
   "Sets the log level (e.g. `:debug` or `:trace`) while executing `body`. Not thread safe! But good for debugging from
