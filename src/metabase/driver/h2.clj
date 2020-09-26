@@ -173,8 +173,9 @@
 
 (defmethod sql.qp/date [:h2 :week]
   [_ _ expr]
-  (let [week-extract-fn (partial trunc-with-format "YYYYww")]  ; Y = week year; w = week in year
-    (sql.qp/adjust-start-of-week :h2 week-extract-fn expr)))
+  (if (not= (driver.common/start-of-week-offset :h2) 0)
+    (sql.qp/add-interval-honeysql-form :h2 (sql.qp/date :h2 :day expr) (hx/- (hx/- (sql.qp/date :h2 :day-of-week expr) 1)) :day)
+    (sql.qp/date :h2 :day expr)))
 
 
 ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:

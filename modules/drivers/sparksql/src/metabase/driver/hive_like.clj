@@ -3,7 +3,6 @@
             [honeysql.core :as hsql]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
             [metabase.driver.sql
              [query-processor :as sql.qp]
              [util :as sql.u]]
