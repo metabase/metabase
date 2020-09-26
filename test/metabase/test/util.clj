@@ -11,9 +11,7 @@
             [java-time :as t]
             [metabase
              [driver :as driver]
-             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric
-                             NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel Revision
-                             Segment Table TaskHistory User]]
+             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel Revision Segment Table TaskHistory User]]
              [task :as task]
              [util :as u]]
             [metabase.models
@@ -30,8 +28,8 @@
             [toucan.util.test :as tt])
   (:import java.util.concurrent.TimeoutException
            java.util.Locale
-           [org.apache.logging.log4j.core Logger LoggerContext]
            org.apache.logging.log4j.core.config.Configurator
+           org.apache.logging.log4j.core.LoggerContext
            org.apache.logging.log4j.LogManager
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
