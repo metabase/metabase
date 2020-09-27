@@ -747,7 +747,7 @@
 (deftest group-by-week-of-year-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[22 46] [23 47] [24 40] [25 60] [26 7]]
-         (sad-toucan-incidents-with-bucketing :week-of-year :pacific)))))
+           (sad-toucan-incidents-with-bucketing :week-of-year :utc)))))
 
 ;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
 ;; difference is how the beginning of hte month is represented, since we always return times with our dates
