@@ -3,6 +3,7 @@
             [honeysql.core :as hsql]
             [java-time :as t]
             [metabase.driver :as driver]
+            [metabase.driver.common :as driver.common]
             [metabase.driver.sql
              [query-processor :as sql.qp]
              [util :as sql.u]]
@@ -94,7 +95,7 @@
 (defmethod sql.qp/date [:hive-like :day-of-week]
   [_ _ expr]
   ;; `dayofweek` returns 1 for Sunday, while `date_trunc` returns a Monday-aligned week.
-  (sql.qp/adjust-day-of-week :hive-like (hsql/call :dayofweek expr) (inc (driver.common/start-of-week-offset driver))))
+  (sql.qp/adjust-day-of-week :hive-like (hsql/call :dayofweek expr) (inc (driver.common/start-of-week-offset :hive-like))))
 
 (defmethod sql.qp/date [:hive-like :week]
   [_ _ expr]
