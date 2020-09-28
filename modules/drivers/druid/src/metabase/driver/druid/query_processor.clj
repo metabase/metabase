@@ -826,13 +826,14 @@
     :day             (extract:timeFormat "yyyy-MM-dd'T'00:00:00ZZ")
     :day-of-week     (extract:js "function (timestamp) {"
                                  "  var date = new Date(timestamp);"
-                                 (format "  return (date.getDay() + 1 + %s) %% 7;" (driver.common/start-of-week-offset :druid))
+                                 (format "day_of_week (date.getDay() + 1 + %s) %% 7;" (driver.common/start-of-week-offset :druid))
+                                 "  return (day_of_week == 0) ? 7 : day_of_week;"
                                  "}")
     :day-of-month    (extract:timeFormat "dd")
     :day-of-year     (extract:timeFormat "DDD")
     :week            (extract:js "function (timestamp) {"
                                  "  var date     = new Date(timestamp);"
-                                 (format "  var firstDOW = new Date(date - ((date.getDay() + %s)  * 86400000));" (driver.common/start-of-week-offset :druid))
+                                 (format "  var firstDOW = new Date(date - ((date.getDay() - %s)  * 86400000));" (driver.common/start-of-week-offset :druid))
                                  "  var month    = firstDOW.getMonth() + 1;"
                                  "  var day      = firstDOW.getDate();"
                                  "  return '' + firstDOW.getFullYear() + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;"
