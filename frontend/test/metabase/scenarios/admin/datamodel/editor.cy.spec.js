@@ -157,6 +157,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       .contains("Alphabetical")
       .click({ force: true });
 
+    cy.wait("@tableUpdate");
+
     // move product_id to the top
     cy.get(".Grabber")
       .eq(3)
