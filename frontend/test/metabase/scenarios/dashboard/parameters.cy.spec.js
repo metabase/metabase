@@ -72,6 +72,9 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   it("should filter on a UNIX timestamp", () => {
+    cy.server();
+    cy.route({ method: "POST", url: "/api/card/4/query" }).as("card");
+
     // Set datatype of Quantity to UNIX Timestamp
     cy.visit("/admin/datamodel/database/1/table/2");
     cy.findByText("Quantity").click();
@@ -114,14 +117,27 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Done").click();
     cy.findByText("Save").click({ force: true });
     cy.findByText("Save").should("not.exist");
-    cy.findByText("0");
+
+    // There are 2 XHR requests that match the route; wait for both to finish
+    // https://github.com/cypress-io/cypress-example-recipes/blob/master/examples/server-communication__xhr-assertions/cypress/integration/multiple-requests.js#L15
+    cy.wait("@card").wait("@card");
+
+    cy.get(".Card").within(() => {
+      cy.findByText("0");
+    });
 
     // Open dashboard from collections
     cy.visit("/collection/root");
     cy.findByText("Test Dashboard").click();
-    cy.findByText("Relative Date");
-    cy.findByText("18,760").should("not.exist");
-    cy.findByText("0");
+    cy.contains("Relative Date");
+
+    // Wait for the third request
+    cy.wait("@card");
+
+    cy.get(".Card").within(() => {
+      cy.findByText("18,760").should("not.exist");
+      cy.findByText("0");
+    });
   });
 });
 
