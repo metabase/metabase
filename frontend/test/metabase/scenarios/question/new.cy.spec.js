@@ -74,6 +74,9 @@ describe("scenarios > question > new", () => {
     });
 
     it.skip("should keep manually entered parenthesis intact (metabase#13306)", () => {
+      const FORMULA =
+        "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))";
+
       cy.visit("/question/new?database=1&table=2&mode=notebook");
       cy.findByText("Summarize").click();
       popover()
@@ -81,44 +84,13 @@ describe("scenarios > question > new", () => {
         .click();
       popover().within(() => {
         cy.get("[contentEditable=true]")
-          .type("Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))")
+          .type(FORMULA)
           .blur();
 
         cy.log("**Fails after blur in v0.36.6**");
-        cy.get("[contentEditable=true]").contains(
-          "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))",
-        );
-
-        cy.findByPlaceholderText("Name (required)").type("Incorrect");
-        cy.findByText("Done").click();
+        // Implicit assertion
+        cy.get("[contentEditable=true]").contains(FORMULA);
       });
-
-      cy.get(".Icon-add")
-        .last()
-        .click();
-
-      popover()
-        .contains("Custom Expression")
-        .click();
-      popover().within(() => {
-        cy.get("[contentEditable=true]")
-          .type(
-            "Sum([Total]) / (0 + Sum([Product → Price]) * Average([Quantity]))",
-          )
-          .blur();
-
-        cy.get("[contentEditable=true]").contains(
-          "Sum([Total]) / (0 + Sum([Product → Price]) * Average([Quantity]))",
-        );
-
-        cy.findByPlaceholderText("Name (required)").type("Correct - hack");
-        cy.findByText("Done").click();
-      });
-
-      cy.contains("Visualize").click();
-
-      // Both results should be the same
-      cy.findAllByText("0.51").should("have.length", 2);
     });
   });
 });
