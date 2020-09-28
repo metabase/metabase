@@ -72,5 +72,25 @@ describe("scenarios > question > new", () => {
       cy.findByText("Visualize").click();
       cy.findByText("604.96");
     });
+
+    it.skip("should keep manually entered parenthesis intact (metabase#13306)", () => {
+      const FORMULA =
+        "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))";
+
+      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      cy.findByText("Summarize").click();
+      popover()
+        .contains("Custom Expression")
+        .click();
+      popover().within(() => {
+        cy.get("[contentEditable=true]")
+          .type(FORMULA)
+          .blur();
+
+        cy.log("**Fails after blur in v0.36.6**");
+        // Implicit assertion
+        cy.get("[contentEditable=true]").contains(FORMULA);
+      });
+    });
   });
 });
