@@ -823,7 +823,7 @@
     :minute-of-hour  (extract:timeFormat "mm")
     :hour            (extract:timeFormat "yyyy-MM-dd'T'HH:00:00ZZ")
     :hour-of-day     (extract:timeFormat "HH")
-    :day             (exxtract:timeFormat "yyyy-MM-dd'T'00:00:00ZZ")
+    :day             (extract:timeFormat "yyyy-MM-dd'T'00:00:00ZZ")
     :day-of-week     (extract:js "function (timestamp) {"
                                  "  var date = new Date(timestamp);"
                                  (format "  var day_of_week = (date.getDay() + 1 + %s) %% 7;"
