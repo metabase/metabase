@@ -823,10 +823,10 @@
     :minute-of-hour  (extract:timeFormat "mm")
     :hour            (extract:timeFormat "yyyy-MM-dd'T'HH:00:00ZZ")
     :hour-of-day     (extract:timeFormat "HH")
-    :day             (extract:timeFormat "yyyy-MM-dd'T'00:00:00ZZ")
+    :day             (exxtract:timeFormat "yyyy-MM-dd'T'00:00:00ZZ")
     :day-of-week     (extract:js "function (timestamp) {"
                                  "  var date = new Date(timestamp);"
-                                 (format "var day_of_week = (date.getDay() + 1 + %s) %% 7;"
+                                 (format "  var day_of_week = (date.getDay() + 1 + %s) %% 7;"
                                          (driver.common/start-of-week-offset :druid))
                                  "  return (day_of_week == 0) ? 7 : day_of_week;"
                                  "}")

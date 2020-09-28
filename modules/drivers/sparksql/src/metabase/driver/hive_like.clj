@@ -98,12 +98,7 @@
 (defmethod sql.qp/date [:hive-like :week]
   [_ _ expr]
   (let [week-extract-fn (fn [expr]
-                          (hsql/call :date_sub
-                                     (hx/+ (hx/->timestamp expr)
-                                           (hsql/raw "interval '1' day"))
-                                     (date-format "u"
-                                                  (hx/+ (hx/->timestamp expr)
-                                                        (hsql/raw "interval '1' day")))))]
+                          (hsql/call :date_sub (hx/->timestamp expr) (date-format "u" (hx/->timestamp expr))))]
     (sql.qp/adjust-start-of-week :hive-like week-extract-fn expr)))
 
 (defmethod sql.qp/date [:hive-like :quarter]
