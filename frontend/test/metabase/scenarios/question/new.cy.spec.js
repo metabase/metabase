@@ -72,5 +72,53 @@ describe("scenarios > question > new", () => {
       cy.findByText("Visualize").click();
       cy.findByText("604.96");
     });
+
+    it.skip("should keep manually entered parenthesis intact (metabase#13306)", () => {
+      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      cy.findByText("Summarize").click();
+      popover()
+        .contains("Custom Expression")
+        .click();
+      popover().within(() => {
+        cy.get("[contentEditable=true]")
+          .type("Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))")
+          .blur();
+
+        cy.log("**Fails after blur in v0.36.6**");
+        cy.get("[contentEditable=true]").contains(
+          "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))",
+        );
+
+        cy.findByPlaceholderText("Name (required)").type("Incorrect");
+        cy.findByText("Done").click();
+      });
+
+      cy.get(".Icon-add")
+        .last()
+        .click();
+
+      popover()
+        .contains("Custom Expression")
+        .click();
+      popover().within(() => {
+        cy.get("[contentEditable=true]")
+          .type(
+            "Sum([Total]) / (0 + Sum([Product → Price]) * Average([Quantity]))",
+          )
+          .blur();
+
+        cy.get("[contentEditable=true]").contains(
+          "Sum([Total]) / (0 + Sum([Product → Price]) * Average([Quantity]))",
+        );
+
+        cy.findByPlaceholderText("Name (required)").type("Correct - hack");
+        cy.findByText("Done").click();
+      });
+
+      cy.contains("Visualize").click();
+
+      // Both results should be the same
+      cy.findAllByText("0.51").should("have.length", 2);
+    });
   });
 });
