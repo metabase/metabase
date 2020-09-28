@@ -193,9 +193,9 @@
           :day-of-week     (mongo-let [day-of-week {$mod [{$add [{$dayOfWeek column}
                                                                  (driver.common/start-of-week-offset :mongo)]}
                                                           7]}]
-                              {$cond {:if   ($eq day-of-week 0)
-                                      :then 7
-                                      :else day-of-week}})
+                             {$cond {:if   {$eq [day-of-week 0]}
+                                     :then 7
+                                     :else day-of-week}})
           :day-of-month    {$dayOfMonth column}
           :day-of-year     {$dayOfYear column}
           :week            (stringify "%Y-%m-%d" {$subtract [column

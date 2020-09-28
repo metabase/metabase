@@ -26,7 +26,7 @@
 
 (defmethod driver/db-start-of-week :vertica
   [_]
-  :sunday)
+  :monday)
 
 (defmethod sql-jdbc.sync/database-type->base-type :vertica
   [_ database-type]
@@ -99,7 +99,7 @@
 
 (defmethod sql.qp/date [:vertica :day-of-week]
   [_ _ expr]
-  (sql.qp/adjust-day-of-week :vertica (hx/inc (extract-integer :dow expr))))
+  (sql.qp/adjust-day-of-week :vertica (hsql/call :dayofweek_iso expr)))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
   [driver [_ & args]]

@@ -61,6 +61,16 @@
 ;;; |                                            Interface (Multimethods)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; this is the primary way to override behavior for a specific clause or object class.
+
+(defmulti ->honeysql
+  "Return an appropriate HoneySQL form for an object. Dispatches off both driver and either clause name or object class
+  making this easy to override in any places needed for a given driver."
+  {:arglists '([driver x]), :style/indent 1}
+  (fn [driver x]
+    [(driver/dispatch-on-initialized-driver driver) (mbql.u/dispatch-by-clause-name-or-class x)])
+  :hierarchy #'driver/hierarchy)
+
 (defmulti ^{:deprecated "0.34.2"} current-datetime-fn
   "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`.
 
@@ -98,7 +108,7 @@
 (defmethod date [:sql :week-of-year]
   [driver _ expr]
   ;; Some DBs truncate when doing integer division, therefore force float arithmetics
-  (hsql/call :ceil (hx// (date driver :day-of-year (date driver :week expr)) 7.0)))
+  (->honeysql driver [:ceil (hx// (date driver :day-of-year (date driver :week expr)) 7.0)]))
 
 
 (defmulti add-interval-honeysql-form
@@ -215,16 +225,6 @@
 (defmethod apply-top-level-clause :default
   [_ _ honeysql-form _]
   honeysql-form)
-
-;; this is the primary way to override behavior for a specific clause or object class.
-
-(defmulti ->honeysql
-  "Return an appropriate HoneySQL form for an object. Dispatches off both driver and either clause name or object class
-  making this easy to override in any places needed for a given driver."
-  {:arglists '([driver x]), :style/indent 1}
-  (fn [driver x]
-    [(driver/dispatch-on-initialized-driver driver) (mbql.u/dispatch-by-clause-name-or-class x)])
-  :hierarchy #'driver/hierarchy)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

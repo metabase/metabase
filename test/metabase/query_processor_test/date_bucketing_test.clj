@@ -17,9 +17,7 @@
   (:require [clj-time
              [core :as time]
              [format :as tformat]]
-            [clojure
-             [string :as str]
-             [test :refer :all]]
+            [clojure.test :refer :all]
             [java-time :as t]
             [metabase
              [driver :as driver]

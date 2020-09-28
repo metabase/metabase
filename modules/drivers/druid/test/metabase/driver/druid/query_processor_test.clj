@@ -345,8 +345,7 @@
 (deftest start-of-week-test
   (mt/test-driver :druid
     (testing (str "Count the number of events in the given week. "
-                  "All of the below events should happen in one week. Using Druid's default "
-                  "grouping, 3 of the events would have counted for the previous week.")
+                  "All of the below events should happen in one week.")
       (is (= [["2015-10-04" 9]]
              (druid-query-returning-rows
                {:filter      [:between !day.timestamp "2015-10-04" "2015-10-10"]
