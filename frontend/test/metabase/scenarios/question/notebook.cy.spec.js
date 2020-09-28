@@ -134,26 +134,30 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should allow joins based on saved questions (metabase#13000)", () => {
+      cy.server();
+      cy.route("POST", "/api/card/*/query").as("card");
+
       cy.log("**Prepare Question 1**");
       openOrdersTable();
 
       cy.findByText("Summarize").click();
+      cy.findByText("Count").click();
+      popover().within(() => {
+        cy.findByText("Sum of ...").click();
+        cy.findByText("Total").click();
+      });
 
-      cy.findByText("Add a metric").click();
-      cy.findByText("Sum of ...").click();
-      popover()
-        .contains("Total")
+      cy.findByText("Group by")
+        .parent()
+        .contains("Product ID")
         .click();
-      cy.findByText("Product ID").click();
 
-      // Remove Count that was pre-selected
-      cy.findAllByText("Count")
-        .last()
-        .next() // ".Icon-close"
-        .click();
+      // Mid-point check - generated title should be:
+      cy.contains("Sum of Total by Product ID");
+
       cy.findByText("Done").click();
       cy.findByText("Save").click();
-      // Save as Q2
+      // Save as Q1
       modal().within(() => {
         typeAndBlurUsingLabel("Name", "Q1");
         cy.findByText("Save").click();
@@ -164,22 +168,24 @@ describe("scenarios > question > notebook", () => {
       openProductsTable();
 
       cy.findByText("Summarize").click();
+      cy.findByText("Count").click();
 
-      cy.findByText("Add a metric").click();
-      cy.findByText("Sum of ...").click();
-      popover()
-        .contains("Rating")
-        .click();
-      cy.findByText("ID").click();
+      popover().within(() => {
+        cy.findByText("Sum of ...").click();
+        cy.findByText("Rating").click();
+      });
 
-      // Remove Count that was pre-selected
-      cy.findAllByText("Count")
-        .last()
-        .next() // ".Icon-close"
+      cy.findByText("Group by")
+        .parent()
+        .contains("ID")
         .click();
+
+      // Mid-point check - generated title should be:
+      cy.contains("Sum of Rating by ID");
+
       cy.findByText("Done").click();
-      // Save as Q2
       cy.findByText("Save").click();
+      // Save as Q2
       modal().within(() => {
         typeAndBlurUsingLabel("Name", "Q2");
         cy.findByText("Save").click();
@@ -222,9 +228,6 @@ describe("scenarios > question > notebook", () => {
 
       cy.visit("/");
       cy.findByText("Browse all items").click();
-
-      cy.server();
-      cy.route("POST", "/api/card/6/query").as("card");
 
       cy.contains("Q3").click({ force: true });
       cy.wait("@card");
