@@ -144,7 +144,7 @@
 
   :main ^:skip-aot metabase.core
 
-  ;; TODO - WHAT DOES THIS DO?
+  ;; Liquibase uses this manifest parameter to dynamically find extensions at startup (via classpath scanning, etc)
   :manifest
   {"Liquibase-Package"
    #= (eval
