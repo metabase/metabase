@@ -5,8 +5,9 @@
              [format :as time]]
             [metabase.config :refer [local-process-uuid]])
   (:import org.apache.commons.lang3.exception.ExceptionUtils
-           [org.apache.logging.log4j Level LogManager]
-           [org.apache.logging.log4j.core Appender Filter LogEvent LoggerContext]))
+           [org.apache.logging.log4j.core Appender Filter Layout LogEvent LoggerContext]
+           org.apache.logging.log4j.core.config.LoggerConfig
+           org.apache.logging.log4j.LogManager))
 
 (def ^:private ^:const max-log-entries 2500)
 
@@ -28,22 +29,28 @@
    :process_uuid local-process-uuid})
 
 (defn- metabase-appender ^Appender []
-  (proxy [Appender] []
-    (append [event]
-      (swap! messages* conj (event->log-data event))
-      nil)
-
-    (getName []
-      "metabase")))
+  (let [^org.apache.logging.log4j.core.Filter filter                   nil
+        ^org.apache.logging.log4j.core.Layout layout                   nil
+        ^"[Lorg.apache.logging.log4j.core.config.Property;" properties nil]
+    (proxy [org.apache.logging.log4j.core.appender.AbstractAppender]
+        ["metabase-appender" filter layout false properties]
+      (append [event]
+        (swap! messages* conj (event->log-data event))
+        nil))))
 
 (defonce ^:private has-added-appender? (atom false))
 
 (when-not *compile-files*
   (when-not @has-added-appender?
     (reset! has-added-appender? true)
-    (let [^LoggerContext ctx (LogManager/getContext false)
-          config             (.getConfiguration ctx)
-          appender           (metabase-appender)
-          ^Filter filter     nil]
-      (.addAppender (.getRootLogger config) appender Level/ALL filter)
+    (let [^LoggerContext ctx                           (LogManager/getContext true)
+          root-logger                                  (LogManager/getRootLogger)
+          config                                       (.getConfiguration ctx)
+          appender                                     (metabase-appender)
+          ^org.apache.logging.log4j.Level level        nil
+          ^org.apache.logging.log4j.core.Filter filter nil]
+      (.start appender)
+      (.addAppender config appender)
+      (doseq [[_ ^LoggerConfig logger-config] (.getLoggers config)]
+        (.addAppender logger-config appender level filter))
       (.updateLoggers ctx))))

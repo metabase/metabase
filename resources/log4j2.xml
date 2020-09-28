@@ -2,7 +2,7 @@
 <Configuration>
   <Appenders>
     <Console name="STDOUT" target="SYSTEM_OUT">
-      <PatternLayout pattern="%d{MM-dd HH:mm:ss} %highlight{%p} %style{%c{2}}{bright} :: %m%n">
+      <PatternLayout pattern="%d %highlight{%p} %style{%c{2}}{bright} :: %m%n">
         <replace regex=":basic-auth \\[.*\\]" replacement=":basic-auth [redacted]"/>
       </PatternLayout>
     </Console>
