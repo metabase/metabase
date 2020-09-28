@@ -44,7 +44,7 @@
 
 (defmethod driver/db-start-of-week :snowflake
   [_]
-  :monday)
+  :sunday)
 
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake

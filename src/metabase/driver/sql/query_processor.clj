@@ -136,13 +136,14 @@
 
 (defn adjust-day-of-week
   "Adjust day of week wrt start of week setting."
-  [driver day-of-week]
-  (let [offset (driver.common/start-of-week-offset driver)]
-    (if (not= offset 0)
-      (hsql/call :case
-        (hsql/call := (hx/mod (hx/+ day-of-week offset) 7) 0) 7
-        :else                                                 (hx/mod (hx/+ day-of-week offset) 7))
-      day-of-week)))
+  ([driver day-of-week]
+   (adjust-day-of-week driver day-of-week (driver.common/start-of-week-offset driver)))
+  ([driver day-of-week offset]
+   (if (not= offset 0)
+     (hsql/call :case
+       (hsql/call := (hx/mod (hx/+ day-of-week offset) 7) 0) 7
+       :else                                                 (hx/mod (hx/+ day-of-week offset) 7))
+     day-of-week)))
 
 (defmulti field->identifier
   "Return a HoneySQL form that should be used as the identifier for `field`, an instance of the Field model. The default
