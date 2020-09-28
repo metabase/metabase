@@ -97,7 +97,7 @@
 ;; We have to roll our own to account for arbitrary start of week
 (defmethod date [:sql :week-of-year]
   [driver _ expr]
-  (hsql/call :ceil (hx// (date driver :day-of-year (date driver :week expr)) 7)))
+  (hx/inc (hx// (date driver :day-of-year (date driver :week expr)) 7)))
 
 
 (defmulti add-interval-honeysql-form
