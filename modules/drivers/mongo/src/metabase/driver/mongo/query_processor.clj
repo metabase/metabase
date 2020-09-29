@@ -209,7 +209,7 @@
           :day-of-week     (day-of-week column)
           :day-of-month    {$dayOfMonth column}
           :day-of-year     {$dayOfYear column}
-          :week            {stringify "%Y-%m-%d" (week column)}
+          :week            (stringify "%Y-%m-%d" (week column))
           :week-of-year    {"$ceil" {$divide [{$dayOfYear (week column)}
                                               7.0]}}
           :month           (stringify "%Y-%m")
