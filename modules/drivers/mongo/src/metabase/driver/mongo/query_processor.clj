@@ -171,6 +171,15 @@
   [[_ field-clause unit]]
   (str (->lvalue field-clause) "~~~" (name unit)))
 
+(defn- day-of-week
+  [column]
+  (mongo-let [day_of_week {$mod [{$add [{$dayOfWeek column}
+                                        (driver.common/start-of-week-offset :mongo)]}
+                                 7]}]
+             {$cond {:if   {$eq [day_of_week 0]}
+                     :then 7
+                     :else day_of_week}}))
+
 (defmethod ->initial-rvalue :datetime-field
   [[_ field-clause unit]]
   (let [field-id (mbql.u/field-clause->id-or-literal field-clause)
@@ -190,16 +199,11 @@
           :hour            (stringify "%Y-%m-%dT%H:00:00")
           :hour-of-day     {$hour column}
           :day             (stringify "%Y-%m-%d")
-          :day-of-week     (mongo-let [day_of_week {$mod [{$add [{$dayOfWeek column}
-                                                                 (driver.common/start-of-week-offset :mongo)]}
-                                                          7]}]
-                             {$cond {:if   {$eq [day_of_week 0]}
-                                     :then 7
-                                     :else day_of_week}})
+          :day-of-week     (day-of-week column)
           :day-of-month    {$dayOfMonth column}
           :day-of-year     {$dayOfYear column}
           :week            (stringify "%Y-%m-%d" {$subtract [column
-                                                             {$multiply [{$subtract [{$dayOfWeek column}
+                                                             {$multiply [{$subtract [(day-of-week column)
                                                                                      1]}
                                                                          (* 24 60 60 1000)]}]})
           :week-of-year    {$add [{$week column}

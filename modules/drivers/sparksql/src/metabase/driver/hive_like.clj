@@ -99,7 +99,7 @@
 
 (defmethod sql.qp/date [:hive-like :week]
   [_ _ expr]
-  (sql.qp/adjust-start-of-week :hive-like (hsql/call :date_trunc "week") expr))
+  (sql.qp/adjust-start-of-week :hive-like (partial hsql/call :date_trunc "week") expr))
 
 (defmethod sql.qp/date [:hive-like :quarter]
   [_ _ expr]
