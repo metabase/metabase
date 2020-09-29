@@ -4,6 +4,7 @@
             [expectations :refer :all]
             [metabase
              [db :as mdb]
+             [test :as mt]
              [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.models
@@ -239,3 +240,14 @@
       (with-redefs [fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
         (is (= (fingerprint/empty-stats-map 0)
                (fingerprint/fingerprint-fields-for-db! fake-db [(Table (data/id :venues))] (fn [_ _]))))))))
+
+(deftest fingerprinting-test
+  (testing "fingerprinting truncates text fields (see #13288)"
+    (doseq [size [4 8 10]]
+      (let [table (Table (mt/id :categories))
+            field (Field (mt/id :categories :name))]
+        (with-redefs [metadata-queries/truncation-size size]
+          (#'fingerprint/fingerprint-table! table [field])
+          (let [field' (db/select-one [Field :fingerprint] :id (u/id field))
+                fingerprinted-size (get-in field' [:fingerprint :type :type/Text :average-length])]
+            (is (<= fingerprinted-size size))))))))
