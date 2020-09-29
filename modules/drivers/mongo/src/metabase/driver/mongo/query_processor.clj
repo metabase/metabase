@@ -180,6 +180,13 @@
                      :then 7
                      :else day_of_week}}))
 
+(defn- week
+  [column]
+  (stringify "%Y-%m-%d" {$subtract [column
+                                    {$multiply [{$subtract [(day-of-week column)
+                                                            1]}
+                                                (* 24 60 60 1000)]}]}))
+
 (defmethod ->initial-rvalue :datetime-field
   [[_ field-clause unit]]
   (let [field-id (mbql.u/field-clause->id-or-literal field-clause)
@@ -202,12 +209,9 @@
           :day-of-week     (day-of-week column)
           :day-of-month    {$dayOfMonth column}
           :day-of-year     {$dayOfYear column}
-          :week            (stringify "%Y-%m-%d" {$subtract [column
-                                                             {$multiply [{$subtract [(day-of-week column)
-                                                                                     1]}
-                                                                         (* 24 60 60 1000)]}]})
-          :week-of-year    {$add [{$week column}
-                                  1]}
+          :week            (week column)
+          :week-of-year    {$ceil {$divide [{$dayOfYear (week column)}
+                                            7.0]}}
           :month           (stringify "%Y-%m")
           :month-of-year   {$month column}
           ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and

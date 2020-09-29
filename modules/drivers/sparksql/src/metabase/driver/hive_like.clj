@@ -94,8 +94,9 @@
 
 (defmethod sql.qp/date [:hive-like :day-of-week]
   [_ _ expr]
-  ;; `dayofweek` returns 1 for Sunday, while `date_trunc` returns a Monday-aligned week.
-  (sql.qp/adjust-day-of-week :hive-like (hsql/call :dayofweek expr) (inc (driver.common/start-of-week-offset :hive-like))))
+  (sql.qp/adjust-day-of-week :hive-like
+                             (hx/->integer (date-format "u" (hx/+ (hx/->timestamp expr)
+                                                                  (hsql/raw "interval '1' day"))))))
 
 (defmethod sql.qp/date [:hive-like :week]
   [_ _ expr]
