@@ -826,7 +826,7 @@
     :day             (extract:timeFormat "yyyy-MM-dd'T'00:00:00ZZ")
     :day-of-week     (extract:js "function (timestamp) {"
                                  "  var date = new Date(timestamp);"
-                                 (format "  var dayOfWeek = (date.getDay() - %s) %% 7;"
+                                 (format "  var dayOfWeek = (date.getDay() + 1 + %s) %% 7;"
                                          (driver.common/start-of-week-offset :druid))
                                  "  return (dayOfWeek == 0) ? 7 : dayOfWeek;"
                                  "}")

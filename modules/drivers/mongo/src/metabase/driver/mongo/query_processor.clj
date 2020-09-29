@@ -176,17 +176,16 @@
   (mongo-let [day_of_week {$mod [{$add [{$dayOfWeek column}
                                         (driver.common/start-of-week-offset :mongo)]}
                                  7]}]
-             {$cond {:if   {$eq [day_of_week 0]}
-                     :then 7
-                     :else day_of_week}}))
+    {$cond {:if   {$eq [day_of_week 0]}
+            :then 7
+            :else day_of_week}}))
 
 (defn- week
   [column]
-  {:dateToString {:format "%Y-%m-%d"
-                  :date   {$subtract [column
-                                      {$multiply [{$subtract [(day-of-week column)
-                                                              1]}
-                                                  (* 24 60 60 1000)]}]}}})
+  {$subtract [column
+              {$multiply [{$subtract [(day-of-week column)
+                                      1]}
+                          (* 24 60 60 1000)]}]})
 
 (defmethod ->initial-rvalue :datetime-field
   [[_ field-clause unit]]
@@ -210,7 +209,7 @@
           :day-of-week     (day-of-week column)
           :day-of-month    {$dayOfMonth column}
           :day-of-year     {$dayOfYear column}
-          :week            {:___date (week column)}
+          :week            {stringify "%Y-%m-%d" (week column)}
           :week-of-year    {"$ceil" {$divide [{$dayOfYear (week column)}
                                               7.0]}}
           :month           (stringify "%Y-%m")
