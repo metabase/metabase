@@ -182,11 +182,11 @@
 
 (defn- week
   [column]
-  {:___date {:dateToString {:format "%Y-%m-%d"
-                            :date   {$subtract [column
-                                    {$multiply [{$subtract [(day-of-week column)
-                                                            1]}
-                                                (* 24 60 60 1000)]}]}}}})
+  {:dateToString {:format "%Y-%m-%d"
+                  :date   {$subtract [column
+                                      {$multiply [{$subtract [(day-of-week column)
+                                                              1]}
+                                                  (* 24 60 60 1000)]}]}}})
 
 (defmethod ->initial-rvalue :datetime-field
   [[_ field-clause unit]]
@@ -210,7 +210,7 @@
           :day-of-week     (day-of-week column)
           :day-of-month    {$dayOfMonth column}
           :day-of-year     {$dayOfYear column}
-          :week            (week column)
+          :week            {:___date (week column)}
           :week-of-year    {"$ceil" {$divide [{$dayOfYear (week column)}
                                               7.0]}}
           :month           (stringify "%Y-%m")
