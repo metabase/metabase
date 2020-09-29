@@ -41,4 +41,4 @@
 
 (defmethod driver/db-start-of-week :druid
   [_]
-  :sunday)
+  :monday)

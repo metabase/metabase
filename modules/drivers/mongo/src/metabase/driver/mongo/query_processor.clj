@@ -182,10 +182,11 @@
 
 (defn- week
   [column]
-  (stringify "%Y-%m-%d" {$subtract [column
+  {:___date {:dateToString {:format "%Y-%m-%d"
+                            :date   {$subtract [column
                                     {$multiply [{$subtract [(day-of-week column)
                                                             1]}
-                                                (* 24 60 60 1000)]}]}))
+                                                (* 24 60 60 1000)]}]}}}})
 
 (defmethod ->initial-rvalue :datetime-field
   [[_ field-clause unit]]
@@ -210,8 +211,8 @@
           :day-of-month    {$dayOfMonth column}
           :day-of-year     {$dayOfYear column}
           :week            (week column)
-          :week-of-year    {$ceil {$divide [{$dayOfYear (week column)}
-                                            7.0]}}
+          :week-of-year    {"$ceil" {$divide [{$dayOfYear (week column)}
+                                              7.0]}}
           :month           (stringify "%Y-%m")
           :month-of-year   {$month column}
           ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and
