@@ -20,7 +20,7 @@ describe("scenarios > dashboard > text-box", () => {
       });
     });
 
-    it("should load after save/refresh (Issue #12914)", () => {
+    it("should load after save/refresh (metabase#12914)", () => {
       cy.visit(`/dashboard/2`);
 
       cy.findByText("Test Dashboard");
@@ -48,7 +48,7 @@ describe("scenarios > dashboard > text-box", () => {
       cy.findByText("Dashboard testing text");
     });
 
-    it.skip("should have a scroll bar for long text (Issue #8333)", () => {
+    it.skip("should have a scroll bar for long text (metabase#8333)", () => {
       cy.visit(`/dashboard/2`);
 
       // Add text box to dash

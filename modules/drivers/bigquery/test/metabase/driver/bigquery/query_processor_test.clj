@@ -35,7 +35,7 @@
                              "LIMIT 2;")})))))
 
     (testing (str "make sure that BigQuery native queries maintain the column ordering specified in the SQL -- "
-                  "post-processing ordering shouldn't apply (Issue #2821)")
+                  "post-processing ordering shouldn't apply (metabase#2821)")
       (is (= [{:name         "venue_id"
                :display_name "venue_id"
                :source       :native
@@ -61,7 +61,7 @@
                  :type     :native
                  :database (mt/id)})))))
 
-    (testing "queries with array result columns deserialize properly (issue #10275)"
+    (testing "queries with array result columns deserialize properly (metabase#10275)"
       (is (= [[["foo" "bar"]
                [1 2]
                [3.14159265359 0.5772156649]

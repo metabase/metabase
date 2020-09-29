@@ -47,8 +47,8 @@ const expression = [
   ["[User → Name]", userName, "foriegn key"],
   ["trim([User → Name])", ["trim", userName], "function with one argument"],
   [
-    'trim([User → Name], ",")',
-    ["trim", userName, ","],
+    'coalesce([User → Name], ",")',
+    ["coalesce", userName, ","],
     "function with two arguments",
   ],
   [

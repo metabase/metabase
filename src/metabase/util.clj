@@ -384,7 +384,7 @@
   "Return a version of String `s` appropriate for use as a URL slug.
    Downcase the name, remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores;
    URL-encode non-ASCII characters. (Non-ASCII characters are encoded rather than replaced with underscores in order
-   to support languages that don't use the Latin alphabet; see issue #3818).
+   to support languages that don't use the Latin alphabet; see metabase#3818).
 
    Optionally specify `max-length` which will truncate the slug after that many characters."
   (^String [^String s]
