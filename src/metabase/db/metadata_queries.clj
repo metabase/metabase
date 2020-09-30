@@ -99,7 +99,7 @@
   "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
   {:style/indent 1}
   [table :- si/TableInstance, fields :- [si/FieldInstance]]
-  (let [text-fields        (filter (comp #{:type/Text} :base_type) fields)
+  (let [text-fields        (filter (comp #{"text"} :database_type) fields)
         field->expressions (into {} (for [field text-fields]
                                       [field [(str (gensym "substring"))
                                               [:substring [:field-id (u/get-id field)] 0 truncation-size]]]))
