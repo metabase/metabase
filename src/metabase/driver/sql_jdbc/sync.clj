@@ -93,17 +93,16 @@
 ;;; |                                                   Sync Impl                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - we should reduce the metadata ResultSets instead of realizing the entire thing in memory at once and then
-;; filtering/transforming in Clojure-land
-
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
-  [^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
+  [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
-  (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
+  (with-open [rs (.getTables metadata db-name-or-nil (driver/metadata-escape-entity-name driver schema-or-nil) "%"
                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW" "EXTERNAL TABLE"]))]
-    (mapv #(select-keys % [:table_name :remarks :table_schem])
-          (jdbc/result-set-seq rs))))
+    (transduce (map (fn [row] (select-keys row [:table_name :remarks :table_schem])))
+               conj
+               []
+               (jdbc/reducible-result-set rs {}))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -116,7 +115,7 @@
     (let [all-schemas (set (map :table_schem (jdbc/result-set-seq rs)))
           schemas     (set/difference all-schemas (excluded-schemas driver))]
       (set (for [schema schemas
-                 table  (get-tables metadata schema db-name-or-nil)]
+                 table  (get-tables driver metadata schema db-name-or-nil)]
              (let [remarks (:remarks table)]
                {:name        (:table_name table)
                 :schema      schema
@@ -128,7 +127,7 @@
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata, & [db-name-or-nil]]
   (set (for [table   (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                             (get-tables metadata nil nil))]
+                             (get-tables driver metadata nil nil))]
          (let [remarks (:remarks table)]
            {:name        (:table_name  table)
             :schema      (:table_schem table)
@@ -169,7 +168,11 @@
 
 (defn- fields-metadata
   [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name :as table}, & [^String db-name-or-nil]]
-  (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
+  (with-open [rs (.getColumns metadata
+                              db-name-or-nil
+                              (driver/metadata-escape-entity-name driver schema)
+                              (driver/metadata-escape-entity-name driver table-name)
+                              nil)]
     (let [result (jdbc/result-set-seq rs)]
       ;; In some rare cases `:column_name` is blank (eg. SQLite's views with group by),
       ;; fallback to sniffing the type from a SELECT * query
