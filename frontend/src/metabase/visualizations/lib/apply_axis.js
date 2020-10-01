@@ -126,7 +126,11 @@ export function applyChartTimeseriesXAxis(
       const { column, ...columnSettings } = chart.settings.column(
         dimensionColumn,
       );
-      return formatValue(timestamp, {
+      const localeFormattedTimestamp = moment(timestamp)
+        .clone()
+        .locale(moment.locale());
+
+      return formatValue(localeFormattedTimestamp, {
         ...columnSettings,
         column: { ...column, unit: tickFormatUnit },
         type: "axis",
