@@ -208,4 +208,54 @@ describe("scenarios > question > native", () => {
     // confirm that the question saved and url updated
     cy.location("pathname").should("match", /\/question\/\d+/);
   });
+
+  it.skip(`shouldn't remove NULL when using "Is not" or "Does not contain" filter (metabase#13332)`, () => {
+    ["Is not", "Does not contain"].forEach((filter, i) => {
+      const QUESTION = "Q" + i;
+
+      cy.visit("/question/new");
+      cy.contains("Native query").click();
+      cy.get(".ace_content")
+        .should("be.visible")
+        .type(`SELECT null AS "V" UNION ALL SELECT 'This has a value' AS "V"`);
+      cy.findByText("Save").click();
+
+      modal().within(() => {
+        cy.findByLabelText("Name").type(QUESTION);
+        cy.findByText("Save").click();
+        cy.findByText("Not now").click();
+      });
+
+      cy.visit("/");
+      cy.findByText("Ask a question").click();
+      cy.findByText("Simple question").click();
+      popover().within(() => {
+        cy.findByText("Saved Questions").click();
+        cy.findByText("Robert Tableton's Personal Collection").click();
+        cy.findByText(QUESTION).click();
+      });
+
+      cy.url("should.contain", "/question#");
+      cy.findByText("This has a value");
+
+      cy.log("**Apply a filter**");
+      cy.findAllByText("Filter")
+        .first()
+        .click();
+      cy.get(".List-item-title")
+        .contains("V")
+        .click();
+      cy.findByText("Is").click();
+      popover().within(() => {
+        cy.findByText(filter).click();
+      });
+      cy.findByPlaceholderText("Enter some text").type("This has a value");
+      cy.findByText("Add filter").click();
+
+      cy.log("**Assert that NULL value is present**");
+      cy.findByText(`V ${filter.toLowerCase()} This has a value`);
+      cy.findByText("No results!").should("not.exist");
+      cy.findByText(/null/i);
+    });
+  });
 });
