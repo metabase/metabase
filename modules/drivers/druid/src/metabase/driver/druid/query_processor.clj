@@ -840,12 +840,13 @@
                                  "  var day      = firstDOW.getDate();"
                                  "  return '' + firstDOW.getFullYear() + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;"
                                  "}")
-    :week-of-year    (extract:js "function x (timestamp) {"
+    :week-of-year    (extract:js "function (timestamp) {"
                                  "  var date = new Date(timestamp);"
                                  (format "  var firstDOW = new Date(date - ((date.getDay() + %s)  * 86400000));"
                                          (driver.common/start-of-week-offset :druid))
                                  "  var dayOfYear = (Date.UTC(firstDOW.getFullYear(), firstDOW.getMonth(), firstDOW.getDate()) - Date.UTC(firstDOW.getFullYear(), 0, 0)) / 24 / 60 / 60 / 1000;"
-                                 "  return Math.floor((dayOfYear / 7)) + 1;"
+                                 "  var daysSinceWeek1Start = dayOfYear + Math.abs(firstDOW.getDay() - (new Date(firstDOW.getFullYear(), 0, 1)).getDay());"
+                                 "  return Math.floor(daysSinceWeek1Start / 7) + 1;"
                                  "}")
     :month           (extract:timeFormat "yyyy-MM-01")
     :month-of-year   (extract:timeFormat "MM")
