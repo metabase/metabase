@@ -15,8 +15,7 @@
              [add-dimension-projections :as add-dim-projections]
              [add-source-metadata :as add-source-metadata]]
             [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test.data :as data]
-            [toucan.db :as db]))
+            [metabase.test.data :as data]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers)
@@ -72,8 +71,7 @@
 
 (deftest internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
-    (mt/with-temp-objects
-      (data/create-venue-category-remapping! "Foo")
+    (data/with-venue-category-remapping "Foo"
       (let [{:keys [rows cols]} (qp.test/rows-and-cols
                                   (mt/format-rows-by [int int str]
                                     (mt/run-mbql-query venues
@@ -93,12 +91,10 @@
 
 (deftest order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
-    (mt/with-temp-objects
-      (fn []
-        [(db/insert! Dimension {:field_id                (data/id :venues :category_id)
+    (mt/with-temp Dimension [_ {:field_id                (data/id :venues :category_id)
                                 :name                    "Foo"
                                 :type                    :external
-                                :human_readable_field_id (data/id :categories :name)})])
+                                :human_readable_field_id (data/id :categories :name)}]
       (doseq [[sort-order expected] {:desc ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse"
                                             "Steakhouse" "Steakhouse" "Southern"]
                                      :asc  ["American" "American" "American" "American" "American" "American" "American"

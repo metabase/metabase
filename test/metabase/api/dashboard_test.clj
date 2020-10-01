@@ -134,7 +134,7 @@
   (merge dashboard-defaults
          {:name          "Test Create Dashboard"
           :creator_id    (user->id :rasta)
-          :parameters    [{:hash "abc123", :name "test", :type "date"}]
+          :parameters    [{:id "abc", :hash "abc123", :name "test", :type "date"}]
           :updated_at    true
           :created_at    true
           :collection_id true})
@@ -143,7 +143,7 @@
       (tt/with-temp Collection [collection]
         (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
         (-> ((user->client :rasta) :post 200 "dashboard" {:name          "Test Create Dashboard"
-                                                          :parameters    [{:hash "abc123", :name "test", :type "date"}]
+                                                          :parameters    [{:id "abc", :hash "abc123", :name "test", :type "date"}]
                                                           :collection_id (u/get-id collection)})
             dashboard-response)))))
 
@@ -554,7 +554,7 @@
           [(card-api-test/get-name->collection-position :rasta collection)
            (do
              ((user->client :rasta) :post 200 "dashboard" {:name                "c"
-                                                           :parameters          [{}]
+                                                           :parameters          []
                                                            :collection_id       (u/get-id collection)
                                                            :collection_position 3})
              (card-api-test/get-name->collection-position :rasta collection))])))))
@@ -578,7 +578,7 @@
           [(card-api-test/get-name->collection-position :rasta collection)
            (do
              ((user->client :rasta) :post 200 "dashboard" {:name          "c"
-                                                           :parameters    [{}]
+                                                           :parameters    []
                                                            :collection_id (u/get-id collection)})
              (card-api-test/get-name->collection-position :rasta collection))])))))
 

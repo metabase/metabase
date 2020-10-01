@@ -291,24 +291,3 @@
                                  db))))]
     (binding [*get-db* #(get-db-for-driver (tx/driver))]
       (f))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                               with-temp-objects                                                |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- delete-model-instance!
-  "Allows deleting a row by the model instance toucan returns when it's inserted"
-  [{:keys [id] :as instance}]
-  (db/delete! (-> instance name symbol) :id id))
-
-(defn do-with-temp-objects
-  "Internal impl of `data/with-data`. Takes a thunk `data-load-fn` that returns a seq of Toucan model instances that
-  will be deleted after `body-fn` finishes"
-  [data-load-fn body-fn]
-  (let [result-instances (data-load-fn)]
-    (try
-      (body-fn)
-      (finally
-        (doseq [instance result-instances]
-          (delete-model-instance! instance))))))

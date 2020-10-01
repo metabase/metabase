@@ -214,7 +214,7 @@
   "Update the fields values and human-readable values for a `Field` whose special type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
   [id :as {{value-pairs :values} :body}]
-  {value-pairs [[(s/one (s/maybe s/Num) "value") (s/optional su/NonBlankString "human readable value")]]}
+  {value-pairs [[(s/one s/Any "value") (s/optional su/NonBlankString "human readable value")]]}
   (let [field (api/write-check Field id)]
     (api/check (field-values/field-should-have-field-values? field)
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "

@@ -21,7 +21,10 @@
              [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
             [metabase.query-processor.async :as qp.async]
-            [metabase.util.i18n :as ui18n]
+            [metabase.util
+             [i18n :as ui18n :refer [tru]]
+             [schema :as su]]
+            [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -49,6 +52,10 @@
 
 (models/defmodel Dashboard :report_dashboard)
 
+(defn- assert-valid-parameters [{:keys [parameters]}]
+  (when (s/check (s/maybe [{:id su/NonBlankString, s/Keyword s/Any}]) parameters)
+    (throw (ex-info (tru ":parameters must be a sequence of maps with String :id keys")
+                    {:parameters parameters}))))
 
 (defn- pre-delete [dashboard]
   (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard)))
@@ -57,10 +64,12 @@
   (let [defaults  {:parameters []}
         dashboard (merge defaults dashboard)]
     (u/prog1 dashboard
+      (assert-valid-parameters dashboard)
       (collection/check-collection-namespace Dashboard (:collection_id dashboard)))))
 
 (defn- pre-update [dashboard]
   (u/prog1 dashboard
+    (assert-valid-parameters dashboard)
     (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 
 (u/strict-extend (class Dashboard)

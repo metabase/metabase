@@ -77,9 +77,9 @@
 (defn- copy-file! [^Path source, ^Path dest]
   (when (or (not (exists? dest))
             (not= (last-modified-timestamp source) (last-modified-timestamp dest)))
-    (u/profile (trs "Extract file {0} -> {1}" source dest)
-      (Files/copy source dest (u/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING
-                                                     StandardCopyOption/COPY_ATTRIBUTES])))))
+    (log/info (trs "Extract file {0} -> {1}" source dest))
+    (Files/copy source dest (u/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING
+                                                   StandardCopyOption/COPY_ATTRIBUTES]))))
 
 (defn copy-files!
   "Copy all files in `source-dir` to `dest-dir`. Overwrites existing files if last modified timestamp is not the same as

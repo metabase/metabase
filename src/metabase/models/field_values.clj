@@ -3,7 +3,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [trs]]
+             [i18n :refer [trs tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -34,12 +34,50 @@
 
 (models/defmodel FieldValues :metabase_fieldvalues)
 
+(defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
+  (when (s/check (s/maybe [(s/maybe su/NonBlankString)]) human-readable-values)
+    (throw (ex-info (tru "Invalid human-readable-values: values must be a sequence; each item must be nil or a string")
+                    {:human-readable-values human-readable-values
+                     :status-code           400}))))
+
+(defn- pre-insert [field-values]
+  (u/prog1 field-values
+    (assert-valid-human-readable-values field-values)))
+
+(defn- pre-update [field-values]
+  (u/prog1 field-values
+    (assert-valid-human-readable-values field-values)))
+
+(defn- post-select [field-values]
+  (cond-> field-values
+    (contains? field-values :human_readable_values)
+    (update :human_readable_values (fn [human-readable-values]
+                                     (cond
+                                       (sequential? human-readable-values)
+                                       human-readable-values
+
+                                       ;; in some places human readable values were incorrectly saved as a map. If
+                                       ;; that's the case, convert them back to a sequence
+                                       (map? human-readable-values)
+                                       (do
+                                         (assert (:values field-values)
+                                                 (tru ":values must be present to fetch :human_readable_values"))
+                                         (mapv human-readable-values (:values field-values)))
+
+                                       ;; if the `:human_readable_values` key is present (i.e., if we are fetching the
+                                       ;; whole row), but `nil`, then replace the `nil` value with an empty vector. The
+                                       ;; client likes this better.
+                                       :else
+                                       [])))))
+
 (u/strict-extend (class FieldValues)
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true})
-          :types       (constantly {:human_readable_values :json, :values :json})
-          :post-select (u/rpartial update :human_readable_values #(or % {}))}))
+          :types       (constantly {:human_readable_values :json-no-keywordization, :values :json})
+          :pre-insert  pre-insert
+          :pre-update  pre-update
+          :post-select post-select}))
 
 
 ;; ## FieldValues Helper Functions

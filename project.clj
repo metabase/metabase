@@ -315,11 +315,13 @@
 
    :bikeshed
    [:include-all-drivers
+    :test-common
     {:plugins
      [[lein-bikeshed "0.5.2"]]}]
 
    :eastwood
    [:include-all-drivers
+    :test-common
     {:plugins
      [[jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]]
 
@@ -362,6 +364,7 @@
 
    :check-namespace-decls
    [:include-all-drivers
+    :test-common
     {:plugins               [[lein-check-namespace-decls "1.0.2"]]
      :source-paths          ^:replace ["src" "backend/mbql/src" "test" "backend/mbql/test"]
      :check-namespace-decls {:prefix-rewriting true}}]

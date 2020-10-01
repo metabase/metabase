@@ -262,3 +262,17 @@
              clojure.lang.ExceptionInfo
              #"A Dashboard can only go in Collections in the \"default\" namespace"
              (db/update! Dashboard card-id {:collection_id collection-id})))))))
+
+(deftest validate-parameters-test
+  (testing "Should validate Dashboard :parameters when"
+    (testing "creating"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #":parameters must be a sequence of maps with String :id keys"
+           (mt/with-temp Dashboard [_ {:parameters {:a :b}}]))))
+    (testing "updating"
+      (mt/with-temp Dashboard [{:keys [id]} {:parameters []}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #":parameters must be a sequence of maps with String :id keys"
+             (db/update! Dashboard id :parameters [{:id 100}])))))))

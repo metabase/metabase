@@ -148,7 +148,6 @@
         (is (= "Message seems corrupt or manipulated."
                (http/client :get 400 (with-new-secret-key (card-url card)))))))))
 
-
 (deftest check-that-only-enabled-params-that-are-not-present-in-the-jwt-come-back
   (testing "check that only ENABLED params that ARE NOT PRESENT IN THE JWT come back"
     (with-embedding-enabled-and-new-secret-key
@@ -360,18 +359,18 @@
         (is (= "Message seems corrupt or manipulated."
                (http/client :get 400 (with-new-secret-key (dashboard-url dash)))))))))
 
-
 (deftest only-enabled-params-that-are-not-present-in-the-jwt-come-back
   (testing "check that only ENABLED params that ARE NOT PRESENT IN THE JWT come back"
     (with-embedding-enabled-and-new-secret-key
       (tt/with-temp Dashboard [dash {:enable_embedding true
                                      :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}
-                                     :parameters       [{:slug "a", :name "a", :type "date"}
-                                                        {:slug "b", :name "b", :type "date"}
-                                                        {:slug "c", :name "c", :type "date"}
-                                                        {:slug "d", :name "d", :type "date"}]}]
-        (is (= [{:slug "d", :name "d", :type "date"}]
+                                     :parameters       [{:id "_a", :slug "a", :name "a", :type "date"}
+                                                        {:id "_b", :slug "b", :name "b", :type "date"}
+                                                        {:id "_c", :slug "c", :name "c", :type "date"}
+                                                        {:id "_d", :slug "d", :name "d", :type "date"}]}]
+        (is (= [{:id "_d", :slug "d", :name "d", :type "date"}]
                (:parameters (http/client :get 200 (dashboard-url dash {:params {:c 100}})))))))))
+
 
 ;;; ---------------------- GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -----------------------
 

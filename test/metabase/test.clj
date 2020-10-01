@@ -74,8 +74,7 @@
   query
   run-mbql-query
   with-db
-  with-temp-copy-of-db
-  with-temp-objects]
+  with-temp-copy-of-db]
 
  [datasets
   test-driver
