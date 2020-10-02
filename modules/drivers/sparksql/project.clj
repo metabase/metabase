@@ -21,6 +21,7 @@
    [org.apache.hive/hive-jdbc "2.3.7"
     :exclusions
     [commons-logging
+     io.netty/*
      org.apache.curator/curator-framework
      org.codehaus.jackson/jackson-jaxrs
      org.codehaus.jackson/jackson-xc
