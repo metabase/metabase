@@ -86,7 +86,7 @@
     (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
            (mt/rows
              (qp/process-query
-              (mt/native-query {:query (sql-jdbc.sync/simple-select-probe (or driver/*driver* :h2) schema name)})))))))
+              (mt/native-query {:query (first (#'sql-jdbc.sync/simple-select-probe (or driver/*driver* :h2) schema name))})))))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
