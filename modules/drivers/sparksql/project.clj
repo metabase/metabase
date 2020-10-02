@@ -25,6 +25,7 @@
      org.codehaus.jackson/jackson-jaxrs
      org.codehaus.jackson/jackson-xc
      org.slf4j/slf4j-log4j12
+     org.eclipse.jetty.orbit/javax.servlet
      org.eclipse.jetty.aggregate/jetty-all]]]
 
   ;; only used for the lein with-drivers stuff (i.e. tests and REPL)
