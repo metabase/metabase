@@ -209,34 +209,39 @@ describe("scenarios > question > native", () => {
     cy.location("pathname").should("match", /\/question\/\d+/);
   });
 
-  it.skip(`shouldn't remove NULL when using "Is not" or "Does not contain" filter (metabase#13332)`, () => {
-    ["Is not", "Does not contain"].forEach((filter, i) => {
-      const QUESTION = "Q" + i;
+  it.skip(`shouldn't remove rows containing NULL when using "Is not" or "Does not contain" filter (metabase#13332)`, () => {
+    const FILTERS = ["Is not", "Does not contain"];
+    const QUESTION = "QQ";
 
-      cy.visit("/question/new");
-      cy.contains("Native query").click();
-      cy.get(".ace_content")
-        .should("be.visible")
-        .type(`SELECT null AS "V" UNION ALL SELECT 'This has a value' AS "V"`);
+    cy.visit("/question/new");
+    cy.contains("Native query").click();
+    cy.get(".ace_content")
+      .should("be.visible")
+      .type(`SELECT null AS "V" UNION ALL SELECT 'This has a value' AS "V"`);
+    cy.findByText("Save").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Name").type(QUESTION);
       cy.findByText("Save").click();
+      cy.findByText("Not now").click();
+    });
 
-      modal().within(() => {
-        cy.findByLabelText("Name").type(QUESTION);
-        cy.findByText("Save").click();
-        cy.findByText("Not now").click();
-      });
+    cy.visit("/");
+    cy.findByText("Ask a question").click();
+    cy.findByText("Simple question").click();
+    popover().within(() => {
+      cy.findByText("Saved Questions").click();
+      cy.findByText("Robert Tableton's Personal Collection").click();
+      cy.findByText(QUESTION).click();
+    });
 
-      cy.visit("/");
-      cy.findByText("Ask a question").click();
-      cy.findByText("Simple question").click();
-      popover().within(() => {
-        cy.findByText("Saved Questions").click();
-        cy.findByText("Robert Tableton's Personal Collection").click();
-        cy.findByText(QUESTION).click();
-      });
+    cy.url("should.contain", "/question#");
+    cy.findByText("This has a value");
 
-      cy.url("should.contain", "/question#");
-      cy.findByText("This has a value");
+    FILTERS.forEach(filter => {
+      // Clicking on a question's name in UI resets previously applied filters
+      // We can ask variations of that question "on the fly"
+      cy.findByText(QUESTION).click();
 
       cy.log("**Apply a filter**");
       cy.findAllByText("Filter")
@@ -252,10 +257,21 @@ describe("scenarios > question > native", () => {
       cy.findByPlaceholderText("Enter some text").type("This has a value");
       cy.findByText("Add filter").click();
 
-      cy.log("**Assert that NULL value is present**");
+      cy.log(
+        `**Mid-point assertion for "${filter}" filter| FAILING in v0.36.6**`,
+      );
       cy.findByText(`V ${filter.toLowerCase()} This has a value`);
       cy.findByText("No results!").should("not.exist");
-      cy.findByText(/null/i);
+
+      cy.log(
+        "**Final assertion: Count of rows with 'null' value should be 1**",
+      );
+      // "Count" is pre-selected option for "Summarize"
+      cy.findAllByText("Summarize")
+        .first()
+        .click();
+      cy.findByText("Done").click();
+      cy.get(".ScalarValue").contains("1");
     });
   });
 });
