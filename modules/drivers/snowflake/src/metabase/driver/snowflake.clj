@@ -21,7 +21,6 @@
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.query-processor.store :as qp.store]
             [metabase.util
              [date-2 :as u.date]
              [honeysql-extensions :as hx]
@@ -30,6 +29,13 @@
            [java.time OffsetDateTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
 
+(defmethod driver/can-connect? :snowflake
+  [driver {:keys [db], :as details}]
+  (and ((get-method driver/can-connect? :sql-jdbc) driver details)
+       (let [spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)
+             sql  (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
+         (jdbc/query spec sql)
+         true)))
 (driver/register! :snowflake, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
 
 (defmethod driver/humanize-connection-error-message :snowflake
@@ -283,24 +289,6 @@
 (defmethod sql-jdbc.sync/excluded-schemas :snowflake
   [_]
   #{"INFORMATION_SCHEMA"})
-
-(defmethod sql-jdbc.sync/simple-select-probe :snowflake
-  [driver db-or-id-or-spec schema table]
-  (qp.store/with-store
-    (qp.store/fetch-and-store-database! (u/get-id db-or-id-or-spec))
-    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-                (sql.qp/format-honeysql driver
-                  {:select [1]
-                   :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]
-                   :limit  1}))))
-
-(defmethod driver/can-connect? :snowflake
-  [driver {:keys [db], :as details}]
-  (and ((get-method driver/can-connect? :sql-jdbc) driver details)
-       (let [spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)
-             sql  (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
-         (jdbc/query spec sql)
-         true)))
 
 (defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
   [_ t]

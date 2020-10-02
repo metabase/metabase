@@ -113,27 +113,33 @@
   [_ _ _]
   (constantly true))
 
-(defmulti simple-select-probe
-  "Perform a simple (ie. cheap) SELECT on a given table to test for access."
-  {:arglists '([driver db-or-id-or-spec schema table])}
+(defn- simple-select-probe
+  "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata."
+  [driver schema table]
+  ;; Using our SQL compiler here to get portable LIMIT
+  (sql.qp/format-honeysql driver
+    (sql.qp/apply-top-level-clause driver :limit
+      {:select [:*]
+       :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]}
+      {:limit 1})))
+
+(defmulti execute-query-for-sync
+  "Execute given SQL query. Used during parts of sync where we don't have metadata populated and
+  can't use our default query processing pipeline."
+  {:arglists '([driver db-or-id-or-spec query])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod simple-select-probe :sql-jdbc
-  [driver db-or-id-or-spec schema table]
-  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-              ;; Using our SQL compiler here to get portable LIMIT
-              (sql.qp/format-honeysql driver
-                (sql.qp/apply-top-level-clause driver :limit
-                  {:select [[1 :dummy]]
-                   :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]}
-                  {:limit 1}))))
+(defmethod execute-query-for-sync :sql-jdbc
+  [_ db-or-id-or-spec query]
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec) query))
 
 (defn have-select-privilege?
-  "Does have SELECT privilege for given table."
+  "Check if we have select privilege for given table"
   [driver db-or-id-or-spec {:keys [table_name table_schem] :as table}]
   (when (u/ignore-exceptions
-          (simple-select-probe driver db-or-id-or-spec table_schem table_name))
+          (execute-query-for-sync driver db-or-id-or-spec
+                                  (simple-select-probe driver table_schem table_name)))
     table))
 
 (defn fast-active-tables
@@ -180,16 +186,6 @@
       (str "Invalid type: " special-type))
     special-type))
 
-(defn simple-select-probe
-  "Perform a simple (and cheap) SELECT on a given table to test for access and get metadata."
-  [driver schema table]
-  (first
-   (sql.qp/format-honeysql driver
-     (sql.qp/apply-top-level-clause driver :limit
-       {:select [:*]
-        :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]}
-       {:limit 1}))))
-
 (defn- fields-metadata
   [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name :as table}, & [^String db-name-or-nil]]
   (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
@@ -200,6 +196,7 @@
         (jdbc/with-db-connection [conn (->spec (:db_id table))]
           (let [^Connection conn            (:connection conn)
                 ^ResultSetMetaData metadata (->> (simple-select-probe driver schema table-name)
+                                                 first
                                                  (.executeQuery (.createStatement conn))
                                                  (.getMetaData))]
             (doall

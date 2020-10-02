@@ -199,10 +199,12 @@
 (def ^:private presto-metadata-sync-query-timeout
   (u/minutes->ms 2))
 
-(defn- execute-presto-query-for-sync
-  "Execute a Presto query for metadata sync."
-  [details query]
-  (let [result-chan (a/promise-chan)]
+(defmethod sql-jdbc.sync/execute-query-for-sync :presto
+  [_ details query]
+  (let [result-chan (a/promise-chan)
+        query       (if (string? query)
+                      query
+                      (first query))]
     (execute-presto-query details query nil (fn [cols rows]
                                               (a/>!! result-chan {:cols cols, :rows rows})))
     (let [[val] (a/alts!! [result-chan (a/timeout presto-metadata-sync-query-timeout)])]
@@ -213,7 +215,7 @@
 
 (s/defmethod driver/can-connect? :presto
   [driver {:keys [catalog] :as details} :- PrestoConnectionDetails]
-  (let [{[[v]] :rows} (execute-presto-query-for-sync details
+  (let [{[[v]] :rows} (sql-jdbc.sync/execute-query-for-sync details
                         (format "SHOW SCHEMAS FROM %s LIKE 'information_schema'"
                                 (sql.u/quote-name driver :database catalog)))]
     (= v "information_schema")))
@@ -226,21 +228,12 @@
   "Return a set of all schema names in this `database`."
   [driver {{:keys [catalog schema] :as details} :details :as database}]
   (let [sql            (str "SHOW SCHEMAS FROM " (sql.u/quote-name driver :database catalog))
-        {:keys [rows]} (execute-presto-query-for-sync details sql)]
+        {:keys [rows]} (sql-jdbc.sync/execute-query-for-sync details sql)]
     (set (map first rows))))
-
-(defmethod sql-jdbc.sync/simple-select-probe :presto
-  [_ details schema table]
-  (->> [schema table]
-       (filter some?)
-       (str/join "." )
-       (format "SELECT 1 FROM %s LIMIT 1")
-       (execute-presto-query-for-sync details)
-       :rows))
 
 (defn- describe-schema [driver {{:keys [catalog user] :as details} :details :as db} {:keys [schema]}]
   (let [sql (str "SHOW TABLES FROM " (sql.u/quote-name driver :schema catalog schema))]
-    (set (for [[table-name & _] (:rows (execute-presto-query-for-sync details sql))
+    (set (for [[table-name & _] (:rows (sql-jdbc.sync/execute-query-for-sync details sql))
                :when (sql-jdbc.sync/have-select-privilege? driver details {:table_schem schema
                                                                            :table_name  table-name})]
            {:name   table-name
@@ -257,7 +250,7 @@
 (defmethod driver/describe-table :presto
   [driver {{:keys [catalog] :as details} :details} {schema :schema, table-name :name}]
   (let [sql            (str "DESCRIBE " (sql.u/quote-name driver :table catalog schema table-name))
-        {:keys [rows]} (execute-presto-query-for-sync details sql)]
+        {:keys [rows]} (sql-jdbc.sync/execute-query-for-sync details sql)]
     {:schema schema
      :name   table-name
      :fields (set (for [[idx [name type]] (m/indexed rows)]
