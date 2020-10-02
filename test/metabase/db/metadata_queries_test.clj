@@ -41,17 +41,16 @@
                   ["BCD Tofu House"]]
         table (Table (mt/id :venues))
         fields [(Field (mt/id :venues :name))]
-        fetch! #(->> (metadata-queries/table-rows-sample table fields)
+        fetch! #(->> (metadata-queries/table-rows-sample table fields %)
                      ;; since order is not guaranteed do some sorting here so we always get the same results
                      (sort-by first)
                      (take 5))]
     (is (= :type/Text (-> fields first :base_type)))
     (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
-      (is (= expected (fetch!)))
+      (is (= expected (fetch! nil)))
       (testing "truncates text fields (see #13288)"
         (doseq [size [1 4 80]]
-          (with-redefs [metadata-queries/truncation-size size]
-            (is (= (mapv (fn [[s]] [(subs (or s "") 0 (min size (count s)))])
-                         expected)
-                   (fetch!))
-                "Did not truncate a text field")))))))
+          (is (= (mapv (fn [[s]] [(subs (or s "") 0 (min size (count s)))])
+                       expected)
+                 (fetch! size))
+              "Did not truncate a text field"))))))

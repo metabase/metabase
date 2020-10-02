@@ -89,30 +89,27 @@
   inferring special types and what-not; we don't want to scan millions of values at any rate."
   10000)
 
-(def truncation-size
-  "The maximum size of :type/Text to be selected from the database in `table-rows-sample`. In practice we see large
-  text blobs and want to balance taking enough for distinct counts and but not so much that we risk out of memory
-  issues when syncing."
-  1234)
-
 (s/defn table-rows-sample :- (s/maybe si/TableSample)
   "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
   {:style/indent 1}
-  [table :- si/TableInstance, fields :- [si/FieldInstance]]
-  (let [text-fields        (filter (comp #{:type/Text} :base_type) fields)
-        field->expressions (into {} (for [field text-fields]
-                                      [field [(str (gensym "substring"))
-                                              [:substring [:field-id (u/get-id field)] 1 truncation-size]]]))
-        results            ((resolve 'metabase.query-processor/process-query)
-                            {:database   (:db_id table)
-                             :type       :query
-                             :query      {:source-table (u/get-id table)
-                                          :expressions  (into {} (vals field->expressions))
-                                          :fields       (vec (for [field fields]
-                                                               (if-let [[expression-name _] (field->expressions field)]
-                                                                 [:expression expression-name]
-                                                                 [:field-id (u/get-id field)])))
-                                          :limit        max-sample-rows}
-                             :middleware {:format-rows?           false
-                                          :skip-results-metadata? true}})]
-    (get-in results [:data :rows])))
+  ([table :- si/TableInstance, fields :- [si/FieldInstance]]
+   (table-rows-sample table fields nil))
+  ([table :- si/TableInstance, fields :- [si/FieldInstance] truncation-size :- (s/maybe s/Int)]
+   (let [text-fields        (filter (comp #{:type/Text} :base_type) fields)
+         field->expressions (when truncation-size
+                              (into {} (for [field text-fields]
+                                         [field [(str (gensym "substring"))
+                                                 [:substring [:field-id (u/get-id field)] 1 truncation-size]]])))
+         results            ((resolve 'metabase.query-processor/process-query)
+                             {:database   (:db_id table)
+                              :type       :query
+                              :query      {:source-table (u/get-id table)
+                                           :expressions  (into {} (vals field->expressions))
+                                           :fields       (vec (for [field fields]
+                                                                (if-let [[expression-name _] (get field->expressions field)]
+                                                                  [:expression expression-name]
+                                                                  [:field-id (u/get-id field)])))
+                                           :limit        max-sample-rows}
+                              :middleware {:format-rows?           false
+                                           :skip-results-metadata? true}})]
+     (get-in results [:data :rows]))))

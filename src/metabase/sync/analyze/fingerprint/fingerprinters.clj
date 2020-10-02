@@ -2,6 +2,7 @@
   "Non-identifying fingerprinters for various field types."
   (:require [bigml.histogram.core :as hist]
             [cheshire.core :as json]
+            [clojure.string :as str]
             [java-time :as t]
             [kixi.stats
              [core :as stats]
@@ -224,11 +225,27 @@
         :q1  q1
         :q3  q3)))))
 
+(def truncation-size
+  "The maximum size of :type/Text to be selected from the database in `table-rows-sample`. In practice we see large
+  text blobs and want to balance taking enough for distinct counts and but not so much that we risk out of memory
+  issues when syncing."
+  1234)
+
+(defn- snif-json
+  "If we suspect we have a partial string then we attempt heuristics to determine if we might have json. Its not
+  important to be exact here so good approximation is fine."
+  [s]
+  (let [json-starts ["[" "{"]]
+    (some #(str/starts-with? s %) json-starts)))
+
 (defn- valid-serialized-json?
   "Is x a serialized JSON dictionary or array."
   [x]
   (u/ignore-exceptions
-    ((some-fn map? sequential?) (json/parse-string x))))
+    (when (and x (string? x))
+      (if (= (.length ^String x) truncation-size)
+        (snif-json x)
+        ((some-fn map? sequential?) (json/parse-string x))))))
 
 (deffingerprinter :type/Text
   ((map str) ; we cast to str to support `field-literal` type overwriting:

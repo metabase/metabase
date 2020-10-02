@@ -41,6 +41,7 @@
      [:not (mdb/isa :special_type :type/PK)]
      [:= :special_type nil]]
     [:not-in :visibility_type ["retired" "sensitive"]]
+    [:not= :base_type "type/Structured"]
     [:or
      [:and
       [:< :fingerprint_version 1]
@@ -56,6 +57,7 @@
      [:not (mdb/isa :special_type :type/PK)]
      [:= :special_type nil]]
     [:not-in :visibility_type ["retired" "sensitive"]]
+    [:not= :base_type "type/Structured"]
     [:or
      [:and
       [:< :fingerprint_version 2]
@@ -78,6 +80,7 @@
      [:not (mdb/isa :special_type :type/PK)]
      [:= :special_type nil]]
     [:not-in :visibility_type ["retired" "sensitive"]]
+    [:not= :base_type "type/Structured"]
     [:or
      [:and
       [:< :fingerprint_version 2]
@@ -100,6 +103,7 @@
      [:not (mdb/isa :special_type :type/PK)]
      [:= :special_type nil]]
     [:not-in :visibility_type ["retired" "sensitive"]]
+    [:not= :base_type "type/Structured"]
     [:or
      [:and
       [:< :fingerprint_version 4]
@@ -246,7 +250,7 @@
     (doseq [size [4 8 10]]
       (let [table (Table (mt/id :categories))
             field (Field (mt/id :categories :name))]
-        (with-redefs [metadata-queries/truncation-size size]
+        (with-redefs [fingerprinters/truncation-size size]
           (#'fingerprint/fingerprint-table! table [field])
           (let [field' (db/select-one [Field :fingerprint] :id (u/id field))
                 fingerprinted-size (get-in field' [:fingerprint :type :type/Text :average-length])]
