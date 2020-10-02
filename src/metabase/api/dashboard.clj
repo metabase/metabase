@@ -16,6 +16,7 @@
              [dashboard :as dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard delete-dashboard-card!]]
              [dashboard-favorite :refer [DashboardFavorite]]
+             [params :as params]
              [field :refer [Field]]
              [interface :as mi]
              [query :as query :refer [Query]]
