@@ -1277,7 +1277,13 @@
           (is (= ["African" "American" "Artisan"]
                  (take 3 ((mt/user->client :rasta) :get 200 (chain-filter-values-url
                                                              (:id dashboard)
-                                                             (:category-name param-keys)))))))))))
+                                                             (:category-name param-keys)))))))))
+    (testing "should check perms for the Fields in question"
+      (mt/with-temp-copy-of-db
+        (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+          (perms/revoke-permissions! (group/all-users) (mt/id))
+          (is (= "You don't have permissions to do that."
+                 ((mt/user->client :rasta) :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys))))))))))
 
 (deftest chain-filter-search-test
   (testing "GET /api/dashboard/:id/params/:param-key/search/:prefix"
@@ -1382,37 +1388,38 @@
 
 (deftest valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
-    (mt/with-temp-copy-of-db
+    (letfn [(url [filtered filtering]
+              (let [url    "dashboard/params/valid-filter-fields"
+                    params (str/join "&" (concat (for [id filtered]
+                                                   (format "filtered=%d" id))
+                                                 (for [id filtering]
+                                                   (format "filtering=%d" id))))]
+                (if (seq params)
+                  (str url "?" params)
+                  url)))
+            (result= [expected {:keys [filtered filtering]}]
+              (let [url (url filtered filtering)]
+                (testing (format "\nGET %s" (pr-str url))
+                  (is (= expected
+                         ((mt/user->client :rasta) :get 200 url))))))]
       (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard}]
-        (letfn [(url [filtered filtering]
-                  (let [url    "dashboard/params/valid-filter-fields"
-                        params (str/join "&" (concat (for [id filtered]
-                                                       (format "filtered=%d" id))
-                                                     (for [id filtering]
-                                                       (format "filtering=%d" id))))]
-                    (if (seq params)
-                      (str url "?" params)
-                      url)))
-                (result= [expected {:keys [filtered filtering]}]
-                  (let [url (url filtered filtering)]
-                    (testing (format "\nGET %s" (pr-str url))
-                      (is (= expected
-                             ((mt/user->client :rasta) :get 200 url))))))]
-          (mt/$ids
-            (testing (format "\nvenues.price = %d categories.name = %d\n" %venues.price %categories.name)
-              (result= {(keyword (str %venues.price)) [%categories.name]}
-                       {:filtered [%venues.price], :filtering [%categories.name]})
-              (testing "Multiple Field IDs for each param"
-                (result= {(keyword (str %venues.price))    (sort [%venues.price %categories.name])
-                          (keyword (str %categories.name)) (sort [%venues.price %categories.name])}
-                         {:filtered [%venues.price %categories.name], :filtering [%categories.name %venues.price]}))
-              (testing "filtered-ids cannot be nil"
-                (is (= {:errors {:filtered (str "value must satisfy one of the following requirements:"
-                                                " 1) value must be a valid integer greater than zero."
-                                                " 2) value must be an array. Each value must be a valid integer greater than zero."
-                                                " The array cannot be empty.")}}
-                       ((mt/user->client :rasta) :get 400 (url [] [%categories.name])))))
-              (testing "should check perms for the Fields in question"
-                (perms/revoke-permissions! (group/all-users) (mt/id))
-                (is (= "You don't have permissions to do that."
-                       ((mt/user->client :rasta) :get 403 (url [%venues.price] [%categories.name]))))))))))))
+        (mt/$ids
+          (testing (format "\nvenues.price = %d categories.name = %d\n" %venues.price %categories.name)
+            (result= {(keyword (str %venues.price)) [%categories.name]}
+                     {:filtered [%venues.price], :filtering [%categories.name]})
+            (testing "Multiple Field IDs for each param"
+              (result= {(keyword (str %venues.price))    (sort [%venues.price %categories.name])
+                        (keyword (str %categories.name)) (sort [%venues.price %categories.name])}
+                       {:filtered [%venues.price %categories.name], :filtering [%categories.name %venues.price]}))
+            (testing "filtered-ids cannot be nil"
+              (is (= {:errors {:filtered (str "value must satisfy one of the following requirements:"
+                                              " 1) value must be a valid integer greater than zero."
+                                              " 2) value must be an array. Each value must be a valid integer greater than zero."
+                                              " The array cannot be empty.")}}
+                     ((mt/user->client :rasta) :get 400 (url [] [%categories.name]))))))))
+      (testing "should check perms for the Fields in question"
+        (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard}]
+          (mt/with-temp-copy-of-db
+            (perms/revoke-permissions! (group/all-users) (mt/id))
+            (is (= "You don't have permissions to do that."
+                   ((mt/user->client :rasta) :get 403 (mt/$ids (url [%venues.price] [%categories.name])))))))))))

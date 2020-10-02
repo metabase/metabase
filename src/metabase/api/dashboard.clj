@@ -22,8 +22,10 @@
              [query :as query :refer [Query]]
              [revision :as revision]]
             [metabase.models.params.chain-filter :as chain-filter]
+            [metabase.query-processor
+             [error-type :as qp.error-type]
+             [util :as qp-util]]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.query-processor.util :as qp-util]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
@@ -556,14 +558,19 @@
                          {:param (get (:resolved-params dashboard) param-key)})))
        ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
        ;; separate query for each Field (for parameters that are mapped to more than one Field)
-       (let [results (distinct (mapcat (if (seq prefix)
-                                         #(chain-filter/chain-filter-search % constraints prefix)
-                                         #(chain-filter/chain-filter % constraints))
-                                       field-ids))]
-         ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
-         (if (sequential? (first results))
-           (sort-by second results)
-           (sort results)))))))
+       (try
+         (let [results (distinct (mapcat (if (seq prefix)
+                                           #(chain-filter/chain-filter-search % constraints prefix)
+                                           #(chain-filter/chain-filter % constraints))
+                                         field-ids))]
+           ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
+           (if (sequential? (first results))
+             (sort-by second results)
+             (sort results)))
+         (catch clojure.lang.ExceptionInfo e
+           (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+             (api/throw-403 e)
+             (throw e))))))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
