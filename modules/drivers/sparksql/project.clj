@@ -1,4 +1,4 @@
-(defproject metabase/sparksql-driver "1.0.0-SNAPSHOT-1.2.2"
+(defproject metabase/sparksql-driver "1.0.0-SNAPSHOT-1.3.0"
   :min-lein-version "2.5.0"
 
   :dependencies
@@ -18,7 +18,7 @@
                  org.eclipse.jetty/jetty-util
                  org.slf4j/slf4j-log4j12
                  org.tukaani/xz]]
-   [org.apache.hive/hive-jdbc "1.2.2"
+   [org.apache.hive/hive-jdbc "2.3.7"
     :exclusions
     [commons-logging
      org.apache.curator/curator-framework
