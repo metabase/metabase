@@ -168,7 +168,7 @@ function sharedParametersTests(visitUrl) {
     cy.contains("Id").click();
     popover()
       .find('[placeholder="Search by Name or enter an ID"]')
-      .type("Aly");
+      .type("Alyc");
     popover().contains("Alycia Collins - 541");
   });
 
@@ -177,7 +177,7 @@ function sharedParametersTests(visitUrl) {
     cy.contains("Name").click();
     popover()
       .find('[placeholder="Search by Name"]')
-      .type("Aly");
+      .type("Alyc");
     popover().contains("Alycia Collins");
   });
 
@@ -193,7 +193,7 @@ function sharedParametersTests(visitUrl) {
     cy.contains("User").click();
     popover()
       .find('[placeholder="Search by Name or enter an ID"]')
-      .type("Aly");
+      .type("Alyc");
     popover().contains("Alycia Collins - 541");
   });
 
