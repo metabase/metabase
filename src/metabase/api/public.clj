@@ -63,9 +63,6 @@
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
-(defn- card-uuid->id [uuid]
-  (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false)))
-
 (api/defendpoint GET "/card/:uuid"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
