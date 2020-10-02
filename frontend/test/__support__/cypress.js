@@ -107,6 +107,28 @@ export function typeAndBlurUsingLabel(label, value) {
     .blur();
 }
 
+// Unfortunately, cypress `.type()` is currently broken and requires an ugly "hack"
+// it is documented here: https://github.com/cypress-io/cypress/issues/5480
+// `_typeUsingGet()` and `_typeUsingPlacehodler()` are temporary solution
+// please refrain from using them, unless absolutely neccessary!
+export function _typeUsingGet(selector, value, delay = 100) {
+  cy.get(selector)
+    .click()
+    .type(value, { delay })
+    .clear()
+    .click()
+    .type(value, { delay });
+}
+
+export function _typeUsingPlaceholder(selector, value, delay = 100) {
+  cy.findByPlaceholderText(selector)
+    .click()
+    .type(value, { delay })
+    .clear()
+    .click()
+    .type(value, { delay });
+}
+
 Cypress.on("uncaught:exception", (err, runnable) => false);
 
 export function withDatabase(databaseId, f) {
