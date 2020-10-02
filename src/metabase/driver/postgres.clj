@@ -220,7 +220,7 @@
    :box           :type/*
    :bpchar        :type/Text ; "blank-padded char" is the internal name of "character"
    :bytea         :type/*    ; byte array
-   :cidr          :type/Text ; IPv4/IPv6 network address
+   :cidr          :type/Structured ; IPv4/IPv6 network address
    :circle        :type/*
    :citext        :type/Text ; case-insensitive text
    :date          :type/Date
@@ -234,11 +234,11 @@
    :int4          :type/Integer
    :int8          :type/BigInteger
    :interval      :type/*               ; time span
-   :json          :type/Text
-   :jsonb         :type/Text
+   :json          :type/Structured
+   :jsonb         :type/Structured
    :line          :type/*
    :lseg          :type/*
-   :macaddr       :type/Text
+   :macaddr       :type/Structured
    :money         :type/Decimal
    :numeric       :type/Decimal
    :path          :type/*
@@ -262,7 +262,7 @@
    :uuid          :type/UUID
    :varbit        :type/*
    :varchar       :type/Text
-   :xml           :type/Text
+   :xml           :type/Structured
    (keyword "bit varying")                :type/*
    (keyword "character varying")          :type/Text
    (keyword "double precision")           :type/Float

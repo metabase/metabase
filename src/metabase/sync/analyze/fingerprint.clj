@@ -138,6 +138,7 @@
              [:not (mdb/isa :special_type :type/PK)]
              [:= :special_type nil]]
             [:not-in :visibility_type ["retired" "sensitive"]]
+            [:not= :base_type "type/Structured"]
             (cons :or (versions-clauses))]})
 
   ([table :- i/TableInstance]

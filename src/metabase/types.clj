@@ -158,6 +158,10 @@
 (derive :type/Country :type/Address)
 (derive :type/ZipCode :type/Address)
 
+;;; Structured
+
+(derive :type/Structured :type/*)
+
 
 ;;; Legacy Special Types. These will hopefully be going away in the future when we add columns like `:is_pk` and
 ;;; `:cardinality`
