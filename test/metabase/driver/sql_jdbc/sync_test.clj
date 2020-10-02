@@ -5,8 +5,8 @@
             [clojure.java.jdbc :as jdbc]
             [metabase
              [driver :as driver]
-             [sync :as sync]
              [query-processor :as qp]
+             [sync :as sync]
              [test :as mt]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]

@@ -21,6 +21,7 @@
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util
              [date-2 :as u.date]
              [honeysql-extensions :as hx]
