@@ -81,8 +81,6 @@
 
 (defn- pre-delete [{id :id, :as group}]
   (check-not-magic-group group)
-  (db/delete! 'Permissions                 :group_id id)
-  (db/delete! 'PermissionsGroupMembership  :group_id id)
   ;; Remove from LDAP mappings
   (classloader/require 'metabase.integrations.ldap)
   (setting/set-json! :ldap-group-mappings

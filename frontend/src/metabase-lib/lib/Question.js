@@ -49,16 +49,16 @@ import Questions from "metabase/entities/questions";
 import type {
   Parameter as ParameterObject,
   ParameterValues,
-} from "metabase/meta/types/Parameter";
+} from "metabase-types/types/Parameter";
 import type {
   DatasetQuery,
   Card as CardObject,
   VisualizationSettings,
-} from "metabase/meta/types/Card";
-import type { Dataset } from "metabase/meta/types/Dataset";
-import type { TableId } from "metabase/meta/types/Table";
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { ClickObject } from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Card";
+import type { Dataset } from "metabase-types/types/Dataset";
+import type { TableId } from "metabase-types/types/Table";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { ClickObject } from "metabase-types/types/Visualization";
 
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -624,16 +624,6 @@ export default class Question {
       };
     } else {
       return clicked;
-    }
-  }
-
-  // deprecated
-  tableMetadata(): ?Table {
-    const query = this.query();
-    if (query instanceof StructuredQuery) {
-      return query.table();
-    } else {
-      return null;
     }
   }
 

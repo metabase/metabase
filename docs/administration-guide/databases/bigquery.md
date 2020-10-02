@@ -18,11 +18,11 @@ To create the service account JSON file, follow Google's documentation on [setti
 
 3. **Grant the service account access to this project**. You'll need to add **roles** to the service account so that Metabase will have permission to view and run queries against your dataset. Make sure you add the following roles to the service account:
 
-    - BigQuery Data Viewer
-    - BigQuery Metadata Viewer
-    - BigQuery Job User (distinct from BigQuery User)
+   - BigQuery Data Viewer
+   - BigQuery Metadata Viewer
+   - BigQuery Job User (distinct from BigQuery User)
 
-    For more information on **roles** in BigQuery, see [Google Cloud Platorm's documentation](https://cloud.google.com/bigquery/docs/access-control).
+   For more information on **roles** in BigQuery, see [Google Cloud Platform's documentation](https://cloud.google.com/bigquery/docs/access-control).
 
 4. **Create key**. Once you have assigned roles to the service account, click on the **Create Key** button, and select **JSON** for the **key type**. The JSON file will download to your computer.
 
@@ -30,7 +30,7 @@ To create the service account JSON file, follow Google's documentation on [setti
 
 ## Metabase: adding a BigQuery dataset
 
-Once you have created and downloaded your service account JSON file for your BigQuery dataset, head over to your Metabase instance, click on the **settings** cog, and select **Admin** to bring up Admin mode. In the **Databases** section, click on the **Add database** button in the upper right. 
+Once you have created and downloaded your service account JSON file for your BigQuery dataset, head over to your Metabase instance, click on the **settings** cog, and select **Admin** to bring up Admin mode. In the **Databases** section, click on the **Add database** button in the upper right.
 
 On the **ADD DATABASE** page, select **BigQuery** from the **Database type** dropdown. Metabase will present you with the relevant configuration settings to fill out:
 
@@ -50,7 +50,7 @@ Each BigQuery dataset will have a **Dataset ID**. You can find this ID via the [
 
 #### Service account JSON file
 
-Upload the service account JSON file you created when following the [steps above](#google-cloud-platform:-creating-a-service-account-and-json-file). The JSON file contains the credentials your Metabase application will need to read and query your dataset, as defined by the **roles** you added to the service account. If you need to add additional **roles**, you have to create another service account, download the JSON file, and upload the file to Metabase.
+Upload the service account JSON file you created when following the [steps above](#google-cloud-platform-creating-a-service-account-and-json-file). The JSON file contains the credentials your Metabase application will need to read and query your dataset, as defined by the **roles** you added to the service account. If you need to add additional **roles**, you have to create another service account, download the JSON file, and upload the file to Metabase.
 
 #### Use the Java Virtual Machine (JVM) timezone
 

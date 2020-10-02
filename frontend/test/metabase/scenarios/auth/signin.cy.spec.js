@@ -1,5 +1,7 @@
 import { restore, signIn, signOut, USERS } from "__support__/cypress";
 
+const sizes = [[1280, 800], [640, 360]];
+
 describe("scenarios > auth > signin", () => {
   before(restore);
   beforeEach(signOut);
@@ -33,6 +35,16 @@ describe("scenarios > auth > signin", () => {
     cy.contains(/[a-z ]+, Bob/i);
   });
 
+  it("should allow login regardless of login email case", () => {
+    cy.visit("/auth/login");
+    cy.findByLabelText("Email address").type(
+      USERS.admin.username.toUpperCase(),
+    );
+    cy.findByLabelText("Password").type(USERS.admin.password);
+    cy.findByText("Sign in").click();
+    cy.contains(/[a-z ]+, Bob/i);
+  });
+
   it("should redirect to a unsaved question after login", () => {
     signIn();
     cy.visit("/");
@@ -52,5 +64,22 @@ describe("scenarios > auth > signin", () => {
 
     // order table should load after login
     cy.contains("37.65");
+  });
+
+  sizes.forEach(size => {
+    it(`should redirect from /auth/forgot_password back to /auth/login (viewport: ${size}) (metabase#12658)`, () => {
+      if (Cypress._.isArray(size)) {
+        cy.viewport(size[0], size[1]);
+      } else {
+        cy.viewport(size);
+      }
+
+      cy.visit("/");
+      cy.url().should("contain", "auth/login");
+      cy.findByText("I seem to have forgotten my password").click();
+      cy.url().should("contain", "auth/forgot_password");
+      cy.findByText("Back to login").click();
+      cy.url().should("contain", "auth/login");
+    });
   });
 });

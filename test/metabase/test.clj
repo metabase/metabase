@@ -162,6 +162,7 @@
   round-all-decimals
   scheduler-current-tasks
   throw-if-called
+  with-locale
   with-log-messages
   with-log-messages-for-level
   with-log-level
@@ -299,7 +300,9 @@
       (with-temp* [toucan-model [x]
                    toucan-model [y]]
         (let [[_ _ things-in-both] (clojure.data/diff x y)]
-          things-in-both))))
+          ;; don't include created_at/updated_at even if they're the exactly the same, as might be the case with MySQL
+          ;; TIMESTAMP columns (which only have second resolution by default)
+          (dissoc things-in-both :created_at :updated_at)))))
    (fn [toucan-model]
      (initialize/initialize-if-needed! :db)
      (db/resolve-model toucan-model))))

@@ -11,11 +11,13 @@ import Field from "./Field";
 import Segment from "./Segment";
 import Metric from "./Metric";
 
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { TableId } from "metabase/meta/types/Table";
-import type { FieldId } from "metabase/meta/types/Field";
-import type { MetricId } from "metabase/meta/types/Metric";
-import type { SegmentId } from "metabase/meta/types/Segment";
+import Question from "../Question";
+
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { TableId } from "metabase-types/types/Table";
+import type { FieldId } from "metabase-types/types/Field";
+import type { MetricId } from "metabase-types/types/Metric";
+import type { SegmentId } from "metabase-types/types/Segment";
 
 /**
  * Wrapper class for the entire metadata store
@@ -76,5 +78,9 @@ export default class Metadata extends Base {
 
   field(fieldId): ?Field {
     return (fieldId != null && this.fields[fieldId]) || null;
+  }
+
+  question(card) {
+    return new Question(card, this);
   }
 }

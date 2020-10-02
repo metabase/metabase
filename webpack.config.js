@@ -21,6 +21,7 @@ const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
+const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 
@@ -103,6 +104,7 @@ const config = (module.exports = {
       fonts: FONTS_PATH,
       metabase: SRC_PATH,
       "metabase-lib": LIB_SRC_PATH,
+      "metabase-types": TYPES_SRC_PATH,
       __support__: TEST_SUPPORT_PATH,
       style: SRC_PATH + "/css/core/index",
       ace: __dirname + "/node_modules/ace-builds/src-min-noconflict",
@@ -251,10 +253,10 @@ if (NODE_ENV !== "production") {
   }
 
   // enable "cheap" source maps in hot or watch mode since re-build speed overhead is < 1 second
-  config.devtool = "cheap-module-source-map";
+  // config.devtool = "cheap-module-source-map";
 
-  // works with breakpoints
-  // config.devtool = "inline-source-map"
+  // works with breakpoints and makes stacktraces readable
+  config.devtool = "inline-module-source-map";
 
   // helps with source maps
   config.output.devtoolModuleFilenameTemplate = "[absolute-resource-path]";

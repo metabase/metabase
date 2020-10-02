@@ -4,12 +4,11 @@
             [clojure.core.memoize :as memoize]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [util :as u]]
+            [medley.core :as m]
             [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.util :as u]
             [metabase.util
-             [i18n :refer [deferred-tru]]
+             [i18n :refer [deferred-tru trs tru]]
              [schema :as su]]
             [schema.core :as s]))
 
@@ -24,108 +23,173 @@
   []
   (boolean (seq (slack-token))))
 
+(defn- handle-error [body]
+  (let [invalid-token? (= (:error body) "invalid_auth")
+        message        (if invalid-token?
+                         (tru "Invalid token")
+                         (tru "Slack API error: {0}" (:error body)))
+        error          (if invalid-token?
+                         {:error-code (:error body)
+                          :errors     {:slack-token message}}
+                         {:error-code (:error body)
+                          :message    message
+                          :response   body})]
+    (log/warn (u/pprint-to-str 'red error))
+    (throw (ex-info message error))))
+
 (defn- handle-response [{:keys [status body]}]
   (with-open [reader (io/reader body)]
-    (let [body (json/parse-stream reader keyword)]
+    (let [body (json/parse-stream reader true)]
       (if (and (= 200 status) (:ok body))
         body
-        (let [error (if (= (:error body) "invalid_auth")
-                      {:errors {:slack-token "Invalid token"}}
-                      {:message (str "Slack API error: " (:error body)), :response body})]
-          (log/warn (u/pprint-to-str 'red error))
-          (throw (ex-info (:message error) error)))))))
+        (handle-error body)))))
 
-(defn- do-slack-request [request-fn params-key endpoint & {:keys [token], :as params, :or {token (slack-token)}}]
-  (when token
-    (handle-response (request-fn (str slack-api-base-url "/" (name endpoint)) {params-key      (assoc params :token token)
-                                                                               :as             :stream
-                                                                               :conn-timeout   1000
-                                                                               :socket-timeout 1000}))))
+(defn- do-slack-request [request-fn endpoint request]
+  (let [token (or (get-in request [:query-params :token])
+                  (get-in request [:form-params :token])
+                  (slack-token))]
+    (when token
+      (let [url     (str slack-api-base-url "/" (name endpoint))
+            _       (log/trace "Slack API request: %s %s" (pr-str url) (pr-str request))
+            request (merge-with merge
+                      {:query-params   {:token token}
+                       :as             :stream
+                       ;; use a relatively long connection timeout (10 seconds) in cases where we're fetching big
+                       ;; amounts of data -- see #11735
+                       :conn-timeout   10000
+                       :socket-timeout 10000}
+                      request)]
+        (try
+          (handle-response (request-fn url request))
+          (catch Throwable e
+            (throw (ex-info (.getMessage e) (merge (ex-data e) {:url url, :request request}) e))))))))
 
-(def ^{:arglists '([endpoint & {:as params}]), :style/indent 1}
-  GET
+(defn GET
   "Make a GET request to the Slack API."
-  (partial do-slack-request http/get  :query-params))
+  [endpoint & {:as query-params}]
+  (do-slack-request http/get endpoint {:query-params query-params}))
 
-(def ^{:arglists '([endpoint & {:as params}]), :style/indent 1}
-  POST
+(defn POST
   "Make a POST request to the Slack API."
-  (partial do-slack-request http/post :form-params))
+  [endpoint body]
+  (do-slack-request http/post endpoint {:form-params body}))
 
-(def ^{:arglists '([& {:as args}])} channels-list
-  "Calls Slack api `channels.list` function and returns the list of available channels."
-  (comp :channels (partial GET :channels.list, :exclude_archived true, :exclude_members true)))
+(defn- next-cursor
+  "Get a cursor for the next page of results in a Slack API response, if one exists."
+  [response]
+  (not-empty (get-in response [:response_metadata :next_cursor])))
 
-(def ^{:arglists '([& {:as args}])} users-list
-  "Calls Slack api `users.list` function and returns the list of available users."
-  (comp :members (partial GET :users.list)))
+(def ^:private max-list-results
+  "Absolute maximum number of results to fetch from Slack API list endpoints. To prevent unbounded pagination of
+  results. Don't set this too low -- some orgs have many thousands of channels (see #12978)"
+  10000)
 
-(def ^:private ^String channel-missing-msg
-  (str "Slack channel named `metabase_files` is missing! Please create the channel in order to complete "
-       "the Slack integration. The channel is used for storing graphs that are included in pulses and "
-       "MetaBot answers."))
+(defn- paged-list-request
+  "Make a GET request to a Slack API list `endpoint`, returning a sequence of objects returned by the top level
+  `results-key` in the response. If additional pages of results exist, fetches those lazily, up to a total of
+  `max-list-results`."
+  [endpoint results-key params]
+  ;; use default limit (page size) of 1000 instead of 100 so we don't end up making a hundred API requests for orgs
+  ;; with a huge number of channels or users.
+  (let [default-params {:limit 1000}
+        response       (m/mapply GET endpoint (merge default-params params))]
+    (when (seq response)
+      (take
+       max-list-results
+       (concat
+        (get response results-key)
+        (when-let [next-cursor (next-cursor response)]
+          (lazy-seq
+           (paged-list-request endpoint results-key (assoc params :cursor next-cursor)))))))))
 
-(defn- maybe-get-files-channel
-  "Return the `metabase_files channel (as a map) if it exists."
-  []
-  (some (fn [channel] (when (= (:name channel) files-channel-name)
-                        channel))
-        (channels-list :exclude_archived false)))
+(defn conversations-list
+  "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages). By
+  default only fetches channels."
+  [& {:as query-parameters}]
+  (let [params (merge {:exclude_archived true, :types "public_channel,private_channel"} query-parameters)]
+    (paged-list-request "conversations.list" :channels params)))
+
+(defn- channel-with-name
+  "Return a Slack channel with `channel-name` (as a map) if it exists."
+  [channel-name]
+  (some (fn [channel]
+          (when (= (:name channel) channel-name)
+            channel))
+        (conversations-list)))
+
+(s/defn valid-token?
+  "Check whether a Slack token is valid by checking whether we can call `conversations.list` with it."
+  [token :- su/NonBlankString]
+  (try
+    (boolean (take 1 (conversations-list :limit 1, :token token)))
+    (catch Throwable e
+      (if (= (:error-code (ex-data e)) "invalid_auth")
+        false
+        (throw e)))))
+
+(defn users-list
+  "Calls Slack API `users.list` endpoint and returns the list of available users."
+  [& {:as query-parameters}]
+  (->> (paged-list-request "users.list" :members query-parameters)
+       ;; filter out deleted users and bots. At the time of this writing there's no way to do this in the Slack API
+       ;; itself so we need to do it after the fact.
+       (filter (complement :deleted))
+       (filter (complement :is_bot))))
 
 (defn- files-channel* []
-  (or (maybe-get-files-channel)
-      (do (log/error (u/format-color 'red channel-missing-msg))
-          (throw (ex-info channel-missing-msg {:status-code 400})))))
+  (or (channel-with-name files-channel-name)
+      (let [message (str (tru "Slack channel named `metabase_files` is missing!")
+                         " "
+                         (tru "Please create or unarchive the channel in order to complete the Slack integration.")
+                         " "
+                         (tru "The channel is used for storing graphs that are included in Pulses and MetaBot answers."))]
+        (log/error (u/format-color 'red message))
+        (throw (ex-info message {:status-code 400})))))
 
 (def ^{:arglists '([])} files-channel
   "Calls Slack api `channels.info` to check whether a channel named #metabase_files exists. If it doesn't, throws an
   error that advices an admin to create it."
   ;; If the channel has successfully been created we can cache the information about it from the API response. We need
-  ;; this information every time we send out a pulse, but making a call to the `channels.list` endpoint everytime we
+  ;; this information every time we send out a pulse, but making a call to the `coversations.list` endpoint everytime we
   ;; send a Pulse can result in us seeing 429 (rate limiting) status codes -- see
   ;; https://github.com/metabase/metabase/issues/8967
   ;;
   ;; Of course, if `files-channel*` *fails* (because the channel is not created), this won't get cached; this is what
   ;; we want -- to remind people to create it
-  (if config/is-test?
-    ;; don't cache the channel when running tests, because we don't actually hit the Slack API, and we don't want one
-    ;; test causing their "fake" channel to get cached and mess up other tests
-    files-channel*
-    (let [six-hours-ms (* 6 60 60 1000)]
-      (memoize/ttl files-channel* :ttl/threshold six-hours-ms))))
+  (memoize/ttl files-channel* :ttl/threshold (u/hours->ms 6)))
 
 (def ^:private NonEmptyByteArray
   (s/constrained
    (Class/forName "[B")
-   #(pos? (count %))
+   not-empty
    "Non-empty byte array"))
 
 (s/defn upload-file!
-  "Calls Slack api `files.upload` function and returns the body of the uploaded file."
-  [file :- NonEmptyByteArray, filename :- su/NonBlankString, channel-ids-str :- su/NonBlankString]
+  "Calls Slack API `files.upload` endpoint and returns the URL of the uploaded file."
+  [file :- NonEmptyByteArray, filename :- su/NonBlankString, channel-id :- su/NonBlankString]
   {:pre [(seq (slack-token))]}
   (let [response (http/post (str slack-api-base-url "/files.upload") {:multipart [{:name "token",    :content (slack-token)}
                                                                                   {:name "file",     :content file}
                                                                                   {:name "filename", :content filename}
-                                                                                  {:name "channels", :content channel-ids-str}]
+                                                                                  {:name "channels", :content channel-id}]
                                                                       :as        :json})]
     (if (= 200 (:status response))
-      (u/prog1 (get-in (:body response) [:file :url_private])
-        (log/debug "Uploaded image" <>))
-      (log/warn "Error uploading file to Slack:" (u/pprint-to-str response)))))
+      (u/prog1 (get-in response [:body :file :url_private])
+        (log/debug (trs "Uploaded image") <>))
+      (log/warn (trs "Error uploading file to Slack:") (u/pprint-to-str response)))))
 
 (s/defn post-chat-message!
-  "Calls Slack api `chat.postMessage` function and posts a message to a given channel. `attachments` should be
-  serialized JSON."
+  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. `attachments` should be serialized
+  JSON."
   [channel-id :- su/NonBlankString, text-or-nil :- (s/maybe s/Str) & [attachments]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
-  (POST :chat.postMessage
-    :channel     channel-id
-    :username    "MetaBot"
-    :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-    :text        text-or-nil
-    :attachments (when (seq attachments)
-                   (json/generate-string attachments))))
+  (POST "chat.postMessage"
+        {:channel     channel-id
+         :username    "MetaBot"
+         :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
+         :text        text-or-nil
+         :attachments (when (seq attachments)
+                        (json/generate-string attachments))}))
 
 (def ^{:arglists '([& {:as params}])} websocket-url
   "Return a new WebSocket URL for [Slack's Real Time Messaging API](https://api.slack.com/rtm)

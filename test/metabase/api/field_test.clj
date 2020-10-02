@@ -37,7 +37,7 @@
                 {:table_id         (mt/id :users)
                  :table            (merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
-                                    (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :users))
+                                    (db/select-one [Table :created_at :updated_at] :id (mt/id :users))
                                     {:description             nil
                                      :entity_type             "entity/UserTable"
                                      :visibility_type         nil
@@ -45,7 +45,6 @@
                                      :schema                  "PUBLIC"
                                      :name                    "USERS"
                                      :display_name            "Users"
-                                     :rows                    nil
                                      :entity_name             nil
                                      :active                  true
                                      :id                      (mt/id :users)
@@ -193,18 +192,18 @@
   (testing "POST /api/field/:id/values"
     (testing "Existing field values can be updated (with their human readable values)"
       (mt/with-temp* [Field [{field-id :id} list-field]
-                      FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id}]]
+                      FieldValues [{field-value-id :id} {:values (conj (range 1 5) nil), :field_id field-id}]]
         (testing "fetch initial values"
-          (is (= {:values [[1] [2] [3] [4]], :field_id true}
+          (is (= {:values [[nil] [1] [2] [3] [4]], :field_id true}
                  (mt/boolean-ids-and-timestamps
                   ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id))))))
         (testing "update values"
           (is (= {:status "success"}
                  (mt/boolean-ids-and-timestamps
                   ((mt/user->client :crowberto) :post 200 (format "field/%d/values" field-id)
-                   {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))))
+                   {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))))
         (testing "fetch updated values"
-          (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
+          (is (= {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
                  (mt/boolean-ids-and-timestamps
                   ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id))))))))))
 

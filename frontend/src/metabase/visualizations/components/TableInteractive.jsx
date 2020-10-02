@@ -45,9 +45,9 @@ let DRAG_COUNTER = 0;
 import type {
   VisualizationProps,
   ClickObject,
-} from "metabase/meta/types/Visualization";
-import type { VisualizationSettings } from "metabase/meta/types/Card";
-import type { DatasetData } from "metabase/meta/types/Dataset";
+} from "metabase-types/types/Visualization";
+import type { VisualizationSettings } from "metabase-types/types/Card";
+import type { DatasetData } from "metabase-types/types/Dataset";
 
 function pickRowsToMeasure(rows, columnIndex, count = 10) {
   const rowIndexes = [];

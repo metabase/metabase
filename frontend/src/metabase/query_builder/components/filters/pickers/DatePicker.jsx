@@ -13,7 +13,7 @@ import DateOperatorSelector from "../DateOperatorSelector";
 import DateUnitSelector from "../DateUnitSelector";
 import Calendar from "metabase/components/Calendar";
 
-import * as Q_DEPRECATED from "metabase/lib/query";
+import * as FieldRef from "metabase/lib/query/field_ref";
 
 import type {
   FieldFilter,
@@ -23,7 +23,7 @@ import type {
   LocalFieldReference,
   ForeignFieldReference,
   ExpressionReference,
-} from "metabase/meta/types/Query";
+} from "metabase-types/types/Query";
 
 const SingleDatePicker = ({
   className,
@@ -162,7 +162,7 @@ function getDateTimeField(
 export function getDateTimeFieldTarget(
   field: ConcreteField,
 ): LocalFieldReference | ForeignFieldReference | ExpressionReference {
-  if (Q_DEPRECATED.isDatetimeField(field)) {
+  if (FieldRef.isDatetimeField(field)) {
     // $FlowFixMe:
     return (field[1]: // $FlowFixMe:
     LocalFieldReference | ForeignFieldReference | ExpressionReference);

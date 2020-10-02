@@ -61,7 +61,7 @@
   (.. (t/system-clock) getZone getId))
 
 (defn requested-timezone-id
-  "The timezone that we would *like* to run a query in, regardless of whether we are actaully able to do so. This is
+  "The timezone that we would *like* to run a query in, regardless of whether we are actually able to do so. This is
   always equal to the value of the `report-timezone` Setting (if it is set), otherwise the database timezone (if known),
   otherwise the system timezone."
   ^String []

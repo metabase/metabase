@@ -40,15 +40,38 @@ export default class GoogleButton extends Component {
           auth2.attachClickHandler(
             element,
             {},
-            googleUser => {
+            async googleUser => {
               this.setState({ errorMessage: null });
-              loginGoogle(googleUser, location.query.redirect);
+              const result = await loginGoogle(
+                googleUser,
+                location.query.redirect,
+              );
+
+              if (
+                result.payload["status"] &&
+                result.payload["status"] === 400 &&
+                result.payload.data &&
+                result.payload.data.errors
+              ) {
+                let errorMessage = "";
+                for (const [, value] of Object.entries(
+                  result.payload.data.errors,
+                )) {
+                  if (errorMessage !== "") {
+                    errorMessage = errorMessage + "<br/>";
+                  }
+                  errorMessage = errorMessage + value;
+                }
+                this.setState({
+                  errorMessage: errorMessage,
+                });
+              }
             },
             error => {
               this.setState({
                 errorMessage:
                   GOOGLE_AUTH_ERRORS[error.error] ||
-                  t`There was an issue signing in with Google. Pleast contact an administrator.`,
+                  t`There was an issue signing in with Google. Please contact an administrator.`,
               });
             },
           );

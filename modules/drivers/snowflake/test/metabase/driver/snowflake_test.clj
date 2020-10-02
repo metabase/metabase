@@ -1,5 +1,6 @@
 (ns metabase.driver.snowflake-test
-  (:require [clojure
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure
              [set :as set]
              [string :as str]
              [test :refer :all]]
@@ -7,11 +8,19 @@
              [driver :as driver]
              [models :refer [Table]]
              [query-processor :as qp]
-             [test :as mt]]
+             [sync :as sync]
+             [test :as mt]
+             [util :as u]]
+            [metabase.driver.sql-jdbc
+             [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]]
+            [metabase.models
+             [database :refer [Database]]]
             [metabase.test.data
              [dataset-definitions :as dataset-defs]
              [sql :as sql.tx]]
-            [metabase.test.data.sql.ddl :as ddl]))
+            [metabase.test.data.sql.ddl :as ddl]
+            [toucan.db :as db]))
 
 ;;
 (deftest ddl-statements-test
@@ -41,8 +50,8 @@
                 FOREIGN KEY (\"user_id\") REFERENCES \"v2_test-data\".\"PUBLIC\".\"users\" (\"id\");"
                "ALTER TABLE \"v2_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"kins_venue_id_venues_621212269\"
                 FOREIGN KEY (\"venue_id\") REFERENCES \"v2_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
-             (ddl/create-db-ddl-statements :snowflake (-> (mt/get-dataset-definition dataset-defs/test-data)
-                                                          (update :database-name #(str "v2_" %)))))))))
+             (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition dataset-defs/test-data)
+                                                                 (update :database-name #(str "v2_" %)))))))))
 
 ;; TODO -- disabled because these are randomly failing, will figure out when I'm back from vacation. I think it's a
 ;; bug in the JDBC driver -- Cam
@@ -66,6 +75,28 @@
         (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
           (is (= expected
                  (driver/describe-database :snowflake (assoc (mt/db) :name "ABC")))))))))
+
+(deftest describe-database-views-test
+  (mt/test-driver :snowflake
+    (testing "describe-database views"
+      (let [details (mt/dbdef->connection-details :snowflake :db {:database-name "views_test"})
+            spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
+        ;; create the snowflake DB
+        (jdbc/execute! spec ["DROP DATABASE IF EXISTS \"views_test\";"]
+                       {:transaction? false})
+        (jdbc/execute! spec ["CREATE DATABASE \"views_test\";"]
+                       {:transaction? false})
+        ;; create the DB object
+        (mt/with-temp Database [database {:engine :snowflake, :details (assoc details :db "views_test")}]
+          (let [sync! #(sync/sync-database! database)]
+            ;; create a view
+            (jdbc/execute! spec ["CREATE VIEW \"views_test\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";"])
+            ;; now sync the DB
+            (sync!)
+            ;; now take a look at the Tables in the database, there should be an entry for the view
+            (is (= [{:name "example_view"}]
+                   (map (partial into {})
+                        (db/select [Table :name] :db_id (u/get-id database)))))))))))
 
 (deftest describe-table-test
   (mt/test-driver :snowflake
@@ -98,10 +129,10 @@
       (is (= true
              (can-connect? (:details (mt/db))))
           "can-connect? should return true for normal Snowflake DB details")
-      (is (= false
-             (mt/suppress-output
-               (can-connect? (assoc (:details (mt/db)) :db (mt/random-name)))))
-          "can-connect? should return false for Snowflake databases that don't exist (#9041)"))))
+      (is (thrown? net.snowflake.client.jdbc.SnowflakeSQLException
+                   (mt/suppress-output
+                    (can-connect? (assoc (:details (mt/db)) :db (mt/random-name)))))
+          "can-connect? should throw for Snowflake databases that don't exist (#9511)"))))
 
 (deftest report-timezone-test
   (mt/test-driver :snowflake

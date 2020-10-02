@@ -64,6 +64,10 @@ export const BackendResource = createSharedResource("BackendResource", {
             MB_JETTY_HOST: "0.0.0.0",
             MB_JETTY_PORT: server.port,
             MB_ENABLE_TEST_ENDPOINTS: "true",
+            MB_PREMIUM_EMBEDDING_TOKEN:
+              (process.env["ENABLE_ENTERPRISE_EDITION"] === "true" &&
+                process.env["ENTERPRISE_TOKEN"]) ||
+              undefined,
           },
           stdio:
             process.env["DISABLE_LOGGING"] ||

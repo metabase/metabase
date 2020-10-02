@@ -25,15 +25,28 @@
   (:import clojure.lang.ExceptionInfo
            java.text.NumberFormat
            java.util.UUID
-           [metabase.driver.common.parameters CommaSeparatedNumbers FieldFilter MultipleValues]))
+           [metabase.driver.common.parameters CommaSeparatedNumbers FieldFilter MultipleValues ReferencedCardQuery
+            ReferencedQuerySnippet]))
 
 (def ^:private ParamType
   (s/enum :number
-          :dimension                    ; Field Filter
+          :dimension ; Field Filter
           :card
           :snippet
           :text
           :date))
+
+(defmulti ^:private parse-tag
+  "Parse a tag by its `:type`, returning an appropriate record type such as
+  `metabase.driver.common.parameters.FieldFilter`."
+  {:arglists '([tag params])}
+  (fn [{tag-type :type} _]
+    (keyword tag-type)))
+
+(defmethod parse-tag :default
+  [{tag-type :type, :as tag} _]
+  (throw (ex-info (tru "Don''t know how to parse parameter of type {0}" (pr-str tag-type))
+                  {:tag tag})))
 
 ;; various schemas are used to check that various functions return things in expected formats
 
@@ -53,6 +66,7 @@
     (s/optional-key :dimension)    [s/Any]
     (s/optional-key :card-id)      su/IntGreaterThanZero
     (s/optional-key :snippet-name) su/NonBlankString
+    (s/optional-key :snippet-id)   su/IntGreaterThanZero
     (s/optional-key :database)     su/IntGreaterThanZero ; used by tags of `:type :snippet`
     (s/optional-key :widget-type)  s/Keyword ; type of the [default] value if `:type` itself is `dimension`
     (s/optional-key :required)     s/Bool
@@ -100,82 +114,70 @@
   [field-filter]
   (second field-filter))
 
-(s/defn ^:private field-filter-value-for-tag :- (s/maybe (s/cond-pre FieldFilter (s/eq i/no-value)))
-  "Return the `FieldFilter` value of a param, if applicable. Field filters are referred to internally as `:dimension`s
-  for historic reasons."
-  [tag :- TagParam, params :- (s/maybe [i/ParamValue])]
-  (when-let [field-filter (:dimension tag)]
-    (i/map->FieldFilter
-     ;; TODO - shouldn't this use the QP Store?
-     {:field (let [field-id (field-filter->field-id field-filter)]
-               (or (db/select-one [Field :name :parent_id :table_id :base_type :special_type] :id field-id)
-                   (throw (ex-info (str (deferred-tru "Can''t find field with ID: {0}" field-id))
-                                   {:field-id field-id, :type qp.error-type/invalid-parameter}))))
-      :value (if-let [value-info-or-infos (or
-                                           ;; look in the sequence of params we were passed to see if there's anything
-                                           ;; that matches
-                                           (param-with-target params [:dimension [:template-tag (:name tag)]])
-                                           ;; if not, check and see if we have a default param
-                                           (default-value-for-field-filter tag))]
-               ;; `value-info` will look something like after we remove `:target` which is not needed after this point
-               ;;
-               ;;    {:type   :date/single
-               ;;     :value  #t "2019-09-20T19:52:00.000-07:00"}
-               ;;
-               ;; (or it will be a vector of these maps for multiple values)
-               (cond
-                (map? value-info-or-infos)        (dissoc value-info-or-infos :target)
-                (sequential? value-info-or-infos) (mapv #(dissoc % :target) value-info-or-infos))
-               i/no-value)})))
+(s/defmethod parse-tag :dimension :- (s/maybe FieldFilter)
+  [{field-filter :dimension, :as tag} :- TagParam, params :- (s/maybe [i/ParamValue])]
+  (i/map->FieldFilter
+   ;; TODO - shouldn't this use the QP Store?
+   {:field (let [field-id (field-filter->field-id field-filter)]
+             (or (db/select-one [Field :name :parent_id :table_id :base_type :special_type] :id field-id)
+                 (throw (ex-info (str (deferred-tru "Can''t find field with ID: {0}" field-id))
+                                 {:field-id field-id, :type qp.error-type/invalid-parameter}))))
+    :value (if-let [value-info-or-infos (or
+                                         ;; look in the sequence of params we were passed to see if there's anything
+                                         ;; that matches
+                                         (param-with-target params [:dimension [:template-tag (:name tag)]])
+                                         ;; if not, check and see if we have a default param
+                                         (default-value-for-field-filter tag))]
+             ;; `value-info` will look something like after we remove `:target` which is not needed after this point
+             ;;
+             ;;    {:type   :date/single
+             ;;     :value  #t "2019-09-20T19:52:00.000-07:00"}
+             ;;
+             ;; (or it will be a vector of these maps for multiple values)
+             (cond
+               (map? value-info-or-infos)        (dissoc value-info-or-infos :target)
+               (sequential? value-info-or-infos) (mapv #(dissoc % :target) value-info-or-infos))
+             i/no-value)}))
 
-(s/defn ^:private card-query-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
-  "Returns the native query for the Card referenced by `(:card-id tag)`."
-  [tag :- TagParam, params :- (s/maybe [i/ParamValue])]
-  (when-let [card-id (:card-id tag)]
-    (when-let [query (db/select-one-field :dataset_query Card :id card-id)]
-      (try
-        (i/map->ReferencedCardQuery
-         {:card-id card-id
-          :query   (:query (qp/query->native (assoc query :parameters params, :info {:card-id card-id})))})
-        (catch ExceptionInfo e
-          (throw (ex-info
-                  (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
-                       (str card-id) (.getMessage e))
-                  {:card-query-error? true
-                   :card-id           card-id
-                   :tag               tag}
-                  e)))))))
+(s/defmethod parse-tag :card :- ReferencedCardQuery
+  [{:keys [card-id], :as tag} :- TagParam, params :- (s/maybe [i/ParamValue])]
+  (when-not card-id
+    (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
+                    {:tag tag, :type qp.error-type/invalid-parameter})))
+  (let [query (or (db/select-one-field :dataset_query Card :id card-id)
+                  (throw (ex-info (tru "Card {0} not found." card-id)
+                                  {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
+    (try
+      (i/map->ReferencedCardQuery
+       {:card-id card-id
+        :query   (:query (qp/query->native (assoc query :parameters params, :info {:card-id card-id})))})
+      (catch ExceptionInfo e
+        (throw (ex-info
+                (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
+                     (str card-id) (pr-str (.getMessage e)))
+                {:card-query-error? true
+                 :card-id           card-id
+                 :tag               tag
+                 :type              qp.error-type/invalid-parameter}
+                e))))))
 
-(defn- validate-tag-snippet-db
-  [{database-id :database, :as tag} snippet]
-  (when (and snippet
-             (not= database-id (:database_id snippet)))
-    (throw (ex-info
-            (tru "Snippet \"{0}\" is associated with a different database and may not be used here."
-                 (:name snippet))
-            {:snippet-db-id (:database_id snippet)
-             :tag-db-id     database-id
-             :snippet       snippet
-             :tag           tag})))
-  snippet)
-
-(s/defn ^:private snippet-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
-  "Returns the query snippet for the NativeQuerySnippet referenced by `(:snippet-name tag)`"
-  [tag :- TagParam]
-  (when-let [snippet-name (:snippet-name tag)]
-    (if-let [snippet (validate-tag-snippet-db tag (db/select-one NativeQuerySnippet :name snippet-name))]
-      (i/map->NativeQuerySnippet
-       {:snippet-id (:id snippet)
-        :content    (:content snippet)})
-      (throw (ex-info (tru "Snippet \"{0}\" not found." snippet-name)
-                      {:snippet-name snippet-name, :tag tag})))))
+(s/defmethod parse-tag :snippet :- ReferencedQuerySnippet
+  [{:keys [snippet-name snippet-id], :as tag} :- TagParam, _]
+  (let [snippet-id (or snippet-id
+                       (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
+                                       {:tag tag, :type qp.error-type/invalid-parameter})))
+        snippet    (or (NativeQuerySnippet snippet-id)
+                       (throw (ex-info (tru "Snippet {0} {1} not found." snippet-id (pr-str snippet-name))
+                                       {:snippet-id   snippet-id
+                                        :snippet-name snippet-name
+                                        :tag          tag
+                                        :type         qp.error-type/invalid-parameter})))]
+    (i/map->ReferencedQuerySnippet
+     {:snippet-id (:id snippet)
+      :content    (:content snippet)})))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
-
-(s/defn ^:private param-value-for-tag [tag :- TagParam, params :- (s/maybe [i/ParamValue])]
-  (when (not= (:type tag) :dimension)
-    (:value (param-with-target params [:variable [:template-tag (:name tag)]]))))
 
 (s/defn ^:private default-value-for-tag
   "Return the `:default` value for a param if no explicit values were passsed. This only applies to non-FieldFilter
@@ -184,6 +186,23 @@
   (or default
       (when required
         (throw (missing-required-param-exception display-name)))))
+
+(s/defn ^:private param-value-for-tag [{tag-name :name, :as tag} :- TagParam, params :- (s/maybe [i/ParamValue])]
+  (or (:value (param-with-target params [:variable [:template-tag tag-name]]))
+      (default-value-for-tag tag)
+      i/no-value))
+
+(defmethod parse-tag :number
+  [tag params]
+  (param-value-for-tag tag params))
+
+(defmethod parse-tag :text
+  [tag params]
+  (param-value-for-tag tag params))
+
+(defmethod parse-tag :date
+  [tag params]
+  (param-value-for-tag tag params))
 
 
 ;;; Parsing Values
@@ -291,15 +310,11 @@
    sequence. The `value` is something that can be compiled to SQL via `->replacement-snippet-info`."
   [tag :- TagParam, params :- (s/maybe [i/ParamValue])]
   (try
-    (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
-                                          (field-filter-value-for-tag tag params)
-                                          (card-query-for-tag tag params)
-                                          (snippet-for-tag tag)
-                                          (default-value-for-tag tag)
-                                          i/no-value))
+    (parse-value-for-type (:type tag) (parse-tag tag params))
     (catch Throwable e
       (throw (ex-info (tru "Error determining value for parameter")
-                      {:tag tag}
+                      {:tag  tag
+                       :type (or (:type (ex-data e)) qp.error-type/invalid-parameter)}
                       e)))))
 
 (s/defn query->params-map :- {su/NonBlankString ParsedParamValue}

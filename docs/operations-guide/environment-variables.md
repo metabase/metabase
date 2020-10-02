@@ -4,14 +4,20 @@ Many settings in Metabase can be viewed and modified in the Admin Panel, or set 
 
 Setting environment variables can be done in various ways depending on how Metabase is being run.
 
-JAR (Note that on Windows, use `set` instead of `export`):
+JAR file:
 
 ```
+# Mac, Linux and other Unix-based systems
 export MB_SITE_NAME="Awesome Company"
+# Windows Powershell
+$env:MB_SITE_NAME="Awesome Company"
+# Windows batch/cmd
+set MB_SITE_NAME="Awesome Company"
+
 java -jar metabase.jar
 ```
 
-JAR alternative (declared with `-D` prepending the variable):
+Or set it as Java property, which works the same across all systems:
 
 ```
 java -DMB_SITE_NAME="Awesome Company" -jar metabase.jar
@@ -20,7 +26,7 @@ java -DMB_SITE_NAME="Awesome Company" -jar metabase.jar
 Docker:
 
 ```
-docker run -d -p 3000:3000 -e 'MB_SITE_NAME=Awesome Company' --name metabase metabase/metabase
+docker run -d -p 3000:3000 -e MB_SITE_NAME="Awesome Company" --name metabase metabase/metabase
 ```
 
 ---
@@ -30,11 +36,13 @@ docker run -d -p 3000:3000 -e 'MB_SITE_NAME=Awesome Company' --name metabase met
 Type: integer<br>
 Default: `20160`
 
-Session expiration, defined in seconds (default is 2 weeks), which will log out users after the defined period and require re-authentication.
+Session expiration, defined in minutes (default is 2 weeks), which will log out users after the defined period and require re-authentication.
 
 Note: This setting is not an idle/inactivity timeout. If you set this to 15 minutes, your users have to login (or re-authenticate) again every 15 minutes.
 
-Use [MB_SESSION_COOKIES](#MB_SESSION_COOKIES) to only expire sessions, when browser is closed.
+Use [MB_SESSION_COOKIES](#mb_session_cookies) to also expire sessions, when browser is closed.
+
+Also see the [Changing session expiration](changing-session-expiration.md) documentation page.
 
 #### `MB_ADMIN_EMAIL`
 
@@ -77,7 +85,7 @@ Change this to a higher value if you notice that regular usage consumes all or c
 
 To see how many connections are being used, check the Metabase logs and look for lines that contains the following: `… App DB connections: 12/15 …`. In this example, 12 out of 15 available connections are being used.
 
-See [MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE](#MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE) for setting maximum connections to the databases connected to Metabase.
+See [MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE](#mb_jdbc_data_warehouse_max_connection_pool_size) for setting maximum connections to the databases connected to Metabase.
 
 #### `MB_APPLICATION_FAVICON_URL`
 
@@ -109,7 +117,7 @@ Type: integer<br>
 Default: `50`<br>
 Since: 0.35.0
 
-Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#MB_JETTY_MAXTHREADS) will be used, otherwise it will use the default.
+Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#mb_jetty_maxthreads) will be used, otherwise it will use the default.
 
 #### `MB_BREAKOUT_BIN_WIDTH`
 
@@ -144,7 +152,7 @@ Used to recognize the Mac App client, which then defaults to `"OSX"`.
 Type: boolean<br>
 Default: `true`
 
-Color log lines. When set to `false` it will disable log line colors. This is disabled on Windows. Related to [MB_EMOJI_IN_LOGS](#MB_EMOJI_IN_LOGS).
+Color log lines. When set to `false` it will disable log line colors. This is disabled on Windows. Related to [MB_EMOJI_IN_LOGS](#mb_emoji_in_logs).
 
 #### `MB_CUSTOM_FORMATTING`
 
@@ -179,7 +187,7 @@ Timeout in milliseconds for connecting to the application database.
 Type: string<br>
 Default: `null`
 
-A JDBC-style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#MB_DB_HOST). Also used when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#MB_DB_TYPE).
+A JDBC-style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#mb_db_host). Also used when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#mb_db_type).
 
 Example: `postgres://dbuser:dbpassword@db.example.com:port/mydb?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory`
 
@@ -188,14 +196,14 @@ Example: `postgres://dbuser:dbpassword@db.example.com:port/mydb?ssl=true&sslfact
 Type: string<br>
 Default: `null`
 
-The database name of the application database used with [MB_DB_HOST](#MB_DB_HOST).
+The database name of the application database used with [MB_DB_HOST](#mb_db_host).
 
 #### `MB_DB_FILE`
 
 Type: string<br>
 Default: `"metabase.db"`
 
-Location of H2 database file. Should not include the `.mv.db` (or `.h2.db`) file extension. Used when [MB_DB_TYPE](#MB_DB_TYPE) is set to`"h2"`.
+Location of H2 database file. Should not include the `.mv.db` (or `.h2.db`) file extension. Used when [MB_DB_TYPE](#mb_db_type) is set to`"h2"`.
 
 Can also be used when migrating away from H2 to specify where the existing data should be read from.
 
@@ -204,42 +212,42 @@ Can also be used when migrating away from H2 to specify where the existing data 
 Type: string<br>
 Default: `null`
 
-The host name or IP address of the application database. Used when [MB_DB_TYPE](#MB_DB_TYPE) is different than `"h2"`.
+The host name or IP address of the application database. Used when [MB_DB_TYPE](#mb_db_type) is different than `"h2"`.
 
 #### `MB_DB_IN_MEMORY`
 
 Type: boolean<br>
 Default: `null`
 
-Used for testing with [MB_DB_FILE](#MB_DB_FILE).
+Used for testing with [MB_DB_FILE](#mb_db_file).
 
 #### `MB_DB_PASS`
 
 Type: string<br>
 Default: `null`
 
-The password for [MB_DB_HOST](#MB_DB_HOST).
+The password for [MB_DB_HOST](#mb_db_host).
 
 #### `MB_DB_PORT`
 
 Type: integer<br>
 Default: `null`
 
-The port for [MB_DB_HOST](#MB_DB_HOST).
+The port for [MB_DB_HOST](#mb_db_host).
 
 #### `MB_DB_TYPE`
 
 Type: string (`"h2"`, `"postgres"`, `"mysql"`)<br>
 Default: `"h2"`
 
-When `"h2"`, the application database is loaded from [MB_DB_FILE](#MB_DB_FILE), otherwise [MB_DB_HOST](#MB_DB_HOST) will be used to define application database.
+When `"h2"`, the application database is loaded from [MB_DB_FILE](#mb_db_file), otherwise [MB_DB_HOST](#mb_db_host) will be used to define application database.
 
 #### `MB_DB_USER`
 
 Type: string<br>
 Default: `null`
 
-The username for [MB_DB_HOST](#MB_DB_HOST).
+The username for [MB_DB_HOST](#mb_db_host).
 
 #### `MB_DISABLE_SESSION_THROTTLE`
 
@@ -248,7 +256,7 @@ Default: `false`
 
 When `true`, this will disable session throttling. **Warning:** It is not recommended to disable throttling, since it is a protective measure against brute-force attacks.
 
-Use [MB_SOURCE_ADDRESS_HEADER](#MB_SOURCE_ADDRESS_HEADER) to set the IP address of the remote client from e.g. a reverse-proxy.
+Use [MB_SOURCE_ADDRESS_HEADER](#mb_source_address_header) to set the IP address of the remote client from e.g. a reverse-proxy.
 
 #### `MB_EMAIL_FROM_ADDRESS`
 
@@ -305,7 +313,7 @@ URL of origin allowed to embed the full Metabase application.
 Type: boolean<br>
 Default: `true`
 
-Emojis on log lines. When set to `false` it will disable log line emojis. This is disabled on Windows. Related to [MB_COLORIZE_LOGS](#MB_COLORIZE_LOGS).
+Emojis on log lines. When set to `false` it will disable log line emojis. This is disabled on Windows. Related to [MB_COLORIZE_LOGS](#mb_colorize_logs).
 
 #### `MB_ENABLE_EMBEDDING`
 
@@ -390,7 +398,7 @@ Maximum number of connections to the data source databases. The maximum is for e
 
 Change this to a higher value if you notice that regular usage consumes all or close to all connections. When all connections are in use then Metabase will be slower to return results for queries, since it would have to wait for an available connection before processing the next query in the queue.
 
-See [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE) for setting maximum connections to the Metabase application database.
+See [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size) for setting maximum connections to the Metabase application database.
 
 #### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
@@ -410,9 +418,9 @@ Use daemon threads.
 #### `MB_JETTY_HOST`
 
 Type: string<br>
-Default: `null`
+Default: `localhost` for JAR, `0.0.0.0` for Docker
 
-Configure a host either as a host name or IP address to identify a specific network interface on which to listen. If not set or set to `"0.0.0.0"`, Metabase listens on all network interfaces. It will listen on the port specified in [MB_JETTY_PORT](#MB_JETTY_PORT).
+Configure a host either as a host name or IP address to identify a specific network interface on which to listen. If set to `"0.0.0.0"`, Metabase listens on all network interfaces. It will listen on the port specified in [MB_JETTY_PORT](#mb_jetty_port).
 
 #### `MB_JETTY_JOIN`
 
@@ -446,7 +454,7 @@ Change this to a higher value if you notice that regular usage consumes all or c
 
 To see how many threads are being used, check the Metabase logs and look for lines that contain the following: `… Jetty threads: 45/50 …`, which in this case would indicate 45 out of 50 available threads are being used.
 
-Related [MB_ASYNC_QUERY_THREAD_POOL_SIZE](#MB_ASYNC_QUERY_THREAD_POOL_SIZE).
+Related [MB_ASYNC_QUERY_THREAD_POOL_SIZE](#mb_async_query_thread_pool_size).
 
 #### `MB_JETTY_MINTHREADS`
 
@@ -460,7 +468,15 @@ Minimum number of threads.
 Type: integer<br>
 Default: `3000`
 
-Configure which port to use for HTTP. It will listen on the interface specified in [MB_JETTY_HOST](#MB_JETTY_HOST).
+Configure which port to use for HTTP. It will listen on the interface specified in [MB_JETTY_HOST](#mb_jetty_host).
+
+#### `MB_JETTY_REQUEST_HEADER_SIZE`
+
+Type: integer<br>
+Default: `8192`<br>
+Since: 0.36.0
+
+Maximum size of a request header, in bytes. Increase this value if you are experiencing errors like "Request Header Fields Too Large".
 
 #### `MB_JETTY_SSL`
 
@@ -490,7 +506,7 @@ Password for Java KeyStore file.
 Type: integer<br>
 Default: `null`
 
-Configure which port to use for HTTPS. It will listen on the interface specified in [MB_JETTY_HOST](#MB_JETTY_HOST).
+Configure which port to use for HTTPS. It will listen on the interface specified in [MB_JETTY_HOST](#mb_jetty_host).
 
 #### `MB_JETTY_SSL_TRUSTSTORE`
 
@@ -505,6 +521,78 @@ Type: string<br>
 Default: `null`
 
 Password for Java TrustStore file.
+
+#### `MB_JWT_ATTRIBUTE_EMAIL`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"email"`
+
+Key to retrieve the JWT user's email address.
+
+#### `MB_JWT_ATTRIBUTE_FIRSTNAME`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"first_name"`
+
+Key to retrieve the JWT user's first name.
+
+#### `MB_JWT_ATTRIBUTE_GROUPS`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"groups"`
+
+Key to retrieve the JWT user's groups.
+
+#### `MB_JWT_ATTRIBUTE_LASTNAME`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"groups"`
+
+Key to retrieve the JWT user's last name.
+
+#### `MB_JWT_ENABLED`
+
+Only available in Enterprise Edition<br>
+Type: boolean<br>
+Default: `false`
+
+When set to `true`, will enable JWT authentication with the options configured in the `MB_JWT_*` variables.
+
+#### `MB_JWT_GROUP_MAPPINGS`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"{}"`
+
+JSON object containing JWT to Metabase group mappings. Should be in the form: `'{"groupName": [1, 2, 3]}'` where keys are JWT groups and values are lists of Metabase groups IDs.
+
+#### `MB_JWT_GROUP_SYNC`
+
+Only available in Enterprise Edition<br>
+Type: boolean<br>
+Default: `false`
+
+Enable group membership synchronization with JWT.
+
+#### `MB_JWT_IDENTITY_PROVIDER_URI`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `null`
+
+URL of JWT based login page.
+
+#### `MB_JWT_SHARED_SECRET`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `null`
+
+String used to seed the private key used to validate JWT messages.
 
 #### `MB_LANDING_PAGE`
 
@@ -547,7 +635,7 @@ The Distinguished Name to bind as (if any). This user will be used to lookup inf
 Type: boolean<br>
 Default: `false`
 
-Enable LDAP authentication.
+When set to `true`, will enable LDAP authentication with the options configured in the `MB_LDAP_*` variables.
 
 #### `MB_LDAP_GROUP_BASE`
 
@@ -631,7 +719,7 @@ User lookup filter. The placeholder `{login}` will be replaced by the user suppl
 #### `MB_MAP_TILE_SERVER_URL`
 
 Type: string<br>
-Default: `"http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"`
+Default: `"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"`
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
 
@@ -654,7 +742,7 @@ Comma-separated namespaces to trace. **WARNING:** Could log sensitive informatio
 Type: string (`"weak"`, `"normal"`, `"strong"`)<br>
 Default: `"normal"`
 
-Enforce a password complexity rule to increase security for regular logins. This only applies to new users or users that are changing their password. Related [MB_PASSWORD_LENGTH](#MB_PASSWORD_LENGTH)
+Enforce a password complexity rule to increase security for regular logins. This only applies to new users or users that are changing their password. Related [MB_PASSWORD_LENGTH](#mb_password_length)
 
 - `weak` requires length of 6 characters
 - `normal` requires at least 1 digit and length of 6 characters
@@ -665,7 +753,7 @@ Enforce a password complexity rule to increase security for regular logins. This
 Type: integer<br>
 Default: `6`
 
-Set a minimum password length to increase security for regular logins. This only applies to new users or users that are changing their password. Uses the length of [MB_PASSWORD_COMPLEXITY](#MB_PASSWORD_COMPLEXITY) if not set.
+Set a minimum password length to increase security for regular logins. This only applies to new users or users that are changing their password. Uses the length of [MB_PASSWORD_COMPLEXITY](#mb_password_complexity) if not set.
 
 #### `MB_PLUGINS_DIR`
 
@@ -681,7 +769,7 @@ The location is where custom third-party drivers should be added. Then Metabase 
 Type: string<br>
 Default: `null`
 
-Token for premium features.
+Token for Enterprise Edition and Premium features.
 
 #### `MB_QP_CACHE_BACKEND`
 
@@ -718,6 +806,14 @@ Default: `10`
 
 To determine how long each saved question's cached result should stick around, we take the query's average execution time and multiply that by whatever you input here. So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes.
 
+#### `MB_REDIRECT_ALL_REQUESTS_TO_HTTPS`
+
+Type: boolean<br>
+Default: `false`<br>
+Since: 0.36.0
+
+Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS. Related [MB_SITE_URL](#mb_site_url)
+
 #### `MB_REPORT_TIMEZONE`
 
 Type: string<br>
@@ -725,12 +821,126 @@ Default: `null`
 
 Connection timezone to use when executing queries. Defaults to system timezone.
 
+#### `MB_SAML_APPLICATION_NAME`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"Metabase"`
+
+This application name will be used for requests to the Identity Provider.
+
+#### `MB_SAML_ATTRIBUTE_EMAIL`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"`
+
+SAML attribute for the user's email address.
+
+#### `MB_SAML_ATTRIBUTE_FIRSTNAME`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"`
+
+SAML attribute for the user's first name.
+
+#### `MB_SAML_ATTRIBUTE_GROUP`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"member_of"`
+
+SAML attribute for group syncing.
+
+#### `MB_SAML_ATTRIBUTE_LASTNAME`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname"`
+
+SAML attribute for the user's last name.
+
+#### `MB_SAML_ENABLED`
+
+Only available in Enterprise Edition<br>
+Type: boolean<br>
+Default: `false`
+
+When set to `true`, will enable SAML authentication with the options configured in the `MB_SAML_*` variables.
+
+#### `MB_SAML_GROUP_MAPPINGS`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"{}"`
+
+JSON object containing SAML to Metabase group mappings. Should be in the form: `'{"groupName": [1, 2, 3]}'` where keys are SAML groups and values are lists of Metabase groups IDs.
+
+#### `MB_SAML_GROUP_SYNC`
+
+Only available in Enterprise Edition<br>
+Type: boolean<br>
+Default: `false`
+
+Enable group membership synchronization with SAML.
+
+#### `MB_SAML_IDENTITY_PROVIDER_CERTIFICATE`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `null`
+
+Encoded certificate for the identity provider, provided as the content, not a file path.
+
+#### `MB_SAML_IDENTITY_PROVIDER_URI`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `null`
+
+This is the URL where your users go to log in to your identity provider. Depending on which IdP you're using, this usually looks like `https://your-org-name.okta.com`.
+
+#### `MB_SAML_KEYSTORE_ALIAS`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"metabase"`
+
+Alias for the key that Metabase should use for signing SAML requests.
+
+#### `MB_SAML_KEYSTORE_PASSWORD`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"changeit"`
+
+Password for opening the KeyStore.
+
+#### `MB_SAML_KEYSTORE_PATH`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `null`
+
+Absolute path to the KeyStore file to use for signing SAML requests.
+
+#### `MB_SEND_NEW_SSO_USER_ADMIN_EMAIL`
+
+Only available in Enterprise Edition<br>
+Type: boolean<br>
+Default: `true`
+
+Send email notifications to users in Admin group, when a new SSO users is created on Metabase.
+
 #### `MB_SESSION_COOKIES`
 
 Type: boolean<br>
 Default: `null`
 
-When set to `true`, the user login sessions will not expire until the browser is closed. When not set, or set to `false`, the user login sessions will expire after the amount of seconds defined in [MAX_SESSION_AGE](#MAX_SESSION_AGE) (by default 2 weeks).
+When set to `true`, the user login session will expire, when the browser is closed. The user login session will always expire after the amount of time defined in [MAX_SESSION_AGE](#max_session_age) (by default 2 weeks).
+
+Also see the [Changing session expiration](changing-session-expiration.md) documentation page.
 
 #### `MB_SETUP_TOKEN`
 
@@ -793,7 +1003,7 @@ Slack API bearer token obtained from https://api.slack.com/web#authentication
 Type: string<br>
 Default: `X-Forwarded-For`
 
-Identify the source of HTTP requests by this header's value, instead of its remote address. Related to [MB_DISABLE_SESSION_THROTTLE](#MB_DISABLE_SESSION_THROTTLE).
+Identify the source of HTTP requests by this header's value, instead of its remote address. Related to [MB_DISABLE_SESSION_THROTTLE](#mb_disable_session_throttle).
 
 #### `MB_SSL_CERTIFICATE_PUBLIC_KEY`
 

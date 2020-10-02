@@ -43,9 +43,11 @@ exports[`Button should render "with an icon" correctly 1`] = `
     style={null}
   >
     <svg
-      className="Icon Icon-star Icon-cxuQhR kTAgZA"
+      aria-label="star icon"
+      className="Icon Icon-star Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={14}
+      role="img"
       viewBox="0 0 32 32"
       width={14}
     >
@@ -196,7 +198,7 @@ exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
 
 exports[`Card should render "dark" correctly 1`] = `
 <div
-  className="Card-RQot dPIXem"
+  className="Card-fqt8sg-0 chzUCZ"
 >
   <div
     className="p4"
@@ -208,7 +210,7 @@ exports[`Card should render "dark" correctly 1`] = `
 
 exports[`Card should render "hoverable" correctly 1`] = `
 <div
-  className="Card-RQot fuwRgM"
+  className="Card-fqt8sg-0 kBvxHu"
 >
   <div
     className="p4"
@@ -220,7 +222,7 @@ exports[`Card should render "hoverable" correctly 1`] = `
 
 exports[`Card should render "normal" correctly 1`] = `
 <div
-  className="Card-RQot knQaVQ"
+  className="Card-fqt8sg-0 eNUvwM"
 >
   <div
     className="p4"
@@ -259,9 +261,11 @@ exports[`CheckBox should render "Green" correctly 1`] = `
   }
 >
   <svg
-    className="Icon Icon-check Icon-cxuQhR kTAgZA"
+    aria-label="check icon"
+    className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -291,9 +295,11 @@ exports[`CheckBox should render "On - Default blue" correctly 1`] = `
   }
 >
   <svg
-    className="Icon Icon-check Icon-cxuQhR kTAgZA"
+    aria-label="check icon"
+    className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -323,9 +329,11 @@ exports[`CheckBox should render "Purple" correctly 1`] = `
   }
 >
   <svg
-    className="Icon Icon-check Icon-cxuQhR kTAgZA"
+    aria-label="check icon"
+    className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -355,9 +363,11 @@ exports[`CheckBox should render "Red" correctly 1`] = `
   }
 >
   <svg
-    className="Icon Icon-check Icon-cxuQhR kTAgZA"
+    aria-label="check icon"
+    className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -387,9 +397,11 @@ exports[`CheckBox should render "Yellow" correctly 1`] = `
   }
 >
   <svg
-    className="Icon Icon-check Icon-cxuQhR kTAgZA"
+    aria-label="check icon"
+    className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -416,13 +428,15 @@ exports[`EntityMenu should render "Edit menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn loUASk"
+        className="Icon__IconWrapper-sc-1x67v3y-0 ivWlTW"
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-pencil Icon-cxuQhR pXSiy"
+          aria-label="pencil icon"
+          className="Icon Icon-pencil Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           height={18}
+          role="img"
           viewBox="0 0 32 32"
           width={18}
         >
@@ -450,13 +464,15 @@ exports[`EntityMenu should render "More menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn loUASk"
+        className="Icon__IconWrapper-sc-1x67v3y-0 ivWlTW"
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-burger Icon-cxuQhR pXSiy"
+          aria-label="burger icon"
+          className="Icon Icon-burger Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           height={18}
+          role="img"
           viewBox="0 0 32 32"
           width={18}
         >
@@ -484,13 +500,15 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn loUASk"
+        className="Icon__IconWrapper-sc-1x67v3y-0 ivWlTW"
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-pencil Icon-cxuQhR pXSiy"
+          aria-label="pencil icon"
+          className="Icon Icon-pencil Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           height={18}
+          role="img"
           viewBox="0 0 32 32"
           width={18}
         >
@@ -507,14 +525,16 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn loUASk"
+        className="Icon__IconWrapper-sc-1x67v3y-0 ivWlTW"
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-share Icon-cxuQhR pXSiy"
+          aria-label="share icon"
+          className="Icon Icon-share Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           fillRule="evenodd"
           height={18}
+          role="img"
           viewBox="0 0 32 41"
           width={18}
         >
@@ -531,13 +551,15 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn loUASk"
+        className="Icon__IconWrapper-sc-1x67v3y-0 ivWlTW"
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-burger Icon-cxuQhR pXSiy"
+          aria-label="burger icon"
+          className="Icon Icon-burger Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           height={18}
+          role="img"
           viewBox="0 0 32 32"
           width={18}
         >
@@ -565,14 +587,16 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn loUASk"
+        className="Icon__IconWrapper-sc-1x67v3y-0 ivWlTW"
         onClick={[Function]}
       >
         <svg
-          className="Icon Icon-share Icon-cxuQhR pXSiy"
+          aria-label="share icon"
+          className="Icon Icon-share Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           fillRule="evenodd"
           height={18}
+          role="img"
           viewBox="0 0 32 41"
           width={18}
         >
@@ -598,10 +622,12 @@ exports[`ModalContent should render "default" correctly 1`] = `
     id={undefined}
   >
     <svg
-      className="Icon Icon-close text-light text-medium-hover cursor-pointer absolute z2 m2 p2 top right Icon-cxuQhR kTAgZA"
+      aria-label="close icon"
+      className="Icon Icon-close text-light text-medium-hover cursor-pointer absolute z2 m2 p2 top right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={16}
       onClick={[Function]}
+      role="img"
       viewBox="0 0 32 32"
       width={16}
     >
@@ -669,7 +695,7 @@ exports[`ModalContent should render "default" correctly 1`] = `
 
 exports[`PageHeading should render "normal" correctly 1`] = `
 <h1
-  className="PageHeading-iMPvjs juZTVP"
+  className="PageHeading-sc-5mtbjo-0 bnzsQf"
 >
   Hello World
 </h1>
@@ -677,11 +703,11 @@ exports[`PageHeading should render "normal" correctly 1`] = `
 
 exports[`Position should render "Absolute" correctly 1`] = `
 <div
-  className="Position-kiwZOl jyvUWC sc-bwzfXH kLwrie"
+  className="yz785l-0-Position-kiwZOl ewxBZI sc-bwzfXH kLwrie"
 >
   Some content
   <div
-    className="Position-kiwZOl dhkeTA sc-bwzfXH gZPQmB"
+    className="yz785l-0-Position-kiwZOl bzliMT sc-bwzfXH gZPQmB"
   >
     Some content positioned absolutely to its parent
   </div>
@@ -690,7 +716,7 @@ exports[`Position should render "Absolute" correctly 1`] = `
 
 exports[`Position should render "Relative" correctly 1`] = `
 <div
-  className="Position-kiwZOl jyvUWC sc-bwzfXH ihgQcP"
+  className="yz785l-0-Position-kiwZOl ewxBZI sc-bwzfXH ihgQcP"
 >
   Some content relative to its parent
 </div>
@@ -698,11 +724,11 @@ exports[`Position should render "Relative" correctly 1`] = `
 
 exports[`ProgressBar should render "Animated" correctly 1`] = `
 <div
-  className="ProgressBar__ProgressWrapper-lDFZw gfaDTt"
+  className="ProgressBar__ProgressWrapper-sc-11v0v62-0 jstHKb"
   color="#509EE3"
 >
   <div
-    className="ProgressBar__Progress-hndiLL gttMaI"
+    className="ProgressBar__Progress-sc-11v0v62-1 dhIpua"
     width={35}
   />
 </div>
@@ -710,11 +736,11 @@ exports[`ProgressBar should render "Animated" correctly 1`] = `
 
 exports[`ProgressBar should render "Default" correctly 1`] = `
 <div
-  className="ProgressBar__ProgressWrapper-lDFZw gfaDTt"
+  className="ProgressBar__ProgressWrapper-sc-11v0v62-0 jstHKb"
   color="#509EE3"
 >
   <div
-    className="ProgressBar__Progress-hndiLL jCqeMr"
+    className="ProgressBar__Progress-sc-11v0v62-1 kTuUwV"
     width={75}
   />
 </div>
@@ -722,11 +748,11 @@ exports[`ProgressBar should render "Default" correctly 1`] = `
 
 exports[`Radio should render "bubble" correctly 1`] = `
 <ul
-  className="Radio__BubbleList-ghIvdM ejKqoS Radio__BaseList-iXttyI emDsVO"
+  className="Radio__BubbleList-sc-1y1p5xd-6 glBcvi Radio__BaseList-sc-1y1p5xd-0 kGqskW"
 >
   <li
     aria-selected={true}
-    className="Radio__BubbleItem-cPPKrR ebqsKW Radio__BaseItem-gLcmFf bMiqJE"
+    className="Radio__BubbleItem-sc-1y1p5xd-7 gROdwm Radio__BaseItem-sc-1y1p5xd-1 gUPocx"
     mb={null}
     mr={1}
     onClick={[Function]}
@@ -746,7 +772,7 @@ exports[`Radio should render "bubble" correctly 1`] = `
   </li>
   <li
     aria-selected={false}
-    className="Radio__BubbleItem-cPPKrR kKeqRf Radio__BaseItem-gLcmFf etzrCv"
+    className="Radio__BubbleItem-sc-1y1p5xd-7 gsefvY Radio__BaseItem-sc-1y1p5xd-1 fLjBva"
     mb={null}
     mr={null}
     onClick={[Function]}
@@ -769,11 +795,11 @@ exports[`Radio should render "bubble" correctly 1`] = `
 
 exports[`Radio should render "default" correctly 1`] = `
 <ul
-  className="Radio__NormalList-iITwyU h3 text-bold hjXhKK Radio__BaseList-iXttyI emDsVO"
+  className="Radio__NormalList-sc-1y1p5xd-2 h3 text-bold cakGpL Radio__BaseList-sc-1y1p5xd-0 kGqskW"
 >
   <li
     aria-selected={true}
-    className="Radio__NormalItem-eYOkBF kqfiEw Radio__BaseItem-gLcmFf emtUXB"
+    className="Radio__NormalItem-sc-1y1p5xd-3 lnYbWW Radio__BaseItem-sc-1y1p5xd-1 bnxYLr"
     mb={null}
     mr={3}
     onClick={[Function]}
@@ -793,7 +819,7 @@ exports[`Radio should render "default" correctly 1`] = `
   </li>
   <li
     aria-selected={false}
-    className="Radio__NormalItem-eYOkBF jhPiDY Radio__BaseItem-gLcmFf knlEpD"
+    className="Radio__NormalItem-sc-1y1p5xd-3 iIAYuU Radio__BaseItem-sc-1y1p5xd-1 kiDbHp"
     mb={null}
     mr={null}
     onClick={[Function]}
@@ -816,11 +842,11 @@ exports[`Radio should render "default" correctly 1`] = `
 
 exports[`Radio should render "show buttons" correctly 1`] = `
 <ul
-  className="Radio__NormalList-iITwyU hjXhKK Radio__BaseList-iXttyI emDsVO"
+  className="Radio__NormalList-sc-1y1p5xd-2 cakGpL Radio__BaseList-sc-1y1p5xd-0 kGqskW"
 >
   <li
     aria-selected={true}
-    className="Radio__NormalItem-eYOkBF kqfiEw Radio__BaseItem-gLcmFf emtUXB"
+    className="Radio__NormalItem-sc-1y1p5xd-3 lnYbWW Radio__BaseItem-sc-1y1p5xd-1 bnxYLr"
     mb={null}
     mr={3}
     onClick={[Function]}
@@ -843,7 +869,7 @@ exports[`Radio should render "show buttons" correctly 1`] = `
   </li>
   <li
     aria-selected={false}
-    className="Radio__NormalItem-eYOkBF jhPiDY Radio__BaseItem-gLcmFf lbJAbw"
+    className="Radio__NormalItem-sc-1y1p5xd-3 iIAYuU Radio__BaseItem-sc-1y1p5xd-1 fwIeaq"
     mb={null}
     mr={null}
     onClick={[Function]}
@@ -869,11 +895,11 @@ exports[`Radio should render "show buttons" correctly 1`] = `
 
 exports[`Radio should render "underlined" correctly 1`] = `
 <ul
-  className="Radio__UnderlinedList-bIlLBB ipqCjB Radio__NormalList-iITwyU Radio__UnderlinedList-bIlLBB ipqCjB h3 text-bold hjXhKK Radio__BaseList-iXttyI emDsVO"
+  className="Radio__UnderlinedList-sc-1y1p5xd-4 yPTIp Radio__NormalList-sc-1y1p5xd-2 Radio__UnderlinedList-sc-1y1p5xd-4 yPTIp h3 text-bold cakGpL Radio__BaseList-sc-1y1p5xd-0 kGqskW"
 >
   <li
     aria-selected={true}
-    className="Radio__UnderlinedItem-fiPrcQ QyBRA Radio__NormalItem-eYOkBF kqfiEw Radio__BaseItem-gLcmFf jhOuoa"
+    className="Radio__UnderlinedItem-sc-1y1p5xd-5 kaIiHA Radio__NormalItem-sc-1y1p5xd-3 lnYbWW Radio__BaseItem-sc-1y1p5xd-1 ljpocb"
     mb={null}
     mr={3}
     onClick={[Function]}
@@ -893,7 +919,7 @@ exports[`Radio should render "underlined" correctly 1`] = `
   </li>
   <li
     aria-selected={false}
-    className="Radio__UnderlinedItem-fiPrcQ javWeu Radio__NormalItem-eYOkBF jhPiDY Radio__BaseItem-gLcmFf iCgizd"
+    className="Radio__UnderlinedItem-sc-1y1p5xd-5 icIYCp Radio__NormalItem-sc-1y1p5xd-3 iIAYuU Radio__BaseItem-sc-1y1p5xd-1 iVApZB"
     mb={null}
     mr={null}
     onClick={[Function]}
@@ -916,11 +942,11 @@ exports[`Radio should render "underlined" correctly 1`] = `
 
 exports[`Radio should render "vertical" correctly 1`] = `
 <ul
-  className="Radio__NormalList-iITwyU hjXhKK Radio__BaseList-iXttyI fKwfUD"
+  className="Radio__NormalList-sc-1y1p5xd-2 cakGpL Radio__BaseList-sc-1y1p5xd-0 dVUlxC"
 >
   <li
     aria-selected={true}
-    className="Radio__NormalItem-eYOkBF kqfiEw Radio__BaseItem-gLcmFf krIKqz"
+    className="Radio__NormalItem-sc-1y1p5xd-3 lnYbWW Radio__BaseItem-sc-1y1p5xd-1 dsZxQm"
     mb={1}
     mr={null}
     onClick={[Function]}
@@ -943,7 +969,7 @@ exports[`Radio should render "vertical" correctly 1`] = `
   </li>
   <li
     aria-selected={false}
-    className="Radio__NormalItem-eYOkBF jhPiDY Radio__BaseItem-gLcmFf lbJAbw"
+    className="Radio__NormalItem-sc-1y1p5xd-3 iIAYuU Radio__BaseItem-sc-1y1p5xd-1 fwIeaq"
     mb={null}
     mr={null}
     onClick={[Function]}
@@ -975,7 +1001,7 @@ exports[`Select should render "default" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -987,9 +1013,11 @@ exports[`Select should render "default" correctly 1`] = `
       </span>
     </span>
     <svg
-      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
+      aria-label="chevrondown icon"
+      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1012,7 +1040,7 @@ exports[`Select should render "kitchen_sink" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1028,9 +1056,11 @@ exports[`Select should render "kitchen_sink" correctly 1`] = `
       </span>
     </span>
     <svg
-      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
+      aria-label="chevrondown icon"
+      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1053,7 +1083,7 @@ exports[`Select should render "multiple" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1069,9 +1099,11 @@ exports[`Select should render "multiple" correctly 1`] = `
       </span>
     </span>
     <svg
-      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
+      aria-label="chevrondown icon"
+      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1094,7 +1126,7 @@ exports[`Select should render "search" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1106,9 +1138,11 @@ exports[`Select should render "search" correctly 1`] = `
       </span>
     </span>
     <svg
-      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
+      aria-label="chevrondown icon"
+      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1131,7 +1165,7 @@ exports[`Select should render "sections" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1143,9 +1177,11 @@ exports[`Select should render "sections" correctly 1`] = `
       </span>
     </span>
     <svg
-      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
+      aria-label="chevrondown icon"
+      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1182,9 +1218,11 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
     }
   >
     <svg
-      className="Icon Icon-check Icon-cxuQhR kTAgZA"
+      aria-label="check icon"
+      className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       style={
         Object {
           "color": "white",
@@ -1238,9 +1276,11 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
     }
   >
     <svg
-      className="Icon Icon-check Icon-cxuQhR kTAgZA"
+      aria-label="check icon"
+      className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       style={
         Object {
           "color": "white",

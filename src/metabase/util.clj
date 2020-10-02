@@ -384,7 +384,7 @@
   "Return a version of String `s` appropriate for use as a URL slug.
    Downcase the name, remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores;
    URL-encode non-ASCII characters. (Non-ASCII characters are encoded rather than replaced with underscores in order
-   to support languages that don't use the Latin alphabet; see issue #3818).
+   to support languages that don't use the Latin alphabet; see metabase#3818).
 
    Optionally specify `max-length` which will truncate the slug after that many characters."
   (^String [^String s]
@@ -553,15 +553,6 @@
 (def ^{:arglists '([n])} safe-inc
   "Increment `n` if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
   (fnil inc 0))
-
-(defn occurances-of-substring
-  "Return the number of times SUBSTR occurs in string S."
-  ^Long [^String s, ^String substr]
-  (when (and (seq s) (seq substr))
-    (loop [index 0, cnt 0]
-      (if-let [^long new-index (str/index-of s substr index)]
-        (recur (inc new-index) (inc cnt))
-        cnt))))
 
 (defn select-non-nil-keys
   "Like `select-keys`, but returns a map only containing keys in KS that are present *and non-nil* in M.
@@ -744,6 +735,14 @@
   `Locale/US` locale."
   [^CharSequence s]
   (.. s toString (toLowerCase (Locale/US))))
+
+(defn upper-case-en
+  "Locale-agnostic version of `clojure.string/upper-case`.
+  `clojure.string/upper-case` uses the default locale in conversions, turning
+  `id` into `İD`, in the Turkish locale. This function always uses the
+  `Locale/US` locale."
+  [^CharSequence s]
+  (.. s toString (toUpperCase (Locale/US))))
 
 (defn lower-case-map-keys
   "Changes the keys of a given map to lower case."

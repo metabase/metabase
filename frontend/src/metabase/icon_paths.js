@@ -414,7 +414,7 @@ ICON_PATHS["scalar"] = ICON_PATHS["number"];
 export function parseViewBox(viewBox: string): Array<number> {
   // a viewBox is a string that takes the form 'min-x, min-y, width, height'
   // grab the values and return just width and height since we currently don't
-  // tend to card about min-x or min-y
+  // tend to care about min-x or min-y
 
   // we cast to numbers so we can do math-y stuff with the width and height
   return viewBox
@@ -440,6 +440,8 @@ export function loadIcon(name: string) {
       width: 16,
       height: 16,
       fill: "currentcolor",
+      role: "img",
+      "aria-label": name + " icon",
     },
     svg: undefined,
     path: undefined,

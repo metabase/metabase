@@ -1,6 +1,5 @@
 import {
   signInAsNormalUser,
-  signInAsAdmin,
   restore,
   popover,
   modal,
@@ -158,35 +157,6 @@ describe("scenarios > question > native", () => {
     cy.contains("18,760");
   });
 
-  it("should let you create and use a snippet", () => {
-    signInAsAdmin();
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-
-    // type a query and highlight some of the text
-    cy.get(".ace_content").as("ace");
-    cy.get("@ace").type(
-      "select 'stuff'" + "{shift}{leftarrow}".repeat("'stuff'".length),
-    );
-
-    // add a snippet of that text
-    cy.get(".Icon-snippet").click();
-    cy.contains("Create a snippet").click();
-    modal()
-      .find("input[name=name]")
-      .type("stuff-snippet");
-    modal()
-      .contains("Save")
-      .click();
-
-    // SQL editor should get updated automatically
-    cy.get("@ace").contains("select {{snippet: stuff-snippet}}");
-
-    // run the query and check the displayed scalar
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.get(".ScalarValue").contains("stuff");
-  });
-
   it("can load a question with a date filter (from issue metabase#12228)", () => {
     withSampleDataset(({ ORDERS }) => {
       cy.request("POST", "/api/card", {
@@ -237,5 +207,71 @@ describe("scenarios > question > native", () => {
 
     // confirm that the question saved and url updated
     cy.location("pathname").should("match", /\/question\/\d+/);
+  });
+
+  it.skip(`shouldn't remove rows containing NULL when using "Is not" or "Does not contain" filter (metabase#13332)`, () => {
+    const FILTERS = ["Is not", "Does not contain"];
+    const QUESTION = "QQ";
+
+    cy.visit("/question/new");
+    cy.contains("Native query").click();
+    cy.get(".ace_content")
+      .should("be.visible")
+      .type(`SELECT null AS "V" UNION ALL SELECT 'This has a value' AS "V"`);
+    cy.findByText("Save").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Name").type(QUESTION);
+      cy.findByText("Save").click();
+      cy.findByText("Not now").click();
+    });
+
+    cy.visit("/");
+    cy.findByText("Ask a question").click();
+    cy.findByText("Simple question").click();
+    popover().within(() => {
+      cy.findByText("Saved Questions").click();
+      cy.findByText("Robert Tableton's Personal Collection").click();
+      cy.findByText(QUESTION).click();
+    });
+
+    cy.url("should.contain", "/question#");
+    cy.findByText("This has a value");
+
+    FILTERS.forEach(filter => {
+      // Clicking on a question's name in UI resets previously applied filters
+      // We can ask variations of that question "on the fly"
+      cy.findByText(QUESTION).click();
+
+      cy.log("**Apply a filter**");
+      cy.findAllByText("Filter")
+        .first()
+        .click();
+      cy.get(".List-item-title")
+        .contains("V")
+        .click();
+      cy.findByText("Is").click();
+      popover().within(() => {
+        cy.findByText(filter).click();
+      });
+      cy.findByPlaceholderText("Enter some text").type("This has a value");
+      cy.findByText("Add filter").click();
+
+      cy.log(
+        `**Mid-point assertion for "${filter}" filter| FAILING in v0.36.6**`,
+      );
+      cy.findByText(`V ${filter.toLowerCase()} This has a value`);
+      cy.findByText("No results!").should("not.exist");
+
+      cy.log(
+        "**Final assertion: Count of rows with 'null' value should be 1**",
+      );
+      // "Count" is pre-selected option for "Summarize"
+      cy.findAllByText("Summarize")
+        .first()
+        .click();
+      cy.findByText("Done").click();
+      cy.get(".ScalarValue").contains("1");
+    });
   });
 });

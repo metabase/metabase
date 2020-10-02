@@ -201,13 +201,14 @@
     :creator_id  (user->id :rasta)
     :creator     (user-details (fetch-user :rasta))
     :archived    true})
-  (tt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Metric   [{:keys [id]}   {:table_id table-id}]]
-    ((user->client :crowberto) :delete 204 (format "metric/%d" id) :revision_message "carryon")
-    ;; should still be able to fetch the archived Metric
-    (metric-response
-     ((user->client :crowberto) :get 200 (format "metric/%d" id)))))
+  (-> (tt/with-temp* [Database [{database-id :id}]
+                      Table    [{table-id :id} {:db_id database-id}]
+                      Metric   [{:keys [id]}   {:table_id table-id}]]
+        ((user->client :crowberto) :delete 204 (format "metric/%d" id) :revision_message "carryon")
+        ;; should still be able to fetch the archived Metric
+        (metric-response
+         ((user->client :crowberto) :get 200 (format "metric/%d" id))))
+      (dissoc :query_description)))
 
 
 ;; ## GET /api/metric/:id
@@ -229,11 +230,12 @@
     :description "Lookin' for a blueberry"
     :creator_id  (user->id :crowberto)
     :creator     (user-details (fetch-user :crowberto))})
-  (tt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Metric   [{:keys [id]}   {:creator_id  (user->id :crowberto)
-                                            :table_id    table-id}]]
-    (metric-response ((user->client :rasta) :get 200 (format "metric/%d" id)))))
+  (-> (tt/with-temp* [Database [{database-id :id}]
+                      Table    [{table-id :id} {:db_id database-id}]
+                      Metric   [{:keys [id]}   {:creator_id  (user->id :crowberto)
+                                                :table_id    table-id}]]
+        (metric-response ((user->client :rasta) :get 200 (format "metric/%d" id))))
+      (dissoc :query_description)))
 
 
 ;; ## GET /api/metric/:id/revisions
@@ -402,6 +404,10 @@
   (tu/mappify (hydrate [(assoc metric-1 :database_id (data/id))
                         (assoc metric-2 :database_id (data/id))]
                        :creator))
+  (map #(dissoc % :query_description) ((user->client :rasta) :get 200 "metric/")))
+
+(expect
+  []
   ((user->client :rasta) :get 200 "metric/"))
 
 ;; Test related/recommended entities

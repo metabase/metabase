@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import Popover from "metabase/components/Popover";
 
 import Clearable from "./Clearable";
-import BreakoutName from "./BreakoutName";
 import BreakoutPopover from "./BreakoutPopover";
 
 // NOTE: lots of duplication between AggregationWidget and BreakoutWidget
@@ -71,7 +70,7 @@ export default class BreakoutWidget extends Component {
 
     const trigger = breakout ? (
       <Clearable onClear={() => this.handleChangeBreakout(null)}>
-        <BreakoutName query={query} breakout={breakout} className={className} />
+        <span className={className}>{breakout.displayName()}</span>
       </Clearable>
     ) : breakoutOptions && breakoutOptions.count > 0 ? (
       children

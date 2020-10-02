@@ -37,16 +37,16 @@ import {
 import { PLUGIN_FORMATTING_HELPERS } from "metabase/plugins";
 
 import type Field from "metabase-lib/lib/metadata/Field";
-import type { Column, Value } from "metabase/meta/types/Dataset";
-import type { DatetimeUnit } from "metabase/meta/types/Query";
-import type { Moment } from "metabase/meta/types";
+import type { Column, Value } from "metabase-types/types/Dataset";
+import type { DatetimeUnit } from "metabase-types/types/Query";
+import type { Moment } from "metabase-types/types";
 
 import type {
   DateStyle,
   TimeStyle,
   TimeEnabled,
 } from "metabase/lib/formatting/date";
-import type { ClickObject } from "metabase/meta/types/Visualization";
+import type { ClickObject } from "metabase-types/types/Visualization";
 
 // a one or two character string specifying the decimal and grouping separator characters
 export type NumberSeparators = ".," | ", " | ",." | ".";
@@ -842,7 +842,7 @@ export function stripId(name: string) {
 }
 
 export function slugify(name: string) {
-  return name && name.toLowerCase().replace(/[^a-z\u0400-\u04ff0-9_]/g, "_");
+  return name && encodeURIComponent(name.toLowerCase().replace(/\s/g, "_"));
 }
 
 export function assignUserColors(

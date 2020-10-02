@@ -12,6 +12,7 @@ import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
 import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import EmbedFrame from "../components/EmbedFrame";
+import title from "metabase/hoc/Title";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
@@ -34,8 +35,8 @@ import {
   setEmbedDashboardEndpoints,
 } from "metabase/services";
 
-import type { Dashboard } from "metabase/meta/types/Dashboard";
-import type { Parameter } from "metabase/meta/types/Parameter";
+import type { Dashboard } from "metabase-types/types/Dashboard";
+import type { Parameter } from "metabase-types/types/Parameter";
 
 import _ from "underscore";
 
@@ -88,6 +89,7 @@ type Props = {
   mapStateToProps,
   mapDispatchToProps,
 )
+@title(({ dashboard }) => dashboard && dashboard.name)
 @DashboardControls
 // NOTE: this should use DashboardData HoC
 export default class PublicDashboard extends Component {

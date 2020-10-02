@@ -11,20 +11,20 @@ Cool, now you’re in the administration section of Metabase. Next, select **Dat
 Now you’ll see a list of your databases. To connect another database to Metabase, click **Add database**. Metabase currently supports the following types of databases:
 
 - Amazon Redshift
+- Druid
+- Google Analytics
 - [Google BigQuery](databases/bigquery.md)
 - H2
 - [MongoDB (version 3.4 or higher)](databases/mongodb.md)
-- [MySQL (version 5.5.3 or higher, as well as MariaDB)](databases/mysql.md)
-- Postgres
-- SQLite
-- SQL Server
-- Druid
+- [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](databases/mysql.md)
 - [Oracle](databases/oracle.md)
-- [Vertica](databases/vertica.md)
+- PostgreSQL
 - Presto
-- Google Analytics
+- [Snowflake](databases/snowflake.md)
 - SparkSQL
-- Snowflake
+- SQL Server
+- SQLite
+- [Vertica](databases/vertica.md)
 
 Don't see the database you need here? Take a look at our [Community Drivers](../developers-guide-drivers.md) page to see if somebody else has built one or how to get started building your own.
 
@@ -89,7 +89,7 @@ By default, Metabase will auto-run queries when you use the Summarize and Filter
 
 #### Scanning for field values
 
-When Metabase first connects to your database, it takes a look at the metadata of the fields in your tables and automatically assigns them a field type. Metabase also takes a sample of each table to look for URLs, JSON, encoded strings, etc. If a field is classified wrong, you can always manually edit it from the **Metadata** tab in the Admin Panel.
+When Metabase first connects to your database, it takes a look at the metadata of the columns in your tables and automatically assigns them a type. Metabase also takes a sample of each table to look for URLs, JSON, encoded strings, etc. You can manually edit table and column metadata in Metabase at any time from the **Data Model** tab in the **Admin Panel**.
 
 By default, Metabase also performs a more intensive daily sampling of each field's values and caches the distinct values in order to make checkbox and select filters work in dashboards and SQL/native questions. This process can slow down large databases, so if you have a particularly large database, you can turn on the option to choose when Metabase scans, and select one of three scan options in the Scheduling tab:
 

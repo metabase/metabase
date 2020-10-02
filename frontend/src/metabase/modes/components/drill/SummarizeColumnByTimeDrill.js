@@ -13,7 +13,7 @@ import { capitalize } from "metabase/lib/formatting";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 export default ({
   question,
@@ -50,6 +50,6 @@ export default ({
               ? [aggregator.short, fieldRefForColumn(column)]
               : [aggregator.short],
           )
-          .pivot([dateDimension.defaultDimension().mbql()]),
+          .pivot([dateDimension.defaultBreakout()]),
     }));
 };

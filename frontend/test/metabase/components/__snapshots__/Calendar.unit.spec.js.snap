@@ -12,9 +12,11 @@ exports[`Calendar should render correctly 1`] = `
       onClick={[Function]}
     >
       <svg
-        className="Icon Icon-chevronleft Icon-cxuQhR kTAgZA"
+        aria-label="chevronleft icon"
+        className="Icon Icon-chevronleft Icon-sc-1x67v3y-1 hFNRPZ"
         fill="currentcolor"
         height={10}
+        role="img"
         viewBox="0 0 32 32"
         width={10}
       >
@@ -37,9 +39,11 @@ exports[`Calendar should render correctly 1`] = `
       onClick={[Function]}
     >
       <svg
-        className="Icon Icon-chevronright Icon-cxuQhR kTAgZA"
+        aria-label="chevronright icon"
+        className="Icon Icon-chevronright Icon-sc-1x67v3y-1 hFNRPZ"
         fill="currentcolor"
         height={10}
+        role="img"
         viewBox="0 0 32 32"
         width={10}
       >

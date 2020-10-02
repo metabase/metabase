@@ -16,6 +16,7 @@
              [collection :as coll :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-favorite :refer [DashboardFavorite]]
+             [interface :as mi]
              [metric :refer [Metric]]
              [permissions :as perms]
              [pulse :refer [Pulse]]
@@ -260,7 +261,9 @@
         collection-filter-clause (coll/visible-collection-ids->honeysql-filter-clause
                                   collection-id-column
                                   visible-collections)
-        honeysql-query           (h/merge-where honeysql-query collection-filter-clause)]
+        honeysql-query           (-> honeysql-query
+                                     (h/merge-where collection-filter-clause)
+                                     (h/merge-where [:= :collection.namespace nil]))]
     ;; add a JOIN against Collection *unless* the source table is already Collection
     (cond-> honeysql-query
       (not= collection-id-column :collection.id)
@@ -323,19 +326,39 @@
     (let [base-query (base-query-for-model Table search-ctx)]
       (if (contains? current-user-perms "/")
         base-query
-        {:select (:select base-query)
-         :from   [[(merge
-                    base-query
-                    {:select [:id :schema :db_id :name :description :display_name
-                              [(hx/concat (hx/literal "/db/") :db_id (hx/literal "/")
-                                          (hsql/call :case [:not= :schema nil] :schema :else (hx/literal "")) (hx/literal "/")
-                                          :id (hx/literal "/"))
-                               :path]]})
-                   :table]]
-         :where  (cons
-                  :or
-                  (for [path current-user-perms]
-                    [:like :path (str path "%")]))}))))
+        (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
+          (when (seq data-perms)
+            {:select (:select base-query)
+             :from   [[(merge
+                        base-query
+                        {:select [:id :schema :db_id :name :description :display_name
+                                  [(hx/concat (hx/literal "/db/") :db_id
+                                              (hx/literal "/schema/") (hsql/call :case
+                                                                        [:not= :schema nil] :schema
+                                                                        :else               (hx/literal ""))
+                                              (hx/literal "/table/") :id
+                                              (hx/literal "/read/"))
+                                   :path]]})
+                       :table]]
+             :where  (into [:or] (for [path data-perms]
+                                   [:like :path (str path "%")]))}))))))
+
+(defmulti ^:private check-permissions-for-model
+  {:arglists '([search-result])}
+  (comp keyword :model))
+
+(defmethod check-permissions-for-model :default
+  [_]
+  ;; We filter what we can (ie. everything that is in a collection) out already when querying
+  true)
+
+(defmethod check-permissions-for-model :metric
+  [{:keys [id]}]
+  (-> id Metric mi/can-read?))
+
+(defmethod check-permissions-for-model :segment
+  [{:keys [id]}]
+  (-> id Segment mi/can-read?))
 
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
@@ -353,7 +376,8 @@
           results      (sort-by (juxt (comp model->sort-position :model)
                                       :name)
                                 (db/query search-query :max-rows search-max-results))]
-      (for [row results]
+      (for [row results
+            :when (check-permissions-for-model row)]
         ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
         (-> row
             (update :favorite bit->boolean)
@@ -364,7 +388,7 @@
 ;;; |                                                    Endpoint                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private make-search-context :- SearchContext
+(s/defn ^:private search-context :- SearchContext
   [search-string :- (s/maybe su/NonBlankString), archived-string :- (s/maybe su/BooleanString)]
   {:search-string      search-string
    :archived?          (Boolean/parseBoolean archived-string)
@@ -375,6 +399,6 @@
   [q archived]
   {q        (s/maybe su/NonBlankString)
    archived (s/maybe su/BooleanString)}
-  (search (make-search-context q archived)))
+  (search (search-context q archived)))
 
 (api/define-routes)

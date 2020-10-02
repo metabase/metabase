@@ -125,7 +125,7 @@
   (testing "Native query snippet substitution"
     (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
       (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
-             (substitute query {"snippet:symbol_is_A" (i/->NativeQuerySnippet "symbol_is_A" "symbol = 'A'")}))))))
+             (substitute query {"snippet:symbol_is_A" (i/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
 
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------

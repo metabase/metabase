@@ -16,7 +16,7 @@ import * as Urls from "metabase/lib/urls";
 import _ from "underscore";
 import cx from "classnames";
 
-const EXPORT_FORMATS = ["csv", "xlsx", "json"];
+const EXPORT_FORMATS = Urls.exportFormats;
 
 const QueryDownloadWidget = ({
   className,

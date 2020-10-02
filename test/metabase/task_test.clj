@@ -6,10 +6,14 @@
              [triggers :as triggers]]
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [expectations :refer [expect]]
-            [metabase.task :as task]
+            [metabase
+             [task :as task]
+             [test :as mt]]
             [metabase.test
              [fixtures :as fixtures]
-             [util :as tu]])
+             [util :as tu]]
+            [metabase.util.schema :as su]
+            [schema.core :as s])
   (:import [org.quartz CronTrigger JobDetail]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -82,3 +86,17 @@
     (task/schedule-task! (job) (trigger-1))
     (task/schedule-task! (job) (trigger-2))
     (triggers)))
+
+(deftest scheduler-info-test
+  (testing "Make sure scheduler-info doesn't explode and returns info in the general shape we expect"
+    (mt/with-temp-scheduler
+      (is (schema= {:scheduler (su/non-empty [s/Str])
+                    :jobs      [{:key         su/NonBlankString
+                                 :description su/NonBlankString
+                                 :triggers    [{:key                 su/NonBlankString
+                                                :description         su/NonBlankString
+                                                :misfire-instruction su/NonBlankString
+                                                :state               su/NonBlankString
+                                                s/Keyword            s/Any}]
+                                 s/Keyword    s/Any}]}
+                   (task/scheduler-info))))))

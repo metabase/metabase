@@ -41,7 +41,7 @@
   (testing "we should not be allowed to set an invalid `site-url` (#9850)"
     (mt/discard-setting-changes [site-url]
       (is (thrown?
-           AssertionError
+           clojure.lang.ExceptionInfo
            (public-settings/site-url "http://https://www.camsaul.com"))))))
 
 (deftest site-url-settings-set-valid-domain-name
@@ -111,11 +111,19 @@
       (is (= "HOST"
              (tru "Host"))))))
 
-(deftest max-cache-entry
-  (testing "Make sure Max Cache Entry Size can be set via with a string value, which is what comes back from the API (#9143)"
+(deftest query-caching-max-kb-test
+  (testing (str "Make sure Max Cache Entry Size can be set via with a string value, which is what comes back from the "
+                "API (#9143)")
     (mt/discard-setting-changes [query-caching-max-kb]
       (is (= "1000"
-             (public-settings/query-caching-max-kb "1000"))))))
+             (public-settings/query-caching-max-kb "1000")))))
+
+  (testing "query-caching-max-kb should throw an error if you try to put in a huge value"
+    (mt/discard-setting-changes [query-caching-max-kb]
+      (is (thrown?
+           IllegalArgumentException
+           #"Values greater than 204,800 \(200\.0 MB\) are not allowed"
+           (public-settings/query-caching-max-kb (* 1024 1024)))))))
 
 (deftest site-locale-test
   (testing "site-locale Setting"

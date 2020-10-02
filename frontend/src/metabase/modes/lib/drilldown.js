@@ -254,6 +254,6 @@ function columnToBreakout(column) {
 // returns the table metadata for a dimension
 function tableForDimensions(dimensions, metadata) {
   const fieldId = getIn(dimensions, [0, "column", "id"]);
-  const field = metadata.fields[fieldId];
+  const field = metadata.field(fieldId);
   return field && field.table;
 }
