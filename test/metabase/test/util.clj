@@ -424,7 +424,8 @@
 
 (defn do-with-log-messages-for-level [level thunk]
   (let [original-level (.getLevel (metabase-logger))
-        new-level      (get level-kwd->level (keyword level))]
+        new-level      (or (get level-kwd->level (keyword level))
+                           (throw (ex-info "Invalid log level" {:level level})))]
     (try
       (.setLevel (metabase-logger) new-level)
       (thunk)
@@ -618,10 +619,13 @@
       (doseq [model model-seq]
         (do-model-cleanup! (db/resolve-model model))))))
 
-(defmacro with-model-cleanup
+(defmacro ^:deprecated with-model-cleanup
   "This will delete all rows found for each model in `model-seq`. By default, this calls `delete!`, so if the model has
   defined any `pre-delete` behavior, that will be preserved. Alternatively, you can define a custom implementation by
-  using the `do-model-cleanup!` multimethod above."
+  using the `do-model-cleanup!` multimethod above.
+
+  DEPRECATED -- using this in tests means running tests from the REPL can delete stuff you were using locally! It's
+  better to write tests that clean up after themselves without having to resort to using this function."
   [model-seq & body]
   `(do-with-model-cleanup ~model-seq (fn [] ~@body)))
 

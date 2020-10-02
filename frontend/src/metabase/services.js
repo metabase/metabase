@@ -20,6 +20,14 @@ export const ActivityApi = {
   recent_views: GET("/api/activity/recent_views"),
 };
 
+// only available with token loaded
+export const GTAPApi = {
+  list: GET("/api/mt/gtap"),
+  create: POST("/api/mt/gtap"),
+  update: PUT("/api/mt/gtap/:id"),
+  attributes: GET("/api/mt/user/attributes"),
+};
+
 export const CardApi = {
   list: GET("/api/card", (cards, { data }) =>
     // HACK: support for the "q" query param until backend implements it
@@ -60,6 +68,9 @@ export const DashboardApi = {
   reposition_cards: PUT("/api/dashboard/:dashId/cards"),
   favorite: POST("/api/dashboard/:dashId/favorite"),
   unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
+  parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
+  parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:prefix"),
+  validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
 
   listPublic: GET("/api/dashboard/public"),
   listEmbeddable: GET("/api/dashboard/embeddable"),
