@@ -8,7 +8,9 @@
              [models :refer [Table]]
              [query-processor :as qp]
              [test :as mt]]
-            [metabase.models.database :refer [Database]]
+            [metabase.test.data
+             [dataset-definitions :as dataset-defs]
+             [sql :as sql.tx]]
             [metabase.test.data.sql.ddl :as ddl]))
 
 ;;

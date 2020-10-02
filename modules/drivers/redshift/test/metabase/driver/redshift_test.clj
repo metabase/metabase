@@ -7,8 +7,9 @@
              [query-processor :as qp]
              [test :as mt]
              [util :as u]]
-            [metabase.models.database :refer [Database]]
+            [metabase.driver.sql-jdbc.execute :as execute]
             [metabase.plugins.jdbc-proxy :as jdbc-proxy]
+            [metabase.test.data.redshift :as rstest]
             [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :plugins))
