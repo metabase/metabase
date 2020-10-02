@@ -2,7 +2,6 @@
   (:require [clojure
              [string :as str]
              [test :refer :all]]
-            [clojure.java.jdbc :as jdbc]
             [colorize.core :as colorize]
             [honeysql.core :as hsql]
             [java-time :as t]
@@ -14,11 +13,9 @@
              [test :as mt]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+             [execute :as sql-jdbc.execute]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models.database :refer [Database]]
             [metabase.query-processor
              [test-util :as qp.test-util]
              [timezone :as qp.timezone]]
@@ -205,25 +202,3 @@
                   (is (= [expected]
                          (row-thunk))
                       (format "SQL %s should return %s" (colorize/blue (pr-str sql)) (colorize/green expected))))))))))))
-
-(deftest determine-select-privilege
-  (mt/test-driver :sqlserver
-    (testing "Do we correctly determine SELECT privilege"
-      (let [db-name "privilege_test"
-            spec    (sql-jdbc.conn/connection-details->spec :sqlserver (tx/dbdef->connection-details :sqlserver :server nil))]
-        (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
-                                      CREATE DATABASE \"%s\";" db-name db-name)]
-                       {:transaction? false})
-        (let [details (mt/dbdef->connection-details :sqlserver :db {:database-name db-name})
-              spec    (sql-jdbc.conn/connection-details->spec :sqlserver details)]
-          (mt/with-temp Database [db {:engine  :sqlserver
-                                      :details details}]
-            (doseq [statement ["drop table if exists \"birds\";"
-                               "create table \"birds\" (id integer);"
-                               (format "grant all on \"birds\" to dbo;")]]
-              (jdbc/execute! spec [statement]))
-            (is (#'sql-jdbc.sync/have-select-privilege? :sqlserver db {:table_name  "birds"
-                                                                       :table_schem "dbo"}))
-            (jdbc/execute! spec [(format "revoke all on \"birds\" from dbo;")])
-            (is (not (#'sql-jdbc.sync/have-select-privilege? :sqlserver db {:table_name  "birds"
-                                                                            :table_schem "dbo"})))))))))

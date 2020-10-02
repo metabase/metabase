@@ -3,21 +3,12 @@
              [set :as set]
              [string :as str]
              [test :refer :all]]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
             [metabase
              [driver :as driver]
              [models :refer [Table]]
              [query-processor :as qp]
              [test :as mt]]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [sync :as sql-jdbc.sync]]
             [metabase.models.database :refer [Database]]
-            [metabase.test.data
-             [dataset-definitions :as dataset-defs]
-             [interface :as tx]
-             [sql :as sql.tx]]
             [metabase.test.data.sql.ddl :as ddl]))
 
 ;;
@@ -159,27 +150,3 @@
                   ["2014-08-02T00:00:00-07:00" "2014-08-02T02:30:00-07:00"]]
                  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
                    (run-query)))))))))
-
-(deftest determine-select-privilege
-  (mt/test-driver :snowflake
-    (testing "Do we correctly determine SELECT privilege"
-      (let [db-name "privilege_test"
-            details (tx/dbdef->connection-details :snowflake :server nil)
-            spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
-        (doseq [statement [(format "DROP DATABASE IF EXISTS %s;" db-name)
-                           (format "CREATE DATABASE %s;" db-name)]]
-          (jdbc/execute! spec [statement] {:transaction? false}))
-        (let [details              (mt/dbdef->connection-details :snowflake :db {:database-name db-name})
-              spec                 (sql-jdbc.conn/connection-details->spec :snowflake details)
-              table-qualified-name (format "\"%s\".\"PUBLIC\".\"birds\"" db-name)]
-          (mt/with-temp Database [db {:engine  :snowflake
-                                      :details details}]
-            (doseq [statement [(format "drop table if exists %s;" table-qualified-name)
-                               (format "create table %s (id integer);" table-qualified-name)
-                               (format "grant ALL on %s to %s;" table-qualified-name (:user details))]]
-              (jdbc/execute! spec [statement]))
-            (is (#'sql-jdbc.sync/have-select-privilege? :snowflake db {:table_name  "birds"
-                                                                       :table_schem "PUBLIC"}))
-            (jdbc/execute! spec [(format "revoke select on %s from %s;" table-qualified-name (:user details))])
-            (is (#'sql-jdbc.sync/have-select-privilege? :snowflake db {:table_name  "birds"
-                                                                       :table_schem "PUBLIC"}))))))))

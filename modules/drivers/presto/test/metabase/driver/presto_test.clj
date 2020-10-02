@@ -1,7 +1,6 @@
 (ns metabase.driver.presto-test
   (:require [clj-http.client :as http]
             [clojure.core.async :as a]
-            [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [expectations :refer [expect]]
             [java-time :as t]
@@ -13,20 +12,13 @@
             [metabase.driver
              [presto :as presto]
              [util :as driver.u]]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
-             [database :refer [Database]]
              [field :refer [Field]]
              [table :as table :refer [Table]]]
             [metabase.test
              [fixtures :as fixtures]
              [util :as tu]]
-            [metabase.test.data
-             [interface :as tx]
-             [sql :as sql.tx]]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]))
 
@@ -247,7 +239,3 @@
                         "FROM \"default\".\"test_data_venues\" "
                         "WHERE \"default\".\"test_data_venues\".\"name\" = from_utf8(from_hex('776f77'))")
                    @the-sql))))))))
-
-;; The adapter we're using does not support GRANTs :(
-;;
-;; (deftest determine-select-privilege)

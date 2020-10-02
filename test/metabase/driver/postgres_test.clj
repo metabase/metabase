@@ -12,8 +12,7 @@
             [metabase.driver.postgres :as postgres]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+             [execute :as sql-jdbc.execute]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
              [database :refer [Database]]
@@ -522,25 +521,3 @@
                    :field_ref    [:field-literal "sleep" :type/Text]
                    :name         "sleep"}]
                  (mt/cols results))))))))
-
-(deftest determine-select-privilege
-  (mt/test-driver :postgres
-    (testing "Do we correctly determine SELECT privilege"
-      (let [db-name "privilege_test"
-            details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
-            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        (drop-if-exists-and-create-db! db-name)
-        (mt/with-temp Database [db {:engine  :postgres
-                                    :details (assoc details :dbname db-name)}]
-          (doseq [statement ["drop table if exists \"birds\";"
-                             "create table \"birds\" ();"
-                             "drop user if exists rasta;"
-                             "create user rasta;"
-                             "alter table birds owner to rasta;"
-                             (format "grant all on \"birds\" to %s;" (:user details))]]
-            (jdbc/execute! spec [statement]))
-          (is (#'sql-jdbc.sync/have-select-privilege? :postgres db {:table_name  "birds"
-                                                                    :table_schem "public"}))
-          (jdbc/execute! spec [(format "revoke all on \"birds\" from %s;" (:user details))])
-          (is (not (#'sql-jdbc.sync/have-select-privilege? :postgres db {:table_name  "birds"
-                                                                         :table_schem "public"}))))))))

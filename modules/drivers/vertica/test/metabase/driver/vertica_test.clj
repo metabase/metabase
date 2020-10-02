@@ -1,9 +1,6 @@
 (ns metabase.driver.vertica-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [sync :as sql-jdbc.sync]]
+  (:require [clojure.test :refer :all]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.test :as mt]
             [metabase.test.util :as tu]))
 
@@ -21,20 +18,3 @@
                                                                :port               5433
                                                                :db                 "birds-near-me"
                                                                :additional-options "ConnectionLoadBalance=1"}))))))
-
-(deftest determine-select-privilege
-  (mt/test-driver :vertica
-    (testing "Do we correctly determine SELECT privilege"
-      (let [details (:details (mt/db))
-            spec    (sql-jdbc.conn/connection-details->spec :vertica details)]
-        (doseq [statement ["drop table if exists birds;"
-                           "create table birds (id integer);"
-                           (format "grant all on birds to %s;" (:user details))]]
-          (jdbc/execute! spec [statement]))
-        (is (#'sql-jdbc.sync/have-select-privilege? :vertica (mt/db) {:table_name  "birds"
-                                                                      :table_schem "public"}))
-        (jdbc/execute! spec [(format "revoke select on birds from %s;" (:user details))])
-        (is (not (#'sql-jdbc.sync/have-select-privilege? :vertica (mt/db) {:table_name  "birds"
-                                                                           :table_schem "public"})))
-        ;; Cleanup
-        (jdbc/execute! spec ["drop table birds;"])))))

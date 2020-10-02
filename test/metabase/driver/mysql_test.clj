@@ -9,9 +9,7 @@
              [sync :as sync]
              [test :as mt]
              [util :as u]]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]]
@@ -210,25 +208,3 @@
                            ;; disable the middleware that normally converts `LocalTime` to `Strings` so we can verify
                            ;; our driver is actually doing the right thing
                            :middleware {:format-rows? false}))))))))))
-
-(deftest determine-select-privilege
-  (mt/test-driver :mysql
-    (testing "Do we correctly determine SELECT privilege"
-      (let [db-name "privilege_test"
-            spec    (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
-        (doseq [statement [(format "DROP DATABASE IF EXISTS %s;" db-name)
-                           (format "CREATE DATABASE %s;" db-name)]]
-          (jdbc/execute! spec [statement] {:transaction? false}))
-        (let [details (mt/dbdef->connection-details :mysql :db {:database-name db-name})
-              spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
-          (mt/with-temp Database [db {:engine  :mysql
-                                      :details details}]
-            (doseq [statement ["drop table if exists `birds`;"
-                               "create table `birds` (`id` integer);"
-                               (format "grant all on `birds` to '%s';" (:user details))]]
-              (jdbc/execute! spec [statement]))
-            (is (#'sql-jdbc.sync/have-select-privilege? :mysql db {:table_name  "birds"
-                                                                   :table_schem db-name}))
-            (jdbc/execute! spec [(format "revoke all on `birds` from %s;" (:user details))])
-            (is (not (#'sql-jdbc.sync/have-select-privilege? :mysql db {:table_name  "birds"
-                                                                        :table_schem db-name})))))))))

@@ -10,9 +10,7 @@
              [query-processor-test :as qp.test]
              [test :as mt]
              [util :as u]]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.util :as driver.u]
             [metabase.models
@@ -204,19 +202,3 @@
                                  :fk-field-id  (data/id :venues :category_id)
                                  :fields       :none}]}))))
         "Correct HoneySQL form should be generated")))
-
-(deftest determine-select-privilege
-  (mt/test-driver :oracle
-    (testing "Do we correctly determine SELECT privilege"
-      (let [details  (:details (data/db))
-            spec     (sql-jdbc.conn/connection-details->spec :oracle details)]
-        (u/ignore-exceptions
-          (jdbc/execute! spec [(format "drop table privileges_test")]))
-        (doseq [statement [(format "create table privileges_test (id int)")
-                           (format "grant all privileges on privileges_test to %s" (:user details))]]
-          (jdbc/execute! spec [statement]))
-        (is (#'sql-jdbc.sync/have-select-privilege? :oracle (mt/db) {:table_name  "birds"
-                                                                     :table_schem "CAM"}))
-        (jdbc/execute! spec [(format "revoke select on privileges_test from %s" (:user details))])
-        (is (not (#'sql-jdbc.sync/have-select-privilege? :oracle (mt/db) {:table_name  "birds"
-                                                                          :table_schem "CAM"})))))))
