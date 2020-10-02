@@ -72,8 +72,7 @@
 
 (deftest test-ssh-connection
   (testing "Gets an error when it can't connect to oracle via ssh tunnel"
-    (mt/test-driver
-        :oracle
+    (mt/test-driver :oracle
       (is (thrown?
            java.net.ConnectException
            (try
@@ -93,7 +92,7 @@
                             :tunnel-port    21212
                             :tunnel-user    "bogus"}]
                (tu.log/suppress-output
-                 (driver.u/can-connect-with-details? engine details :throw-exceptions)))
+                (driver.u/can-connect-with-details? engine details :throw-exceptions)))
              (catch Throwable e
                (loop [^Throwable e e]
                  (or (when (instance? java.net.ConnectException e)

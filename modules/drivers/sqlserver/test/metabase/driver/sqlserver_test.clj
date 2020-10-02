@@ -40,9 +40,12 @@
 
 (datasets/expect-with-driver :sqlserver
   [[1 a-gene]]
-  (-> (data/dataset metabase.driver.sqlserver-test/genetic-data
-        (data/run-mbql-query genetic-data))
-      :data :rows obj->json->obj)) ; convert to JSON + back so the Clob gets stringified
+  (-> genetic-data
+      data/run-mbql-query
+      data/dataset metabase.driver.sqlserver-test/genetic-data
+      :data
+      :rows
+      obj->json->obj)) ; convert to JSON + back so the Clob gets stringified
 
 (deftest connection-spec-test
   (testing "Test that additional connection string options work (#5296)"
@@ -123,12 +126,12 @@
    :params nil}
   ;; in order to actually see how things would work without the implicit max-results limit added we'll preprocess
   ;; the query, strip off the `:limit` that got added, and then feed it back to the QP where we left off
-  (let [preprocessed (-> (qp/query->preprocessed
-                          (data/mbql-query venues
-                            {:source-query {:source-table $$venues
-                                            :fields       [$name]
-                                            :order-by     [[:asc $id]]}
-                             :order-by     [[:asc $id]]}))
+  (let [preprocessed (-> (data/mbql-query venues
+                           {:source-query {:source-table $$venues
+                                           :fields       [$name]
+                                           :order-by     [[:asc $id]]}
+                            :order-by     [[:asc $id]]})
+                         qp/query->preprocessed
                          (m/dissoc-in [:query :limit]))]
     (qp.test-util/with-everything-store
       (driver/mbql->native :sqlserver preprocessed))))
