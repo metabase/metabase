@@ -49,7 +49,7 @@ const helperTextStrings = [
     args: [
       {
         name: t`column`,
-        description: t`The numeric column to get standard deviation of.`,
+        description: t`The numeric column to get the standard deviation of.`,
       },
     ],
   },
@@ -262,7 +262,7 @@ const helperTextStrings = [
   {
     name: "length",
     structure: "length(" + t`text` + ")",
-    description: t`Returns the number of characters in text.`,
+    description: t`Returns the number of characters in a text.`,
     example: "length([" + t`Comment` + "])",
     args: [
       {
@@ -336,7 +336,7 @@ const helperTextStrings = [
     args: [
       {
         name: t`column`,
-        description: t`The column or number to round to nearest integer.`,
+        description: t`The column or number to round to the nearest integer.`,
       },
     ],
   },
@@ -348,7 +348,7 @@ const helperTextStrings = [
     args: [
       {
         name: t`column`,
-        description: t`The column or number to return square root value of.`,
+        description: t`The column or number to return the square root value of.`,
       },
     ],
   },
@@ -477,7 +477,7 @@ const helperTextStrings = [
       { name: t`value1`, description: t`The column or value to return.` },
       {
         name: t`value2`,
-        description: t`If value1 is empty, value2 gets returned if its not empty, and so on.`,
+        description: t`If value1 is empty, value2 gets returned if it's not empty, and so on.`,
       },
     ],
   },

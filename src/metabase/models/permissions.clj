@@ -345,7 +345,7 @@
     (match [native schemas]
       [:write :all]  :ok
       [:write _]     (log/warn "Invalid DB permissions: if you have write access for native queries, you must have full data access.")
-      [:read  :none] (log/warn "Invalid DB permissions: if you have readonly native query access, you must also have data access.")
+      [:read  :none] (log/warn "Invalid DB permissions: if you have read-only native query access, you must also have data access.")
       [_      _]     :ok)))
 
 (def ^:private StrictDBPermissionsGraph
