@@ -161,6 +161,8 @@ describe("scenarios > question > notebook", () => {
       modal().within(() => {
         typeAndBlurUsingLabel("Name", "Q1");
         cy.findByText("Save").click();
+      });
+      modal().within(() => {
         cy.findByText("Not now").click();
       });
 
@@ -189,6 +191,8 @@ describe("scenarios > question > notebook", () => {
       modal().within(() => {
         typeAndBlurUsingLabel("Name", "Q2");
         cy.findByText("Save").click();
+      });
+      modal().within(() => {
         cy.findByText("Not now").click();
       });
 
@@ -221,6 +225,8 @@ describe("scenarios > question > notebook", () => {
       cy.get(".Modal").within(() => {
         typeAndBlurUsingLabel("Name", "Q3");
         cy.findByText("Save").click();
+      });
+      modal().within(() => {
         cy.findByText("Not now").click();
       });
 
