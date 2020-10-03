@@ -239,7 +239,7 @@
                            :creator_id    (mt/user->id :rasta)
                            :collection_id true
                            :can_write     false
-                           :param_values  nil
+                           :param_values  {}
                            :param_fields  {(keyword (str field-id)) {:id               field-id
                                                                      :table_id         table-id
                                                                      :display_name     display-name
