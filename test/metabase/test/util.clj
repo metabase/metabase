@@ -11,8 +11,9 @@
             [java-time :as t]
             [metabase
              [driver :as driver]
-             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric
-                             NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel Revision
+             [models :refer [Card Collection Dashboard DashboardCardSeries Database
+                             Dimension Field Metric NativeQuerySnippet Permissions
+                             PermissionsGroup Pulse PulseCard PulseChannel Revision
                              Segment Table TaskHistory User]]
              [task :as task]
              [util :as u]]
@@ -30,7 +31,9 @@
             [toucan.util.test :as tt])
   (:import java.util.concurrent.TimeoutException
            java.util.Locale
-           org.apache.log4j.Logger
+           org.apache.logging.log4j.core.config.Configurator
+           org.apache.logging.log4j.core.LoggerContext
+           org.apache.logging.log4j.LogManager
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 (defmethod assert-expr 're= [msg [_ pattern actual]]
@@ -410,27 +413,25 @@
 (def level-kwd->level
   "Conversion from a keyword log level to the Log4J constance mapped to that log level.
    Not intended for use outside of the `with-log-messages-for-level` macro."
-  {:error org.apache.log4j.Level/ERROR
-   :warn  org.apache.log4j.Level/WARN
-   :info  org.apache.log4j.Level/INFO
-   :debug org.apache.log4j.Level/DEBUG
-   :trace org.apache.log4j.Level/TRACE})
-
-(defn ^Logger metabase-logger
-  "Gets the root logger for all metabase namespaces. Not intended for use outside of the
-  `with-log-messages-for-level` macro."
-  []
-  (Logger/getLogger "metabase"))
+  {:error org.apache.logging.log4j.Level/ERROR
+   :warn  org.apache.logging.log4j.Level/WARN
+   :info  org.apache.logging.log4j.Level/INFO
+   :debug org.apache.logging.log4j.Level/DEBUG
+   :trace org.apache.logging.log4j.Level/TRACE})
 
 (defn do-with-log-messages-for-level [level thunk]
-  (let [original-level (.getLevel (metabase-logger))
-        new-level      (or (get level-kwd->level (keyword level))
-                           (throw (ex-info "Invalid log level" {:level level})))]
+  (let [new-level (get level-kwd->level (keyword level))
+        ctx       ^LoggerContext (LogManager/getContext true)
+        cfg       (.getConfiguration ctx)
+        mb-logger (.getLoggerConfig cfg "metabase")]
     (try
-      (.setLevel (metabase-logger) new-level)
+      (.setLevel mb-logger new-level)
+      (.updateLoggers ctx)
       (thunk)
       (finally
-        (.setLevel (metabase-logger) original-level)))))
+        ;; this is pretty heavyweight, but it causes log4j
+        ;; to completely dump its config and restore it
+        (Configurator/reconfigure)))))
 
 (defmacro with-log-level
   "Sets the log level (e.g. `:debug` or `:trace`) while executing `body`. Not thread safe! But good for debugging from

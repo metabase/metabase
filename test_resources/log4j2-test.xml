@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+  <Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+    </Console>
+  </Appenders>
+  <Loggers>
+    <Logger name="metabase" level="FATAL"/>
+    <Logger name="metabase.driver" level="INFO"/>
+    <Logger name="metabase.plugins" level="INFO"/>
+    <Logger name="metabase.test-setup" level="INFO"/>
+    <Logger name="metabase.test.data.datasets" level="INFO"/>
+    <Logger name="metabase.test.data" level="INFO"/>
+
+    <Root level="ERROR">
+      <AppenderRef ref="Console"/>
+    </Root>
+  </Loggers>
+</Configuration>

@@ -60,8 +60,8 @@
    [buddy/buddy-core "1.5.0"                                          ; various cryptograhpic functions
     :exclusions [commons-codec]]
    [buddy/buddy-sign "3.0.0"]                                         ; JSON Web Tokens; High-Level message signing library
-   [cheshire "5.8.1"]                                                 ; fast JSON encoding (used by Ring JSON middleware)
-   [clj-http "3.9.1"                                                  ; HTTP client
+   [cheshire "5.10.0"]                                                ; fast JSON encoding (used by Ring JSON middleware)
+   [clj-http "3.10.3"                                                 ; HTTP client
     :exclusions [commons-codec
                  commons-io
                  slingshot]]
@@ -82,7 +82,6 @@
    [com.draines/postal "2.0.3"]                                       ; SMTP library
    [com.google.guava/guava "28.2-jre"]                                ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
-   [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
    [commons-codec/commons-codec "1.14"]                               ; Apache Commons -- useful codec util fns
    [commons-io/commons-io "2.6"]                                      ; Apache Commons -- useful IO util fns
@@ -103,16 +102,18 @@
                  org.yaml/snakeyaml]]
    [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
    [kixi/stats "0.4.4" :exclusions [org.clojure/data.avl]]            ; Various statistic measures implemented as transducers
-   [log4j/log4j "1.2.17"                                              ; logging framework. TODO - consider upgrading to Log4j 2 -- see https://logging.apache.org/log4j/log4j-2.6.1/manual/migration.html
-    :exclusions [javax.mail/mail
-                 javax.jms/jms
-                 com.sun.jdmk/jmxtools
-                 com.sun.jmx/jmxri]]
+   [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
    [medley "1.3.0"]                                                   ; lightweight lib of useful functions
    [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.10"]                          ; helper methods for working with java.lang stuff
+   [org.apache.logging.log4j/log4j-api "2.13.3"]                      ; apache logging framework
+   [org.apache.logging.log4j/log4j-1.2-api "2.13.3"]                  ; add compatibility with log4j 1.2
+   [org.apache.logging.log4j/log4j-core "2.13.3"]                     ; apache logging framework
+   [org.apache.logging.log4j/log4j-jcl "2.13.3"]                      ; allows the commons-logging API to work with log4j 2
+   [org.apache.logging.log4j/log4j-liquibase "2.13.3"]                ; liquibase logging via log4j 2
+   [org.apache.logging.log4j/log4j-slf4j-impl "2.13.3"]               ; allows the slf4j API to work with log4j 2
    [org.apache.sshd/sshd-core "2.4.0"]                                ; ssh tunneling and test server
    [org.bouncycastle/bcprov-jdk15on "1.65"]                           ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
@@ -123,7 +124,6 @@
    [org.mariadb.jdbc/mariadb-java-client "2.6.2"]                     ; MySQL/MariaDB driver
    [org.postgresql/postgresql "42.2.8"]                               ; Postgres driver
    [org.slf4j/slf4j-api "1.7.30"]                                     ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
-   [org.slf4j/slf4j-log4j12 "1.7.30"]                                 ; ^^
    [org.tcrawley/dynapath "1.1.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
    [org.threeten/threeten-extra "1.5.0"]                               ; extra Java 8 java.time classes like DayOfMonth and Quarter
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
@@ -145,7 +145,7 @@
 
   :main ^:skip-aot metabase.core
 
-  ;; TODO - WHAT DOES THIS DO?
+  ;; Liquibase uses this manifest parameter to dynamically find extensions at startup (via classpath scanning, etc)
   :manifest
   {"Liquibase-Package"
    #= (eval
@@ -369,14 +369,13 @@
 
    :cloverage
    [:test-common
-    ;; Using Cam's fork of Cloverage until 1.2.1 of the main repo is out. Once that's released we can switch back.
     {:dependencies [[camsaul/cloverage "1.2.1.1" :exclusions [riddley]]]
      :plugins      [[camsaul/lein-cloverage  "1.2.1.1"]]
      :source-paths ^:replace ["src" "backend/mbql/src"]
      :test-paths   ^:replace ["test" "backend/mbql/test"]
      :cloverage    {:fail-threshold 69
                     :exclude-call
-                    [ ;; don't instrument logging forms, since they won't get executed as part of tests anyway
+                    [;; don't instrument logging forms, since they won't get executed as part of tests anyway
                      ;; log calls expand to these
                      clojure.tools.logging/logf
                      clojure.tools.logging/logp
