@@ -420,7 +420,8 @@
    :trace org.apache.logging.log4j.Level/TRACE})
 
 (defn do-with-log-messages-for-level [level thunk]
-  (let [new-level (get level-kwd->level (keyword level))
+  (let [new-level (or (get level-kwd->level (keyword level))
+                      (throw (ex-info "Invalid log level" {:level level})))
         ctx       ^LoggerContext (LogManager/getContext true)
         cfg       (.getConfiguration ctx)
         mb-logger (.getLoggerConfig cfg "metabase")]
