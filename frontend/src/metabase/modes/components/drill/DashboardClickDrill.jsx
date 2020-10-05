@@ -1,6 +1,4 @@
 /* @flow weak */
-
-import { push } from "react-router-redux";
 import { getIn } from "icepick";
 import _ from "underscore";
 
@@ -51,9 +49,12 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
           renderLinkURLForClick(clickBehavior.linkTemplate || "", data),
       };
     } else if (linkType === "dashboard") {
-      const pathname = `/dashboard/${targetId}`;
-      const query = getQueryParams(parameterMapping, data);
-      behavior = { action: () => push({ pathname, query }) };
+      const url = new URL(`/dashboard/${targetId}`, location.href);
+      Object.entries(getQueryParams(parameterMapping, data)).forEach(([k, v]) =>
+        url.searchParams.append(k, v),
+      );
+
+      behavior = { url: () => url.toString() };
     } else if (linkType === "question" && extraData && extraData.questions) {
       let targetQuestion = new Question(
         extraData.questions[targetId],
@@ -75,7 +76,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       }
 
       const url = targetQuestion.getUrlWithParameters();
-      behavior = { action: () => push(url) };
+      behavior = { url: () => url };
     }
   }
 
