@@ -358,7 +358,7 @@
 ;; `LocalTime`s e.g. `-01:00:00` or `25:00:00`.
 ;;
 ;; There is currently no way to tell whether the column is the result of a `timediff()` call (i.e., a duration) or a
-;; normal `LocalTime` -- JDBC doesn't have interval/duration type enums.x `java.time.LocalTime`only accepts values of
+;; normal `LocalTime` -- JDBC doesn't have interval/duration type enums. `java.time.LocalTime`only accepts values of
 ;; hour between 0 and 23 (inclusive). The MariaDB JDBC driver's implementations of `(.getObject rs i
 ;; java.time.LocalTime)` will throw Exceptions theses cases.
 ;;
