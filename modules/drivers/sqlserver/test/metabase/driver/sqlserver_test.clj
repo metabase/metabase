@@ -40,7 +40,7 @@
 
 (datasets/expect-with-driver :sqlserver
   [[1 a-gene]]
-  (-> (data/dataset metabase.driver.sqlserver-test/genetic-data xs(data/run-mbql-query genetic-data))
+  (-> (data/dataset metabase.driver.sqlserver-test/genetic-data (data/run-mbql-query genetic-data))
       :data
       :rows
       obj->json->obj)) ; convert to JSON + back so the Clob gets stringified
