@@ -26,7 +26,7 @@
 
 (defmethod driver/db-start-of-week :hive-like
   [_]
-  :monday)
+  :sunday)
 
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :hive-like
   [driver]
