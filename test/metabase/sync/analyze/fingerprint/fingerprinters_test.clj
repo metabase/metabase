@@ -154,12 +154,13 @@
                                              :avg (s/eq 2.03)}}}
                      (db/select-one-field :fingerprint Field :id (mt/id :venues :price))))))))
 
-(deftest snif-json-test
+(deftest valid-serialized-json?-test
   (testing "recognizes substrings of json"
     (let [partial-json (fn [x]
                          (let [json (json/generate-string x)]
                            (subs json 0 (/ (count json) 2))))]
-      (is (#'f/snif-json (partial-json [1 2 3])))
-      (is (#'f/snif-json (partial-json {:a 1 :b 2})))
-      (is (#'f/snif-json (partial-json [{:a 2}])))
-      (is (not (#'f/snif-json "bob"))))))
+      (is (#'f/valid-serialized-json? (partial-json [1 2 3])))
+      (is (#'f/valid-serialized-json? (partial-json {:a 1 :b 2})))
+      (is (#'f/valid-serialized-json? (partial-json [{:a 2}])))
+      (is (not (#'f/valid-serialized-json? "bob")))
+      (is (not (#'f/valid-serialized-json? "[bob]"))))))

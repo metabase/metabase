@@ -231,21 +231,13 @@
   issues when syncing."
   1234)
 
-(defn- snif-json
-  "If we suspect we have a partial string then we attempt heuristics to determine if we might have json. Its not
-  important to be exact here so good approximation is fine."
-  [s]
-  (let [json-starts ["[" "{"]]
-    (some #(str/starts-with? s %) json-starts)))
-
 (defn- valid-serialized-json?
-  "Is x a serialized JSON dictionary or array."
+  "Is x a serialized JSON dictionary or array. Uses a regex to search for a leading [ or {. In the case of a leading [,
+  expects not a alpha character after to prevent matching tokens like [prod] as json."
   [x]
   (u/ignore-exceptions
     (when (and x (string? x))
-      (if (= (.length ^String x) truncation-size)
-        (snif-json x)
-        ((some-fn map? sequential?) (json/parse-string x))))))
+      (re-matches #"^(?:\[[^a-zA-Z]|\{).*" x))))
 
 (deffingerprinter :type/Text
   ((map str) ; we cast to str to support `field-literal` type overwriting:
