@@ -60,7 +60,7 @@
                               (update count-info :updated-fingerprints inc))))
                         (empty-stats-map (count fingerprints))
                         (map vector fields fingerprints))))
-             (metadata-queries/table-rows-sample table fields f/truncation-size)))
+             (metadata-queries/table-rows-sample table fields {:truncation-size f/truncation-size})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
