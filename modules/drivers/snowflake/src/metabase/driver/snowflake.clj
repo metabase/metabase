@@ -30,13 +30,6 @@
            [java.time OffsetDateTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
 
-(defmethod driver/can-connect? :snowflake
-  [driver {:keys [db], :as details}]
-  (and ((get-method driver/can-connect? :sql-jdbc) driver details)
-       (let [spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)
-             sql  (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
-         (jdbc/query spec sql)
-         true)))
 (driver/register! :snowflake, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
 
 (defmethod driver/humanize-connection-error-message :snowflake
@@ -290,6 +283,14 @@
 (defmethod sql-jdbc.sync/excluded-schemas :snowflake
   [_]
   #{"INFORMATION_SCHEMA"})
+
+(defmethod driver/can-connect? :snowflake
+  [driver {:keys [db], :as details}]
+  (and ((get-method driver/can-connect? :sql-jdbc) driver details)
+       (let [spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)
+             sql  (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
+         (jdbc/query spec sql)
+         true)))
 
 (defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
   [_ t]
