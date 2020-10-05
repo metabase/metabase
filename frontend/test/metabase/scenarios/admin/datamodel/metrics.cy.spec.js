@@ -228,7 +228,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
       cy.log("**Refresh the page and assert**");
       cy.reload();
-      cy.url().should("be", "/admin/datamodel/metrics");
+      cy.location("pathname").should("eq", "/admin/datamodel/metrics");
       cy.findByText(
         'Unexpected input given to normalize. Expected type to be "object", found "string".',
       ).should("not.exist");
