@@ -10,7 +10,9 @@
              [models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Dimension Field FieldValues]]
              [test :as mt]
              [util :as u]]
-            [metabase.api.public :as public-api]
+            [metabase.api
+             [dashboard-test :as dashboard-api-test]
+             [public :as public-api]]
             [metabase.models
              [permissions :as perms]
              [permissions-group :as group]]
@@ -960,26 +962,43 @@
 
 
 (deftest api-endpoint-should-return-same-results-as-function
-  (is (= [10 "Fred 62"]
-         (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+  (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+    (is (= [10 "Fred 62"]
            (http/client :get 200 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
                         :value "10")))))
 
 (deftest field-remapping-shouldn-t-work-if-card-doesn-t-reference-the-field-in-question
-  (is (= "An error occurred."
-         (with-sharing-enabled-and-temp-dashcard-referencing :venues :price [dashboard]
+  (with-sharing-enabled-and-temp-dashcard-referencing :venues :price [dashboard]
+    (is (= "An error occurred."
            (http/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
                         :value "10")))))
 
 (deftest remapping-or-if-the-remapping-field-isn-t-allowed-to-be-used-with-the-other-field
-  (is (= "An error occurred."
-         (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+  (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+    (is (= "An error occurred."
            (http/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :price))
                         :value "10")))))
 
 (deftest remapping-or-if-public-sharing-is-disabled
-  (is (= "An error occurred."
-         (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
-           (mt/with-temporary-setting-values [enable-public-sharing false]
+  (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+    (mt/with-temporary-setting-values [enable-public-sharing false]
+      (is (= "An error occurred."
              (http/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
                           :value "10"))))))
+
+;;; --------------------------------------------- Chain filter endpoints ---------------------------------------------
+
+(deftest chain-filter-test
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (dashboard-api-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+      (let [uuid (str (UUID/randomUUID))]
+        (is (= true
+               (db/update! Dashboard (u/get-id dashboard) :public_uuid uuid)))
+        (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
+          (let [url (format "public/dashboard/%s/params/%s/values" uuid (:category-id param-keys))]
+            (is (= [2 3 4 5 6]
+                   (take 5 (http/client :get 200 url))))))
+        (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:prefix"
+          (let [url (format "public/dashboard/%s/params/%s/search/s" uuid (:category-name param-keys))]
+            (is (= ["Scandinavian" "Seafood" "South Pacific"]
+                   (take 3 (http/client :get 200 url))))))))))

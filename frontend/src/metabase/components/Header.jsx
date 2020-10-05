@@ -2,7 +2,6 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import InputBlurChange from "metabase/components/InputBlurChange";
 import HeaderModal from "metabase/components/HeaderModal";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import EditBar from "metabase/components/EditBar";
@@ -87,40 +86,20 @@ export default class Header extends Component {
   render() {
     const { item } = this.props;
     let titleAndDescription;
-    if (this.props.isEditingInfo) {
+    if (this.props.item && this.props.item.id != null) {
       titleAndDescription = (
-        <div className="Header-title flex flex-column flex-full bordered rounded my1">
-          <InputBlurChange
-            className="AdminInput text-bold border-bottom rounded-top h3"
-            type="text"
-            value={this.props.item.name || ""}
-            onChange={this.setItemAttribute.bind(this, "name")}
-          />
-          <InputBlurChange
-            className="AdminInput rounded-bottom h4"
-            type="text"
-            value={this.props.item.description || ""}
-            onChange={this.setItemAttribute.bind(this, "description")}
-            placeholder={t`No description yet`}
-          />
-        </div>
+        <TitleAndDescription
+          title={this.props.item.name}
+          description={this.props.item.description}
+        />
       );
     } else {
-      if (this.props.item && this.props.item.id != null) {
-        titleAndDescription = (
-          <TitleAndDescription
-            title={this.props.item.name}
-            description={this.props.item.description}
-          />
-        );
-      } else {
-        titleAndDescription = (
-          <TitleAndDescription
-            title={t`New ${this.props.objectType}`}
-            description={this.props.item.description}
-          />
-        );
-      }
+      titleAndDescription = (
+        <TitleAndDescription
+          title={t`New ${this.props.objectType}`}
+          description={this.props.item.description}
+        />
+      );
     }
 
     let attribution;
@@ -175,7 +154,10 @@ export default class Header extends Component {
             )}
           </div>
 
-          <div className="flex align-center flex-align-right">
+          <div
+            className="flex align-center flex-align-right"
+            style={{ color: "#4C5773" }}
+          >
             {headerButtons}
           </div>
         </div>

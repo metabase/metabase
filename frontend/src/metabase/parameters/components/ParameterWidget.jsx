@@ -1,16 +1,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
 import ParameterValueWidget from "./ParameterValueWidget";
 import Icon from "metabase/components/Icon";
+import { color } from "metabase/lib/colors";
 
 import S from "./ParameterWidget.css";
 import cx from "classnames";
-import _ from "underscore";
 
 import FieldSet from "../../components/FieldSet";
-
-import { KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 
 export default class ParameterWidget extends Component {
   state = {
@@ -37,6 +34,8 @@ export default class ParameterWidget extends Component {
     return (
       <ParameterValueWidget
         parameter={parameter}
+        parameters={this.props.parameters}
+        dashboard={this.props.dashboard}
         name={name}
         value={value}
         setValue={setValue}
@@ -57,19 +56,15 @@ export default class ParameterWidget extends Component {
     const {
       className,
       parameter,
-      parameters,
       isEditing,
       isFullscreen,
       editingParameter,
       setEditingParameter,
-      setName,
       setValue,
-      setDefaultValue,
-      remove,
       children,
+      dragHandle,
     } = this.props;
 
-    const isEditingDashboard = isEditing;
     const isEditingParameter =
       editingParameter && editingParameter.id === parameter.id;
 
@@ -97,106 +92,32 @@ export default class ParameterWidget extends Component {
       );
     };
 
-    const renderEditFieldNameUI = () => {
-      return (
-        <FieldSet
-          legend=""
-          noPadding={true}
-          className={cx(className, S.container)}
-        >
-          <input
-            type="text"
-            className={cx(S.nameInput, {
-              "border-error": _.any(
-                parameters,
-                p => p.name === parameter.name && p.id !== parameter.id,
-              ),
-            })}
-            value={this.state.editingNameValue}
-            onChange={e => this.setState({ editingNameValue: e.target.value })}
-            onBlur={() => {
-              setName(this.state.editingNameValue);
-              this.setState({
-                isEditingName: false,
-                editingNameValue: undefined,
-              });
-            }}
-            onKeyUp={e => {
-              if (e.keyCode === KEYCODE_ESCAPE || e.keyCode === KEYCODE_ENTER) {
-                e.target.blur();
-              }
-            }}
-            autoFocus
-          />
-          {children}
-        </FieldSet>
-      );
-    };
-
-    const renderSetDefaultFieldValueUI = () => {
-      const editNameButton = (
-        <span className={S.editNameIconContainer}>
-          <Icon
-            name="pencil"
-            size={12}
-            className="text-brand cursor-pointer"
-            onClick={() => {
-              this.setState({
-                isEditingName: true,
-                editingNameValue: parameter.name,
-              });
-            }}
-          />
-        </span>
-      );
-
-      const legend = (
-        <span>
-          {parameter.name} {editNameButton}
-        </span>
-      );
-
-      return (
-        <FieldSet
-          legend={legend}
-          noPadding={true}
-          className={cx(className, S.container)}
-        >
-          {this.renderPopover(
-            parameter.default,
-            value => setDefaultValue(value),
-            parameter.name,
-            isFullscreen,
-          )}
-          {children}
-        </FieldSet>
-      );
-    };
-
-    const renderFieldEditingButtons = () => {
-      return (
-        <FieldSet
-          legend={parameter.name}
-          noPadding={true}
-          className={cx(className, S.container)}
-        >
-          <div className={cx(S.parameter, S.parameterButtons)}>
-            <div
-              className={S.editButton}
-              onClick={() => setEditingParameter(parameter.id)}
-            >
-              <Icon name="pencil" />
-              <span className="ml1">{t`Edit`}</span>
-            </div>
-            <div className={S.removeButton} onClick={() => remove()}>
-              <Icon name="close" />
-              <span className="ml1">{t`Remove`}</span>
-            </div>
-          </div>
-          {children}
-        </FieldSet>
-      );
-    };
+    const renderEditing = () => (
+      <div
+        className={cx(
+          className,
+          "flex align-center bordered rounded cursor-pointer text-bold mr1 mb1",
+          {
+            "bg-brand text-white": isEditingParameter,
+            "text-brand-hover bg-white": !isEditingParameter,
+          },
+        )}
+        onClick={() =>
+          setEditingParameter(isEditingParameter ? null : parameter.id)
+        }
+        style={{
+          padding: 8,
+          width: 170,
+          borderColor: isEditingParameter && color("brand"),
+        }}
+      >
+        <div className="mr1" onClick={e => e.stopPropagation()}>
+          {dragHandle}
+        </div>
+        {parameter.name}
+        <Icon className="flex-align-right" name="gear" />
+      </div>
+    );
 
     if (isFullscreen) {
       if (parameter.value != null) {
@@ -206,16 +127,10 @@ export default class ParameterWidget extends Component {
       } else {
         return <span className="hide" />;
       }
-    } else if (!isEditingDashboard || !setEditingParameter) {
-      return renderFieldInNormalMode();
-    } else if (isEditingParameter) {
-      if (this.state.isEditingName) {
-        return renderEditFieldNameUI();
-      } else {
-        return renderSetDefaultFieldValueUI();
-      }
+    } else if (isEditing && setEditingParameter) {
+      return renderEditing();
     } else {
-      return renderFieldEditingButtons();
+      return renderFieldInNormalMode();
     }
   }
 }

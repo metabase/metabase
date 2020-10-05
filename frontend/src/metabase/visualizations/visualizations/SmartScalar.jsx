@@ -51,6 +51,7 @@ export default class Smart extends React.Component {
       title: t`Switch positive / negative colors?`,
       widget: "toggle",
     },
+    click_behavior: {},
   };
 
   static isSensible({ insights }) {
@@ -150,6 +151,11 @@ export default class Smart extends React.Component {
           column: cols[dimensionIndex],
         },
       ],
+      data: rows[rows.length - 1].map((value, index) => ({
+        value,
+        col: cols[index],
+      })),
+      settings,
     };
 
     const isClickable = visualizationIsClickable(clicked);

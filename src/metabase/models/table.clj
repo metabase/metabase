@@ -214,8 +214,9 @@
   [table]
   (Database (:db_id table)))
 
-(defn table-id->database-id
+(def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
-  [table-id]
-  {:pre [(integer? table-id)]}
-  (db/select-one-field :db_id Table, :id table-id))
+  (memoize
+   (fn [table-id]
+     {:pre [(integer? table-id)]}
+     (db/select-one-field :db_id Table, :id table-id))))

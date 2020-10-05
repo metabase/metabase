@@ -245,7 +245,8 @@
                    (mt/boolean-ids-and-timestamps ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id))))))[]))
 
       (testing "should be able to unset just the human-readable values"
-        (mt/with-temp FieldValues [{field-value-id :id} {:values                (range 1 5), :field_id field-id
+        (mt/with-temp FieldValues [{field-value-id :id} {:values                (range 1 5)
+                                                         :field_id              field-id
                                                          :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
           (testing "before updating values"
             (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}

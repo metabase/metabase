@@ -186,6 +186,21 @@ describe("formatting", () => {
         ),
       ).toEqual(true);
     });
+    it("should not return a component for links in jsx + rich mode if there's click behavior", () => {
+      const formatted = formatValue("http://metabase.com/", {
+        jsx: true,
+        rich: true,
+        click_behavior: {
+          linkTemplate: "foo",
+          linkTextTemplate: "foo",
+          linkType: "url",
+          type: "link",
+        },
+        clicked: {},
+      });
+      expect(isElementOfType(formatted, ExternalLink)).toEqual(false);
+      expect(formatted).toEqual("foo");
+    });
     it("should return a component for email addresses in jsx + rich mode", () => {
       expect(
         isElementOfType(
