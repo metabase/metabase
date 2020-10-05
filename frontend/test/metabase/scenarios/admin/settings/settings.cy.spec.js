@@ -34,6 +34,18 @@ describe("scenarios > admin > settings", () => {
     cy.findByText("Save changes");
   });
 
+  it.skip("shouldn't automatically save settings on page load (metabase#13061)", () => {
+    cy.server();
+    cy.route("PUT", "api/setting/site-url").as("save");
+
+    cy.visit("/admin/settings/general");
+    cy.wait("@save");
+    cy.log("**Bug noticed in v0.36.2**");
+    // Overriding default timeout of 4000ms
+    // We want to make sure the element doesn't already disappear when Cypress tries to assert
+    cy.get(".SaveStatus", { timeout: 1000 }).should("not.exist");
+  });
+
   it("should save a setting", () => {
     cy.server();
     cy.route("PUT", "**/admin-email").as("saveSettings");
