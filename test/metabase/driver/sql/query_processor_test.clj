@@ -208,4 +208,4 @@
       (with-redefs [driver/db-start-of-week (constantly :monday)
                     setting/get-keyword     (constantly :monday)]
         (is (= (hsql/call :week :created_at)
-               (sql.qp/adjust-start-of-week :h2 (partial hsql/call :week) :created_at))))))
+               (sql.qp/adjust-start-of-week :h2 (partial hsql/call :week) :created_at)))))))
