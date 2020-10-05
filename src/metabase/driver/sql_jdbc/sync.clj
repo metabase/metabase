@@ -151,7 +151,7 @@
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, db-or-id-or-spec, ^DatabaseMetaData metadata, & [db-name-or-nil]]
   (filter (every-pred (partial have-select-privilege? driver db-or-id-or-spec)
-                      (comp (complement (contains? (excluded-schemas driver))) :table_schem))
+                      (comp not (partial contains? (excluded-schemas driver)) :table_schem))
           (db-tables metadata nil db-name-or-nil)))
 
 (defn get-catalogs
