@@ -240,7 +240,7 @@
       (qp.store/fetch-and-store-database! (u/get-id database))
       {:tables (set (for [table (jdbc/query
                                  (sql-jdbc.conn/db->pooled-connection-spec database)
-                                 (format "SHOW TABLES IN DATABASE \"%s\"" db-name))
+                                 (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name))
                           :when (and (not (contains? excluded-schemas (:schema_name table)))
                                      (sql-jdbc.sync/have-select-privilege? driver database
                                                                            {:table_name  (:name table)
