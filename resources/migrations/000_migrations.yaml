@@ -7654,21 +7654,6 @@ databaseChangeLog:
             constraintName: fk_view_log_ref_user_id
             onDelete: CASCADE
 
-  - changeSet:
-       id: 267
-       author: sb
-       comment: Added 0.37.0
-       changes:
-         -  addColumn:
-              tableName: metabase_database
-              columns:
-                - column:
-                    name: start_of_week
-                    type: varchar(32)
-                    defaultValue: sunday
-                    constraints:
-                      nullable: false
-
 # changesets 268-272 allow for handling user account emails in lowercase (GH issue 3047)
   - changeSet:
       id: 268
