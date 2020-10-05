@@ -92,13 +92,11 @@
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (add-schedules (-> (db-details)
-                                  (update :start_of_week name)
                                   (dissoc :details)))
                ((mt/user->client :rasta) :get 200 (format "database/%d" (mt/id))))))
 
       (testing "Superusers should see DB details"
-        (is (= (add-schedules (-> (db-details)
-                                  (update :start_of_week name)))
+        (is (= (add-schedules (db-details))
                ((mt/user->client :crowberto) :get 200 (format "database/%d" (mt/id)))))))
 
     (mt/with-temp* [Database [db {:name "My DB", :engine ::test-driver}]
@@ -214,7 +212,6 @@
     (is (= (merge (dissoc (mt/object-defaults Database) :details)
                   (select-keys (mt/db) [:created_at :id :updated_at :timezone])
                   {:engine        "h2"
-                   :start_of_week "sunday"
                    :name          "test-data"
                    :features      (map u/qualified-name (driver.u/features :h2))
                    :tables        [(merge
