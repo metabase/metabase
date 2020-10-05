@@ -103,16 +103,6 @@
     (mapv #(select-keys % [:table_name :remarks :table_schem])
           (jdbc/result-set-seq rs))))
 
-(defmulti accessible-tables-for-user
-  "Return a predicate which checks if user `user` has SELECT privilege for a given table"
-  {:arglists '([driver database user])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod accessible-tables-for-user :sql-jdbc
-  [_ _ _]
-  (constantly true))
-
 (defn- simple-select-probe
   "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata."
   [driver schema table]
@@ -161,7 +151,7 @@
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, db-or-id-or-spec, ^DatabaseMetaData metadata, & [db-name-or-nil]]
   (filter (every-pred (partial have-select-privilege? driver db-or-id-or-spec)
-                      (comp (complement (partial contains? (excluded-schemas driver))) :table_schem))
+                      (comp (complement (excluded-schemas driver)) :table_schem))
           (db-tables metadata nil db-name-or-nil)))
 
 (defn get-catalogs
