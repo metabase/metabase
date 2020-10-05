@@ -223,12 +223,6 @@
         :q1  q1
         :q3  q3)))))
 
-(def truncation-size
-  "The maximum size of :type/Text to be selected from the database in `table-rows-sample`. In practice we see large
-  text blobs and want to balance taking enough for distinct counts and but not so much that we risk out of memory
-  issues when syncing."
-  1234)
-
 (defn- valid-serialized-json?
   "Is x a serialized JSON dictionary or array. Hueristically recognize maps and arrays. Uses the following strategies:
   - leading character {: assume valid JSON

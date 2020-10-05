@@ -89,7 +89,7 @@
   inferring special types and what-not; we don't want to scan millions of values at any rate."
   10000)
 
-(def table-rows-sample-options
+(def TableRowsSampleOptions
   "Schema for `table-rows-sample` options"
   (s/maybe {(s/optional-key :truncation-size) s/Int}))
 
@@ -99,7 +99,7 @@
   ([table :- si/TableInstance, fields :- [si/FieldInstance]]
    (table-rows-sample table fields nil))
   ([table :- si/TableInstance, fields :- [si/FieldInstance]
-    {:keys [truncation-size] :as _opts} :- table-rows-sample-options]
+    {:keys [truncation-size] :as _opts} :- TableRowsSampleOptions]
    (let [text-fields        (filter (comp #{:type/Text} :base_type) fields)
          field->expressions (when truncation-size
                               (into {} (for [field text-fields]

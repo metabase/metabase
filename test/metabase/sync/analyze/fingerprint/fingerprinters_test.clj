@@ -115,7 +115,7 @@
          (transduce identity
                     (f/fingerprinter (field/map->FieldInstance {:base_type :type/Text}))
                     ["metabase" "more" "like" "metabae" "[1, 2, 3]"])))
-  (let [truncated-json (subs (json/generate-string (vec (range 1234))) 0 f/truncation-size)]
+  (let [truncated-json (subs (json/generate-string (vec (range 50))) 0 30)]
     (is (= {:global {:distinct-count 5
                      :nil%           0.0}
             :type   {:type/Text {:percent-json   0.2

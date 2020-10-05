@@ -250,7 +250,7 @@
     (doseq [size [4 8 10]]
       (let [table (Table (mt/id :categories))
             field (Field (mt/id :categories :name))]
-        (with-redefs [fingerprinters/truncation-size size]
+        (with-redefs [fingerprint/truncation-size size]
           (#'fingerprint/fingerprint-table! table [field])
           (let [field' (db/select-one [Field :fingerprint] :id (u/id field))
                 fingerprinted-size (get-in field' [:fingerprint :type :type/Text :average-length])]
