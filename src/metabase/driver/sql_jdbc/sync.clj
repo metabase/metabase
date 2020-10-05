@@ -132,6 +132,11 @@
                                   (simple-select-probe driver table_schem table_name)))
     table))
 
+(defn- all-schemas
+  [^DatabaseMetaData metadata]
+  (with-open [rs (.getSchemas metadata)]
+    (set (map :table_schem (jdbc/result-set-seq rs)))))
+
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
   list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
@@ -139,12 +144,10 @@
   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds
   vs 60)."
   [driver, db-or-id-or-spec, ^DatabaseMetaData metadata, & [db-name-or-nil]]
-  (with-open [rs (.getSchemas metadata)]
-    (let [all-schemas (set (map :table_schem (jdbc/result-set-seq rs)))]
-      (->> (set/difference all-schemas (excluded-schemas driver))
-           (mapcat (fn [schema]
-                     (db-tables metadata schema db-name-or-nil)))
-           (filter (partial have-select-privilege? driver db-or-id-or-spec))))))
+  (->> (set/difference (all-schemas metadata) (excluded-schemas driver))
+       (mapcat (fn [schema]
+                 (db-tables metadata schema db-name-or-nil)))
+       (filter (partial have-select-privilege? driver db-or-id-or-spec))))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*

@@ -119,3 +119,13 @@
                   :fields
                   (filter :special-type)
                   (map (juxt (comp str/lower-case :name) :special-type))))))))
+
+(deftest fast-active-tables-test
+  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+    ;; We have to mock this to make it work with all DBs
+    (with-redefs [sql-jdbc.sync/all-schemas (constantly #{"PUBLIC"})]
+      (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
+             (->> metadata
+                  (sql-jdbc.sync/fast-active-tables (or driver/*driver* :h2) (mt/db))
+                  (map :table_name)
+                  sort))))))
