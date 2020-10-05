@@ -162,5 +162,6 @@
       (is (#'f/valid-serialized-json? (partial-json [1 2 3])))
       (is (#'f/valid-serialized-json? (partial-json {:a 1 :b 2})))
       (is (#'f/valid-serialized-json? (partial-json [{:a 2}])))
+      (is (#'f/valid-serialized-json? (partial-json [true true])))
       (is (not (#'f/valid-serialized-json? "bob")))
       (is (not (#'f/valid-serialized-json? "[bob]"))))))
