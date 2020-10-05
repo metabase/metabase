@@ -41,7 +41,7 @@
                   ["BCD Tofu House"]]
         table (Table (mt/id :venues))
         fields [(Field (mt/id :venues :name))]
-        fetch! #(->> (metadata-queries/table-rows-sample table fields {:truncation-size %})
+        fetch! #(->> (metadata-queries/table-rows-sample table fields (when % {:truncation-size %}))
                      ;; since order is not guaranteed do some sorting here so we always get the same results
                      (sort-by first)
                      (take 5))]
