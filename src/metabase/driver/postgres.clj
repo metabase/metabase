@@ -281,8 +281,10 @@
   [_ database-type _]
   ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON special-type
   (case database-type
-    "json" :type/SerializedJSON
-    "inet" :type/IPAddress
+    "json"  :type/SerializedJSON
+    "jsonb" :type/SerializedJSON
+    "xml"   :type/XML
+    "inet"  :type/IPAddress
     nil))
 
 (def ^:private ssl-params
