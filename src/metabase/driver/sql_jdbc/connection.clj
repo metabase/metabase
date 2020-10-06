@@ -87,7 +87,9 @@
   (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
         spec                (connection-details->spec driver details-with-tunnel)
         properties          (data-warehouse-connection-pool-properties driver)]
-    (connection-pool/connection-pool-spec spec properties)))
+    (connection-pool/connection-pool-spec spec (merge properties
+                                                      (when (ssh/use-ssh-tunnel? details)
+                                                        {"idleConnectionTestPeriod" 120})))))
 
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color 'red (trs "Closing old connection pool for database {0} ..." database-id)))
