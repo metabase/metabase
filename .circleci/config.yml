@@ -221,7 +221,7 @@ commands:
       - run:
           name: << parameters.command-name >>
           command: yarn << parameters.command >>
-          no_output_timeout: 5m
+          no_output_timeout: 10m
 
   wait-for-port:
     parameters:
@@ -337,7 +337,11 @@ jobs:
           name: Install gettext
           command: sudo apt-get install gettext
       - run:
-          name: Verify i18n .po files
+          name: Check i18n tags/make sure template can be built
+          command: ./bin/i18n/update-translation-template
+          no_output_timeout: 2m
+      - run:
+          name: Verify i18n translations (.po files)
           command: ./bin/i18n/build-translation-resources
           no_output_timeout: 2m
 
