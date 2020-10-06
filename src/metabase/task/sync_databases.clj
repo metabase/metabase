@@ -37,7 +37,7 @@
 ;; The DisallowConcurrentExecution on the two defrecords below attaches an annotation to the generated class that will
 ;; constrain the job execution to only be one at a time. Other triggers wanting the job to run will misfire.
 
-(defn sync-and-analyze-database
+(defn- sync-and-analyze-database!
   "The sync and analyze database job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
@@ -49,12 +49,12 @@
       (sync-metadata/sync-db-metadata! database)
       ;; only run analysis if this is a "full sync" database
       (when (:is_full_sync database)
-        (analyze/analyze-db! database)))) )
+        (analyze/analyze-db! database)))))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} SyncAndAnalyzeDatabase [job-context]
-  (sync-and-analyze-database job-context))
+  (sync-and-analyze-database! job-context))
 
-(defn update-field-values
+(defn- update-field-values!
   "The update field values job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
@@ -68,7 +68,7 @@
         (log/info (trs "Skipping update, automatic Field value updates are disabled for Database {0}." database-id))))))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} UpdateFieldValues [job-context]
-  (update-field-values job-context))
+  (update-field-values! job-context))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         TASK INFO AND GETTER FUNCTIONS                                         |
