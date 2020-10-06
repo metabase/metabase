@@ -150,7 +150,7 @@
 (deftest check-orphaned-jobs-removed-test
   (testing "jobs for orphaned databases are removed during sync run"
     (with-scheduler-setup
-      (doseq [sync-fn [sync-db/update-field-values #'sync-db/sync-and-analyze-database!]]
+      (doseq [sync-fn [#'sync-db/update-field-values! #'sync-db/sync-and-analyze-database!]]
         (testing (str sync-fn)
           (mt/with-temp Database [database {:engine :postgres}]
             (let [db-id (:id database)]
