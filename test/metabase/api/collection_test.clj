@@ -4,7 +4,8 @@
              [string :as str]
              [test :refer :all]]
             [metabase
-             [models :refer [Card Collection Dashboard NativeQuerySnippet PermissionsGroup PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient]]
+             [models :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet Permissions PermissionsGroup
+                             PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient]]
              [test :as mt]
              [util :as u]]
             [metabase.models
@@ -127,10 +128,31 @@
   (mt/with-non-admin-groups-no-root-collection-perms
     (let [collection-id-or-nil (when collection-or-id-or-nil
                                  (u/get-id collection-or-id-or-nil))]
-      (mt/with-temp* [Card       [{card-id :id}      {:name "Birthday Card", :collection_id collection-id-or-nil}]
-                      Dashboard  [{dashboard-id :id} {:name "Dine & Dashboard", :collection_id collection-id-or-nil}]
-                      Pulse      [{pulse-id :id}     {:name "Electro-Magnetic Pulse", :collection_id collection-id-or-nil}]]
-        (f {:card-id card-id, :dashboard-id dashboard-id, :pulse-id pulse-id})))))
+      (mt/with-temp* [Card       [{card-id :id}
+                                  {:name          "Birthday Card"
+                                   :collection_id collection-id-or-nil}]
+                      Dashboard  [{dashboard-id :id}
+                                  {:name          "Dine & Dashboard"
+                                   :collection_id collection-id-or-nil}]
+                      Pulse      [{pulse-id :id, :as pulse}
+                                  {:name          "Electro-Magnetic Pulse"
+                                   :collection_id collection-id-or-nil}]
+                      ;; this is a dashboard subscription
+                      DashboardCard [{dashboard-card-id :id}
+                                     {:dashboard_id dashboard-id
+                                      :card_id      card-id}]
+                      Pulse      [{dashboard-sub-pulse-id :id}
+                                  {:name          "Acme Products"
+                                   :collection_id collection-id-or-nil}]
+                      PulseCard  [{dashboard-sub-pulse-card-id :id}
+                                  {:card_id           card-id
+                                   :dashboard_card_id dashboard-card-id
+                                   :pulse_id          dashboard-sub-pulse-id}]]
+        (f {:card-id                         card-id
+            :dashboard-id                    dashboard-id
+            :pulse-id                        pulse-id
+            :dashboard-subscription-pulse-id dashboard-sub-pulse-id
+            :dashboard-sub-pulse-card-id     dashboard-sub-pulse-card-id})))))
 
 (defmacro ^:private with-some-children-of-collection {:style/indent 1} [collection-or-id-or-nil & body]
   `(do-with-some-children-of-collection
