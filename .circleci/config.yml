@@ -221,7 +221,7 @@ commands:
       - run:
           name: << parameters.command-name >>
           command: yarn << parameters.command >>
-          no_output_timeout: 5m
+          no_output_timeout: 10m
 
   wait-for-port:
     parameters:
