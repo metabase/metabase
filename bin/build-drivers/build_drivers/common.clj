@@ -47,10 +47,13 @@
   [driver]
   (filename (driver-target-directory driver) "uberjar" (driver-jar-name driver)))
 
+(def ^String driver-jar-destination-directory
+  (filename project-root-directory "resources" "modules"))
+
 (defn driver-jar-destination-path
   "e.g. \"/home/cam/metabase/resources/modules/redshift.metabase-driver.jar\""
   [driver]
-  (filename project-root-directory "resources" "modules" (driver-jar-name driver)))
+  (filename driver-jar-destination-directory (driver-jar-name driver)))
 
 (defn driver-checksum-filename
   "e.g. \"/home/cam/metabase/modules/drivers/redshift/target/checksum.txt\""

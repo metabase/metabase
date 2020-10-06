@@ -13,12 +13,6 @@
 (def ^:private step-indent (str/join (repeat 2 \space)))
 
 (defn- steps-indent []
-  #_(let [steps-count (count *steps*)]
-    (str/join
-     (concat (map (constantly "| ")
-                  (range (dec steps-count)))
-             (when (pos? steps-count)
-               "+-"))))
   (str/join (repeat (count *steps*) step-indent)))
 
 (defn safe-println [& args]
@@ -59,6 +53,12 @@
   (when-not (file-exists? filename)
     (throw (ex-info (format "File %s does not exist. %s" (pr-str filename) (or message "")) {:filename filename})))
   (str filename))
+
+(defn create-directory-unless-exists! [^String dir]
+  (when-not (exists? dir)
+    (step (format "Creating directory %s..." dir)
+      (.mkdirs (File. dir))))
+  dir)
 
 (defn delete-file!
   "Delete a file or directory if it exists."

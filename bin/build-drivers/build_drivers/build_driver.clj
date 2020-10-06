@@ -18,6 +18,7 @@
                   (u/assert-file-exists (c/driver-jar-build-path driver))
                   (c/driver-jar-destination-path driver))
     (u/delete-file! (c/driver-jar-destination-path driver))
+    (u/create-directory-unless-exists! c/driver-jar-destination-directory)
     (u/copy-file! (c/driver-jar-build-path driver)
                   (c/driver-jar-destination-path driver))))
 
