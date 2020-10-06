@@ -23,6 +23,7 @@
             [metabase.models
              [card :refer [Card]]
              [collection :as collection]
+             [dashboard-card :as dashboard-card :refer [DashboardCard]]
              [interface :as i]
              [permissions :as perms]
              [pulse-card :refer [PulseCard]]
@@ -97,30 +98,35 @@
 (def CardRef
   "Schema for the map we use to internally represent the fact that a Card is in a Notification and the details about its
   presence there."
-  (su/with-api-error-message {:id          su/IntGreaterThanZero
-                              :include_csv s/Bool
-                              :include_xls s/Bool}
-    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "id" "include_csv" "include_xls")))
+  (su/with-api-error-message {:id                su/IntGreaterThanZero
+                              :include_csv       s/Bool
+                              :include_xls       s/Bool
+                              :dashboard_card_id (s/maybe su/IntGreaterThanZero)}
+    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
 
 (def HybridPulseCard
   "This schema represents the cards that are included in a pulse. This is the data from the `PulseCard` and some
   additional information used by the UI to display it from `Card`. This is a superset of `CardRef` and is coercible to
   a `CardRef`"
   (su/with-api-error-message
-      (merge (:schema CardRef)
-             {:name          (s/maybe s/Str)
-              :description   (s/maybe s/Str)
-              :display       (s/maybe su/KeywordOrString)
-              :collection_id (s/maybe su/IntGreaterThanZero)})
+    (merge (:schema CardRef)
+           {:name               (s/maybe s/Str)
+            :description        (s/maybe s/Str)
+            :display            (s/maybe su/KeywordOrString)
+            :collection_id      (s/maybe su/IntGreaterThanZero)
+            :dashboard_id       (s/maybe su/IntGreaterThanZero)
+            :parameter_mappings (s/maybe [su/Map])})
     (deferred-tru "value must be a map with the following keys `({0})`"
-         (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"]))))
+      (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
+                      "dashboard_id" "parameter_mappings"]))))
 
 (def CoercibleToCardRef
   "Schema for functions accepting either a `HybridPulseCard` or `CardRef`."
   (s/conditional
    (fn check-hybrid-pulse-card [maybe-map]
      (and (map? maybe-map)
-          (some #(contains? maybe-map %) [:name :description :display :collection_id])))
+          (some #(contains? maybe-map %) [:name :description :display :collection_id
+                                          :dashboard_id :parameter_mappings])))
    HybridPulseCard
    :else
    CardRef))
@@ -137,10 +143,12 @@
   [notification-or-id]
   (map (partial models/do-post-select Card)
        (db/query
-        {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls]
+        {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls
+                     :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings]] ;; :dc.parameter_mappings - how do you select this?
          :from      [[Pulse :p]]
          :join      [[PulseCard :pc] [:= :p.id :pc.pulse_id]
                      [Card :c] [:= :c.id :pc.card_id]]
+         :left-join [[DashboardCard :dc] [:= :pc.dashboard_card_id :dc.id]]
          :where     [:and
                      [:= :p.id (u/get-id notification-or-id)]
                      [:= :c.archived false]]
@@ -174,8 +182,8 @@
 (s/defn retrieve-notification :- (s/maybe PulseInstance)
   "Fetch an Alert or Pulse, and do the 'standard' hydrations, adding `:channels` with `:recipients`, `:creator`, and
   `:cards`."
-  [notification-or-id & additional-condtions]
-  (some-> (apply Pulse :id (u/get-id notification-or-id), additional-condtions)
+  [notification-or-id & additional-conditions]
+  (some-> (apply Pulse :id (u/get-id notification-or-id), additional-conditions)
           hydrate-notification))
 
 (s/defn ^:private notification->alert :- PulseInstance
@@ -204,19 +212,38 @@
          hydrate-notification
          notification->alert))))
 
+(defn- query-as [model query]
+  (db/do-post-select model (db/query query)))
+
 (s/defn retrieve-pulses :- [PulseInstance]
   "Fetch all `Pulses`."
   ([]
    (retrieve-pulses nil))
-  ([{:keys [archived?]
-     :or   {archived? false}}]
-   (for [pulse (db/select Pulse, :alert_condition nil, :archived archived?, {:order-by [[:%lower.name :asc]]})]
-     (-> pulse
-         hydrate-notification
-         notification->pulse))))
-
-(defn- query-as [model query]
-  (db/do-post-select model (db/query query)))
+  ([{:keys [archived? dashboard_id]
+     :or   {archived?    false
+            dashboard_id nil}}]
+   (let [query (if dashboard_id
+                 {:select    [:p.*]
+                  :from      [[Pulse :p]]
+                  :join      [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
+                  :left-join [[DashboardCard :dc] [:= :pc.dashboard_card_id :dc.id]]
+                  :where     [:and
+                              [:= :p.alert_condition nil]
+                              [:= :p.archived archived?]
+                              [:= :dc.dashboard_id dashboard_id]]
+                  ;; :order-by  [[:%lower.name :asc]]
+                  }
+                 {:select [:p.*]
+                  :from   [[Pulse :p]]
+                  :where  [:and
+                           [:= :p.alert_condition nil]
+                           [:= :p.archived archived?]]
+                  ;;:order-by [[:%lower.name :asc]]
+                  })]
+     (for [pulse (query-as Pulse query)]
+       (-> pulse
+           hydrate-notification
+           notification->pulse)))))
 
 (defn retrieve-user-alerts-for-card
   "Find all alerts for `card-id` that `user-id` is set to receive"
@@ -249,9 +276,10 @@
 (s/defn card->ref :- CardRef
   "Create a card reference from a card or id"
   [card :- su/Map]
-  {:id          (u/get-id card)
-   :include_csv (get card :include_csv false)
-   :include_xls (get card :include_xls false)})
+  {:id                (u/get-id card)
+   :include_csv       (get card :include_csv false)
+   :include_xls       (get card :include_xls false)
+   :dashboard_card_id (get card :dashboard_card_id nil)})
 
 
 ;;; ------------------------------------------ Other Persistence Functions -------------------------------------------
@@ -269,12 +297,13 @@
   (db/delete! PulseCard :pulse_id (u/get-id notification-or-id))
   ;; now just insert all of the cards that were given to us
   (when (seq card-refs)
-    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls]}]
-                               {:pulse_id    (u/get-id notification-or-id)
-                                :card_id     card-id
-                                :position    i
-                                :include_csv include_csv
-                                :include_xls include_xls})
+    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls dashboard_card_id]}]
+                               {:pulse_id          (u/get-id notification-or-id)
+                                :card_id           card-id
+                                :position          i
+                                :include_csv       include_csv
+                                :include_xls       include_xls
+                                :dashboard_card_id dashboard_card_id})
                              card-refs)]
       (db/insert-many! PulseCard cards))))
 
@@ -361,7 +390,7 @@
 
 (s/defn ^:private notification-or-id->existing-card-refs :- [CardRef]
   [notification-or-id]
-  (db/select [PulseCard [:card_id :id] :include_csv :include_xls]
+  (db/select [PulseCard [:card_id :id] :include_csv :include_xls :dashboard_card_id]
     :pulse_id (u/get-id notification-or-id)
     {:order-by [[:position :asc]]}))
 

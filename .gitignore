@@ -71,3 +71,4 @@ profiles.clj
 target/checksum.txt
 xcshareddata
 xcuserdata
+*~

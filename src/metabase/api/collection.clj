@@ -16,7 +16,8 @@
              [interface :as mi]
              [native-query-snippet :refer [NativeQuerySnippet]]
              [permissions :as perms]
-             [pulse :as pulse :refer [Pulse]]]
+             [pulse :as pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]]
             [metabase.models.collection
              [graph :as collection.graph]
              [root :as collection.root]]
@@ -91,11 +92,18 @@
 
 (defmethod fetch-collection-children :pulse
   [_ collection {:keys [archived?]}]
-  (db/select [Pulse :id :name :collection_position]
-    :collection_id   (:id collection)
-    :archived        (boolean archived?)
-    ;; exclude Alerts
-    :alert_condition nil))
+  (db/query
+   {:select    [:p.id :p.name :p.collection_position]
+    :modifiers [:distinct]
+    :from      [[Pulse :p]]
+    :left-join [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
+    :where     [:and
+                [:= :p.collection_id      (:id collection)]
+                [:= :p.archived           (boolean archived?)]
+                 ;; exclude alerts
+                [:= :p.alert_condition    nil]
+                 ;; exclude dashboard subscriptions
+                [:= :pc.dashboard_card_id nil]]}))
 
 (defmethod fetch-collection-children :snippet
   [_ collection {:keys [archived?]}]

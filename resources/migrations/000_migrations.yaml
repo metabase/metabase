@@ -7725,3 +7725,22 @@ databaseChangeLog:
             tableName: core_user
             columnName: email
             newDataType: varchar_ignorecase(254)
+
+  - changeSet:
+      id: 275
+      author: robroland
+      comment: Added 0.37.0 - Dashboard subscriptions
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                name: dashboard_card_id
+                type: int
+                constraints:
+                  nullable: true
+                  references: report_dashboardcard(id)
+                  foreignKeyName: fk_pulse_card_ref_pulse_card_id
+                  deferrable: false
+                  initiallyDeferred: false
+                  onDelete: CASCADE
+            tableName: pulse_card

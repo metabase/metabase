@@ -13,6 +13,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { t } from "ttag";
 import Parameters from "metabase/parameters/components/Parameters";
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
+import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import EmptyState from "metabase/components/EmptyState";
 
 import DashboardControls from "../hoc/DashboardControls";
@@ -314,6 +315,7 @@ export default class Dashboard extends Component {
                 </div>
               </div>
               <Sidebars {...this.props} />
+              <SharingSidebar {...this.props} />
             </div>
           </div>
         )}

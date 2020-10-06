@@ -10,6 +10,8 @@
             [metabase.middleware.session :as session]
             [metabase.models
              [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
              [database :refer [Database]]
              [pulse :as pulse :refer [Pulse]]]
             [metabase.pulse.render :as render]
@@ -23,7 +25,6 @@
   (:import metabase.models.card.CardInstance))
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
-
 
 ;; TODO - this is probably something that could live somewhere else and just be reused
 ;; TODO - this should be done async
@@ -44,6 +45,16 @@
                              options))})))
       (catch Throwable e
         (log/warn e (trs "Error running query for Card {0}" card-id))))))
+
+(defn execute-dashboard
+  "Execute all the cards in a dashboard for a Pulse"
+  [{pulse-creator-id :creator_id, :as pulse} dashboard-or-id & {:as options}]
+  (let [dashboard-id (u/get-id dashboard-or-id)
+        dashboard (Dashboard :id dashboard-id)]
+    (for [dashcard (db/select DashboardCard :dashboard_id dashboard-id)]
+      (if options
+        (execute-card pulse (:card_id dashcard) options)
+        (execute-card pulse (:card_id dashcard))))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -213,14 +224,18 @@
             :when   (contains? (set channel-ids) (:id channel))]
         (notification pulse results channel)))))
 
-(defn- pulse->notifications [{:keys [cards], pulse-id :id, :as pulse}]
-  (let [results (for [card  cards
-                      ;; Pulse ID may be `nil` if the Pulse isn't saved yet
-                      :let  [result (execute-card pulse (u/get-id card), :pulse-id pulse-id)]
-                      ;; some cards may return empty results, e.g. if the card has been archived
-                      :when result]
-                  result)]
-    (results->notifications pulse results)))
+(defn- pulse->notifications [{:keys [cards dashboard dashboard_id], pulse-id :id, :as pulse}]
+  (results->notifications pulse
+                          (if dashboard
+                            ;; send the dashboard
+                            (execute-dashboard pulse dashboard_id)
+                            ;; send the cards instead
+                            (for [card  cards
+                                  ;; Pulse ID may be `nil` if the Pulse isn't saved yet
+                                  :let  [result (execute-card pulse (u/get-id card), :pulse-id pulse-id)]
+                                  ;; some cards may return empty results, e.g. if the card has been archived
+                                  :when result]
+                              result))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

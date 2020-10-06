@@ -1,13 +1,12 @@
 (ns metabase.models.pulse-test
   (:require [clojure.test :refer :all]
-            [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [test :as mt]
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.models
-             [card :refer [Card]]
+             [card :refer :all]
              [collection :refer [Collection]]
              [database :refer [Database]]
              [interface :as mi]
@@ -73,12 +72,15 @@
               {:creator_id (user->id :rasta)
                :creator    (user-details :rasta)
                :name       "Lodi Dodi"
-               :cards      [{:name          "Test Card"
-                             :description   nil
-                             :collection_id nil
-                             :display       :table
-                             :include_csv   false
-                             :include_xls   false}]
+               :cards      [{:name               "Test Card"
+                             :description        nil
+                             :collection_id      nil
+                             :display            :table
+                             :include_csv        false
+                             :include_xls        false
+                             :dashboard_card_id  nil
+                             :dashboard_id       nil
+                             :parameter_mappings nil}]
                :channels   [(merge pulse-channel-defaults
                                    {:schedule_type :daily
                                     :schedule_hour 15
@@ -119,52 +121,59 @@
                  (update-cards! cards))))))))
 
 ;; update-notification-channels!
-(expect
-  (merge pulse-channel-defaults
-         {:channel_type  :email
-          :schedule_type :daily
-          :schedule_hour 4
-          :recipients    [{:email "foo@bar.com"}
-                          (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})
-  (mt/with-temp Pulse [{:keys [id]}]
-    (update-notification-channels! {:id id} [{:enabled       true
-                                              :channel_type  :email
-                                              :schedule_type :daily
-                                              :schedule_hour 4
-                                              :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}])
-    (-> (PulseChannel :pulse_id id)
-        (hydrate :recipients)
-        (dissoc :id :pulse_id :created_at :updated_at)
-        (m/dissoc-in [:details :emails]))))
+(deftest updating-notification-channels-test
+  (is (= (map->PulseChannelInstance (merge pulse-channel-defaults
+                                           {:channel_type  :email
+                                            :schedule_type :daily
+                                            :schedule_hour 4
+                                            :recipients    [{:email "foo@bar.com"}
+                                                            (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]}))
+
+         (mt/with-temp Pulse [{:keys [id]}]
+           (update-notification-channels! {:id id} [{:enabled       true
+                                                     :channel_type  :email
+                                                     :schedule_type :daily
+                                                     :schedule_hour 4
+                                                     :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}])
+           (-> (PulseChannel :pulse_id id)
+               (hydrate :recipients)
+               (dissoc :id :pulse_id :created_at :updated_at)
+               (m/dissoc-in [:details :emails]))))))
 
 ;; create-pulse!
 ;; simple example with a single card
-(expect
-  (merge
-   pulse-defaults
-   {:creator_id (user->id :rasta)
-    :name       "Booyah!"
-    :channels   [(merge pulse-channel-defaults
-                        {:schedule_type :daily
-                         :schedule_hour 18
-                         :channel_type  :email
-                         :recipients    [{:email "foo@bar.com"}]})]
-    :cards      [{:name          "Test Card"
-                  :description   nil
-                  :collection_id nil
-                  :display       :table
-                  :include_csv   false
-                  :include_xls   false}]})
-  (mt/with-temp Card [card {:name "Test Card"}]
-    (mt/with-model-cleanup [Pulse]
-      (create-pulse-then-select! "Booyah!"
-                                 (user->id :rasta)
-                                 [(card->ref card)]
-                                 [{:channel_type  :email
-                                   :schedule_type :daily
-                                   :schedule_hour 18
-                                   :recipients    [{:email "foo@bar.com"}]}]
-                                 false))))
+(deftest create-pulse-test
+  (is (= (map->PulseInstance (merge
+                              pulse-defaults
+                              {:creator_id (user->id :rasta)
+                               :name       "Booyah!"
+                               :channels   [(map->PulseChannelInstance
+                                             (merge pulse-channel-defaults
+                                                    {:schedule_type :daily
+                                                     :schedule_hour 18
+                                                     :channel_type  :email
+                                                     :recipients    [{:email "foo@bar.com"}]}))]
+                               :cards      [(map->CardInstance
+                                             {:name               "Test Card"
+                                              :description        nil
+                                              :collection_id      nil
+                                              :display            :table
+                                              :include_csv        false
+                                              :include_xls        false
+                                              :dashboard_card_id  nil
+                                              :dashboard_id       nil
+                                              :parameter_mappings nil})]}))
+         (mt/with-temp Card [card {:name "Test Card"}]
+           (mt/with-model-cleanup [Pulse]
+             (create-pulse-then-select! "Booyah!"
+                                        (user->id :rasta)
+                                        [(card->ref card)]
+                                        [{:channel_type  :email
+                                          :schedule_type :daily
+                                          :schedule_hour 18
+                                          :recipients    [{:email "foo@bar.com"}]}]
+                                        false))))))
+
 ;; update-pulse!
 ;; basic update.  we are testing several things here
 ;;  1. ability to update the Pulse name
@@ -173,52 +182,60 @@
 ;;  4. ability to save individual user recipients
 ;;  5. ability to create new channels
 ;;  6. ability to update cards and ensure proper ordering
-(expect
-  (merge
-   pulse-defaults
-   {:creator_id (user->id :rasta)
-    :name       "We like to party"
-    :cards      [{:name          "Bar Card"
-                  :description   nil
-                  :collection_id nil
-                  :display       :bar
-                  :include_csv   false
-                  :include_xls   false}
-                 {:name          "Test Card"
-                  :description   nil
-                  :collection_id nil
-                  :display       :table
-                  :include_csv   false
-                  :include_xls   false}]
-    :channels   [(merge pulse-channel-defaults
-                        {:schedule_type :daily
-                         :schedule_hour 18
-                         :channel_type  :email
-                         :recipients    [{:email "foo@bar.com"}
-                                         (dissoc (user-details :crowberto) :is_superuser :is_qbnewb)]})]})
-  (mt/with-temp* [Pulse [pulse]
-                  Card  [card-1 {:name "Test Card"}]
-                  Card  [card-2 {:name "Bar Card", :display :bar}]]
-    (update-pulse-then-select! {:id            (u/get-id pulse)
-                                :name          "We like to party"
-                                :cards         (map card->ref [card-2 card-1])
-                                :channels      [{:channel_type  :email
-                                                 :schedule_type :daily
-                                                 :schedule_hour 18
-                                                 :recipients    [{:email "foo@bar.com"}
-                                                                 {:id (user->id :crowberto)}]}]
-                                :skip_if_empty false})))
+(deftest update-pulse-test
+  (is (= (map->PulseInstance
+          (merge pulse-defaults
+                 {:creator_id (user->id :rasta)
+                  :name       "We like to party"
+                  :cards      [(map->CardInstance
+                                {:name               "Bar Card"
+                                 :description        nil
+                                 :collection_id      nil
+                                 :display            :bar
+                                 :include_csv        false
+                                 :include_xls        false
+                                 :dashboard_card_id  nil
+                                 :dashboard_id       nil
+                                 :parameter_mappings nil})
+                               (map->CardInstance
+                                {:name               "Test Card"
+                                 :description        nil
+                                 :collection_id      nil
+                                 :display            :table
+                                 :include_csv        false
+                                 :include_xls        false
+                                 :dashboard_card_id  nil
+                                 :dashboard_id       nil
+                                 :parameter_mappings nil})]
+                  :channels   [(map->PulseChannelInstance
+                                (merge pulse-channel-defaults
+                                       {:schedule_type :daily
+                                        :schedule_hour 18
+                                        :channel_type  :email
+                                        :recipients    [{:email "foo@bar.com"}
+                                                        (dissoc (user-details :crowberto) :is_superuser :is_qbnewb)]}))]}))
+         (mt/with-temp* [Pulse [pulse]
+                         Card  [card-1 {:name "Test Card"}]
+                         Card  [card-2 {:name "Bar Card", :display :bar}]]
+           (update-pulse-then-select! {:id            (u/get-id pulse)
+                                       :name          "We like to party"
+                                       :cards         (map card->ref [card-2 card-1])
+                                       :channels      [{:channel_type  :email
+                                                        :schedule_type :daily
+                                                        :schedule_hour 18
+                                                        :recipients    [{:email "foo@bar.com"}
+                                                                        {:id (user->id :crowberto)}]}]
+                                       :skip_if_empty false})))))
 
 ;; make sure fetching a Pulse doesn't return any archived cards
-(expect
-  1
-  (mt/with-temp* [Pulse     [pulse]
-                  Card      [card-1 {:archived true}]
-                  Card      [card-2]
-                  PulseCard [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card-1), :position 0}]
-                  PulseCard [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card-2), :position 1}]]
-    (count (:cards (retrieve-pulse (u/get-id pulse))))))
-
+(deftest no-archived-cards-test
+  (is (= 1
+         (mt/with-temp* [Pulse     [pulse]
+                         Card      [card-1 {:archived true}]
+                         Card      [card-2]
+                         PulseCard [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card-1), :position 0}]
+                         PulseCard [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card-2), :position 1}]]
+           (count (:cards (retrieve-pulse (u/get-id pulse))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Collections Permissions Tests                                          |
@@ -246,18 +263,18 @@
 
 ;; Check that if a Pulse is in a Collection, someone who would not be able to see it under the old
 ;; artifact-permissions regime will be able to see it if they have permissions for that Collection
-(expect
-  (with-pulse-in-collection [_ collection pulse]
-    (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
-      (mi/can-read? pulse))))
+(deftest has-permissions-test
+  (is (with-pulse-in-collection [_ collection pulse]
+        (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
+          (mi/can-read? pulse)))))
 
 ;; Check that if a Pulse is in a Collection, someone who would otherwise be able to see it under the old
 ;; artifact-permissions regime will *NOT* be able to see it if they don't have permissions for that Collection
-(expect
-  false
-  (with-pulse-in-collection [db _ pulse]
-    (binding [api/*current-user-permissions-set* (atom #{(perms/object-path (u/get-id db))})]
-      (mi/can-read? pulse))))
+(deftest no-permissions-test
+  (is (= false
+         (with-pulse-in-collection [db _ pulse]
+           (binding [api/*current-user-permissions-set* (atom #{(perms/object-path (u/get-id db))})]
+             (mi/can-read? pulse))))))
 
 (deftest validate-collection-namespace-test
   (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]

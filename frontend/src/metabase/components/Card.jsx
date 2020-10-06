@@ -18,6 +18,7 @@ const Card = styled.div`
     `&:hover {
     box-shadow: 0 10px 22px ${alpha(color("shadow"), 0.09)};
   }`};
+  ${props => props.flat && `box-shadow: none;`};
 `;
 
 export default Card;

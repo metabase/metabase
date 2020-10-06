@@ -263,7 +263,12 @@ if (NODE_ENV !== "production") {
   config.output.devtoolModuleFilenameTemplate = "[absolute-resource-path]";
   config.output.pathinfo = true;
 
-  config.plugins.push(new WebpackNotifierPlugin());
+  config.plugins.push(
+    new WebpackNotifierPlugin({
+      excludeWarnings: true,
+      skipFirstNotification: true,
+    }),
+  );
 } else {
   config.plugins.push(new UglifyJSPlugin({ test: /\.jsx?($|\?)/i }));
 

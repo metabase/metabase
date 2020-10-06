@@ -186,9 +186,10 @@
 
   (extend (class PulseCard)
     tt/WithTempDefaults
-    {:with-temp-defaults (fn [_] {:position    0
-                                  :include_csv false
-                                  :include_xls false})})
+    {:with-temp-defaults (fn [_] {:position          0
+                                  :include_csv       false
+                                  :include_xls       false
+                                  :dashboard_card_id nil})})
 
   (extend (class PulseChannel)
     tt/WithTempDefaults

@@ -31,9 +31,11 @@
 
 (api/defendpoint GET "/"
   "Fetch all Pulses"
-  [archived]
-  {archived (s/maybe su/BooleanString)}
-  (as-> (pulse/retrieve-pulses {:archived? (Boolean/parseBoolean archived)}) <>
+  [archived dashboard_id]
+  {archived     (s/maybe su/BooleanString)
+   dashboard_id (s/maybe su/IntGreaterThanZero)}
+  (as-> (pulse/retrieve-pulses {:archived?    (Boolean/parseBoolean archived)
+                                :dashboard_id dashboard_id}) <>
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 
@@ -81,12 +83,12 @@
 (api/defendpoint PUT "/:id"
   "Update a Pulse with `id`."
   [id :as {{:keys [name cards channels skip_if_empty collection_id archived], :as pulse-updates} :body}]
-  {name          (s/maybe su/NonBlankString)
-   cards         (s/maybe (su/non-empty [pulse/CoercibleToCardRef]))
-   channels      (s/maybe (su/non-empty [su/Map]))
-   skip_if_empty (s/maybe s/Bool)
-   collection_id (s/maybe su/IntGreaterThanZero)
-   archived      (s/maybe s/Bool)}
+  {name           (s/maybe su/NonBlankString)
+   cards          (s/maybe (su/non-empty [pulse/CoercibleToCardRef]))
+   channels       (s/maybe (su/non-empty [su/Map]))
+   skip_if_empty  (s/maybe s/Bool)
+   collection_id  (s/maybe su/IntGreaterThanZero)
+   archived       (s/maybe s/Bool)}
   ;; do various perms checks
   (let [pulse-before-update (api/write-check Pulse id)]
     (check-card-read-permissions cards)

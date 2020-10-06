@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+import ButtonGroup from "metabase/components/ButtonGroup";
 import Select from "metabase/components/Select";
 
 import Settings from "metabase/lib/settings";
@@ -125,10 +126,13 @@ export default class SchedulePicker extends Component {
     DAY_OPTIONS.unshift({ name: t`Calendar Day`, value: null });
 
     return (
-      <span className="flex align-center">
-        <span className="h4 text-bold mx1">on the</span>
+      <div className="flex align-center mt1">
+        <span
+          className="text-bold"
+          style={{ minWidth: "48px" }}
+        >{t`on the`}</span>
         <Select
-          className="h4 text-bold bg-white"
+          className="text-bold bg-white"
           value={schedule.schedule_frame}
           onChange={({ target: { value } }) =>
             this.handleChangeProperty("schedule_frame", value)
@@ -138,7 +142,7 @@ export default class SchedulePicker extends Component {
         {schedule.schedule_frame !== "mid" && (
           <span className="mx1">
             <Select
-              className="h4 text-bold bg-white"
+              className="text-bold bg-white"
               value={schedule.schedule_day}
               onChange={({ target: { value } }) =>
                 this.handleChangeProperty("schedule_day", value)
@@ -147,7 +151,7 @@ export default class SchedulePicker extends Component {
             />
           </span>
         )}
-      </span>
+      </div>
     );
   }
 
@@ -156,9 +160,9 @@ export default class SchedulePicker extends Component {
 
     return (
       <span className="flex align-center">
-        <span className="h4 text-bold mx1">on</span>
+        <span className="text-bold mx1">on</span>
         <Select
-          className="h4 text-bold bg-white"
+          className="text-bold bg-white"
           value={schedule.schedule_day}
           onChange={({ target: { value } }) =>
             this.handleChangeProperty("schedule_day", value)
@@ -181,17 +185,19 @@ export default class SchedulePicker extends Component {
     return (
       <div className="mt1">
         <div className="flex align-center">
-          <span className="h4 text-bold mr1">at</span>
+          <span
+            className="text-bold"
+            style={{ minWidth: "48px" }}
+          >{t`at`}</span>
           <Select
-            className="mr1 h4 text-bold bg-white"
+            className="mr1 text-bold bg-white"
             value={hour}
             options={HOUR_OPTIONS}
             onChange={({ target: { value } }) =>
               this.handleChangeProperty("schedule_hour", value + amPm * 12)
             }
           />
-          <Select
-            className="h4 text-bold bg-white"
+          <ButtonGroup
             value={amPm}
             onChange={({ target: { value } }) =>
               this.handleChangeProperty("schedule_hour", hour + value * 12)
@@ -200,7 +206,7 @@ export default class SchedulePicker extends Component {
           />
         </div>
         {textBeforeSendTime && (
-          <div className="mt2 h4 text-bold text-medium border-top pt2">
+          <div className="mt1 text-medium pt2">
             {textBeforeSendTime} {hour === 0 ? 12 : hour}:00{" "}
             {amPm ? "PM" : "AM"} {timezone}, {t`your Metabase timezone`}.
           </div>
@@ -215,11 +221,13 @@ export default class SchedulePicker extends Component {
     const scheduleType = schedule.schedule_type;
 
     return (
-      <div className="mt1">
+      <div className="mt3">
         <div className="flex align-center">
-          <span className="h4 text-bold mr1">{textBeforeInterval}</span>
+          <span className="text-bold" style={{ minWidth: "48px" }}>
+            {textBeforeInterval}
+          </span>
           <Select
-            className="h4 text-bold bg-white"
+            className="text-bold bg-white"
             value={scheduleType}
             onChange={({ target: { value } }) =>
               this.handleChangeProperty("schedule_type", value)
@@ -228,9 +236,9 @@ export default class SchedulePicker extends Component {
             optionNameFn={o => capitalize(o)}
             optionValueFn={o => o}
           />
-          {scheduleType === "monthly" && this.renderMonthlyPicker()}
           {scheduleType === "weekly" && this.renderDayPicker()}
         </div>
+        {scheduleType === "monthly" && this.renderMonthlyPicker()}
         {(scheduleType === "daily" ||
           scheduleType === "weekly" ||
           scheduleType === "monthly") &&
