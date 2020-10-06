@@ -58,7 +58,7 @@ describe("scenarios > dashboard > parameters-embedded", () => {
   });
 
   describe("embeded params", () => {
-    it("should be hideable", () => {
+    it.skip("should be hideable", () => {
       // Check viewable
       cy.visit("/dashboard/2");
       cy.get(".Icon-share").click();

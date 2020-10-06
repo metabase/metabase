@@ -13,6 +13,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { t } from "ttag";
 import Parameters from "metabase/parameters/components/Parameters";
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
+import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import EmptyState from "metabase/components/EmptyState";
 
 import DashboardControls from "../hoc/DashboardControls";
@@ -73,6 +74,7 @@ type Props = {
 
   setEditingParameter: (parameterId: ?ParameterId) => void,
   setEditingDashboard: (isEditing: false | DashboardWithCards) => void,
+  setSharing: (isSharing: boolean) => void,
 
   addParameter: (option: ParameterOption) => Promise<Parameter>,
   removeParameter: (parameterId: ParameterId) => void,
@@ -117,6 +119,10 @@ type Props = {
 
   onChangeLocation: string => void,
   setErrorPage: (error: ApiError) => void,
+
+  onCancel: () => void,
+  onSharingClick: () => void,
+  onEmbeddingClick: () => void,
 };
 
 type State = {
@@ -146,16 +152,21 @@ export default class Dashboard extends Component {
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttributes: PropTypes.func.isRequired,
     setEditingDashboard: PropTypes.func.isRequired,
+    setSharing: PropTypes.func.isRequired,
 
     onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
     onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
     onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
 
     onChangeLocation: PropTypes.func.isRequired,
+
+    onSharingClick: PropTypes.func.isRequired,
+    onEmbeddingClick: PropTypes.func.isRequired,
   };
 
   static defaultProps = {
     isEditable: true,
+    isSharing: false,
   };
 
   // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
@@ -217,6 +228,16 @@ export default class Dashboard extends Component {
       attributes: { [attribute]: value },
     });
   };
+
+  onCancel = () => {
+    this.props.setSharing(false);
+  };
+
+  onSharingClick = () => {
+    this.props.setSharing(true);
+  };
+
+  onEmbeddingClick = () => {};
 
   render() {
     let {
@@ -281,6 +302,8 @@ export default class Dashboard extends Component {
                 setDashboardAttribute={this.setDashboardAttribute}
                 addParameter={this.props.addParameter}
                 parametersWidget={parametersWidget}
+                onSharingClick={this.onSharingClick}
+                onEmbeddingClick={this.onEmbeddingClick}
               />
             </header>
             <div
@@ -313,7 +336,7 @@ export default class Dashboard extends Component {
                   )}
                 </div>
               </div>
-              <Sidebars {...this.props} />
+              <Sidebars {...this.props} onCancel={this.onCancel} />
             </div>
           </div>
         )}
@@ -322,25 +345,27 @@ export default class Dashboard extends Component {
   }
 }
 
-function Sidebars({
-  dashboard,
-  parameters,
-  showAddParameterPopover,
-  removeParameter,
-  editingParameter,
-  isEditingParameter,
-  clickBehaviorSidebarDashcard,
-  onReplaceAllDashCardVisualizationSettings,
-  onUpdateDashCardVisualizationSettings,
-  onUpdateDashCardColumnSettings,
-  hideClickBehaviorSidebar,
-  setEditingParameter,
-  setParameter,
-  setParameterName,
-  setParameterDefaultValue,
-  dashcardData,
-  setParameterFilteringParameters,
-}) {
+function Sidebars(props) {
+  const {
+    dashboard,
+    parameters,
+    showAddParameterPopover,
+    removeParameter,
+    editingParameter,
+    isEditingParameter,
+    clickBehaviorSidebarDashcard,
+    onReplaceAllDashCardVisualizationSettings,
+    onUpdateDashCardVisualizationSettings,
+    onUpdateDashCardColumnSettings,
+    hideClickBehaviorSidebar,
+    setEditingParameter,
+    setParameter,
+    setParameterName,
+    setParameterDefaultValue,
+    dashcardData,
+    setParameterFilteringParameters,
+    isSharing,
+  } = props;
   if (clickBehaviorSidebarDashcard) {
     return (
       <ClickBehaviorSidebar
@@ -383,6 +408,10 @@ function Sidebars({
         }
       />
     );
+  }
+
+  if (isSharing) {
+    return <SharingSidebar {...props} />;
   }
 
   return null;
