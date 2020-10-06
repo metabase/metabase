@@ -95,13 +95,17 @@
        :placeholder "prepareThreshold=0")]))
 
 (defn- enum-types [driver database]
-  (set
-   (map (comp keyword :typname)
-        (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
-                    [(str "SELECT DISTINCT t.typname "
-                          "FROM pg_enum e "
-                          "LEFT JOIN pg_type t "
-                          "  ON t.oid = e.enumtypid")]))))
+  (try
+    (set
+      (map (comp keyword :typname)
+           (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                       [(str "SELECT DISTINCT t.typname "
+                             "FROM pg_enum e "
+                             "LEFT JOIN pg_type t "
+                             "  ON t.oid = e.enumtypid")])))
+    (catch Throwable e
+      (log/error e "Error getting enum types in postgres")
+      #{})))
 
 (def ^:private ^:dynamic *enum-types* nil)
 
