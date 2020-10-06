@@ -13,6 +13,10 @@ import * as Urls from "metabase/lib/urls";
 import Modal from "metabase/components/Modal";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
+import Heading from "metabase/components/type/Heading";
+import Subhead from "metabase/components/type/Subhead";
+import Label from "metabase/components/type/Label";
+
 import Link from "metabase/components/Link";
 
 const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
@@ -65,16 +69,12 @@ const FIXTURE_COLLECTIONS = [
   },
 ];
 
-const CollectionLink = ({ collection, isSelected }) => (
-  <Box className="CollectionLink" mb={1}>
+const CollectionLink = ({ collection, isSelected, ...props }) => (
+  <Box className="CollectionLink" mb={1} {...props}>
     <PillWithAdornment
       active={collection.active}
-      left={<Icon name={collection.icon} color="brand" />}
-      right={
-        collection.hasChildren && (
-          <Icon name="chevrondown" size={12} color="brand" />
-        )
-      }
+      left={<Icon name={collection.icon} />}
+      right={collection.hasChildren && <Icon name="chevrondown" size={12} />}
     >
       {collection.name}
     </PillWithAdornment>
@@ -84,7 +84,7 @@ const CollectionLink = ({ collection, isSelected }) => (
 const CollectionLinkList = ({ collections }) => (
   <Box>
     {collections.map(collection => (
-      <CollectionLink collection={collection} />
+      <CollectionLink collection={collection} key={collection.name} />
     ))}
   </Box>
 );
@@ -115,7 +115,7 @@ const CollectionItem = ({ item }) => (
     </td>
     <td>
       <Link to="/" className="link">
-        <h3>{item.name}</h3>
+        <Label>{item.name}</Label>
       </Link>
     </td>
     <td>
@@ -223,10 +223,6 @@ const CollectionHeader = ({ children }) => (
   </Flex>
 );
 
-const CollectionTitle = ({ children }) => (
-  <h1 className="text-heavy">{children}</h1>
-);
-
 const CollectionContent = ({ children }) => (
   <Box bg="white" ml={360} className="full-height border-left">
     <Box w={"80%"} ml="auto" mr="auto">
@@ -244,7 +240,7 @@ const CollectionSidebar = ({ children }) => (
 const Greeting = () => (
   <Flex my={3} align="center">
     <UserAvatar />
-    <h3 className="ml2 text-heavy">Hey there Kyle</h3>
+    <Subhead ml={1}>Hey there Kyle</Subhead>
   </Flex>
 );
 
@@ -270,13 +266,13 @@ const NewCollection = ({ items, collections }) => (
       <CollectionLinkList collections={collections} />
       <CollectionLink
         collection={{ name: "Your personal collection", icon: "person" }}
-        mt={2}
+        mt={3}
       />
     </CollectionSidebar>
 
     <CollectionContent>
       <CollectionHeader>
-        <CollectionTitle>Marketing</CollectionTitle>
+        <Heading>Marketing</Heading>
         <CollectionActions />
       </CollectionHeader>
 
