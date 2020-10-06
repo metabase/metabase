@@ -1,0 +1,12 @@
+{:paths ["./"]
+
+ :deps
+ {cheshire                    {:mvn/version "5.8.1"}
+  commons-codec/commons-codec {:mvn/version "1.14"}
+  commons-io/commons-io       {:mvn/version "2.6"}
+  colorize                    {:mvn/version "0.1.1"}
+  environ                     {:mvn/version "1.1.0"}
+  hiccup                      {:mvn/version "1.0.5"}
+  io.forward/yaml             {:mvn/version "1.0.9"}
+  org.flatland/ordered        {:mvn/version "1.5.7"}
+  stencil                     {:mvn/version "0.5.0"}}}
