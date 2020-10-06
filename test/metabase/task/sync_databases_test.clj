@@ -177,7 +177,7 @@
                   metabase.sync.analyze/analyze-db!               (fn [& _] (deliver analyze-db-ran? true))
                   metabase.sync.field-values/update-field-values! (fn [& _] (deliver update-field-values-ran? true))]
       (with-scheduler-setup
-        (tt/with-temp Database [database db-info]
+        (mt/with-temp Database [database db-info]
           ;; deref the promises in parallel so they all get sufficient time to run.
           (into {} (pmap (fn [[k promis]]
                            (let [wait-time-ms (or (get waits k)
