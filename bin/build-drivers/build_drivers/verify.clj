@@ -4,14 +4,14 @@
              [util :as u]]
             [colorize.core :as colorize]))
 
-(defn- verify-driver-exists [driver]
+(defn- verify-exists [driver]
   (let [filename (c/driver-jar-destination-path driver)]
     (u/step (format "Check %s exists" filename)
       (if (u/file-exists? filename)
         (u/announce "File exists.")
         (throw (ex-info (format "Driver verification failed: %s does not exist" filename) {}))))))
 
-(defn- verify-driver-init-class [driver]
+(defn- verify-has-init-class [driver]
   (let [filename          (c/driver-jar-destination-path driver)
         driver-init-class (format "metabase/driver/%s__init.class" (munge (name driver)))]
     (u/step (format "Check %s contains init class file %s" filename driver-init-class)
@@ -20,7 +20,7 @@
         (u/announce "Driver init class file found.")
         (throw (ex-info (format "Driver verification failed: init class file %s not found" driver-init-class) {}))))))
 
-(defn- verify-driver-plugin-manifest [driver]
+(defn- verify-has-plugin-manifest [driver]
   (let [filename          (c/driver-jar-destination-path driver)
         driver-init-class (format "metabase/driver/%s__init.class" (munge (name driver)))]
     (u/step (format "Check %s contains metabase-plugin.yaml" filename)
@@ -29,10 +29,12 @@
         (u/announce "Plugin manifest found.")
         (throw (ex-info (format "Driver verification failed: plugin manifest missing" driver-init-class) {}))))))
 
-(defn verify-driver [driver]
+(defn verify-driver
+  "Run a series of checks to make sure `driver` was built correctly. Throws exception if any checks fail."
+  [driver]
   {:pre [(keyword? driver)]}
   (u/step (str (colorize/green "Verify ") (colorize/yellow driver) (colorize/green " driver"))
-    (verify-driver-exists driver)
-    (verify-driver-init-class driver)
-    (verify-driver-plugin-manifest driver)
+    (verify-exists driver)
+    (verify-has-init-class driver)
+    (verify-has-plugin-manifest driver)
     (u/announce (format "%s driver verification successful." driver))))

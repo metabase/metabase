@@ -1,4 +1,5 @@
 (ns build-drivers.build-driver
+  "Logic for building a single driver."
   (:require [build-drivers
              [checksum :as checksum]
              [common :as c]
@@ -11,7 +12,7 @@
             [environ.core :as env]))
 
 (defn- copy-driver!
-  "copy the target uberjar to the dest location"
+  "Copy the driver JAR from its `target/` directory to `resources/modules`/."
   [driver]
   (u/step (format "Copy %s driver uberjar from %s -> %s"
                   driver
@@ -22,19 +23,26 @@
     (u/copy-file! (c/driver-jar-build-path driver)
                   (c/driver-jar-destination-path driver))))
 
-(defn- clean-driver-artifacts! [driver]
+(defn- clean-driver-artifacts!
+  "Delete built JARs of `driver`."
+  [driver]
   (u/step (format "Delete %s driver artifacts" driver)
     (u/delete-file! (c/driver-target-directory driver))
     (u/delete-file! (c/driver-jar-destination-path driver))))
 
-(defn- clean-parents! [driver]
+(defn- clean-parents!
+  "Delete built JARs and local Maven installations of the parent drivers of `driver`."
+  [driver]
   (u/step (format "Clean %s parent driver artifacts" driver)
     (doseq [parent (manifest/parent-drivers driver)]
       (clean-driver-artifacts! parent)
       (install-locally/clean! parent)
       (clean-parents! parent))))
 
-(defn- clean-all! [driver]
+(defn- clean-all!
+  "Delete all artifacts relating to building `driver`, including the driver JAR itself and installed
+  `metabase-core`/Metabase uberjar and any parent driver artifacts."
+  [driver]
   (u/step "Clean all"
     (clean-driver-artifacts! driver)
     (clean-parents! driver)
@@ -42,7 +50,11 @@
 
 (declare build-driver!)
 
-(defn- build-parents! [driver]
+(defn- build-parents!
+  "Build and install to the local Maven repo any parent drivers of `driver` (e.g. `:google` is a parent of `:bigquery`).
+  The driver must be built as an uberjar so we can remove duplicate classes during the `strip-and-compress` stage; it
+  must be installed as a library so we can use it as a `:provided` dependency when building the child driver."
+  [driver]
   (u/step (format "Build %s parent drivers" driver)
     (doseq [parent (manifest/parent-drivers driver)]
       (build-parents! parent)
@@ -51,6 +63,12 @@
     (u/announce "%s parents built successfully." driver)))
 
 (defn- strip-and-compress-uberjar!
+  "Remove any classes in compiled `driver` that are also present in the Metabase uberjar or parent drivers. The classes
+  will be available at runtime, and we don't want to make things unpredictable by including them more than once in
+  different drivers.
+
+  This is only needed because `lein uberjar` does not seem to reliably exclude classes from `:provided` Clojure
+  dependencies like `metabase-core` and the parent drivers."
   ([driver]
    (u/step (str (format "Strip out any classes in %s driver JAR found in core Metabase uberjar or parent JARs" driver)
                 " and recompress with higher compression ratio")
@@ -82,7 +100,9 @@
     (strip-and-compress-uberjar! driver)
     (u/announce "%s uberjar build successfully." driver)))
 
-(defn- build-and-verify! [driver]
+(defn- build-and-verify!
+  "Build `driver` and verify the built JAR. This function ignores any existing artifacts and will always rebuild."
+  [driver]
   (u/step (str (colorize/green "Build ") (colorize/yellow driver) (colorize/green " driver"))
     (clean-driver-artifacts! driver)
     (metabase/build-metabase!)
@@ -108,30 +128,41 @@
       same?)))
 
 (defn build-driver!
+  "Build `driver`, if needed."
   [driver]
   {:pre [(keyword? driver)]}
   (u/step (str (colorize/green "Build ") (colorize/yellow driver) (colorize/green " driver if needed"))
-    (try
-      (if (driver-checksum-matches? driver)
-        (do
-          (verify/verify-driver driver)
-          (copy-driver! driver))
-        (build-and-verify! driver))
-      (catch Throwable e
-        (u/safe-println (colorize/red (format "Error building driver:\n%s" (pr-str e))))
-        (u/announce "Cleaning and retrying...")
-        (try
+    ;; When we build a driver, we save a checksum of driver source code + metabase source code + parent drivers
+    ;; alongside the built driver JAR. The next time this script is called, we recalculate that checksum -- if the
+    ;; current checksum matches the saved one associated with the built driver JAR, we do not need to rebuild the
+    ;; driver. If anything relevant has changed, we have to rebuild the driver.
+    (if (driver-checksum-matches? driver)
+      ;; even if we're not rebuilding the driver, copy the artifact from `modules/drivers/<driver>/target/uberjar/`
+      ;; to `resources/modules` so we can be sure we have the most up-to-date version there.
+      (try
+        (verify/verify-driver driver)
+        (copy-driver! driver)
+        ;; if verification fails, delete all the existing artifacts and just rebuild the driver from scratch.
+        (catch Throwable e
+          (u/error "Error verifying existing driver:\n%s" (pr-str e))
+          (u/announce "Deleting existing driver artifacts and rebuilding.")
           (clean-driver-artifacts! driver)
-          (build-and-verify! driver)
-          true
-          (catch Throwable e
-            (u/announce "Cleaning ALL and retrying...")
-            (clean-all! driver)
-            (try
-              (build-and-verify! driver)
-              true
-              (catch Throwable e
-                (u/safe-println (colorize/red (format "Failed to build %s driver." driver)))
-                (clean-driver-artifacts! driver)
-                (throw e)))))))
+          (build-driver! driver)))
+      ;; if checksum does not match, build and verify the driver
+      (try
+        (build-and-verify! driver)
+        ;; if building fails, clean everything, including metabase-core, the metabase uberjar, and parent
+        ;; dependencies, *then* retry.
+        (catch Throwable e
+          (u/announce "Cleaning ALL and retrying...")
+          (clean-all! driver)
+          (try
+            (build-and-verify! driver)
+            ;; if building the driver failed again, even after cleaning, delete anything that was built and then
+            ;; give up.
+            (catch Throwable e
+              (u/safe-println (colorize/red (format "Failed to build %s driver." driver)))
+              (clean-driver-artifacts! driver)
+              (throw e))))))
+    ;; if we make it this far, we've built the driver successfully.
     (u/announce "Success.")))

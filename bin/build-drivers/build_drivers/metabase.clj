@@ -1,4 +1,6 @@
 (ns build-drivers.metabase
+  "Code for installing the main Metabase project as a library (`metabase-core`) in the local Maven repository, and for
+  building a Metabase uberjar. Both are needed when building drivers."
   (:require [build-drivers
              [checksum :as checksum]
              [common :as c]
@@ -39,7 +41,11 @@
           (spit metabase-core-checksum-path (checksum/metabase-source-checksum)))
         (u/announce "metabase-core dep installed to local Maven repo successfully.")))))
 
-(defn uberjar-checksum-matches? []
+(defn uberjar-checksum-matches?
+  "After installing/building Metabase we save a MD5 hex checksum of Metabase backend source files (including
+  `project.clj`). The next time we run `build-metabase!`, if the checksums have changed we know we need to
+  rebuild/reinstall."
+  []
   (u/step "Determine whether Metabase source files checksum has changed since last build of uberjar"
     (let [existing-checksum (checksum/checksum-from-file uberjar-checksum-path)
           current-checksum  (checksum/metabase-source-checksum)
@@ -65,16 +71,18 @@
           (spit uberjar-checksum-path (checksum/metabase-source-checksum)))
         (u/announce "Metabase uberjar built successfully")))))
 
-(defn clean-metabase! []
+(defn clean-metabase!
+  "Delete local Maven repository installation of the `metabase-core` library and delete the built Metabase uberjar."
+  []
   (u/step "Clean local Metabase deps"
     (delete-metabase-core-install!)
     (delete-metabase-uberjar!)))
 
-(defn build-metabase! []
+(defn build-metabase!
+  "Install `metabase-core` as a library in the local Maven repo, and build the Metabase uberjar IF NEEDED. We need to do
+  both because `metabase-core` is used as a dependency for drivers, and the Metabase uberjar is checked to make sure
+  we don't ship duplicate classes in the driver JAR (as part of the `strip-and-compress` stage.)"
+  []
   (u/step "Build metabase-core and install locally"
     (install-metabase-core!)
     (build-metabase-uberjar!)))
-
-(defn needs-rebuild? []
-  (or (not (metabase-core-checksum-matches?))
-      (not (uberjar-checksum-matches?))))

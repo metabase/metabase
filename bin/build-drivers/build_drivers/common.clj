@@ -1,8 +1,10 @@
 (ns build-drivers.common
+  "Shared constants and functions related to source and artifact paths used throughout this code."
   (:require [clojure.string :as str]
             [environ.core :as env])
   (:import java.io.File))
 
+;; since this file is used pretty much everywhere, this seemed like a good place to put this.
 (set! *warn-on-reflection* true)
 
 (when-not (str/ends-with? (env/env :user-dir) "/build-drivers")

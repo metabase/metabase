@@ -1,4 +1,5 @@
 (ns verify-driver
+  "Entrypoint for `bin/verify-driver`. Verify that a driver JAR looks correct."
   (:require [build-drivers.verify :as verify]
             [colorize.core :as colorize]))
 

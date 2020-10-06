@@ -1,4 +1,5 @@
 (ns build-drivers
+  "Entrypoint for `bin/build-drivers.sh`. Builds all drivers, if needed."
   (:require [build-drivers
              [build-driver :as build-driver]
              [common :as c]

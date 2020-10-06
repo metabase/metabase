@@ -1,4 +1,5 @@
 (ns build-driver
+  "Entrypoint for `bin/build-driver.sh`. Builds a single driver, if needed."
   (:require [build-drivers.build-driver :as build-driver]
             [colorize.core :as colorize]))
 

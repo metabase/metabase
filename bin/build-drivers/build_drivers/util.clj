@@ -1,4 +1,5 @@
 (ns build-drivers.util
+  "Utility functions for logging messages, working with files, and running shell commands."
   (:require [clojure.string :as str]
             [colorize.core :as colorize])
   (:import [java.io BufferedReader File InputStreamReader]
@@ -15,21 +16,33 @@
 (defn- steps-indent []
   (str/join (repeat (count *steps*) step-indent)))
 
-(defn safe-println [& args]
+(defn safe-println
+  "Thread-safe version of `println` that also indents output based on the current step build step."
+  [& args]
   (locking println
     (print (steps-indent))
     (apply println args)))
 
 (defn announce
-  "Like `println` + `format`, but outputs text in green. Use this for printing messages such as when starting build
-  steps."
+  "Like `safe-println` + `format`, but outputs text in magenta. Use this for printing messages such as when starting
+  build steps."
   ([s]
    (safe-println (colorize/magenta s)))
 
   ([format-string & args]
    (announce (apply format (str format-string) args))))
 
-(defn do-step [step thunk]
+(defn error
+  "Life `safe-println` + `format`, but outputs text in red. Use this for printing error messages or Exceptions."
+  ([s]
+   (safe-println (colorize/red s)))
+
+  ([format-string & args]
+   (error (apply format format-string args))))
+
+(defn do-step
+  "Impl for `step` macro."
+  [step thunk]
   (safe-println (colorize/green (str step)))
   (binding [*steps* (conj *steps* step)]
     (try
@@ -37,13 +50,29 @@
       (catch Throwable e
         (throw (ex-info (str step) {} e))))))
 
-(defmacro step {:style/indent 1} [step & body]
+(defmacro step
+  "Start a new build step, which:
+
+  1. Logs the `step` message
+  2. Indents all output inside `body` by one level
+  3. Catches any exceptions inside `body` and rethrows with additional context including `step` message
+
+  These are meant to be nested, e.g.
+
+    (step \"Build driver\"
+      (step \"Build dependencies\")
+      (step \"Build driver JAR\")
+      (step \"Verify driver\"))"
+  {:style/indent 1}
+  [step & body]
   `(do-step ~step (fn [] ~@body)))
 
 
 ;;; ------------------------------------------------- File Util Fns --------------------------------------------------
 
-(defn file-exists? [^String filename]
+(defn file-exists?
+  "Does a file or directory with `filename` exist?"
+  [^String filename]
   (when filename
     (.exists (File. filename))))
 
@@ -61,7 +90,7 @@
   dir)
 
 (defn delete-file!
-  "Delete a file or directory if it exists."
+  "Delete a file or directory (recursively) if it exists."
   ([^String filename]
    (step (format "Deleting %s..." filename)
      (if (file-exists? filename)
@@ -78,7 +107,9 @@
 
 (declare sh)
 
-(defn copy-file! [^String source ^String dest]
+(defn copy-file!
+  "Copy a `source` file (or directory, recursively) to `dest`."
+  [^String source ^String dest]
   (let [source-file (File. (assert-file-exists source))
         dest-file   (File. dest)]
     ;; Use native `cp` rather than FileUtils or the like because codesigning is broken when you use those because they
@@ -133,7 +164,19 @@
 
 (defn sh*
   "Run a shell command. Like `clojure.java.shell/sh`, but prints output to stdout/stderr and returns results as a vector
-  of lines."
+  of lines.
+
+  Options:
+
+  * `env` -- environment variables (as a map) to use when running `cmd`. If `:env` is `nil`, the default parent
+    environment (i.e., the environment in which this Clojure code itself is ran) will be used; if `:env` IS passed, it
+    completely replaces the parent environment in which this script is ran -- make sure you pass anything that might be
+    needed such as `JAVA_HOME` if you do this
+
+  * `dir` -- current directory to use when running the shell command. If not specified, command is run in the same
+    current directory as the Clojure scripts, `bin/build-drivers`
+
+  * `quiet?` -- whether to suppress output from this shell command."
   {:arglists '([cmd & args] [{:keys [env dir quiet?]} cmd & args])}
   [& args]
   (step (colorize/blue (str "$ " (str/join " " (map (comp pr-str str) (if (map? (first args))
@@ -162,8 +205,9 @@
            :err  (deref-with-timeout err command-timeout-ms)})))))
 
 (defn sh
-  "Run a shell command, returning its output if it returns zero or throwning an Exception if it returns non-zero."
-  {:arglists '([cmd & args] [{:keys [dir quiet?]} cmd & args])}
+  "Like `sh*`, but throws an Exception if the command exits with a non-zero status. Options are the same as `sh*` -- see
+  its documentation for more information."
+  {:arglists '([cmd & args] [{:keys [env dir quiet?]} cmd & args])}
   [& args]
   (let [{:keys [exit out err], :as response} (apply sh* args)]
     (if (zero? exit)
