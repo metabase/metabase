@@ -4,7 +4,7 @@ describe("scenarios > dashboard > embed", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
-  it("should have the correct embed snippet", () => {
+  it.skip("should have the correct embed snippet", () => {
     cy.visit("/dashboard/1");
     cy.get(".Icon-share").click();
     cy.contains(/Embed this .* in an application/).click();

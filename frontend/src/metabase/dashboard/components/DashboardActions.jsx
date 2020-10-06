@@ -1,22 +1,73 @@
 import React from "react";
 import { t } from "ttag";
-import Tooltip from "metabase/components/Tooltip";
-import NightModeIcon from "metabase/components/icons/NightModeIcon";
-import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
-import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
 
-export const getDashboardActions = ({
-  isEditing = false,
-  isEmpty = false,
-  isFullscreen,
-  isNightMode,
-  onNightModeChange,
-  onFullscreenChange,
-  refreshPeriod,
-  setRefreshElapsedHook,
-  onRefreshPeriodChange,
-}) => {
+import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
+import Icon from "metabase/components/Icon";
+import NightModeIcon from "metabase/components/icons/NightModeIcon";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
+import Tooltip from "metabase/components/Tooltip";
+
+export const getDashboardActions = (
+  self,
+  {
+    isEditing = false,
+    isEmpty = false,
+    isFullscreen,
+    isNightMode,
+    onNightModeChange,
+    onFullscreenChange,
+    refreshPeriod,
+    setRefreshElapsedHook,
+    onRefreshPeriodChange,
+    onSharingClick,
+    onEmbeddingClick,
+  },
+) => {
   const buttons = [];
+
+  if (!isEditing && !isEmpty) {
+    const extraButtonClassNames =
+      "bg-brand-hover text-white-hover py2 px3 text-bold block cursor-pointer";
+
+    buttons.push(
+      <PopoverWithTrigger
+        ref="popover"
+        triggerElement={
+          <Tooltip tooltip={t`Sharing`}>
+            <Icon name="share" className="text-brand-hover" />
+          </Tooltip>
+        }
+      >
+        <div className="py1">
+          <div>
+            <a
+              className={extraButtonClassNames}
+              data-metabase-event={"Dashboard;Subscriptions"}
+              onClick={() => {
+                self.refs.popover.close();
+                onSharingClick();
+              }}
+            >
+              {t`Create a dashboard subscription`}
+            </a>
+          </div>
+          <div>
+            <a
+              className={extraButtonClassNames}
+              data-metabase-event={"Dashboard;Sharing"}
+              onClick={() => {
+                self.refs.popover.close();
+                onEmbeddingClick();
+              }}
+            >
+              {t`Sharing and embedding`}
+            </a>
+          </div>
+        </div>
+      </PopoverWithTrigger>,
+    );
+  }
 
   if (!isEditing && !isEmpty) {
     buttons.push(
