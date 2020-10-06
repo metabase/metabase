@@ -10,15 +10,12 @@ import Header from "metabase/components/Header";
 import Icon from "metabase/components/Icon";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
-import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
 
 import { getDashboardActions } from "./DashboardActions";
 
 import ParametersPopover from "./ParametersPopover";
 import Popover from "metabase/components/Popover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-
-import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
 
@@ -71,6 +68,9 @@ type Props = {
   onFullscreenChange: boolean => void,
 
   onChangeLocation: string => void,
+
+  onSharingClick: void => void,
+  onEmbeddingClick: void => void,
 };
 
 type State = {
@@ -104,6 +104,9 @@ export default class DashboardHeader extends Component {
     onRefreshPeriodChange: PropTypes.func.isRequired,
     onNightModeChange: PropTypes.func.isRequired,
     onFullscreenChange: PropTypes.func.isRequired,
+
+    onSharingClick: PropTypes.func.isRequired,
+    onEmbeddingClick: PropTypes.func.isRequred,
   };
 
   handleEdit(dashboard: DashboardWithCards) {
@@ -181,13 +184,9 @@ export default class DashboardHeader extends Component {
       isEditing,
       isFullscreen,
       isEditable,
-      isAdmin,
       location,
     } = this.props;
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
-
-    const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
-    const isEmbeddingEnabled = MetabaseSettings.get("enable-embedding");
 
     const buttons = [];
     const extraButtons = [];
@@ -341,18 +340,7 @@ export default class DashboardHeader extends Component {
       );
     }
 
-    buttons.push(...getDashboardActions(this.props));
-
-    if (
-      !isEditing &&
-      !isFullscreen &&
-      ((isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) ||
-        (isEmbeddingEnabled && isAdmin))
-    ) {
-      buttons.push(
-        <DashboardEmbedWidget key="dashboard-embed" dashboard={dashboard} />,
-      );
-    }
+    buttons.push(...getDashboardActions(this, this.props));
 
     if (extraButtons.length > 0 && !isEditing) {
       buttons.push(
