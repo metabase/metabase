@@ -8,13 +8,15 @@ const DEFAULT_PILL_COLOR = metabaseColor("brand");
 
 export const Pill = styled.div`
   ${space};
-  ${background};
   ${color};
   ${display};
   width: 100%;
   border-radius: 99px;
   font-weight: bold;
   z-index: 2;
+  background-color: ${props =>
+    props.active ? metabaseColor("brand") : props.bg};
+  color: ${props => (props.active ? "white" : props.color)};
   &:hover {
     cursor: pointer;
     background-color: ${props =>
@@ -38,7 +40,7 @@ const PillWrapper = styled.div`
   display: flex;
   align-items: center;
   flex: 1;
-  color: ${props => props.color || DEFAULT_PILL_COLOR};
+  color: ${props => (props.active ? "white" : props.color)};
   &:hover {
     color: ${props => (props.active ? "white" : props.color)};
   }
