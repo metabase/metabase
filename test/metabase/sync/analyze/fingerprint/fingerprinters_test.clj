@@ -121,7 +121,7 @@
             :type   {:type/Text {:percent-json   0.2
                                  :percent-url    0.0
                                  :percent-email  0.0
-                                 :average-length 251.4}}}
+                                 :average-length 10.6}}}
            (transduce identity
                       (f/fingerprinter (field/map->FieldInstance {:base_type :type/Text}))
                       ["metabase" "more" "like" "metabae" truncated-json])))))
