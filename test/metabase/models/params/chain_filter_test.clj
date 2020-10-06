@@ -13,65 +13,61 @@
     ~@options))
 
 (deftest chain-filter-test
-  (mt/test-drivers (mt/normal-drivers)
-    (testing "Show me expensive restaurants"
-      (is (= ["Dal Rae Restaurant"
-              "Lawry's The Prime Rib"
-              "Pacific Dining Car - Santa Monica"
-              "Sushi Nakazawa"
-              "Sushi Yasuda"
-              "Tanoshi Sushi & Sake Bar"]
-             (chain-filter venues.name {venues.price 4}))))
-    (testing "Show me categories that have expensive restaurants"
+  (testing "Show me expensive restaurants"
+    (is (= ["Dal Rae Restaurant"
+            "Lawry's The Prime Rib"
+            "Pacific Dining Car - Santa Monica"
+            "Sushi Nakazawa"
+            "Sushi Yasuda"
+            "Tanoshi Sushi & Sake Bar"]
+           (chain-filter venues.name {venues.price 4}))))
+  (testing "Show me categories that have expensive restaurants"
+    (is (= ["Japanese" "Steakhouse"]
+           (chain-filter categories.name {venues.price 4})))
+    (testing "Should work with string versions of param values"
       (is (= ["Japanese" "Steakhouse"]
-             (chain-filter categories.name {venues.price 4})))
-      (testing "Should work with string versions of param values"
-        (is (= ["Japanese" "Steakhouse"]
-               (chain-filter categories.name {venues.price "4"})))))
-    (testing "Show me categories starting with s (case-insensitive) that have expensive restaurants"
-      (is (= ["Steakhouse"]
-             (chain-filter categories.name {venues.price 4, categories.name [:starts-with "s" {:case-sensitive false}]}))))
-    (testing "Show me cheap Thai restaurants"
-      (is (= ["Kinaree Thai Bistro" "Krua Siri"]
-             (chain-filter venues.name {venues.price 1, categories.name "Thai"}))))
-    (testing "Show me the categories that have cheap restaurants"
-      (is (= ["Asian" "BBQ" "Bakery" "Bar" "Burger" "Caribbean" "Deli" "Karaoke" "Mexican" "Pizza" "Southern" "Thai"]
-             (chain-filter categories.name {venues.price 1}))))
-    (testing "Show me cheap restaurants with the word 'taco' in their name (case-insensitive)"
-      (is (= ["Tacos Villa Corona" "Tito's Tacos"]
-             (chain-filter venues.name {venues.price 1, venues.name [:contains "tAcO" {:case-sensitive false}]}))))
-    (testing "Show me the first 3 expensive restaurants"
-      (is (= ["Dal Rae Restaurant" "Lawry's The Prime Rib" "Pacific Dining Car - Santa Monica"]
-             (chain-filter venues.name {venues.price 4} :limit 3))))
-    (testing "Oh yeah, we actually support arbitrary MBQL filter clauses. Neat!"
-      (is (= ["Festa" "Fred 62"]
-             (chain-filter venues.name {venues.price [:between 2 3]
-                                        venues.name  [:starts-with "f" {:case-sensitive false}]}))))))
+             (chain-filter categories.name {venues.price "4"})))))
+  (testing "Show me categories starting with s (case-insensitive) that have expensive restaurants"
+    (is (= ["Steakhouse"]
+           (chain-filter categories.name {venues.price 4, categories.name [:starts-with "s" {:case-sensitive false}]}))))
+  (testing "Show me cheap Thai restaurants"
+    (is (= ["Kinaree Thai Bistro" "Krua Siri"]
+           (chain-filter venues.name {venues.price 1, categories.name "Thai"}))))
+  (testing "Show me the categories that have cheap restaurants"
+    (is (= ["Asian" "BBQ" "Bakery" "Bar" "Burger" "Caribbean" "Deli" "Karaoke" "Mexican" "Pizza" "Southern" "Thai"]
+           (chain-filter categories.name {venues.price 1}))))
+  (testing "Show me cheap restaurants with the word 'taco' in their name (case-insensitive)"
+    (is (= ["Tacos Villa Corona" "Tito's Tacos"]
+           (chain-filter venues.name {venues.price 1, venues.name [:contains "tAcO" {:case-sensitive false}]}))))
+  (testing "Show me the first 3 expensive restaurants"
+    (is (= ["Dal Rae Restaurant" "Lawry's The Prime Rib" "Pacific Dining Car - Santa Monica"]
+           (chain-filter venues.name {venues.price 4} :limit 3))))
+  (testing "Oh yeah, we actually support arbitrary MBQL filter clauses. Neat!"
+    (is (= ["Festa" "Fred 62"]
+           (chain-filter venues.name {venues.price [:between 2 3]
+                                      venues.name  [:starts-with "f" {:case-sensitive false}]})))))
 
 (deftest multiple-values-test
-  (mt/test-drivers (mt/normal-drivers)
-    (testing "Chain filtering should support multiple values for a single parameter (as a vector or set of values)"
-      (testing "Show me restaurants with price = 1 or 2 with the word 'BBQ' in their name (case-sensitive)"
-        (is (= ["Baby Blues BBQ" "Beachwood BBQ & Brewing" "Bludso's BBQ"]
-               (chain-filter venues.name {venues.price #{1 2}, venues.name [:contains "BBQ"]}))))
-      (testing "Show me the possible values of price for Bakery *or* BBQ restaurants"
-        (is (= [1 2 3]
-               (chain-filter venues.price {categories.name ["Bakery" "BBQ"]})))))))
+  (testing "Chain filtering should support multiple values for a single parameter (as a vector or set of values)"
+    (testing "Show me restaurants with price = 1 or 2 with the word 'BBQ' in their name (case-sensitive)"
+      (is (= ["Baby Blues BBQ" "Beachwood BBQ & Brewing" "Bludso's BBQ"]
+             (chain-filter venues.name {venues.price #{1 2}, venues.name [:contains "BBQ"]}))))
+    (testing "Show me the possible values of price for Bakery *or* BBQ restaurants"
+      (is (= [1 2 3]
+             (chain-filter venues.price {categories.name ["Bakery" "BBQ"]}))))))
 
 (deftest auto-parse-string-params-test
-  (mt/test-drivers (mt/normal-drivers)
-    (testing "Parameters that come in as strings (i.e., all of them that come in via the API) should work as intended"
-      (is (= ["Baby Blues BBQ" "Beachwood BBQ & Brewing" "Bludso's BBQ"]
-             (chain-filter venues.name {venues.price ["1" "2"], venues.name [:contains "BBQ"]}))))))
+  (testing "Parameters that come in as strings (i.e., all of them that come in via the API) should work as intended"
+    (is (= ["Baby Blues BBQ" "Beachwood BBQ & Brewing" "Bludso's BBQ"]
+           (chain-filter venues.name {venues.price ["1" "2"], venues.name [:contains "BBQ"]})))))
 
 (deftest unrelated-params-test
-  (mt/test-drivers (mt/normal-drivers)
-    (testing "Parameters that are completely unrelated (don't apply to this Table) should just get ignored entirely"
-      ;; there is no way to join from venues -> users so users.id should get ignored
-      (binding [chain-filter/*enable-reverse-joins* false]
-        (is (= [1 2 3]
-               (chain-filter venues.price {categories.name ["Bakery" "BBQ"]
-                                           users.id        [1 2 3]})))))))
+  (testing "Parameters that are completely unrelated (don't apply to this Table) should just get ignored entirely"
+    ;; there is no way to join from venues -> users so users.id should get ignored
+    (binding [chain-filter/*enable-reverse-joins* false]
+      (is (= [1 2 3]
+             (chain-filter venues.price {categories.name ["Bakery" "BBQ"]
+                                         users.id        [1 2 3]}))))))
 
 (deftest find-joins-test
   (mt/dataset airports
@@ -119,40 +115,39 @@
                  (#'chain-filter/find-all-joins $$airport #{%region.name %municipality.name %region.id}))))))))
 
 (deftest multi-hop-test
-  (mt/test-drivers (mt/normal-drivers)
-    (mt/dataset airports
-      (testing "Should be able to filter against other tables with that require multiple joins\n"
-        (testing "single direct join: Airport -> Municipality"
-          (is (= ["San Francisco International Airport"]
-                 (chain-filter airport.name {municipality.name ["San Francisco"]}))))
-        (testing "2 joins required: Airport -> Municipality -> Region"
-          (is (= ["Beale Air Force Base"
-                  "Edwards Air Force Base"
-                  "John Wayne Airport-Orange County Airport"]
-                 (take 3 (chain-filter airport.name {region.name ["California"]})))))
-        (testing "3 joins required: Airport -> Municipality -> Region -> Country"
-          (is (= ["Abraham Lincoln Capital Airport"
-                  "Albuquerque International Sunport"
-                  "Altus Air Force Base"]
-                 (take 3 (chain-filter airport.name {country.name ["United States"]})))))
-        (testing "4 joins required: Airport -> Municipality -> Region -> Country -> Continent"
-          (is (= ["Afonso Pena Airport"
-                  "Alejandro Velasco Astete International Airport"
-                  "Carrasco International /General C L Berisso Airport"]
-                 (take 3 (chain-filter airport.name {continent.name ["South America"]})))))
-        (testing "[backwards]"
-          (testing "single direct join: Municipality -> Airport"
-            (is (= ["San Francisco"]
-                   (chain-filter municipality.name {airport.name ["San Francisco International Airport"]}))))
-          (testing "2 joins required: Region -> Municipality -> Airport"
-            (is (= ["California"]
-                   (chain-filter region.name {airport.name ["San Francisco International Airport"]}))))
-          (testing "3 joins required: Country -> Region -> Municipality -> Airport"
-            (is (= ["United States"]
-                   (chain-filter country.name {airport.name ["San Francisco International Airport"]}))))
-          (testing "4 joins required: Continent -> Region -> Municipality -> Airport"
-            (is (= ["North America"]
-                   (chain-filter continent.name {airport.name ["San Francisco International Airport"]})))))))))
+  (mt/dataset airports
+    (testing "Should be able to filter against other tables with that require multiple joins\n"
+      (testing "single direct join: Airport -> Municipality"
+        (is (= ["San Francisco International Airport"]
+               (chain-filter airport.name {municipality.name ["San Francisco"]}))))
+      (testing "2 joins required: Airport -> Municipality -> Region"
+        (is (= ["Beale Air Force Base"
+                "Edwards Air Force Base"
+                "John Wayne Airport-Orange County Airport"]
+               (take 3 (chain-filter airport.name {region.name ["California"]})))))
+      (testing "3 joins required: Airport -> Municipality -> Region -> Country"
+        (is (= ["Abraham Lincoln Capital Airport"
+                "Albuquerque International Sunport"
+                "Altus Air Force Base"]
+               (take 3 (chain-filter airport.name {country.name ["United States"]})))))
+      (testing "4 joins required: Airport -> Municipality -> Region -> Country -> Continent"
+        (is (= ["Afonso Pena Airport"
+                "Alejandro Velasco Astete International Airport"
+                "Carrasco International /General C L Berisso Airport"]
+               (take 3 (chain-filter airport.name {continent.name ["South America"]})))))
+      (testing "[backwards]"
+        (testing "single direct join: Municipality -> Airport"
+          (is (= ["San Francisco"]
+                 (chain-filter municipality.name {airport.name ["San Francisco International Airport"]}))))
+        (testing "2 joins required: Region -> Municipality -> Airport"
+          (is (= ["California"]
+                 (chain-filter region.name {airport.name ["San Francisco International Airport"]}))))
+        (testing "3 joins required: Country -> Region -> Municipality -> Airport"
+          (is (= ["United States"]
+                 (chain-filter country.name {airport.name ["San Francisco International Airport"]}))))
+        (testing "4 joins required: Continent -> Region -> Municipality -> Airport"
+          (is (= ["North America"]
+                 (chain-filter continent.name {airport.name ["San Francisco International Airport"]}))))))))
 
 (deftest filterable-field-ids-test
   (mt/$ids
