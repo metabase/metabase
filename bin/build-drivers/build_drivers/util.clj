@@ -55,7 +55,7 @@
   (str filename))
 
 (defn create-directory-unless-exists! [^String dir]
-  (when-not (exists? dir)
+  (when-not (file-exists? dir)
     (step (format "Creating directory %s..." dir)
       (.mkdirs (File. dir))))
   dir)
