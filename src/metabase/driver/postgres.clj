@@ -97,7 +97,7 @@
 (defn- enum-types [driver database]
   (set
    (map (comp keyword :typname)
-        (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
+        (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                     [(str "SELECT DISTINCT t.typname "
                           "FROM pg_enum e "
                           "LEFT JOIN pg_type t "
