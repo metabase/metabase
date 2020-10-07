@@ -82,17 +82,23 @@ export const InternalLayout = fitViewport(({ children }) => {
               <Label>Colors</Label>
             </Link>
           </li>
-          <li className="my3">Components</li>
-          {COMPONENTS.map(({ component, description, examples }) => (
-            <li>
-              <a
-                className="py1 block link h3 text-bold"
-                href={`/_internal/components/${getComponentSlug(component)}`}
-              >
-                {getComponentName(component)}
-              </a>
-            </li>
-          ))}
+          <li className="my3">
+            Components
+            <ol className="ml2">
+              {COMPONENTS.map(({ component, description, examples }) => (
+                <li>
+                  <a
+                    className="py1 block link h3 text-bold"
+                    href={`/_internal/components/${getComponentSlug(
+                      component,
+                    )}`}
+                  >
+                    {getComponentName(component)}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </li>
           {Object.keys(PAGES).map(name => (
             <li key={name}>
               <Link className="link" to={"/_internal/" + name.toLowerCase()}>
