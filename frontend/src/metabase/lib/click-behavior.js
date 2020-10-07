@@ -66,68 +66,78 @@ function notRelativeDateOrRange({ type }) {
 }
 
 export function getTargetsWithSourceFilters({ isDash, object, metadata }) {
-  if (!isDash) {
-    const query = new Question(object, metadata).query();
-    return query
-      .dimensionOptions()
-      .all()
-      .concat(query.variables())
-      .map(o => {
-        let id, target;
-        if (
-          o instanceof TemplateTagVariable ||
-          o instanceof TemplateTagDimension
-        ) {
-          ({ id, name: target } = o.tag());
-        } else {
-          target = ["dimension", o.mbql()];
-          id = JSON.stringify(target);
-        }
-        let parentType;
-        let parameterSourceFilter = () => true;
-        const columnSourceFilter = c => isa(c.base_type, parentType);
-        if (o instanceof TemplateTagVariable) {
-          parentType = { text: Text, number: Number, date: Temporal }[
-            o.tag().type
-          ];
-          parameterSourceFilter = parameter =>
-            variableFilterForParameter(parameter)(o);
-        } else if (o.field() != null) {
-          const { base_type } = o.field();
-          parentType =
-            [Temporal, Number, Text].find(t => isa(base_type, t)) || base_type;
-          parameterSourceFilter = parameter =>
-            dimensionFilterForParameter(parameter)(o);
-        }
+  return isDash
+    ? getTargetsForDashboard(object)
+    : getTargetsForQuestion(object, metadata);
+}
 
-        return {
-          id,
-          target,
-          name: o.displayName({ includeTable: true }),
-          sourceFilters: {
-            column: columnSourceFilter,
-            parameter: parameterSourceFilter,
-            userAttribute: () => parentType === Text,
-          },
-        };
-      });
-  } else {
-    return object.parameters.map(parameter => {
-      const filter = baseTypeFilterForParameterType(parameter.type);
+function getTargetsForQuestion(question, metadata) {
+  const query = new Question(question, metadata).query();
+  return query
+    .dimensionOptions()
+    .all()
+    .concat(query.variables())
+    .map(o => {
+      let id, target;
+      if (
+        o instanceof TemplateTagVariable ||
+        o instanceof TemplateTagDimension
+      ) {
+        let name;
+        ({ id, name } = o.tag());
+        target = { type: "variable", id: name };
+      } else {
+        const dimension = ["dimension", o.mbql()];
+        id = JSON.stringify(dimension);
+        target = { type: "dimension", id, dimension };
+      }
+      let parentType;
+      let parameterSourceFilter = () => true;
+      const columnSourceFilter = c => isa(c.base_type, parentType);
+      if (o instanceof TemplateTagVariable) {
+        parentType = { text: Text, number: Number, date: Temporal }[
+          o.tag().type
+        ];
+        parameterSourceFilter = parameter =>
+          variableFilterForParameter(parameter)(o);
+      } else if (o.field() != null) {
+        const { base_type } = o.field();
+        parentType =
+          [Temporal, Number, Text].find(t => isa(base_type, t)) || base_type;
+        parameterSourceFilter = parameter =>
+          dimensionFilterForParameter(parameter)(o);
+      }
+
       return {
-        id: parameter.id,
-        name: parameter.name,
-        target: parameter.slug,
+        id,
+        target,
+        name: o.displayName({ includeTable: true }),
         sourceFilters: {
-          column: c => notRelativeDateOrRange(parameter) && filter(c.base_type),
-          parameter: sourceParam =>
-            parameter.type === sourceParam.type &&
-            parameter.id !== sourceParam.id,
-          userAttribute: () => !parameter.type.startsWith("date"),
+          column: columnSourceFilter,
+          parameter: parameterSourceFilter,
+          userAttribute: () => parentType === Text,
         },
       };
     });
-  }
+}
+
+function getTargetsForDashboard(dashboard) {
+  return dashboard.parameters.map(parameter => {
+    const { type, id, name } = parameter;
+    const filter = baseTypeFilterForParameterType(type);
+    return {
+      id,
+      name,
+      target: { type: "parameter", id },
+      sourceFilters: {
+        column: c => notRelativeDateOrRange(parameter) && filter(c.base_type),
+        parameter: sourceParam =>
+          parameter.type === sourceParam.type &&
+          parameter.id !== sourceParam.id,
+        userAttribute: () => !parameter.type.startsWith("date"),
+      },
+    };
+  });
 }
 
 function baseTypeFilterForParameterType(parameterType) {
