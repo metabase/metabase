@@ -42,6 +42,7 @@ const req = require.context(
   /(\w+)App.jsx$/,
 );
 
+// TODO - remove this in favor of explicit pages and imports until we can move to a static generator
 const PAGES = {};
 for (const key of req.keys()) {
   const name = key.match(/(\w+)App.jsx$/)[1];
