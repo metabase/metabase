@@ -437,21 +437,26 @@
 (s/defn ^:private test-connection-details :- su/Map
   "Try a making a connection to database `engine` with `details`.
 
-  Tries twice: once with SSL, and a second time without if the first fails. If either attempt is successful, returns
+  If the `details` has SSL explicitly enabled, go with that and do not accept plaintext connections. If it is disabled,
+  try twice: once with SSL, and a second time without if the first fails. If either attempt is successful, returns
   the details used to successfully connect. Otherwise returns a map with the connection error message. (This map will
   also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
   [engine :- DBEngineString, details :- su/Map]
-  (let [details (if (supports-ssl? (keyword engine))
-                  (assoc details :ssl true)
-                  details)]
+  (if (and (supports-ssl? (keyword engine))
+           (true? (:ssl details)))
+    (let [error (test-database-connection engine details)]
+      (or error details))
+    (let [details (if (supports-ssl? (keyword engine))
+                    (assoc details :ssl true)
+                    details)]
     ;; this loop tries connecting over ssl and non-ssl to establish a connection
     ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
-    (loop [details details]
-      (let [error (test-database-connection engine details)]
-        (if (and error
-                 (true? (:ssl details)))
-          (recur (assoc details :ssl false))
-          (or error details))))))
+      (loop [details details]
+        (let [error (test-database-connection engine details)]
+          (if (and error
+                   (true? (:ssl details)))
+            (recur (assoc details :ssl false))
+            (or error details)))))))
 
 (def ^:private CronSchedulesMap
   "Schema with values for a DB's schedules that can be put directly into the DB."
