@@ -17,6 +17,8 @@ import AceEditor from "metabase/components/TextEditor";
 import CopyButton from "metabase/components/CopyButton";
 import Icon from "metabase/components/Icon";
 
+import Props from "metabase/internal/components/Props";
+
 const Section = ({ title, children }) => (
   <div className="mb2">
     {title && <h3 className="my2">{title}</h3>}
@@ -63,19 +65,7 @@ export default class ComponentsPage extends Component {
                 {componentName === getComponentSlug(component) &&
                   component.propTypes && (
                     <Section title="Props">
-                      <div className="border-left border-right border-bottom text-code">
-                        {Object.keys(component.propTypes).map(prop => (
-                          <div>
-                            {prop}{" "}
-                            {component.defaultProps &&
-                            component.defaultProps[prop] !== undefined
-                              ? "(default: " +
-                                JSON.stringify(component.defaultProps[prop]) +
-                                ")"
-                              : ""}
-                          </div>
-                        ))}
-                      </div>
+                      <Props of={component} />
                     </Section>
                   )}
                 {examples && (
