@@ -17,6 +17,7 @@
              [test :as mt]
              [util :as u]]
             [metabase.api
+             [dashboard-test :as dashboard-api-test]
              [embed :as embed-api]
              [public-test :as public-test]]
             [metabase.query-processor.middleware.constraints :as constraints]
@@ -318,7 +319,6 @@
 
 (defn- dashboard-url [dashboard & [additional-token-params]]
   (str "embed/dashboard/" (dash-token dashboard additional-token-params)))
-
 
 (deftest it-should-be-possible-to-call-this-endpoint-successfully
   (with-embedding-enabled-and-new-secret-key
@@ -703,3 +703,142 @@
           (is (= "Not found."
                  (http/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
                               :value "10"))))))))
+
+;;; ------------------------------------------------ Chain filtering -------------------------------------------------
+
+(defn- do-with-chain-filter-fixtures [f]
+  (with-embedding-enabled-and-new-secret-key
+    (dashboard-api-test/with-chain-filter-fixtures [{:keys [dashboard], :as m}]
+      (db/update! Dashboard (u/get-id dashboard) :enable_embedding true)
+      (letfn [(token [params]
+                (dash-token dashboard (when params {:params params})))
+              (values-url [& [params]]
+                (format "embed/dashboard/%s/params/_CATEGORY_ID_/values" (token params)))
+              (search-url [& [params]]
+                (format "embed/dashboard/%s/params/_CATEGORY_NAME_/search/s" (token params)))]
+        (f (assoc m
+                  :token token
+                  :values-url values-url
+                  :search-url search-url))))))
+
+(defmacro ^:private with-chain-filter-fixtures [[binding] & body]
+  `(do-with-chain-filter-fixtures (fn [~binding] ~@body)))
+
+(deftest chain-filter-embedding-disabled-test
+  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+    (testing "without embedding enabled for dashboard"
+      (db/update! Dashboard (u/get-id dashboard) :enable_embedding false)
+      (testing "GET /api/embed/dashboard/:token/params/:param-key/values"
+        (is (= "Embedding is not enabled for this object."
+               (http/client :get 400 (values-url)))))
+      (testing "GET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
+        (is (= "Embedding is not enabled for this object."
+               (http/client :get 400 (search-url))))))))
+
+(deftest chain-filter-random-params-test
+  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+    (testing "Requests should fail if parameter is not explicitly enabled"
+      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
+        (is (= "Cannot search for values: \"_CATEGORY_ID_\" is not an enabled parameter."
+               (http/client :get 400 (values-url)))))
+      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
+        (is (= "Cannot search for values: \"_CATEGORY_NAME_\" is not an enabled parameter."
+               (http/client :get 400 (search-url))))))))
+
+(deftest chain-filter-enabled-params-test
+  (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+    (db/update! Dashboard (:id dashboard)
+      :embedding_params {"_CATEGORY_ID_" "enabled", "_CATEGORY_NAME_" "enabled", "_PRICE_" "enabled"})
+    (testing "Should work if the param we're fetching values for is enabled"
+      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
+        (is (= [2 3 4 5 6]
+               (take 5 (http/client :get 200 (values-url))))))
+      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
+        (is (= ["Scandinavian" "Seafood" "South Pacific"]
+               (take 3 (http/client :get 200 (search-url)))))))
+
+    (testing "If an ENABLED constraint param is present in the JWT, that's ok"
+      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
+        (is (= [40 67]
+               (http/client :get 200 (values-url {"_PRICE_" 4})))))
+      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
+        (is (= ["Steakhouse"]
+               (http/client :get 200 (search-url {"_PRICE_" 4}))))))
+
+    (testing "If an ENABLED param is present in query params but *not* the JWT, that's ok"
+      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
+        (is (= [40 67]
+               (http/client :get 200 (str (values-url) "?_PRICE_=4")))))
+      (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
+        (is (= ["Steakhouse"]
+               (http/client :get 200 (str (search-url) "?_PRICE_=4"))))))
+
+    (testing "If ENABLED param is present in both JWT and the URL, the request should fail"
+      (doseq [url-fn [values-url search-url]
+              :let   [url (str (url-fn {"_PRICE_" 4}) "?_PRICE_=4")]]
+        (testing (str "\n" url)
+          (is (= "You can't specify a value for :_PRICE_ if it's already set in the JWT."
+                 (http/client :get 400 url))))))))
+
+(deftest chain-filter-locked-params-test
+  (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+    (testing "Requests should fail if searched param is locked"
+      (db/update! Dashboard (:id dashboard)
+        :embedding_params {"_CATEGORY_ID_" "locked", "_CATEGORY_NAME_" "locked"})
+      (doseq [url [(values-url) (search-url)]]
+        (testing (str "\n" url)
+          (is (re= #"You must specify a value for :_CATEGORY_(?:(?:NAME)|(?:ID))_ in the JWT\."
+                   (http/client :get 400 url))))))
+
+    (testing "Search param enabled\n"
+      (db/update! Dashboard (:id dashboard)
+        :embedding_params {"_CATEGORY_ID_" "enabled", "_CATEGORY_NAME_" "enabled", "_PRICE_" "locked"})
+
+      (testing "Requests should fail if the token is missing a locked parameter"
+        (doseq [url [(values-url) (search-url)]]
+          (testing (str "\n" url)
+            (is (= "You must specify a value for :_PRICE_ in the JWT."
+                   (http/client :get 400 url))))))
+
+      (testing "if `:locked` param is supplied, request should succeed"
+        (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
+          (is (= [40 67]
+                 (http/client :get 200 (values-url {"_PRICE_" 4})))))
+        (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
+          (is (= ["Steakhouse"]
+                 (http/client :get 200 (search-url {"_PRICE_" 4}))))))
+
+      (testing "if `:locked` parameter is present in URL params, request should fail"
+        (doseq [url-fn [values-url search-url]
+                :let   [url (url-fn {"_PRICE_" 4})]]
+          (testing (str "\n" url)
+            (is (= "You can only specify a value for :_PRICE_ in the JWT."
+                   (http/client :get 400 (str url "?_PRICE_=4"))))))))))
+
+(deftest chain-filter-disabled-params-test
+  (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+    (testing "Requests should fail if searched param is disabled"
+      (db/update! Dashboard (:id dashboard)
+        :embedding_params {"_CATEGORY_ID_" "disabled", "_CATEGORY_NAME_" "disabled"})
+      (doseq [url [(values-url) (search-url)]]
+        (testing (str "\n" url)
+          (is (re= #"Cannot search for values: \"_CATEGORY_(?:(?:NAME)|(?:ID))_\" is not an enabled parameter\."
+                   (http/client :get 400 url))))))
+
+    (testing "Search param enabled\n"
+      (db/update! Dashboard (:id dashboard)
+        :embedding_params {"_CATEGORY_ID_" "enabled", "_CATEGORY_NAME_" "enabled", "_PRICE_" "disabled"})
+
+      (testing "Requests should fail if the token has a disabled parameter"
+        (doseq [url-fn [values-url search-url]
+                :let   [url (url-fn {"_PRICE_" 4})]]
+          (testing (str "\n" url)
+            (is (= "You're not allowed to specify a value for :_PRICE_."
+                   (http/client :get 400 url))))))
+
+      (testing "Requests should fail if the URL has a disabled parameter"
+        (doseq [url-fn [values-url search-url]
+                :let   [url (str (url-fn) "?_PRICE_=4")]]
+          (testing (str "\n" url)
+            (is (= "You're not allowed to specify a value for :_PRICE_."
+                   (http/client :get 400 url)))))))))

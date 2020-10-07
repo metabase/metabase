@@ -22,6 +22,7 @@
             [medley.core :as m]
             [metabase.api
              [common :as api]
+             [dashboard :as dashboard-api]
              [dataset :as dataset-api]
              [public :as public-api]]
             [metabase.models
@@ -111,7 +112,7 @@
   "Remove the `:parameters` for `dashboard-or-card` that listed as `disabled` or `locked` in the `embedding-params`
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
-  [dashboard-or-card, embedding-params :- su/EmbeddingParams]
+  [dashboard-or-card embedding-params :- su/EmbeddingParams]
   (let [params-to-remove (set (concat (for [[param status] embedding-params
                                             :when          (not= status "enabled")]
                                         param)
@@ -175,8 +176,8 @@
   (let [param-id->param (u/key-by :id (for [param (db/select-one-field :parameters Dashboard :id dashboard-id)]
                                         (update param :type keyword)))]
     ;; throw a 404 if there's no matching DashboardCard so people can't get info about other Cards that aren't in this
-    ;; Dashboard we don't need to check that card-id matches the DashboardCard because we might be trying to get param
-    ;; info for a series belonging to this dashcard (card-id might be for a series)
+    ;; Dashboard. We don't need to check that `card-id` matches the DashboardCard because we might be trying to get
+    ;; param info for a series belonging to this dashcard (`card-id` might be for a series)
     (for [param-mapping (api/check-404 (db/select-one-field :parameter_mappings DashboardCard
                                          :id           dashcard-id
                                          :dashboard_id dashboard-id))
@@ -450,5 +451,34 @@
     export-format
     (m/map-keys keyword query-params)
     :constraints nil))
+
+
+;;; ------------------------------------------------ Chain Filtering -------------------------------------------------
+
+(defn- chain-filter [token param-key prefix query-params]
+  (let [unsigned-token   (eu/unsign token)
+        dashboard-id     (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        _                (check-embedding-enabled-for-dashboard dashboard-id)
+        embedding-params (db/select-one-field :embedding_params Dashboard, :id dashboard-id)
+        token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
+        query-params     (normalize-query-params query-params)
+        parameter-values (validate-and-merge-params embedding-params token-params query-params)]
+    ;; you can only search for values of a parameter if it is ENABLED and NOT PRESENT in the JWT.
+    (when-not (= (get embedding-params (keyword param-key)) "enabled")
+      (throw (ex-info (tru "Cannot search for values: {0} is not an enabled parameter." (pr-str param-key))
+                      {:param param-key, :allowed embedding-params})))
+    (when (get token-params (keyword param-key))
+      (throw (ex-info (tru "You can''t specify a value for {0} if it's already set in the JWT." (pr-str param-key))
+                      {:param param-key, :allowed embedding-params})))
+    ;; ok, at this point we can run the query
+    (dashboard-api/chain-filter (Dashboard dashboard-id) param-key (m/map-keys name parameter-values) prefix)))
+
+(api/defendpoint GET "/dashboard/:token/params/:param-key/values"
+  [token param-key :as {:keys [query-params]}]
+  (chain-filter token param-key nil query-params))
+
+(api/defendpoint GET "/dashboard/:token/params/:param-key/search/:prefix"
+  [token param-key prefix :as {:keys [query-params]}]
+  (chain-filter token param-key prefix query-params))
 
 (api/define-routes)
