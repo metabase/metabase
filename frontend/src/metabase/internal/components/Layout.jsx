@@ -4,6 +4,9 @@ import Link from "metabase/components/Link";
 
 import LogoIcon from "metabase/components/LogoIcon";
 
+import Label from "metabase/components/type/Label";
+import Subhead from "metabase/components/type/Subhead";
+
 /*
     TODO - remove this in favor of explicit pages and imports until we can move to a static generator
 */
@@ -50,24 +53,24 @@ export const InternalLayout = fitViewport(({ children }) => {
   return (
     <div>
       <FixedPane>
-        <a className="text-brand-hover" href="/_internal">
+        <a className="text-brand-hover flex align-center mb2" href="/_internal">
           <LogoIcon />
-          <h4>Style Guide</h4>
+          <Subhead ml={2}>Styleguide</Subhead>
         </a>
         <ul>
           <li>
             <Link className="link" to={"/_internal/type"}>
-              Type
+              <Label>Type</Label>
             </Link>
           </li>
           <li>
             <Link className="link" to={"/_internal/icons"}>
-              Icons
+              <Label>Icons</Label>
             </Link>
           </li>
           <li>
             <Link className="link" to={"/_internal/colors"}>
-              Colors
+              <Label>Colors</Label>
             </Link>
           </li>
           <li className="my3">Components</li>
