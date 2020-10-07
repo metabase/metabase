@@ -255,6 +255,10 @@
                      :base-type         (presto-type->base-type type)
                      :database-position idx}))}))
 
+(defmethod driver/db-start-of-week :presto
+  [_]
+  :monday)
+
 (defmethod sql.qp/->honeysql [:presto Boolean]
   [_ bool]
   (hsql/raw (if bool "TRUE" "FALSE")))
@@ -363,23 +367,16 @@
 (defmethod sql.qp/date [:presto :hour]            [_ _ expr] (hsql/call :date_trunc (hx/literal :hour) expr))
 (defmethod sql.qp/date [:presto :hour-of-day]     [_ _ expr] (hsql/call :hour expr))
 (defmethod sql.qp/date [:presto :day]             [_ _ expr] (hsql/call :date_trunc (hx/literal :day) expr))
-;; Presto is ISO compliant, so we need to offset Monday = 1 to Sunday = 1
-(defmethod sql.qp/date [:presto :day-of-week]     [_ _ expr] (hx/+ (hx/mod (hsql/call :day_of_week expr) 7) 1))
 (defmethod sql.qp/date [:presto :day-of-month]    [_ _ expr] (hsql/call :day expr))
 (defmethod sql.qp/date [:presto :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
 
-;; Similar to DoW, sicne Presto is ISO compliant the week starts on Monday, we need to shift that to Sunday
+(defmethod sql.qp/date [:presto :day-of-week]
+  [_ _ expr]
+  (sql.qp/adjust-day-of-week :presto (hsql/call :day_of_week expr)))
+
 (defmethod sql.qp/date [:presto :week]
   [_ _ expr]
-  (hsql/call :date_add
-    (hx/literal :day) -1 (hsql/call :date_trunc
-                           (hx/literal :week) (hsql/call :date_add
-                                                (hx/literal :day) 1 expr))))
-
-;; Offset by one day forward to "fake" a Sunday starting week
-(defmethod sql.qp/date [:presto :week-of-year]
-  [_ _ expr]
-  (hsql/call :week (hsql/call :date_add (hx/literal :day) 1 expr)))
+  (sql.qp/adjust-start-of-week :presto (partial hsql/call :date_trunc (hx/literal :week)) expr))
 
 (defmethod sql.qp/date [:presto :month]           [_ _ expr] (hsql/call :date_trunc (hx/literal :month) expr))
 (defmethod sql.qp/date [:presto :month-of-year]   [_ _ expr] (hsql/call :month expr))

@@ -231,9 +231,9 @@
      :day         (t/truncate-to t :days)
      :week        (-> (.with t (adjuster :first-day-of-week))     (t/truncate-to :days))
      :iso-week    (-> (.with t (adjuster :first-day-of-iso-week)) (t/truncate-to :days))
-     :month       (-> (t/adjust t :first-day-of-month)             (t/truncate-to :days))
+     :month       (-> (t/adjust t :first-day-of-month)            (t/truncate-to :days))
      :quarter     (-> (.with t (adjuster :first-day-of-quarter))  (t/truncate-to :days))
-     :year        (-> (t/adjust t :first-day-of-year)              (t/truncate-to :days)))))
+     :year        (-> (t/adjust t :first-day-of-year)             (t/truncate-to :days)))))
 
 (s/defn bucket :- (s/cond-pre Number Temporal)
   "Perform a truncation or extraction unit on temporal value `t`. (These two operations are collectively known as
