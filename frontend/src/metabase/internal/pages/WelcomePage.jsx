@@ -1,13 +1,16 @@
 import React from "react";
 
+import Heading from "metabase/components/type/Heading";
+import Text from "metabase/components/type/Text";
+
 const WelcomePage = () => {
   return (
-    <div className="wrapper">
+    <div className="wrapper wrapper--trim">
       <div className="my4">
-        <h1>Metabase Style Guide</h1>
-        <p className="text-paragraph">
+        <Heading>Metabase Style Guide</Heading>
+        <Text>
           Reference and samples for how to make things the Metabase way.
-        </p>
+        </Text>
       </div>
     </div>
   );
