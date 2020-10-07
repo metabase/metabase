@@ -4,18 +4,8 @@ import React, { Component } from "react";
 import { Link, Route } from "react-router";
 
 import { slugify } from "metabase/lib/formatting";
-import cx from "classnames";
-
-// $FlowFixMe: react-virtualized ignored
-import reactElementToJSXString from "react-element-to-jsx-string";
-import prettier from "prettier/standalone";
-import prettierParserBabylon from "prettier/parser-babylon";
 
 import COMPONENTS from "../lib/components-webpack";
-
-import AceEditor from "metabase/components/TextEditor";
-import CopyButton from "metabase/components/CopyButton";
-import Icon from "metabase/components/Icon";
 
 import Props from "metabase/internal/components/Props";
 import Example from "metabase/internal/components/Example";
@@ -100,77 +90,6 @@ export default class ComponentsPage extends Component {
             ))}
           </div>
         </div>
-      </div>
-    );
-  }
-}
-
-class SourcePane extends React.Component {
-  state = {
-    isOpen: true,
-  };
-  render() {
-    const { element } = this.props;
-    const { isOpen } = this.state;
-    let source = reactElementToJSXString(element, {
-      showFunctions: true,
-      showDefaultProps: false,
-    });
-    try {
-      source = prettier.format(source, {
-        parser: "babel",
-        plugins: [prettierParserBabylon],
-      });
-    } catch (e) {
-      console.log(e);
-    }
-
-    const scratchUrl = "/_internal/scratch#" + btoa(source);
-    return (
-      <div
-        className={cx("relative", {
-          "border-left border-right border-bottom": isOpen,
-        })}
-      >
-        {isOpen && (
-          <AceEditor
-            value={source}
-            mode="ace/mode/jsx"
-            theme="ace/theme/metabase"
-            readOnly
-          />
-        )}
-        {isOpen ? (
-          <div className="absolute top right z2 flex align-center p1 text-medium">
-            <CopyButton
-              className="ml1 text-brand-hover cursor-pointer"
-              value={source}
-            />
-            <Link to={scratchUrl}>
-              <Icon
-                name="pencil"
-                className="ml1 text-brand-hover cursor-pointer"
-              />
-            </Link>
-            <Icon
-              name="close"
-              className="ml1 text-brand-hover cursor-pointer"
-              onClick={() => this.setState({ isOpen: false })}
-            />
-          </div>
-        ) : (
-          <div className="p1 flex align-ceneter justify-end">
-            <Link className="link ml1" to={scratchUrl}>
-              Open in Scratch
-            </Link>
-            <span
-              className="link ml1"
-              onClick={() => this.setState({ isOpen: true })}
-            >
-              View Source
-            </span>
-          </div>
-        )}
       </div>
     );
   }
