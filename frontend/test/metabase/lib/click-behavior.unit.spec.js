@@ -66,7 +66,7 @@ describe("metabase/lib/click-behavior", () => {
       });
       expect(id).toEqual("foo123");
       expect(name).toEqual("My Param");
-      expect(target).toEqual("my_param");
+      expect(target).toEqual({ type: "parameter", id: "foo123" });
     });
 
     it("should produce a template tag target", () => {
@@ -92,7 +92,7 @@ describe("metabase/lib/click-behavior", () => {
       });
       expect(id).toEqual("foo123");
       expect(name).toEqual("My Variable");
-      expect(target).toEqual("my_variable");
+      expect(target).toEqual({ type: "variable", id: "my_variable" });
     });
 
     it("should produce a template tag dimension target", () => {
@@ -106,7 +106,7 @@ describe("metabase/lib/click-behavior", () => {
               "template-tags": {
                 my_field_filter: {
                   default: null,
-                  dimension: ["field-id", PRODUCTS.CATEGORY],
+                  dimension: ["field-id", PRODUCTS.CATEGORY.id],
                   "display-name": "My Field Filter",
                   id: "foo123",
                   name: "my_field_filter",
@@ -121,7 +121,10 @@ describe("metabase/lib/click-behavior", () => {
       });
       expect(id).toEqual("foo123");
       expect(name).toEqual("My Field Filter");
-      expect(target).toEqual("my_field_filter");
+      expect(target).toEqual({
+        type: "variable",
+        id: "my_field_filter",
+      });
     });
 
     describe("filtering sources", () => {

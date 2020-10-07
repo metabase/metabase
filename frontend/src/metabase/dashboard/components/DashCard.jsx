@@ -180,6 +180,7 @@ export default class DashCard extends Component {
             isEditing ? (
               <DashCardActionButtons
                 series={series}
+                hasError={!!errorMessage}
                 isVirtualDashCard={isVirtualDashCard(dashcard)}
                 onRemove={onRemove}
                 onAddSeries={onAddSeries}
@@ -250,45 +251,59 @@ export default class DashCard extends Component {
 const DashCardActionButtons = ({
   series,
   isVirtualDashCard,
+  hasError,
   onRemove,
   onAddSeries,
   onReplaceAllVisualizationSettings,
   showClickBehaviorSidebar,
-}) => (
-  <span
-    className="DashCard-actions flex align-center"
-    style={{ lineHeight: 1 }}
-  >
-    {onReplaceAllVisualizationSettings &&
-      !getVisualizationRaw(series).visualization.disableSettingsConfig && (
+}) => {
+  const buttons = [];
+  if (!hasError) {
+    if (
+      onReplaceAllVisualizationSettings &&
+      !getVisualizationRaw(series).visualization.disableSettingsConfig
+    ) {
+      buttons.push(
         <ChartSettingsButton
           series={series}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
-        />
-      )}
+        />,
+      );
+    }
+    if (!isVirtualDashCard) {
+      buttons.push(
+        <Tooltip tooltip={t`Click behavior`}>
+          <a
+            className="text-light text-medium-hover drag-disabled mr1"
+            data-metabase-event="Dashboard;Open Click Behavior Sidebar"
+            onClick={showClickBehaviorSidebar}
+            style={HEADER_ACTION_STYLE}
+          >
+            <Icon name="click" />
+          </a>
+        </Tooltip>,
+      );
+    }
 
-    {!isVirtualDashCard && (
-      <Tooltip tooltip={t`Click behavior`}>
-        <a
-          className="text-light text-medium-hover drag-disabled mr1"
-          data-metabase-event="Dashboard;Open Click Behavior Sidebar"
-          onClick={showClickBehaviorSidebar}
-          style={HEADER_ACTION_STYLE}
-        >
-          <Icon name="click" />
-        </a>
+    if (getVisualizationRaw(series).visualization.supportsSeries) {
+      buttons.push(
+        <AddSeriesButton series={series} onAddSeries={onAddSeries} />,
+      );
+    }
+  }
+
+  return (
+    <span
+      className="DashCard-actions flex align-center"
+      style={{ lineHeight: 1 }}
+    >
+      {buttons}
+      <Tooltip tooltip={t`Remove`}>
+        <RemoveButton className="ml1" onRemove={onRemove} />
       </Tooltip>
-    )}
-
-    {getVisualizationRaw(series).visualization.supportsSeries && (
-      <AddSeriesButton series={series} onAddSeries={onAddSeries} />
-    )}
-
-    <Tooltip tooltip={t`Remove`}>
-      <RemoveButton className="ml1" onRemove={onRemove} />
-    </Tooltip>
-  </span>
-);
+    </span>
+  );
+};
 
 const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
   <ModalWithTrigger

@@ -1,9 +1,9 @@
 /* @flow weak */
-
-import { push } from "react-router-redux";
 import { getIn } from "icepick";
 import _ from "underscore";
 
+import { isDate } from "metabase/lib/schema_metadata";
+import { parseTimestamp } from "metabase/lib/time";
 import Question from "metabase-lib/lib/Question";
 import { setOrUnsetParameterValues } from "metabase/dashboard/dashboard";
 import { getDataFromClicked } from "metabase/lib/click-behavior";
@@ -37,8 +37,12 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   if (type === "crossfilter") {
     const valuesToSet = _.chain(parameterMapping)
       .values()
-      .map(({ source, id }) => {
-        const { value } = data[source.type][source.id.toLowerCase()] || {};
+      .map(({ source, target, id }) => {
+        const value = formatSourceForTarget(source, target, {
+          data,
+          extraData,
+          clickBehavior,
+        });
         return [id, value];
       })
       .value();
@@ -51,14 +55,17 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
           renderLinkURLForClick(clickBehavior.linkTemplate || "", data),
       };
     } else if (linkType === "dashboard") {
-      const pathname = `/dashboard/${targetId}`;
-      const query = getQueryParams(parameterMapping, data);
-      behavior = { action: () => push({ pathname, query }) };
+      const url = new URL(`/dashboard/${targetId}`, location.href);
+      Object.entries(
+        getQueryParams(parameterMapping, { data, extraData, clickBehavior }),
+      ).forEach(([k, v]) => url.searchParams.append(k, v));
+
+      behavior = { url: () => url.toString() };
     } else if (linkType === "question" && extraData && extraData.questions) {
       let targetQuestion = new Question(
         extraData.questions[targetId],
         question.metadata(),
-        getQueryParams(parameterMapping, data),
+        getQueryParams(parameterMapping, { data, extraData, clickBehavior }),
       );
 
       if (targetQuestion.isStructured()) {
@@ -66,7 +73,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
           _.chain(parameterMapping)
             .values()
             .map(({ target, id, source }) => ({
-              target,
+              target: target.dimension,
               id,
               type: getTypeForSource(source, extraData),
             }))
@@ -75,7 +82,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       }
 
       const url = targetQuestion.getUrlWithParameters();
-      behavior = { action: () => push(url) };
+      behavior = { url: () => url };
     }
   }
 
@@ -88,14 +95,13 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   ];
 };
 
-function getQueryParams(parameterMapping, data) {
+function getQueryParams(parameterMapping, { data, extraData, clickBehavior }) {
   return _.chain(parameterMapping)
     .values()
-    .map(({ source, target }) => {
-      const { value } = data[source.type][source.id.toLowerCase()] || [];
-      const key = typeof target === "string" ? target : JSON.stringify(target);
-      return [key, value];
-    })
+    .map(({ source, target }) => [
+      target.id,
+      formatSourceForTarget(source, target, { data, extraData, clickBehavior }),
+    ])
     .filter(([key, value]) => value != null)
     .object()
     .value();
@@ -108,4 +114,49 @@ function getTypeForSource(source, extraData) {
     return type;
   }
   return "text";
+}
+
+function formatSourceForTarget(
+  source,
+  target,
+  { data, extraData, clickBehavior },
+) {
+  const datum = data[source.type][source.id.toLowerCase()] || [];
+  if (datum.column && isDate(datum.column)) {
+    if (target.type === "parameter") {
+      // we should serialize differently based on the target parameter type
+      const parameterPath =
+        clickBehavior.type === "crossfilter"
+          ? ["dashboard", "parameters"]
+          : ["dashboards", clickBehavior.targetId, "parameters"];
+      const parameters = getIn(extraData, parameterPath) || [];
+      const parameter = parameters.find(p => p.id === target.id);
+      if (parameter) {
+        return formatDateForParameterType(datum.value, parameter.type);
+      }
+    } else {
+      // If the target is a dimension or variable,, we serialize as a date to remove the timestamp.
+      // TODO: provide better serialization for field filter widget types
+      return formatDateForParameterType(datum.value, "date/single");
+    }
+  }
+  return datum.value;
+}
+
+function formatDateForParameterType(value, parameterType) {
+  const m = parseTimestamp(value);
+  if (!m.isValid()) {
+    return String(value);
+  }
+  if (parameterType === "date/month-year") {
+    return m.format("YYYY-MM");
+  } else if (parameterType === "date/quarter-year") {
+    return m.format("[Q]Q-YYYY");
+  } else if (
+    parameterType === "date/single" ||
+    parameterType === "date/all-options"
+  ) {
+    return m.format("YYYY-MM-DD");
+  }
+  return value;
 }

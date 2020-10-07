@@ -39,7 +39,7 @@ const fetchParameterPossibleValues = async (
 ) => {
   // build a map of parameter ID -> value for parameters that this parameter is filtered by
   const otherValues = _.chain(parameters)
-    .filter(p => filteringParameters.includes(p.id))
+    .filter(p => filteringParameters.includes(p.id) && p.value != null)
     .map(p => [p.id, p.value])
     .object()
     .value();
