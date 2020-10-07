@@ -23,8 +23,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.test
              [data :as data]
-             [initialize :as initialize]
-             [util :as tu]]
+             [initialize :as initialize]]
             [metabase.test.util.log :as tu.log]
             [potemkin :as p]
             [schema.core :as s]
@@ -402,10 +401,6 @@
   ^Boolean [^String s]
   (boolean (when (string? s)
              (re-matches #"^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$" s))))
-
-;; TODO -- this stuff should be moved to `metabase.test.util.log`
-
-
 
 (defn- update-in-if-present
   "If the path `KS` is found in `M`, call update-in with the original
