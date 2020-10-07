@@ -39,31 +39,8 @@ export default class ComponentsApp extends Component {
     const componentName = slugify(this.props.params.componentName);
     const exampleName = slugify(this.props.params.exampleName);
     return (
-      <div className="flex full">
-        <nav
-          className="full-height border-right p2 pl4"
-          style={{ flex: "0 0 33.33%" }}
-        >
-          <h2 className="my2">Components</h2>
-          <ul className="py2">
-            {COMPONENTS.filter(
-              ({ component, description, examples }) =>
-                component &&
-                (!componentName ||
-                  componentName === getComponentSlug(component)),
-            ).map(({ component, description, examples }) => (
-              <li>
-                <a
-                  className="py1 block link h3 text-bold"
-                  href={`/_internal/components#${getComponentSlug(component)}`}
-                >
-                  {getComponentName(component)}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="bg-light flex-full bg-white" style={{ flex: "66.66%" }}>
+      <div>
+        <div>
           <div className="py4">
             {COMPONENTS.filter(
               ({ component, description, examples }) =>

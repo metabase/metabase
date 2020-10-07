@@ -10,9 +10,22 @@ import {
   Unauthorized,
 } from "metabase/containers/ErrorPages";
 
+import LogoIcon from "metabase/components/LogoIcon";
 import ModalsPage from "./pages/ModalsPage";
+import TypePage from "./pages/TypePage";
+import { slugify } from "metabase/lib/formatting";
 
 import fitViewport from "metabase/hoc/FitViewPort";
+import COMPONENTS from "./lib/components-webpack";
+
+function getComponentName(component) {
+  return (
+    (component && (component.displayName || component.name)) || "[Unknown]"
+  );
+}
+function getComponentSlug(component) {
+  return slugify(getComponentName(component));
+}
 
 const ErrorWithDetails = () => <GenericError details="Example error message" />;
 
@@ -29,9 +42,23 @@ for (const key of req.keys()) {
   PAGES[name] = req(key).default;
 }
 
+/* TODO - refactor this to use styled components */
+const FixedPane = ({ children, width = 320 }) => (
+  <div
+    className="fixed left top bottom flex flex-column overflow-y bg-white border-right p4"
+    style={{ width }}
+  >
+    {children}
+  </div>
+);
+
+const Header = ({ children }) => (
+  <nav className="bg-white border-bottom">{children}</nav>
+);
+
 const WelcomeApp = () => {
   return (
-    <div className="wrapper flex flex-column justify-center">
+    <div className="wrapper">
       <div className="my4">
         <h1>Metabase Style Guide</h1>
         <p className="text-paragraph">
@@ -44,25 +71,41 @@ const WelcomeApp = () => {
 
 const InternalLayout = fitViewport(({ children }) => {
   return (
-    <div className="flex flex-column flex-full">
-      <nav className="wrapper flex align-center py3 border-bottom">
+    <div>
+      <FixedPane>
         <a className="text-brand-hover" href="/_internal">
+          <LogoIcon />
           <h4>Style Guide</h4>
         </a>
-        <ul className="flex ml-auto">
+        <ul>
+          <li>
+            <Link className="link" to={"/_internal/type"}>
+              Type
+            </Link>
+          </li>
+          <li className="my3">Components</li>
+          {COMPONENTS.map(({ component, description, examples }) => (
+            <li>
+              <a
+                className="py1 block link h3 text-bold"
+                href={`/_internal/components/${getComponentSlug(component)}`}
+              >
+                {getComponentName(component)}
+              </a>
+            </li>
+          ))}
           {Object.keys(PAGES).map(name => (
             <li key={name}>
-              <Link
-                className="link mx2"
-                to={"/_internal/" + name.toLowerCase()}
-              >
+              <Link className="link" to={"/_internal/" + name.toLowerCase()}>
                 {name}
               </Link>
             </li>
           ))}
         </ul>
-      </nav>
-      <div className="flex flex-full">{children}</div>
+      </FixedPane>
+      <div style={{ marginLeft: 320 }}>
+        <div className="wrapper">{children}</div>
+      </div>
     </div>
   );
 });
@@ -71,6 +114,7 @@ export default (
   <Route component={InternalLayout}>
     <IndexRedirect to="welcome" />
     <Route path="welcome" component={WelcomeApp} />
+    <Route path="type" component={TypePage} />
     {Object.entries(PAGES).map(
       ([name, Component]) =>
         Component &&
