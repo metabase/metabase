@@ -2,6 +2,7 @@ import React from "react";
 import Radio from "metabase/components/Radio";
 
 export const component = Radio;
+export const category = "input";
 
 export const description = `
 A standard radio button group.

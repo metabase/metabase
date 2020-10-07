@@ -1,6 +1,7 @@
 import React from "react";
 import Card from "metabase/components/Card";
 export const component = Card;
+export const category = "layout";
 
 export const description = `
 A generic card component.

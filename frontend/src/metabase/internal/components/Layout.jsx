@@ -11,6 +11,14 @@ import Subhead from "metabase/components/type/Subhead";
     TODO - remove this in favor of explicit pages and imports until we can move to a static generator
 */
 
+export const CATEGORIES = {
+  layout: "layout",
+  interaction: "interaction",
+  inputs: "input",
+  pickers: "pickers",
+  navigation: "navigation",
+};
+
 import COMPONENTS from "../lib/components-webpack";
 import { slugify } from "metabase/lib/formatting";
 
@@ -42,7 +50,7 @@ function getComponentSlug(component) {
 /* TODO - refactor this to use styled components */
 export const FixedPane = ({ children, width = 320 }) => (
   <div
-    className="fixed left top bottom flex flex-column overflow-y bg-white border-right"
+    className="fixed left top bottom flex flex-column bg-white border-right"
     style={{ width }}
   >
     {children}
@@ -51,7 +59,7 @@ export const FixedPane = ({ children, width = 320 }) => (
 
 const Header = () => (
   <a
-    className="text-brand flex align-center mb2 border-bottom p4"
+    className="text-brand flex align-center border-bottom px4 py3"
     href="/_internal"
   >
     <LogoIcon />
@@ -61,12 +69,27 @@ const Header = () => (
   </a>
 );
 
+const IndentedList = ({ children }) => <ol className="ml2">{children}</ol>;
+
+const ComponentItem = ({ component }) => {
+  return (
+    <li>
+      <a
+        className="py1 block link h3 text-bold"
+        href={`/_internal/components/${getComponentSlug(component)}`}
+      >
+        <Label>{getComponentName(component)}</Label>
+      </a>
+    </li>
+  );
+};
+
 export const InternalLayout = fitViewport(({ children }) => {
   return (
     <div>
       <FixedPane>
         <Header />
-        <ul className="p4">
+        <ul className="px4 py2 scroll-y">
           <li>
             <Link className="link" to={"/_internal/type"}>
               <Label>Type</Label>
@@ -84,20 +107,28 @@ export const InternalLayout = fitViewport(({ children }) => {
           </li>
           <li className="my3">
             Components
-            <ol className="ml2">
-              {COMPONENTS.map(({ component, description, examples }) => (
+            <IndentedList>
+              {Object.values(CATEGORIES).map(category => (
                 <li>
-                  <a
-                    className="py1 block link h3 text-bold"
-                    href={`/_internal/components/${getComponentSlug(
-                      component,
-                    )}`}
-                  >
-                    {getComponentName(component)}
-                  </a>
+                  <Label>{category}</Label>
+                  <IndentedList>
+                    {COMPONENTS.filter(
+                      c => c.category && c.category === category,
+                    ).map(({ component }) => (
+                      <ComponentItem component={component} />
+                    ))}
+                  </IndentedList>
                 </li>
               ))}
-            </ol>
+              <li>
+                <Label>Other</Label>
+                <IndentedList>
+                  {COMPONENTS.filter(c => !c.category).map(({ component }) => (
+                    <ComponentItem component={component} />
+                  ))}
+                </IndentedList>
+              </li>
+            </IndentedList>
           </li>
           {Object.keys(PAGES).map(name => (
             <li key={name}>

@@ -2,6 +2,7 @@ import React from "react";
 import { Position, Absolute, Relative } from "metabase/components/Position";
 
 export const component = Position;
+export const category = "layout";
 
 export const description = `
 Use Absolute, Fixed, Sticky, and Relative to help position items easily.
