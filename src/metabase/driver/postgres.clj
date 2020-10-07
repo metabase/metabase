@@ -94,7 +94,7 @@
      (assoc driver.common/default-additional-options-details
        :placeholder "prepareThreshold=0")]))
 
-(defn- enum-types [driver database]
+(defn- enum-types [_driver database]
   (try
     (set
       (map (comp keyword :typname)
