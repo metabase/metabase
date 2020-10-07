@@ -106,7 +106,7 @@ describe("metabase/lib/click-behavior", () => {
               "template-tags": {
                 my_field_filter: {
                   default: null,
-                  dimension: ["field-id", PRODUCTS.CATEGORY],
+                  dimension: ["field-id", PRODUCTS.CATEGORY.id],
                   "display-name": "My Field Filter",
                   id: "foo123",
                   name: "my_field_filter",
@@ -122,9 +122,8 @@ describe("metabase/lib/click-behavior", () => {
       expect(id).toEqual("foo123");
       expect(name).toEqual("My Field Filter");
       expect(target).toEqual({
-        type: "dimension",
-        id: `["field-id",${PRODUCTS.CATEGORY}]`,
-        dimension: ["field-id", PRODUCTS.CATEGORY],
+        type: "variable",
+        id: "my_field_filter",
       });
     });
 
