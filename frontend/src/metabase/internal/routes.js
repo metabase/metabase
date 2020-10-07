@@ -14,6 +14,7 @@ import {
 import TypePage from "metabase/internal/pages/TypePage";
 import IconsPage from "metabase/internal/pages/IconsPage";
 import ColorsPage from "metabase/internal/pages/ColorsPage";
+import ComponentsPage from "metabase/internal/pages/ComponentsPage";
 import ModalsPage from "metabase/internal/pages/ModalsPage";
 
 import { slugify } from "metabase/lib/formatting";
@@ -132,13 +133,7 @@ export default (
     <Route path="type" component={TypePage} />
     <Route path="icons" component={IconsPage} />
     <Route path="colors" component={ColorsPage} />
-    {Object.entries(PAGES).map(
-      ([name, Component]) =>
-        Component &&
-        (Component.routes || (
-          <Route path={name.toLowerCase()} component={Component} />
-        )),
-    )}
+    <Route path="components/:componentName" component={ComponentsPage} />
     <Route path="modals" component={ModalsPage} />
     <Route path="errors">
       <Route path="404" component={NotFound} />

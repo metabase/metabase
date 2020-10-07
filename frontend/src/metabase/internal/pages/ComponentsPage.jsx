@@ -33,7 +33,7 @@ function getComponentSlug(component) {
   return slugify(getComponentName(component));
 }
 
-export default class ComponentsApp extends Component {
+export default class ComponentsPage extends Component {
   static routes: ?[React$Element<Route>];
   render() {
     const componentName = slugify(this.props.params.componentName);
@@ -186,12 +186,3 @@ class SourcePane extends React.Component {
     );
   }
 }
-
-ComponentsApp.routes = [
-  <Route path="components" component={ComponentsApp} />,
-  <Route path="components/:componentName" component={ComponentsApp} />,
-  <Route
-    path="components/:componentName/:exampleName"
-    component={ComponentsApp}
-  />,
-];
