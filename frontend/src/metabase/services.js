@@ -350,17 +350,17 @@ export const TaskApi = {
 export function setPublicQuestionEndpoints(uuid: string) {
   setFieldEndpoints("/api/public/card/:uuid", { uuid });
 }
-export function setPublicDashboardEndpoints(uuid: string) {
-  setFieldEndpoints("/api/public/dashboard/:uuid", { uuid });
+export function setPublicDashboardEndpoints() {
+  setParamsEndpoints("/api/public");
 }
 export function setEmbedQuestionEndpoints(token: string) {
   if (!IS_EMBED_PREVIEW) {
     setFieldEndpoints("/api/embed/card/:token", { token });
   }
 }
-export function setEmbedDashboardEndpoints(token: string) {
+export function setEmbedDashboardEndpoints() {
   if (!IS_EMBED_PREVIEW) {
-    setFieldEndpoints("/api/embed/dashboard/:token", { token });
+    setParamsEndpoints("/api/embed");
   }
 }
 
@@ -369,7 +369,7 @@ function GET_with(url: string, params: Data) {
     GET(url)({ ...params, ...data }, options);
 }
 
-export function setFieldEndpoints(prefix: string, params: Data) {
+function setFieldEndpoints(prefix: string, params: Data) {
   MetabaseApi.field_values = GET_with(
     prefix + "/field/:fieldId/values",
     params,
@@ -381,6 +381,15 @@ export function setFieldEndpoints(prefix: string, params: Data) {
   MetabaseApi.field_remapping = GET_with(
     prefix + "/field/:fieldId/remapping/:remappedFieldId",
     params,
+  );
+}
+
+function setParamsEndpoints(prefix: string) {
+  DashboardApi.parameterValues = GET(
+    prefix + "/dashboard/:dashId/params/:paramId/values",
+  );
+  DashboardApi.parameterSearch = GET(
+    prefix + "/dashboard/:dashId/params/:paramId/search/:prefix",
   );
 }
 

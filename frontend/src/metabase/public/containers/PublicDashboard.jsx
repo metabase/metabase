@@ -107,9 +107,9 @@ export default class PublicDashboard extends Component {
     } = this.props;
 
     if (uuid) {
-      setPublicDashboardEndpoints(uuid);
+      setPublicDashboardEndpoints();
     } else if (token) {
-      setEmbedDashboardEndpoints(token);
+      setEmbedDashboardEndpoints();
     }
 
     initialize();
