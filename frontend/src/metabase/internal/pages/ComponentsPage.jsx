@@ -18,6 +18,7 @@ import CopyButton from "metabase/components/CopyButton";
 import Icon from "metabase/components/Icon";
 
 import Props from "metabase/internal/components/Props";
+import Example from "metabase/internal/components/Example";
 
 const Section = ({ title, children }) => (
   <div className="mb2">
@@ -41,7 +42,7 @@ export default class ComponentsPage extends Component {
     const componentName = slugify(this.props.params.componentName);
     const exampleName = slugify(this.props.params.exampleName);
     return (
-      <div>
+      <div className="wrapper wrapper--trim">
         <div>
           <div className="py4">
             {COMPONENTS.filter(
@@ -75,26 +76,24 @@ export default class ComponentsPage extends Component {
                         ([name, element]) =>
                           !exampleName || exampleName === slugify(name),
                       )
-                      .map(([name, element]) => (
-                        <div className="my2">
-                          <h4 className="my1">
-                            <Link
-                              to={`_internal/components/${getComponentSlug(
-                                component,
-                              )}/${slugify(name)}`}
-                              className="no-decoration"
-                            >
-                              {name}:
-                            </Link>
-                          </h4>
-                          <div className="flex flex-column">
-                            <div className="p2 bordered rounded flex align-center flex-full">
-                              <div className="full">{element}</div>
-                            </div>
-                            <SourcePane element={element} />
+                      .map(([name, element]) => {
+                        console.log("element", element);
+                        return (
+                          <div className="my2">
+                            <h4 className="my1">
+                              <Link
+                                to={`_internal/components/${getComponentSlug(
+                                  component,
+                                )}/${slugify(name)}`}
+                                className="no-decoration"
+                              >
+                                {name}:
+                              </Link>
+                            </h4>
+                            <Example>{element}</Example>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                   </Section>
                 )}
               </div>
