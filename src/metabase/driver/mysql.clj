@@ -150,6 +150,10 @@
 ;; users in the UI
 (defmethod driver/supports? [:mysql :case-sensitivity-string-filter-options] [_ _] false)
 
+(defmethod driver/db-start-of-week :mysql
+  [_]
+  :sunday)
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -188,23 +192,24 @@
 (defmethod sql.qp/date [:mysql :hour]            [_ _ expr] (trunc-with-format "%Y-%m-%d %H" expr))
 (defmethod sql.qp/date [:mysql :hour-of-day]     [_ _ expr] (hx/hour expr))
 (defmethod sql.qp/date [:mysql :day]             [_ _ expr] (hsql/call :date expr))
-(defmethod sql.qp/date [:mysql :day-of-week]     [_ _ expr] (hsql/call :dayofweek expr))
 (defmethod sql.qp/date [:mysql :day-of-month]    [_ _ expr] (hsql/call :dayofmonth expr))
 (defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr] (hsql/call :dayofyear expr))
 (defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (hx/month expr))
 (defmethod sql.qp/date [:mysql :quarter-of-year] [_ _ expr] (hx/quarter expr))
 (defmethod sql.qp/date [:mysql :year]            [_ _ expr] (hsql/call :makedate (hx/year expr) 1))
 
+(defmethod sql.qp/date [:mysql :day-of-week]
+  [_ _ expr]
+  (sql.qp/adjust-day-of-week :mysql (hsql/call :dayofweek expr)))
+
 ;; To convert a YEARWEEK (e.g. 201530) back to a date you need tell MySQL which day of the week to use,
 ;; because otherwise as far as MySQL is concerned you could be talking about any of the days in that week
 (defmethod sql.qp/date [:mysql :week] [_ _ expr]
-  (str-to-date "%X%V %W"
-               (hx/concat (hsql/call :yearweek expr)
-                          (hx/literal " Sunday"))))
-
-;; mode 6: Sunday is first day of week, first week of year is the first one with 4+ days
-(defmethod sql.qp/date [:mysql :week-of-year] [_ _ expr]
-  (hx/inc (hx/week expr 6)))
+  (let [extract-week-fn (fn [expr]
+                          (str-to-date "%X%V %W"
+                                       (hx/concat (hsql/call :yearweek expr)
+                                                  (hx/literal " Sunday"))))]
+    (sql.qp/adjust-start-of-week :mysql extract-week-fn expr)))
 
 (defmethod sql.qp/date [:mysql :month] [_ _ expr]
   (str-to-date "%Y-%m-%d"

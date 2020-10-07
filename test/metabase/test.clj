@@ -162,9 +162,6 @@
   scheduler-current-tasks
   throw-if-called
   with-locale
-  with-log-messages
-  with-log-messages-for-level
-  with-log-level
   with-model-cleanup
   with-non-admin-groups-no-root-collection-perms
   with-scheduler
@@ -178,7 +175,10 @@
   with-open-channels]
 
  [tu.log
-  suppress-output]
+  suppress-output
+  with-log-messages
+  with-log-messages-for-level
+  with-log-level]
 
  [tu.tz
   with-system-timezone-id]

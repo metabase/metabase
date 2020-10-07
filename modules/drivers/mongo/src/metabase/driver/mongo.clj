@@ -272,3 +272,7 @@
   java.util.Date
   (from-db-object [t _]
     (t/instant t)))
+
+(defmethod driver/db-start-of-week :mongo
+  [_]
+  :sunday)

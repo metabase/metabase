@@ -345,7 +345,7 @@ describe("formatting", () => {
       ).toEqual("July 7, 2019 – July 13, 2019");
     });
 
-    it("should always format week ranges in en locale", () => {
+    it("should always format week ranges according to returned data", () => {
       try {
         // globally set locale to es
         moment.locale("es");

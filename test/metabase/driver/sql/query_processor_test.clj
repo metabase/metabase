@@ -5,6 +5,7 @@
              [driver :as driver]
              [test :as mt]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models.setting :as setting]
             [metabase.util.honeysql-extensions :as hx]
             [pretty.core :refer [PrettyPrintable]])
   (:import metabase.util.honeysql_extensions.Identifier))
@@ -192,3 +193,19 @@
                                         :alias        "card"
                                         :strategy     :left-join
                                         :condition    [:= $venue_id &card.*id/Integer]}))))})))))
+
+(deftest adjust-start-of-week-test
+  (driver/with-driver :h2
+    (with-redefs [driver/db-start-of-week (constantly :monday)
+                  setting/get-keyword     (constantly :sunday)]
+      (is (= (hsql/call :dateadd (hx/literal "day")
+                        (hsql/call :cast -1 #sql/raw "long")
+                        (hsql/call :week (hsql/call :dateadd (hx/literal "day")
+                                                    (hsql/call :cast 1 #sql/raw "long")
+                                                    :created_at)))
+             (sql.qp/adjust-start-of-week :h2 (partial hsql/call :week) :created_at))))
+    (testing "Do we skip the adjustment if offset = 0"
+      (with-redefs [driver/db-start-of-week (constantly :monday)
+                    setting/get-keyword     (constantly :monday)]
+        (is (= (hsql/call :week :created_at)
+               (sql.qp/adjust-start-of-week :h2 (partial hsql/call :week) :created_at)))))))

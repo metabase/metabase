@@ -405,19 +405,12 @@ export function formatDateTimeRangeWithUnit(
     options.type === "tooltip" ? "MMMM" : getMonthFormat(options);
   const condensed = options.compact || options.type === "tooltip";
 
-  // The startOf/endOf transition needs to happen in "en" rather than the
-  // current locale. Other locales define week boundaries differently, and they
-  // don't line up with the server's grouping logic.
-  const start = m
-    .clone()
-    .locale("en")
-    .startOf(unit)
-    .locale(false);
-  const end = m
-    .clone()
-    .locale("en")
-    .endOf(unit)
-    .locale(false);
+  // The client's unit boundaries might not line up with the data returned from the server.
+  // We shift the range so that the start lines up with the value.
+  const start = m.clone().startOf(unit);
+  const end = m.clone().endOf(unit);
+  const shift = m.diff(start, "days");
+  [start, end].forEach(d => d.add(shift, "days"));
 
   if (start.isValid() && end.isValid()) {
     if (!condensed || start.year() !== end.year()) {
