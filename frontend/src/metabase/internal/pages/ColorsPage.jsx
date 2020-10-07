@@ -126,7 +126,7 @@ const VariantControl = ({ name, variant, value, initial, onChange }) => (
 // eslint-disable-next-line import/no-commonjs
 const colorStyles = require("!style-loader!css-loader?modules!postcss-loader!metabase/css/core/colors.css");
 
-const ColorsApp = () => (
+const ColorsPage = () => (
   <div className="wrapper">
     <Box my={2}>
       <Subhead className="mb2">App colors</Subhead>
@@ -162,4 +162,4 @@ const ColorsApp = () => (
   </div>
 );
 
-export default ColorsApp;
+export default ColorsPage;

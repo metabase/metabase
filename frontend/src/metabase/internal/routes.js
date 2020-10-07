@@ -13,6 +13,7 @@ import {
 /* Pages - In order they appear in nav */
 import TypePage from "metabase/internal/pages/TypePage";
 import IconsPage from "metabase/internal/pages/IconsPage";
+import ColorsPage from "metabase/internal/pages/ColorsPage";
 import ModalsPage from "metabase/internal/pages/ModalsPage";
 
 import { slugify } from "metabase/lib/formatting";
@@ -92,6 +93,11 @@ const InternalLayout = fitViewport(({ children }) => {
               Icons
             </Link>
           </li>
+          <li>
+            <Link className="link" to={"/_internal/colors"}>
+              Colors
+            </Link>
+          </li>
           <li className="my3">Components</li>
           {COMPONENTS.map(({ component, description, examples }) => (
             <li>
@@ -125,6 +131,7 @@ export default (
     <Route path="welcome" component={WelcomeApp} />
     <Route path="type" component={TypePage} />
     <Route path="icons" component={IconsPage} />
+    <Route path="colors" component={ColorsPage} />
     {Object.entries(PAGES).map(
       ([name, Component]) =>
         Component &&
