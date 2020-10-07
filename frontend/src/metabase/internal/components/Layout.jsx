@@ -42,22 +42,31 @@ function getComponentSlug(component) {
 /* TODO - refactor this to use styled components */
 export const FixedPane = ({ children, width = 320 }) => (
   <div
-    className="fixed left top bottom flex flex-column overflow-y bg-white border-right p4"
+    className="fixed left top bottom flex flex-column overflow-y bg-white border-right"
     style={{ width }}
   >
     {children}
   </div>
 );
 
+const Header = () => (
+  <a
+    className="text-brand flex align-center mb2 border-bottom p4"
+    href="/_internal"
+  >
+    <LogoIcon />
+    <Subhead ml={2} color="inherit">
+      Styleguide
+    </Subhead>
+  </a>
+);
+
 export const InternalLayout = fitViewport(({ children }) => {
   return (
     <div>
       <FixedPane>
-        <a className="text-brand-hover flex align-center mb2" href="/_internal">
-          <LogoIcon />
-          <Subhead ml={2}>Styleguide</Subhead>
-        </a>
-        <ul>
+        <Header />
+        <ul className="p4">
           <li>
             <Link className="link" to={"/_internal/type"}>
               <Label>Type</Label>
