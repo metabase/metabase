@@ -1,10 +1,4 @@
-import {
-  signInAsAdmin,
-  modal,
-  popover,
-  restore,
-  openOrdersTable,
-} from "__support__/cypress";
+import { signInAsAdmin, modal, popover, restore } from "__support__/cypress";
 
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 
@@ -21,11 +15,12 @@ describe("scenarios > dashboard > parameters", () => {
     cy.contains("button", "Create").click();
 
     // add the same question twice
+    cy.get(".Icon-pencil").click();
     addQuestion("Orders, Count");
     addQuestion("Orders, Count");
 
     // add a category filter
-    cy.get(".Icon-funnel_add").click();
+    cy.get(".Icon-filter").click();
     cy.contains("Other Categories").click();
 
     // connect it to people.name and product.category
@@ -34,11 +29,10 @@ describe("scenarios > dashboard > parameters", () => {
     selectFilter(cy.get(".DashCard").last(), "Category");
 
     // finish editing filter and save dashboard
-    cy.contains("Done").click();
     cy.contains("Save").click();
 
     // wait for saving to finish
-    cy.contains("You are editing a dashboard").should("not.exist");
+    cy.contains("You're editing this dashboard.").should("not.exist");
 
     // confirm that typing searches both fields
     cy.contains("Category").click();
@@ -69,75 +63,6 @@ describe("scenarios > dashboard > parameters", () => {
     cy.get(".DashCard")
       .last()
       .contains("4,939");
-  });
-
-  it("should filter on a UNIX timestamp", () => {
-    cy.server();
-    cy.route({ method: "POST", url: "/api/card/4/query" }).as("card");
-
-    // Set datatype of Quantity to UNIX Timestamp
-    cy.visit("/admin/datamodel/database/1/table/2");
-    cy.findByText("Quantity").click();
-    cy.scrollTo("bottom");
-    cy.findByText("UNIX Timestamp (Seconds)").click();
-
-    // Create a question
-    openOrdersTable();
-    cy.findByText("Summarize").click();
-    cy.findByText("Summarize by");
-    cy.findByText("Done").click();
-
-    // Add to a dashboard
-    cy.findByText("Save").click();
-    cy.findAllByText("Save")
-      .last()
-      .click();
-    cy.findByText("Yes please!").click();
-    cy.findByText("Create a new dashboard").click();
-    cy.findByPlaceholderText("What is the name of your dashboard?").type(
-      "Test Dashboard",
-    );
-    cy.findByText("Create").click();
-
-    // Add filter
-    cy.get(".Icon-funnel_add").click();
-    cy.findByText("Time").click();
-    cy.findByText("Relative Date").click();
-
-    cy.findByText("Select…").click();
-    cy.get(".List-item .cursor-pointer")
-      .first()
-      .click({ force: true });
-    cy.findByText("Select…").should("not.exist");
-
-    cy.findByText("Select a default value…").click();
-    cy.findByText("Yesterday").click();
-
-    // Save dashboard
-    cy.findByText("Done").click();
-    cy.findByText("Save").click({ force: true });
-    cy.findByText("Save").should("not.exist");
-
-    // There are 2 XHR requests that match the route; wait for both to finish
-    // https://github.com/cypress-io/cypress-example-recipes/blob/master/examples/server-communication__xhr-assertions/cypress/integration/multiple-requests.js#L15
-    cy.wait("@card").wait("@card");
-
-    cy.get(".Card").within(() => {
-      cy.findByText("0");
-    });
-
-    // Open dashboard from collections
-    cy.visit("/collection/root");
-    cy.findByText("Test Dashboard").click();
-    cy.contains("Relative Date");
-
-    // Wait for the third request
-    cy.wait("@card");
-
-    cy.get(".Card").within(() => {
-      cy.findByText("18,760").should("not.exist");
-      cy.findByText("0");
-    });
   });
 });
 

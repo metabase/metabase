@@ -58,7 +58,7 @@ describe("scenarios > question > filter", () => {
 
     // Save dashboard and refresh page
     cy.findByText("Done").click();
-    cy.findByText("You are editing a dashboard");
+    cy.findByText("You're editing this dashboard.");
     cy.findByText("Save").click();
     cy.findByText("Save").should("not.exist");
 

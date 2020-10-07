@@ -196,8 +196,11 @@
 
 (defn throw-403
   "Throw a generic 403 (no permissions) error response."
-  []
-  (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
+  ([]
+   (throw-403 nil))
+
+  ([e]
+   (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403} e))))
 
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful

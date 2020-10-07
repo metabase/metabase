@@ -228,18 +228,30 @@ export default class DashboardGrid extends Component {
         onChangeLocation={this.props.onChangeLocation}
         metadata={this.props.metadata}
         dashboard={this.props.dashboard}
+        showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
+        clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
       />
     );
   }
 
+  get isEditingLayout() {
+    const {
+      isEditing,
+      isEditingParameter,
+      clickBehaviorSidebarDashcard,
+    } = this.props;
+    return (
+      isEditing && !isEditingParameter && clickBehaviorSidebarDashcard == null
+    );
+  }
+
   renderMobile() {
-    const { isEditing, isEditingParameter, width } = this.props;
+    const { width } = this.props;
     const { dashcards } = this.state;
     return (
       <div
         className={cx("DashboardGrid", {
-          "Dash--editing": isEditing,
-          "Dash--editingParameter": isEditingParameter,
+          "Dash--editing": this.isEditingLayout,
           "Dash--dragging": this.state.isDragging,
         })}
         style={{ margin: 0 }}
@@ -268,13 +280,12 @@ export default class DashboardGrid extends Component {
   }
 
   renderGrid() {
-    const { dashboard, isEditing, isEditingParameter, width } = this.props;
+    const { dashboard, width } = this.props;
     const rowHeight = Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO);
     return (
       <GridLayout
         className={cx("DashboardGrid", {
-          "Dash--editing": isEditing,
-          "Dash--editingParameter": isEditingParameter,
+          "Dash--editing": this.isEditingLayout,
           "Dash--dragging": this.state.isDragging,
         })}
         layout={this.state.layout}
@@ -284,7 +295,7 @@ export default class DashboardGrid extends Component {
         onLayoutChange={(...args) => this.onLayoutChange(...args)}
         onDrag={(...args) => this.onDrag(...args)}
         onDragStop={(...args) => this.onDragStop(...args)}
-        isEditing={isEditing}
+        isEditing={this.isEditingLayout}
       >
         {dashboard &&
           dashboard.ordered_cards.map(dc => (

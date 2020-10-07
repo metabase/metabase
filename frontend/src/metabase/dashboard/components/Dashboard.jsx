@@ -6,11 +6,13 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 
-import DashboardHeader from "../components/DashboardHeader";
-import DashboardGrid from "../components/DashboardGrid";
+import DashboardHeader from "./DashboardHeader";
+import DashboardGrid from "./DashboardGrid";
+import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { t } from "ttag";
 import Parameters from "metabase/parameters/components/Parameters";
+import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
 import EmptyState from "metabase/components/EmptyState";
 
 import DashboardControls from "../hoc/DashboardControls";
@@ -43,11 +45,12 @@ type Props = {
 
   dashboardId: DashboardId,
   dashboard: DashboardWithCards,
+  dashboardBeforeEditing: ?DashboardWithCards,
   revisions: { [key: string]: Revision[] },
 
   isAdmin: boolean,
   isEditable: boolean,
-  isEditing: false | DashboardWithCards,
+  isEditing: boolean,
   isEditingParameter: boolean,
 
   parameters: Parameter[],
@@ -80,6 +83,9 @@ type Props = {
     defaultValue: string,
   ) => void,
   setParameterIndex: (parameterId: ParameterId, index: number) => void,
+  isAddParameterPopoverOpen: boolean,
+  showAddParameterPopover: () => void,
+  hideAddParameterPopover: () => void,
 
   editingParameter: ?Parameter,
 
@@ -101,6 +107,11 @@ type Props = {
   ) => void,
   onUpdateDashCardVisualizationSettings: (
     dashcardId: DashCardId,
+    settings: VisualizationSettings,
+  ) => void,
+  onUpdateDashCardColumnSettings: (
+    dashcardId: DashCardId,
+    column: any,
     settings: VisualizationSettings,
   ) => void,
 
@@ -137,6 +148,7 @@ export default class Dashboard extends Component {
     setEditingDashboard: PropTypes.func.isRequired,
 
     onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
+    onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
     onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
 
     onChangeLocation: PropTypes.func.isRequired,
@@ -226,6 +238,7 @@ export default class Dashboard extends Component {
       parametersWidget = (
         <Parameters
           syncQueryString
+          dashboard={dashboard}
           isEditing={isEditing}
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
@@ -248,15 +261,19 @@ export default class Dashboard extends Component {
 
     return (
       <LoadingAndErrorWrapper
-        className={cx("Dashboard flex-full pb4", {
+        className={cx("Dashboard flex-full", {
           "Dashboard--fullscreen": isFullscreen,
           "Dashboard--night": isNightMode,
+          "full-height": isEditing, // prevents header from scrolling so we can have a fixed sidebar
         })}
         loading={!dashboard}
         error={error}
       >
         {() => (
-          <div className="full" style={{ overflowX: "hidden" }}>
+          <div
+            className="full flex flex-column full-height"
+            style={{ overflowX: "hidden" }}
+          >
             <header className="DashboardHeader relative z2">
               <DashboardHeader
                 {...this.props}
@@ -266,32 +283,105 @@ export default class Dashboard extends Component {
                 parametersWidget={parametersWidget}
               />
             </header>
-            {!isFullscreen && parametersWidget && (
-              <div className="wrapper flex flex-column align-start mt2 relative z2">
-                {parametersWidget}
+            <div
+              className={cx("flex shrink-below-content-size flex-full", {
+                "flex-basis-none": isEditing,
+              })}
+            >
+              <div className="flex-auto overflow-x-hidden">
+                {!isFullscreen && parametersWidget && (
+                  <div className="wrapper flex flex-column align-start mt2 relative z2">
+                    {parametersWidget}
+                  </div>
+                )}
+                <div className="wrapper">
+                  {dashboard.ordered_cards.length === 0 ? (
+                    <Box mt={[2, 4]} color={isNightMode ? "white" : "inherit"}>
+                      <EmptyState
+                        illustrationElement={
+                          <span className="QuestionCircle">?</span>
+                        }
+                        title={t`This dashboard is looking empty.`}
+                        message={t`Add a question to start making it useful!`}
+                      />
+                    </Box>
+                  ) : (
+                    <DashboardGrid
+                      {...this.props}
+                      onEditingChange={this.setEditing}
+                    />
+                  )}
+                </div>
               </div>
-            )}
-            <div className="wrapper">
-              {dashboard.ordered_cards.length === 0 ? (
-                <Box mt={[2, 4]} color={isNightMode ? "white" : "inherit"}>
-                  <EmptyState
-                    illustrationElement={
-                      <span className="QuestionCircle">?</span>
-                    }
-                    title={t`This dashboard is looking empty.`}
-                    message={t`Add a question to start making it useful!`}
-                  />
-                </Box>
-              ) : (
-                <DashboardGrid
-                  {...this.props}
-                  onEditingChange={this.setEditing}
-                />
-              )}
+              <Sidebars {...this.props} />
             </div>
           </div>
         )}
       </LoadingAndErrorWrapper>
     );
   }
+}
+
+function Sidebars({
+  parameters,
+  showAddParameterPopover,
+  removeParameter,
+  editingParameter,
+  isEditingParameter,
+  clickBehaviorSidebarDashcard,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardVisualizationSettings,
+  onUpdateDashCardColumnSettings,
+  hideClickBehaviorSidebar,
+  setEditingParameter,
+  setParameter,
+  setParameterName,
+  setParameterDefaultValue,
+  dashcardData,
+  setParameterFilteringParameters,
+}) {
+  if (clickBehaviorSidebarDashcard) {
+    return (
+      <ClickBehaviorSidebar
+        dashcard={clickBehaviorSidebarDashcard}
+        parameters={parameters}
+        dashcardData={dashcardData[clickBehaviorSidebarDashcard.id]}
+        onUpdateDashCardVisualizationSettings={
+          onUpdateDashCardVisualizationSettings
+        }
+        onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
+        hideClickBehaviorSidebar={hideClickBehaviorSidebar}
+        onReplaceAllDashCardVisualizationSettings={
+          onReplaceAllDashCardVisualizationSettings
+        }
+      />
+    );
+  }
+
+  if (isEditingParameter) {
+    const { id: editingParameterId } = editingParameter || {};
+    const [[parameter], otherParameters] = _.partition(
+      parameters,
+      p => p.id === editingParameterId,
+    );
+    return (
+      <ParameterSidebar
+        parameter={parameter}
+        otherParameters={otherParameters}
+        remove={() => removeParameter(editingParameterId)}
+        done={() => setEditingParameter(null)}
+        showAddParameterPopover={showAddParameterPopover}
+        setParameter={setParameter}
+        setName={name => setParameterName(editingParameterId, name)}
+        setDefaultValue={value =>
+          setParameterDefaultValue(editingParameterId, value)
+        }
+        setFilteringParameters={ids =>
+          setParameterFilteringParameters(editingParameterId, ids)
+        }
+      />
+    );
+  }
+
+  return null;
 }

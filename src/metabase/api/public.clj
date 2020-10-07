@@ -468,6 +468,18 @@
   (let [dashboard-id (db/select-one-id Dashboard :public_uuid uuid, :archived false)]
     (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
+;;; ------------------------------------------------ Chain Filtering -------------------------------------------------
+
+(api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
+  [uuid param-key :as {:keys [query-params]}]
+  (let [dashboard (dashboard-with-uuid uuid)]
+    (dashboard-api/chain-filter dashboard param-key query-params)))
+
+(api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:prefix"
+  [uuid param-key prefix :as {:keys [query-params]}]
+  (let [dashboard (dashboard-with-uuid uuid)]
+    (dashboard-api/chain-filter dashboard param-key query-params prefix)))
+
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 

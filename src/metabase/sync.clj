@@ -32,7 +32,6 @@
     ;; Finally, update cached FieldValues
     (field-values/update-field-values! database)))
 
-
 (s/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`."
   [table :- i/TableInstance]

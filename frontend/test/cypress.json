@@ -5,5 +5,9 @@
   "integrationFolder": "frontend/test/metabase",
   "supportFile": "frontend/test/__support__/cypress.js",
   "viewportHeight": 800,
-  "viewportWidth": 1280
+  "viewportWidth": 1280,
+  "retries": {
+    "runMode": 2,
+    "openMode": 0
+  }
 }

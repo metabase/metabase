@@ -86,17 +86,17 @@
 ;;     number of DB calls that are made. See discussion below for more details.
 
 (def ^:private ^{:arglists '([table-id])} perms-objects-set*
-  "Cached lookup for the permissions set for a table with TABLE-ID. This is done so a single API call or other unit of
-   computation doesn't accidentally end up in a situation where thousands of DB calls end up being made to calculate
-   permissions for a large number of Fields. Thus, the cache only persists for 5 seconds.
+  "Cached lookup for the permissions set for a table with `table-id`. This is done so a single API call or other unit of
+  computation doesn't accidentally end up in a situation where thousands of DB calls end up being made to calculate
+  permissions for a large number of Fields. Thus, the cache only persists for 5 seconds.
 
-   Of course, no DB lookups are needed at all if the Field already has a hydrated Table. However, mistakes are
-   possible, and I did not extensively audit every single code pathway that uses sequences of Fields and permissions,
-   so this caching is added as a failsafe in case Table hydration wasn't done.
+  Of course, no DB lookups are needed at all if the Field already has a hydrated Table. However, mistakes are
+  possible, and I did not extensively audit every single code pathway that uses sequences of Fields and permissions,
+  so this caching is added as a failsafe in case Table hydration wasn't done.
 
-   Please note this only caches one entry PER TABLE ID. Thus, even a million Tables (which is more than I hope we ever
-   see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
-   seconds."
+  Please note this only caches one entry PER TABLE ID. Thus, even a million Tables (which is more than I hope we ever
+  see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
+  seconds."
   (memoize/ttl
    (fn [table-id]
      (let [{schema :schema, database-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
@@ -278,6 +278,20 @@
   "Return a combined qualified name for FIELD, e.g. `table_name.parent_field_name.field_name`."
   [field]
   (str/join \. (qualified-name-components field)))
+
+(def ^{:arglists '([field-id])} field-id->table-id
+  "Return the ID of the Table this Field belongs to."
+  (memoize
+   (fn [field-id]
+     {:pre [(integer? field-id)]}
+     (db/select-one-field :table_id Field, :id field-id))))
+
+(defn field-id->database-id
+  "Return the ID of the Database this Field belongs to."
+  [field-id]
+  {:pre [(integer? field-id)]}
+  (let [table-id (field-id->table-id field-id)]
+    ((requiring-resolve 'metabase.models.table/table-id->database-id) table-id)))
 
 (defn table
   "Return the `Table` associated with this `Field`."
