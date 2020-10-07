@@ -1,18 +1,22 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { Link, Route } from "react-router";
+import { Link } from "react-router";
 
 import { slugify } from "metabase/lib/formatting";
 
 import COMPONENTS from "../lib/components-webpack";
+
+import Heading from "metabase/components/type/Heading";
+import Text from "metabase/components/type/Text";
+import Subhead from "metabase/components/type/Subhead";
 
 import Props from "metabase/internal/components/Props";
 import Example from "metabase/internal/components/Example";
 
 const Section = ({ title, children }) => (
   <div className="mb2">
-    {title && <h3 className="my2">{title}</h3>}
+    {title && <Subhead>{title}</Subhead>}
     {children}
   </div>
 );
@@ -27,7 +31,6 @@ function getComponentSlug(component) {
 }
 
 export default class ComponentsPage extends Component {
-  static routes: ?[React$Element<Route>];
   render() {
     const componentName = slugify(this.props.params.componentName);
     const exampleName = slugify(this.props.params.exampleName);
@@ -42,17 +45,10 @@ export default class ComponentsPage extends Component {
               <div
                 id={getComponentSlug(component)}
                 key={index}
-                className="border-bottom mb4 pb3 px4"
+                className="mb4 pb3 px4"
               >
-                <h2>
-                  <Link
-                    to={`_internal/components/${getComponentSlug(component)}`}
-                    className="no-decoration"
-                  >
-                    {getComponentName(component)}
-                  </Link>
-                </h2>
-                {description && <p className="my2">{description}</p>}
+                <Heading>{getComponentName(component)}</Heading>
+                {description && <Text>{description}</Text>}
                 {componentName === getComponentSlug(component) &&
                   component.propTypes && (
                     <Section title="Props">
@@ -67,10 +63,9 @@ export default class ComponentsPage extends Component {
                           !exampleName || exampleName === slugify(name),
                       )
                       .map(([name, element]) => {
-                        console.log("element", element);
                         return (
                           <div className="my2">
-                            <h4 className="my1">
+                            <Subhead my={1}>
                               <Link
                                 to={`_internal/components/${getComponentSlug(
                                   component,
@@ -79,7 +74,7 @@ export default class ComponentsPage extends Component {
                               >
                                 {name}:
                               </Link>
-                            </h4>
+                            </Subhead>
                             <Example>{element}</Example>
                           </div>
                         );
