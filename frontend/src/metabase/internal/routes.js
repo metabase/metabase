@@ -10,10 +10,14 @@ import {
   Unauthorized,
 } from "metabase/containers/ErrorPages";
 
-import LogoIcon from "metabase/components/LogoIcon";
-import ModalsPage from "./pages/ModalsPage";
-import TypePage from "./pages/TypePage";
+/* Pages - In order they appear in nav */
+import TypePage from "metabase/internal/pages/TypePage";
+import IconsPage from "metabase/internal/pages/IconsPage";
+import ModalsPage from "metabase/internal/pages/ModalsPage";
+
 import { slugify } from "metabase/lib/formatting";
+
+import LogoIcon from "metabase/components/LogoIcon";
 
 import fitViewport from "metabase/hoc/FitViewPort";
 import COMPONENTS from "./lib/components-webpack";
@@ -83,6 +87,11 @@ const InternalLayout = fitViewport(({ children }) => {
               Type
             </Link>
           </li>
+          <li>
+            <Link className="link" to={"/_internal/icons"}>
+              Icons
+            </Link>
+          </li>
           <li className="my3">Components</li>
           {COMPONENTS.map(({ component, description, examples }) => (
             <li>
@@ -115,6 +124,7 @@ export default (
     <IndexRedirect to="welcome" />
     <Route path="welcome" component={WelcomeApp} />
     <Route path="type" component={TypePage} />
+    <Route path="icons" component={IconsPage} />
     {Object.entries(PAGES).map(
       ([name, Component]) =>
         Component &&

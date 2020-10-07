@@ -4,7 +4,7 @@ import Icon from "metabase/components/Icon";
 
 const SIZES = [12, 16];
 
-export default class IconsApp extends Component {
+export default class IconsPage extends Component {
   state = {
     size: 32,
     search: "",
