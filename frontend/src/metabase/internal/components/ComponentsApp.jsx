@@ -118,7 +118,7 @@ export default class ComponentsApp extends Component {
 
 class SourcePane extends React.Component {
   state = {
-    isOpen: false,
+    isOpen: true,
   };
   render() {
     const { element } = this.props;
