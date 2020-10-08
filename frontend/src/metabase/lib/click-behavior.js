@@ -242,7 +242,12 @@ export function formatSourceForTarget(
   if (datum.column && isDate(datum.column)) {
     if (target.type === "parameter") {
       // we should serialize differently based on the target parameter type
-      const parameter = getParameter(target, { extraData, clickBehavior });
+      const parameterPath =
+        clickBehavior.type === "crossfilter"
+          ? ["dashboard", "parameters"]
+          : ["dashboards", clickBehavior.targetId, "parameters"];
+      const parameters = getIn(extraData, parameterPath) || [];
+      const parameter = parameters.find(p => p.id === target.id);
       if (parameter) {
         return formatDateForParameterType(datum.value, parameter.type);
       }
