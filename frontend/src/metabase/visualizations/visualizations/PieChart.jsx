@@ -20,7 +20,6 @@ import {
   dimensionSetting,
 } from "metabase/visualizations/lib/settings/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { PLUGIN_CHART_SETTINGS } from "metabase/plugins";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -193,7 +192,6 @@ export default class PieChart extends Component {
       },
       readDependencies: ["pie._dimensionIndex"],
     },
-    ...PLUGIN_CHART_SETTINGS,
   };
 
   componentDidUpdate() {
@@ -258,6 +256,7 @@ export default class PieChart extends Component {
         value: row[metricIndex],
         displayValue: row[metricIndex],
         percentage: row[metricIndex] / total,
+        rowIndex: index,
         color: settings["pie._colors"][row[dimensionIndex]],
       }))
       .partition(d => d.percentage > sliceThreshold)
@@ -379,6 +378,10 @@ export default class PieChart extends Component {
     const getSliceClickObject = index => ({
       value: slices[index].value,
       column: cols[metricIndex],
+      data: rows[slices[index].rowIndex].map((value, index) => ({
+        value,
+        col: cols[index],
+      })),
       dimensions: [
         {
           value: slices[index].key,

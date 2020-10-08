@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import styled from "styled-components";
 import { space } from "styled-system";
 
+import Icon from "metabase/components/Icon";
 import { color, lighten } from "metabase/lib/colors";
 
 import _ from "underscore";
@@ -85,6 +86,7 @@ export default class Radio extends Component {
               yspace={yspace}
               onClick={e => onChange(optionValueFn(option))}
             >
+              {option.icon && <Icon name={option.icon} mr={1} />}
               <input
                 className="Form-radio"
                 type="radio"

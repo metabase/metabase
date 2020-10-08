@@ -86,6 +86,10 @@
   (let [connection (sql-jdbc.conn/connection-details->spec driver (ssh/include-ssh-tunnel details))]
     (= 1M (first (vals (first (jdbc/query connection ["SELECT 1 FROM dual"])))))))
 
+(defmethod driver/db-start-of-week :oracle
+  [_]
+  :sunday)
+
 (defn- trunc
   "Truncate a date. See also this [table of format
   templates](http://docs.oracle.com/cd/B28359_01/olap.111/b28126/dml_functions_2071.htm#CJAEFAIA)
@@ -102,9 +106,7 @@
 (defmethod sql.qp/date [:oracle :day]            [_ _ v] (trunc :dd v))
 (defmethod sql.qp/date [:oracle :day-of-month]   [_ _ v] (hsql/call :extract :day v))
 ;; [SIC] The format template for truncating to start of week is 'day' in Oracle #WTF
-;; iw = same day of the week as first day of the ISO year
-;; iy = ISO year
-(defmethod sql.qp/date [:oracle :week]           [_ _ v] (trunc :day v))
+(defmethod sql.qp/date [:oracle :week]           [_ _ v] (sql.qp/adjust-start-of-week :oracle (partial trunc :day) v))
 (defmethod sql.qp/date [:oracle :month]          [_ _ v] (trunc :month v))
 (defmethod sql.qp/date [:oracle :month-of-year]  [_ _ v] (hsql/call :extract :month v))
 (defmethod sql.qp/date [:oracle :quarter]        [_ _ v] (trunc :q v))
@@ -113,11 +115,6 @@
 (defmethod sql.qp/date [:oracle :day-of-year] [driver _ v]
   (hx/inc (hx/- (sql.qp/date driver :day v) (trunc :year v))))
 
-(defmethod sql.qp/date [:oracle :week-of-year] [_ _ v]
-  (hx/inc (hx// (hx/- (trunc :iw v)
-                      (trunc :iy v))
-                7)))
-
 (defmethod sql.qp/date [:oracle :quarter-of-year] [driver _ v]
   (hx// (hx/+ (sql.qp/date driver :month-of-year (sql.qp/date driver :quarter v))
               2)
@@ -125,8 +122,7 @@
 
 ;; subtract number of days between today and first day of week, then add one since first day of week = 1
 (defmethod sql.qp/date [:oracle :day-of-week] [driver _ v]
-  (hx/inc (hx/- (sql.qp/date driver :day v)
-                (sql.qp/date driver :week v))))
+  (sql.qp/adjust-day-of-week :oracle (hx/->integer (hsql/call :to_char v (hx/literal :d)))))
 
 (def ^:private now (hsql/raw "SYSDATE"))
 

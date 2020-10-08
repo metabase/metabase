@@ -169,12 +169,16 @@ export function parameterOptionsForField(field: Field): ParameterOption[] {
   );
 }
 
-function dimensionFilterForParameter(parameter: Parameter): DimensionFilter {
+export function dimensionFilterForParameter(
+  parameter: Parameter,
+): DimensionFilter {
   const fieldFilter = fieldFilterForParameter(parameter);
   return dimension => fieldFilter(dimension.field());
 }
 
-function variableFilterForParameter(parameter: Parameter): VariableFilter {
+export function variableFilterForParameter(
+  parameter: Parameter,
+): VariableFilter {
   const tagFilter = tagFilterForParameter(parameter);
   return variable => {
     if (variable instanceof TemplateTagVariable) {

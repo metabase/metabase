@@ -1,7 +1,6 @@
 (ns metabase.sync.analyze.fingerprint.fingerprinters
   "Non-identifying fingerprinters for various field types."
   (:require [bigml.histogram.core :as hist]
-            [cheshire.core :as json]
             [java-time :as t]
             [kixi.stats
              [core :as stats]
@@ -225,10 +224,20 @@
         :q3  q3)))))
 
 (defn- valid-serialized-json?
-  "Is x a serialized JSON dictionary or array."
+  "Is x a serialized JSON dictionary or array. Hueristically recognize maps and arrays. Uses the following strategies:
+  - leading character {: assume valid JSON
+  - leading character [: assume valid json unless its of the form [ident] where ident is not a boolean."
   [x]
   (u/ignore-exceptions
-    ((some-fn map? sequential?) (json/parse-string x))))
+    (when (and x (string? x))
+      (let [matcher (case (first x)
+                      \[ (fn bracket-matcher [s]
+                           (cond (re-find #"^\[\s*(?:true|false)" s) true
+                                 (re-find #"^\[\s*[a-zA-Z]" s) false
+                                 :else true))
+                      \{ (constantly true)
+                      (constantly false))]
+        (matcher x)))))
 
 (deffingerprinter :type/Text
   ((map str) ; we cast to str to support `field-literal` type overwriting:

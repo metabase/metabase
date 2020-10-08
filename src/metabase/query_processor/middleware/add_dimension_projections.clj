@@ -9,9 +9,9 @@
   of values happens on the frontend, so this middleware simply adds the column to be used for replacement (e.g.
   `category.name`) to the `:fields` clause in pre-processing, so the Field will be fetched. Recall that Fields
   referenced via with `:fk->` clauses imply that JOINs will take place, which are automatically handled later in the
-  Query Processor pipeline. Additionally, this middleware will swap out `:breakout` and `:order-by` clauses referencing the
-  original Field with ones referencing the remapped Field (for example, so we would sort by `category.name` instead of
-  `category_id`).
+  Query Processor pipeline. Additionally, this middleware will swap out `:breakout` and `:order-by` clauses
+  referencing the original Field with ones referencing the remapped Field (for example, so we would sort by
+  `category.name` instead of `category_id`).
 
   `internal` type Dimensions mean the Field's values are replaced by a user-defined map of values, stored in the
   `human_readable_values` column of a corresponding `FieldValues` object. A common use-case for this scenario would be

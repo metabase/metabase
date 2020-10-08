@@ -223,6 +223,11 @@
     (fn [_ x]
       (str x))))
 
+(defn decolorize
+  "Remove ANSI escape sequences from a String `s`."
+  ^String [s]
+  (some-> s (str/replace #"\[[;\d]*m" "")))
+
 (defn format-color
   "With one arg, converts something to a string and colorizes it. With two args, behaves like `format`, but colorizes
   the output.

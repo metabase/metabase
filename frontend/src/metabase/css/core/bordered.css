@@ -109,6 +109,11 @@
   border-style: dashed;
 }
 
+.border-dashed-bottom,
+:local(.border-bottom) {
+  border-bottom: var(--border-size) dashed var(--color-border);
+}
+
 .border-medium {
   border-width: var(--border-size-medium);
 }

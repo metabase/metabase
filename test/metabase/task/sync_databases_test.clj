@@ -5,13 +5,18 @@
   (:require [clojure
              [string :as str]
              [test :refer :all]]
+            [metabase
+             [test :as mt]
+             [util :as u]]
             [metabase.models.database :refer [Database]]
+            [metabase.sync
+             [analyze :as sync.analyze]
+             [field-values :as sync.field-values]
+             [sync-metadata :as sync.metadata]]
             [metabase.task.sync-databases :as sync-db]
             [metabase.test.util :as tu]
-            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
+            [toucan.db :as db])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
 
 (deftest annotations-test
@@ -66,7 +71,7 @@
 (deftest new-db-jobs-scheduled-test
   (is (= [sync-job fv-job]
          (with-scheduler-setup
-           (tt/with-temp Database [database {:engine :postgres}]
+           (mt/with-temp Database [database {:engine :postgres}]
              (current-tasks-for-db database))))))
 
 ;; Check that a custom schedule is respected when creating a new Database
@@ -74,7 +79,7 @@
   (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 30 4,16 * * ? *")
           (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 15 10 ? * 6#3")]
          (with-scheduler-setup
-           (tt/with-temp Database [database {:engine                      :postgres
+           (mt/with-temp Database [database {:engine                      :postgres
                                              :metadata_sync_schedule      "0 30 4,16 * * ? *" ; 4:30 AM and PM daily
                                              :cache_field_values_schedule "0 15 10 ? * 6#3"}] ; 10:15 on the 3rd Friday of the Month
              (current-tasks-for-db database))))))
@@ -84,7 +89,7 @@
   (is (= [(update sync-job :triggers empty)
           (update fv-job   :triggers empty)]
         (with-scheduler-setup
-          (tt/with-temp Database [database {:engine :postgres}]
+          (mt/with-temp Database [database {:engine :postgres}]
             (db/delete! Database :id (u/get-id database))
             (current-tasks-for-db database))))))
 
@@ -93,7 +98,7 @@
   (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
           (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 11 11 11 11 ?")]
          (with-scheduler-setup
-           (tt/with-temp Database [database {:engine :postgres}]
+           (mt/with-temp Database [database {:engine :postgres}]
              (db/update! Database (u/get-id database)
                :metadata_sync_schedule      "0 15 10 ? * MON-FRI" ; 10:15 AM every weekday
                :cache_field_values_schedule "0 11 11 11 11 ?")    ; Every November 11th at 11:11 AM
@@ -104,7 +109,7 @@
   (is (= [sync-job
           (assoc-in fv-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")]
         (with-scheduler-setup
-          (tt/with-temp Database [database {:engine :postgres}]
+          (mt/with-temp Database [database {:engine :postgres}]
             (db/update! Database (u/get-id database)
               :cache_field_values_schedule "0 15 10 ? * MON-FRI")
             (current-tasks-for-db database)))))
@@ -112,7 +117,7 @@
   (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
           fv-job]
          (with-scheduler-setup
-           (tt/with-temp Database [database {:engine :postgres}]
+           (mt/with-temp Database [database {:engine :postgres}]
              (db/update! Database (u/get-id database)
                :metadata_sync_schedule "0 15 10 ? * MON-FRI")
              (current-tasks-for-db database))))))
@@ -126,7 +131,7 @@
              (db/insert! Database {:engine :postgres, k "0 * ABCD"}))))))
 
   (testing "Check that you can't UPDATE a DB's schedule to something invalid"
-    (tt/with-temp Database [database {:engine :postgres}]
+    (mt/with-temp Database [database {:engine :postgres}]
       (doseq [k [:metadata_sync_schedule :cache_field_values_schedule]]
         (testing (format "Update %s" k)
           (is (thrown?
@@ -145,9 +150,9 @@
 (deftest check-orphaned-jobs-removed-test
   (testing "jobs for orphaned databases are removed during sync run"
     (with-scheduler-setup
-      (doseq [sync-fn [sync-db/update-field-values sync-db/sync-and-analyze-database]]
+      (doseq [sync-fn [#'sync-db/update-field-values! #'sync-db/sync-and-analyze-database!]]
         (testing (str sync-fn)
-          (tt/with-temp Database [database {:engine :postgres}]
+          (mt/with-temp Database [database {:engine :postgres}]
             (let [db-id (:id database)]
               (is (= [sync-job fv-job]
                      (current-tasks-for-db database)))
@@ -164,9 +169,7 @@
 ;;; |                                    CHECKING THAT SYNC TASKS RUN CORRECT FNS                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - it would be nice if we could rework this test so we didn't have to wait for so long to see if things
-;; happened or not
-(defn- check-if-sync-processes-ran-for-db {:style/indent 0} [db-info]
+(defn- check-if-sync-processes-ran-for-db {:style/indent 0} [waits db-info]
   (let [sync-db-metadata-ran?    (promise)
         analyze-db-ran?          (promise)
         update-field-values-ran? (promise)]
@@ -174,42 +177,52 @@
                   metabase.sync.analyze/analyze-db!               (fn [& _] (deliver analyze-db-ran? true))
                   metabase.sync.field-values/update-field-values! (fn [& _] (deliver update-field-values-ran? true))]
       (with-scheduler-setup
-        (tt/with-temp Database [database db-info]
-          {:ran-sync?                (deref sync-db-metadata-ran?    1000 false)
-           :ran-analyze?             (deref analyze-db-ran?           200 false)
-           :ran-update-field-values? (deref update-field-values-ran?  500 false)})))))
+        (mt/with-temp Database [database db-info]
+          ;; deref the promises in parallel so they all get sufficient time to run.
+          (into {} (pmap (fn [[k promis]]
+                           (let [wait-time-ms (or (get waits k)
+                                                  (throw (ex-info (str "Don't know how long to wait for " k) {})))]
+                             [k (deref promis wait-time-ms false)]))
+                         {:ran-sync?                sync-db-metadata-ran?
+                          :ran-analyze?             analyze-db-ran?
+                          :ran-update-field-values? update-field-values-ran?})))))))
 
 (defn- cron-schedule-for-next-year []
   (format "0 15 10 * * ? %d" (inc (u.date/extract :year))))
 
 (deftest check-sync-tasks-run-test
-  (testing "Make sure that a database that *is* marked full sync *will* get analyzed"
-    (is (=  {:ran-sync? true, :ran-analyze? true, :ran-update-field-values? false}
-            (check-if-sync-processes-ran-for-db
-              {:engine                      :postgres
-               :metadata_sync_schedule      "* * * * * ? *"
-               :cache_field_values_schedule (cron-schedule-for-next-year)}))))
+  (u/profile "new"
+    (testing "Make sure that a database that *is* marked full sync *will* get analyzed"
+      (is (=  {:ran-sync? true, :ran-analyze? true, :ran-update-field-values? false}
+              (check-if-sync-processes-ran-for-db
+                {:ran-sync? 3000, :ran-analyze? 3000, :ran-update-field-values? 500}
+                {:engine                      :postgres
+                 :metadata_sync_schedule      "* * * * * ? *"
+                 :cache_field_values_schedule (cron-schedule-for-next-year)}))))
 
-  (testing "Make sure that a database that *isn't* marked full sync won't get analyzed"
-    (is (= {:ran-sync? true, :ran-analyze? false, :ran-update-field-values? false}
-           (check-if-sync-processes-ran-for-db
-             {:engine                      :postgres
-              :is_full_sync                false
-              :metadata_sync_schedule      "* * * * * ? *"
-              :cache_field_values_schedule (cron-schedule-for-next-year)}))))
+    (testing "Make sure that a database that *isn't* marked full sync won't get analyzed"
+      (is (= {:ran-sync? true, :ran-analyze? false, :ran-update-field-values? false}
+             (check-if-sync-processes-ran-for-db
+               {:ran-sync? 3000, :ran-analyze? 500, :ran-update-field-values? 500}
+               {:engine                      :postgres
+                :is_full_sync                false
+                :metadata_sync_schedule      "* * * * * ? *"
+                :cache_field_values_schedule (cron-schedule-for-next-year)}))))
 
-  (testing "Make sure the update field values task calls `update-field-values!`"
-    (is (= {:ran-sync? false, :ran-analyze? false, :ran-update-field-values? true}
-           (check-if-sync-processes-ran-for-db
-             {:engine                      :postgres
-              :is_full_sync                true
-              :metadata_sync_schedule      (cron-schedule-for-next-year)
-              :cache_field_values_schedule "* * * * * ? *"}))))
+    (testing "Make sure the update field values task calls `update-field-values!`"
+      (is (= {:ran-sync? false, :ran-analyze? false, :ran-update-field-values? true}
+             (check-if-sync-processes-ran-for-db
+               {:ran-sync? 500, :ran-analyze? 500, :ran-update-field-values? 3000}
+               {:engine                      :postgres
+                :is_full_sync                true
+                :metadata_sync_schedule      (cron-schedule-for-next-year)
+                :cache_field_values_schedule "* * * * * ? *"}))))
 
-  (testing "...but if DB is not \"full sync\" it should not get updated FieldValues"
-    (is (= {:ran-sync? false, :ran-analyze? false, :ran-update-field-values? false}
-           (check-if-sync-processes-ran-for-db
-             {:engine                      :postgres
-              :is_full_sync                false
-              :metadata_sync_schedule      (cron-schedule-for-next-year)
-              :cache_field_values_schedule "* * * * * ? *"})))))
+    (testing "...but if DB is not \"full sync\" it should not get updated FieldValues"
+      (is (= {:ran-sync? false, :ran-analyze? false, :ran-update-field-values? false}
+             (check-if-sync-processes-ran-for-db
+               {:ran-sync? 500, :ran-analyze? 500, :ran-update-field-values? 500}
+               {:engine                      :postgres
+                :is_full_sync                false
+                :metadata_sync_schedule      (cron-schedule-for-next-year)
+                :cache_field_values_schedule "* * * * * ? *"}))))))

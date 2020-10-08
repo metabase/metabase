@@ -87,7 +87,7 @@ describe("scenarios > public", () => {
         .contains("Create")
         .click();
 
-      cy.get(".Icon-funnel_add").click();
+      cy.get(".Icon-filter").click();
 
       popover()
         .contains("Other Categories")

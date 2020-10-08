@@ -30,6 +30,10 @@
 ;; users in the UI
 (defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
 
+(defmethod driver/db-start-of-week :sqlserver
+  [_]
+  :sunday)
+
 ;; See the list here: https://docs.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types
 (defmethod sql-jdbc.sync/database-type->base-type :sqlserver
   [_ column-type]
@@ -137,7 +141,7 @@
 
 (defmethod sql.qp/date [:sqlserver :day-of-week]
   [_ _ expr]
-  (date-part :weekday expr))
+  (sql.qp/adjust-day-of-week :sqlserver (date-part :weekday expr)))
 
 (defmethod sql.qp/date [:sqlserver :day-of-month]
   [_ _ expr]
@@ -154,12 +158,8 @@
   [_ _ expr]
   (hx/->datetime
    (date-add :day
-             (hx/- 1 (date-part :weekday expr))
+             (hx/- 1 (date-part :weekday expr) (driver.common/start-of-week-offset :sqlserver))
              (hx/->date expr))))
-
-(defmethod sql.qp/date [:sqlserver :week-of-year]
-  [_ _ expr]
-  (date-part :iso_week expr))
 
 (defmethod sql.qp/date [:sqlserver :month]
   [_ _ expr]

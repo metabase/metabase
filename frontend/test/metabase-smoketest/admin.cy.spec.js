@@ -76,7 +76,7 @@ describe("metabase-smoketest > admin", () => {
       // Finish & Subscribe
 
       cy.findByText("Take me to Metabase").click();
-      cy.url().should("be", "/");
+      cy.location("pathname").should("eq", "/");
     });
   });
 
