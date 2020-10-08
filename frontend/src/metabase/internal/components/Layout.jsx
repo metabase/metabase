@@ -58,15 +58,15 @@ export const FixedPane = ({ children, width = 320 }) => (
 );
 
 const Header = () => (
-  <a
-    className="text-brand flex align-center border-bottom px4 py3"
+  <Link
+    className="link flex align-center border-bottom px4 py3"
     href="/_internal"
   >
     <LogoIcon />
     <Subhead ml={2} color="inherit">
       Styleguide
     </Subhead>
-  </a>
+  </Link>
 );
 
 const IndentedList = ({ children }) => <ol className="ml2">{children}</ol>;
@@ -74,12 +74,12 @@ const IndentedList = ({ children }) => <ol className="ml2">{children}</ol>;
 const ComponentItem = ({ component }) => {
   return (
     <li>
-      <a
-        className="py1 block link h3 text-bold"
-        href={`/_internal/components/${getComponentSlug(component)}`}
+      <Link
+        to={`/_internal/components/${getComponentSlug(component)}`}
+        className="link"
       >
-        <Label>{getComponentName(component)}</Label>
-      </a>
+        <Label color="inherit">{getComponentName(component)}</Label>
+      </Link>
     </li>
   );
 };
