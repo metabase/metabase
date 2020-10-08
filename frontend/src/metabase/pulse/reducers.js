@@ -36,7 +36,9 @@ export const cardPreviews = handleActions(
 
 export const pulseList = handleActions(
   {
-    [FETCH_PULSE_LIST_BY_DASHBOARD_ID]: { next: (state, { payload }) => payload },
+    [FETCH_PULSE_LIST_BY_DASHBOARD_ID]: {
+      next: (state, { payload }) => payload,
+    },
   },
   [],
 );
