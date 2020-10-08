@@ -115,8 +115,6 @@ class SharingSidebar extends React.Component {
 
   constructor(props) {
     super(props);
-
-    console.log("props at ctor time", props);
   }
 
   setPulse = pulse => {
@@ -502,6 +500,11 @@ class SharingSidebar extends React.Component {
   render() {
     const { editingMode } = this.state;
     const { pulse, formInput, pulseList } = this.props;
+
+    // protect from empty values that will mess this up
+    if (formInput === null || pulse === null || pulseList === null) {
+      return <Sidebar />;
+    }
 
     if (editingMode === "list-pulses") {
       return (
