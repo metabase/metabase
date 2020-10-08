@@ -113,6 +113,8 @@ class SharingSidebar extends React.Component {
 
   constructor(props) {
     super(props);
+
+    console.log("props at ctor time", props);
   }
 
   setPulse = pulse => {
@@ -156,7 +158,7 @@ class SharingSidebar extends React.Component {
       if (pulseList && pulseList.length > 0) {
         this.setState({ editingMode: "list-pulses" });
       } else {
-        this.setState({ editingMode: "new-pulse" });
+        this.createSubscription();
       }
     }
   }
@@ -286,6 +288,8 @@ class SharingSidebar extends React.Component {
   handleSave = async () => {
     const { pulse, dashboard, formInput } = this.props;
 
+    console.log("pre-cleaned pulse", pulse);
+
     const cleanedPulse = cleanPulse(pulse, formInput.channels);
     cleanedPulse.name = dashboard.name;
     await this.props.updateEditingPulse(cleanedPulse);
@@ -355,27 +359,34 @@ class SharingSidebar extends React.Component {
 
   friendlySchedule(channel) {
     let scheduleString = "";
+    if (channel.channel_type === "email") {
+      scheduleString += t`Emailed `;
+    } else if (channel.channel_type === "slack") {
+      scheduleString += t`Sent to ` + channel.details.channel + " ";
+    } else {
+      scheduleString += t`Sent `;
+    }
 
     switch (channel.schedule_type) {
       case "hourly":
-        scheduleString += t`Hourly`;
+        scheduleString += t`hourly`;
         break;
       case "daily": {
         const ampm = this.formatHourAMPM(channel.schedule_hour);
-        scheduleString += t`Daily at ${ampm}`;
+        scheduleString += t`daily at ${ampm}`;
         break;
       }
       case "weekly": {
         const ampm = this.formatHourAMPM(channel.schedule_hour);
         const day = this.formatDay(channel.schedule_day);
-        scheduleString += t`Weekly at ${ampm} on ${day}`;
+        scheduleString += t`${day} at ${ampm}`;
         break;
       }
       case "monthly": {
         const ampm = this.formatHourAMPM(channel.schedule_hour);
         const day = this.formatDay(channel.schedule_day);
         const frame = this.formatFrame(channel.schedule_frame);
-        scheduleString += t`Monthly on the ${frame} ${day} at ${ampm}`;
+        scheduleString += t`monthly on the ${frame} ${day} at ${ampm}`;
         break;
       }
       default:
@@ -404,14 +415,6 @@ class SharingSidebar extends React.Component {
     ));
   }
 
-  renderSlackDetails(details) {
-    return (
-      <li className={cx("flex align-center mr1 mb1 p1 rounded bg-medium")}>
-        {details.channel}
-      </li>
-    );
-  }
-
   renderRecipients(pulse) {
     return (
       <div className="text-medium">
@@ -421,10 +424,7 @@ class SharingSidebar extends React.Component {
           )}
           style={{ maxHeight: 130 }}
         >
-          {pulse.channels[0].channel_type === "email" &&
-            this.renderEmailRecipients(pulse.channels[0].recipients)}
-          {pulse.channels[0].channel_type === "slack" &&
-            this.renderSlackDetails(pulse.channels[0].details)}
+          {this.renderEmailRecipients(pulse.channels[0].recipients)}
         </ul>
       </div>
     );
@@ -536,7 +536,8 @@ class SharingSidebar extends React.Component {
                     />
                     <h3>{this.friendlySchedule(pulse.channels[0])}</h3>
                   </div>
-                  {this.renderRecipients(pulse)}
+                  {pulse.channels[0].channel_type === "email" &&
+                    this.renderRecipients(pulse)}
                 </div>
               </Card>
             ))}
@@ -595,12 +596,20 @@ class SharingSidebar extends React.Component {
       );
     }
 
-    if (editingMode === "add-edit-email") {
+    if (
+      editingMode === "add-edit-email" &&
+      (pulse.channels && pulse.channels.length > 0)
+    ) {
       const channelType = "email";
 
       const channelDetails = pulse.channels
         .map((c, i) => [c, i])
         .filter(([c, i]) => c.enabled && c.channel_type === channelType);
+      // protection from a failure where the channels aren't loaded yet
+      if (channelDetails.length === 0) {
+        return <Sidebar />;
+      }
+
       const channel = channelDetails[0][0];
       const index = channelDetails[0][1];
 
@@ -689,12 +698,23 @@ class SharingSidebar extends React.Component {
       );
     }
 
-    if (editingMode === "add-edit-slack") {
+    if (
+      editingMode === "add-edit-slack" &&
+      (pulse.channels && pulse.channels.length > 0)
+    ) {
       const channelType = "slack";
+
+      console.log("channels", pulse.channels);
 
       const channelDetails = pulse.channels
         .map((c, i) => [c, i])
         .filter(([c, i]) => c.enabled && c.channel_type === channelType);
+      // protection from a failure where the channels aren't loaded yet
+      if (channelDetails.length === 0) {
+        return <Sidebar />;
+      }
+
+      console.log("details", channelDetails);
       const channel = channelDetails[0][0];
       const index = channelDetails[0][1];
 
