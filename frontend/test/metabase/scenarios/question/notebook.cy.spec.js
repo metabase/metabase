@@ -226,9 +226,7 @@ describe("scenarios > question > notebook", () => {
         typeAndBlurUsingLabel("Name", "Q3");
         cy.findByText("Save").click();
       });
-      modal().within(() => {
-        cy.findByText("Not now").click();
-      });
+      cy.findByText("Not now").click();
 
       cy.log("**Assert that the Q3 is in 'Our analytics'**");
 
@@ -278,9 +276,7 @@ describe("scenarios > question > notebook", () => {
         cy.findByText("Save").click();
       });
 
-      modal().within(() => {
-        cy.findByText("Not now").click();
-      });
+      cy.findByText("Not now").click();
 
       cy.get(".Icon-notebook").click();
 
