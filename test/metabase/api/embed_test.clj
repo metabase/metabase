@@ -20,6 +20,9 @@
              [dashboard-test :as dashboard-api-test]
              [embed :as embed-api]
              [public-test :as public-test]]
+            [metabase.models
+             [permissions :as perms]
+             [permissions-group :as group]]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.test.util :as tu]
             [toucan.db :as db]
@@ -779,6 +782,21 @@
         (testing (str "\n" url)
           (is (= "You can't specify a value for :price if it's already set in the JWT."
                  (http/client :get 400 url))))))))
+
+(deftest chain-filter-ignore-current-user-permissions-test
+  (testing "Should not fail if request is authenticated but current user does not have data permissions"
+    (mt/with-temp-copy-of-db
+      (perms/revoke-permissions! (group/all-users) (mt/db))
+      (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+        (db/update! Dashboard (:id dashboard)
+          :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
+        (testing "Should work if the param we're fetching values for is enabled"
+          (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
+            (is (= [2 3 4 5 6]
+                   (take 5 ((mt/user->client :rasta) :get 200 (values-url))))))
+          (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
+            (is (= ["Scandinavian" "Seafood" "South Pacific"]
+                   (take 3 ((mt/user->client :rasta) :get 200 (search-url)))))))))))
 
 (deftest chain-filter-locked-params-test
   (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]

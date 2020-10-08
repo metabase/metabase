@@ -98,8 +98,7 @@
   (str (u/lower-case-en (random-name)) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
-  "Useful for unit test comparisons. Converts map keys found in `DATA`
-  satisfying `PRED` with booleans when not nil"
+  "Useful for unit test comparisons. Converts map keys found in `data` satisfying `pred` with booleans when not nil."
   ([data]
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)

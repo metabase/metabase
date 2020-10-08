@@ -498,7 +498,8 @@
       ;; ok, at this point we can run the query
       (let [merged-id-params (chain-filter-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
-          (dashboard-api/chain-filter (Dashboard dashboard-id) searched-param-id merged-id-params prefix)
+          (binding [api/*current-user-permissions-set* (atom #{"/"})]
+            (dashboard-api/chain-filter (Dashboard dashboard-id) searched-param-id merged-id-params prefix))
           (catch Throwable e
             (throw (ex-info (.getMessage e)
                             {:merged-id-params merged-id-params}
