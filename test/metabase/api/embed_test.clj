@@ -739,16 +739,16 @@
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if parameter is not explicitly enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= "Cannot search for values: \"_CATEGORY_ID_\" is not an enabled parameter."
+        (is (= "Cannot search for values: \"category_id\" is not an enabled parameter."
                (http/client :get 400 (values-url)))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
-        (is (= "Cannot search for values: \"_CATEGORY_NAME_\" is not an enabled parameter."
+        (is (= "Cannot search for values: \"category_name\" is not an enabled parameter."
                (http/client :get 400 (search-url))))))))
 
 (deftest chain-filter-enabled-params-test
   (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
     (db/update! Dashboard (:id dashboard)
-      :embedding_params {"_CATEGORY_ID_" "enabled", "_CATEGORY_NAME_" "enabled", "_PRICE_" "enabled"})
+      :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
     (testing "Should work if the param we're fetching values for is enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= [2 3 4 5 6]
@@ -760,10 +760,10 @@
     (testing "If an ENABLED constraint param is present in the JWT, that's ok"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= [40 67]
-               (http/client :get 200 (values-url {"_PRICE_" 4})))))
+               (http/client :get 200 (values-url {"price" 4})))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
         (is (= ["Steakhouse"]
-               (http/client :get 200 (search-url {"_PRICE_" 4}))))))
+               (http/client :get 200 (search-url {"price" 4}))))))
 
     (testing "If an ENABLED param is present in query params but *not* the JWT, that's ok"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
@@ -775,70 +775,70 @@
 
     (testing "If ENABLED param is present in both JWT and the URL, the request should fail"
       (doseq [url-fn [values-url search-url]
-              :let   [url (str (url-fn {"_PRICE_" 4}) "?_PRICE_=4")]]
+              :let   [url (str (url-fn {"price" 4}) "?_PRICE_=4")]]
         (testing (str "\n" url)
-          (is (= "You can't specify a value for :_PRICE_ if it's already set in the JWT."
+          (is (= "You can't specify a value for :price if it's already set in the JWT."
                  (http/client :get 400 url))))))))
 
 (deftest chain-filter-locked-params-test
   (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
     (testing "Requests should fail if searched param is locked"
       (db/update! Dashboard (:id dashboard)
-        :embedding_params {"_CATEGORY_ID_" "locked", "_CATEGORY_NAME_" "locked"})
+        :embedding_params {"category_id" "locked", "category_name" "locked"})
       (doseq [url [(values-url) (search-url)]]
         (testing (str "\n" url)
-          (is (re= #"You must specify a value for :_CATEGORY_(?:(?:NAME)|(?:ID))_ in the JWT\."
+          (is (re= #"Cannot search for values: \"category_(?:(?:name)|(?:id))\" is not an enabled parameter."
                    (http/client :get 400 url))))))
 
     (testing "Search param enabled\n"
       (db/update! Dashboard (:id dashboard)
-        :embedding_params {"_CATEGORY_ID_" "enabled", "_CATEGORY_NAME_" "enabled", "_PRICE_" "locked"})
+        :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "locked"})
 
       (testing "Requests should fail if the token is missing a locked parameter"
         (doseq [url [(values-url) (search-url)]]
           (testing (str "\n" url)
-            (is (= "You must specify a value for :_PRICE_ in the JWT."
+            (is (= "You must specify a value for :price in the JWT."
                    (http/client :get 400 url))))))
 
       (testing "if `:locked` param is supplied, request should succeed"
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
           (is (= [40 67]
-                 (http/client :get 200 (values-url {"_PRICE_" 4})))))
+                 (http/client :get 200 (values-url {"price" 4})))))
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:prefix"
           (is (= ["Steakhouse"]
-                 (http/client :get 200 (search-url {"_PRICE_" 4}))))))
+                 (http/client :get 200 (search-url {"price" 4}))))))
 
       (testing "if `:locked` parameter is present in URL params, request should fail"
         (doseq [url-fn [values-url search-url]
-                :let   [url (url-fn {"_PRICE_" 4})]]
+                :let   [url (url-fn {"price" 4})]]
           (testing (str "\n" url)
-            (is (= "You can only specify a value for :_PRICE_ in the JWT."
+            (is (= "You can only specify a value for :price in the JWT."
                    (http/client :get 400 (str url "?_PRICE_=4"))))))))))
 
 (deftest chain-filter-disabled-params-test
   (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
     (testing "Requests should fail if searched param is disabled"
       (db/update! Dashboard (:id dashboard)
-        :embedding_params {"_CATEGORY_ID_" "disabled", "_CATEGORY_NAME_" "disabled"})
+        :embedding_params {"category_id" "disabled", "category_name" "disabled"})
       (doseq [url [(values-url) (search-url)]]
         (testing (str "\n" url)
-          (is (re= #"Cannot search for values: \"_CATEGORY_(?:(?:NAME)|(?:ID))_\" is not an enabled parameter\."
+          (is (re= #"Cannot search for values: \"category_(?:(?:name)|(?:id))\" is not an enabled parameter\."
                    (http/client :get 400 url))))))
 
     (testing "Search param enabled\n"
       (db/update! Dashboard (:id dashboard)
-        :embedding_params {"_CATEGORY_ID_" "enabled", "_CATEGORY_NAME_" "enabled", "_PRICE_" "disabled"})
+        :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "disabled"})
 
       (testing "Requests should fail if the token has a disabled parameter"
         (doseq [url-fn [values-url search-url]
-                :let   [url (url-fn {"_PRICE_" 4})]]
+                :let   [url (url-fn {"price" 4})]]
           (testing (str "\n" url)
-            (is (= "You're not allowed to specify a value for :_PRICE_."
+            (is (= "You're not allowed to specify a value for :price."
                    (http/client :get 400 url))))))
 
       (testing "Requests should fail if the URL has a disabled parameter"
         (doseq [url-fn [values-url search-url]
                 :let   [url (str (url-fn) "?_PRICE_=4")]]
           (testing (str "\n" url)
-            (is (= "You're not allowed to specify a value for :_PRICE_."
+            (is (= "You're not allowed to specify a value for :price."
                    (http/client :get 400 url)))))))))
