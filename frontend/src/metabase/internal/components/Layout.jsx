@@ -12,11 +12,15 @@ import Subhead from "metabase/components/type/Subhead";
 */
 
 export const CATEGORIES = {
-  layout: "layout",
-  interaction: "interaction",
-  inputs: "input",
-  pickers: "pickers",
-  navigation: "navigation",
+  layout: "Layout",
+  input: "Input",
+  pickers: "Pickers",
+  navigation: "Navigation",
+  modal: "Modal",
+  display: "Data display",
+  form: "Form",
+  visualization: "Visualizations",
+  feecback: "Feedback",
 };
 
 import COMPONENTS from "../lib/components-webpack";
@@ -108,9 +112,9 @@ export const InternalLayout = fitViewport(({ children }) => {
           <li className="my3">
             Components
             <IndentedList>
-              {Object.values(CATEGORIES).map(category => (
+              {Object.keys(CATEGORIES).map(category => (
                 <li>
-                  <Label>{category}</Label>
+                  <Label>{CATEGORIES[category]}</Label>
                   <IndentedList>
                     {COMPONENTS.filter(
                       c => c.category && c.category === category,
