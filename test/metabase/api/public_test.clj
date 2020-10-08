@@ -1002,3 +1002,21 @@
           (let [url (format "public/dashboard/%s/params/%s/search/s" uuid (:category-name param-keys))]
             (is (= ["Scandinavian" "Seafood" "South Pacific"]
                    (take 3 (http/client :get 200 url))))))))))
+
+(deftest chain-filter-ignore-current-user-permissions-test
+  (testing "Should not fail if request is authenticated but current user does not have data permissions"
+    (mt/with-temp-copy-of-db
+      (perms/revoke-permissions! (group/all-users) (mt/db))
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (dashboard-api-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+          (let [uuid (str (UUID/randomUUID))]
+            (is (= true
+                   (db/update! Dashboard (u/get-id dashboard) :public_uuid uuid)))
+            (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
+              (let [url (format "public/dashboard/%s/params/%s/values" uuid (:category-id param-keys))]
+                (is (= [2 3 4 5 6]
+                       (take 5 ((mt/user->client :rasta) :get 200 url))))))
+            (testing "GET /api/public/dashboard/:uuid/params/:param-key/search/:prefix"
+              (let [url (format "public/dashboard/%s/params/%s/search/s" uuid (:category-name param-keys))]
+                (is (= ["Scandinavian" "Seafood" "South Pacific"]
+                       (take 3 ((mt/user->client :rasta) :get 200 url))))))))))))

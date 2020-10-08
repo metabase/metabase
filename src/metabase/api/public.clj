@@ -473,12 +473,14 @@
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
   [uuid param-key :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
-    (dashboard-api/chain-filter dashboard param-key query-params)))
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (dashboard-api/chain-filter dashboard param-key query-params))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:prefix"
   [uuid param-key prefix :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
-    (dashboard-api/chain-filter dashboard param-key query-params prefix)))
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (dashboard-api/chain-filter dashboard param-key query-params prefix))))
 
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
