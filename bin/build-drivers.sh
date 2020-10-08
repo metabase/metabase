@@ -2,11 +2,8 @@
 
 set -euo pipefail
 
-if [ ! `which clojure` ]; then
-    echo "Please install the Clojure command line tools. See https://www.clojure.org/guides/getting_started for instructions."
-    exit -2
-fi
+source "./bin/check-clojure-cli.sh"
+check_clojure_cli
 
 cd bin/build-drivers
-
-clojure -m build-drivers
+clojure -M -m build-drivers

@@ -569,9 +569,9 @@ jobs:
       - run:
           name: Install Clojure CLI
           command: >
-            curl -O https://download.clojure.org/install/linux-install-1.10.1.697.sh &&
-            chmod +x linux-install-1.10.1.697.sh &&
-            sudo ./linux-install-1.10.1.697.sh
+            curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
+            chmod +x linux-install-1.10.1.708.sh &&
+            sudo ./linux-install-1.10.1.708.sh
       - run:
           name: Build frontend if needed
           command: >
