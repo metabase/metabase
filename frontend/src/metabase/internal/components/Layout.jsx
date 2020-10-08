@@ -17,7 +17,7 @@ export const CATEGORIES = {
   display: "Data display",
   pickers: "Pickers",
   navigation: "Navigation",
-  feecback: "Feedback",
+  feedback: "Feedback",
   modal: "Modal",
   form: "Form",
   visualization: "Visualizations",
