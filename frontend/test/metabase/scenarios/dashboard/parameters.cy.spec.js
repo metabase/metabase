@@ -1,10 +1,43 @@
 import { signInAsAdmin, modal, popover, restore } from "__support__/cypress";
-
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 
 describe("scenarios > dashboard > parameters", () => {
   before(restore);
   beforeEach(signInAsAdmin);
+
+  // TODO @nemanjaglumac: refactor and make the test pass
+  // [quarantine]: breaking, unclear
+  it.skip("should be seeable if previously added", () => {
+    // Expand view
+    cy.visit("/dashboard/1");
+    cy.findByText("Rows 1-1 of 2000");
+
+    // Add a filter
+    cy.get(".Icon-pencil").click();
+    cy.get(".Icon-funnel_add").click();
+    cy.findByText("Location").click();
+    cy.findByText("City").click();
+    cy.findByText("Select…").click();
+    cy.get(".Icon-location").click({ force: true });
+    cy.get(".Icon-close");
+
+    // Create default value
+    cy.findByText("Enter a default value...").type("B");
+    cy.findByText("Baker").click();
+    cy.findByText("Add filter").click();
+    cy.findByText("Done").click();
+    cy.findByText("Save").click({ force: true });
+    cy.findByText("Save").should("not.exist");
+    cy.findByText("Rows 1-1 of 8");
+
+    // Leave and come back
+    cy.get(".Icon")
+      .first()
+      .click();
+    cy.findByText("Browse all items").click();
+    cy.findByText("Orders in a dashboard").click();
+    cy.findByText("Rows 1-1 of 8");
+  });
 
   it("should search across multiple fields", () => {
     // create a new dashboard

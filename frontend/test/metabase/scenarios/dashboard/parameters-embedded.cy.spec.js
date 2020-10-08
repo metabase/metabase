@@ -57,6 +57,28 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     cy.request("PUT", `/api/setting/enable-public-sharing`, { value: true });
   });
 
+  describe("embeded params", () => {
+    it("should be hideable", () => {
+      // Check viewable
+      cy.visit("/dashboard/2");
+      cy.get(".Icon-share").click();
+      cy.findByText("Embed this dashboard in an application").click();
+
+      cy.findByText("Parameters");
+      cy.get(".Modal--full").within(() => {
+        cy.findByText("Id");
+        cy.findByText("User");
+        cy.findAllByText("Disabled").should("have.length", 4);
+      });
+
+      // Check hideable
+      cy.visit("/dashboard/2#hide_parameters=id%2Cname");
+      cy.reload();
+      cy.findByText("User");
+      cy.findByText("Name").should("not.exist");
+    });
+  });
+
   describe("private question", () => {
     beforeEach(signInAsAdmin);
 
