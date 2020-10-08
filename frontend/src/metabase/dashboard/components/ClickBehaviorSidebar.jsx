@@ -152,7 +152,7 @@ const Column = ({ column, clickBehavior, onClick }) => (
                 msgid`${column.display_name} updates ${n} filter`,
                 `${column.display_name} updates ${n} filters`,
                 n,
-              ))(Object.keys(clickBehavior.parameterMapping).length)
+              ))(Object.keys(clickBehavior.parameterMapping || {}).length)
           : clickBehavior && clickBehavior.type === "link"
           ? jt`${column.display_name} goes to ${(
               <LinkTargetName clickBehavior={clickBehavior} />

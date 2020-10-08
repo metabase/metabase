@@ -199,7 +199,7 @@ export function clickBehaviorIsValid(clickBehavior) {
   }
   const {
     type,
-    parameterMapping,
+    parameterMapping = {},
     linkType,
     targetId,
     linkTemplate,
