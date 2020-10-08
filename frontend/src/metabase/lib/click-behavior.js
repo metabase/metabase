@@ -238,12 +238,7 @@ export function formatSourceForTarget(
   if (datum.column && isDate(datum.column)) {
     if (target.type === "parameter") {
       // we should serialize differently based on the target parameter type
-      const parameterPath =
-        clickBehavior.type === "crossfilter"
-          ? ["dashboard", "parameters"]
-          : ["dashboards", clickBehavior.targetId, "parameters"];
-      const parameters = getIn(extraData, parameterPath) || [];
-      const parameter = parameters.find(p => p.id === target.id);
+      const parameter = getParameter(target, { extraData, clickBehavior });
       if (parameter) {
         return formatDateForParameterType(datum.value, parameter.type);
       }
@@ -272,4 +267,21 @@ function formatDateForParameterType(value, parameterType) {
     return m.format("YYYY-MM-DD");
   }
   return value;
+}
+
+export function getTargetForQueryParams(target, { extraData, clickBehavior }) {
+  if (target.type === "parameter") {
+    const parameter = getParameter(target, { extraData, clickBehavior });
+    return parameter && parameter.slug;
+  }
+  return target.id;
+}
+
+function getParameter(target, { extraData, clickBehavior }) {
+  const parameterPath =
+    clickBehavior.type === "crossfilter"
+      ? ["dashboard", "parameters"]
+      : ["dashboards", clickBehavior.targetId, "parameters"];
+  const parameters = getIn(extraData, parameterPath) || [];
+  return parameters.find(p => p.id === target.id);
 }

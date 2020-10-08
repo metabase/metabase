@@ -6,6 +6,7 @@ import Question from "metabase-lib/lib/Question";
 import { setOrUnsetParameterValues } from "metabase/dashboard/dashboard";
 import {
   getDataFromClicked,
+  getTargetForQueryParams,
   formatSourceForTarget,
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
@@ -100,7 +101,7 @@ function getQueryParams(parameterMapping, { data, extraData, clickBehavior }) {
   return _.chain(parameterMapping)
     .values()
     .map(({ source, target }) => [
-      target.id,
+      getTargetForQueryParams(target, { extraData, clickBehavior }),
       formatSourceForTarget(source, target, { data, extraData, clickBehavior }),
     ])
     .filter(([key, value]) => value != null)
