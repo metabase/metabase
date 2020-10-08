@@ -1,4 +1,4 @@
-import { signIn, restore, modal, popover } from "__support__/cypress";
+import { signIn, restore, popover } from "__support__/cypress";
 
 describe("scenarios > dashboard > chained filter", () => {
   before(restore);
