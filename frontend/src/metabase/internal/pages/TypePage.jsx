@@ -99,6 +99,9 @@ const TypePage = () => (
           A UI label style type element. Good to use for most anything that
           someone will click on or that represents a label for a section orc
         </Text>
+        <Example>
+          <Label>This will do a thing.</Label>
+        </Example>
       </Box>
     </Box>
   </Box>
