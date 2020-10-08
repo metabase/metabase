@@ -5,6 +5,7 @@ import { t, jt, ngettext, msgid } from "ttag";
 
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
+import Link from "metabase/components/Link";
 import Radio from "metabase/components/Radio";
 import Select, { Option } from "metabase/components/Select";
 import Collections from "metabase/entities/collections";
@@ -347,9 +348,9 @@ class SharingSidebar extends React.Component {
   formatFrame(frame) {
     switch (frame) {
       case "first":
-        return t`First`;
+        return t`first`;
       case "last":
-        return t`Last`;
+        return t`last`;
       case "mid":
         return t`15th (Midpoint)`;
       default:
@@ -547,6 +548,9 @@ class SharingSidebar extends React.Component {
     }
 
     if (editingMode === "new-pulse") {
+      const emailSpec = formInput.channels.email;
+      const slackSpec = formInput.channels.slack;
+
       return (
         <Sidebar onCancel={() => true}>
           <div className="mt2 pt2 px4">
@@ -555,11 +559,13 @@ class SharingSidebar extends React.Component {
           <div className="my1 mx4">
             <Card
               flat
-              hoverable
+              hoverable={emailSpec.configured}
               className="mt1 mb3 cursor-pointer"
               onClick={() => {
-                this.setState({ editingMode: "add-edit-email" });
-                this.addChannel("email");
+                if (emailSpec.configured) {
+                  this.setState({ editingMode: "add-edit-email" });
+                  this.addChannel("email");
+                }
               }}
             >
               <div className="p3">
@@ -568,17 +574,26 @@ class SharingSidebar extends React.Component {
                   <h3>{t`Email it`}</h3>
                 </div>
                 <div className="text-medium">
-                  {t`You can send this dashboard regularly to users or email addresses.`}
+                  {!emailSpec.configured &&
+                    jt`You'll need to ${(
+                      <Link to="/admin/settings/email" className="link">
+                        set up email
+                      </Link>
+                    )} first.`}
+                  {emailSpec.configured &&
+                    t`You can send this dashboard regularly to users or email addresses.`}
                 </div>
               </div>
             </Card>
             <Card
               flat
-              hoverable
+              hoverable={slackSpec.configured}
               className="cursor-pointer"
               onClick={() => {
-                this.setState({ editingMode: "add-edit-slack" });
-                this.addChannel("slack");
+                if (slackSpec.configured) {
+                  this.setState({ editingMode: "add-edit-slack" });
+                  this.addChannel("slack");
+                }
               }}
             >
               <div className="p3">
@@ -587,7 +602,14 @@ class SharingSidebar extends React.Component {
                   <h3>{t`Send it to Slack`}</h3>
                 </div>
                 <div className="text-medium">
-                  {t`Pick a channel and a schedule, and Metabase will do the rest.`}
+                  {!slackSpec.configured &&
+                    jt`First, you'll have to ${(
+                      <Link to="/admin/settings/slack" className="link">
+                        configure Slack
+                      </Link>
+                    )}.`}
+                  {slackSpec.configured &&
+                    t`Pick a channel and a schedule, and Metabase will do the rest.`}
                 </div>
               </div>
             </Card>
