@@ -3,15 +3,16 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { t, jt, ngettext, msgid } from "ttag";
 
+import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Radio from "metabase/components/Radio";
 import Select, { Option } from "metabase/components/Select";
 import Collections from "metabase/entities/collections";
 import Toggle from "metabase/components/Toggle";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
+import Tooltip from "metabase/components/Tooltip";
 
 import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 
@@ -508,12 +509,14 @@ class SharingSidebar extends React.Component {
           <div className="p4 flex justify-between align-center">
             <h3>{t`Subscriptions`}</h3>
 
-            <Icon
-              name="add"
-              className="text-brand bg-light-hover rounded p1 cursor-pointer"
-              size={20}
-              onClick={() => this.createSubscription()}
-            />
+            <Tooltip tooltip={t`Set up a new schedule`}>
+              <Icon
+                name="add"
+                className="text-brand bg-light-hover rounded p1 cursor-pointer"
+                size={20}
+                onClick={() => this.createSubscription()}
+              />
+            </Tooltip>
           </div>
           <div className="myb mx4">
             {pulseList.map(pulse => (
