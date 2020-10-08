@@ -684,7 +684,34 @@
           (testing "via the API endpoint"
             (is (= {:valid false}
                    ((mt/user->client :crowberto) :post 200 "database/validate"
-                    {:details {:engine :h2, :details {:db "ABC"}}})))))))))
+                    {:details {:engine :h2, :details {:db "ABC"}}})))))))
+
+    (let [call-count (atom 0)
+          ssl-values (atom [])]
+      (with-redefs [database-api/test-database-connection (fn [_ details]
+                                                            (swap! call-count inc)
+                                                            (swap! ssl-values conj (:ssl details))
+                                                            {:valid true})]
+          (testing "with SSL enabled, do not allow non-SSL connections"
+            (#'database-api/test-connection-details "presto" {:ssl true})
+            (is (= 1 @call-count))
+            (is (= [true] @ssl-values)))
+
+          (reset! call-count 0)
+          (reset! ssl-values [])
+
+          (testing "with SSL disabled, try twice (once with, once without SSL)"
+            (#'database-api/test-connection-details "presto" {:ssl false})
+            (is (= 2 @call-count))
+            (is (= [true false] @ssl-values)))
+
+          (reset! call-count 0)
+          (reset! ssl-values [])
+
+          (testing "with SSL unspecified, try twice (once with, once without SSL)"
+            (#'database-api/test-connection-details "presto" {})
+            (is (= 2 @call-count))
+            (is (= [true false] @ssl-values)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
