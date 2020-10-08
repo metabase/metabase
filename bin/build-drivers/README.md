@@ -11,7 +11,7 @@ Builds *all* drivers as needed. If drivers were recently built and no relevant s
 
 ```
 cd bin/build-drivers
-clojure -m build-drivers
+clojure -M -m build-drivers
 
 # or
 
@@ -24,7 +24,7 @@ Build a single driver as needed. Builds parent drivers if needed first.
 
 ```
 cd bin/build-driver redshift
-clojure -m build-driver redshift
+clojure -M -m build-driver redshift
 
 # or
 
@@ -37,7 +37,7 @@ Verify that a built driver looks correctly built.
 
 ```
 cd bin/verify-driver redshift
-clojure -m verify-driver redshift
+clojure -M -m verify-driver redshift
 
 # or
 

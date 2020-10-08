@@ -1,4 +1,4 @@
-{:paths ["./"]
+{:paths ["./" "../"]
 
  :deps
  {cheshire/cheshire           {:mvn/version "5.8.1"}
@@ -9,4 +9,5 @@
   hiccup/hiccup               {:mvn/version "1.0.5"}
   io.forward/yaml             {:mvn/version "1.0.9"}
   org.flatland/ordered        {:mvn/version "1.5.7"}
+  potemkin/potemkin           {:mvn/version "0.4.5"}
   stencil/stencil             {:mvn/version "0.5.0"}}}

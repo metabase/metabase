@@ -3,8 +3,8 @@
   building a Metabase uberjar. Both are needed when building drivers."
   (:require [build-drivers
              [checksum :as checksum]
-             [common :as c]
-             [util :as u]]))
+             [common :as c]]
+            [metabuild-common.core :as u]))
 
 (def ^String ^:private uberjar-checksum-path
   (str c/metabase-uberjar-path ".md5"))

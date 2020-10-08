@@ -1,8 +1,7 @@
 (ns build-drivers.plugin-manifest
   "Code for reading the YAML plugin manifest for a driver. "
-  (:require [build-drivers
-             [common :as c]
-             [util :as u]]
+  (:require [build-drivers.common :as c]
+            [metabuild-common.core :as u]
             [yaml.core :as yaml]))
 
 (defn- plugin-manifest

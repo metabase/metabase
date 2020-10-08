@@ -1,8 +1,7 @@
 (ns build-drivers.verify
-  (:require [build-drivers
-             [common :as c]
-             [util :as u]]
-            [colorize.core :as colorize]))
+  (:require [build-drivers.common :as c]
+            [colorize.core :as colorize]
+            [metabuild-common.core :as u]))
 
 (defn- verify-exists [driver]
   (let [filename (c/driver-jar-destination-path driver)]

@@ -2,10 +2,10 @@
   "Shared code for calculating and reading hex-encoded MD5 checksums for relevant files."
   (:require [build-drivers
              [common :as c]
-             [plugin-manifest :as manifest]
-             [util :as u]]
+             [plugin-manifest :as manifest]]
             [clojure.java.io :as io]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [metabuild-common.core :as u])
   (:import org.apache.commons.codec.digest.DigestUtils))
 
 (defn checksum-from-file
@@ -43,7 +43,6 @@
       (let [checksum (DigestUtils/md5Hex (str/join (map slurp paths)))]
         (u/safe-println (format "Current checksum is %s" checksum))
         checksum))))
-
 
 
 ;;; ---------------------------------------------- Driver source files -----------------------------------------------

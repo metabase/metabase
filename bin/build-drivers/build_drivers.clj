@@ -2,21 +2,19 @@
   "Entrypoint for `bin/build-drivers.sh`. Builds all drivers, if needed."
   (:require [build-drivers
              [build-driver :as build-driver]
-             [common :as c]
-             [util :as u]]
+             [common :as c]]
             [clojure.java.io :as io]
-            [colorize.core :as colorize]))
+            [metabuild-common.core :as u]))
+
+(defn- all-drivers []
+  (map keyword (.list (io/file (c/filename c/project-root-directory "modules" "drivers")))))
 
 (defn- build-drivers! []
   (u/step "Building all drivers"
-    (doseq [driver (map keyword (.list (io/file (c/filename c/project-root-directory "modules" "drivers"))))]
+    (doseq [driver (all-drivers)]
       (build-driver/build-driver! driver))
     (u/announce "Successfully built all drivers.")))
 
 (defn -main []
-  (try
-    (build-drivers!)
-    (System/exit 0)
-    (catch Throwable e
-      (println (colorize/red (pr-str e)))
-      (System/exit -1))))
+  (u/exit-when-finished-nonzero-on-exception
+    (build-drivers!)))

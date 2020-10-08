@@ -6,10 +6,10 @@
              [install-driver-locally :as install-locally]
              [metabase :as metabase]
              [plugin-manifest :as manifest]
-             [util :as u]
              [verify :as verify]]
             [colorize.core :as colorize]
-            [environ.core :as env]))
+            [environ.core :as env]
+            [metabuild-common.core :as u]))
 
 (defn- copy-driver!
   "Copy the driver JAR from its `target/` directory to `resources/modules`/."

@@ -4,9 +4,9 @@
   `:googleanalytics`."
   (:require [build-drivers
              [checksum :as checksum]
-             [common :as c]
-             [util :as u]]
-            [colorize.core :as colorize]))
+             [common :as c]]
+            [colorize.core :as colorize]
+            [metabuild-common.core :as u]))
 
 (defn- driver-local-install-path [driver]
   (c/filename c/maven-repository-path "metabase" (format "%s-driver" (name driver))))

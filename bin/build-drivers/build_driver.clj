@@ -1,14 +1,10 @@
 (ns build-driver
   "Entrypoint for `bin/build-driver.sh`. Builds a single driver, if needed."
   (:require [build-drivers.build-driver :as build-driver]
-            [colorize.core :as colorize]))
+            [metabuild-common.core :as u]))
 
 (defn -main [& [driver]]
-  (try
+  (u/exit-when-finished-nonzero-on-exception
     (when-not (seq driver)
       (throw (ex-info "Usage: clojure -m build-driver <driver>" {})))
-    (build-driver/build-driver! (keyword driver))
-    (System/exit 0)
-    (catch Throwable e
-      (println (colorize/red (pr-str e)))
-      (System/exit -1))))
+    (build-driver/build-driver! (keyword driver))))
