@@ -323,7 +323,12 @@ class ClickBehaviorSidebar extends React.Component {
   };
 
   render() {
-    const { dashcard, parameters, hideClickBehaviorSidebar } = this.props;
+    const {
+      dashboard,
+      dashcard,
+      parameters,
+      hideClickBehaviorSidebar,
+    } = this.props;
     const { selectedColumn } = this.state;
 
     if (isTableDisplay(dashcard) && selectedColumn == null) {
@@ -481,6 +486,7 @@ class ClickBehaviorSidebar extends React.Component {
               ) : clickBehavior.type === "crossfilter" ? (
                 <CrossfilterOptions
                   clickBehavior={clickBehavior}
+                  dashboard={dashboard}
                   dashcard={dashcard}
                   updateSettings={this.updateSettings}
                 />
@@ -524,21 +530,22 @@ function TypeSelector({
   );
 }
 
-function CrossfilterOptions({ clickBehavior, dashcard, updateSettings }) {
+function CrossfilterOptions({
+  clickBehavior,
+  dashboard,
+  dashcard,
+  updateSettings,
+}) {
   return (
     <SidebarContent>
       <Heading className="text-medium">{t`Pick one or more filters to update`}</Heading>
-      <Dashboards.Loader id={dashcard.dashboard_id}>
-        {({ object }) => (
-          <ClickMappings
-            object={object}
-            dashcard={dashcard}
-            isDash
-            clickBehavior={clickBehavior}
-            updateSettings={updateSettings}
-          />
-        )}
-      </Dashboards.Loader>
+      <ClickMappings
+        object={dashboard}
+        dashcard={dashcard}
+        isDash
+        clickBehavior={clickBehavior}
+        updateSettings={updateSettings}
+      />
     </SidebarContent>
   );
 }
