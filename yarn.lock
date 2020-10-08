@@ -1354,11 +1354,6 @@ amdefine@>=0.0.4:
   resolved "https://registry.yarnpkg.com/amdefine/-/amdefine-1.0.1.tgz#4a5282ac164729e93619bcfd3ad151f817ce91f5"
   integrity sha1-SlKCrBZHKek2Gbz9OtFR+BfOkfU=
 
-annotate-react-dom@^1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/annotate-react-dom/-/annotate-react-dom-1.1.0.tgz#607c14d2565198d4bf365f6f05c60a61ba939a16"
-  integrity sha1-YHwU0lZRmNS/Nl9vBcYKYbqTmhY=
-
 ansi-escapes@^1.0.0, ansi-escapes@^1.1.0, ansi-escapes@^1.4.0:
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/ansi-escapes/-/ansi-escapes-1.4.0.tgz#d3a8a83b319aa67793662b13e761c7911422306e"
@@ -2866,11 +2861,6 @@ bn.js@^4.0.0, bn.js@^4.1.0, bn.js@^4.1.1, bn.js@^4.4.0:
   resolved "https://registry.yarnpkg.com/bn.js/-/bn.js-4.11.8.tgz#2cde09eb5ee341f484746bb0309b3253b1b1442f"
   integrity sha512-ItfYfPLkWHUjckQCk8xC+LwxgK8NYcXywGigJgSwOP8Y2iyWT4f2vsZnoOXTTbo+o5yXmIUJ4gn5538SO5S3gA==
 
-bo-selector@0.0.10:
-  version "0.0.10"
-  resolved "https://registry.yarnpkg.com/bo-selector/-/bo-selector-0.0.10.tgz#9816dcb00adf374ea87941a863b2acfc026afa3e"
-  integrity sha1-mBbcsArfN06oeUGoY7Ks/AJq+j4=
-
 body-parser@1.18.2:
   version "1.18.2"
   resolved "https://registry.yarnpkg.com/body-parser/-/body-parser-1.18.2.tgz#87678a19d84b47d859b83199bd59bce222b10454"
@@ -4226,14 +4216,6 @@ css-to-react-native@^2.0.3:
     css-color-keywords "^1.0.0"
     fbjs "^0.8.5"
     postcss-value-parser "^3.3.0"
-
-css-to-xpath@^0.1.0:
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/css-to-xpath/-/css-to-xpath-0.1.0.tgz#ac0d1c26cef023f7bd8cf2e1fc1f77134bc70c47"
-  integrity sha1-rA0cJs7wI/e9jPLh/B93E0vHDEc=
-  dependencies:
-    bo-selector "0.0.10"
-    xpath-builder "0.0.7"
 
 css-what@2.1:
   version "2.1.0"
@@ -10861,11 +10843,6 @@ progress@^1.1.8:
   resolved "https://registry.yarnpkg.com/progress/-/progress-1.1.8.tgz#e260c78f6161cdd9b0e56cc3e0a85de17c7a57be"
   integrity sha1-4mDHj2Fhzdmw5WzD4Khd4Xx6V74=
 
-promise-chain-decorator@^1.2.0:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/promise-chain-decorator/-/promise-chain-decorator-1.2.0.tgz#3ed952bd37f6351b3989468d1aff40e7d740b451"
-  integrity sha1-PtlSvTf2NRs5iUaNGv9A59dAtFE=
-
 promise-each@^2.2.0:
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/promise-each/-/promise-each-2.2.0.tgz#3353174eff2694481037e04e01f77aa0fb6d1b60"
@@ -14144,16 +14121,6 @@ wbuf@^1.1.0, wbuf@^1.7.2:
   dependencies:
     minimalistic-assert "^1.0.0"
 
-webchauffeur@^1.2.0:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/webchauffeur/-/webchauffeur-1.2.0.tgz#d03d7f38d336c2ae55099d978adabc0e75a50d6f"
-  integrity sha1-0D1/ONM2wq5VCZ2Xitq8DnWlDW8=
-  dependencies:
-    annotate-react-dom "^1.1.0"
-    css-to-xpath "^0.1.0"
-    mz "^2.6.0"
-    promise-chain-decorator "^1.2.0"
-
 webidl-conversions@^3.0.0:
   version "3.0.1"
   resolved "https://registry.yarnpkg.com/webidl-conversions/-/webidl-conversions-3.0.1.tgz#24534275e2a7bc6be7bc86611cc16ae0a5654871"
@@ -14432,11 +14399,6 @@ xmldom@^0.1.22:
   version "0.1.27"
   resolved "https://registry.yarnpkg.com/xmldom/-/xmldom-0.1.27.tgz#d501f97b3bdb403af8ef9ecc20573187aadac0e9"
   integrity sha1-1QH5ezvbQDr4757MIFcxh6rawOk=
-
-xpath-builder@0.0.7:
-  version "0.0.7"
-  resolved "https://registry.yarnpkg.com/xpath-builder/-/xpath-builder-0.0.7.tgz#67d6bbc3f6a320ec317e3e6368c5706b6111deec"
-  integrity sha1-Z9a7w/ajIOwxfj5jaMVwa2ER3uw=
 
 "xtend@>=4.0.0 <4.1.0-0", xtend@^4.0.0, xtend@~4.0.0, xtend@~4.0.1:
   version "4.0.1"
