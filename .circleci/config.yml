@@ -522,13 +522,6 @@ jobs:
           command-name: Run docs links checker
           command: lint-docs-links
 
-  fe-tests-karma:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run frontend tests (karma)
-          command: run test-karma
-
   fe-tests-unit:
     executor: node
     steps:
@@ -933,9 +926,6 @@ workflows:
       - fe-linter-docs-links:
           requires:
             - fe-deps
-      - fe-tests-karma:
-          requires:
-            - fe-deps
       - fe-tests-unit:
           requires:
             - fe-deps
@@ -1044,7 +1034,6 @@ workflows:
             - fe-tests-e2e
             - fe-tests-integration
             - fe-tests-timezones
-            - fe-tests-karma
             - fe-tests-unit
           filters:
             branches:
