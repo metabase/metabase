@@ -2,6 +2,8 @@ import _ from "underscore";
 import { getIn } from "icepick";
 import { t, ngettext, msgid } from "ttag";
 
+import { isDate } from "metabase/lib/schema_metadata";
+import { parseTimestamp } from "metabase/lib/time";
 import Question from "metabase-lib/lib/Question";
 import { TemplateTagVariable } from "metabase-lib/lib/Variable";
 import { TemplateTagDimension } from "metabase-lib/lib/Dimension";
@@ -225,4 +227,49 @@ export function hasActionsMenu(dashcard) {
 
 export function isTableDisplay(dashcard) {
   return dashcard.card.display === "table";
+}
+
+export function formatSourceForTarget(
+  source,
+  target,
+  { data, extraData, clickBehavior },
+) {
+  const datum = data[source.type][source.id.toLowerCase()] || [];
+  if (datum.column && isDate(datum.column)) {
+    if (target.type === "parameter") {
+      // we should serialize differently based on the target parameter type
+      const parameterPath =
+        clickBehavior.type === "crossfilter"
+          ? ["dashboard", "parameters"]
+          : ["dashboards", clickBehavior.targetId, "parameters"];
+      const parameters = getIn(extraData, parameterPath) || [];
+      const parameter = parameters.find(p => p.id === target.id);
+      if (parameter) {
+        return formatDateForParameterType(datum.value, parameter.type);
+      }
+    } else {
+      // If the target is a dimension or variable,, we serialize as a date to remove the timestamp.
+      // TODO: provide better serialization for field filter widget types
+      return formatDateForParameterType(datum.value, "date/single");
+    }
+  }
+  return datum.value;
+}
+
+function formatDateForParameterType(value, parameterType) {
+  const m = parseTimestamp(value);
+  if (!m.isValid()) {
+    return String(value);
+  }
+  if (parameterType === "date/month-year") {
+    return m.format("YYYY-MM");
+  } else if (parameterType === "date/quarter-year") {
+    return m.format("[Q]Q-YYYY");
+  } else if (
+    parameterType === "date/single" ||
+    parameterType === "date/all-options"
+  ) {
+    return m.format("YYYY-MM-DD");
+  }
+  return value;
 }

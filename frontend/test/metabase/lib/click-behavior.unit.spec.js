@@ -2,6 +2,7 @@ import _ from "underscore";
 import {
   getDataFromClicked,
   getTargetsWithSourceFilters,
+  formatSourceForTarget,
 } from "metabase/lib/click-behavior";
 import { metadata, PRODUCTS } from "__support__/sample_dataset_fixture";
 describe("metabase/lib/click-behavior", () => {
@@ -378,6 +379,75 @@ describe("metabase/lib/click-behavior", () => {
           expect(filteredSources).toEqual(expectedSources);
         });
       }
+    });
+  });
+
+  describe("formatSourceForTarget", () => {
+    it("should not change text parameters", () => {
+      const source = { type: "column", id: "SOME_STRING" };
+      const target = { type: "parameter", id: "param123" };
+      const data = {
+        column: {
+          some_string: { value: "foo", column: { base_type: "type/Text" } },
+        },
+      };
+      const extraData = {
+        // the UI wouldn't actually let you configure a text column -> date param link
+        dashboard: { parameters: [{ id: "param123", type: "date/single" }] },
+      };
+      const clickBehavior = { type: "crossfilter" };
+      const value = formatSourceForTarget(source, target, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+      expect(value).toEqual("foo");
+    });
+
+    it("should format datetimes for date parameters", () => {
+      const source = { type: "column", id: "SOME_DATE" };
+      const target = { type: "parameter", id: "param123" };
+      const data = {
+        column: {
+          some_date: {
+            value: "2020-01-01T00:00:00+05:00",
+            column: { base_type: "type/DateTime" },
+          },
+        },
+      };
+      const extraData = {
+        dashboard: {
+          parameters: [{ id: "param123", type: "date/month-year" }],
+        },
+      };
+      const clickBehavior = { type: "crossfilter" };
+      const value = formatSourceForTarget(source, target, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+      expect(value).toEqual("2020-01");
+    });
+
+    it("should format datetimes for variables", () => {
+      const source = { type: "column", id: "SOME_DATE" };
+      const target = { type: "variable", id: "my_variable" };
+      const data = {
+        column: {
+          some_date: {
+            value: "2020-01-01T00:00:00+05:00",
+            column: { base_type: "type/DateTime" },
+          },
+        },
+      };
+      const extraData = {};
+      const clickBehavior = { type: "question", targetId: 123 };
+      const value = formatSourceForTarget(source, target, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+      expect(value).toEqual("2020-01-01");
     });
   });
 });
