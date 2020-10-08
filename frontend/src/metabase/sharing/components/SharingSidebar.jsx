@@ -735,8 +735,6 @@ class SharingSidebar extends React.Component {
     ) {
       const channelType = "slack";
 
-      console.log("channels", pulse.channels);
-
       const channelDetails = pulse.channels
         .map((c, i) => [c, i])
         .filter(([c, i]) => c.enabled && c.channel_type === channelType);
