@@ -98,14 +98,14 @@
   [_]
   :monday)
 
-(defn- enum-types [driver database]
+(defn- enum-types [_driver database]
   (set
-   (map (comp keyword :typname)
-        (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
-                    [(str "SELECT DISTINCT t.typname "
-                          "FROM pg_enum e "
-                          "LEFT JOIN pg_type t "
-                          "  ON t.oid = e.enumtypid")]))))
+    (map (comp keyword :typname)
+         (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                     [(str "SELECT DISTINCT t.typname "
+                           "FROM pg_enum e "
+                           "LEFT JOIN pg_type t "
+                           "  ON t.oid = e.enumtypid")]))))
 
 (def ^:private ^:dynamic *enum-types* nil)
 

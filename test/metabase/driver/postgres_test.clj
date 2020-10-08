@@ -377,7 +377,8 @@
   (create-enums-db!)
   (mt/with-temp Database [database {:engine :postgres, :details (enums-test-db-details)}]
     (sync-metadata/sync-db-metadata! database)
-    (f database)))
+    (f database)
+    (#'sql-jdbc.conn/set-pool! (u/id database) nil)))
 
 (deftest enums-test
   (mt/test-driver :postgres
