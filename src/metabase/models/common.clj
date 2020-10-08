@@ -45,6 +45,7 @@
    "Asia/Novosibirsk"
    "Asia/Rangoon"
    "Asia/Seoul"
+   "Asia/Singapore"
    "Asia/Taipei"
    "Asia/Tbilisi"
    "Asia/Tehran"
