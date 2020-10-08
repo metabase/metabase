@@ -14,13 +14,13 @@ import Subhead from "metabase/components/type/Subhead";
 export const CATEGORIES = {
   layout: "Layout",
   input: "Input",
+  display: "Data display",
   pickers: "Pickers",
   navigation: "Navigation",
+  feecback: "Feedback",
   modal: "Modal",
-  display: "Data display",
   form: "Form",
   visualization: "Visualizations",
-  feecback: "Feedback",
 };
 
 import COMPONENTS from "../lib/components-webpack";

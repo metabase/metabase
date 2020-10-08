@@ -3,6 +3,7 @@ import Visualization from "metabase/visualizations/components/Visualization";
 
 export const component = Visualization;
 export const noSnapshotTest = true;
+export const category = "visualization";
 
 export const description = `
 A component to render a Metabase visualization
