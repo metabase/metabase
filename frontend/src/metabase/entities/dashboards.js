@@ -27,6 +27,7 @@ const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 
 const Dashboards = createEntity({
   name: "dashboards",
+  nameOne: "dashboard",
   path: "/api/dashboard",
 
   displayNameOne: t`dashboard`,

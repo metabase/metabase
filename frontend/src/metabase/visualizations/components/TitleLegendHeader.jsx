@@ -1,23 +1,26 @@
 import React from "react";
-import LegendHeader from "./LegendHeader";
 import _ from "underscore";
+import { getIn } from "icepick";
 
-export const TitleLegendHeader = ({
+import LegendHeader from "./LegendHeader";
+
+export default function TitleLegendHeader({
   series,
   settings,
   onChangeCardAndRun,
   actionButtons,
-}) => {
+}) {
   // $FlowFixMe
   const originalSeries = series._raw || series;
   const cardIds = _.uniq(originalSeries.map(s => s.card.id));
   const isComposedOfMultipleQuestions = cardIds.length > 1;
+  const name = settings["card.title"] || getIn(series, [0, "card", "name"]);
 
-  if (settings["card.title"]) {
+  if (name) {
     const titleHeaderSeries = [
       {
         card: {
-          name: settings["card.title"],
+          name,
           ...(isComposedOfMultipleQuestions
             ? {}
             : {
@@ -46,4 +49,4 @@ export const TitleLegendHeader = ({
     // If the title isn't provided in settings, render nothing
     return null;
   }
-};
+}

@@ -30,6 +30,7 @@ const COMMON_SETTINGS = {
     dashboard: true,
     useRawSeries: true,
   },
+  click_behavior: {},
 };
 
 function getSettingDefintionsForSeries(series: ?Series): SettingDefs {

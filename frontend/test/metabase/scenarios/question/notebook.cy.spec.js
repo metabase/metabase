@@ -161,6 +161,8 @@ describe("scenarios > question > notebook", () => {
       modal().within(() => {
         typeAndBlurUsingLabel("Name", "Q1");
         cy.findByText("Save").click();
+      });
+      modal().within(() => {
         cy.findByText("Not now").click();
       });
 
@@ -189,6 +191,8 @@ describe("scenarios > question > notebook", () => {
       modal().within(() => {
         typeAndBlurUsingLabel("Name", "Q2");
         cy.findByText("Save").click();
+      });
+      modal().within(() => {
         cy.findByText("Not now").click();
       });
 
@@ -221,8 +225,8 @@ describe("scenarios > question > notebook", () => {
       cy.get(".Modal").within(() => {
         typeAndBlurUsingLabel("Name", "Q3");
         cy.findByText("Save").click();
-        cy.findByText("Not now").click();
       });
+      cy.findByText("Not now").click();
 
       cy.log("**Assert that the Q3 is in 'Our analytics'**");
 
@@ -272,9 +276,7 @@ describe("scenarios > question > notebook", () => {
         cy.findByText("Save").click();
       });
 
-      modal().within(() => {
-        cy.findByText("Not now").click();
-      });
+      cy.findByText("Not now").click();
 
       cy.get(".Icon-notebook").click();
 

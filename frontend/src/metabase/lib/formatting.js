@@ -28,13 +28,18 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { decimalCount } from "metabase/visualizations/lib/numeric";
 
 import {
+  getDataFromClicked,
+  clickBehaviorIsValid,
+} from "metabase/lib/click-behavior";
+
+import {
   DEFAULT_DATE_STYLE,
   getDateFormatFromStyle,
   DEFAULT_TIME_STYLE,
   getTimeFormatFromStyle,
   hasHour,
 } from "metabase/lib/formatting/date";
-import { PLUGIN_FORMATTING_HELPERS } from "metabase/plugins";
+import { renderLinkTextForClick } from "metabase/lib/formatting/link";
 
 import type Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase-types/types/Dataset";
@@ -400,19 +405,12 @@ export function formatDateTimeRangeWithUnit(
     options.type === "tooltip" ? "MMMM" : getMonthFormat(options);
   const condensed = options.compact || options.type === "tooltip";
 
-  // The startOf/endOf transition needs to happen in "en" rather than the
-  // current locale. Other locales define week boundaries differently, and they
-  // don't line up with the server's grouping logic.
-  const start = m
-    .clone()
-    .locale("en")
-    .startOf(unit)
-    .locale(false);
-  const end = m
-    .clone()
-    .locale("en")
-    .endOf(unit)
-    .locale(false);
+  // The client's unit boundaries might not line up with the data returned from the server.
+  // We shift the range so that the start lines up with the value.
+  const start = m.clone().startOf(unit);
+  const end = m.clone().endOf(unit);
+  const shift = m.diff(start, "days");
+  [start, end].forEach(d => d.add(shift, "days"));
 
   if (start.isValid() && end.isValid()) {
     if (!condensed || start.year() !== end.year()) {
@@ -564,6 +562,7 @@ export function formatEmail(
 
 function getUrlProtocol(url) {
   try {
+    // $FlowFixMe: url might not be a string, but we're in a try/catch
     const { protocol } = new URL(url);
     return protocol;
   } catch (e) {
@@ -584,8 +583,9 @@ function isDefaultLinkProtocol(protocol) {
 }
 
 export function formatUrl(value: Value, options: FormattingOptions = {}) {
-  const { jsx, rich, view_as, column } = options;
-  const url = PLUGIN_FORMATTING_HELPERS.url(value, options);
+  const { jsx, rich, view_as, column, link_text } = options;
+  const url = value;
+
   const protocol = getUrlProtocol(url);
   if (
     jsx &&
@@ -600,9 +600,13 @@ export function formatUrl(value: Value, options: FormattingOptions = {}) {
       ? isDefaultLinkProtocol(protocol)
       : false)
   ) {
+    const urlText =
+      link_text ||
+      getRemappedValue(value, options) ||
+      formatValue(value, { ...options, view_as: null });
     return (
       <ExternalLink className="link link--wrappable" href={url}>
-        {PLUGIN_FORMATTING_HELPERS.urlText(value, options)}
+        {urlText}
       </ExternalLink>
     );
   } else {
@@ -647,6 +651,17 @@ const MARKDOWN_RENDERERS = {
 };
 
 export function formatValue(value: Value, options: FormattingOptions = {}) {
+  // avoid rendering <ExternalLink> if we have click_behavior set
+  if (
+    options.click_behavior &&
+    clickBehaviorIsValid(options.click_behavior) &&
+    options.view_as !== "image" // images don't conflict with click behavior
+  ) {
+    options = {
+      ...options,
+      view_as: null, // turns off any link rendering
+    };
+  }
   const formatted = formatValueRaw(value, options);
   if (options.markdown_template) {
     if (options.jsx) {
@@ -716,6 +731,14 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
 
   if (value == null) {
     return null;
+  } else if (
+    options.click_behavior &&
+    options.click_behavior.linkTextTemplate
+  ) {
+    return renderLinkTextForClick(
+      options.click_behavior.linkTextTemplate,
+      getDataFromClicked(options.clicked),
+    );
   } else if (
     (isURL(column) && options.view_as !== null) ||
     options.view_as === "link"

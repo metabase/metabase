@@ -59,7 +59,7 @@ export function popover() {
   return cy.get(".PopoverContainer.PopoverContainer--open");
 }
 export function modal() {
-  return cy.get(".ModalContainer");
+  return cy.get(".ModalContainer .ModalContent");
 }
 export function nav() {
   return cy.get("nav");

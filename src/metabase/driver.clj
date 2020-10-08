@@ -602,3 +602,9 @@
   :hierarchy #'hierarchy)
 
 (defmethod default-field-order ::driver [_] :database)
+
+(defmulti db-start-of-week
+  "Return start of week for given database"
+  {:added "0.37.0" :arlists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
