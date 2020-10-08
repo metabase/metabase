@@ -567,6 +567,12 @@ jobs:
           keys:
             - frontend-{{ checksum "./frontend-checksums.txt" }}
       - run:
+          name: Install Clojure CLI
+          command: >
+            curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
+            chmod +x linux-install-1.10.1.708.sh &&
+            sudo ./linux-install-1.10.1.708.sh
+      - run:
           name: Build frontend if needed
           command: >
             if [ ! -f './resources/frontend_client/index.html' ];
@@ -942,7 +948,6 @@ workflows:
           requires:
             - build-uberjar
             - fe-deps
-
       - fe-tests-cypress:
           name: fe-tests-cypress-1
           requires:
