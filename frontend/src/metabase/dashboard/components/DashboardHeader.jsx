@@ -71,6 +71,9 @@ type Props = {
   onFullscreenChange: boolean => void,
 
   onChangeLocation: string => void,
+
+  onSharingClick: void => void,
+  onEmbeddingClick: void => void,
 };
 
 type State = {
@@ -104,6 +107,9 @@ export default class DashboardHeader extends Component {
     onRefreshPeriodChange: PropTypes.func.isRequired,
     onNightModeChange: PropTypes.func.isRequired,
     onFullscreenChange: PropTypes.func.isRequired,
+
+    onSharingClick: PropTypes.func.isRequired,
+    onEmbeddingClick: PropTypes.func.isRequred,
   };
 
   handleEdit(dashboard: DashboardWithCards) {
