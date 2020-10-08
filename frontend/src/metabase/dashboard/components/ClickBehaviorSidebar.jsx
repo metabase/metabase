@@ -291,7 +291,7 @@ class ClickBehaviorSidebar extends React.Component {
 
   getColumns() {
     const { dashcard, dashcardData } = this.props;
-    return dashcardData && dashcardData[dashcard.card_id].data.cols;
+    return getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
   }
 
   showTypeSelectorIfNeeded() {

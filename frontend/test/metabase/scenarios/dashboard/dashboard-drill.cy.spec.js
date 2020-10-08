@@ -5,7 +5,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
   beforeEach(signIn);
 
   it("should handle URL click through on a table", () => {
-    createDashboardWithQuestion();
+    createDashboardWithQuestion({}, dashboardId =>
+      cy.visit(`/dashboard/${dashboardId}`),
+    );
     cy.get(".Icon-pencil").click();
     cy.get(".Icon-click").click({ force: true });
 
@@ -32,9 +34,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     cy.findByText("Save").click();
 
-    // wait to leave editing mode and set a param value
-    cy.findByText("You're editing this dashboard.").should("not.exist");
-    cy.findByPlaceholderText("My Param").type("param-value{enter}");
+    setParamValue("My Param", "param-value");
 
     // click value and confirm url updates
     cy.findByText("column value: 111").click();
@@ -42,7 +42,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should handle question click through on a table", () => {
-    createDashboardWithQuestion();
+    createDashboardWithQuestion({}, dashboardId =>
+      cy.visit(`/dashboard/${dashboardId}`),
+    );
     cy.get(".Icon-pencil").click();
     cy.get(".Icon-click").click({ force: true });
 
@@ -66,7 +68,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     // wait to leave editing mode and set a param value
     cy.findByText("You're editing this dashboard.").should("not.exist");
-    cy.findByPlaceholderText("My Param").type("Widget{enter}");
+    setParamValue("My Param", "Widget");
 
     // click on table value
     cy.findByText("num: 111").click();
@@ -78,8 +80,60 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByText("Showing 5 rows");
   });
 
+  it("should handle dashboard click through on a table", () => {
+    createQuestion({}, questionId => {
+      createDashboard(
+        { dashboardName: "start dash", questionId },
+        dashboardIdA => {
+          createDashboardWithQuestion(
+            { dashboardName: "end dash" },
+            dashboardIdB => {
+              cy.visit(`/dashboard/${dashboardIdA}`);
+            },
+          );
+        },
+      );
+    });
+    cy.get(".Icon-pencil").click();
+    cy.get(".Icon-click").click({ force: true });
+
+    // configure clicks on "MY_NUMBER to update the param
+    cy.findByText("On-click behavior for each column")
+      .parent()
+      .parent()
+      .within(() => cy.findByText("MY_NUMBER").click());
+    cy.findByText("Go to a custom destination").click();
+    cy.findByText("Link to")
+      .parent()
+      .within(() => cy.findByText("Dashboard").click());
+    modal().within(() => cy.findByText("end dash").click());
+    cy.findByText("Available filters")
+      .parent()
+      .within(() => cy.findByText("My Param").click());
+    popover().within(() => cy.findByText("MY_STRING").click());
+
+    cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
+      "text: {{my_string}}",
+      { parseSpecialCharSequences: false },
+    );
+    cy.findByText("Save").click();
+
+    // click on table value
+    cy.findByText("text: foo").click();
+
+    // check that param was set to "foo"
+    cy.location("search").should("eq", "?my_param=foo");
+    cy.findByText("My Param")
+      .parent()
+      .within(() => {
+        cy.findByText("foo");
+      });
+  });
+
   it("should handle cross-filter on a table", () => {
-    createDashboardWithQuestion();
+    createDashboardWithQuestion({}, dashboardId =>
+      cy.visit(`/dashboard/${dashboardId}`),
+    );
     cy.get(".Icon-pencil").click();
     cy.get(".Icon-click").click({ force: true });
 
@@ -102,12 +156,20 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.location("search").should("eq", "?my_param=foo");
     cy.findByText("My Param")
       .parent()
-      .find("input")
-      .should("have.value", "foo");
+      .within(() => cy.findByText("foo"));
   });
 });
 
-function createDashboardWithQuestion() {
+function createDashboardWithQuestion(
+  { dashboardName = "dashboard" } = {},
+  callback,
+) {
+  createQuestion({}, questionId => {
+    createDashboard({ dashboardName, questionId }, callback);
+  });
+}
+
+function createQuestion(options, callback) {
   cy.request("POST", "/api/card", {
     dataset_query: {
       database: 1,
@@ -119,40 +181,62 @@ function createDashboardWithQuestion() {
     name: "Question",
     collection_id: null,
   }).then(({ body: { id: questionId } }) => {
-    cy.request("POST", "/api/dashboard", {
-      name: "dashboard",
-    }).then(({ body: { id: dashboardId } }) => {
-      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-        name: "dashboard",
-        description: null,
-        parameters: [
+    callback(questionId);
+  });
+}
+
+function createDashboard({ dashboardName, questionId }, callback) {
+  cy.request("POST", "/api/dashboard", {
+    name: dashboardName,
+  }).then(({ body: { id: dashboardId } }) => {
+    cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+      parameters: [
+        {
+          name: "My Param",
+          slug: "my_param",
+          id: "e8f79be9",
+          type: "category",
+        },
+      ],
+    });
+
+    cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+      cardId: questionId,
+    }).then(({ body: { id: dashCardId } }) => {
+      cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+        cards: [
           {
-            name: "My Param",
-            slug: "my_param",
-            id: "e8f79be9",
-            type: "category",
+            id: dashCardId,
+            card_id: questionId,
+            row: 0,
+            col: 0,
+            sizeX: 6,
+            sizeY: 6,
+            parameter_mappings: [
+              {
+                parameter_id: "e8f79be9",
+                card_id: questionId,
+                target: [
+                  "dimension",
+                  ["fk->", ["field-id", 11], ["field-id", 22]],
+                ],
+              },
+            ],
           },
         ],
       });
 
-      cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-        cardId: questionId,
-      }).then(({ body: { id: dashCardId } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-          cards: [
-            {
-              id: dashCardId,
-              card_id: questionId,
-              row: 0,
-              col: 0,
-              sizeX: 6,
-              sizeY: 6,
-            },
-          ],
-        });
-
-        cy.visit(`/dashboard/${dashboardId}`);
-      });
+      callback(dashboardId);
     });
+  });
+}
+
+function setParamValue(paramName, text) {
+  // wait to leave editing mode and set a param value
+  cy.findByText("You're editing this dashboard.").should("not.exist");
+  cy.findByText(paramName).click();
+  popover().within(() => {
+    cy.findByPlaceholderText("Search by Name").type(text);
+    cy.findByText("Add filter").click();
   });
 }
