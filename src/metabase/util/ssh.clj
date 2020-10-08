@@ -2,12 +2,16 @@
   (:require [clojure.tools.logging :as log]
             [metabase.util :as u])
   (:import java.io.ByteArrayInputStream
+           java.util.concurrent.TimeUnit
            org.apache.sshd.client.future.ConnectFuture
            org.apache.sshd.client.session.ClientSession
            org.apache.sshd.client.session.forward.PortForwardingTracker
            org.apache.sshd.client.SshClient
            [org.apache.sshd.common.config.keys FilePasswordProvider FilePasswordProvider$ResourceDecodeResult]
-           org.apache.sshd.common.session.SessionHolder
+           [org.apache.sshd.common.session
+            SessionHeartbeatController
+            SessionHeartbeatController$HeartbeatType
+            SessionHolder]
            org.apache.sshd.common.util.GenericUtils
            org.apache.sshd.common.util.io.resource.AbstractIoResource
            org.apache.sshd.common.util.net.SshdSocketAddress
@@ -50,6 +54,9 @@
         session                    (doto ^ClientSession (.getSession conn-status)
                                      (maybe-add-tunnel-password! tunnel-pass)
                                      (maybe-add-tunnel-private-key! tunnel-private-key tunnel-private-key-passphrase)
+                                     (.setSessionHeartbeat SessionHeartbeatController$HeartbeatType/IGNORE
+                                                           TimeUnit/SECONDS
+                                                           180)
                                      (.. auth (verify default-ssh-timeout)))
         tracker                    (.createLocalPortForwardingTracker session
                                                                       (SshdSocketAddress. "" 0)
