@@ -223,8 +223,8 @@ describe("scenarios > question > native", () => {
     modal().within(() => {
       cy.findByLabelText("Name").type(QUESTION);
       cy.findByText("Save").click();
-      cy.findByText("Not now").click();
     });
+    cy.findByText("Not now").click();
 
     cy.visit("/");
     cy.findByText("Ask a question").click();
