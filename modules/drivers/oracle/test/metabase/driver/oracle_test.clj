@@ -10,7 +10,9 @@
              [query-processor-test :as qp.test]
              [test :as mt]
              [util :as u]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc
+             [connection :as sql-jdbc.conn]
+             [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.util :as driver.u]
             [metabase.models
@@ -151,6 +153,20 @@
             :type     :query
             :query    {:source-table (u/get-id table)
                        :order-by     [[:asc [:field-id (u/get-id id-field)]]]}}))))))
+
+(deftest handle-slashes-test
+  (datasets/test-driver :oracle
+    (let [details  (:details (data/db))
+          spec     (sql-jdbc.conn/connection-details->spec :oracle details)
+          execute! (fn [format-string & args]
+                     (jdbc/execute! spec (apply format format-string args)))
+          pk-type  (sql.tx/pk-sql-type :oracle)]
+      (with-temp-user [username]
+        (execute! "CREATE TABLE \"%s\".\"mess/ages/\" (\"id\" %s, \"column1\" varchar(200))"    username pk-type)
+        (is (= #{"id" "column1"}
+               (into #{} (map :name)
+                     (:fields
+                      (sql-jdbc.sync/describe-table :oracle spec {:name "mess/ages/" :schema username})))))))))
 
 ;; let's make sure we're actually attempting to generate the correctl HoneySQL for joins and source queries so we
 ;; don't sit around scratching our heads wondering why the queries themselves aren't working
