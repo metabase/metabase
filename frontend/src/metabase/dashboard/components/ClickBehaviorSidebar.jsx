@@ -653,6 +653,7 @@ function LinkOptions({ clickBehavior, updateSettings, dashcard, parameters }) {
                     primary
                     onClick={() => onClose()}
                     className="ml-auto mt2"
+                    disabled={!clickBehaviorIsValid(clickBehavior)}
                   >{t`Done`}</Button>
                 </div>
               </ModalContent>
