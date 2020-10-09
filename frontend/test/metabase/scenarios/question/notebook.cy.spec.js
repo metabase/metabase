@@ -162,9 +162,7 @@ describe("scenarios > question > notebook", () => {
         typeAndBlurUsingLabel("Name", "Q1");
         cy.findByText("Save").click();
       });
-      modal().within(() => {
-        cy.findByText("Not now").click();
-      });
+      cy.findByText("Not now").click();
 
       cy.log("**Prepare Question 2**");
       openProductsTable();
@@ -192,9 +190,7 @@ describe("scenarios > question > notebook", () => {
         typeAndBlurUsingLabel("Name", "Q2");
         cy.findByText("Save").click();
       });
-      modal().within(() => {
-        cy.findByText("Not now").click();
-      });
+      cy.findByText("Not now").click();
 
       cy.log("**Create Question 3 based on 2 previously saved questions**");
 
