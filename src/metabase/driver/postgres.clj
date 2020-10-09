@@ -94,14 +94,14 @@
      (assoc driver.common/default-additional-options-details
        :placeholder "prepareThreshold=0")]))
 
-(defn- enum-types [driver database]
+(defn- enum-types [_driver database]
   (set
-   (map (comp keyword :typname)
-        (jdbc/query (sql-jdbc.conn/connection-details->spec driver (:details database))
-                    [(str "SELECT DISTINCT t.typname "
-                          "FROM pg_enum e "
-                          "LEFT JOIN pg_type t "
-                          "  ON t.oid = e.enumtypid")]))))
+    (map (comp keyword :typname)
+         (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                     [(str "SELECT DISTINCT t.typname "
+                           "FROM pg_enum e "
+                           "LEFT JOIN pg_type t "
+                           "  ON t.oid = e.enumtypid")]))))
 
 (def ^:private ^:dynamic *enum-types* nil)
 
@@ -220,7 +220,7 @@
    :box           :type/*
    :bpchar        :type/Text ; "blank-padded char" is the internal name of "character"
    :bytea         :type/*    ; byte array
-   :cidr          :type/Text ; IPv4/IPv6 network address
+   :cidr          :type/Structured ; IPv4/IPv6 network address
    :circle        :type/*
    :citext        :type/Text ; case-insensitive text
    :date          :type/Date
@@ -234,11 +234,11 @@
    :int4          :type/Integer
    :int8          :type/BigInteger
    :interval      :type/*               ; time span
-   :json          :type/Text
-   :jsonb         :type/Text
+   :json          :type/Structured
+   :jsonb         :type/Structured
    :line          :type/*
    :lseg          :type/*
-   :macaddr       :type/Text
+   :macaddr       :type/Structured
    :money         :type/Decimal
    :numeric       :type/Decimal
    :path          :type/*
@@ -262,7 +262,7 @@
    :uuid          :type/UUID
    :varbit        :type/*
    :varchar       :type/Text
-   :xml           :type/Text
+   :xml           :type/Structured
    (keyword "bit varying")                :type/*
    (keyword "character varying")          :type/Text
    (keyword "double precision")           :type/Float
@@ -281,8 +281,10 @@
   [_ database-type _]
   ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON special-type
   (case database-type
-    "json" :type/SerializedJSON
-    "inet" :type/IPAddress
+    "json"  :type/SerializedJSON
+    "jsonb" :type/SerializedJSON
+    "xml"   :type/XML
+    "inet"  :type/IPAddress
     nil))
 
 (def ^:private ssl-params

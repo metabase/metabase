@@ -40,6 +40,12 @@
    :updated-fingerprints   0
    :fingerprints-attempted fields-count})
 
+(def truncation-size
+  "The maximum size of :type/Text to be selected from the database in `table-rows-sample`. In practice we see large
+  text blobs and want to balance taking enough for distinct counts and but not so much that we risk out of memory
+  issues when syncing."
+  1234)
+
 (s/defn ^:private fingerprint-table!
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
   (transduce identity
@@ -60,7 +66,7 @@
                               (update count-info :updated-fingerprints inc))))
                         (empty-stats-map (count fingerprints))
                         (map vector fields fingerprints))))
-             (metadata-queries/table-rows-sample table fields)))
+             (metadata-queries/table-rows-sample table fields {:truncation-size truncation-size})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
@@ -138,6 +144,7 @@
              [:not (mdb/isa :special_type :type/PK)]
              [:= :special_type nil]]
             [:not-in :visibility_type ["retired" "sensitive"]]
+            [:not= :base_type "type/Structured"]
             (cons :or (versions-clauses))]})
 
   ([table :- i/TableInstance]

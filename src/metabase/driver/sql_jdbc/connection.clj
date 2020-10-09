@@ -104,7 +104,9 @@
   more than one pool is ever open for a single database."
   [database-id pool-spec-or-nil]
   {:pre [(integer? database-id)]}
-  (let [[old-id->pool] (swap-vals! database-id->connection-pool assoc database-id pool-spec-or-nil)]
+  (let [[old-id->pool] (if pool-spec-or-nil
+                         (swap-vals! database-id->connection-pool assoc database-id pool-spec-or-nil)
+                         (swap-vals! database-id->connection-pool dissoc database-id))]
     ;; if we replaced a different pool with the new pool that is different from the old one, destroy the old pool
     (when-let [old-pool-spec (get old-id->pool database-id)]
       (when-not (identical? old-pool-spec pool-spec-or-nil)
