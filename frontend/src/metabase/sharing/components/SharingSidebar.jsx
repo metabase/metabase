@@ -288,13 +288,9 @@ class SharingSidebar extends React.Component {
   handleSave = async () => {
     const { pulse, dashboard, formInput } = this.props;
 
-    console.log("pre-cleaned pulse", pulse);
-
     const cleanedPulse = cleanPulse(pulse, formInput.channels);
     cleanedPulse.name = dashboard.name;
     await this.props.updateEditingPulse(cleanedPulse);
-
-    console.log("cleanedPulse", cleanedPulse);
 
     await this.props.saveEditingPulse();
 
@@ -396,23 +392,30 @@ class SharingSidebar extends React.Component {
     return scheduleString;
   }
 
-  renderEmail(recipient) {
+  renderEmailRecipients(recipients) {
+    const [first, ...rest] = recipients;
+
+    let text = "";
+
+    if (rest != null && rest.length > 0) {
+      text += ngettext(
+        msgid` and ${rest.length} other`,
+        ` and ${rest.length} others`,
+        rest.length,
+      );
+    }
+
     return (
-      <div className="flex align-center">
-        <span className="text-white">
+      <li className={cx("flex align-center mr1 mb1 p1 text-medium")}>
+        <span className="text-medium">
           <Icon name="person" />
         </span>
-        <span className="ml1">{recipient.common_name || recipient.email}</span>
-      </div>
-    );
-  }
-
-  renderEmailRecipients(recipients) {
-    return recipients.map(recipient => (
-      <li className={cx("flex align-center mr1 mb1 p1 rounded bg-medium")}>
-        {this.renderEmail(recipient)}
+        <span className="ml1 text-medium">
+          {first.common_name || first.email}
+          {text !== "" && text}
+        </span>
       </li>
-    ));
+    );
   }
 
   renderRecipients(pulse) {
