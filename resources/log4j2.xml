@@ -27,7 +27,6 @@
 
     <Root level="WARN">
       <AppenderRef ref="STDOUT"/>
-      <AppenderRef ref="FILE"/>
     </Root>
   </Loggers>
 </Configuration>
