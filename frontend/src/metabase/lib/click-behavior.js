@@ -20,7 +20,11 @@ export function getDataFromClicked({
 }) {
   const column = [
     ...(dimensions || []),
-    ...(data || []).map(d => ({ column: d.col, value: d.value })),
+    ...(data || []).map(d => ({
+      column: d.col,
+      // When the data is changed to a display value for use in tooltips, we can set clickBehaviorValue to the raw value for filtering.
+      value: d.clickBehaviorValue || d.value,
+    })),
   ]
     .filter(d => d.column != null)
     .reduce(
