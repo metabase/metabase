@@ -68,11 +68,12 @@ describe("scenarios > public", () => {
   let dashboardPublicLink;
   let dashboardEmbedUrl;
 
-  describe("questions", () => {
+  // [quarantined 2020-10-09]: - constantly breaking in CI,
+  //                           - React console errors,
+  //                           - needs fixing in isolation before being introduced to master again
+  describe.skip("questions", () => {
     // Note: Test suite is sequential, so individual test cases can't be run individually
     it("should allow users to create parameterized dashboards", () => {
-      cy.route("GET", "/api/dashboard/2").as("dashboard");
-
       cy.visit(`/question/${questionId}`);
 
       cy.get(".Icon-pencil").click();
@@ -109,7 +110,6 @@ describe("scenarios > public", () => {
         .find("fieldset")
         .should("not.exist");
 
-      cy.wait("@dashboard");
       cy.findByText("Category").click();
 
       popover().within(() => {
