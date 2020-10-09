@@ -1,5 +1,6 @@
 (ns metabuild-common.files
-  (:require [metabuild-common
+  (:require [clojure.string :as str]
+            [metabuild-common
              [output :as out]
              [shell :as sh]
              [steps :as steps]])
@@ -77,3 +78,11 @@
        .toArray
        (map str)
        sort))
+
+(defn filename
+  "Create a filename path String by joining path components:
+
+    (filename \"usr\" \"cam\" \".emacs.d\" \"init.el\")
+    ;; -> \"usr/cam/.emacs.d/init.el\""
+  [& path-components]
+  (str/join File/separatorChar path-components))
