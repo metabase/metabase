@@ -172,6 +172,8 @@ export default class DashCardCardParameterMapper extends Component {
                 <span className="text-centered mr1">
                   {disabled
                     ? t`No valid fields`
+                    : selected && selected.sectionName == null
+                    ? selected.name // for native question variables we just display the name
                     : selected
                     ? `${selected.sectionName}.${selected.name}`
                     : t`Select…`}

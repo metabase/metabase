@@ -215,40 +215,54 @@ export function getParameterMappingOptions(
     return [];
   }
 
-  const query = new Question(card, metadata).query();
+  const question = new Question(card, metadata);
+  const query = question.query();
 
-  // dimensions
-  options.push(
-    ...query
-      .dimensionOptions(
-        parameter ? dimensionFilterForParameter(parameter) : undefined,
-      )
-      .sections()
-      .flatMap(section =>
-        section.items.map(({ dimension }) => ({
-          sectionName: section.name,
-          name: dimension.displayName(),
-          icon: dimension.icon(),
-          target: ["dimension", dimension.mbql()],
-          isForeign:
-            dimension instanceof FKDimension ||
-            dimension instanceof JoinedDimension,
+  if (question.isStructured()) {
+    options.push(
+      ...query
+        .dimensionOptions(
+          parameter ? dimensionFilterForParameter(parameter) : undefined,
+        )
+        .sections()
+        .flatMap(section =>
+          section.items.map(({ dimension }) => ({
+            sectionName: section.name,
+            name: dimension.displayName(),
+            icon: dimension.icon(),
+            target: ["dimension", dimension.mbql()],
+            isForeign:
+              dimension instanceof FKDimension ||
+              dimension instanceof JoinedDimension,
+          })),
+        ),
+    );
+  } else {
+    options.push(
+      ...query
+        .variables(
+          parameter ? variableFilterForParameter(parameter) : undefined,
+        )
+        .map(variable => ({
+          name: variable.displayName(),
+          icon: variable.icon(),
+          target: ["variable", variable.mbql()],
         })),
-      ),
-  );
-
-  // variables
-  options.push(
-    ...query
-      .variables(parameter ? variableFilterForParameter(parameter) : undefined)
-      .map(variable => ({
-        sectionName: "Variables",
-        name: variable.displayName(),
-        icon: variable.icon(),
-        target: ["variable", variable.mbql()],
-      })),
-  );
-
+      ...query
+        .dimensionOptions(
+          parameter ? dimensionFilterForParameter(parameter) : undefined,
+        )
+        .sections()
+        .flatMap(section =>
+          section.items.map(({ dimension }) => ({
+            name: dimension.displayName(),
+            icon: dimension.icon(),
+            target: ["variable", dimension.mbql()],
+          })),
+        ),
+    );
+  }
+  console.log({ options });
   return options;
 }
 
