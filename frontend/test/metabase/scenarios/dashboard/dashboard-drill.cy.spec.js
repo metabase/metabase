@@ -18,6 +18,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .within(() => cy.findByText("MY_NUMBER").click());
     cy.findByText("Go to a custom destination").click();
     cy.findByText("URL").click();
+
+    // set the url and text template
     modal().within(() => {
       cy.get("input")
         .first()
@@ -60,6 +62,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
     popover().within(() => cy.findByText("MY_NUMBER").click());
     cy.findByText("Products → Category").click();
     popover().within(() => cy.findByText("My Param").click());
+
+    // set the text template
     cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
       "num: {{my_number}}",
       { parseSpecialCharSequences: false },
@@ -112,6 +116,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .within(() => cy.findByText("My Param").click());
     popover().within(() => cy.findByText("MY_STRING").click());
 
+    // set the text template
     cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
       "text: {{my_string}}",
       { parseSpecialCharSequences: false },
