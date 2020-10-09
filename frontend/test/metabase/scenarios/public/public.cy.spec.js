@@ -108,7 +108,10 @@ describe("scenarios > public", () => {
         .should("not.exist");
 
       cy.contains("Category").click();
-      cy.focused().type("Doohickey");
+
+      popover().within(() => {
+        cy.findByText("Doohickey").click();
+      });
       cy.contains("Add filter").click();
       cy.contains(COUNT_DOOHICKEY);
 
