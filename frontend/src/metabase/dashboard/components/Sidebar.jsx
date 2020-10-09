@@ -5,7 +5,7 @@ import Button from "metabase/components/Button";
 
 const WIDTH = 384;
 
-function Sidebar({ onClose, onCancel, children }) {
+function Sidebar({ onClose, onCancel, closeIsDisabled, children }) {
   return (
     <div
       style={{ width: WIDTH }}
@@ -33,6 +33,7 @@ function Sidebar({ onClose, onCancel, children }) {
               small
               className="ml-auto"
               onClick={onClose}
+              disabled={closeIsDisabled}
             >{t`Done`}</Button>
           )}
         </div>

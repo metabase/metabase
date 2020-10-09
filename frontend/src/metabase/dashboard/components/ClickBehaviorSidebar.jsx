@@ -336,6 +336,7 @@ class ClickBehaviorSidebar extends React.Component {
         <Sidebar
           onClose={hideClickBehaviorSidebar}
           onCancel={this.handleCancel}
+          closeIsDisabled={!clickBehaviorIsValid(clickBehavior)}
         >
           <SidebarHeader>
             <Heading className="text-paragraph">{t`On-click behavior for each column`}</Heading>
@@ -391,7 +392,11 @@ class ClickBehaviorSidebar extends React.Component {
       return null;
     }
     return (
-      <Sidebar onClose={hideClickBehaviorSidebar} onCancel={this.handleCancel}>
+      <Sidebar
+        onClose={hideClickBehaviorSidebar}
+        onCancel={this.handleCancel}
+        closeIsDisabled={!clickBehaviorIsValid(clickBehavior)}
+      >
         <SidebarHeader>
           {selectedColumn == null ? (
             <Heading>{jt`Click behavior for ${(
