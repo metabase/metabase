@@ -152,14 +152,20 @@
   "**MetabasePass**")
 
 ;; when encoding a Database as JSON remove the `details` for any non-admin User. For admin users they can still see
-;; the `details` but remove the password. No one gets to see this in an API response!
+;; the `details` but remove anything resembling a password. No one gets to see this in an API response!
 (add-encoder
  DatabaseInstance
  (fn [db json-generator]
    (encode-map
-    (cond
-      (not (:is_superuser @*current-user*)) (dissoc db :details)
-      (get-in db [:details :password])      (assoc-in db [:details :password] protected-password)
-      (get-in db [:details :pass])          (assoc-in db [:details :pass] protected-password) ; MongoDB uses "pass" instead of password
-      :else                                 db)
+    (cond-> db
+      (get-in db [:details :password])                      (assoc-in [:details :password] protected-password)
+      (get-in db [:details :pass])                          (assoc-in [:details :pass] protected-password) ; MongoDB uses "pass" instead of password
+      (get-in db [:details :tunnel-pass])                   (assoc-in [:details :tunnel-pass] protected-password)
+      (get-in db [:details :tunnel-private-key])            (assoc-in [:details :tunnel-private-key] protected-password)
+      (get-in db [:details :tunnel-private-key-passphrase]) (assoc-in [:details :tunnel-private-key-passphrase] protected-password)
+      (get-in db [:details :access-token])                  (assoc-in [:details :access-token] protected-password)
+      (get-in db [:details :refresh-token])                 (assoc-in [:details :refresh-token] protected-password)
+      (get-in db [:details :service-account-json])          (assoc-in [:details :service-account-json] protected-password)
+      ;; this condition MUST always execute last, since cond-> doesn't short circuit, to guarantee we do not send :details for non-admin users
+      (not (:is_superuser @*current-user*))                 (dissoc :details))
     json-generator)))

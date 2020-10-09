@@ -1,12 +1,15 @@
 (ns metabase.models.database-test
-  (:require [clojure
+  (:require [cheshire.core :refer [decode encode]]
+            [clojure
              [string :as str]
              [test :refer :all]]
             [metabase
              [models :refer [Database]]
              [task :as task]
              [test :as mt]]
+            [metabase.middleware.session :as mw.session]
             [metabase.models
+             [database :as mdb]
              [permissions :as perms]
              [user :as user]]
             [metabase.plugins.classloader :as classloader]
@@ -47,3 +50,80 @@
           (db/delete! Database :id db-id)
           (is (= nil
                  (trigger-for-db db-id))))))))
+
+(deftest sensitive-data-redacted-test
+  (let [encode-decode (fn [obj] (decode (encode obj)))
+        ;; this is trimmed for the parts we care about in the test
+        pg-db         (mdb/map->DatabaseInstance
+                       {:description nil
+                        :name        "testpg"
+                        :details     {:additional-options            nil
+                                      :ssl                           false
+                                      :password                      "Password1234"
+                                      :tunnel-host                   "localhost"
+                                      :port                          5432
+                                      :dbname                        "mydb"
+                                      :host                          "localhost"
+                                      :tunnel-enabled                true
+                                      :tunnel-auth-option            "ssh-key"
+                                      :tunnel-port                   22
+                                      :tunnel-private-key            "PRIVATE KEY IS HERE"
+                                      :user                          "metabase"
+                                      :tunnel-user                   "a-tunnel-user"
+                                      :tunnel-private-key-passphrase "Password1234"}
+                        :id          3})
+        bq-db         (mdb/map->DatabaseInstance
+                       {:description nil
+                        :name        "testbq"
+                        :details     {:use-service-account  nil
+                                      :dataset-id           "office_checkins"
+                                      :service-account-json "SERVICE-ACCOUNT-JSON-HERE"
+                                      :use-jvm-timezone     false
+                                      :project-id           "metabase-bigquery-driver"}
+                        :id          2
+                        :engine      :bigquery})]
+    (testing "sensitive fields are redacted when database details are encoded"
+      (testing "details removed for non-admin users"
+        (mw.session/with-current-user
+          (mt/user->id :rasta)
+          (is (= {"description" nil
+                  "name"        "testpg"
+                  "id"          3}
+                 (encode-decode pg-db)))
+          (is (= {"description" nil
+                  "name"        "testbq"
+                  "id"          2
+                  "engine"      "bigquery"}
+                 (encode-decode bq-db)))))
+
+      (testing "details are obfuscated for admin users"
+        (mw.session/with-current-user
+          (mt/user->id :crowberto)
+          (is (= {"description" nil
+                  "name"        "testpg"
+                  "details"     {"tunnel-user"                   "a-tunnel-user"
+                                 "dbname"                        "mydb"
+                                 "host"                          "localhost"
+                                 "tunnel-auth-option"            "ssh-key"
+                                 "tunnel-private-key-passphrase" "**MetabasePass**"
+                                 "additional-options"            nil
+                                 "tunnel-port"                   22
+                                 "user"                          "metabase"
+                                 "tunnel-private-key"            "**MetabasePass**"
+                                 "ssl"                           false
+                                 "tunnel-enabled"                true
+                                 "port"                          5432
+                                 "password"                      "**MetabasePass**"
+                                 "tunnel-host"                   "localhost"}
+                  "id"          3}
+                 (encode-decode pg-db)))
+          (is (= {"description" nil
+                  "name"        "testbq"
+                  "details"     {"use-service-account"  nil
+                                 "dataset-id"           "office_checkins"
+                                 "service-account-json" "**MetabasePass**"
+                                 "use-jvm-timezone"     false
+                                 "project-id"           "metabase-bigquery-driver"}
+                  "id"          2
+                  "engine"      "bigquery"}
+                 (encode-decode bq-db))))))))
