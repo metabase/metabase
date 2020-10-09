@@ -71,6 +71,8 @@ describe("scenarios > public", () => {
   describe("questions", () => {
     // Note: Test suite is sequential, so individual test cases can't be run individually
     it("should allow users to create parameterized dashboards", () => {
+      cy.route("GET", "/api/dashboard/2").as("dashboard");
+
       cy.visit(`/question/${questionId}`);
 
       cy.get(".Icon-pencil").click();
@@ -107,7 +109,8 @@ describe("scenarios > public", () => {
         .find("fieldset")
         .should("not.exist");
 
-      cy.contains("Category").click();
+      cy.wait("@dashboard");
+      cy.findByText("Category").click();
 
       popover().within(() => {
         cy.findByText("Doohickey").click();
