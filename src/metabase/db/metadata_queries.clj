@@ -2,9 +2,11 @@
   "Predefined MBQL queries for getting metadata about an external database."
   (:require [clojure.tools.logging :as log]
             [metabase
+             [driver :as driver]
              [query-processor :as qp]
              [util :as u]]
-            [metabase.models.table :refer [Table]]
+            [metabase.driver.util :as driver.u]
+            [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor.interface :as qpi]
             [metabase.sync.interface :as si]
             [metabase.util.schema :as su]
@@ -94,14 +96,16 @@
   (s/maybe {(s/optional-key :truncation-size) s/Int}))
 
 (s/defn table-rows-sample :- (s/maybe si/TableSample)
-  "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
+  "Run a basic MBQL query to fetch a sample of rows belonging to a Table. Can pass in optional `:truncation-size` for
+  text fields which will be honored only if the driver supports expressions."
   {:style/indent 1}
   ([table :- si/TableInstance, fields :- [si/FieldInstance]]
    (table-rows-sample table fields nil))
   ([table :- si/TableInstance, fields :- [si/FieldInstance]
     {:keys [truncation-size] :as _opts} :- TableRowsSampleOptions]
-   (let [text-fields        (filter (comp #{:type/Text} :base_type) fields)
-         field->expressions (when truncation-size
+   (let [driver             (-> table table/database driver.u/database->driver)
+         text-fields        (filter (comp #{:type/Text} :base_type) fields)
+         field->expressions (when (and truncation-size (driver/supports? driver :expressions))
                               (into {} (for [field text-fields]
                                          [field [(str (gensym "substring"))
                                                  [:substring [:field-id (u/get-id field)] 1 truncation-size]]])))
