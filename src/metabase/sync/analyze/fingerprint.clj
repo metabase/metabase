@@ -6,10 +6,13 @@
             [honeysql.helpers :as h]
             [metabase
              [db :as mdb]
+             [driver :as driver]
              [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver :as driver]
-            [metabase.models.field :refer [Field]]
+            [metabase.driver.util :as driver.u]
+            [metabase.models
+             [field :refer [Field]]
+             [table :as table]]
             [metabase.query-processor.store :as qp.store]
             [metabase.sync
              [interface :as i]
@@ -49,7 +52,8 @@
 
 (s/defn ^:private fingerprint-table!
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
-  (let [options (when (driver/supports? driver/*driver* :expressions)
+  (let [driver (-> table table/database driver.u/database->driver)
+        options (when (driver/supports? driver :expressions)
                   {:truncation-size truncation-size})]
     (transduce identity
                (redux/post-complete
