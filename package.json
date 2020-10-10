@@ -67,6 +67,7 @@
     "react-textarea-autosize": "^5.2.1",
     "react-transition-group": "1",
     "react-virtualized": "^9.7.2",
+    "read-excel-file": "^4.0.7",
     "recompose": "^0.26.0",
     "redux": "^3.5.2",
     "redux-actions": "^2.0.1",
