@@ -6,13 +6,9 @@
             [honeysql.helpers :as h]
             [metabase
              [db :as mdb]
-             [driver :as driver]
              [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver.util :as driver.u]
-            [metabase.models
-             [field :refer [Field]]
-             [table :as table]]
+            [metabase.models.field :refer [Field]]
             [metabase.query-processor.store :as qp.store]
             [metabase.sync
              [interface :as i]
@@ -52,28 +48,25 @@
 
 (s/defn ^:private fingerprint-table!
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
-  (let [driver (-> table table/database driver.u/database->driver)
-        options (when (driver/supports? driver :expressions)
-                  {:truncation-size truncation-size})]
-    (transduce identity
-               (redux/post-complete
-                 (f/fingerprint-fields fields)
-                 (fn [fingerprints]
-                   (reduce (fn [count-info [field fingerprint]]
-                             (cond
-                               (instance? Throwable fingerprint)
-                               (update count-info :failed-fingerprints inc)
+  (transduce identity
+             (redux/post-complete
+               (f/fingerprint-fields fields)
+               (fn [fingerprints]
+                 (reduce (fn [count-info [field fingerprint]]
+                           (cond
+                             (instance? Throwable fingerprint)
+                             (update count-info :failed-fingerprints inc)
 
-                               (some-> fingerprint :global :distinct-count zero?)
-                               (update count-info :no-data-fingerprints inc)
+                             (some-> fingerprint :global :distinct-count zero?)
+                             (update count-info :no-data-fingerprints inc)
 
-                               :else
-                               (do
-                                 (save-fingerprint! field fingerprint)
-                                 (update count-info :updated-fingerprints inc))))
-                           (empty-stats-map (count fingerprints))
-                           (map vector fields fingerprints))))
-               (metadata-queries/table-rows-sample table fields options))))
+                             :else
+                             (do
+                               (save-fingerprint! field fingerprint)
+                               (update count-info :updated-fingerprints inc))))
+                         (empty-stats-map (count fingerprints))
+                         (map vector fields fingerprints))))
+             (metadata-queries/table-rows-sample table fields {:truncation-size truncation-size})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
