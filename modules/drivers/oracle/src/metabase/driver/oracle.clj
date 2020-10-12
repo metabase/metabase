@@ -301,9 +301,9 @@
       "XDB"
       "XS$NULL"}))
 
-(defmethod driver/metadata-escape-entity-name :oracle
-  [_driver table-name]
-  (str/replace table-name "/" "//"))
+(defmethod driver/escape-entity-name-for-metadata :oracle
+  [_ entity-name]
+  (str/replace entity-name "/" "//"))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :oracle
   [_]

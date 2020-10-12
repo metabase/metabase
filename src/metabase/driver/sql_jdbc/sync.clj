@@ -98,12 +98,11 @@
   schema."
   [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
-  (with-open [rs (.getTables metadata db-name-or-nil (driver/metadata-escape-entity-name driver schema-or-nil) "%"
+  (with-open [rs (.getTables metadata db-name-or-nil (driver/escape-entity-name-for-metadata driver schema-or-nil) "%"
                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW" "EXTERNAL TABLE"]))]
-    (transduce (map (fn [row] (select-keys row [:table_name :remarks :table_schem])))
-               conj
-               []
-               (jdbc/reducible-result-set rs {}))))
+    (into []
+          (map (fn [row] (select-keys row [:table_name :remarks :table_schem])))
+          (jdbc/reducible-result-set rs {}))))
 
 (defn- simple-select-probe
   "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata."
@@ -185,8 +184,8 @@
   [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name :as table}, & [^String db-name-or-nil]]
   (with-open [rs (.getColumns metadata
                               db-name-or-nil
-                              (driver/metadata-escape-entity-name driver schema)
-                              (driver/metadata-escape-entity-name driver table-name)
+                              (driver/escape-entity-name-for-metadata driver schema)
+                              (driver/escape-entity-name-for-metadata driver table-name)
                               nil)]
     (let [result (jdbc/result-set-seq rs)]
       ;; In some rare cases `:column_name` is blank (eg. SQLite's views with group by),

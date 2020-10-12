@@ -116,8 +116,8 @@
                                                                                             {:col1 "B", :col2 2}]))
       "Make sure we're generating correct DDL for Oracle to insert all rows at once."))
 
-(defn- do-with-temp-user [f]
-  (let [username (tu/random-name)]
+(defn- do-with-temp-user [username f]
+  (let [username (or username (tu/random-name))]
     (try
       (oracle.tx/create-user! username)
       (f username)
@@ -126,9 +126,10 @@
 
 (defmacro ^:private with-temp-user
   "Run `body` with a temporary user bound, binding their name to `username-binding`. Use this to create the equivalent
-  of temporary one-off databases."
-  [[username-binding] & body]
-  `(do-with-temp-user (fn [~username-binding] ~@body)))
+  of temporary one-off databases. A particular username can be passed in as the binding or else one is generated with
+  `tu/random-name`."
+  [[username-binding & [username]] & body]
+  `(do-with-temp-user ~username (fn [~username-binding] ~@body)))
 
 
 ;; Make sure Oracle CLOBs are returned as text (#9026)
@@ -160,13 +161,16 @@
           spec     (sql-jdbc.conn/connection-details->spec :oracle details)
           execute! (fn [format-string & args]
                      (jdbc/execute! spec (apply format format-string args)))
-          pk-type  (sql.tx/pk-sql-type :oracle)]
-      (with-temp-user [username]
-        (execute! "CREATE TABLE \"%s\".\"mess/ages/\" (\"id\" %s, \"column1\" varchar(200))"    username pk-type)
-        (is (= #{"id" "column1"}
-               (into #{} (map :name)
-                     (:fields
-                      (sql-jdbc.sync/describe-table :oracle spec {:name "mess/ages/" :schema username})))))))))
+          pk-type  (sql.tx/pk-sql-type :oracle)
+          schema   (str (tu/random-name) "/" (tu/random-name) "/")]
+      (with-temp-user [username schema]
+        (execute! "CREATE TABLE \"%s\".\"mess/ages/\" (\"id\" %s, \"column1\" varchar(200))" username pk-type)
+        (testing "Sync can handle slashes in the schema and tablenames"
+          (is (= #{"id" "column1"}
+                 (into #{}
+                       (map :name)
+                       (:fields
+                        (sql-jdbc.sync/describe-table :oracle spec {:name "mess/ages/" :schema username}))))))))))
 
 ;; let's make sure we're actually attempting to generate the correctl HoneySQL for joins and source queries so we
 ;; don't sit around scratching our heads wondering why the queries themselves aren't working

@@ -259,7 +259,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti metadata-escape-entity-name
+(defmulti escape-entity-name-for-metadata
   "escaping for when calling `.getColumns` or `.getTables` on table names or schema names. Useful for when a database
   driver has difference escaping rules for table or schema names when used from metadata.
 
@@ -268,7 +268,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod metadata-escape-entity-name :default [_driver table-name] table-name)
+(defmethod escape-entity-name-for-metadata :default [_driver table-name] table-name)
 
 (defmulti describe-table-fks
   "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys`. Results
