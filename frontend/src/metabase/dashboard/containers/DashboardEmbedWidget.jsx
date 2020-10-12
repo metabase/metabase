@@ -5,8 +5,8 @@ import { connect } from "react-redux";
 import cx from "classnames";
 import { t } from "ttag";
 
-import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
@@ -52,7 +52,6 @@ export default class DashboardEmbedWidget extends Component {
         triggerElement={
           <Tooltip tooltip={t`Sharing and embedding`}>
             <Icon
-              name="share"
               onClick={() =>
                 MetabaseAnalytics.trackEvent(
                   "Sharing / Embedding",
@@ -60,6 +59,7 @@ export default class DashboardEmbedWidget extends Component {
                   "Sharing Link Clicked",
                 )
               }
+              name="share"
             />
           </Tooltip>
         }

@@ -169,7 +169,7 @@ function sharedParametersTests(visitUrl) {
     popover()
       .find('[placeholder="Search by Name or enter an ID"]')
       .type("Aly");
-    popover().contains("Alycia Collins - 541");
+    popover().contains("Alycia McCullough - 2016");
   });
 
   it("should allow searching PEOPLE.NAME by PEOPLE.NAME", () => {
@@ -178,7 +178,7 @@ function sharedParametersTests(visitUrl) {
     popover()
       .find('[placeholder="Search by Name"]')
       .type("Aly");
-    popover().contains("Alycia Collins");
+    popover().contains("Alycia McCullough");
   });
 
   it("should show values for PEOPLE.SOURCE", () => {
@@ -194,7 +194,7 @@ function sharedParametersTests(visitUrl) {
     popover()
       .find('[placeholder="Search by Name or enter an ID"]')
       .type("Aly");
-    popover().contains("Alycia Collins - 541");
+    popover().contains("Alycia McCullough - 2016");
   });
 
   it("should accept url parameters", () => {

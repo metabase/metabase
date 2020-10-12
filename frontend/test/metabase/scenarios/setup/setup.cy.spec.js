@@ -19,7 +19,7 @@ describe("scenarios > setup", () => {
           });
         },
       });
-      cy.url().should("be", "/setup");
+      cy.location("pathname").should("eq", "/setup");
       cy.findByText("Welcome to Metabase");
       cy.findByText("Let's get started").click();
 
@@ -150,7 +150,7 @@ describe("scenarios > setup", () => {
         "Get infrequent emails about new releases and feature updates.",
       );
       cy.findByText("Take me to Metabase").click();
-      cy.url().should("be", "/");
+      cy.location("pathname").should("eq", "/");
     });
   });
 });

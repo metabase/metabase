@@ -115,7 +115,7 @@ All frontend tests are located in `frontend/test` directory. Run all frontend te
 yarn test
 ```
 
-which will run unit, end-to-end, and legacy Karma browser tests in sequence.
+which will run unit, integration and end-to-end tests in sequence.
 
 ### End-to-end tests
 
@@ -201,15 +201,6 @@ Unit tests use an enforced file naming convention `<test-suite-name>.unit.spec.j
 ```
 yarn test-unit # Run all tests at once
 yarn test-unit-watch # Watch for file changes
-```
-
-### Karma browser tests
-
-If you need to test code which uses browser APIs that are only available in real browsers, you can add a Karma test to `frontend/test/legacy-karma` directory.
-
-```
-yarn test-karma # Run all tests once
-yarn test-karma-watch # Watch for file changes
 ```
 
 ## Backend development

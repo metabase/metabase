@@ -24,6 +24,10 @@
   :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set}
   :abstract? true)
 
+(defmethod driver/db-start-of-week :hive-like
+  [_]
+  :sunday)
+
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :hive-like
   [driver]
   ;; The Hive JDBC driver doesn't support `Connection.isValid()`, so we need to supply a test query for c3p0 to use to
@@ -82,7 +86,6 @@
 (defmethod sql.qp/date [:hive-like :day]             [_ _ expr] (trunc-with-format "yyyy-MM-dd" (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :day-of-month]    [_ _ expr] (hsql/call :dayofmonth (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :day-of-year]     [_ _ expr] (hx/->integer (date-format "D" (hx/->timestamp expr))))
-(defmethod sql.qp/date [:hive-like :week-of-year]    [_ _ expr] (hsql/call :weekofyear (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :month]           [_ _ expr] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :MM)))
 (defmethod sql.qp/date [:hive-like :month-of-year]   [_ _ expr] (hsql/call :month (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :quarter-of-year] [_ _ expr] (hsql/call :quarter (hx/->timestamp expr)))
@@ -90,18 +93,20 @@
 
 (defmethod sql.qp/date [:hive-like :day-of-week]
   [_ _ expr]
-  (hx/->integer (date-format "u"
-                             (hx/+ (hx/->timestamp expr)
-                                   (hsql/raw "interval '1' day")))))
+  (sql.qp/adjust-day-of-week :hive-like
+                             (hx/->integer (date-format "u"
+                                                        (hx/+ (hx/->timestamp expr)
+                                                              (hsql/raw "interval '1' day"))))))
 
 (defmethod sql.qp/date [:hive-like :week]
   [_ _ expr]
-  (hsql/call :date_sub
-    (hx/+ (hx/->timestamp expr)
-          (hsql/raw "interval '1' day"))
-    (date-format "u"
-                 (hx/+ (hx/->timestamp expr)
-                       (hsql/raw "interval '1' day")))))
+  (let [week-extract-fn (fn [expr]
+                          (hsql/call :date_sub
+                            (hx/+ (hx/->timestamp expr)
+                                  (hsql/raw "interval '1' day"))
+                            (date-format "u" (hx/+ (hx/->timestamp expr)
+                                                   (hsql/raw "interval '1' day")))))]
+    (sql.qp/adjust-start-of-week :hive-like week-extract-fn expr)))
 
 (defmethod sql.qp/date [:hive-like :quarter]
   [_ _ expr]

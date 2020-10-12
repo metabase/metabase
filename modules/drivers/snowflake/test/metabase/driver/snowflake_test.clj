@@ -90,7 +90,9 @@
         (mt/with-temp Database [database {:engine :snowflake, :details (assoc details :db "views_test")}]
           (let [sync! #(sync/sync-database! database)]
             ;; create a view
-            (jdbc/execute! spec ["CREATE VIEW \"views_test\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";"])
+            (doseq [statement ["CREATE VIEW \"views_test\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";"
+                               "GRANT SELECT ON \"views_test\".\"PUBLIC\".\"example_view\" TO PUBLIC;"]]
+              (jdbc/execute! spec [statement]))
             ;; now sync the DB
             (sync!)
             ;; now take a look at the Tables in the database, there should be an entry for the view

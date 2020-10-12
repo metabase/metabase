@@ -175,19 +175,18 @@ export function stringParameterValueToMBQL(
   parameterValue: ParameterValueOrArray,
   fieldRef: LocalFieldReference | ForeignFieldReference,
 ): ?FieldFilter {
-  if (Array.isArray(parameterValue)) {
-    // $FlowFixMe: thinks we're returning a nested array which concat does not do
-    return ["=", fieldRef].concat(parameterValue);
-  } else {
-    return ["=", fieldRef, parameterValue];
-  }
+  // $FlowFixMe: thinks we're returning a nested array which concat does not do
+  return ["=", fieldRef].concat(parameterValue);
 }
 
 export function numberParameterValueToMBQL(
   parameterValue: ParameterValue,
   fieldRef: LocalFieldReference | ForeignFieldReference,
 ): ?FieldFilter {
-  return ["=", fieldRef, parseFloat(parameterValue)];
+  // $FlowFixMe: thinks we're returning a nested array which concat does not do
+  return ["=", fieldRef].concat(
+    [].concat(parameterValue).map(v => parseFloat(v)),
+  );
 }
 
 /** compiles a parameter with value to an MBQL clause */

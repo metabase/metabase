@@ -9,6 +9,7 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.common :as driver.common]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
@@ -60,6 +61,16 @@
 ;;; |                                            Interface (Multimethods)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; this is the primary way to override behavior for a specific clause or object class.
+
+(defmulti ->honeysql
+  "Return an appropriate HoneySQL form for an object. Dispatches off both driver and either clause name or object class
+  making this easy to override in any places needed for a given driver."
+  {:arglists '([driver x]), :style/indent 1}
+  (fn [driver x]
+    [(driver/dispatch-on-initialized-driver driver) (mbql.u/dispatch-by-clause-name-or-class x)])
+  :hierarchy #'driver/hierarchy)
+
 (defmulti ^{:deprecated "0.34.2"} current-datetime-fn
   "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`.
 
@@ -93,6 +104,12 @@
 ;; default implementation for `:default` bucketing returns expression as-is
 (defmethod date [:sql :default] [_ _ expr] expr)
 
+;; We have to roll our own to account for arbitrary start of week
+(defmethod date [:sql :week-of-year]
+  [driver _ expr]
+  ;; Some DBs truncate when doing integer division, therefore force float arithmetics
+  (->honeysql driver [:ceil (hx// (date driver :day-of-year (date driver :week expr)) 7.0)]))
+
 
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
@@ -106,6 +123,27 @@
 
 (defmethod add-interval-honeysql-form :sql [driver hsql-form amount unit]
   (driver/date-add driver hsql-form amount unit))
+
+(defn adjust-start-of-week
+  "Truncate to the day the week starts on."
+  [driver truncate-fn expr]
+  (let [offset (driver.common/start-of-week-offset driver)]
+    (if (not= offset 0)
+      (add-interval-honeysql-form driver
+                                  (truncate-fn (add-interval-honeysql-form driver expr offset :day))
+                                  (- offset) :day)
+      (truncate-fn expr))))
+
+(defn adjust-day-of-week
+  "Adjust day of week wrt start of week setting."
+  ([driver day-of-week]
+   (adjust-day-of-week driver day-of-week (driver.common/start-of-week-offset driver)))
+  ([driver day-of-week offset]
+   (if (not= offset 0)
+     (hsql/call :case
+       (hsql/call := (hx/mod (hx/+ day-of-week offset) 7) 0) 7
+       :else                                                 (hx/mod (hx/+ day-of-week offset) 7))
+     day-of-week)))
 
 (defmulti field->identifier
   "Return a HoneySQL form that should be used as the identifier for `field`, an instance of the Field model. The default
@@ -188,16 +226,6 @@
 (defmethod apply-top-level-clause :default
   [_ _ honeysql-form _]
   honeysql-form)
-
-;; this is the primary way to override behavior for a specific clause or object class.
-
-(defmulti ->honeysql
-  "Return an appropriate HoneySQL form for an object. Dispatches off both driver and either clause name or object class
-  making this easy to override in any places needed for a given driver."
-  {:arglists '([driver x]), :style/indent 1}
-  (fn [driver x]
-    [(driver/dispatch-on-initialized-driver driver) (mbql.u/dispatch-by-clause-name-or-class x)])
-  :hierarchy #'driver/hierarchy)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

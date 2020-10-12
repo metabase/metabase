@@ -131,6 +131,7 @@ const config = (module.exports = {
           "**/__support__/*.js",
           "**/__mocks__/*.js*",
           "internal/lib/components-node.js",
+          "**/noop.js",
         ],
       },
     }),

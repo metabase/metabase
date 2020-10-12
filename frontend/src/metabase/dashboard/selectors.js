@@ -36,7 +36,12 @@ export type MappingsByParameter = {
 };
 
 export const getDashboardId = state => state.dashboard.dashboardId;
-export const getIsEditing = state => state.dashboard.isEditing;
+export const getIsEditing = state => !!state.dashboard.isEditing;
+export const getDashboardBeforeEditing = state => state.dashboard.isEditing;
+export const getClickBehaviorSidebarDashcard = state => {
+  const { clickBehaviorSidebarDashcardId, dashcards } = state.dashboard;
+  return dashcards[clickBehaviorSidebarDashcardId];
+};
 export const getDashboards = state => state.dashboard.dashboards;
 export const getDashcards = state => state.dashboard.dashcards;
 export const getCardData = state => state.dashboard.dashcardData;
@@ -44,6 +49,8 @@ export const getSlowCards = state => state.dashboard.slowCards;
 export const getParameterValues = state => state.dashboard.parameterValues;
 export const getLoadingStartTime = state =>
   state.dashboard.loadingDashCards.startTime;
+export const getIsAddParameterPopoverOpen = state =>
+  state.dashboard.isAddParameterPopoverOpen;
 
 export const getDashboard = createSelector(
   [getDashboardId, getDashboards],
@@ -98,6 +105,9 @@ const getDashCard = (state, props) => props.dashcard;
 export const getParameterTarget = createSelector(
   [getEditingParameter, getCard, getDashCard],
   (parameter, card, dashcard) => {
+    if (parameter == null) {
+      return null;
+    }
     const mapping = _.findWhere(dashcard.parameter_mappings, {
       card_id: card.id,
       parameter_id: parameter.id,

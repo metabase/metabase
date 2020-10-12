@@ -8,7 +8,7 @@ import Popover from "metabase/components/Popover";
 import * as FieldRef from "metabase/lib/query/field_ref";
 
 import cx from "classnames";
-import t from "ttag";
+import { t } from "ttag";
 
 export default class FieldWidget extends React.Component {
   constructor(props, context) {

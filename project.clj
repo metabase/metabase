@@ -40,6 +40,7 @@
   [[org.clojure/clojure "1.10.1"]
    [org.clojure/core.async "0.4.500"
     :exclusions [org.clojure/tools.reader]]
+   [org.clojure/core.logic "1.0.0"]
    [org.clojure/core.match "0.3.0"]                                   ; optimized pattern matching library for Clojure
    [org.clojure/core.memoize "1.0.236"]                               ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
    [org.clojure/data.csv "0.1.4"]                                     ; CSV parsing / generation
@@ -368,14 +369,13 @@
 
    :cloverage
    [:test-common
-    ;; Using Cam's fork of Cloverage until 1.2.1 of the main repo is out. Once that's released we can switch back.
     {:dependencies [[camsaul/cloverage "1.2.1.1" :exclusions [riddley]]]
      :plugins      [[camsaul/lein-cloverage  "1.2.1.1"]]
      :source-paths ^:replace ["src" "backend/mbql/src"]
      :test-paths   ^:replace ["test" "backend/mbql/test"]
      :cloverage    {:fail-threshold 69
                     :exclude-call
-                    [ ;; don't instrument logging forms, since they won't get executed as part of tests anyway
+                    [;; don't instrument logging forms, since they won't get executed as part of tests anyway
                      ;; log calls expand to these
                      clojure.tools.logging/logf
                      clojure.tools.logging/logp

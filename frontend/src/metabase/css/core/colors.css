@@ -113,6 +113,11 @@
   color: var(--color-text-light);
 }
 
+.bg-brand-dark,
+.bg-brand-dark-hover:hover {
+  background-color: color(var(--color-brand) blackness(+12%));
+}
+
 .bg-brand,
 .bg-brand-hover:hover,
 .bg-brand-active:active {

@@ -113,7 +113,7 @@
 
     *  Only symbols that end in alphanumeric characters will be parsed, so as to avoid accidentally parsing things that
        do not refer to Fields."
-  {:style/indent 1}
+  {:style/indent [:defn 1]}
   ([form]
    `($ids nil ~form))
 

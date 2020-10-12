@@ -39,10 +39,11 @@ export type ClickObject = {
     row: Row,
     cols: Column[],
   },
+  extraData?: { [key: string]: any },
 };
 
 export type ClickAction = {
-  title: any, // React Element
+  title?: any, // React Element
   icon?: string,
   popover?: (props: ClickActionPopoverProps) => any, // React Element
   question?: () => ?Question,

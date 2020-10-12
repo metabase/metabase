@@ -419,8 +419,8 @@ export class FieldDimension extends Dimension {
     return new Field();
   }
 
-  displayName(): string {
-    return this.field().displayName();
+  displayName(...args): string {
+    return this.field().displayName(...args);
   }
 
   subDisplayName(): string {
@@ -986,12 +986,16 @@ export class JoinedDimension extends FieldDimension {
 export class TemplateTagDimension extends FieldDimension {
   dimension() {
     if (this._query) {
-      const tag = this._query.templateTagsMap()[this.tagName()];
+      const tag = this.tag();
       if (tag && tag.type === "dimension") {
         return this.parseMBQL(tag.dimension);
       }
     }
     return null;
+  }
+
+  tag() {
+    return this._query.templateTagsMap()[this.tagName()];
   }
 
   field() {
@@ -1001,6 +1005,11 @@ export class TemplateTagDimension extends FieldDimension {
 
   tagName() {
     return this._args[0];
+  }
+
+  displayName() {
+    const tag = this.tag();
+    return (tag && tag["display-name"]) || super.displayName();
   }
 
   mbql() {
