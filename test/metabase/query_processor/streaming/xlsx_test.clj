@@ -20,6 +20,11 @@
   (testing "SQL Timestamp"
     (isa? Instant (excel-format-value (java.sql.Timestamp. (System/currentTimeMillis)))))
 
+  (testing "Japanese imperial calendar date, should be returned as a string"
+    ;; this tests the exception case in excel-format-value for java.time.temporal.Temporal objects
+    (is (= "Japanese Heisei 1-01-08"
+           (excel-format-value (java.time.chrono.JapaneseDate/of (java.time.chrono.JapaneseEra/HEISEI) 1 1 8)))))
+
   (testing "a String"
     (is (= "Fooo"
            (excel-format-value "Fooo"))))
