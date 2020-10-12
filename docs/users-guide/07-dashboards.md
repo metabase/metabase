@@ -1,20 +1,22 @@
 ## Dashboards
 
+![Interactive dashboard](images/dashboards/interactive-dashboard.png)
+
 ### What is a dashboard?
 
-A **dashboard** is a collection of saved questions that you want to refer back to and view regularly. It displays groups of questions and their corresponding answers.
+Dashboards are a way to group questions and present them on a single page. You can think of dashboards as shareable reports that feature sets of related questions.
 
-Questions on a dashboard are meant to be viewed together, so they’re usually grouped by some kind of theme or topic, like Users, Inventory, or Reservations. A reservations dashboard could show the number of reservations by day of week, time of day, geographical region, and more.
+A **dashboard** comprises a set of cards arranged on a grid. These cards can be questions - such as tables, charts, or maps - or a card can be a text box.
 
-Have a few key performance indicators that you want to be able to easily check? Make a dashboard featuring questions that show your key metrics and share it with your team.
+You can add filters to dashboards that filter data across multiple questions, and customize what happens when people click on a chart or a table.
 
 You can make as many dashboards as you want. Go nuts.
 
 ### How to create a dashboard
 
-Click the plus (+) icon in the top-right of the screen to open the menu to create a new dashboard. Give your new dashboard a name and a description, choose which collection it should be saved in, then click **Create**, and you’ll be taken to your shiny new dashboard.
+Click the plus (+) icon in the top-right of the screen to open the menu to create a new dashboard. Give your new dashboard a name and a description, choose which collection the dashboard should go in, then click **Create**, and you’ll be taken to your shiny new dashboard.
 
-![Create Dashboard](images/dashboards/DashboardCreate.png)
+[Create Dashboard](images/dashboards/DashboardCreate.png)
 
 ### Adding saved questions to a dashboard
 
