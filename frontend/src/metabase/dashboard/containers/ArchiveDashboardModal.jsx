@@ -21,9 +21,7 @@ const mapDispatchToProps = {
   null,
   mapDispatchToProps,
 )
-@Dashboard.load({
-  id: (state, props) => props.params.dashboardId,
-})
+@Dashboard.load({ id: (state, props) => props.params.dashboardId })
 @withRouter
 export default class ArchiveDashboardModal extends Component {
   static propTypes = {
@@ -35,14 +33,14 @@ export default class ArchiveDashboardModal extends Component {
     // we have to call this here first to unmount the modal and then push to the
     // parent collection
     this.props.onClose();
-    this.props.push(Urls.collection(this.props.dashboard.collection_id));
+    if (this.props.dashboard.archived) {
+      this.props.push(Urls.collection(this.props.dashboard.collection_id));
+    }
   };
 
   archive = async () => {
     await this.props.setDashboardArchived(
-      {
-        id: this.props.params.dashboardId,
-      },
+      { id: this.props.params.dashboardId },
       true,
     );
   };
