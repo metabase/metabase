@@ -1,4 +1,4 @@
-(defproject metabase/sparksql-driver "1.0.0-SNAPSHOT-1.3.0"
+(defproject metabase/sparksql-driver "1.0.0-SNAPSHOT-2.3.7"
   :min-lein-version "2.5.0"
 
   :dependencies
