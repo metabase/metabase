@@ -336,6 +336,7 @@ class ClickBehaviorSidebar extends React.Component {
         <Sidebar
           onClose={hideClickBehaviorSidebar}
           onCancel={this.handleCancel}
+          closeIsDisabled={!clickBehaviorIsValid(clickBehavior)}
         >
           <SidebarHeader>
             <Heading className="text-paragraph">{t`On-click behavior for each column`}</Heading>
@@ -391,7 +392,11 @@ class ClickBehaviorSidebar extends React.Component {
       return null;
     }
     return (
-      <Sidebar onClose={hideClickBehaviorSidebar} onCancel={this.handleCancel}>
+      <Sidebar
+        onClose={hideClickBehaviorSidebar}
+        onCancel={this.handleCancel}
+        closeIsDisabled={!clickBehaviorIsValid(clickBehavior)}
+      >
         <SidebarHeader>
           {selectedColumn == null ? (
             <Heading>{jt`Click behavior for ${(
@@ -635,17 +640,20 @@ function LinkOptions({ clickBehavior, updateSettings, dashcard, parameters }) {
                 />
                 {isTableDisplay(dashcard) && (
                   <CustomLinkText
-                    dashcard={dashcard}
-                    parameters={parameters}
                     updateSettings={updateSettings}
                     clickBehavior={clickBehavior}
                   />
                 )}
+                <ValuesYouCanReference
+                  dashcard={dashcard}
+                  parameters={parameters}
+                />
                 <div className="flex">
                   <Button
                     primary
                     onClick={() => onClose()}
                     className="ml-auto mt2"
+                    disabled={!clickBehaviorIsValid(clickBehavior)}
                   >{t`Done`}</Button>
                 </div>
               </ModalContent>
@@ -664,12 +672,16 @@ function LinkOptions({ clickBehavior, updateSettings, dashcard, parameters }) {
               updateSettings={updateSettings}
             />
             {isTableDisplay(dashcard) && (
-              <CustomLinkText
-                dashcard={dashcard}
-                parameters={parameters}
-                updateSettings={updateSettings}
-                clickBehavior={clickBehavior}
-              />
+              <div>
+                <CustomLinkText
+                  updateSettings={updateSettings}
+                  clickBehavior={clickBehavior}
+                />
+                <ValuesYouCanReference
+                  dashcard={dashcard}
+                  parameters={parameters}
+                />
+              </div>
             )}
           </div>
         )}
@@ -794,15 +806,32 @@ function QuestionDashboardPicker({ dashcard, clickBehavior, updateSettings }) {
   );
 }
 
-function prefixIfNeeded(values, prefix, otherLists) {
-  const otherValues = otherLists.flat().map(s => s.toLowerCase());
-  return values.map(value =>
-    otherValues.includes(value.toLowerCase()) ? `${prefix}:${value}` : value,
+const CustomLinkText = ({
+  clickBehavior,
+  dashcard,
+  parameters,
+  updateSettings,
+}) => {
+  return (
+    <div className="mt2 mb1">
+      <Heading>{t`Customize link text (optional)`}</Heading>
+      <InputBlurChange
+        className="input block full"
+        placeholder={t`E.x. Details for {{Column Name}}`}
+        value={clickBehavior.linkTextTemplate}
+        onBlurChange={e =>
+          updateSettings({
+            ...clickBehavior,
+            linkTextTemplate: e.target.value,
+          })
+        }
+      />
+    </div>
   );
-}
+};
 
-const CustomLinkText = withUserAttributes(
-  ({ clickBehavior, dashcard, parameters, userAttributes, updateSettings }) => {
+const ValuesYouCanReference = withUserAttributes(
+  ({ dashcard, parameters, userAttributes }) => {
     const columns = dashcard.card.result_metadata.map(c => c.name);
     const parameterNames = parameters.map(p => p.name);
     const sections = [
@@ -829,37 +858,30 @@ const CustomLinkText = withUserAttributes(
       },
     ].filter(section => section.items.length > 0);
     return (
-      <div className="mt2 mb1">
-        <Heading>{t`Customize link text (optional)`}</Heading>
-        <InputBlurChange
-          className="input block full"
-          placeholder={t`E.x. Details for {{Column Name}}`}
-          value={clickBehavior.linkTextTemplate}
-          onBlurChange={e =>
-            updateSettings({
-              ...clickBehavior,
-              linkTextTemplate: e.target.value,
-            })
-          }
+      <PopoverWithTrigger
+        triggerElement={
+          <div className="flex align-center cursor-pointer my2 text-medium text-brand-hover">
+            <h4>{t`Values you can reference`}</h4>
+            <Icon name="chevrondown" className="ml1" size={12} />
+          </div>
+        }
+      >
+        <AccordionList
+          alwaysExpanded
+          sections={sections}
+          renderItemName={name => name}
+          itemIsClickable={() => false}
         />
-        <PopoverWithTrigger
-          triggerElement={
-            <div className="flex align-center cursor-pointer mt2 text-medium text-brand-hover">
-              <h4>{t`Values you can reference`}</h4>
-              <Icon name="chevrondown" className="ml1" size={12} />
-            </div>
-          }
-        >
-          <AccordionList
-            alwaysExpanded
-            sections={sections}
-            renderItemName={name => name}
-            itemIsClickable={() => false}
-          />
-        </PopoverWithTrigger>
-      </div>
+      </PopoverWithTrigger>
     );
   },
 );
+
+function prefixIfNeeded(values, prefix, otherLists) {
+  const otherValues = otherLists.flat().map(s => s.toLowerCase());
+  return values.map(value =>
+    otherValues.includes(value.toLowerCase()) ? `${prefix}:${value}` : value,
+  );
+}
 
 export default ClickBehaviorSidebar;

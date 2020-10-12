@@ -1,6 +1,15 @@
 /* @flow weak */
 
-import { assoc, dissoc, assocIn, updateIn, getIn, chain, merge } from "icepick";
+import {
+  assoc,
+  dissoc,
+  assocIn,
+  dissocIn,
+  updateIn,
+  getIn,
+  chain,
+  merge,
+} from "icepick";
 import _ from "underscore";
 
 import {
@@ -35,6 +44,7 @@ import type { CardId } from "metabase-types/types/Card";
 
 import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import { clickBehaviorIsValid } from "metabase/lib/click-behavior";
 import { createCard } from "metabase/lib/card";
 
 import {
@@ -55,6 +65,7 @@ import {
 
 import {
   getDashboard,
+  getDashboardBeforeEditing,
   getDashboardComplete,
   getParameterValues,
 } from "./selectors";
@@ -248,13 +259,34 @@ export const saveDashboardAndCards = createThunkAction(
   SAVE_DASHBOARD_AND_CARDS,
   function() {
     return async function(dispatch, getState) {
-      const { dashboards, dashcards, dashboardId } = getState().dashboard;
+      const state = getState();
+      const { dashboards, dashcards, dashboardId } = state.dashboard;
       const dashboard = {
         ...dashboards[dashboardId],
         ordered_cards: dashboards[dashboardId].ordered_cards.map(
           dashcardId => dashcards[dashcardId],
         ),
       };
+
+      // clean invalid dashcards
+      // We currently only do this for dashcard click behavior.
+      // Invalid (partially complete) states are fine during editing,
+      // but we should restore the previous value if saved while invalid.
+      const dashboardBeforeEditing = getDashboardBeforeEditing(state);
+      const clickBehaviorPath = ["visualization_settings", "click_behavior"];
+      dashboard.ordered_cards = dashboard.ordered_cards.map((card, index) => {
+        if (!clickBehaviorIsValid(getIn(card, clickBehaviorPath))) {
+          const startingValue = getIn(dashboardBeforeEditing, [
+            "ordered_cards",
+            index,
+            ...clickBehaviorPath,
+          ]);
+          return startingValue == null
+            ? dissocIn(card, clickBehaviorPath)
+            : assocIn(card, clickBehaviorPath, startingValue);
+        }
+        return card;
+      });
 
       // remove isRemoved dashboards
       await Promise.all(
