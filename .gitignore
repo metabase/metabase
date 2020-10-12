@@ -8,7 +8,7 @@
 *.xcworkspacedata
 .DS_Store
 .\#*
-.cpcache
+.cpcache/
 .eastwood
 .idea/
 .nrepl-port

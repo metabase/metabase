@@ -522,13 +522,6 @@ jobs:
           command-name: Run docs links checker
           command: lint-docs-links
 
-  fe-tests-karma:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run frontend tests (karma)
-          command: run test-karma
-
   fe-tests-unit:
     executor: node
     steps:
@@ -573,6 +566,12 @@ jobs:
       - restore_cache:
           keys:
             - frontend-{{ checksum "./frontend-checksums.txt" }}
+      - run:
+          name: Install Clojure CLI
+          command: >
+            curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
+            chmod +x linux-install-1.10.1.708.sh &&
+            sudo ./linux-install-1.10.1.708.sh
       - run:
           name: Build frontend if needed
           command: >
@@ -933,9 +932,6 @@ workflows:
       - fe-linter-docs-links:
           requires:
             - fe-deps
-      - fe-tests-karma:
-          requires:
-            - fe-deps
       - fe-tests-unit:
           requires:
             - fe-deps
@@ -952,7 +948,6 @@ workflows:
           requires:
             - build-uberjar
             - fe-deps
-
       - fe-tests-cypress:
           name: fe-tests-cypress-1
           requires:
@@ -1044,7 +1039,6 @@ workflows:
             - fe-tests-e2e
             - fe-tests-integration
             - fe-tests-timezones
-            - fe-tests-karma
             - fe-tests-unit
           filters:
             branches:
