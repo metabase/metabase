@@ -369,7 +369,7 @@
           (.getString rs i))))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/DATE]
-  [driver ^ResultSet rs rsmeta ^Integer i]
+  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/DATE]) driver rs rsmeta i)]
     (fn read-time-thunk []
       ;; YEAR type is stored as smallint and exposed in the driver as either java.sql.Date or a short, depending on
@@ -381,7 +381,7 @@
       (if (= "YEAR" (.getColumnTypeName rsmeta i))
         (let [x (.getObject rs i)]
           (condp instance? x
-            java.sql.Date (.toLocalDate x)
+            java.sql.Date (.toLocalDate ^java.sql.Date x)
             java.lang.Short (long x)
             :else x))
         (parent-thunk)))))
