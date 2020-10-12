@@ -248,6 +248,8 @@ export function getParameterMappingOptions(
           icon: variable.icon(),
           target: ["variable", variable.mbql()],
         })),
+    );
+    options.push(
       ...query
         .dimensionOptions(
           parameter ? dimensionFilterForParameter(parameter) : undefined,
