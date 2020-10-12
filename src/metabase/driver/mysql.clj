@@ -368,6 +368,24 @@
         (catch Throwable _
           (.getString rs i))))))
 
+(defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/DATE]
+  [driver ^ResultSet rs rsmeta ^Integer i]
+  (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/DATE]) driver rs rsmeta i)]
+    (fn read-time-thunk []
+      ;; YEAR type is stored as smallint and exposed in the driver as either java.sql.Date or a short, depending on
+      ;; the mysql configuration option `yearIsDateType`. The parent thunk will try (.getObject rs i
+      ;; java.time.LocalDate) but this errors with "Cannot read LocalDate using a Types.SMALLINT
+      ;; field". https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-type-conversions.html. (NOTE: the
+      ;; documentation mentions the return type is java.sql.Short but I believe this is a typo for java.lang.Short:
+      ;; https://bugs.mysql.com/bug.php?id=35115)
+      (if (= "YEAR" (.getColumnTypeName rsmeta i))
+        (let [x (.getObject rs i)]
+          (condp instance? x
+            java.sql.Date (.toLocalDate x)
+            java.lang.Short (long x)
+            :else x))
+        (parent-thunk)))))
+
 (defn- format-offset [t]
   (let [offset (t/format "ZZZZZ" (t/zone-offset t))]
     (if (= offset "Z")

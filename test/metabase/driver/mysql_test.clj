@@ -9,11 +9,13 @@
              [sync :as sync]
              [test :as mt]
              [util :as u]]
+            [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
+            [metabase.sync.analyze.fingerprint :as fingerprint]
             [metabase.test.data.interface :as tx]
             [toucan
              [db :as db]
@@ -81,6 +83,27 @@
                    {:name "id", :base_type :type/Integer, :special_type :type/PK}
                    {:name "thing", :base_type :type/Text, :special_type :type/Category}}
                  (db->fields db))))))))
+
+(tx/defdataset ^:private year-db
+  [["years"
+    [{:field-name "year_column", :base-type {:native "YEAR"}}]
+    [[2001] [2002] [1999]]]])
+
+(deftest year-test
+  (mt/test-driver :mysql
+    (mt/dataset year-db
+      (testing "By default YEAR"
+        (is (= #{{:name "year_column", :base_type :type/Integer, :special_type :type/Category}
+                 {:name "id", :base_type :type/Integer, :special_type :type/PK}}
+               (db->fields (mt/db)))))
+      (let [table  (db/select-one Table :db_id (u/id (mt/db)))
+            fields (db/select Field :table_id (u/id table))]
+        (testing "Can select from this table"
+          (is (= [[#t "2001-01-01" 1] [#t "2002-01-01" 2] [#t "1999-01-01" 3]]
+                 (metadata-queries/table-rows-sample table fields))))
+        (testing "We can fingerprint this table"
+          (is (= 2
+                 (:updated-fingerprints (#'fingerprint/fingerprint-table! table fields)))))))))
 
 (deftest db-timezone-id-test
   (mt/test-driver :mysql
