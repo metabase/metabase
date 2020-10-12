@@ -99,7 +99,7 @@ describe("scenarios > public", () => {
 
       cy.contains("Done").click();
       cy.contains("Save").click();
-      cy.findByText("You're editing this dashboard").should("not.exist");
+      cy.findByText("You're editing this dashboard.").should("not.exist");
 
       cy.contains(COUNT_ALL);
       cy.contains("Category")
