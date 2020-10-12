@@ -64,6 +64,37 @@ describe("scenarios > dashboard > parameters", () => {
       .last()
       .contains("4,939");
   });
+
+  it.skip("should remove previously deleted dashboard parameter from URL (metabase#10829)", () => {
+    // Mirrored issue in metabase-enterprise#275
+
+    // Go directly to "Orders in a dashboard" dashboard
+    cy.visit("/dashboard/1");
+
+    // Add filter and save dashboard
+    cy.get(".Icon-pencil").click();
+    cy.get(".Icon-filter").click();
+    cy.contains("Other Categories").click();
+    cy.findByText("Save").click();
+
+    // Give value to the filter
+    cy.findByPlaceholderText("Category")
+      .click()
+      .type("Gizmo{enter}");
+    cy.log(
+      "**URL is updated correctly with the given parameter at this point**",
+    );
+    cy.url().should("include", "category=Gizmo");
+
+    // Remove filter and save dashboard
+    cy.get(".Icon-pencil").click();
+    cy.get(".Dashboard .Icon-gear").click();
+    cy.findByText("Remove").click();
+    cy.findByText("Save").click();
+
+    cy.log("**URL should not include deleted parameter**");
+    cy.url().should("not.include", "category=Gizmo");
+  });
 });
 
 function selectFilter(selection, filterName) {
