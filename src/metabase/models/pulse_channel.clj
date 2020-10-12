@@ -94,7 +94,7 @@
            :fields            [{:name        "channel"
                                 :type        "select"
                                 :displayName "Post to"
-                                :options     ["#general"]
+                                :options     []
                                 :required    true}]}})
 
 (defn channel-type?
