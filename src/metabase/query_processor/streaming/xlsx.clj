@@ -1,5 +1,6 @@
 (ns metabase.query-processor.streaming.xlsx
   (:require [cheshire.core :as json]
+            [clojure.tools.logging :as log]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
             [metabase.query-processor.streaming.interface :as i]
@@ -31,15 +32,19 @@
   (excel-format-value [_] nil)
 
   Object
-  (excel-format-value [this] this)
-
-  java.time.temporal.Temporal
   (excel-format-value [this]
-    (t/java-date this))
+    this)
+
+  java.time.LocalDate
+  (excel-format-value [this]
+    ;; LocalDate does not have a Timezone, so it can't convert directly to an Instant.
+    ;; Use the system timezone.
+    (t/java-date (t/zoned-date-time this (t/zone-id))))
 
   java.time.LocalDateTime
   (excel-format-value [this]
-    ;; this is a sticky one - LocalDateTime where? Using the server's timezone for the conversion.
+    ;; LocalDateTime does not have a Timezone, so it can't convert directly to an Instant.
+    ;; Use the system timezone.
     (t/java-date (t/zoned-date-time this (t/zone-id))))
 
   java.time.OffsetDateTime
@@ -48,7 +53,15 @@
 
   java.time.ZonedDateTime
   (excel-format-value [this]
-    (t/java-date this)))
+    (t/java-date this))
+
+  java.time.temporal.Temporal
+  (excel-format-value [this]
+    (try
+     (t/java-date this)
+      (catch Exception _
+        (log/warn (str "Unhandled Temporal type formater in Excel export for type " (type this)))
+        (.toString this)))))
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
 ;; implementations we've already defined for encoding things as JSON. These implementations live in
