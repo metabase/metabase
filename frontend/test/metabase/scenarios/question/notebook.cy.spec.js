@@ -237,6 +237,38 @@ describe("scenarios > question > notebook", () => {
       cy.url().should("contain", "/notebook");
       cy.findByText("Visualize").should("exist");
     });
+
+    it.skip("should show correct column title with foreign keys (metabase#11452)", () => {
+      // (Orders join Reviews on Product ID)
+      openOrdersTable();
+      cy.get(".Icon-notebook").click();
+      cy.findByText("Join data").click();
+      cy.findByText("Reviews").click();
+      cy.findByText("Product ID").click();
+      popover().within(() => {
+        cy.findByText("Product ID").click();
+      });
+
+      cy.log("**It shouldn't use FK for a column title**");
+      cy.findByText("Summarize").click();
+      cy.findByText("Pick a column to group by").click();
+
+      // NOTE: Since there is no better way to "get" the element we need, below is a representation of the current DOM structure.
+      //       This can also be useful because some future DOM changes could easily introduce a flake.
+      //  the common parent
+      //    wrapper for the icon
+      //      the actual svg icon with the class `.Icon-join_left_outer`
+      //    h3.List-section-title with the text content we're actually testing
+      popover().within(() => {
+        cy.get(".Icon-join_left_outer")
+          .parent()
+          .next()
+          // NOTE from Flamber's warning:
+          // this name COULD be "normalized" to "Review" instead of "Reviews" - that's why we use Regex match here
+          .invoke("text")
+          .should("match", /review/i);
+      });
+    });
   });
 
   describe("nested", () => {
