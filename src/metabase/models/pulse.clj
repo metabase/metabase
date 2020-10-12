@@ -287,6 +287,7 @@
   (let [channel (when new-channel (assoc new-channel
                                     :pulse_id       (u/get-id notification-or-id)
                                     :id             (:id existing-channel)
+                                    :enabled        (:enabled new-channel)
                                     :channel_type   (keyword (:channel_type new-channel))
                                     :schedule_type  (keyword (:schedule_type new-channel))
                                     :schedule_frame (keyword (:schedule_frame new-channel))))]
