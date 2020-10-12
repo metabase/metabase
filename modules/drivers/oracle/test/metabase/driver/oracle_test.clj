@@ -162,7 +162,7 @@
           execute! (fn [format-string & args]
                      (jdbc/execute! spec (apply format format-string args)))
           pk-type  (sql.tx/pk-sql-type :oracle)
-          schema   (str (tu/random-name) "/" (tu/random-name) "/")]
+          schema   (str (tu/random-name) "/")]
       (with-temp-user [username schema]
         (execute! "CREATE TABLE \"%s\".\"mess/ages/\" (\"id\" %s, \"column1\" varchar(200))" username pk-type)
         (testing "Sync can handle slashes in the schema and tablenames"
