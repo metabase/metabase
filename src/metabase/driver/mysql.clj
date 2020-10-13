@@ -380,10 +380,10 @@
         ;; documentation mentions the return type is java.sql.Short but I believe this is a typo for java.lang.Short:
         ;; https://bugs.mysql.com/bug.php?id=35115)
         (let [x (.getObject rs i)]
-          (condp instance? x
-            java.sql.Date (.toLocalDate ^java.sql.Date x)
-            java.lang.Short (long x)
-            :else x)))
+          (when x
+            (condp instance? x
+              java.sql.Date (.toLocalDate ^java.sql.Date x)
+              java.lang.Short (long x)))))
       (parent-thunk))))
 
 (defn- format-offset [t]
