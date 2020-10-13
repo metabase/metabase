@@ -16,8 +16,7 @@
              [category :as classifiers.category]
              [name :as classifiers.name]
              [no-preview-display :as classifiers.no-preview-display]
-             [text-fingerprint :as classifiers.text-fingerprint]]
-            [metabase.sync.analyze.classifiers.text-fingerprint :as classify-text-fingerprint]
+             [text-fingerprint :as classify-text-fingerprint]]
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.test
              [data :as data]
