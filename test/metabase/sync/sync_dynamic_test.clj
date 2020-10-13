@@ -1,4 +1,4 @@
-(ns metabase.sync-database.sync-dynamic-test
+(ns metabase.sync.sync-dynamic-test
   "Tests for databases with a so-called 'dynamic' schema, i.e. one that is not hard-coded somewhere.
    A Mongo database is an example of such a DB. "
   (:require [expectations :refer [expect]]
