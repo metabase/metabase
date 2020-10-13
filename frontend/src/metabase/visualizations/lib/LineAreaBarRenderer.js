@@ -59,6 +59,7 @@ import {
   isDimensionTimeseries,
   isRemappedToString,
   isMultiCardSeries,
+  hasClickBehavior,
 } from "./renderer_utils";
 
 import lineAndBarOnRender from "./LineAreaBarPostRender";
@@ -83,7 +84,8 @@ const enableBrush = (series, onChangeCardAndRun) =>
     onChangeCardAndRun &&
     !isMultiCardSeries(series) &&
     isStructured(series[0].card) &&
-    !isRemappedToString(series)
+    !isRemappedToString(series) &&
+    !hasClickBehavior(series)
   );
 
 /************************************************************ SETUP ************************************************************/
