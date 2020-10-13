@@ -364,9 +364,22 @@
       (not-any?
        :is_saved_questions
        ((mt/user->client :lucky) :get 200 "database?saved=true")))
-    (testing "Ommit virtual DB if nested queries are disabled"
+    (testing "Omit virtual DB if nested queries are disabled"
       (tu/with-temporary-setting-values [enable-nested-queries false]
         (every? some? ((mt/user->client :lucky) :get 200 "database?saved=true"))))))
+
+(deftest fetch-databases-with-invalid-driver-test
+  (testing "GET /api/database"
+    (testing "\nEndpoint should still work even if there is a Database saved with a invalid driver"
+      (mt/with-temp Database [{db-id :id} {:engine "my-invalid-driver"}]
+        (testing (format "\nID of Database with invalid driver = %d" db-id)
+          (doseq [params [nil
+                          "?saved=true"
+                          "?include=tables"]]
+            (testing (format "\nparams = %s" (pr-str params))
+              (let [db-ids (set (map :id ((mt/user->client :lucky) :get 200 (str "database" params))))]
+                (testing "DB should still come back, even though driver is invalid :shrug:"
+                  (is (contains? db-ids db-id)))))))))))
 
 (def ^:private SavedQuestionsDB
   "Schema for the expected shape of info about the 'saved questions' virtual DB from API responses."
