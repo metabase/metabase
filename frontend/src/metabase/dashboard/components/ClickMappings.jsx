@@ -110,17 +110,17 @@ class ClickMappings extends React.Component {
     if (objectType === "dashboard") {
       return setTargets.length > 0
         ? t`Other available filters`
-        : t`Avaliable filters`;
+        : t`Available filters`;
     }
     if (objectType === "native") {
       return setTargets.length > 0
         ? t`Other available variables`
-        : t`Avaliable variables`;
+        : t`Available variables`;
     }
     if (objectType === "gui") {
       return setTargets.length > 0
         ? t`Other available columns`
-        : t`Avaliable columns`;
+        : t`Available columns`;
     }
     return "Unknown";
   }

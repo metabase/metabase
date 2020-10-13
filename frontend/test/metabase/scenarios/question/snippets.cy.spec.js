@@ -3,7 +3,9 @@ import { signInAsNormalUser, restore, modal } from "__support__/cypress";
 // HACK which lets us type (even very long words) without losing focus
 // this is needed for fields where autocomplete suggestions are enabled
 function _clearAndIterativelyTypeUsingLabel(label, string) {
-  cy.findByLabelText(label).clear();
+  cy.findByLabelText(label)
+    .click()
+    .clear();
 
   for (const char of string) {
     cy.findByLabelText(label).type(char);
