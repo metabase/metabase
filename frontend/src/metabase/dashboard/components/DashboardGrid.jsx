@@ -120,7 +120,7 @@ export default class DashboardGrid extends Component {
     const initialSize = DEFAULT_CARD_SIZE;
     const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
     return {
-      i: String(dashcard.id),
+      i: dashcard.id,
       x: dashcard.col || 0,
       y: dashcard.row || 0,
       w: dashcard.sizeX || initialSize.width,
@@ -198,7 +198,7 @@ export default class DashboardGrid extends Component {
     this.setState({ addSeriesModalDashCard: dc });
   }
 
-  renderDashCard(dc, isMobile) {
+  renderDashCard(dc, { isMobile, gridItemWidth }) {
     return (
       <DashCard
         dashcard={dc}
@@ -206,6 +206,7 @@ export default class DashboardGrid extends Component {
         parameterValues={this.props.parameterValues}
         slowCards={this.props.slowCards}
         fetchCardData={this.props.fetchCardData}
+        gridItemWidth={gridItemWidth}
         markNewCardSeen={this.props.markNewCardSeen}
         isEditing={this.props.isEditing}
         isEditingParameter={this.props.isEditingParameter}
@@ -272,7 +273,10 @@ export default class DashboardGrid extends Component {
                     : width / MOBILE_ASPECT_RATIO,
               }}
             >
-              {this.renderDashCard(dc, true)}
+              {this.renderDashCard(dc, {
+                isMobile: true,
+                gridItemWidth: width,
+              })}
             </div>
           ))}
       </div>
@@ -296,19 +300,19 @@ export default class DashboardGrid extends Component {
         onDrag={(...args) => this.onDrag(...args)}
         onDragStop={(...args) => this.onDragStop(...args)}
         isEditing={this.isEditingLayout}
-      >
-        {dashboard &&
-          dashboard.ordered_cards.map(dc => (
-            <div
-              key={dc.id}
-              className="DashCard"
-              onMouseDownCapture={this.onDashCardMouseDown}
-              onTouchStartCapture={this.onDashCardMouseDown}
-            >
-              {this.renderDashCard(dc, false)}
-            </div>
-          ))}
-      </GridLayout>
+        items={dashboard.ordered_cards}
+        itemRenderer={({ item: dc, style, className, gridItemWidth }) => (
+          <div
+            className={cx("DashCard", className)}
+            style={style}
+            onMouseDownCapture={this.onDashCardMouseDown}
+            onTouchStartCapture={this.onDashCardMouseDown}
+          >
+            {this.renderDashCard(dc, { isMobile: false, gridItemWidth })}
+          </div>
+        )}
+        itemKey={dc => dc.id}
+      />
     );
   }
 
