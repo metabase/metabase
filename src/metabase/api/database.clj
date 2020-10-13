@@ -118,7 +118,10 @@
 
 (defn- ids-of-dbs-that-support-source-queries []
   (set (filter (fn [db-id]
-                 (some-> (driver.u/database->driver db-id) (driver/supports? :nested-queries)))
+                 (try
+                   (some-> (driver.u/database->driver db-id) (driver/supports? :nested-queries))
+                   (catch Throwable e
+                     (log/error e (tru "Error determining whether Database supports nested queries")))))
                (db/select-ids Database))))
 
 (defn- source-query-cards
@@ -693,7 +696,12 @@
 (defn- schema-tables-list [db-id schema]
   (api/read-check Database db-id)
   (api/check-403 (can-read-schema? db-id schema))
-  (filter mi/can-read? (db/select Table :db_id db-id, :schema schema, :active true, :visibility_type nil, {:order-by [[:name :asc]]})))
+  (filter mi/can-read? (db/select Table
+                         :db_id           db-id
+                         :schema          schema
+                         :active          true
+                         :visibility_type nil
+                         {:order-by [[:name :asc]]})))
 
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
