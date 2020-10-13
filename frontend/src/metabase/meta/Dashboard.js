@@ -246,6 +246,7 @@ export function getParameterMappingOptions(
         .map(variable => ({
           name: variable.displayName(),
           icon: variable.icon(),
+          isForeign: false,
           target: ["variable", variable.mbql()],
         })),
     );
@@ -259,12 +260,13 @@ export function getParameterMappingOptions(
           section.items.map(({ dimension }) => ({
             name: dimension.displayName(),
             icon: dimension.icon(),
-            target: ["variable", dimension.mbql()],
+            isForeign: false,
+            target: ["dimension", dimension.mbql()],
           })),
         ),
     );
   }
-  console.log({ options });
+
   return options;
 }
 

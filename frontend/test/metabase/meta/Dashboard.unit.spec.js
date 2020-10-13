@@ -116,7 +116,7 @@ describe("getParameterMappingOptions", () => {
       );
       expect(options).toEqual([
         {
-          sectionName: undefined,
+          sectionName: null,
           name: "Created At",
           icon: "calendar",
           target: [
@@ -146,10 +146,10 @@ describe("getParameterMappingOptions", () => {
       );
       expect(options).toEqual([
         {
-          sectionName: "Variables",
           name: "created",
           icon: "calendar",
           target: ["variable", ["template-tag", "created"]],
+          isForeign: false,
         },
       ]);
     });
@@ -171,7 +171,6 @@ describe("getParameterMappingOptions", () => {
     );
     expect(options).toEqual([
       {
-        sectionName: "Order",
         name: "Created At",
         icon: "calendar",
         target: ["dimension", ["template-tag", "created"]],
