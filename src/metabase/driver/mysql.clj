@@ -259,7 +259,7 @@
     :TINYTEXT   :type/Text
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
-    :YEAR       :type/Integer}
+    :YEAR       :type/Date}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
 
@@ -370,20 +370,12 @@
 
 (defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/DATE]
   [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/DATE]) driver rs rsmeta i)]
-    (if (= "YEAR" (.getColumnTypeName rsmeta i))
-      (fn read-time-thunk []
-        ;; YEAR type is stored as smallint and exposed in the driver as either java.sql.Date or a short, depending on
-        ;; the mysql configuration option `yearIsDateType`. The parent thunk will try (.getObject rs i
-        ;; java.time.LocalDate) but this errors with "Cannot read LocalDate using a Types.SMALLINT
-        ;; field". https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-type-conversions.html. (NOTE: the
-        ;; documentation mentions the return type is java.sql.Short but I believe this is a typo for java.lang.Short:
-        ;; https://bugs.mysql.com/bug.php?id=35115)
-        (let [x (.getObject rs i)]
-          (when x
-            (condp instance? x
-              java.sql.Date (.toLocalDate ^java.sql.Date x)
-              java.lang.Short (long x)))))
+  (if (= "YEAR" (.getColumnTypeName rsmeta i))
+    (fn read-time-thunk []
+      (let [x (.getObject rs i)]
+        (when x
+          (.toLocalDate ^java.sql.Date x))))
+    (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/DATE]) driver rs rsmeta i)]
       (parent-thunk))))
 
 (defn- format-offset [t]

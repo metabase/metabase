@@ -93,16 +93,16 @@
   (mt/test-driver :mysql
     (mt/dataset year-db
       (testing "By default YEAR"
-        (is (= #{{:name "year_column", :base_type :type/Integer, :special_type :type/Category}
+        (is (= #{{:name "year_column", :base_type :type/Date, :special_type :type/Category}
                  {:name "id", :base_type :type/Integer, :special_type :type/PK}}
                (db->fields (mt/db)))))
       (let [table  (db/select-one Table :db_id (u/id (mt/db)))
-            fields (db/select Field :table_id (u/id table))]
+            fields (db/select Field :table_id (u/id table) :name "year_column")]
         (testing "Can select from this table"
-          (is (= [[#t "2001-01-01" 1] [#t "2002-01-01" 2] [#t "1999-01-01" 3]]
+          (is (= [[#t "2001-01-01"] [#t "2002-01-01"] [#t "1999-01-01"]]
                  (metadata-queries/table-rows-sample table fields))))
         (testing "We can fingerprint this table"
-          (is (= 2
+          (is (= 1
                  (:updated-fingerprints (#'fingerprint/fingerprint-table! table fields)))))))))
 
 (deftest db-timezone-id-test
