@@ -180,7 +180,7 @@
     :position          0}))
 
 (deftest sync-database-test
-  (mt/with-temp Database [db {:engine :metabase.sync-test/sync-test}]
+  (mt/with-temp Database [db {:engine ::sync-test}]
     (sync/sync-database! db)
     (sync/sync-database! db)
     (let [[movie studio] (mapv table-details (db/select Table :db_id (u/get-id db) {:order-by [:name]}))]
@@ -201,7 +201,7 @@
                studio))))))
 
 (deftest sync-table-test
-  (mt/with-temp* [Database [db {:engine :metabase.sync-test/sync-test}]
+  (mt/with-temp* [Database [db {:engine ::sync-test}]
                   Table    [table {:name "movie", :schema "default", :db_id (u/get-id db)}]]
     (sync/sync-table! table)
     (is (= (merge
