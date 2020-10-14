@@ -634,9 +634,19 @@
   [driver [_ field value]]
   [:= (->honeysql driver field) (->honeysql driver value)])
 
+(defn- unary-not-or-null
+  [driver clause]
+  (let [field-arg (mbql.u/match-one clause
+                    :field-id      &match
+                    :field-literal &match)]
+    [:or [:not (->honeysql driver clause)]
+     [:= (->honeysql driver field-arg) nil]]))
+
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]
-  [:not= (->honeysql driver field) (->honeysql driver value)])
+  (if (nil? value)
+    [:not= (->honeysql driver field) (->honeysql driver value)]
+    (unary-not-or-null driver [:= field value])))
 
 (defmethod ->honeysql [:sql :and]
   [driver [_ & subclauses]]
@@ -646,9 +656,14 @@
   [driver [_ & subclauses]]
   (apply vector :or (map (partial ->honeysql driver) subclauses)))
 
+(def ^:private clause-needs-null-behaviour-correction?
+  (comp #{:contains :starts-with :ends-with} first))
+
 (defmethod ->honeysql [:sql :not]
   [driver [_ subclause]]
-  [:not (->honeysql driver subclause)])
+  (if (clause-needs-null-behaviour-correction? subclause)
+    (unary-not-or-null driver subclause)
+    [:not (->honeysql driver subclause)]))
 
 (defmethod apply-top-level-clause [:sql :filter]
   [driver _ honeysql-form {clause :filter}]
