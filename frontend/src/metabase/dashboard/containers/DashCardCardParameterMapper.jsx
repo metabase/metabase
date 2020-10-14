@@ -172,10 +172,8 @@ export default class DashCardCardParameterMapper extends Component {
                 <span className="text-centered mr1">
                   {disabled
                     ? t`No valid fields`
-                    : selected && selected.sectionName == null
-                    ? selected.name // for native question variables we just display the name
                     : selected
-                    ? `${selected.sectionName}.${selected.name}`
+                    ? formatSelected(selected)
                     : t`Select…`}
                 </span>
                 {selected ? (
@@ -209,4 +207,12 @@ export default class DashCardCardParameterMapper extends Component {
       </div>
     );
   }
+}
+
+function formatSelected({ name, sectionName }) {
+  if (sectionName == null) {
+    // for native question variables or field literals we just display the name
+    return name;
+  }
+  return `${sectionName}.${name}`;
 }
