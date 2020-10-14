@@ -97,6 +97,7 @@ export default class Parameters extends Component {
   }
 
   componentDidUpdate() {
+    // TODO move this to redux
     if (this.props.syncQueryString) {
       // sync parameters to URL query string
       const queryParams = {};
@@ -116,6 +117,17 @@ export default class Parameters extends Component {
           window.location.pathname + search + window.location.hash,
         );
       }
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.props.syncQueryString) {
+      // replaceState again to remove any params
+      history.replaceState(
+        null,
+        document.title,
+        window.location.pathname + window.location.hash,
+      );
     }
   }
 
