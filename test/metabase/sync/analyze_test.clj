@@ -1,6 +1,5 @@
 (ns metabase.sync.analyze-test
   (:require [clojure.test :refer :all]
-            [expectations :refer [expect]]
             [metabase
              [test :as mt]
              [util :as u]]
@@ -44,13 +43,7 @@
                           [(:name field) (into {} (dissoc field :name))]))))))))
 
 ;; ...but they *SHOULD* get analyzed if they ARE newly created (expcept for PK which we skip)
-(expect
-  #{{:name "LATITUDE",    :special_type :type/Latitude,  :last_analyzed true}
-    {:name "ID",          :special_type :type/PK,        :last_analyzed false}
-    {:name "PRICE",       :special_type :type/Category,  :last_analyzed true}
-    {:name "LONGITUDE",   :special_type :type/Longitude, :last_analyzed true}
-    {:name "CATEGORY_ID", :special_type :type/Category,  :last_analyzed true}
-    {:name "NAME",        :special_type :type/Name,      :last_analyzed true}}
+(deftest analyze-table-test
   (tt/with-temp* [Database [db    {:engine "h2", :details (:details (data/db))}]
                   Table    [table {:name "VENUES", :db_id (u/get-id db)}]]
     ;; sync the metadata, but DON't do analysis YET
@@ -58,8 +51,14 @@
     ;; ok, NOW run the analysis process
     (analyze/analyze-table! table)
     ;; fields *SHOULD* have special types now
-    (set (for [field (db/select [Field :name :special_type :last_analyzed] :table_id (u/get-id table))]
-           (into {} (update field :last_analyzed boolean))))))
+    (is (= #{{:name "LATITUDE", :special_type :type/Latitude, :last_analyzed true}
+             {:name "ID", :special_type :type/PK, :last_analyzed false}
+             {:name "PRICE", :special_type :type/Category, :last_analyzed true}
+             {:name "LONGITUDE", :special_type :type/Longitude, :last_analyzed true}
+             {:name "CATEGORY_ID", :special_type :type/Category, :last_analyzed true}
+             {:name "NAME", :special_type :type/Name, :last_analyzed true}}
+           (set (for [field (db/select [Field :name :special_type :last_analyzed] :table_id (u/get-id table))]
+                  (into {} (update field :last_analyzed boolean))))))))
 
 (deftest mark-fields-as-analyzed-test
   (testing "Make sure that only the correct Fields get marked as recently analyzed"
