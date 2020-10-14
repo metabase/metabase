@@ -188,7 +188,7 @@ describe("scenarios > question > view", () => {
         .click();
 
       cy.findAllByText("Widget");
-      cy.findByText("Gizmo").should("not.exist");
+      cy.findAllByText("Gizmo").should("not.exist");
     });
 
     it("should be able to filter Q by Vendor as user (from Dashboard) (metabase#12654)", () => {
