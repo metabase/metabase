@@ -4,7 +4,7 @@ import cx from "classnames";
 
 import Popover from "./Popover";
 
-const TooltipPopover = ({ children, constrained, ...props }) => {
+const TooltipPopover = ({ children, constrainedWidth, ...props }) => {
   let popoverContent;
 
   if (typeof children === "string") {
@@ -16,7 +16,7 @@ const TooltipPopover = ({ children, constrained, ...props }) => {
   return (
     <Popover
       className={cx("PopoverBody--tooltip", {
-        "PopoverBody--tooltipConstrained": constrained,
+        "PopoverBody--tooltipConstrained": constrainedWidth,
       })}
       targetOffsetY={10}
       hasArrow
@@ -33,7 +33,7 @@ const TooltipPopover = ({ children, constrained, ...props }) => {
 
 TooltipPopover.defaultProps = {
   // default to having a constrained toolip, which limits the width so longer strings wrap.
-  constrained: true,
+  constrainedWidth: true,
 };
 
 export default pure(TooltipPopover);

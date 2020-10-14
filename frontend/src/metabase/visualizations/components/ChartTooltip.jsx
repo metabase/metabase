@@ -53,7 +53,7 @@ export default class ChartTooltip extends Component {
         verticalAttachments={["bottom", "top"]}
         isOpen={isOpen}
         // Make sure that for chart tooltips we don't constrain the width so longer strings don't get cut off
-        constrained={false}
+        constrainedWidth={false}
       >
         <table className="py1 px2">
           <tbody>
