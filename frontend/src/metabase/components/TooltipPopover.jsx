@@ -16,7 +16,7 @@ const TooltipPopover = ({ children, constrainedWidth, ...props }) => {
   return (
     <Popover
       className={cx("PopoverBody--tooltip", {
-        "PopoverBody--tooltipConstrained": constrainedWidth,
+        "PopoverBody--tooltipConstrainedWidth": constrainedWidth,
       })}
       targetOffsetY={10}
       hasArrow

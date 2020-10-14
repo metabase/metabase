@@ -37,12 +37,12 @@
   background-color: var(--color-bg-black);
   border: none;
   pointer-events: none;
-  font-size: 12px;
   line-height: 1.26;
   padding: 10px 12px;
 }
 
-.PopoverBody.PopoverBody--tooltip.PopoverBody--tooltipConstrained {
+.PopoverBody.PopoverBody--tooltip.PopoverBody--tooltipConstrainedWidth {
+  font-size: 12px;
   max-width: 200px;
 }
 
