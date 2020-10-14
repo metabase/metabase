@@ -43,6 +43,8 @@ module.exports = (on, config) => {
     clearDownloads() {
       console.log("clearing folder %s", downloadDirectory);
 
+      // after the first test run, it fails to delete directory with the message
+      // Error: ENOTEMPTY: directory not empty, rmdir
       fs.rmdirSync(downloadDirectory, { recursive: true });
 
       return null;
