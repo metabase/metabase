@@ -7,7 +7,6 @@
              [test :as mt]]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
-            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
             [metabase.models
              [database :as database]
              [field :as field]
