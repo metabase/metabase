@@ -94,7 +94,7 @@
     (sync-survives-crash? classifiers.name/special-type-for-name-and-base-type)
     (sync-survives-crash? classifiers.category/infer-is-category-or-list)
     (sync-survives-crash? classifiers.no-preview-display/infer-no-preview-display)
-    (sync-survives-crash? classifiers.text-fingerprint/infer-special-type)))
+    (sync-survives-crash? classify-text-fingerprint/infer-special-type)))
 
 (deftest survive-classify-table-errors
   (testing "Make sure we survive table classification failing"
