@@ -1,6 +1,7 @@
 (ns metabase.models.database
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase
              [db :as mdb]
              [driver :as driver]
@@ -157,15 +158,12 @@
  DatabaseInstance
  (fn [db json-generator]
    (encode-map
-    (cond-> db
-      (get-in db [:details :password])                      (assoc-in [:details :password] protected-password)
-      (get-in db [:details :pass])                          (assoc-in [:details :pass] protected-password) ; MongoDB uses "pass" instead of password
-      (get-in db [:details :tunnel-pass])                   (assoc-in [:details :tunnel-pass] protected-password)
-      (get-in db [:details :tunnel-private-key])            (assoc-in [:details :tunnel-private-key] protected-password)
-      (get-in db [:details :tunnel-private-key-passphrase]) (assoc-in [:details :tunnel-private-key-passphrase] protected-password)
-      (get-in db [:details :access-token])                  (assoc-in [:details :access-token] protected-password)
-      (get-in db [:details :refresh-token])                 (assoc-in [:details :refresh-token] protected-password)
-      (get-in db [:details :service-account-json])          (assoc-in [:details :service-account-json] protected-password)
-      ;; this condition MUST always execute last, since cond-> doesn't short circuit, to guarantee we do not send :details for non-admin users
-      (not (:is_superuser @*current-user*))                 (dissoc :details))
+    (if (not (:is_superuser @*current-user*))
+      (dissoc db :details)
+      (update db :details (fn [details]
+                            (reduce
+                             #(m/update-existing %1 %2 (constantly protected-password))
+                             details
+                             [:password :pass :tunnel-pass :tunnel-private-key :tunnel-private-key-passphrase
+                              :access-token :refresh-token :service-account-json]))))
     json-generator)))
