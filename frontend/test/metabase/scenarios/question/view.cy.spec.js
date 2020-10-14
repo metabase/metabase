@@ -7,32 +7,6 @@ import {
   withSampleDataset,
 } from "__support__/cypress";
 
-function filterByVendor() {
-  cy.findAllByText("VENDOR")
-    .first()
-    .click();
-  popover().within(() => {
-    cy.findByPlaceholderText("Search by Vendor").type("b");
-    cy.findByText("Balistreri-Muller").click();
-    cy.findByText("Add filter").click();
-  });
-  cy.get(".RunButton")
-    .first()
-    .click();
-}
-function filterByCategory() {
-  cy.findAllByText("CATEGORY")
-    .first()
-    .click();
-  popover().within(() => {
-    cy.findByText("Widget").click();
-    cy.findByText("Add filter").click();
-  });
-  cy.get(".RunButton")
-    .last()
-    .click();
-}
-
 describe("scenarios > question > view", () => {
   before(restore);
   beforeEach(signInAsAdmin);
