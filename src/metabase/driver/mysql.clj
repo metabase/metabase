@@ -264,7 +264,7 @@
     :TINYTEXT   :type/Text
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
-    :YEAR       :type/Integer}
+    :YEAR       :type/Date}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
 
@@ -372,6 +372,15 @@
         (parent-thunk)
         (catch Throwable _
           (.getString rs i))))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/DATE]
+  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (if (= "YEAR" (.getColumnTypeName rsmeta i))
+    (fn read-time-thunk []
+      (when-let [x (.getObject rs i)]
+        (.toLocalDate ^java.sql.Date x)))
+    (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/DATE]) driver rs rsmeta i)]
+      (parent-thunk))))
 
 (defn- format-offset [t]
   (let [offset (t/format "ZZZZZ" (t/zone-offset t))]

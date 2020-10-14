@@ -4,8 +4,9 @@
             [metabase
              [sync :as sync]
              [test :as mt]]
-            [metabase.models.table :as table]
-            [metabase.test.data.one-off-dbs :as one-off-dbs]))
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.test.data.one-off-dbs :as one-off-dbs]
+            [toucan.db :as db]))
 
 (deftest valud-field-order?-test
   (testing "A valid field ordering is a set IDs  of all active fields in a given table"
@@ -54,3 +55,15 @@
       (sync/sync-database! (mt/db))
       (is (#'table/valid-field-order? (mt/id :birds)
                                       [(mt/id :birds :species)])))))
+
+(deftest slashes-in-schema-names-test
+  (testing "Schema names should allow forward or back slashes (#8693, #12450)"
+    (doseq [schema-name ["my\\schema"
+                         "my\\\\schema"
+                         "my/schema"
+                         "my\\/schema"
+                         "my\\\\/schema"]]
+      (testing (format "Should be able to create/delete Table with schema name %s" (pr-str schema-name))
+        (mt/with-temp Table [{table-id :id} {:schema schema-name}]
+          (is (= schema-name
+                 (db/select-one-field :schema Table :id table-id))))))))

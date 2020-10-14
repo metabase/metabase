@@ -26,3 +26,15 @@
              (-> (mt/mbql-query venues {:filter [:= $price [:value (str expected) {:base_type base-type}]]})
                  auto-parse-filter-values
                  :pre :query :filter))))))
+
+(deftest parse-large-integers-test
+  (testing "Should parse Integer strings to Longs in case they're extra-big"
+    (let [n     (inc (long Integer/MAX_VALUE))
+          query (mt/mbql-query venues {:filter [:= $price [:value (str n) {:base_type :type/Integer}]]})]
+      (testing (format "\nQuery = %s" (pr-str query))
+        (is (= (mt/$ids venues
+                 [:= $price [:value n {:base_type :type/Integer}]])
+               (-> (auto-parse-filter-values query)
+                   :pre
+                   :query
+                   :filter)))))))

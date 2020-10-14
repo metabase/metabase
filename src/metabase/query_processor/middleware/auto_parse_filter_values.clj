@@ -17,7 +17,7 @@
   (try
     (condp #(isa? %2 %1) base-type
       :type/BigInteger (bigint v)
-      :type/Integer    (Integer/parseInt v)
+      :type/Integer    (Long/parseLong v)
       :type/Decimal    (bigdec v)
       :type/Float      (Double/parseDouble v)
       :type/Boolean    (Boolean/parseBoolean v)

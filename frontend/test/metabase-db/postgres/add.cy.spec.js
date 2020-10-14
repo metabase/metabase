@@ -54,7 +54,7 @@ describe("postgres > admin > add", () => {
       .click();
   });
 
-  it.skip("should show row details when clicked on its entity key (metabase#13263)", () => {
+  it("should show row details when clicked on its entity key (metabase#13263)", () => {
     cy.route({
       method: "POST",
       url: "/api/database",
