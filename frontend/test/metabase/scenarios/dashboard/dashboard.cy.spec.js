@@ -1,16 +1,13 @@
-import { restore, signInAsAdmin } from "../../../__support__/cypress";
+import { popover, restore, signInAsAdmin } from "__support__/cypress";
 // Mostly ported from `dashboard.e2e.spec.js`
 // *** Haven't ported: should add the parameter values to state tree for public dashboards
 
 function saveDashboard() {
-  cy.findByText("Save").click({ force: true });
-  cy.findByText("Saving…");
-  cy.findByText("Saving…").should("not.exist");
+  cy.findByText("Save").click();
+  cy.findByText("You're editing this dashboard.").should("not.exist");
 }
 
-// TODO @nemanjaglumac
-// [quarantine]: outdated (icon names, UI), breaking changes
-describe.skip("scenarios > dashboard", () => {
+describe("scenarios > dashboard", () => {
   beforeEach(() => {
     restore();
     signInAsAdmin();
@@ -21,32 +18,31 @@ describe.skip("scenarios > dashboard", () => {
     cy.visit("/");
     cy.get(".Icon-add").click();
     cy.findByText("New dashboard").click();
-    cy.findByPlaceholderText("What is the name of your dashboard?").type(
-      "Test Dashboard",
-    );
-    cy.findByPlaceholderText("It's optional but oh, so helpful").type(
-      "Test description for dashboard.",
-    );
+    cy.findByLabelText("Name").type("Test Dash");
+    cy.findByLabelText("Description").type("Desc");
     cy.findByText("Create").click();
     cy.findByText("This dashboard is looking empty.");
 
     // See it as a listed dashboard
     cy.visit("/collection/root?type=dashboard");
     cy.findByText("This dashboard is looking empty.").should("not.exist");
-    cy.findByText("Test Dashboard");
+    cy.findByText("Test Dash");
   });
 
-  it("should change title and description", () => {
+  it("should update title and description", () => {
     cy.visit("/dashboard/1");
-    cy.get(".Icon-pencil").click();
-    cy.get("input[value='Orders in a dashboard']")
+    cy.get(".Icon-ellipsis").click();
+    cy.findByText("Change title and description").click();
+    cy.findByLabelText("Name")
+      .click()
       .clear()
       .type("Test Title");
-    cy.findByPlaceholderText("No description yet")
+    cy.findByLabelText("Description")
+      .click()
       .clear()
       .type("Test description");
 
-    cy.findByText("Save").click();
+    cy.findByText("Update").click();
     cy.findByText("Test Title");
     cy.get(".Icon-info").click();
     cy.findByText("Test description");
@@ -55,20 +51,31 @@ describe.skip("scenarios > dashboard", () => {
   it("should add a filter", () => {
     cy.visit("/dashboard/1");
     cy.get(".Icon-pencil").click();
-    cy.get(".Icon-funnel_add").click();
+    cy.get(".Icon-filter").click();
+    // Adding location/state doesn't make much sense for this case,
+    // but we're testing just that the filter is added to the dashboard
     cy.findByText("Location").click();
     cy.findByText("State").click();
     cy.findByText("Select…").click();
-    cy.get(".PopoverContainer .cursor-pointer").click({ force: true });
+
+    popover().within(() => {
+      cy.findByText("State").click();
+    });
     cy.get(".Icon-close");
-    cy.findByText("Done").click();
+    cy.get(".Button--primary")
+      .contains("Done")
+      .click();
+
     saveDashboard();
 
-    cy.get(".DashCard").click();
+    cy.log("**Assert that the selected filter is present in the dashboard**");
+    cy.get(".Icon-location");
+    cy.findByText("State");
   });
 
   it("should add a question", () => {
     cy.visit("/dashboard/1");
+    cy.get(".Icon-pencil").click();
     cy.get(".QueryBuilder-section .Icon-add").click();
     cy.findByText("Orders, Count").click();
     saveDashboard();
@@ -79,35 +86,39 @@ describe.skip("scenarios > dashboard", () => {
   it("should duplicate a dashboard", () => {
     cy.visit("/dashboard/1");
     cy.findByText("Orders in a dashboard");
-    cy.get(".Icon-clone").click();
-    cy.findByPlaceholderText("What is the name of your dashboard?")
-      .clear()
-      .type("Duplicate Dashboard");
+    cy.get(".Icon-ellipsis").click();
     cy.findByText("Duplicate").click();
+    cy.findByLabelText("Name")
+      .click()
+      .clear()
+      .type("Doppleganger");
+    cy.get(".Button--primary")
+      .contains("Duplicate")
+      .click();
 
     cy.findByText("Orders in a dashboard").should("not.exist");
-    cy.findByText("Duplicate Dashboard");
+    cy.findByText("Doppleganger");
   });
 
   describe("revisions screen", () => {
     it("should open and close", () => {
-      // open
       cy.visit("/dashboard/1");
-      cy.get(".Icon-pencil").click();
-      cy.get(".Icon-history").click();
+      cy.get(".Icon-ellipsis").click();
+      cy.findByText("Revision history").click();
 
-      cy.findAllByText("Revision history");
-      cy.findByText("When");
-      cy.contains("Today");
+      cy.findByText("What");
+      cy.findByText("First revision.");
 
-      // close
-      cy.get(".ModalContent .Icon-close").click();
-      cy.findByText("Revision history").should("not.exist");
+      cy.get(".Modal .Icon-close").click();
+      cy.findByText("First revision.").should("not.exist");
     });
 
     it("should open with url", () => {
       cy.visit("/dashboard/1/history");
-      cy.findAllByText("Revision history");
+
+      cy.findByText("Revision history");
+      cy.findByText("What");
+      cy.findByText("First revision.");
     });
   });
 });
