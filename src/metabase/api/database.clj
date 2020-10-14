@@ -667,7 +667,7 @@
   at least some of its tables?)"
   [database-id schema-name]
   (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
-    (perms/object-path database-id schema-name)))
+                                      (perms/object-path database-id schema-name)))
 
 (api/defendpoint GET "/:id/schemas"
   "Returns a list of all the schemas found for the database `id`"
