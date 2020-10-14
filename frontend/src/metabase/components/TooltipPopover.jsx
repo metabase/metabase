@@ -1,9 +1,10 @@
 import React from "react";
 import pure from "recompose/pure";
+import cx from "classnames";
 
 import Popover from "./Popover";
 
-const TooltipPopover = ({ children, maxWidth, ...props }) => {
+const TooltipPopover = ({ children, constrained, ...props }) => {
   let popoverContent;
 
   if (typeof children === "string") {
@@ -14,7 +15,9 @@ const TooltipPopover = ({ children, maxWidth, ...props }) => {
 
   return (
     <Popover
-      className="PopoverBody--tooltip"
+      className={cx("PopoverBody--tooltip", {
+        "PopoverBody--tooltipConstrained": constrained,
+      })}
       targetOffsetY={10}
       hasArrow
       horizontalAttachments={["center", "left", "right"]}
@@ -26,6 +29,11 @@ const TooltipPopover = ({ children, maxWidth, ...props }) => {
       {popoverContent}
     </Popover>
   );
+};
+
+TooltipPopover.defaultProps = {
+  // default to having a constrained toolip, which limits the width so longer strings wrap.
+  constrained: true,
 };
 
 export default pure(TooltipPopover);

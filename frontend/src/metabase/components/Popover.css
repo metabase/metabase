@@ -42,6 +42,10 @@
   padding: 10px 12px;
 }
 
+.PopoverBody.PopoverBody--tooltip.PopoverBody--tooltipConstrained {
+  max-width: 200px;
+}
+
 /* shared arrow styles */
 .PopoverBody--withArrow:before,
 .PopoverBody--withArrow:after {
