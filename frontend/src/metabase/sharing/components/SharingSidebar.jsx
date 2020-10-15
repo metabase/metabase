@@ -616,8 +616,16 @@ class SharingSidebar extends React.Component {
             >
               <div className="p3">
                 <div className="flex align-center mb1">
-                  <Icon name="slack" size={24} className="mr1" />
-                  <h3>{t`Send it to Slack`}</h3>
+                  <Icon
+                    name={slackSpec.configured ? "slack_colorized" : "slack"}
+                    size={24}
+                    className={cx("mr1", {
+                      "text-light": !emailSpec.configured,
+                    })}
+                  />
+                  <h3
+                    className={cx({ "text-light": !slackSpec.configured })}
+                  >{t`Send it to Slack`}</h3>
                 </div>
                 <div className="text-medium">
                   {!slackSpec.configured &&
