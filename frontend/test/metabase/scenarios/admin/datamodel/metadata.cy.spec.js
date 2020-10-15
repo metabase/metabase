@@ -35,6 +35,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
   });
 
   it("should correctly apply and display custom remapping for numeric values", () => {
+    // this test also indirectly reproduces metabase#12771
     const customMap = {
       1: "Awful",
       2: "Unpleasant",
@@ -59,11 +60,11 @@ describe("scenarios > admin > datamodel > metadata", () => {
       "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
     );
 
-    Object.keys(customMap).forEach(key => {
+    Object.entries(customMap).forEach(([key, value]) => {
       cy.findByDisplayValue(key)
         .click()
         .clear()
-        .type(customMap[key]);
+        .type(value);
     });
     cy.findByText("Save").click();
 
