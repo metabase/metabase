@@ -29,7 +29,8 @@
             [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
-  (:import metabase.util.honeysql_extensions.Identifier))
+  (:import metabase.util.honeysql_extensions.Identifier
+           metabase.models.field.FieldInstance))
 
 ;; TODO - yet another `*query*` dynamic var. We should really consolidate them all so we only need a single one.
 (def ^:dynamic *query*
@@ -639,8 +640,8 @@
 (defn- correct-null-behaviour
   [driver [op & args]]
   (let [field-arg (mbql.u/match-one args
-                    :field-id      &match
-                    :field-literal &match)]
+                    FieldInstance               &match
+                    #{:field-id :field-literal} &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
     [:or (into [op] (map (partial ->honeysql driver)) args)
