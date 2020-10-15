@@ -21,5 +21,6 @@
                                               {:percent-json   0.0,
                                                :percent-url    0.0,
                                                :percent-email  0.0,
+                                               :percent-state  0.0,
                                                :average-length 15.63}}}}]
              (mt/wait-for-result result-chan 1000))))))

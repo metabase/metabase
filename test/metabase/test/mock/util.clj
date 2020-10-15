@@ -44,8 +44,9 @@
   "Fingerprints for the full venues table"
   {:name        {:global {:distinct-count 100
                           :nil%           0.0},
-                 :type   {:type/Text {:percent-json  0.0, :percent-url    0.0,
-                                      :percent-email 0.0, :average-length 15.63}}}
+                 :type   {:type/Text {:percent-json   0.0, :percent-url   0.0,
+                                      :percent-email  0.0, :percent-state 0.0,
+                                      :average-length 15.63}}}
    :id          nil
    :price       {:global {:distinct-count 4
                           :nil%           0.0},

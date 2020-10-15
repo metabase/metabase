@@ -3,8 +3,8 @@
    These tests only run against Fields that *don't* have existing special types."
   (:require [clojure.tools.logging :as log]
             [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
+             [util :as sync-util]
+             [interface :as i]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -26,7 +26,8 @@
   the key is over `percent-valid-thresold`."
   {:percent-json  :type/SerializedJSON
    :percent-url   :type/URL
-   :percent-email :type/Email})
+   :percent-email :type/Email
+   :percent-state :type/State})
 
 (s/defn ^:private infer-special-type-for-text-fingerprint :- (s/maybe su/FieldType)
   "Check various percentages inside the TEXT-FINGERPRINT and return the corresponding special type to mark the Field

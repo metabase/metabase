@@ -111,6 +111,7 @@
           :type   {:type/Text {:percent-json   0.2
                                :percent-url    0.0
                                :percent-email  0.0
+                               :percent-state  0.0
                                :average-length 6.4}}}
          (transduce identity
                     (f/fingerprinter (field/map->FieldInstance {:base_type :type/Text}))
@@ -121,6 +122,7 @@
             :type   {:type/Text {:percent-json   0.2
                                  :percent-url    0.0
                                  :percent-email  0.0
+                                 :percent-state  0.0
                                  :average-length 10.6}}}
            (transduce identity
                       (f/fingerprinter (field/map->FieldInstance {:base_type :type/Text}))
@@ -135,6 +137,7 @@
                       :type   {:type/Text {:percent-json   (s/eq 0.0)
                                            :percent-url    (s/eq 0.0)
                                            :percent-email  (s/eq 0.0)
+                                           :percent-state  (s/eq 0.0)
                                            :average-length (s/pred #(< 15 % 16) "between 15 and 16")}}}
                      (db/select-one-field :fingerprint Field :id (mt/id :venues :name)))))
       (testing "date fingerprints"

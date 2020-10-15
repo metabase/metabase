@@ -62,6 +62,7 @@
                       :type   {:type/Text {:percent-json   0.0
                                            :percent-url    0.0
                                            :percent-email  0.0
+                                           :percent-state  0.0
                                            :average-length 13.532}}}
    :base_type        :type/Text}
   (with-temp-sample-dataset-db [db]
