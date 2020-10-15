@@ -7,7 +7,7 @@ describe("scenarios > dashboard > parameters", () => {
 
   it("should be visible if previously added", () => {
     cy.visit("/dashboard/1");
-    cy.findByText("Rows 1-1 of 2000");
+    cy.findByText("Baker").should("not.exist");
 
     // Add a filter
     cy.get(".Icon-pencil").click();
@@ -34,7 +34,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.findByText("Save").click();
     cy.findByText("You're editing this dashboard.").should("not.exist");
-    cy.findByText("Rows 1-1 of 8");
+    cy.findByText("Baker");
 
     cy.log(
       "**Filter should be set and applied after we leave and back to the dashboard**",
@@ -42,7 +42,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.visit("/");
     cy.findByText("Browse all items").click();
     cy.findByText("Orders in a dashboard").click();
-    cy.findByText("Rows 1-1 of 8");
+    cy.findByText("Baker");
   });
 
   it("should search across multiple fields", () => {
