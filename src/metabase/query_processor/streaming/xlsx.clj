@@ -1,6 +1,5 @@
 (ns metabase.query-processor.streaming.xlsx
   (:require [cheshire.core :as json]
-            [clojure.tools.logging :as log]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
             [metabase.query-processor.streaming.interface :as i]
@@ -8,7 +7,9 @@
              [date-2 :as u.date]
              [i18n :refer [tru]]])
   (:import java.io.OutputStream
-           [org.apache.poi.ss.usermodel Cell CellType]
+           [java.time LocalDate LocalDateTime OffsetDateTime ZonedDateTime]
+           java.util.Date
+           [org.apache.poi.ss.usermodel Cell CellType Workbook]
            org.apache.poi.xssf.streaming.SXSSFWorkbook))
 
 (defmethod i/stream-options :xlsx
@@ -18,50 +19,46 @@
    :headers                   {"Content-Disposition" (format "attachment; filename=\"query_result_%s.xlsx\""
                                                              (u.date/format (t/zoned-date-time)))}})
 
-(defprotocol ExcelFormatValue
-  "Protocol for specifying how objects of various classes in QP result rows should be formatted for Excel
-  exports. The generic version in `common/FormatValue` does not work for Excel due to date/time formats."
-  (excel-format-value [this]
-    "Format this value in a QP result row appropriately for a results download to Excel."))
+;; docjure has an open issue about its formatting issues: https://github.com/mjul/docjure/issues/75
+;; since this hasn't been addressed at the library level, we have to do some workarounds
 
-;; this version of the protocol resolves #10803 by not converting datetimes to ISO8601 (which Excel cannot parse)
-;; Docjure can handle java.util.Date instances, but not the new Java 8 Time instances, so we convert everything
-;; to java.util.Date.
-(extend-protocol ExcelFormatValue
-  nil
-  (excel-format-value [_] nil)
+;; this method is private in the docjure library, but we need to able to call it from here
+(defn- ^:dynamic create-date-format [^Workbook workbook ^String format-string]
+  (let [date-style (.createCellStyle workbook)
+        format-helper (.getCreationHelper workbook)]
+    (doto date-style
+          (.setDataFormat (.. format-helper createDataFormat (getFormat format-string))))))
 
-  Object
-  (excel-format-value [this]
-    this)
+;; the docjure library does not handle the difference between a date and date+time column
+;; as a result, we'll add overrides that can do it
+(intern 'dk.ative.docjure.spreadsheet 'create-date-format create-date-format)
 
-  java.time.LocalDate
-  (excel-format-value [this]
-    ;; LocalDate does not have a Timezone, so it can't convert directly to an Instant.
-    ;; Use the system timezone.
-    (t/java-date (t/zoned-date-time this (t/zone-id))))
+(defmethod spreadsheet/set-cell! LocalDate [^Cell cell val]
+  (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
+  (.setCellValue cell ^Date (t/java-date (t/zoned-date-time val (t/zone-id))))
+  (.setCellStyle cell (create-date-format (.. cell getSheet getWorkbook) "m/d/yy")))
 
-  java.time.LocalDateTime
-  (excel-format-value [this]
-    ;; LocalDateTime does not have a Timezone, so it can't convert directly to an Instant.
-    ;; Use the system timezone.
-    (t/java-date (t/zoned-date-time this (t/zone-id))))
+(defmethod spreadsheet/set-cell! LocalDateTime [^Cell cell val]
+  (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
+  (.setCellValue cell ^Date (t/java-date (t/zoned-date-time val (t/zone-id))))
+  (.setCellStyle cell (create-date-format (.. cell getSheet getWorkbook) "m/d/yy HH:mm:ss")))
 
-  java.time.OffsetDateTime
-  (excel-format-value [this]
-     (t/java-date this))
+(defmethod spreadsheet/set-cell! ZonedDateTime [^Cell cell val]
+  (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
+  (.setCellValue cell ^Date (t/java-date val))
+  (.setCellStyle cell (create-date-format (.. cell getSheet getWorkbook) "m/d/yy HH:mm:ss")))
 
-  java.time.ZonedDateTime
-  (excel-format-value [this]
-    (t/java-date this))
+(defmethod spreadsheet/set-cell! OffsetDateTime [^Cell cell val]
+  (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
+  (.setCellValue cell ^Date (t/java-date val))
+  (.setCellStyle cell (create-date-format (.. cell getSheet getWorkbook) "m/d/yy HH:mm:ss")))
 
-  java.time.temporal.Temporal
-  (excel-format-value [this]
-    (try
-     (t/java-date this)
-      (catch Exception _
-        (log/warn (str "Unhandled Temporal type formater in Excel export for type " (type this)))
-        (.toString this)))))
+;; overrides the default implementation from docjure, so that a plain Date object
+;; carries its time too
+(defmethod spreadsheet/set-cell! Date [^Cell cell val]
+  (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
+  (.setCellValue cell ^Date val)
+  (.setCellStyle cell (create-date-format (.. cell getSheet getWorkbook) "m/d/yy HH:mm:ss")))
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
 ;; implementations we've already defined for encoding things as JSON. These implementations live in
@@ -86,7 +83,7 @@
         (spreadsheet/add-row! sheet (map (some-fn :display_name :name) cols)))
 
       (write-row! [_ row _]
-        (spreadsheet/add-row! sheet (map excel-format-value row)))
+        (spreadsheet/add-row! sheet row))
 
       (finish! [_ _]
         (spreadsheet/save-workbook-into-stream! os workbook)

@@ -640,7 +640,8 @@
      :parameters  (json/parse-string parameters keyword)
      :constraints nil
      :context     (dataset-api/export-format->context export-format)
-     :middleware  {:skip-results-metadata? true})))
+     :middleware  {:skip-results-metadata? true
+                   :format-rows?           false})))
 
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
