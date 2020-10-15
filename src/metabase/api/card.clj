@@ -641,7 +641,8 @@
      :constraints nil
      :context     (dataset-api/export-format->context export-format)
      :middleware  {:skip-results-metadata? true
-                   :format-rows?           false})))
+                   :format-rows?           false
+                   :js-int-to-string?      false})))
 
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
