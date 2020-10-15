@@ -569,7 +569,9 @@ class SharingSidebar extends React.Component {
             <Card
               flat
               hoverable={emailSpec.configured}
-              className="mt1 mb3 cursor-pointer"
+              className={cx("mt1 mb3", {
+                "cursor-pointer": slackSpec.configured,
+              })}
               onClick={() => {
                 if (emailSpec.configured) {
                   this.setState({ editingMode: "add-edit-email" });
@@ -606,7 +608,7 @@ class SharingSidebar extends React.Component {
             <Card
               flat
               hoverable={slackSpec.configured}
-              className="cursor-pointer"
+              className={cx({ "cursor-pointer": slackSpec.configured })}
               onClick={() => {
                 if (slackSpec.configured) {
                   this.setState({ editingMode: "add-edit-slack" });
@@ -620,7 +622,7 @@ class SharingSidebar extends React.Component {
                     name={slackSpec.configured ? "slack_colorized" : "slack"}
                     size={24}
                     className={cx("mr1", {
-                      "text-light": !emailSpec.configured,
+                      "text-light": !slackSpec.configured,
                     })}
                   />
                   <h3
