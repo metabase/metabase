@@ -175,6 +175,7 @@ describe("scenarios > question > view", () => {
 
       // Filter by category and vendor
       // TODO: this should show values and allow searching
+      cy.findByText("This question is written in SQL.");
       cy.findByPlaceholderText("VENDOR")
         .click()
         .clear()
@@ -199,6 +200,7 @@ describe("scenarios > question > view", () => {
 
       // Filter by category and vendor
       // TODO: this should show values and allow searching
+      cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR")
         .first()
         .click();
