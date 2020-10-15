@@ -64,7 +64,7 @@ export const FixedPane = ({ children, width = 320 }) => (
 const Header = () => (
   <Link
     className="link flex align-center border-bottom px4 py3"
-    href="/_internal"
+    to="/_internal"
   >
     <LogoIcon />
     <Subhead ml={2} color="inherit">
