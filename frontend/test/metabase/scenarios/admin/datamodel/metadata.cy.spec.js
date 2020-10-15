@@ -31,6 +31,6 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
     cy.log("**Name of the product should be displayed instead of its ID**");
     openOrdersTable();
-    cy.findByText("Awesome Concrete Shoes");
+    cy.findAllByText("Awesome Concrete Shoes");
   });
 });
