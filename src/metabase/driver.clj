@@ -615,6 +615,6 @@
 
 (defmulti db-start-of-week
   "Return start of week for given database"
-  {:added "0.37.0" :arlists '([driver database])}
+  {:added "0.37.0" :arlists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

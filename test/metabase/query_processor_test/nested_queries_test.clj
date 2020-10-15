@@ -324,7 +324,8 @@
                       [:source.LONGITUDE :LONGITUDE]
                       [:source.PRICE :PRICE]]
              :from   [[venues-source-honeysql :source]]
-             :where  [:not= :source.text "Coo"]
+             :where  [:or [:not= :source.text "Coo"]
+                      [:= :source.text nil]]
              :limit  10})
            (qp/query->native
             (mt/mbql-query nil

@@ -634,19 +634,21 @@
   [driver [_ field value]]
   [:= (->honeysql driver field) (->honeysql driver value)])
 
-(defn- unary-not-or-null
-  [driver clause]
-  (let [field-arg (mbql.u/match-one clause
+(defn- correct-null-behaviour
+  [driver [op & args]]
+  (let [field-arg (mbql.u/match-one args
                     :field-id      &match
                     :field-literal &match)]
-    [:or [:not (->honeysql driver clause)]
+    ;; We must not transform the head again else we'll have an infinite loop
+    ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
+    [:or (into [op] (map (partial ->honeysql driver)) args)
      [:= (->honeysql driver field-arg) nil]]))
 
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]
   (if (nil? value)
-    [:not= (->honeysql driver field) (->honeysql driver value)]
-    (unary-not-or-null driver [:= field value])))
+    [:not= (->honeysql driver field) nil]
+    (correct-null-behaviour driver [:not= field value])))
 
 (defmethod ->honeysql [:sql :and]
   [driver [_ & subclauses]]
@@ -662,7 +664,7 @@
 (defmethod ->honeysql [:sql :not]
   [driver [_ subclause]]
   (if (clause-needs-null-behaviour-correction? subclause)
-    (unary-not-or-null driver subclause)
+    (correct-null-behaviour driver [:not subclause])
     [:not (->honeysql driver subclause)]))
 
 (defmethod apply-top-level-clause [:sql :filter]
