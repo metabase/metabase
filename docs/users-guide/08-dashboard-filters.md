@@ -4,17 +4,17 @@
 
 Have you ever found yourself in a situation where it seems like you need to create nearly identical copies of the same dashboard, with just one different variable? Maybe you have an Earnings dashboard, but you want to see the data for each city your business is in, or maybe you have a KPI dashboard that you want to see broken out by month.
 
-Instead of creating duplicate dashboards, you can use Metabase’s dashboard filters feature to create simple toggles to change a variable for all the cards on a dashboard.
+Instead of creating duplicate dashboards, you can use dashboard filters to create simple toggles to change a variable for cards on a dashboard.
 
 ### Adding a new filter
 
-To add a filter to a dashboard, first enter dashboard editing mode, then click the Add a Filter button that appears in the top-right.
+To add a filter to a dashboard, first enter dashboard editing mode, then click the **Add a Filter** button that appears in the top-right.
 
 ![Add a Filter](images/dashboard-filters/01-add-filter.png)
 
-You can choose from a number of filter types: Time, Location, ID, or Other Categories. The type of filter you choose will determine what the filter widget will look like, and will also determine what fields you’ll be able to filter your cards by:
+You can choose from a number of filter types: Time, Location, ID, or Other Categories. The type of filter you choose will determine what the filter widget will look like, and as well as which fields you’ll be able to filter your cards by:
 
-- **Time:** when picking a Time filter, you'll also be prompted to pick a specific type of filter widget: Month and Year, Quarter and Year, Single Date, Date Range, Relative Date, or All Options. "Single Date" and "Date Range" will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. Choose "All Options" to get a widget that's just like the time filter in the graphical query builder.
+- **Time:** when picking a Time filter, Metabase will prompt you to pick a specific type of filter widget: Month and Year, Quarter and Year, Single Date, Date Range, Relative Date, or All Options. "Single Date" and "Date Range" will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. Choose "All Options" to get a widget that's just like the time filter in the graphical query builder.
 - **Location:** there are four types of Location filters to choose from: City, State, ZIP or Postal Code, and Country.
 - **ID:** this filter provides a simple input box where you can type the ID of a user, order, etc.
 - **Other Categories:** this is a flexible filter type that will let you create either a dropdown or input box to filter on any category field in your cards.
@@ -25,21 +25,27 @@ For our example, we'll select a Time filter, and then select the Month and Year 
 
 ![Choose filter type](images/dashboard-filters/02-filter-type.png)
 
-Now we’ve entered a new mode where we’ll need to wire up each card on our dashboard to our new filter. If there’s a card on your dashboard that you don’t want to use with the filter, or that it doesn’t make sense to use with the filter, that’s okay — the filter will only be applied to the cards you’ve selected.
+Metabase will show a new interface where you can wire up your new filter to each applicable card. 
 
 ![Wiring up the cards](images/dashboard-filters/03-wiring-cards.png)
 
-So here’s what we’re doing — when we pick a month and year with our new filter, the filter needs to know which field in the card to filter on. For example, if we have a `Total Orders` card, and each order has a `Date Ordered` as well as a `Date Delivered`, we have to pick which of those fields to filter — do we want to see all the orders _placed_ in January, or do we want to see all the orders _delivered_ in January? So, for each card on our dashboard, we’ll pick a date field to connect to the filter. If one of your cards says there aren’t any valid fields, that just means that card doesn’t contain any fields that match the kind of filter you chose.
+Each card will have a dropdown menu where you can select the column to filter. The sidebar on the right displays the settings for the current filter. If there’s a card on your dashboard that you don’t want to use with the filter, or that it doesn’t make sense to use with the filter, that’s okay — the filter will only be applied to the cards you’ve selected.
+
+So here’s what we’re doing — when we pick a month and year with our new filter, the filter needs to know which field in the card to filter on. For example, if we have a **Total Orders** card, and each order has a `Date Ordered` as well as a `Date Delivered`, we have to pick which of those fields to filter — do we want to see all the orders _placed_ in January, or do we want to see all the orders _delivered_ in January? So, for each card on our dashboard, we’ll pick a date field to connect to the filter. If one of your cards says there aren’t any valid fields, that just means that card doesn’t contain any fields that match the kind of filter you chose.
 
 ![Select fields](images/dashboard-filters/04-select-fields.png)
 
-Before we click the `Done` button at the top of the screen, we can also customize the label of our new filter by clicking on the pencil icon next to it. We’ll type in a new label and hit enter. Now we’ll click `Done`, and then save the changes to our dashboard with the `Save` button.
+Before we **Save** our changes, we can use the right sidebar to customize the **Label** of our new filter, or set a **Default value**.
+
+When you're finished wiring up the filter, click **Done** at the bottom of the sidebar, then click on **Save** in the top right to save the dashboard.
 
 ![Edit the filter label](images/dashboard-filters/05-edit-label.png)
 
 ### Editing a filter
 
-To edit a filter, enter dashboard editing mode, then click the `Edit` button on the filter you want to change. You an also click `Remove` to get rid of a filter. If you do this by accident, just click `Cancel` in the top-right to exit dashboard editing mode without saving your changes. To reorder your filters, just click on the grabber handle on the left side of a filter and drag it to a different position.
+To edit a filter, enter dashboard editing mode, then click the **Edit** button on the filter you want to change. You can also click **Remove** to delete a filter. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes. 
+
+To reorder your filters, just click on the grabber handle on the left side of a filter and drag the filter to a different position.
 
 ![Edit or remove a filter](images/dashboard-filters/06-edit-and-remove.png)
 
@@ -73,12 +79,20 @@ If Metabase somehow picked the wrong behavior for your field, admins can go to t
 
 ![Search options](images/dashboard-filters/search-options.png)
 
+### Linking filters
+
+Say you have two filters, one to filter by state, the other to filter by city. You can link the city filter to the state filter so that when someone filter for California, the city filter will only show cities in California. In this case, state is the parent filter, and city is the child filter.
+
+To link filters, you'll want to set up this parent-child relationship. And you start with the child. In the above scenario, with a state and city filter, we'd edit the child filter, city, by clicking on the gears icon on the city filter. From the filter sidebar on the right, select the **Linked filters** tab. Here you can limit the current filter's choices Limit this filter's choices If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for this filter.
+
+You can create parent-child relationships between filters so that when the parent filter updates, the child filter will restrict its options to the parent.
+
 ### Best practices
 
 Here are a few tips to get the most out of dashboard filters:
 
-- Try to keep the number of filters you add to a dashboard to two or three. This will make it easier for your teammates to quickly and easily understand what options are available to them when viewing your dashboard.
-- While you can add dashboard filters to a dashboard that already has a bunch of cards in it, it can be easier to start a new dashboard and think about what filters you intend to add to it, and then make sure that you only put cards in that dashboard that can be used with the filters.
+- **Use fewer than three filters**. Try to keep the number of filters you add to a dashboard to two or three. This will make it easier for your teammates to quickly understand what options are available to them when viewing your dashboard.
+- **Start with a new dashboard**. While you can add dashboard filters to an existing dashboard with a bunch of cards in it, it can be easier to start a new dashboard and think about what filters you intend to add to it, and then make sure that you only put cards in that dashboard that can be used with the filters. You can also duplicate an existing dashboard, and pare down the number of cards.
 
 ---
 
