@@ -35,7 +35,29 @@
                               :last_analyzed       #t "2017-08-09"}]]
       (is (= ["expected"]
              (for [field (#'classify/fields-to-classify table)]
-               (:name field)))))))
+               (:name field))))))
+  (testing "Finds previously marked :type/category fields for state"
+    (tt/with-temp* [Table [table]
+                    Field [_ {:table_id            (u/get-id table)
+                              :name                "expected"
+                              :description         "Current fingerprint, not analyzed"
+                              :fingerprint_version i/latest-fingerprint-version
+                              :last_analyzed       nil}]
+                    Field [_ {:table_id            (u/get-id table)
+                              :name                "not expected 1"
+                              :description         "Current fingerprint, already analzed"
+                              :fingerprint_version i/latest-fingerprint-version
+                              :last_analyzed       #t "2017-08-09"}]
+                    Field [_ {:table_id            (u/get-id table)
+                              :name                "not expected 2"
+                              :description         "Old fingerprint, not analyzed"
+                              :fingerprint_version (dec i/latest-fingerprint-version)
+                              :last_analyzed       nil}]
+                    Field [_ {:table_id            (u/get-id table)
+                              :name                "not expected 3"
+                              :description         "Old fingerprint, already analzed"
+                              :fingerprint_version (dec i/latest-fingerprint-version)
+                              :last_analyzed       #t "2017-08-09"}]])))
 
 (deftest classify-fields-for-db!-test
   (testing "We classify decimal fields that have specially handled NaN values"
