@@ -86,7 +86,6 @@ const BINARY_BOOLEAN_OPERATORS = [
   { text: " OR ", type: "operators" },
 ];
 const OPEN_PAREN = { type: "other", text: " (" };
-const CLOSE_PAREN = { type: "other", text: ") " };
 
 // custom metadata defined in __support__/expressions
 const METRICS_CUSTOM = [{ type: "metrics", text: "[metric]" }];
@@ -318,24 +317,6 @@ describe("metabase/lib/expression/suggest", () => {
           OPEN_PAREN,
         ]);
       });
-      it("should suggest fields after an aggregation without closing paren", () => {
-        expect(suggest({ source: "Average(", ...aggregationOpts })).toEqual([
-          ...FIELDS_CUSTOM,
-          ...NUMERIC_FUNCTIONS,
-          OPEN_PAREN,
-          CLOSE_PAREN,
-        ]);
-      });
-      it("should suggest fields after an aggregation with closing paren", () => {
-        expect(
-          suggest({ source: "Average()", ...aggregationOpts, targetOffset: 8 }),
-        ).toEqual([
-          ...FIELDS_CUSTOM,
-          ...NUMERIC_FUNCTIONS,
-          OPEN_PAREN,
-          CLOSE_PAREN,
-        ]);
-      });
       it("should suggest partial matches in aggregation", () => {
         expect(suggest({ source: "1 + C", ...aggregationOpts })).toEqual([
           { type: "aggregations", text: "Count " },
@@ -368,7 +349,7 @@ describe("metabase/lib/expression/suggest", () => {
           startRule: "aggregation",
         });
         expect(name).toEqual("sum");
-        expect(example).toEqual("sum( [Subtotal] )");
+        expect(example).toEqual("Sum([Subtotal])");
       });
     });
 
@@ -402,7 +383,7 @@ describe("metabase/lib/expression/suggest", () => {
           startRule: "boolean",
         });
         expect(name).toEqual("contains");
-        expect(example).toEqual('contains([Status] , "Pass")');
+        expect(example).toEqual('contains([Status], "Pass")');
       });
     });
   });

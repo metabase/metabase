@@ -161,11 +161,9 @@ export default class Join extends MBQLObjectClause {
       return this.setAlias(parentDimension.field().targetObjectName());
     } else {
       const table = this.joinedTable();
-      // $FlowFixMe
-      const match = String(table.id).match(/card__(\d+)/);
-      if (match) {
+      if (table && table.isSavedQuestion()) {
         // NOTE: special case for "Saved Questions" tables
-        return this.setAlias(`Question ${match[1]}`);
+        return this.setAlias(`Question ${table.savedQuestionId()}`);
       } else {
         return this.setAlias((table && table.display_name) || "source");
       }

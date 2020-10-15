@@ -189,8 +189,9 @@
           (doall
            (for [^TableFieldSchema field (.getFields schema)
                  :let                    [column-type (.getType field)
+                                          column-mode (.getMode field)
                                           method (get-method bigquery.qp/parse-result-of-type column-type)]]
-             (partial method column-type bigquery.common/*bigquery-timezone-id*)))
+             (partial method column-type column-mode bigquery.common/*bigquery-timezone-id*)))
 
           columns
           (for [column (table-schema->metabase-field-info schema)]
@@ -262,3 +263,7 @@
 ;; BigQuery is always in UTC
 (defmethod driver/db-default-timezone :bigquery [_ _]
   "UTC")
+
+(defmethod driver/db-start-of-week :bigquery
+  [_]
+  :sunday)

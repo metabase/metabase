@@ -19,6 +19,7 @@
              [add-timezone-info :as add-timezone-info]
              [annotate :as annotate]
              [auto-bucket-datetimes :as bucket-datetime]
+             [auto-parse-filter-values :as auto-parse-filter-values]
              [binning :as binning]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
@@ -29,6 +30,7 @@
              [expand-macros :as expand-macros]
              [fetch-source-query :as fetch-source-query]
              [format-rows :as format-rows]
+             [large-int-id :as large-int-id]
              [limit :as limit]
              [mbql-to-native :as mbql-to-native]
              [normalize-query :as normalize]
@@ -61,6 +63,7 @@
   [#'mbql-to-native/mbql->native
    #'check-features/check-features
    #'optimize-datetime-filters/optimize-datetime-filters
+   #'auto-parse-filter-values/auto-parse-filter-values
    #'wrap-value-literals/wrap-value-literals
    #'annotate/add-column-info
    #'perms/check-query-permissions
@@ -68,6 +71,7 @@
    #'cumulative-ags/handle-cumulative-aggregations
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
+   #'large-int-id/convert-id-to-string
    #'limit/limit
    #'format-rows/format-rows
    #'desugar/desugar

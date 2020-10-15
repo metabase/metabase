@@ -20,7 +20,7 @@ describe("scenarios > dashboard > text-box", () => {
       });
     });
 
-    it("should load after save/refresh (Issue #12914)", () => {
+    it("should load after save/refresh (metabase#12914)", () => {
       cy.visit(`/dashboard/2`);
 
       cy.findByText("Test Dashboard");
@@ -48,7 +48,7 @@ describe("scenarios > dashboard > text-box", () => {
       cy.findByText("Dashboard testing text");
     });
 
-    it("should have a scroll bar for long text (Issue #8333)", () => {
+    it("should have a scroll bar for long text (metabase#8333)", () => {
       cy.visit(`/dashboard/2`);
 
       // Add text box to dash
@@ -57,6 +57,8 @@ describe("scenarios > dashboard > text-box", () => {
       );
       cy.findByText("Save").click();
       cy.findByText("Saving…").should("not.exist");
+
+      // scrollTo will only work if there is a scroll bar on the element
       cy.get(".DashCard > .Card").scrollTo("bottom");
     });
   });

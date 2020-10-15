@@ -55,7 +55,8 @@
             s
             (str "http://" s))]
     ;; check that the URL is valid
-    (assert (u/url? s) (tru "Invalid site URL: {0}" (pr-str s)))
+    (when-not (u/url? s)
+      (throw (ex-info (tru "Invalid site URL: {0}" (pr-str s)) {:url (pr-str s)})))
     s))
 
 (declare redirect-all-requests-to-https)
@@ -68,7 +69,7 @@
   :getter (fn []
             (try
               (some-> (setting/get-string :site-url) normalize-site-url)
-              (catch AssertionError e
+              (catch clojure.lang.ExceptionInfo e
                 (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
   :setter (fn [new-value]
             (let [new-value (some-> new-value normalize-site-url)
@@ -301,3 +302,10 @@
                   (assert (some-> (site-url) (str/starts-with? "https:"))
                           (tru "Cannot redirect requests to HTTPS unless `site-url` is HTTPS.")))
                 (setting/set-boolean! :redirect-all-requests-to-https new-value)))
+
+(defsetting start-of-week
+  (deferred-tru "This will affect things like grouping by week or filtering in GUI queries.
+  It won''t affect SQL queries.")
+  :visibility :public
+  :type       :keyword
+  :default    "sunday")

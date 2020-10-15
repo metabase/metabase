@@ -95,7 +95,12 @@
                                    (ldap-user-base)))))
 
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]
-  {:host      (str host ":" port)
+  ;; Connecting via IPv6 requires us to use this form for :host, otherwise
+  ;; clj-ldap will find the first : and treat it as an IPv4 and port number
+  {:host      {:address host
+               :port    (if (string? port)
+                          (Integer/parseInt port)
+                          port)}
    :bind-dn   bind-dn
    :password  password
    :ssl?      (= security "ssl")

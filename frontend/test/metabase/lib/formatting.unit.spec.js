@@ -6,6 +6,7 @@ import {
   formatValue,
   formatUrl,
   formatDateTimeWithUnit,
+  slugify,
 } from "metabase/lib/formatting";
 import ExternalLink from "metabase/components/ExternalLink";
 import { TYPE } from "metabase/lib/types";
@@ -185,6 +186,21 @@ describe("formatting", () => {
         ),
       ).toEqual(true);
     });
+    it("should not return a component for links in jsx + rich mode if there's click behavior", () => {
+      const formatted = formatValue("http://metabase.com/", {
+        jsx: true,
+        rich: true,
+        click_behavior: {
+          linkTemplate: "foo",
+          linkTextTemplate: "foo",
+          linkType: "url",
+          type: "link",
+        },
+        clicked: {},
+      });
+      expect(isElementOfType(formatted, ExternalLink)).toEqual(false);
+      expect(formatted).toEqual("foo");
+    });
     it("should return a component for email addresses in jsx + rich mode", () => {
       expect(
         isElementOfType(
@@ -329,7 +345,7 @@ describe("formatting", () => {
       ).toEqual("July 7, 2019 – July 13, 2019");
     });
 
-    it("should always format week ranges in en locale", () => {
+    it("should always format week ranges according to returned data", () => {
       try {
         // globally set locale to es
         moment.locale("es");
@@ -342,6 +358,26 @@ describe("formatting", () => {
         // globally reset locale
         moment.locale(false);
       }
+    });
+  });
+
+  describe("slugify", () => {
+    it("should slugify Chinese", () => {
+      expect(slugify("類型")).toEqual("%E9%A1%9E%E5%9E%8B");
+    });
+
+    it("should slugify multiple words", () => {
+      expect(slugify("Test Parameter")).toEqual("test_parameter");
+    });
+
+    it("should slugify Russian", () => {
+      expect(slugify("русский язык")).toEqual(
+        "%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9_%D1%8F%D0%B7%D1%8B%D0%BA",
+      );
+    });
+
+    it("should slugify diacritics", () => {
+      expect(slugify("än umlaut")).toEqual("%C3%A4n_umlaut");
     });
   });
 });

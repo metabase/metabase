@@ -18,12 +18,12 @@
 
 (defmethod tx/dbdef->connection-details :mongo
   [_ _ dbdef]
-  {:dbname (tx/escaped-name dbdef)
+  {:dbname (tx/escaped-database-name dbdef)
    :host   "localhost"})
 
 (defn- destroy-db! [driver dbdef]
   (with-open [mongo-connection (mg/connect (tx/dbdef->connection-details driver :server dbdef))]
-    (mg/drop-db mongo-connection (tx/escaped-name dbdef))))
+    (mg/drop-db mongo-connection (tx/escaped-database-name dbdef))))
 
 (defmethod tx/create-db! :mongo
   [driver {:keys [table-definitions], :as dbdef} & {:keys [skip-drop-db?], :or {skip-drop-db? false}}]

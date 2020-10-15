@@ -228,7 +228,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti ^:private send-notification!
-  "Invokes the side-affecty function for sending emails/slacks depending on the notification type"
+  "Invokes the side-effecty function for sending emails/slacks depending on the notification type"
   {:arglists '([pulse-or-alert])}
   (fn [{:keys [channel-id]}]
     (if channel-id :slack :email)))

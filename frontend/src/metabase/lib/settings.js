@@ -190,7 +190,7 @@ class Settings {
     }
 
     const { total, ...rest } = descriptions;
-    const includes = Object.values(rest).join(t`, `);
+    const includes = Object.values(rest).join(", ");
     if (total && includes) {
       return t`must be ${total} and include ${includes}.`;
     } else if (total) {

@@ -118,106 +118,115 @@
           (is (= expected
                  (update-cards! cards))))))))
 
-;; update-notification-channels!
-(expect
-  (merge pulse-channel-defaults
-         {:channel_type  :email
-          :schedule_type :daily
-          :schedule_hour 4
-          :recipients    [{:email "foo@bar.com"}
-                          (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})
-  (mt/with-temp Pulse [{:keys [id]}]
-    (update-notification-channels! {:id id} [{:enabled       true
-                                              :channel_type  :email
-                                              :schedule_type :daily
-                                              :schedule_hour 4
-                                              :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}])
-    (-> (PulseChannel :pulse_id id)
-        (hydrate :recipients)
-        (dissoc :id :pulse_id :created_at :updated_at)
-        (m/dissoc-in [:details :emails]))))
+(deftest update-notification-channels!-test
+  (testing "Updating notification channels"
+    (is (=
+         (merge pulse-channel-defaults
+                {:channel_type  :email
+                 :enabled       false
+                 :schedule_type :daily
+                 :schedule_hour 4
+                 :recipients    [{:email "foo@bar.com"}
+                                 (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})
+         (mt/with-temp Pulse [{:keys [id]}]
+           (update-notification-channels! {:id id} [{:enabled       false
+                                                     :channel_type  :email
+                                                     :schedule_type :daily
+                                                     :schedule_hour 4
+                                                     :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}])
+           (-> (PulseChannel :pulse_id id)
+               (hydrate :recipients)
+               (dissoc :id :pulse_id :created_at :updated_at)
+               (m/dissoc-in [:details :emails])
+               (mt/derecordize)))))))
 
-;; create-pulse!
-;; simple example with a single card
-(expect
-  (merge
-   pulse-defaults
-   {:creator_id (user->id :rasta)
-    :name       "Booyah!"
-    :channels   [(merge pulse-channel-defaults
-                        {:schedule_type :daily
-                         :schedule_hour 18
-                         :channel_type  :email
-                         :recipients    [{:email "foo@bar.com"}]})]
-    :cards      [{:name          "Test Card"
-                  :description   nil
-                  :collection_id nil
-                  :display       :table
-                  :include_csv   false
-                  :include_xls   false}]})
-  (mt/with-temp Card [card {:name "Test Card"}]
-    (mt/with-model-cleanup [Pulse]
-      (create-pulse-then-select! "Booyah!"
-                                 (user->id :rasta)
-                                 [(card->ref card)]
-                                 [{:channel_type  :email
-                                   :schedule_type :daily
-                                   :schedule_hour 18
-                                   :recipients    [{:email "foo@bar.com"}]}]
-                                 false))))
-;; update-pulse!
-;; basic update.  we are testing several things here
+(deftest create-pulse!-test
+  (testing "simple example with a single card"
+    (is (=
+         (merge
+          pulse-defaults
+          {:creator_id (user->id :rasta)
+           :name       "Booyah!"
+           :channels   [(merge pulse-channel-defaults
+                               {:schedule_type :daily
+                                :schedule_hour 18
+                                :channel_type  :email
+                                :recipients    [{:email "foo@bar.com"}]})]
+           :cards      [{:name          "Test Card"
+                         :description   nil
+                         :collection_id nil
+                         :display       :table
+                         :include_csv   false
+                         :include_xls   false}]})
+         (mt/with-temp Card [card {:name "Test Card"}]
+           (mt/with-model-cleanup [Pulse]
+             (mt/derecordize
+              (create-pulse-then-select! "Booyah!"
+                                         (user->id :rasta)
+                                         [(card->ref card)]
+                                         [{:channel_type  :email
+                                           :enabled       true
+                                           :schedule_type :daily
+                                           :schedule_hour 18
+                                           :recipients    [{:email "foo@bar.com"}]}]
+                                         false))))))))
+;;  We are testing several things here
 ;;  1. ability to update the Pulse name
 ;;  2. creator_id cannot be changed
 ;;  3. ability to save raw email addresses
 ;;  4. ability to save individual user recipients
 ;;  5. ability to create new channels
 ;;  6. ability to update cards and ensure proper ordering
-(expect
-  (merge
-   pulse-defaults
-   {:creator_id (user->id :rasta)
-    :name       "We like to party"
-    :cards      [{:name          "Bar Card"
-                  :description   nil
-                  :collection_id nil
-                  :display       :bar
-                  :include_csv   false
-                  :include_xls   false}
-                 {:name          "Test Card"
-                  :description   nil
-                  :collection_id nil
-                  :display       :table
-                  :include_csv   false
-                  :include_xls   false}]
-    :channels   [(merge pulse-channel-defaults
-                        {:schedule_type :daily
-                         :schedule_hour 18
-                         :channel_type  :email
-                         :recipients    [{:email "foo@bar.com"}
-                                         (dissoc (user-details :crowberto) :is_superuser :is_qbnewb)]})]})
-  (mt/with-temp* [Pulse [pulse]
-                  Card  [card-1 {:name "Test Card"}]
-                  Card  [card-2 {:name "Bar Card", :display :bar}]]
-    (update-pulse-then-select! {:id            (u/get-id pulse)
-                                :name          "We like to party"
-                                :cards         (map card->ref [card-2 card-1])
-                                :channels      [{:channel_type  :email
-                                                 :schedule_type :daily
-                                                 :schedule_hour 18
-                                                 :recipients    [{:email "foo@bar.com"}
-                                                                 {:id (user->id :crowberto)}]}]
-                                :skip_if_empty false})))
+(deftest update-pulse!-test
+  (testing "basic update"
+    (is (=
+         (merge
+          pulse-defaults
+          {:creator_id (user->id :rasta)
+           :name       "We like to party"
+           :cards      [{:name          "Bar Card"
+                         :description   nil
+                         :collection_id nil
+                         :display       :bar
+                         :include_csv   false
+                         :include_xls   false}
+                        {:name          "Test Card"
+                         :description   nil
+                         :collection_id nil
+                         :display       :table
+                         :include_csv   false
+                         :include_xls   false}]
+           :channels   [(merge pulse-channel-defaults
+                               {:schedule_type :daily
+                                :schedule_hour 18
+                                :channel_type  :email
+                                :recipients    [{:email "foo@bar.com"}
+                                                (dissoc (user-details :crowberto) :is_superuser :is_qbnewb)]})]})
+         (mt/with-temp* [Pulse [pulse]
+                         Card  [card-1 {:name "Test Card"}]
+                         Card  [card-2 {:name "Bar Card", :display :bar}]]
+           (mt/derecordize
+            (update-pulse-then-select! {:id            (u/get-id pulse)
+                                        :name          "We like to party"
+                                        :cards         (map card->ref [card-2 card-1])
+                                        :channels      [{:channel_type  :email
+                                                         :enabled       true
+                                                         :schedule_type :daily
+                                                         :schedule_hour 18
+                                                         :recipients    [{:email "foo@bar.com"}
+                                                                         {:id (user->id :crowberto)}]}]
+                                        :skip_if_empty false})))))))
 
-;; make sure fetching a Pulse doesn't return any archived cards
-(expect
-  1
-  (mt/with-temp* [Pulse     [pulse]
-                  Card      [card-1 {:archived true}]
-                  Card      [card-2]
-                  PulseCard [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card-1), :position 0}]
-                  PulseCard [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card-2), :position 1}]]
-    (count (:cards (retrieve-pulse (u/get-id pulse))))))
+(deftest retrieve-pulse-test
+  (testing "doesn't return archived cards"
+    (is (=
+         1
+         (mt/with-temp* [Pulse     [pulse]
+                         Card      [card-1 {:archived true}]
+                         Card      [card-2]
+                         PulseCard [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card-1), :position 0}]
+                         PulseCard [_ {:pulse_id (u/get-id pulse), :card_id (u/get-id card-2), :position 1}]]
+           (count (:cards (retrieve-pulse (u/get-id pulse)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

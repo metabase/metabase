@@ -50,6 +50,7 @@ describe("scenarios > admin > settings", () => {
         .find("input");
 
     emailInput()
+      .click()
       .clear()
       .type("other.email@metabase.com")
       .blur();
@@ -61,6 +62,7 @@ describe("scenarios > admin > settings", () => {
 
     // reset the email
     emailInput()
+      .click()
       .clear()
       .type("bob@metabase.com")
       .blur();

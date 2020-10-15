@@ -49,7 +49,7 @@
     (testing "should return nil if no Slack token has been configured"
       (tu/with-temporary-setting-values [slack-token nil]
         (is (= nil
-               (thunk)))))))
+               (not-empty (thunk))))))))
 
 (defn- test-invalid-auth-token
   "Test that a Slack API endpoint function throws an Exception if an invalid Slack API token is set."

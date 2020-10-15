@@ -49,7 +49,7 @@
             [toucan
              [db :as db]
              [models :as models]])
-  (:import clojure.lang.Symbol
+  (:import (clojure.lang Keyword Symbol)
            java.io.StringWriter))
 
 (models/defmodel Setting
@@ -63,7 +63,7 @@
 
 
 (def ^:private Type
-  (s/enum :string :boolean :json :integer :double :timestamp :csv))
+  (s/enum :string :boolean :json :integer :double :timestamp :csv :keyword))
 
 (def ^:private Visibility
   (s/enum :public :authenticated :admin :internal))
@@ -75,7 +75,8 @@
    :boolean   `Boolean
    :integer   `Long
    :double    `Double
-   :timestamp 'java.time.temporal.Temporal})
+   :timestamp 'java.time.temporal.Temporal
+   :keyword   'Keyword})
 
 (def ^:private SettingDefinition
   {:name        s/Keyword
@@ -221,6 +222,11 @@
   ^Double [setting-definition-or-name]
   (some-> (get-string setting-definition-or-name) Double/parseDouble))
 
+(defn get-keyword
+  "Get value of (presumably `:string`) `setting-definition-or-name` as keyword. This is the default getter for `:keyword` settings."
+  ^clojure.lang.Keyword [setting-definition-or-name]
+  (some-> setting-definition-or-name get-string keyword))
+
 (defn get-json
   "Get the string value of `setting-definition-or-name` and parse it as JSON."
   [setting-definition-or-name]
@@ -240,6 +246,7 @@
   {:string    get-string
    :boolean   get-boolean
    :integer   get-integer
+   :keyword   get-keyword
    :json      get-json
    :timestamp get-timestamp
    :double    get-double
@@ -395,6 +402,7 @@
 
 (def ^:private default-setter-for-type
   {:string    set-string!
+   :keyword   set-string!
    :boolean   set-boolean!
    :integer   set-integer!
    :json      set-json!
@@ -444,7 +452,6 @@
               (dissoc setting :name :type :default)))
     (s/validate SettingDefinition <>)
     (swap! registered-settings assoc setting-name <>)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                defsetting macro                                                |

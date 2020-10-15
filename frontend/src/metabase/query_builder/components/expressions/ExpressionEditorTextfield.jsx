@@ -357,7 +357,7 @@ export default class ExpressionEditorTextfield extends React.Component {
         )}
         {suggestions.length ? (
           <Popover
-            className="pb1 not-rounded border-dark"
+            className="not-rounded border-dark"
             hasArrow={false}
             tetherOptions={{
               attachment: "top left",
@@ -365,7 +365,7 @@ export default class ExpressionEditorTextfield extends React.Component {
             }}
             sizeToFit
           >
-            <ul style={{ minWidth: 150, overflowY: "scroll" }}>
+            <ul className="pb1" style={{ minWidth: 150, overflowY: "auto" }}>
               {suggestions.map((suggestion, i) =>
                 // insert section title. assumes they're sorted by type
                 [

@@ -91,7 +91,8 @@
   (testing "GET /api/database/:id"
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
-        (is (= (add-schedules (dissoc (db-details) :details))
+        (is (= (add-schedules (-> (db-details)
+                                  (dissoc :details)))
                ((mt/user->client :rasta) :get 200 (format "database/%d" (mt/id))))))
 
       (testing "Superusers should see DB details"
@@ -210,42 +211,42 @@
   (testing "GET /api/database/:id/metadata"
     (is (= (merge (dissoc (mt/object-defaults Database) :details)
                   (select-keys (mt/db) [:created_at :id :updated_at :timezone])
-                  {:engine   "h2"
-                   :name     "test-data"
-                   :features (map u/qualified-name (driver.u/features :h2))
-                   :tables   [(merge
-                               (mt/obj->json->obj (mt/object-defaults Table))
-                               (db/select-one [Table :created_at :updated_at] :id (mt/id :categories))
-                               {:schema       "PUBLIC"
-                                :name         "CATEGORIES"
-                                :display_name "Categories"
-                                :entity_type  "entity/GenericTable"
-                                :fields       [(merge
-                                                (field-details (Field (mt/id :categories :id)))
-                                                {:table_id          (mt/id :categories)
-                                                 :special_type      "type/PK"
-                                                 :name              "ID"
-                                                 :display_name      "ID"
-                                                 :database_type     "BIGINT"
-                                                 :base_type         "type/BigInteger"
-                                                 :visibility_type   "normal"
-                                                 :has_field_values  "none"
-                                                 :database_position 0})
-                                               (merge
-                                                (field-details (Field (mt/id :categories :name)))
-                                                {:table_id          (mt/id :categories)
-                                                 :special_type      "type/Name"
-                                                 :name              "NAME"
-                                                 :display_name      "Name"
-                                                 :database_type     "VARCHAR"
-                                                 :base_type         "type/Text"
-                                                 :visibility_type   "normal"
-                                                 :has_field_values  "list"
-                                                 :database_position 1})]
-                                :segments     []
-                                :metrics      []
-                                :id           (mt/id :categories)
-                                :db_id        (mt/id)})]})
+                  {:engine        "h2"
+                   :name          "test-data"
+                   :features      (map u/qualified-name (driver.u/features :h2))
+                   :tables        [(merge
+                                    (mt/obj->json->obj (mt/object-defaults Table))
+                                    (db/select-one [Table :created_at :updated_at] :id (mt/id :categories))
+                                    {:schema       "PUBLIC"
+                                     :name         "CATEGORIES"
+                                     :display_name "Categories"
+                                     :entity_type  "entity/GenericTable"
+                                     :fields       [(merge
+                                                     (field-details (Field (mt/id :categories :id)))
+                                                     {:table_id          (mt/id :categories)
+                                                      :special_type      "type/PK"
+                                                      :name              "ID"
+                                                      :display_name      "ID"
+                                                      :database_type     "BIGINT"
+                                                      :base_type         "type/BigInteger"
+                                                      :visibility_type   "normal"
+                                                      :has_field_values  "none"
+                                                      :database_position 0})
+                                                    (merge
+                                                     (field-details (Field (mt/id :categories :name)))
+                                                     {:table_id          (mt/id :categories)
+                                                      :special_type      "type/Name"
+                                                      :name              "NAME"
+                                                      :display_name      "Name"
+                                                      :database_type     "VARCHAR"
+                                                      :base_type         "type/Text"
+                                                      :visibility_type   "normal"
+                                                      :has_field_values  "list"
+                                                      :database_position 1})]
+                                     :segments     []
+                                     :metrics      []
+                                     :id           (mt/id :categories)
+                                     :db_id        (mt/id)})]})
            (let [resp (mt/derecordize ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
 
@@ -683,7 +684,34 @@
           (testing "via the API endpoint"
             (is (= {:valid false}
                    ((mt/user->client :crowberto) :post 200 "database/validate"
-                    {:details {:engine :h2, :details {:db "ABC"}}})))))))))
+                    {:details {:engine :h2, :details {:db "ABC"}}})))))))
+
+    (let [call-count (atom 0)
+          ssl-values (atom [])]
+      (with-redefs [database-api/test-database-connection (fn [_ details]
+                                                            (swap! call-count inc)
+                                                            (swap! ssl-values conj (:ssl details))
+                                                            {:valid true})]
+          (testing "with SSL enabled, do not allow non-SSL connections"
+            (#'database-api/test-connection-details "presto" {:ssl true})
+            (is (= 1 @call-count))
+            (is (= [true] @ssl-values)))
+
+          (reset! call-count 0)
+          (reset! ssl-values [])
+
+          (testing "with SSL disabled, try twice (once with, once without SSL)"
+            (#'database-api/test-connection-details "presto" {:ssl false})
+            (is (= 2 @call-count))
+            (is (= [true false] @ssl-values)))
+
+          (reset! call-count 0)
+          (reset! ssl-values [])
+
+          (testing "with SSL unspecified, try twice (once with, once without SSL)"
+            (#'database-api/test-connection-details "presto" {})
+            (is (= 2 @call-count))
+            (is (= [true false] @ssl-values)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

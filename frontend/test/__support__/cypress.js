@@ -59,7 +59,7 @@ export function popover() {
   return cy.get(".PopoverContainer.PopoverContainer--open");
 }
 export function modal() {
-  return cy.get(".ModalContainer");
+  return cy.get(".ModalContainer .ModalContent");
 }
 export function nav() {
   return cy.get("nav");
@@ -89,7 +89,7 @@ export function setupLocalHostEmail() {
   // Leaves password and username blank
   cy.findByPlaceholderText("metabase@yourcompany.com").type("test@local.host");
 
-  // *** Unnecessary click (Issue #12692)
+  // *** Unnecessary click (metabase#12692)
   cy.findByPlaceholderText("smtp.yourservice.com").click();
 
   cy.findByText("Save changes").click();
@@ -105,6 +105,28 @@ export function typeAndBlurUsingLabel(label, value) {
     .clear()
     .type(value)
     .blur();
+}
+
+// Unfortunately, cypress `.type()` is currently broken and requires an ugly "hack"
+// it is documented here: https://github.com/cypress-io/cypress/issues/5480
+// `_typeUsingGet()` and `_typeUsingPlacehodler()` are temporary solution
+// please refrain from using them, unless absolutely neccessary!
+export function _typeUsingGet(selector, value, delay = 100) {
+  cy.get(selector)
+    .click()
+    .type(value, { delay })
+    .clear()
+    .click()
+    .type(value, { delay });
+}
+
+export function _typeUsingPlaceholder(selector, value, delay = 100) {
+  cy.findByPlaceholderText(selector)
+    .click()
+    .type(value, { delay })
+    .clear()
+    .click()
+    .type(value, { delay });
 }
 
 Cypress.on("uncaught:exception", (err, runnable) => false);

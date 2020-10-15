@@ -31,7 +31,7 @@
       (testing "with cumulative sum of price"
         (is (= {:table       "Venues"
                 :aggregation [{:type :cum-sum
-                               :arg  ["Price"]}]}
+                               :arg  "Price"}]}
                (sut/generate-query-description (Table (mt/id :venues))
                                                (:query (mt/mbql-query :venues
                                                          {:aggregation [[:cum-sum $price]]}))))))
@@ -88,4 +88,21 @@
                                                                [:sum [:*
                                                                       [:field-id (mt/id :venues :latitude)]
                                                                       [:field-id (mt/id :venues :longitude)]]]
-                                                               {:display-name "Nonsensical named metric"}]]})))))))
+                                                               {:display-name "Nonsensical named metric"}]]}))))
+
+      (testing "with unnamed complex aggregation"
+        (is (= {:table "Venues"
+                :aggregation [{:type :sum :arg ["Latitude" "*" "Longitude"]}]}
+               (sut/generate-query-description (Table (mt/id :venues))
+                                               {:aggregation [[:sum [:*
+                                                                     [:field-id (mt/id :venues :latitude)]
+                                                                     [:field-id (mt/id :venues :longitude)]]]]}))))
+
+      (testing "with unnamed complex aggregation with multiple arguments"
+        (is (= {:table "Venues"
+                :aggregation [{:type :sum :arg ["Latitude" "+" "Longitude" "+" "ID"]}]}
+               (sut/generate-query-description (Table (mt/id :venues))
+                                               {:aggregation [[:sum [:+
+                                                                     [:field-id (mt/id :venues :latitude)]
+                                                                     [:field-id (mt/id :venues :longitude)]
+                                                                     [:field-id (mt/id :venues :id)]]]]})))))))

@@ -8,7 +8,7 @@
 (sql-jdbc.tx/add-test-extensions! :sqlite)
 
 (defmethod tx/dbdef->connection-details :sqlite [_ context dbdef]
-  {:db (str (tx/escaped-name dbdef) ".sqlite")})
+  {:db (str (tx/escaped-database-name dbdef) ".sqlite")})
 
 (doseq [[base-type sql-type] {:type/BigInteger "BIGINT"
                               :type/Boolean    "BOOLEAN"

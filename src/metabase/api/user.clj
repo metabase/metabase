@@ -112,7 +112,7 @@
    group_ids        (s/maybe [su/IntGreaterThanZero])
    login_attributes (s/maybe user/LoginAttributes)}
   (api/check-superuser)
-  (api/checkp (not (db/exists? User :email email))
+  (api/checkp (not (db/exists? User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))
   (db/transaction
     (let [new-user-id (u/get-id (user/create-and-invite-user!
@@ -157,7 +157,7 @@
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
     (api/check-403 (valid-email-update? user-before-update email))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-    (api/checkp (not (db/exists? User, :email email, :id [:not= id]))
+    (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
       "email" (tru "Email address already associated to another user."))
     (db/transaction
       (api/check-500
@@ -182,7 +182,7 @@
     :is_active     true
     :is_superuser  false
     ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
-    ;; (see Issue #3323)
+    ;; (see metabase#3323)
     :google_auth   (boolean (and (:google_auth existing-user)
                                  ;; if google-auth-client-id is set it means Google Auth is enabled
                                  (session-api/google-auth-client-id)))

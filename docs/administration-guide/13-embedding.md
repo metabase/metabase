@@ -63,6 +63,16 @@ If you wish to have a parameter locked down to prevent your embedding applicatio
 
 ![Locked parameters](images/embedding/06-locked.png)
 
+When using locked Field Filters with multiple selected values, then it is provided as a JSON array. Example:
+
+```
+...
+params: {
+  foo: ['Value1', 'Value2'],
+},
+...
+```
+
 ### Hiding parameters
 
 If you have parameters that aren't required, but that you'd like to be hidden, instead of marking them as Locked you can use the `hide_parameters` URL option to hide one or more parameters (i.e., prevent it from showing up as a filter widget on screen). You'll want to add this option to the Metabase URL specified in your embedding iframe.

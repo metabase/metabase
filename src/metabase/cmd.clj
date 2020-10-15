@@ -37,11 +37,14 @@
      ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string))))
 
 (defn ^:command dump-to-h2
-  "Transfer data from existing database to newly created H2 DB."
-  [h2-filename]
+  "Transfer data from existing database to newly created H2 DB with specified filename.
+
+  Target H2 file is deleted before dump, unless the --keep-existing flag is given."
+  [h2-filename & opts]
   (classloader/require 'metabase.cmd.dump-to-h2)
   (binding [mdb/*disable-data-migrations* true]
-    (let [return-code ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename)]
+    (let [options        {:keep-existing? (boolean (some #{"--keep-existing"} opts))}
+          return-code    ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename options)]
       (when (pos-int? return-code)
         (System/exit return-code)))))
 

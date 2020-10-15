@@ -4,6 +4,8 @@ describe("scenarios > admin > people", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
+  const email = `testy${Math.round(Math.random() * 100000)}@metabase.com`;
+
   describe("user management", () => {
     it("should render", () => {
       cy.visit("/admin/people");
@@ -20,9 +22,7 @@ describe("scenarios > admin > people", () => {
       cy.findByLabelText("First name").type("Testy");
       cy.findByLabelText("Last name").type("McTestface");
       // bit of a hack since there are multiple "Email" nodes
-      cy.findByLabelText("Email").type(
-        `testy${Math.round(Math.random() * 100000)}@metabase.com`,
-      );
+      cy.findByLabelText("Email").type(email);
       cy.findByText("Create").click();
 
       // second modal
@@ -31,6 +31,18 @@ describe("scenarios > admin > people", () => {
       cy.findByText("Done").click();
 
       cy.findByText("Testy McTestface");
+    });
+    it("should disallow admin to create new users with case mutation of existing user", () => {
+      cy.visit("/admin/people");
+      cy.findByText("Add someone").click();
+
+      // first modal
+      cy.findByLabelText("First name").type("TestyNew");
+      cy.findByLabelText("Last name").type("McTestfaceNew");
+      // bit of a hack since there are multiple "Email" nodes
+      cy.findByLabelText("Email").type(email.toUpperCase());
+      cy.findByText("Create").click();
+      cy.contains("Email address already in use.");
     });
   });
 });

@@ -116,10 +116,13 @@
                   (metabot-visible-collection-ids))]})))
 
 (defmethod command :list [& _]
-  (let [cards (list-cards)]
-    (str (deferred-tru "Here''s your {0} most recent cards:" (count cards))
-         "\n"
-         (format-cards-list cards))))
+  (let [cards (list-cards)
+        card-count (count cards)]
+    (if (zero? card-count)
+      (tru "You don''t have any cards yet.")
+      (str (deferred-tru "Here are your {0} most recent cards:" card-count)
+           "\n"
+           (format-cards-list cards)))))
 
 
 ;;; ------------------------------------------------------ show ------------------------------------------------------

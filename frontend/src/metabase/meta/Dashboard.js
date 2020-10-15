@@ -169,12 +169,16 @@ export function parameterOptionsForField(field: Field): ParameterOption[] {
   );
 }
 
-function dimensionFilterForParameter(parameter: Parameter): DimensionFilter {
+export function dimensionFilterForParameter(
+  parameter: Parameter,
+): DimensionFilter {
   const fieldFilter = fieldFilterForParameter(parameter);
   return dimension => fieldFilter(dimension.field());
 }
 
-function variableFilterForParameter(parameter: Parameter): VariableFilter {
+export function variableFilterForParameter(
+  parameter: Parameter,
+): VariableFilter {
   const tagFilter = tagFilterForParameter(parameter);
   return variable => {
     if (variable instanceof TemplateTagVariable) {
@@ -211,39 +215,57 @@ export function getParameterMappingOptions(
     return [];
   }
 
-  const query = new Question(card, metadata).query();
+  const question = new Question(card, metadata);
+  const query = question.query();
 
-  // dimensions
-  options.push(
-    ...query
-      .dimensionOptions(
-        parameter ? dimensionFilterForParameter(parameter) : undefined,
-      )
-      .sections()
-      .flatMap(section =>
-        section.items.map(({ dimension }) => ({
-          sectionName: section.name,
-          name: dimension.displayName(),
-          icon: dimension.icon(),
-          target: ["dimension", dimension.mbql()],
-          isForeign:
-            dimension instanceof FKDimension ||
-            dimension instanceof JoinedDimension,
+  if (question.isStructured()) {
+    options.push(
+      ...query
+        .dimensionOptions(
+          parameter ? dimensionFilterForParameter(parameter) : undefined,
+        )
+        .sections()
+        .flatMap(section =>
+          section.items.map(({ dimension }) => ({
+            sectionName: section.name,
+            name: dimension.displayName(),
+            icon: dimension.icon(),
+            target: ["dimension", dimension.mbql()],
+            isForeign:
+              dimension instanceof FKDimension ||
+              dimension instanceof JoinedDimension,
+          })),
+        ),
+    );
+  } else {
+    options.push(
+      ...query
+        .variables(
+          parameter ? variableFilterForParameter(parameter) : undefined,
+        )
+        .map(variable => ({
+          name: variable.displayName(),
+          icon: variable.icon(),
+          isForeign: false,
+          target: ["variable", variable.mbql()],
         })),
-      ),
-  );
-
-  // variables
-  options.push(
-    ...query
-      .variables(parameter ? variableFilterForParameter(parameter) : undefined)
-      .map(variable => ({
-        sectionName: "Variables",
-        name: variable.displayName(),
-        icon: variable.icon(),
-        target: ["variable", variable.mbql()],
-      })),
-  );
+    );
+    options.push(
+      ...query
+        .dimensionOptions(
+          parameter ? dimensionFilterForParameter(parameter) : undefined,
+        )
+        .sections()
+        .flatMap(section =>
+          section.items.map(({ dimension }) => ({
+            name: dimension.displayName(),
+            icon: dimension.icon(),
+            isForeign: false,
+            target: ["dimension", dimension.mbql()],
+          })),
+        ),
+    );
+  }
 
   return options;
 }
