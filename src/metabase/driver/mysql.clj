@@ -380,7 +380,7 @@
       (when-let [x (.getObject rs i)]
         (.toLocalDate ^java.sql.Date x)))
     (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/DATE]) driver rs rsmeta i)]
-      (parent-thunk))))
+      parent-thunk)))
 
 (defn- format-offset [t]
   (let [offset (t/format "ZZZZZ" (t/zone-offset t))]

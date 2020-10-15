@@ -144,14 +144,25 @@
         (clear-cached-session-tokens!)
         (apply client-fn username args)))))
 
-(s/defn user->client :- (s/pred fn?)
+(s/defn ^:deprecated user->client :- (s/pred fn?)
   "Returns a `metabase.http-client/client` partially bound with the credentials for User with `username`.
    In addition, it forces lazy creation of the User if needed.
 
-     ((user->client) :get 200 \"meta/table\")"
+     ((user->client) :get 200 \"meta/table\")
+
+  DEPRECATED -- use `user-http-request` instead, which has proper `:arglists` metadata which makes it a bit easier to
+  use when writing code."
   [username :- TestUserName]
   (fetch-user username) ; force creation of the user if not already created
   (partial client-fn username))
+
+(defn user-http-request
+  "A version of our test HTTP client that issues the request with credentials for `username`."
+  {:arglists '([username credentials? method expected-status-code? endpoint
+                request-options? http-body-map? & {:as query-params}])}
+  [username & args]
+  (fetch-user username)
+  (apply client-fn username args))
 
 (defmacro with-test-user
   "Call `body` with various `metabase.api.common` dynamic vars like `*current-user*` bound to the test User named by
