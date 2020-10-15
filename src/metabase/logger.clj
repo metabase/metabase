@@ -3,7 +3,6 @@
             [clj-time
              [coerce :as coerce]
              [format :as time]]
-            [clojure.string :as str]
             [metabase.config :refer [local-process-uuid]])
   (:import [org.apache.log4j Appender AppenderSkeleton Logger]
            org.apache.log4j.spi.LoggingEvent))
@@ -23,7 +22,7 @@
    :level        (.getLevel event)
    :fqns         (.getLoggerName event)
    :msg          (.getMessage event)
-   :exception    (str/join "\n" (.getThrowableStrRep event))
+   :exception    (seq (.getThrowableStrRep event))
    :process_uuid local-process-uuid})
 
 (defn- metabase-appender ^Appender []
