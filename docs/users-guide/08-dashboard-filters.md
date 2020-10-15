@@ -41,31 +41,26 @@ When you're finished wiring up the filter, click **Done** at the bottom of the s
 
 ### Editing a filter
 
-To edit a filter, click the **pencil** icon to enter dashboard editing mode, then click the **gears** icon button on the filter you want to change. 
-
-To reorder your filters, just click on the grabber handle on the left side of a filter and drag the filter to a different position.
-
-To remove a filter, click **Remove** in the sidebar. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes. 
-
-### Setting a default value
-
-If you want one of your filters to start with a default value when you load the dashboard it’s in, while in filter editing mode just click on the filter to select a value. Click the blue X if you want to remove the default value.
-
-![Set a default value](images/dashboard-filters/07-default-value.png)
+- **To edit a filter**: click the **pencil** icon to enter dashboard editing mode, then click the **gears** icon button on the filter you want to change. 
+- **To reorder your filters**: just click on the grabber handle on the left side of a filter and drag the filter to a different position.
+- **To set a default value**: click on the **gears** icon to open the filter sidebar, and enter a value in the **Default value** input field.
+- **To remove a filter**: click **Remove** in the sidebar. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes. 
 
 ### Using filters
 
-Once you’ve added a filter to your dashboard, just click on it to select a value and activate the filter. To stop filtering, just click the blue X. To change the filter, click anywhere else on it.
+Once you’ve added a filter to your dashboard, just click on the filter to select a value and activate the filter. To stop filtering, just click the blue X. To change the filter, click anywhere else on it.
 
 ![Using a filter](images/dashboard-filters/08-use-filter.png)
 
+You can also set up a dashboard question to [update a filter on click](interactive-dashboards.md#cross---filtering-a-dashboard).
+
 ### Choosing between a dropdown or autocomplete for your filter
 
-Picking selections for a filter with lots of options is easier than ever before. If the field you're using for a filter has more than 100 unique values, you'll now automatically see a search box with autocomplete suggestions.
+Picking selections for a filter with lots of options is easier than ever before. If the field you're using for a filter has more than 100 unique values, you'll now automatically see a search box with autocomplete suggestions:
 
 ![Autocomplete](images/dashboard-filters/autocomplete.png)
 
-Fields with fewer than 100 distinct values will have display a list of all the options.
+Fields with fewer than 100 distinct values will list all options:
 
 ![List](images/dashboard-filters/list.png)
 
@@ -73,26 +68,30 @@ In both cases, you can pick one or multiple selections for your filter.
 
 ![Multi-select](images/dashboard-filters/multi-select.png)
 
-If Metabase somehow picked the wrong behavior for your field, admins can go to the [Data Model](../administration-guide/03-metadata-editing.md) section of the admin panel and click on the gear icon by the field in question to manually choose between a list, a search box, or just a plain input box.
+If Metabase somehow picked the wrong behavior for your field, admins can go to the [Data Model](../administration-guide/03-metadata-editing.md) section of the admin panel and click on the **gear** icon by the field in question to specify a list, search box, or plain input box.
 
 ![Search options](images/dashboard-filters/search-options.png)
 
 ### Linking filters
 
+You can also **link filters** so that a child filter knows to limit its choices based on the activation of a parent filter.
+
 Say you have two filters, one to filter by state, the other to filter by city. You can link the city filter to the state filter so that when someone filter for California, the city filter will only show cities in California. In this case, state is the parent filter, and city is the child filter.
 
-To link filters, you'll want to set up this parent-child relationship. And you start with the child. In the above scenario, with a state and city filter, we'd edit the child filter, city, by clicking on the gears icon on the city filter. From the filter sidebar on the right, select the **Linked filters** tab. Here you can limit the current filter's choices Limit this filter's choices If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for this filter.
+To link filters, you'll need to set up this parent-child relationship. And you set up this relationship through the child filter. In the above scenario, with a state and city filter, we'd edit the child filter, city, by clicking on the **gears** icon on the city filter. From the filter sidebar on the right, select the **Linked filters** tab. 
 
-You can create parent-child relationships between filters so that when the parent filter updates, the child filter will restrict its options to the parent.
+![Linked filters](images/dashboard-filters/linked-filter.png)
+
+Here you can limit the current filter's choices. If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for this filter. In this case, we toggle on the state filter (the parent), to limit the choices for the city filter. When states are selected, the city filter will limit its choices to cities in those states. Click **Done**, then **Save** to save the dashboard.
 
 ### Best practices
 
 Here are a few tips to get the most out of dashboard filters:
 
-- **Use fewer than four filters**. Try to keep the number of filters you add to a dashboard to two or three. This will make it easier for your teammates to quickly understand what options are available to them when viewing your dashboard.
+- **Limit filters to 3 or fewer**. Try to keep the number of filters you add to a dashboard to two or three. This will make it easier for your teammates to quickly understand what options are available to them when viewing your dashboard.
 - **Start with a new dashboard**. While you can add dashboard filters to an existing dashboard with a bunch of cards in it, it can be easier to start a new dashboard and think about what filters you intend to add to it, and then make sure that you only put cards in that dashboard that can be used with the filters. You can also duplicate an existing dashboard, and pare down the number of cards.
 - **Link filters** so people don't have to sift through irrelevant filter options (like cities not in a filtered state).
-- **Use a chart to update a filter**. You can [set up a chart to update a filter on click](interactive-dashboards.md). 
+- **Use a chart or table to update a filter**. You can [set up a question to update a filter on click](interactive-dashboards.md). 
 
 ---
 
