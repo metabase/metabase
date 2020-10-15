@@ -5,35 +5,41 @@ describe("scenarios > dashboard > parameters", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
-  // TODO @nemanjaglumac: refactor and make the test pass
-  // [quarantine]: breaking, unclear
-  it.skip("should be seeable if previously added", () => {
-    // Expand view
+  it("should be visible if previously added", () => {
     cy.visit("/dashboard/1");
     cy.findByText("Rows 1-1 of 2000");
 
     // Add a filter
     cy.get(".Icon-pencil").click();
-    cy.get(".Icon-funnel_add").click();
+    cy.get(".Icon-filter").click();
     cy.findByText("Location").click();
     cy.findByText("City").click();
-    cy.findByText("Select…").click();
-    cy.get(".Icon-location").click({ force: true });
-    cy.get(".Icon-close");
 
-    // Create default value
-    cy.findByText("Enter a default value...").type("B");
+    // Link that filter to the card
+    cy.findByText("Select…").click();
+    popover().within(() => {
+      cy.findByText("City").click();
+    });
+
+    // Create a default value and save filter
+    cy.findByText("No default").click();
+    cy.findByPlaceholderText("Search by City")
+      .click()
+      .type("B");
     cy.findByText("Baker").click();
     cy.findByText("Add filter").click();
-    cy.findByText("Done").click();
-    cy.findByText("Save").click({ force: true });
-    cy.findByText("Save").should("not.exist");
+    cy.get(".Button--primary")
+      .contains("Done")
+      .click();
+
+    cy.findByText("Save").click();
+    cy.findByText("You're editing this dashboard.").should("not.exist");
     cy.findByText("Rows 1-1 of 8");
 
-    // Leave and come back
-    cy.get(".Icon")
-      .first()
-      .click();
+    cy.log(
+      "**Filter should be set and applied after we leave and back to the dashboard**",
+    );
+    cy.visit("/");
     cy.findByText("Browse all items").click();
     cy.findByText("Orders in a dashboard").click();
     cy.findByText("Rows 1-1 of 8");
