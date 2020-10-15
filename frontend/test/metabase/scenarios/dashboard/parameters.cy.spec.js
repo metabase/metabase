@@ -1,10 +1,49 @@
 import { signInAsAdmin, modal, popover, restore } from "__support__/cypress";
-
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 
 describe("scenarios > dashboard > parameters", () => {
   before(restore);
   beforeEach(signInAsAdmin);
+
+  it("should be visible if previously added", () => {
+    cy.visit("/dashboard/1");
+    cy.findByText("Baker").should("not.exist");
+
+    // Add a filter
+    cy.get(".Icon-pencil").click();
+    cy.get(".Icon-filter").click();
+    cy.findByText("Location").click();
+    cy.findByText("City").click();
+
+    // Link that filter to the card
+    cy.findByText("Select…").click();
+    popover().within(() => {
+      cy.findByText("City").click();
+    });
+
+    // Create a default value and save filter
+    cy.findByText("No default").click();
+    cy.findByPlaceholderText("Search by City")
+      .click()
+      .type("B");
+    cy.findByText("Baker").click();
+    cy.findByText("Add filter").click();
+    cy.get(".Button--primary")
+      .contains("Done")
+      .click();
+
+    cy.findByText("Save").click();
+    cy.findByText("You're editing this dashboard.").should("not.exist");
+    cy.findByText("Baker");
+
+    cy.log(
+      "**Filter should be set and applied after we leave and back to the dashboard**",
+    );
+    cy.visit("/");
+    cy.findByText("Browse all items").click();
+    cy.findByText("Orders in a dashboard").click();
+    cy.findByText("Baker");
+  });
 
   it("should search across multiple fields", () => {
     // create a new dashboard

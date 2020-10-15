@@ -1,6 +1,12 @@
-import { signInAsAdmin, restore, withSampleDataset } from "__support__/cypress";
+import {
+  signInAsAdmin,
+  restore,
+  withSampleDataset,
+  openProductsTable,
+  sidebar,
+} from "__support__/cypress";
 
-describe("scenarios > visualizations > chart drill", () => {
+describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
@@ -107,5 +113,34 @@ describe("scenarios > visualizations > chart drill", () => {
     // check that filter is applied and person displayed
     cy.contains("City is Beaver Dams");
     cy.contains("Dominique Leffler");
+  });
+
+  describe("for an unsaved question", () => {
+    before(() => {
+      restore();
+      signInAsAdmin();
+      // Build a question without saving
+      openProductsTable();
+      cy.findByText("Summarize").click();
+      sidebar().within(() => {
+        cy.contains("Category").click();
+      });
+
+      // Drill-through the last bar (Widget)
+      cy.get(".bar")
+        .last()
+        .click({ force: true });
+      cy.findByText("View these Products").click();
+    });
+
+    it("should result in a correct query result", () => {
+      cy.log("**Assert that the URL is correct**");
+      cy.url().should("include", "/question#");
+
+      cy.log("**Assert on the correct product category: Widget**");
+      cy.findByText("Category is Widget");
+      cy.findByText("Gizmo").should("not.exist");
+      cy.findByText("Doohickey").should("not.exist");
+    });
   });
 });
