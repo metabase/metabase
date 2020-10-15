@@ -29,8 +29,8 @@
             [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
-  (:import metabase.util.honeysql_extensions.Identifier
-           metabase.models.field.FieldInstance))
+  (:import metabase.models.field.FieldInstance
+           metabase.util.honeysql_extensions.Identifier))
 
 ;; TODO - yet another `*query*` dynamic var. We should really consolidate them all so we only need a single one.
 (def ^:dynamic *query*
