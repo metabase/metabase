@@ -5,7 +5,7 @@ You can customize what happens when people click on questions in your dashboard.
 - send the user to a custom destination: a dashboard, question, or custom URL 
 - update a dashboard filter (what we call **cross-filtering**)
 
-To configure this interactivity, you'll used the **click behavior** menu on a dashboard card.
+To configure this interactivity, you'll use the **click behavior** option on a dashboard card to slide out the click behavior sidebar.
 
 ### Click behavior sidebar
 
@@ -13,11 +13,11 @@ From your dashboard, click on the **pencil** icon to enter dashboard edit mode. 
 
 ![Click behavior icon](images/interactive-dashboards/click-behavior-icon.png)
 
-Metabase will slide out the **Click behavior** sidebar. For questions composed using the query builder, you can select from 2 options:
+Metabase will slide out the **Click behavior sidebar**. For questions composed using the query builder, you can select from 3 options:
 
 - Open the Metabase action menu.
 - Go to a custom destination.
-- Update a dashboard filter (if a filter exists)
+- Update a dashboard filter (if the dashboard has a filter)
 
 SQL questions will only have the option to **Go to a custom destination**, and **Update a dashboard filter**, as the action menu (which allows users to drill through the data) is only available to questions composed with the query builder.
 
@@ -27,11 +27,11 @@ If your dashboard has a filter, you'll also see an option to update the filter (
 
 ### Open the action menu
 
-For questions composed using the query builder, the default click behavior is to open the **action menu**, which presents people with the option to drill through the data:
+For questions composed using the query builder, the default click behavior is to open the **action menu**, which presents people with the option to [drill through the data](https://www.metabase.com/blog/drilling-through-data/index.html):
 
 ![Action menu](images/interactive-dashboards/action-menu.png)
 
-### Custom destination
+### Custom destinations
 
 You can set custom destinations for all questions, including SQL questions. 
 
@@ -53,7 +53,13 @@ Once you select a column, Metabase will display the column used to pass the valu
 
 In the example above, when a user clicks on the **Orders by product category** card, Metabase will pass the clicked category to the destination dashboard, which will then filter its cards by that category.
 
+When displaying questions as tables, you can select different click behaviors for different columns in the table.
+
 You can also use values to construct URLs to external resources.
+
+![Enter a URL](images/interactive-dashboards/enter-a-url.png)
+
+From the **Click behavior** sidebar, select **Go to a custom destination** and link to **URL**. The **Enter a URL to link to** modal will pop up, allowing you to specify a URL, as well as specify the value of a column or dashboard filter. Click on the dropdown menu **Values you can reference** to see your options.
 
 ### Cross-filtering a dashboard
 
@@ -69,7 +75,7 @@ To set this cross-filtering up, choose a dashboard filter to update, and a quest
 
 ![Wiring up filter](images/interactive-dashboards/wiring-up-filter.png)
 
-When you click on a value in the navigation question, the navigation question won't update (which allows us to select other values), but all the other questions will update.
+When you click on a value in the navigation question, the navigation question won't update (as intended - this allows us to select other values), but all the other questions on the dashboard will update, filtered by the selected value.
 
 With your filter wired up, stay in dashboard edit mode, and hover over the question you want to use to filter the dashboard, and click on the **click behavior** icon. Then select the **Update a dashboard filter**.
 

@@ -50,6 +50,8 @@ Click the **eye** icon to see what your formatted Markdown will look like when y
 
 ![Result](images/dashboards/text-cards/result.png)
 
+See [Fun with Markdown in your dashboards](https://www.metabase.com/blog/markdown-in-dashboards/index.html).
+
 ### Arranging cards
 
 Each question on a dashboard is in its own card that you can move around or resize as you see fit. Just click the **pencil** icon in the top right of a dashboard to enter the dashboard's editing interface.
@@ -63,6 +65,12 @@ Once you're in edit mode, you'll see a grid appear. You can move and resize the 
 - **To remove a card**, hover over the card, and click the X icon in the top right corner.
 
 To make sure your data looks great at any size, questions in your dashboard will automatically update their display based on the size you choose.
+
+### Changing a question's visualization settings
+
+You can change a question's visualization settings on a dashboard, without affecting the original question. You can add a goal line, pick another type of chart, whatever you like. Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the palette icon to edit the question's visualization's settings.
+
+![Visualization settings](images/dashboards/visualization-settings.png).
 
 ### Finding dashboards
 
@@ -104,7 +112,7 @@ Public links can be viewed by anyone, even if they don't have access to Metabase
 
 ### Configuring a dashboard through its URL
 
-It is possible to amend the URL of a dashboard to automatically enter fullscreen, enable night mode, or auto-refresh the dashboard. Customizing the dashboard's URL allows you to configure the dashboard even when you do not have any input access to the device where the dashboard will be displayed, like scripted screens, for example.
+You can amend the URL of a dashboard to automatically enter fullscreen, enable night mode, or auto-refresh the dashboard. Customizing the dashboard's URL allows you to configure the dashboard even when you do not have any input access to the device where the dashboard will be displayed, like scripted screens, for example.
 
 To configure a dashboard using its URL, you can add the following optional keywords: `fullscreen`, `night`, or `refresh`. Here's an example:
 
@@ -116,9 +124,9 @@ There is one important limitation with the `fullscreen` option. For security rea
 
 ### Archiving a dashboard
 
- Archiving a dashboard removes the dashboard from searches and collections. Archiving a dashboard does not archive the individual saved questions on it — it just archives the dashboard.
+Archiving a dashboard removes the dashboard from searches and collections. Archiving a dashboard does not archive the individual saved questions on it — it just archives the dashboard.
  
- To archive a dashboard, click the **pencil** icon to enter edit mode, then click the **...** menu, and select **Archive**.
+To archive a dashboard, click the **pencil** icon to enter edit mode, then click the **...** menu, and select **Archive**.
 
 To view all archived items, click the **menu** icon in the top-right of any collection page. You can unarchive a dashboard by clicking the icon of the box with the upward arrow next to that dashboard.
 

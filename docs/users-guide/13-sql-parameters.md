@@ -26,6 +26,8 @@ If you're writing a native MongoDB query, your query would look more like this, 
 {% raw %}[{ $match: { category: {{cat}} } }]{% endraw %}
 ```
 
+To learn more about SQL variables, check out [Create filter widgets for charts using SQL variables](https://www.metabase.com/blog/sql-template-variables/index.html).
+
 ### The Field Filter variable type
 
 Setting a variable to the "Field Filter" type allows you to map it to a field in any table in the current database, and lets you display a dropdown filter widget filled with the values of the field you connected it to. Field filter variables also allow you to connect your SQL question to a dashboard filter if you put it in a dashboard.
@@ -83,6 +85,8 @@ Filter widgets **can't** be displayed if the variable is mapped to a field marke
 - Latitude
 - Longitude
 - URL
+
+You can learn more in [Field Filters: create smart filter widgets for SQL questions](https://www.metabase.com/blog/field-filters/index.html)
 
 #### Setting a default value
 

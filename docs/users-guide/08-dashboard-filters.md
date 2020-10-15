@@ -19,7 +19,7 @@ You can choose from a number of filter types: Time, Location, ID, or Other Categ
 - **ID:** this filter provides a simple input box where you can type the ID of a user, order, etc.
 - **Other Categories:** this is a flexible filter type that will let you create either a dropdown or input box to filter on any category field in your cards.
 
-**Note:** If you're trying to filter Native/SQL questions, you'll need to [add a bit of additional markup to your query](13-sql-parameters.md) in order to use a dashboard filter with that question.
+**Note:** If you're trying to filter Native/SQL questions, you'll need to [add a bit of additional markup to your query](13-sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/blog/dashboard-filters/index.html).
 
 For our example, we'll select a Time filter, and then select the Month and Year option.
 
@@ -56,7 +56,7 @@ You can also set up a dashboard question to [update a filter on click](interacti
 
 ### Choosing between a dropdown or autocomplete for your filter
 
-Picking selections for a filter with lots of options is easier than ever before. If the field you're using for a filter has more than 100 unique values, you'll now automatically see a search box with autocomplete suggestions:
+If the field you're using for a filter has more than 100 unique values, you'll now automatically see a search box with autocomplete suggestions:
 
 ![Autocomplete](images/dashboard-filters/autocomplete.png)
 

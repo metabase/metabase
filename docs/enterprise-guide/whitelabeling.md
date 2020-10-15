@@ -16,6 +16,8 @@ You can customize the colors that Metabase uses throughout the app:
 * **Accent colors:** these are the colors that are used for some icons, secondary buttons, elements of the graphical query builder, and chart colors.
 * **Additional chart colors:** as the name implies, these are additional colors that are included in the charting options to give your lines, bars, and pie slices some extra pizazz.
 
+To learn more, check out [Brand your Metabase instance](https://www.metabase.com/blog/white-label/index.html).
+
 ---
 
 ## Next: customizing drill-through
