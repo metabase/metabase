@@ -1,4 +1,3 @@
-
 import React from "react";
 import Text from "metabase/components/type/Text";
 
