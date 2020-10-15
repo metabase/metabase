@@ -113,7 +113,9 @@ export default class Logs extends Component {
     const renderedLogs = filteredLogs.map(ev => {
       const timestamp = moment(ev.timestamp).format();
       const uuid = ev.process_uuid || "---";
-      return `[${uuid}] ${timestamp} ${ev.level} ${ev.fqns} ${ev.msg}`;
+      return `[${uuid}] ${timestamp} ${ev.level} ${ev.fqns} ${ev.msg}${
+        ev.exception ? "\n" + ev.exception : ""
+      }`;
     });
 
     let processUUIDSelect = null;
