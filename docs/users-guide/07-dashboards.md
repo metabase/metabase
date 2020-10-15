@@ -18,13 +18,13 @@ In the top right of the screen, click the **+** icon to open the Create menu, an
 
 ![Create Dashboard](images/dashboards/DashboardCreate.png)
 
-You can also **duplicate** an existing dashboard if you don't want to build one from scratch, or want to experiment by making changes to the dashboard without affecting the original dashboard. From an existing dashboard, click on the **...** menu, and select **Duplicate**.
+If you don't want to build a dashboard from scratch, or want to experiment by making changes to an existing dashboard without affecting the original, you can **duplicate** an existing dashboard. From an existing dashboard, click on the **...** menu in the upper right, and select **Duplicate**.
 
 ### Adding saved questions to a dashboard
 
-**From a question**: you can add a newly saved question to a dashboard directly from the window that pops up after you save the question for the first time. You can also add a question to a dashboard by clicking on the pencil icon next to the name of the question, and selecting **Add to dashboard**.
+**From a question**: you can add a newly saved question to a dashboard directly from the window that pops up after you save the question for the first time. You can also add a question to a dashboard by clicking on the **pencil** icon next to the name of the question, and selecting **Add to dashboard**.
 
-**From a dashboard**: Click on the pencil icon to **edit the dashboard**. Then click the **+** icon in the top right of the dashboard editing interface (not the **+** in the main navigation bar) to add any of your saved questions to the dashboard, regardless of which collection the questions are in.
+**From a dashboard**: Click on the **pencil** icon to **edit the dashboard**. Then click the **+** icon in the top right of the dashboard editing interface (not the **+** in the main navigation bar) to add any of your saved questions to the dashboard, regardless of which collection the questions are in.
 
 Once you add a question to your dashboard, it’ll look something like this:
 
@@ -63,12 +63,6 @@ Once you're in edit mode, you'll see a grid appear. You can move and resize the 
 - **To remove a card**, hover over the card, and click the X icon in the top right corner.
 
 To make sure your data looks great at any size, questions in your dashboard will automatically update their display based on the size you choose.
-
-### Archiving a dashboard
-
-Archiving a dashboard does not archive the individual saved questions on it — it just archives the dashboard. To archive a dashboard, click the **pencil** icon to enter edit mode, then click the **...** menu, and select **Archive**.
-
-To view all archived items, click the **menu** icon in the top-right of any collection page. You can unarchive a dashboards by clicking the icon of the box with the upward arrow next to that dashboard.
 
 ### Finding dashboards
 
@@ -120,16 +114,24 @@ The part that says `refresh=60` sets the dashboard to automatically refresh ever
 
 There is one important limitation with the `fullscreen` option. For security reasons, many browsers require user interaction to initiate fullscreen. In those browsers, using the `fullscreen` option will enable the fullscreen UI in Metabase, but it won't expand the browser content to fill the screen. To ensure the dashboard occupies the entire screen, either activate fullscreen by clicking the button in the UI, or use the `fullscreen` URL option and launch the browser in fullscreen or kiosk mode.
 
+### Archiving a dashboard
+
+ Archiving a dashboard removes the dashboard from searches and collections. Archiving a dashboard does not archive the individual saved questions on it — it just archives the dashboard.
+ 
+ To archive a dashboard, click the **pencil** icon to enter edit mode, then click the **...** menu, and select **Archive**.
+
+To view all archived items, click the **menu** icon in the top-right of any collection page. You can unarchive a dashboard by clicking the icon of the box with the upward arrow next to that dashboard.
+
 ## Tips on creating helpful dashboards
 
-To make a really helpful dashboard, you need to first decide what you want the dashboard to tell about your data. What questions will give you insight into what you want to know? It helps to think of a topic or theme for your dashboard — something like “customer satisfaction,” or “second quarter sales goals".
+To make a great dashboard, you first need to decide what you want the dashboard to tell about your data. What questions will give you insight into what you want to know? It helps to think of a topic or theme for your dashboard — something like “customer satisfaction,” or “second quarter sales goals".
 
 Some tips:
 
-- **Emphasize the most important questions**. Place the most important saved question cards near the top of the dashboard, and/or make them bigger than the other cards, to draw people’s attention to what matters most.
+- **Emphasize the most important questions**. To draw people’s attention to what matters most, place the most important saved question cards near the top of the dashboard, and/or make them bigger than the other cards, 
 - **Keep dashboards focused**. If you have more than 10 cards on a dashboard, think about breaking the dashboard into two separate ones. You don't want to overwhelm people with too much information, and each dashboard should revolve around one theme or topic. Remember — you can make as many dashboards as you want, so you don’t have to cram everything into just one.
-- **Add filters to your dashboard**. [Adding filters](08-dashboard-filters.md) to make them more useful and flexible. For example, instead of your dashboard being full of questions that are restricted to a specific time span, you can make more general questions and use dashboard filters to change the time span you're looking at.
-- **Make your dashboards interactive.** Customize what happens when users click on a chart or table in your dashboard.
+- **Add filters to your dashboard**. [Adding filters](08-dashboard-filters.md) to dashboards makes them more useful. For example, instead of your dashboard being full of questions that are restricted to a specific time span, you can make more general questions and use dashboard filters to change the time span you're looking at.
+- **Make your dashboards interactive.** [Customize what happens when users click on a chart or table in your dashboard](interactive-dashboards.md).
 
 ---
 

@@ -8,13 +8,13 @@ Instead of creating duplicate dashboards, you can use dashboard filters to creat
 
 ### Adding a new filter
 
-To add a filter to a dashboard, first enter dashboard editing mode, then click the **Add a Filter** button that appears in the top-right.
+To add a filter to a dashboard, first click the **pencil icon** to enter dashboard editing mode, then click the **Add a Filter** button that appears in the top-right.
 
 ![Add a Filter](images/dashboard-filters/01-add-filter.png)
 
-You can choose from a number of filter types: Time, Location, ID, or Other Categories. The type of filter you choose will determine what the filter widget will look like, and as well as which fields you’ll be able to filter your cards by:
+You can choose from a number of filter types: Time, Location, ID, or Other Categories. The type of filter you choose will determine what the filter widget will look like, as well as which fields you’ll be able to filter your cards by:
 
-- **Time:** when picking a Time filter, Metabase will prompt you to pick a specific type of filter widget: Month and Year, Quarter and Year, Single Date, Date Range, Relative Date, or All Options. "Single Date" and "Date Range" will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. Choose "All Options" to get a widget that's just like the time filter in the graphical query builder.
+- **Time:** when picking a Time filter, Metabase will prompt you to pick a specific type of filter widget: Month and Year, Quarter and Year, Single Date, Date Range, Relative Date, or All Options. Single Date and Date Range will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. To get a widget that's just like the time filter in the graphical query builder, choose All options.
 - **Location:** there are four types of Location filters to choose from: City, State, ZIP or Postal Code, and Country.
 - **ID:** this filter provides a simple input box where you can type the ID of a user, order, etc.
 - **Other Categories:** this is a flexible filter type that will let you create either a dropdown or input box to filter on any category field in your cards.
@@ -29,9 +29,9 @@ Metabase will show a new interface where you can wire up your new filter to each
 
 ![Wiring up the cards](images/dashboard-filters/03-wiring-cards.png)
 
-Each card will have a dropdown menu where you can select the column to filter. The sidebar on the right displays the settings for the current filter. If there’s a card on your dashboard that you don’t want to use with the filter, or that it doesn’t make sense to use with the filter, that’s okay — the filter will only be applied to the cards you’ve selected.
+Each card will feature a dropdown menu where you can select the column to filter. The sidebar on the right displays the settings for the current filter. If there’s a card on your dashboard that you don’t want to use with the filter, or that it doesn’t make sense to use with the filter, that’s okay — the filter will only be applied to the cards you select.
 
-So here’s what we’re doing — when we pick a month and year with our new filter, the filter needs to know which field in the card to filter on. For example, if we have a **Total Orders** card, and each order has a `Date Ordered` as well as a `Date Delivered`, we have to pick which of those fields to filter — do we want to see all the orders _placed_ in January, or do we want to see all the orders _delivered_ in January? So, for each card on our dashboard, we’ll pick a date field to connect to the filter. If one of your cards says there aren’t any valid fields, that just means that card doesn’t contain any fields that match the kind of filter you chose.
+So here’s what we’re doing — when we pick a month and year with our new filter, the filter needs to know which column in the card to filter on. For example, if we have a **Total Orders** card, and each order has a `Date Ordered` as well as a `Date Delivered` column, we have to pick which of those columns to filter — do we want to see all the orders _placed_ in January, or do we want to see all the orders _delivered_ in January? So, for each card on our dashboard, we’ll pick a date column to connect to the filter. If one of your cards says there aren’t any valid columns, that just means that card doesn’t contain any columns that match the kind of filter you chose.
 
 ![Select fields](images/dashboard-filters/04-select-fields.png)
 
@@ -39,15 +39,13 @@ Before we **Save** our changes, we can use the right sidebar to customize the **
 
 When you're finished wiring up the filter, click **Done** at the bottom of the sidebar, then click on **Save** in the top right to save the dashboard.
 
-![Edit the filter label](images/dashboard-filters/05-edit-label.png)
-
 ### Editing a filter
 
-To edit a filter, enter dashboard editing mode, then click the **Edit** button on the filter you want to change. You can also click **Remove** to delete a filter. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes. 
+To edit a filter, click the **pencil** icon to enter dashboard editing mode, then click the **gears** icon button on the filter you want to change. 
 
 To reorder your filters, just click on the grabber handle on the left side of a filter and drag the filter to a different position.
 
-![Edit or remove a filter](images/dashboard-filters/06-edit-and-remove.png)
+To remove a filter, click **Remove** in the sidebar. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes. 
 
 ### Setting a default value
 
@@ -91,8 +89,10 @@ You can create parent-child relationships between filters so that when the paren
 
 Here are a few tips to get the most out of dashboard filters:
 
-- **Use fewer than three filters**. Try to keep the number of filters you add to a dashboard to two or three. This will make it easier for your teammates to quickly understand what options are available to them when viewing your dashboard.
+- **Use fewer than four filters**. Try to keep the number of filters you add to a dashboard to two or three. This will make it easier for your teammates to quickly understand what options are available to them when viewing your dashboard.
 - **Start with a new dashboard**. While you can add dashboard filters to an existing dashboard with a bunch of cards in it, it can be easier to start a new dashboard and think about what filters you intend to add to it, and then make sure that you only put cards in that dashboard that can be used with the filters. You can also duplicate an existing dashboard, and pare down the number of cards.
+- **Link filters** so people don't have to sift through irrelevant filter options (like cities not in a filtered state).
+- **Use a chart to update a filter**. You can [set up a chart to update a filter on click](interactive-dashboards.md). 
 
 ---
 
