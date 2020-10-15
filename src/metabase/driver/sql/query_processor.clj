@@ -19,7 +19,9 @@
             [metabase.query-processor
              [interface :as i]
              [store :as qp.store]]
-            [metabase.query-processor.middleware.annotate :as annotate]
+            [metabase.query-processor.middleware
+             [annotate :as annotate]
+             [wrap-value-literals :as value-literal]]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [deferred-tru]]
@@ -646,8 +648,8 @@
 
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]
-  (if (nil? value)
-    [:not= (->honeysql driver field) nil]
+  (if (nil? (value-literal/unwrap-value-literal value))
+    [:not= (->honeysql driver field) (->honeysql driver value)]
     (correct-null-behaviour driver [:not= field value])))
 
 (defmethod ->honeysql [:sql :and]
