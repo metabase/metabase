@@ -579,8 +579,17 @@ class SharingSidebar extends React.Component {
             >
               <div className="p3">
                 <div className="flex align-center mb1">
-                  <Icon name="mail" className="mr1 text-brand" />
-                  <h3>{t`Email it`}</h3>
+                  <Icon
+                    name="mail"
+                    className={cx(
+                      "mr1",
+                      { "text-brand": emailSpec.configured },
+                      { "text-light": !emailSpec.configured },
+                    )}
+                  />
+                  <h3
+                    className={cx({ "text-light": !emailSpec.configured })}
+                  >{t`Email it`}</h3>
                 </div>
                 <div className="text-medium">
                   {!emailSpec.configured &&
