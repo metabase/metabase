@@ -408,7 +408,7 @@ export class FieldValuesWidget extends Component {
     }
 
     let options = [];
-    if (this.hasList()) {
+    if (this.hasList() && !this.useChainFilterEndpoints()) {
       options = dedupeValues(fields.map(field => field.values));
     } else if (
       loadingState === "LOADED" &&
