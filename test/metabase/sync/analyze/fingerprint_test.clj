@@ -119,7 +119,7 @@
 (defn- field-was-fingerprinted? {:style/indent 0} [fingerprint-versions field-properties]
   (let [fingerprinted? (atom false)]
     (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted fingerprint-versions
-                  metadata-queries/table-rows-sample                                     (constantly [[1] [2] [3] [4] [5]])
+                  metadata-queries/table-rows-sample                           (constantly [[1] [2] [3] [4] [5]])
                   fingerprint/save-fingerprint!                                (fn [& _] (reset! fingerprinted? true))]
       (tt/with-temp* [Table [table]
                       Field [_ (assoc field-properties :table_id (u/get-id table))]]
