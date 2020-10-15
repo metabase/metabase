@@ -482,6 +482,7 @@
                                 :type   {:type/Text {:percent-json   0.0
                                                      :percent-url    0.0
                                                      :percent-email  0.0
+                                                     :percent-state  0.0
                                                      :average-length 12.0}}}}
                  (db/select-field->field :name :fingerprint Field
                    :table_id (db/select-one-id Table :db_id (u/get-id database))))))))))

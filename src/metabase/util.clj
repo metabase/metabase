@@ -95,6 +95,7 @@
                          (str/lower-case s)))))
 
 (defn state?
+  "Is `s` a state string?"
   ^Boolean [^String s]
   (contains? #{"alabama" "alaska" "arizona" "arkansas" "california" "colorado" "connecticut" "delaware"
                "florida" "georgia" "hawaii" "idaho" "illinois" "indiana" "iowa" "kansas" "kentucky" "louisiana"

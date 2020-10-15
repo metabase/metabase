@@ -3,8 +3,8 @@
    These tests only run against Fields that *don't* have existing special types."
   (:require [clojure.tools.logging :as log]
             [metabase.sync
-             [util :as sync-util]
-             [interface :as i]]
+             [interface :as i]
+             [util :as sync-util]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
