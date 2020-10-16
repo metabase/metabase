@@ -2,7 +2,7 @@
 
 ![Highlight and save as snippet](./images/sql-snippets/highlight_and_save_as_snippet.gif)
 
-**SQL snippets** are reusable bits of SQL or native queries. Anyone with permissions to the [SQL editor](writing-sql.md) can create and edit snippets, which are then available for all SQL authors.
+**[SQL snippets](https://www.metabase.com/blog/sql-snippets/index.html)** are reusable bits of SQL or native queries. Anyone with permissions to the [SQL editor](writing-sql.md) can create and edit snippets, which are then available for all SQL authors.
 
 For example, if you frequently perform queries that involve multiple tables, you can save the SQL code that joins those tables as a snippet so that you (and others in your organization) can reuse that code in multiple questions.
 
@@ -89,4 +89,8 @@ Note: two snippets cannot share the same name, as even if a snippet is archived,
 
 Any user who has SQL editor permissions to at least one of your connected databases will be able to view the snippets sidebar, and will be able to create, edit, and archive or unarchive any and all snippets — even snippets intended to be used with databases the user does NOT have SQL editing access to.
 
-[Metabase Enterprise Edition](https://www.metabase.com/enterprise/) contains additional functionality for organizing snippets into folders and setting permissions on those folders. See our [docs on SQL snippet folders and permissions](../enterprise-guide/sql-snippets.html) to learn more.
+[Metabase Enterprise Edition](https://www.metabase.com/enterprise/) contains additional functionality for organizing snippets into folders and setting permissions on those folders. See our [docs on SQL snippet folders and permissions](../enterprise-guide/sql-snippets.html).
+
+### Learn more
+
+Learn more about [SQL snippets](https://www.metabase.com/blog/sql-snippets/index.html).

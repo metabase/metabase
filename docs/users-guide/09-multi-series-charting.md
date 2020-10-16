@@ -88,7 +88,7 @@ Additionally, there is an option to configure the formatting of the values:
 - **Compact**. Metabase abbreviates values, e.g., 1,000 becomes 1K.
 - **Full**. Values are displayed in their natural beauty.
 
-Now go forth and start letting your data get to know each other.
+Now go forth and start letting your data get to know each other, and check out our article on [time series comparisons](https://www.metabase.com/blog/Time-Series-Comparisons/index.html).
 
 ---
 
