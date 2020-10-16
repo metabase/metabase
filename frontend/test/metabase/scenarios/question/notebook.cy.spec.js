@@ -238,7 +238,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Visualize").should("exist");
     });
 
-    it.skip("should show correct column title with foreign keys (metabase#11452)", () => {
+    it("should show correct column title with foreign keys (metabase#11452)", () => {
       // (Orders join Reviews on Product ID)
       openOrdersTable();
       cy.get(".Icon-notebook").click();
@@ -264,9 +264,9 @@ describe("scenarios > question > notebook", () => {
           .parent()
           .next()
           // NOTE from Flamber's warning:
-          // this name COULD be "normalized" to "Review" instead of "Reviews" - that's why we use Regex match here
+          // this name COULD be "normalized" to "Review - Product" instead of "Reviews - Products" - that's why we use Regex match here
           .invoke("text")
-          .should("match", /review/i);
+          .should("match", /reviews? - products?/i);
       });
     });
   });
