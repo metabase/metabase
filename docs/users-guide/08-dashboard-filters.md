@@ -41,9 +41,9 @@ When you're finished wiring up the filter, click **Done** at the bottom of the s
 
 ### Editing a filter
 
-- **To edit a filter**: click the **pencil** icon to enter dashboard editing mode, then click the **gears** icon button on the filter you want to change. 
+- **To edit a filter**: click the **pencil** icon to enter dashboard editing mode, then click the **gears** icon button on the filter you want to change. You can wire up individual cards to the filter, and use the sidebar to update the label.
 - **To reorder your filters**: just click on the grabber handle on the left side of a filter and drag the filter to a different position.
-- **To set a default value**: click on the **gears** icon to open the filter sidebar, and enter a value in the **Default value** input field.
+- **To set a default value**: click on the **gears** icon to open the filter sidebar, and enter a value in the **Default value** input field on the **Settings** tab.
 - **To remove a filter**: click **Remove** in the sidebar. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes. 
 
 ### Using filters
@@ -91,7 +91,6 @@ Here are a few tips to get the most out of dashboard filters:
 - **Limit filters to 3 or fewer**. Try to keep the number of filters you add to a dashboard to two or three. This will make it easier for your teammates to quickly understand what options are available to them when viewing your dashboard.
 - **Start with a new dashboard**. While you can add dashboard filters to an existing dashboard with a bunch of cards in it, it can be easier to start a new dashboard and think about what filters you intend to add to it, and then make sure that you only put cards in that dashboard that can be used with the filters. You can also duplicate an existing dashboard, and pare down the number of cards.
 - **Link filters** so people don't have to sift through irrelevant filter options (like cities not in a filtered state).
-- **Use a chart or table to update a filter**. You can [set up a question to update a filter on click](interactive-dashboards.md). 
 
 ---
 

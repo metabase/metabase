@@ -1,9 +1,13 @@
 ## Interactive dashboards
 
-You can customize what happens when people click on questions in your dashboard. You can set up a question to:
+You can customize what happens when people click on questions in your dashboard. 
 
-- send the user to a custom destination: a dashboard, question, or custom URL 
-- update a dashboard filter (what we call **cross-filtering**)
+By default, when you create charts using Metabase's graphical query builder, your charts automatically come with [drill-through capabilities](https://www.metabase.com/blog/drilling-through-data/index.html), which let folks click on a chart to explore further. But if you have a more customized click path in mind, Metabase allows you to customize what happens when a user clicks on a chart or table in your dashboard. 
+
+You can set up a dashboard card to:
+
+- Send the user to a custom destination: a dashboard, question, or custom URL.
+- Update a dashboard filter (what we call **cross-filtering**).
 
 To configure this interactivity, you'll use the **click behavior** option on a dashboard card to slide out the click behavior sidebar.
 
@@ -43,17 +47,19 @@ Possible destinations include:
 - Saved questions
 - URLs
 
-If you're linking to a dashboard or a SQL question that has filters, you can also pass values from the current dashboard to the filters in the destination. For example, if you link to a dashboard that has a filter for category, you can pass a value for category from the origin question to the destination dashboard:
+If you're linking to a dashboard or a SQL question that has filters, you can pass values from the current dashboard to filters in the destination. For example, if you link to a dashboard that has a filter for category, you can pass a value for category from the origin question to the destination dashboard:
 
 ![Pass value to dashboard](images/interactive-dashboards/pass-value.png)
 
-Once you select a column, Metabase will display the column used to pass the value, as well as the filter the value will be passed to at the destination dashboard.
+Once you select a column, Metabase will display the column used to pass the value, as well as the target filter at the destination that Metabase will pass the value to.
 
 ![Pass category to filter](images/interactive-dashboards/pass-category-to-filter.png)
 
-In the example above, when a user clicks on the **Orders by product category** card, Metabase will pass the clicked category to the destination dashboard, which will then filter its cards by that category.
+In the example above, when a user clicks on the **Orders by product category** card, Metabase will pass the clicked category to the destination dashboard ("Interactive Dashboard"), which will then filter its cards by that category.
 
-When displaying questions as tables, you can select different click behaviors for different columns in the table.
+You can also send the currently selected value of a dashboard filter on the current dashboard to the destination. And if you're using [Metabase Enterprise Edition](https://www.metabase.com/enterprise/scale/), you can pass a user attribute provided by SSO to the destination, too. Those user attributes will show up as options when you click on one of the destination's filters ( provided the values are compatible with that filter).
+
+When displaying questions as tables, you can select different click behaviors for different columns in the table. You can also modify the contents of the cells in a given column, replacing the value with custom text. For example, if you had a column that listed categories, you could change the text in the cell to read: "Click for details about {{Category}}".
 
 You can also use values to construct URLs to external resources.
 
