@@ -45,6 +45,7 @@
     (u/delete-file! (str c/root-directory "/target"))
     (u/sh {:dir c/root-directory
            :env (merge {"JAVA_HOME" (env/env :java-home)
+                        "PATH"      (env/env :path)
                         "HOME"      (env/env :user-home)}
                        (when (= (c/edition) :ee)
                          {"MB_EDITION" "ENTERPRISE"}))}

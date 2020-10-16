@@ -4,14 +4,14 @@
             [metabuild-common.core :as u]))
 
 (def ^:private required-commands
-  ["yarn" "aws" "docker" "java" "wget" "shasum"])
+  ["yarn" "aws" "docker" "java" "wget" "shasum" "gettext"])
 
 (defn- check-for-required-commands []
   (u/step "Verify required external commands are available"
     (doseq [cmd required-commands]
       (u/step (format "Verify command %s is available" (pr-str cmd))
         (when-not (zero? (:exit (u/sh* "which" cmd)))
-          (throw (ex-info (format "The %s command is not available locally. Please install it and then try again.")
+          (throw (ex-info (format "The %s command is not available locally. Please install it and then try again." cmd)
                           {:cmd cmd})))))
     (u/announce "All required external commands are available.")))
 
