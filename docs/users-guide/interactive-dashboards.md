@@ -43,7 +43,7 @@ Possible destinations include:
 - Saved questions
 - URLs
 
-You can also pass a value to that destination from the clicked card. For example, if you link to a dashboard that has a filter for category, you can pass a value for category from the origin question to the destination dashboard:
+If you're linking to a dashboard or a SQL question that has filters, you can also pass values from the current dashboard to the filters in the destination. For example, if you link to a dashboard that has a filter for category, you can pass a value for category from the origin question to the destination dashboard:
 
 ![Pass value to dashboard](images/interactive-dashboards/pass-value.png)
 
@@ -63,7 +63,7 @@ From the **Click behavior** sidebar, select **Go to a custom destination** and l
 
 ### Cross-filtering a dashboard
 
-If your dashboard contains a filter, you can use a chart to update the value supplied to that filter. 
+If your dashboard contains at least one filter, you can set things up so that clicking on a chart in the dashboard will update a filter. 
 
 When a user clicks on, say, a bar in a bar chart, the click sends the value of the bar to the filter, and updates cards across the dashboard. We call this functionality **cross-filtering**. You can use this cross-filtering to make a chart behave as kind of "navigation question" that filters data across other cards.
 
