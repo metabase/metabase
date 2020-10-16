@@ -56,7 +56,11 @@ describe("Join", () => {
         condition: [
           "=",
           ["field-id", ORDERS.PRODUCT_ID.id],
-          ["joined-field", "Reviews - Product", ["field-id", REVIEWS.PRODUCT_ID.id]],
+          [
+            "joined-field",
+            "Reviews - Product",
+            ["field-id", REVIEWS.PRODUCT_ID.id],
+          ],
         ],
         "source-table": REVIEWS.id,
       });
