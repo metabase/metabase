@@ -9,7 +9,7 @@ const ORDERS_URL = "/admin/datamodel/database/1/table/2";
 describe("support > hidden tables (metabase#9759)", () => {
   before(restore);
 
-  it.skip("can hide a table and not show up in 'Our Data'", () => {
+  it("can hide a table and not show up in 'Our Data'", () => {
     cy.server();
     cy.route("PUT", "/api/table/*").as("tableUpdate");
 
@@ -31,7 +31,7 @@ describe("support > hidden tables (metabase#9759)", () => {
     cy.contains("Orders").should("not.exist");
   });
 
-  it.skip("can hide a table and not show up in 'New Question' for a user", () => {
+  it("can hide a table and not show up in 'New Question' for a user", () => {
     cy.server();
     cy.route("PUT", "/api/table/*").as("tableUpdate");
 
