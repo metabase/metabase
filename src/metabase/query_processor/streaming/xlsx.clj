@@ -55,32 +55,28 @@
   "Standard date/time format for any of the :type/Date variants with a Time"
   "m/d/yy HH:MM:ss")
 
-(defmethod spreadsheet/set-cell! LocalDate [^Cell cell val]
+(defn- set-cell! [^Cell cell format date]
   (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
-  (.setCellValue cell ^Date (t/java-date (t/zoned-date-time val (t/zone-id))))
-  (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) date-format)))
+  (.setCellValue cell ^Date date)
+  (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) format)))
+
+(defmethod spreadsheet/set-cell! LocalDate [^Cell cell val]
+  ;; this truncates the time to midnight UTC on the given date
+  (set-cell! cell date-format (t/java-date (t/zoned-date-time val (t/local-time 00 00) (t/zone-id)))))
 
 (defmethod spreadsheet/set-cell! LocalDateTime [^Cell cell val]
-  (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
-  (.setCellValue cell ^Date (t/java-date (t/zoned-date-time val (t/zone-id))))
-  (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) datetime-format)))
+  (set-cell! cell datetime-format (t/java-date (t/zoned-date-time val (t/zone-id)))))
 
 (defmethod spreadsheet/set-cell! ZonedDateTime [^Cell cell val]
-  (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
-  (.setCellValue cell ^Date (t/java-date val))
-  (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) datetime-format)))
+  (set-cell! cell datetime-format (t/java-date val)))
 
 (defmethod spreadsheet/set-cell! OffsetDateTime [^Cell cell val]
-  (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
-  (.setCellValue cell ^Date (t/java-date val))
-  (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) datetime-format)))
+  (set-cell! cell datetime-format (t/java-date val)))
 
 ;; overrides the default implementation from docjure, so that a plain Date object
 ;; carries its time too
 (defmethod spreadsheet/set-cell! Date [^Cell cell val]
-  (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
-  (.setCellValue cell ^Date val)
-  (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) datetime-format)))
+  (set-cell! cell datetime-format val))
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
 ;; implementations we've already defined for encoding things as JSON. These implementations live in
