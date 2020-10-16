@@ -243,13 +243,20 @@
   (doseq [[perms-type f-symb] {:read      'collection-read-path
                                :readwrite 'collection-readwrite-path}
           :let                [f (ns-resolve 'metabase.models.permissions f-symb)]]
-    (doseq [[input expected] {1                          {:read      "/collection/1/read/"
-                                                          :readwrite "/collection/1/"}
-                              {:id 1}                    {:read      "/collection/1/read/"
-                                                          :readwrite "/collection/1/"}
-                              collection/root-collection {:read      "/collection/root/read/"
-                                                          :readwrite "/collection/root/"}}
-            :let             [expected (get expected perms-type)]]
+    (doseq [[input expected]
+            {1                                                        {:read      "/collection/1/read/"
+                                                                       :readwrite "/collection/1/"}
+             {:id 1}                                                  {:read      "/collection/1/read/"
+                                                                       :readwrite "/collection/1/"}
+             collection/root-collection                               {:read      "/collection/root/read/"
+                                                                       :readwrite "/collection/root/"}
+             (assoc collection/root-collection :namespace "snippets") {:read      "/collection/namespace/snippets/root/read/"
+                                                                       :readwrite "/collection/namespace/snippets/root/"}
+             (assoc collection/root-collection :namespace "a/b")      {:read      "/collection/namespace/a\\/b/root/read/"
+                                                                       :readwrite "/collection/namespace/a\\/b/root/"}
+             (assoc collection/root-collection :namespace :a/b)       {:read      "/collection/namespace/a\\/b/root/read/"
+                                                                       :readwrite "/collection/namespace/a\\/b/root/"}}
+            :let [expected (get expected perms-type)]]
       (testing (pr-str (list f-symb input))
         (is (= expected
                (f input)))))
@@ -642,3 +649,34 @@
           (is (thrown?
                Exception
                (f (group/all-users) collection))))))))
+
+(deftest grant-revoke-root-collection-permissions-test
+  (mt/with-temp PermissionsGroup [{group-id :id}]
+    (letfn [(perms []
+              (db/select-field :object 'Permissions :group_id group-id))]
+      (is (= nil
+             (perms)))
+      (testing "Should be able to grant Root Collection perms"
+        (perms/grant-collection-read-permissions! group-id collection/root-collection)
+        (is (= #{"/collection/root/read/"}
+               (perms))))
+      (testing "Should be able to grant non-default namespace Root Collection read perms"
+        (perms/grant-collection-read-permissions! group-id (assoc collection/root-collection :namespace "currency"))
+        (is (= #{"/collection/root/read/" "/collection/namespace/currency/root/read/"}
+               (perms))))
+      (testing "Should be able to revoke Root Collection perms (shouldn't affect other namespaces)"
+        (perms/revoke-collection-permissions! group-id collection/root-collection)
+        (is (= #{"/collection/namespace/currency/root/read/"}
+               (perms))))
+      (testing "Should be able to grant Root Collection readwrite perms"
+        (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)
+        (is (= #{"/collection/root/" "/collection/namespace/currency/root/read/"}
+               (perms))))
+      (testing "Should be able to grant non-default namespace Root Collection readwrite perms"
+        (perms/grant-collection-readwrite-permissions! group-id (assoc collection/root-collection :namespace "currency"))
+        (is (= #{"/collection/root/" "/collection/namespace/currency/root/read/" "/collection/namespace/currency/root/"}
+               (perms))))
+      (testing "Should be able to revoke non-default namespace Root Collection perms (shouldn't affect default namespace)"
+        (perms/revoke-collection-permissions! group-id (assoc collection/root-collection :namespace "currency"))
+        (is (= #{"/collection/root/"}
+               (perms)))))))

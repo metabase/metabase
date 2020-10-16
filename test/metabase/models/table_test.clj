@@ -8,7 +8,7 @@
             [metabase.test.data.one-off-dbs :as one-off-dbs]
             [toucan.db :as db]))
 
-(deftest valud-field-order?-test
+(deftest valid-field-order?-test
   (testing "A valid field ordering is a set IDs  of all active fields in a given table"
     (is (#'table/valid-field-order? (mt/id :venues)
                                     [(mt/id :venues :name)
