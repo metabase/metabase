@@ -110,10 +110,13 @@ export default class Logs extends Component {
     const processUUIDs = _.uniq(
       logs.map(ev => ev.process_uuid).filter(Boolean),
     ).sort();
-    const renderedLogs = filteredLogs.map(ev => {
+    const renderedLogs = filteredLogs.flatMap(ev => {
       const timestamp = moment(ev.timestamp).format();
       const uuid = ev.process_uuid || "---";
-      return `[${uuid}] ${timestamp} ${ev.level} ${ev.fqns} ${ev.msg}`;
+      return [
+        `[${uuid}] ${timestamp} ${ev.level} ${ev.fqns} ${ev.msg}`,
+        ...(ev.exception || []),
+      ];
     });
 
     let processUUIDSelect = null;
@@ -154,8 +157,9 @@ export default class Logs extends Component {
               style={{
                 fontFamily: '"Lucida Console", Monaco, monospace',
                 fontSize: "14px",
-                whiteSpace: "pre-line",
+                whiteSpace: "pre",
                 padding: "1em",
+                overflowX: "scroll",
               }}
             >
               {reactAnsiStyle(React, renderedLogs.join("\n"))}
