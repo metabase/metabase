@@ -33,7 +33,7 @@
 
    1. GitHub token needs to have push permissions
 
-   1. You can get the Slack GitHub token
+   1. You can get the Slack Webhook URL by asking Cam
 
    1. `AWS_DEFAULT_PROFILE` should be set to `metabase`
 
@@ -53,3 +53,9 @@
 cd /path/to/metabase/bin/release
 clojure -M -m release
 ```
+
+1. Debugging
+
+If you're running into issues running the release script, it's helpful to first check that you can run `./bin/build`
+-- this is the real meat and potatoes of the release process and more likely to be the cause of your issues. If you
+can run that but still need help, talk to Cam.
