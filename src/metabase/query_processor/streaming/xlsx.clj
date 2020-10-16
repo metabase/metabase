@@ -26,7 +26,10 @@
 ;; also, the version in Docjure doesn't keep track of created cell styles, which is bad
 ;; these need to be memoized per Workbook
 
-(def ^:dynamic *cell-styles* nil)
+(def ^:dynamic *cell-styles*
+  "Holds the CellStyle values used within a spreadsheet so that they can be reused. Excel has a limit
+   of 64,000 cell styles in a single workbook."
+  nil)
 
 (defn- create-or-get-date-format [^Workbook workbook ^String format-string]
   (when-not (contains? @*cell-styles* format-string)
@@ -44,8 +47,13 @@
 ;; as a result, we'll add overrides that can do it
 (intern 'dk.ative.docjure.spreadsheet 'create-date-format create-or-get-date-format)
 
-(def ^:const date-format "m/d/yy")
-(def ^:const datetime-format "m/d/yy HH:MM:ss")
+(def ^:const date-format
+  "Standard date format for :type/Date objects"
+  "m/d/yy")
+
+(def ^:const datetime-format
+  "Standard date/time format for any of the :type/Date variants with a Time"
+  "m/d/yy HH:MM:ss")
 
 (defmethod spreadsheet/set-cell! LocalDate [^Cell cell val]
   (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
