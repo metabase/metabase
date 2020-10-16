@@ -115,6 +115,41 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("Dominique Leffler");
   });
 
+  it.skip("should drill through a with date filter", () => {
+    // save a question of orders by week
+    cy.request("POST", "/api/card", {
+      name: "Orders by Created At: Week",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": 2,
+          aggregation: [["count"]],
+          breakout: [["datetime-field", ["field-id", 15], "week"]],
+        },
+        type: "query",
+      },
+      display: "line",
+      visualization_settings: {},
+    });
+
+    // Load the question up
+    cy.visit("/collection/root");
+    cy.contains("Orders by Created At: Week").click({ force: true });
+    cy.contains("January, 2019");
+
+    // drill into a recent week
+    cy.get(".dot")
+      .eq(-4)
+      .click({ force: true });
+    cy.contains("View these Orders").click();
+
+    // check that filter is applied and rows displayed
+    cy.contains("Showing 127 rows");
+
+    // Now click on the filter widget to see if the proper parameters got passed in
+    cy.contains("Created At between").click();
+  });
+
   describe("for an unsaved question", () => {
     before(() => {
       restore();
