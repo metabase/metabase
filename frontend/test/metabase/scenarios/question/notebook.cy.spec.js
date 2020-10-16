@@ -13,6 +13,22 @@ describe("scenarios > question > notebook", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
+  it.skip("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
+    openOrdersTable();
+    // save question initially
+    cy.findByText("Save").click();
+    cy.get(".ModalBody")
+      .contains("Save")
+      .click();
+    cy.findByText("Not now").click();
+    // enter "notebook" and visualize without changing anything
+    cy.get(".Icon-notebook").click();
+    cy.findByText("Visualize").click();
+
+    // there were no changes to the question, so we shouldn't have the option to "Save"
+    cy.findByText("Save").should("not.exist");
+  });
+
   it("should allow post-aggregation filters", () => {
     // start a custom question with orders
     cy.visit("/question/new");
