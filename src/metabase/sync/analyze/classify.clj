@@ -78,14 +78,13 @@
   "Run all the available `classifiers` against `field` and `fingerprint`, and return the resulting `field` with changes
   decided upon by the classifiers."
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
-  (loop [field field, [classifier & more] classifiers]
-    (if-not classifier
-      field
-      (recur (or (sync-util/with-error-handling (format "Error running classifier on %s"
-                                                        (sync-util/name-for-logging field))
-                   (classifier field fingerprint))
-                 field)
-             more))))
+  (reduce (fn [field classifier]
+            (or (sync-util/with-error-handling (format "Error running classifier on %s"
+                                                       (sync-util/name-for-logging field))
+                  (classifier field fingerprint))
+                field))
+          (vary-meta field assoc :sync.classify/original field)
+          classifiers))
 
 
 (s/defn ^:private classify!

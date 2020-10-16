@@ -117,4 +117,18 @@
                                 :nil%           0}}
           classified  (classify/run-classifiers field fingerprint)]
       (is (= {:has_field_values :auto-list, :special_type :type/URL}
-             (select-keys classified [:has_field_values :special_type]))))))
+             (select-keys classified [:has_field_values :special_type])))))
+  (testing "Classififying using fingerprinters can override previous classifications"
+    (testing "Classify state fields on fingerprint rather than name"
+      (let [field       (->field {:name "order_state" :base_type :type/Text})
+            fingerprint {:global {:distinct-count 4
+                                  :nil%           0}
+                         :type   {:type/Text {:percent-state 0.98}}}
+            classified  (classify/run-classifiers field fingerprint)]
+        (is (= {:has_field_values :auto-list, :special_type :type/State}
+               (select-keys classified [:has_field_values :special_type])))))
+    (let [field       (->field {:name "order_status" :base_type :type/Text})
+          fingerprint {:type {:type/Text {:percent-json 0.99}}}]
+      (is (= :type/SerializedJSON
+             ;; this will be marked as :type/Category based on name, but fingerprinters should override
+             (:special_type (classify/run-classifiers field fingerprint)))))))
