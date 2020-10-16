@@ -15,6 +15,9 @@ function filterDashboard(suggests = true) {
     cy.contains("Aerodynamic").click();
   } else {
     cy.contains("Category").type("Aerodynamic Bronze Hat");
+    cy.wait("@search").should(xhr => {
+      expect(xhr.status).to.equal(403);
+    });
   }
   cy.contains("Add filter").click();
   cy.contains("Aerodynamic Bronze Hat");
@@ -50,6 +53,12 @@ describe("support > permissions (metabase#8472)", () => {
   });
 
   it("should allow a nodata user to select the filter", () => {
+    cy.server();
+    cy.route(
+      "GET",
+      "/api/dashboard/1/params/*/search/Aerodynamic Bronze Hat",
+    ).as("search");
+
     signIn("nodata");
     filterDashboard(false);
   });
