@@ -57,6 +57,28 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     cy.request("PUT", `/api/setting/enable-public-sharing`, { value: true });
   });
 
+  describe("embeded params", () => {
+    it("should be hideable", () => {
+      // Check viewable
+      cy.visit("/dashboard/2");
+      cy.get(".Icon-share").click();
+      cy.findByText("Embed this dashboard in an application").click();
+
+      cy.findByText("Parameters");
+      cy.get(".Modal--full").within(() => {
+        cy.findByText("Id");
+        cy.findByText("User");
+        cy.findAllByText("Disabled").should("have.length", 4);
+      });
+
+      // Check hideable
+      cy.visit("/dashboard/2#hide_parameters=id%2Cname");
+      cy.reload();
+      cy.findByText("User");
+      cy.findByText("Name").should("not.exist");
+    });
+  });
+
   describe("private question", () => {
     beforeEach(signInAsAdmin);
 
@@ -169,7 +191,7 @@ function sharedParametersTests(visitUrl) {
     popover()
       .find('[placeholder="Search by Name or enter an ID"]')
       .type("Aly");
-    popover().contains("Alycia Collins - 541");
+    popover().contains("Alycia McCullough - 2016");
   });
 
   it("should allow searching PEOPLE.NAME by PEOPLE.NAME", () => {
@@ -178,7 +200,7 @@ function sharedParametersTests(visitUrl) {
     popover()
       .find('[placeholder="Search by Name"]')
       .type("Aly");
-    popover().contains("Alycia Collins");
+    popover().contains("Alycia McCullough");
   });
 
   it("should show values for PEOPLE.SOURCE", () => {
@@ -194,7 +216,7 @@ function sharedParametersTests(visitUrl) {
     popover()
       .find('[placeholder="Search by Name or enter an ID"]')
       .type("Aly");
-    popover().contains("Alycia Collins - 541");
+    popover().contains("Alycia McCullough - 2016");
   });
 
   it("should accept url parameters", () => {

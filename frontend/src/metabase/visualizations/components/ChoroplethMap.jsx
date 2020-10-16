@@ -222,26 +222,60 @@ export default class ChoroplethMap extends Component {
     const getRowValue = row => row[metricIndex] || 0;
 
     const getFeatureName = feature => String(feature.properties[nameProperty]);
-    const getFeatureKey = feature =>
-      String(feature.properties[keyProperty]).toLowerCase();
+    const getFeatureKey = (feature, { lowerCase = true } = {}) => {
+      const key = String(feature.properties[keyProperty]);
+      return lowerCase ? key.toLowerCase() : key;
+    };
 
     const getFeatureValue = feature => valuesMap[getFeatureKey(feature)];
 
     const rowByFeatureKey = new Map(rows.map(row => [getRowKey(row), row]));
 
-    const getFeatureClickObject = (row, feature) => ({
-      value: row[metricIndex],
-      column: cols[metricIndex],
-      dimensions: [
-        {
-          value:
-            feature != null ? getFeatureName(feature) : row[dimensionIndex],
-          column: cols[dimensionIndex],
-        },
-      ],
-      origin: { row, cols },
-      settings,
-    });
+    const getFeatureClickObject = (row, feature) =>
+      row == null
+        ? // This branch lets you click on empty regions. We use in dashboard cross-filtering.
+          {
+            value: null,
+            column: cols[metricIndex],
+            dimensions: [],
+            data: feature
+              ? [
+                  {
+                    value: getFeatureKey(feature, { lowerCase: false }),
+                    col: cols[dimensionIndex],
+                  },
+                ]
+              : [],
+            origin: { row, cols },
+            settings,
+          }
+        : {
+            value: row[metricIndex],
+            column: cols[metricIndex],
+            dimensions: [
+              {
+                value:
+                  feature != null
+                    ? getFeatureName(feature)
+                    : row[dimensionIndex],
+                column: cols[dimensionIndex],
+              },
+            ],
+            data: row.map((value, index) => ({
+              value:
+                index === dimensionIndex
+                  ? feature != null
+                    ? getFeatureName(feature)
+                    : row[dimensionIndex]
+                  : value,
+              // We set clickBehaviorValue to the raw data value for use in a filter via crossfiltering.
+              // `value` above is used in the tool tips so it needs to use `getFeatureName`.
+              clickBehaviorValue: value,
+              col: cols[index],
+            })),
+            origin: { row, cols },
+            settings,
+          };
 
     const isClickable =
       onVisualizationClick &&
@@ -250,10 +284,11 @@ export default class ChoroplethMap extends Component {
     const onClickFeature =
       isClickable &&
       (click => {
-        const row = rowByFeatureKey.get(getFeatureKey(click.feature));
-        if (row && onVisualizationClick) {
+        const featureKey = getFeatureKey(click.feature);
+        const row = rowByFeatureKey.get(featureKey);
+        if (onVisualizationClick) {
           onVisualizationClick({
-            ...getFeatureClickObject(row),
+            ...getFeatureClickObject(row, click.feature),
             event: click.event,
           });
         }

@@ -11,7 +11,7 @@ describe("scenarios > admin > spinner", () => {
       cy.findByText("Add Database").should("not.exist");
     });
 
-    it.skip("should not spin forever if it returns an error (Issue #11037)", () => {
+    it.skip("should not spin forever if it returns an error (metabase#11037)", () => {
       cy.visit("/admin/databases/999");
       cy.findAllByText("Databases").should("have.length", 2);
       cy.findByText("Loading...").should("not.exist");

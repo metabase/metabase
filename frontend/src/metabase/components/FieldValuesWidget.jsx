@@ -3,6 +3,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
+import _ from "underscore";
 
 import TokenField from "metabase/components/TokenField";
 import ValueComponent from "metabase/components/Value";
@@ -10,10 +11,9 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import AutoExpanding from "metabase/hoc/AutoExpanding";
 
-import { MetabaseApi } from "metabase/services";
+import { DashboardApi, MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
-import { debounce, zip } from "underscore";
 import { stripId } from "metabase/lib/formatting";
 
 import Fields from "metabase/entities/fields";
@@ -23,8 +23,35 @@ import type { FieldId } from "metabase-types/types/Field";
 import type { Value } from "metabase-types/types/Dataset";
 import type { FormattingOptions } from "metabase/lib/formatting";
 import type { LayoutRendererProps } from "metabase/components/TokenField";
+import type { DashboardWithCards } from "metabase-types/types/Dashboard";
+import type { Parameter } from "metabase-types/types/Parameter";
 
 const MAX_SEARCH_RESULTS = 100;
+
+// fetch the possible values of a parameter based on the values of the other parameters in a dashboard.
+// parameterId = the auto-generated ID of the parameter
+// parameters = all parameters in the current dashboard, as an array
+const fetchParameterPossibleValues = async (
+  dashboardId,
+  { id: paramId, filteringParameters = [] } = {},
+  parameters,
+  prefix,
+) => {
+  // build a map of parameter ID -> value for parameters that this parameter is filtered by
+  const otherValues = _.chain(parameters)
+    .filter(p => filteringParameters.includes(p.id) && p.value != null)
+    .map(p => [p.id, p.value])
+    .object()
+    .value();
+
+  const args = { paramId, prefix, dashId: dashboardId, ...otherValues };
+  const endpoint = prefix
+    ? DashboardApi.parameterSearch
+    : DashboardApi.parameterValues;
+  // now call the new chain filter API endpoint
+  const results = await endpoint(args);
+  return results.map(result => [].concat(result));
+};
 
 const mapDispatchToProps = {
   addRemappings,
@@ -58,6 +85,10 @@ type Props = {
   minWidth?: number,
   optionsMaxHeight?: Number,
   alwaysShowOptions?: boolean,
+
+  dashboard?: DashboardWithCards,
+  parameter?: Parameter,
+  parameters?: Parameter[],
 
   className?: string,
 };
@@ -93,12 +124,45 @@ export class FieldValuesWidget extends Component {
     maxWidth: 500,
   };
 
+  // if [dashboard] parameter ID is specified use the fancy new Chain Filter API endpoints to fetch parameter values.
+  // Otherwise (e.g. for Cards) fall back to the old field/:id/values endpoint
+  useChainFilterEndpoints() {
+    return this.props.dashboard && this.props.dashboard.id;
+  }
+
+  parameterId() {
+    return this.props.parameter && this.props.parameter.id;
+  }
+
   componentWillMount() {
-    const { fields, fetchFieldValues } = this.props;
-    if (fields.every(field => field.has_field_values === "list")) {
-      fields.forEach(field => fetchFieldValues(field.id));
+    if (this.shouldList()) {
+      if (this.useChainFilterEndpoints()) {
+        this.fetchDashboardParamValues();
+      } else {
+        const { fields, fetchFieldValues } = this.props;
+        fields.forEach(field => fetchFieldValues(field.id));
+      }
     }
   }
+
+  fetchDashboardParamValues = async () => {
+    this.setState({
+      loadingState: "LOADING",
+      options: [],
+    });
+
+    const { dashboard, parameter, parameters } = this.props;
+    const options = await fetchParameterPossibleValues(
+      dashboard && dashboard.id,
+      parameter,
+      parameters,
+    );
+
+    this.setState({
+      loadingState: "LOADED",
+      options,
+    });
+  };
 
   componentWillUnmount() {
     if (this._cancel) {
@@ -106,9 +170,16 @@ export class FieldValuesWidget extends Component {
     }
   }
 
+  shouldList() {
+    return this.props.fields.every(field => field.has_field_values === "list");
+  }
+
   hasList() {
-    return this.props.fields.every(
-      field => field.has_field_values === "list" && field.values,
+    return (
+      this.shouldList() &&
+      (this.useChainFilterEndpoints()
+        ? this.state.loadingState === "LOADED"
+        : this.props.fields.every(field => field.values))
     );
   }
 
@@ -147,6 +218,8 @@ export class FieldValuesWidget extends Component {
     return field.isSearchable() ? field : null;
   };
 
+  showRemapping = () => this.props.fields.length === 1;
+
   search = async (value: string, cancelled: Promise<void>) => {
     if (!value) {
       return;
@@ -154,29 +227,43 @@ export class FieldValuesWidget extends Component {
 
     const { fields } = this.props;
 
-    const allResults = await Promise.all(
-      fields.map(field =>
-        MetabaseApi.field_search(
-          {
-            value,
-            fieldId: field.id,
-            // $FlowFixMe all fields have a search field if we're searching
-            searchFieldId: this.searchField(field).id,
-            limit: this.props.maxResults,
-          },
-          { cancelled },
+    let results;
+    if (this.useChainFilterEndpoints()) {
+      const { dashboard, parameter, parameters } = this.props;
+      results = await fetchParameterPossibleValues(
+        dashboard && dashboard.id,
+        parameter,
+        parameters,
+        value,
+      );
+    } else {
+      results = dedupeValues(
+        await Promise.all(
+          fields.map(field =>
+            MetabaseApi.field_search(
+              {
+                value,
+                fieldId: field.id,
+                // $FlowFixMe all fields have a search field if we're searching
+                searchFieldId: this.searchField(field).id,
+                limit: this.props.maxResults,
+              },
+              { cancelled },
+            ),
+          ),
         ),
-      ),
-    );
+      );
+    }
 
-    for (const [field, result] of zip(fields, allResults)) {
-      if (result && field.remappedField() === this.searchField(field)) {
-        // $FlowFixMe: addRemappings provided by @connect
-        this.props.addRemappings(field.id, result);
+    if (this.showRemapping()) {
+      const [field] = fields;
+      if (field.remappedField() === this.searchField(field)) {
+        // $FlowFixMe
+        this.props.addRemappings(field.id, results);
       }
     }
 
-    return dedupeValues(allResults);
+    return results;
   };
 
   _search = (value: string) => {
@@ -205,7 +292,7 @@ export class FieldValuesWidget extends Component {
   };
 
   // $FlowFixMe
-  _searchDebounced = debounce(async (value): void => {
+  _searchDebounced = _.debounce(async (value): void => {
     this.setState({
       loadingState: "LOADING",
     });
@@ -267,7 +354,7 @@ export class FieldValuesWidget extends Component {
         value={value}
         column={fields[0]}
         maximumFractionDigits={20}
-        remap={fields.length === 1}
+        remap={this.showRemapping()}
         {...formatOptions}
         // $FlowFixMe
         {...options}
@@ -321,9 +408,12 @@ export class FieldValuesWidget extends Component {
     }
 
     let options = [];
-    if (this.hasList()) {
+    if (this.hasList() && !this.useChainFilterEndpoints()) {
       options = dedupeValues(fields.map(field => field.values));
-    } else if (this.isSearchable() && loadingState === "LOADED") {
+    } else if (
+      loadingState === "LOADED" &&
+      (this.isSearchable() || this.useChainFilterEndpoints())
+    ) {
       options = this.state.options;
     } else {
       options = [];

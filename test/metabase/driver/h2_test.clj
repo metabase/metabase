@@ -77,11 +77,11 @@
 
 (deftest add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
-    (is (= (hsql/call :dateadd (hx/literal "millisecond") 100500 :%now)
+    (is (= (hsql/call :dateadd (hx/literal "millisecond") (hsql/call :cast 100500.0 (hsql/raw "long")) :%now)
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.5 :second))))
 
   (testing "Non-fractional seconds should remain seconds, but be cast to longs"
-    (is (= (hsql/call :dateadd (hx/literal "second") 100 :%now)
+    (is (= (hsql/call :dateadd (hx/literal "second") (hsql/call :cast 100.0 (hsql/raw "long")) :%now)
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
 
 (deftest clob-test

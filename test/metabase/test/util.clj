@@ -5,7 +5,6 @@
              [string :as str]
              [test :refer :all]
              [walk :as walk]]
-            [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.scheduler :as qs]
             [colorize.core :as colorize]
             [java-time :as t]
@@ -25,13 +24,25 @@
             [metabase.test
              [data :as data]
              [initialize :as initialize]]
+            [metabase.test.util.log :as tu.log]
+            [potemkin :as p]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.util.concurrent.TimeoutException
            java.util.Locale
-           org.apache.log4j.Logger
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
+
+(comment tu.log/keep-me)
+
+;; these are imported because these functions originally lived in this namespace, and some tests might still be
+;; referencing them from here. We can remove the imports once everyone is using `metabase.test` instead of using this
+;; namespace directly.
+(p/import-vars
+ [tu.log
+  with-log-level
+  with-log-messages
+  with-log-messages-for-level])
 
 (defmethod assert-expr 're= [msg [_ pattern actual]]
   `(let [pattern#  ~pattern
@@ -84,11 +95,10 @@
 (defn random-email
   "Generate a random email address."
   []
-  (str (random-name) "@metabase.com"))
+  (str (u/lower-case-en (random-name)) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
-  "Useful for unit test comparisons. Converts map keys found in `DATA`
-  satisfying `PRED` with booleans when not nil"
+  "Useful for unit test comparisons. Converts map keys found in `data` satisfying `pred` with booleans when not nil."
   ([data]
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
@@ -391,68 +401,6 @@
   (boolean (when (string? s)
              (re-matches #"^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$" s))))
 
-(defn do-with-log-messages [f]
-  (let [messages (atom [])]
-    (with-redefs [log/log* (fn [_ & message]
-                             (swap! messages conj (vec message)))]
-      (f))
-    @messages))
-
-(defmacro with-log-messages
-  "Execute `body`, and return a vector of all messages logged using the `log/` family of functions. Messages are of the
-  format `[:level throwable message]`, and are returned in chronological order from oldest to newest.
-
-     (with-log-messages (log/warn \"WOW\")) ; -> [[:warn nil \"WOW\"]]"
-  {:style/indent 0}
-  [& body]
-  `(do-with-log-messages (fn [] ~@body)))
-
-(def level-kwd->level
-  "Conversion from a keyword log level to the Log4J constance mapped to that log level.
-   Not intended for use outside of the `with-log-messages-for-level` macro."
-  {:error org.apache.log4j.Level/ERROR
-   :warn  org.apache.log4j.Level/WARN
-   :info  org.apache.log4j.Level/INFO
-   :debug org.apache.log4j.Level/DEBUG
-   :trace org.apache.log4j.Level/TRACE})
-
-(defn ^Logger metabase-logger
-  "Gets the root logger for all metabase namespaces. Not intended for use outside of the
-  `with-log-messages-for-level` macro."
-  []
-  (Logger/getLogger "metabase"))
-
-(defn do-with-log-messages-for-level [level thunk]
-  (let [original-level (.getLevel (metabase-logger))
-        new-level      (get level-kwd->level (keyword level))]
-    (try
-      (.setLevel (metabase-logger) new-level)
-      (thunk)
-      (finally
-        (.setLevel (metabase-logger) original-level)))))
-
-(defmacro with-log-level
-  "Sets the log level (e.g. `:debug` or `:trace`) while executing `body`. Not thread safe! But good for debugging from
-  the REPL or for tests.
-
-    (with-log-level :debug
-      (do-something))"
-  [level & body]
-  `(do-with-log-messages-for-level ~level (fn [] ~@body)))
-
-(defmacro with-log-messages-for-level
-  "Executes `body` with the metabase logging level set to `level-kwd`. This is needed when the logging level is set at a
-  higher threshold than the log messages you're wanting to example. As an example if the metabase logging level is set
-  to `ERROR` in the log4j.properties file and you are looking for a `WARN` message, it won't show up in the
-  `with-log-messages` call as there's a guard around the log invocation, if it's not enabled (it is set to `ERROR`)
-  the log function will never be invoked. This macro will temporarily set the logging level to `level-kwd`, then
-  invoke `with-log-messages`, then set the level back to what it was before the invocation. This allows testing log
-  messages even if the threshold is higher than the message you are looking for."
-  [level-kwd & body]
-  `(with-log-level ~level-kwd
-     (with-log-messages
-       ~@body)))
-
 (defn- update-in-if-present
   "If the path `KS` is found in `M`, call update-in with the original
   arguments to this function, otherwise, return `M`"
@@ -599,7 +547,7 @@
            .getZone
            .getID)))))
 
-(defmulti ^:private do-model-cleanup! class)
+(defmulti ^:private ^:deprecated do-model-cleanup! class)
 
 (defmethod do-model-cleanup! :default
   [model]
@@ -610,7 +558,7 @@
   ;; don't delete Personal Collections <3
   (db/delete! Collection :personal_owner_id nil))
 
-(defn do-with-model-cleanup [model-seq f]
+(defn ^:deprecated do-with-model-cleanup [model-seq f]
   (try
     (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name model-seq))) "\n")
       (f))
@@ -618,10 +566,14 @@
       (doseq [model model-seq]
         (do-model-cleanup! (db/resolve-model model))))))
 
-(defmacro with-model-cleanup
+(defmacro ^:deprecated with-model-cleanup
   "This will delete all rows found for each model in `model-seq`. By default, this calls `delete!`, so if the model has
   defined any `pre-delete` behavior, that will be preserved. Alternatively, you can define a custom implementation by
-  using the `do-model-cleanup!` multimethod above."
+  using the `do-model-cleanup!` multimethod above.
+
+  DEPRECATED -- don't use this going forward because it deletes *everything* in the app DB of this Model, not just
+  stuff created for the test. Use `with-temp` wherever possible, or manually delete things inside of `try-finally`
+  blocks."
   [model-seq & body]
   `(do-with-model-cleanup ~model-seq (fn [] ~@body)))
 
@@ -675,6 +627,25 @@
                             (throw (RuntimeException. ~(format "%s should not be called!" fn-symb))))]
      ~@body))
 
+(defn do-with-discarded-collections-perms-changes [collection-or-id f]
+  (initialize/initialize-if-needed! :db)
+  (let [read-path                   (perms/collection-read-path collection-or-id)
+        readwrite-path              (perms/collection-readwrite-path collection-or-id)
+        groups-with-read-perms      (db/select-field :group_id Permissions :object read-path)
+        groups-with-readwrite-perms (db/select-field :group_id Permissions :object readwrite-path)]
+    (try
+      (f)
+      (finally
+        (db/delete! Permissions :object [:in #{read-path readwrite-path}])
+        (doseq [group-id groups-with-read-perms]
+          (perms/grant-collection-read-permissions! group-id collection-or-id))
+        (doseq [group-id groups-with-readwrite-perms]
+          (perms/grant-collection-readwrite-permissions! group-id collection-or-id))))))
+
+(defmacro with-discarded-collections-perms-changes
+  "Execute `body`; then, in a `finally` block, restore permissions to `collection-or-id` to what they were originally."
+  [collection-or-id & body]
+  `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
 
 (defn do-with-non-admin-groups-no-root-collection-perms [f]
   (initialize/initialize-if-needed! :db)
@@ -696,6 +667,13 @@
   [& body]
   `(do-with-non-admin-groups-no-root-collection-perms (fn [] ~@body)))
 
+(defmacro with-non-admin-groups-no-root-collection-for-namespace-perms
+  "Like `with-non-admin-groups-no-root-collection-perms`, but for the Root Collection of a non-default namespace."
+  [collection-namespace & body]
+  `(do-with-non-admin-groups-no-collection-perms
+    (assoc collection/root-collection
+           :namespace (name ~collection-namespace))
+    (fn [] ~@body) ))
 
 (defn doall-recursive
   "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.

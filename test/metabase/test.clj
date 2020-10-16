@@ -139,9 +139,10 @@
  [test-users
   fetch-user
   test-user?
-  user->id
   user->client
   user->credentials
+  user->id
+  user-http-request
   with-test-user]
 
  [tt
@@ -154,7 +155,6 @@
   discard-setting-changes
   doall-recursive
   is-uuid-string?
-  metabase-logger
   obj->json->obj
   postwalk-pred
   random-email
@@ -162,11 +162,13 @@
   round-all-decimals
   scheduler-current-tasks
   throw-if-called
+  with-discarded-collections-perms-changes
   with-locale
+  with-log-level
   with-log-messages
   with-log-messages-for-level
-  with-log-level
   with-model-cleanup
+  with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
   with-scheduler
   with-temp-scheduler
@@ -179,7 +181,10 @@
   with-open-channels]
 
  [tu.log
-  suppress-output]
+  suppress-output
+  with-log-messages
+  with-log-messages-for-level
+  with-log-level]
 
  [tu.tz
   with-system-timezone-id]

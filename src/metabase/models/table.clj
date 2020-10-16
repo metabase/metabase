@@ -102,7 +102,10 @@
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
-  (= (db/select-ids Field :table_id (u/get-id table)) (set field-ordering)))
+  (= (db/select-ids Field
+       :table_id (u/get-id table)
+       :active   true)
+     (set field-ordering)))
 
 (defn custom-order-fields!
   "Set field order to `field-order`."
@@ -211,8 +214,9 @@
   [table]
   (Database (:db_id table)))
 
-(defn table-id->database-id
+(def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
-  [table-id]
-  {:pre [(integer? table-id)]}
-  (db/select-one-field :db_id Table, :id table-id))
+  (memoize
+   (fn [table-id]
+     {:pre [(integer? table-id)]}
+     (db/select-one-field :db_id Table, :id table-id))))

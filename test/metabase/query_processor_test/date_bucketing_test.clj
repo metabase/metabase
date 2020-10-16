@@ -17,9 +17,7 @@
   (:require [clj-time
              [core :as time]
              [format :as tformat]]
-            [clojure
-             [string :as str]
-             [test :refer :all]]
+            [clojure.test :refer :all]
             [java-time :as t]
             [metabase
              [driver :as driver]
@@ -744,25 +742,10 @@
              (mt/with-system-timezone-id (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :week :pacific)))))))
 
-;; TODO — Group by `:iso-week` test!
-
 (deftest group-by-week-of-year-test
   (mt/test-drivers (mt/normal-drivers)
-    (is (= ;; Not really sure why different drivers have different opinions on these </3
-         (cond
-           (= :snowflake driver/*driver*)
-           [[22 46] [23 47] [24 40] [25 60] [26 7]]
-
-           (#{:sqlserver :sqlite :oracle :sparksql} driver/*driver*)
-           [[23 54] [24 46] [25 39] [26 61]]
-
-           (and (qp.test/supports-report-timezone? driver/*driver*)
-                (not (= :redshift driver/*driver*)))
-           [[23 49] [24 47] [25 39] [26 58] [27 7]]
-
-           :else
-           [[23 46] [24 47] [25 40] [26 60] [27 7]])
-         (sad-toucan-incidents-with-bucketing :week-of-year :pacific)))))
+    (is (= [[22 46] [23 47] [24 40] [25 60] [26 7]]
+           (sad-toucan-incidents-with-bucketing :week-of-year :utc)))))
 
 ;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
 ;; difference is how the beginning of hte month is represented, since we always return times with our dates
@@ -1040,7 +1023,7 @@
    [36       :day-of-month    1]
    [9        :day-of-year     214]
    [11       :week            "2014-03-03"]
-   [#{7 8 9} :week-of-year    2]
+   [7        :week-of-year    2]
    [48       :month           "2014-03"]
    [38       :month-of-year   1]
    [107      :quarter         "2014-01"]
@@ -1059,13 +1042,8 @@
     (mt/test-drivers (mt/normal-drivers)
       (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
         (testing (format "\nunit = %s" unit)
-          (let [result (count-of-checkins unit filter-value)]
-            (if (integer? expected-count)
-              (is (= expected-count result)
-                  (format "count of rows where (= (%s date) %s) should be %d" (name unit) filter-value expected-count))
-              (is (contains? expected-count result)
-                  (format "count of rows where (= (%s date) %s) should be one of: %s"
-                          (name unit) filter-value (str/join ", " (sort expected-count)))))))))))
+          (is (= expected-count (count-of-checkins unit filter-value))
+              (format "count of rows where (= (%s date) %s) should be %d" (name unit) filter-value expected-count)))))))
 
 (deftest legacy-default-datetime-bucketing-test
   (testing (str "Datetime fields that aren't wrapped in datetime-field clauses should get default :day bucketing for "

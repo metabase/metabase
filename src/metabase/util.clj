@@ -223,6 +223,11 @@
     (fn [_ x]
       (str x))))
 
+(defn decolorize
+  "Remove ANSI escape sequences from a String `s`."
+  ^String [s]
+  (some-> s (str/replace #"\[[;\d]*m" "")))
+
 (defn format-color
   "With one arg, converts something to a string and colorizes it. With two args, behaves like `format`, but colorizes
   the output.
@@ -384,7 +389,7 @@
   "Return a version of String `s` appropriate for use as a URL slug.
    Downcase the name, remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores;
    URL-encode non-ASCII characters. (Non-ASCII characters are encoded rather than replaced with underscores in order
-   to support languages that don't use the Latin alphabet; see issue #3818).
+   to support languages that don't use the Latin alphabet; see metabase#3818).
 
    Optionally specify `max-length` which will truncate the slug after that many characters."
   (^String [^String s]

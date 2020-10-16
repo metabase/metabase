@@ -59,7 +59,7 @@ export function popover() {
   return cy.get(".PopoverContainer.PopoverContainer--open");
 }
 export function modal() {
-  return cy.get(".ModalContainer");
+  return cy.get(".ModalContainer .ModalContent");
 }
 export function nav() {
   return cy.get("nav");
@@ -89,7 +89,7 @@ export function setupLocalHostEmail() {
   // Leaves password and username blank
   cy.findByPlaceholderText("metabase@yourcompany.com").type("test@local.host");
 
-  // *** Unnecessary click (Issue #12692)
+  // *** Unnecessary click (metabase#12692)
   cy.findByPlaceholderText("smtp.yourservice.com").click();
 
   cy.findByText("Save changes").click();
@@ -167,4 +167,23 @@ export function createNativeQuestion(name, query) {
     display: "table",
     visualization_settings: {},
   });
+}
+
+// TODO: does this really need to be a global helper function?
+export function createBasicAlert({ firstAlert, includeNormal } = {}) {
+  cy.get(".Icon-bell").click();
+  if (firstAlert) {
+    cy.findByText("Set up an alert").click();
+  }
+  cy.findByText("Let's set up your alert");
+  if (includeNormal) {
+    cy.findByText("Email alerts to:")
+      .parent()
+      .children()
+      .last()
+      .click();
+    cy.findByText("Robert Tableton").click();
+  }
+  cy.findByText("Done").click();
+  cy.findByText("Let's set up your alert").should("not.exist");
 }

@@ -26,7 +26,6 @@
   ;; https://stackoverflow.com/questions/14780858/escape-in-script-tag-contents/23983448#23983448
   (str/replace s #"(?i)</script" "</scr\\\\ipt"))
 
-
 (defn- fallback-localization [locale-or-name]
   (json/generate-string
    {"headers"

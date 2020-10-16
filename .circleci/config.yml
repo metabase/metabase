@@ -175,6 +175,11 @@ executors:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: circleci/mongo:4.0
 
+  fe-postgres-12:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: metabase/qa-databases:postgres-sample-12
 
 ########################################################################################################################
 #                                                       COMMANDS                                                       #
@@ -216,7 +221,7 @@ commands:
       - run:
           name: << parameters.command-name >>
           command: yarn << parameters.command >>
-          no_output_timeout: 5m
+          no_output_timeout: 10m
 
   wait-for-port:
     parameters:
@@ -332,7 +337,11 @@ jobs:
           name: Install gettext
           command: sudo apt-get install gettext
       - run:
-          name: Verify i18n .po files
+          name: Check i18n tags/make sure template can be built
+          command: ./bin/i18n/update-translation-template
+          no_output_timeout: 2m
+      - run:
+          name: Verify i18n translations (.po files)
           command: ./bin/i18n/build-translation-resources
           no_output_timeout: 2m
 
@@ -513,13 +522,6 @@ jobs:
           command-name: Run docs links checker
           command: lint-docs-links
 
-  fe-tests-karma:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run frontend tests (karma)
-          command: run test-karma
-
   fe-tests-unit:
     executor: node
     steps:
@@ -620,20 +622,6 @@ jobs:
           key: frontend-{{ checksum "./frontend-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/resources/frontend_client
-
-  fe-tests-e2e:
-    executor: clojure-and-node
-    steps:
-      - run-yarn-command:
-          command-name: Run frontend e2e tests
-          command: run test-e2e-no-build
-          before-steps:
-            - restore_cache:
-                keys:
-                  - uberjar-{{ checksum "./backend-checksums.txt" }}
-            - run:
-                name: Generate version file
-                command: ./bin/build version
 
   fe-tests-cypress:
     parameters:
@@ -932,9 +920,6 @@ workflows:
       - fe-linter-docs-links:
           requires:
             - fe-deps
-      - fe-tests-karma:
-          requires:
-            - fe-deps
       - fe-tests-unit:
           requires:
             - fe-deps
@@ -947,10 +932,6 @@ workflows:
       - build-uberjar:
           requires:
             - be-deps
-      - fe-tests-e2e:
-          requires:
-            - build-uberjar
-            - fe-deps
       - fe-tests-cypress:
           name: fe-tests-cypress-1
           requires:
@@ -986,6 +967,16 @@ workflows:
           driver: mongo
           only-single-database: true
           test-files-location: frontend/test/metabase-db/mongo
+
+      - fe-tests-cypress:
+          name: fe-tests-cypress-postgres-12
+          requires:
+            - build-uberjar
+            - fe-deps
+          e: fe-postgres-12
+          cypress-group: "postgres"
+          only-single-database: true
+          test-files-location: frontend/test/metabase-db/postgres
 
       - deploy-master:
           requires:
@@ -1029,10 +1020,8 @@ workflows:
             - fe-linter-prettier
             - fe-linter-docs-links
 
-            - fe-tests-e2e
             - fe-tests-integration
             - fe-tests-timezones
-            - fe-tests-karma
             - fe-tests-unit
           filters:
             branches:

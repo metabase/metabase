@@ -8,6 +8,7 @@ import { parseHashOptions } from "metabase/lib/browser";
 
 import MetabaseSettings from "metabase/lib/settings";
 
+import TitleAndDescription from "metabase/components/TitleAndDescription";
 import Parameters from "metabase/parameters/components/Parameters";
 import LogoBadge from "./LogoBadge";
 
@@ -20,6 +21,7 @@ const DEFAULT_OPTIONS = {
   titled: true,
 };
 
+import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 import type { Parameter } from "metabase-types/types/Parameter";
 
 type Props = {
@@ -28,6 +30,7 @@ type Props = {
   actionButtons?: any[],
   name?: string,
   description?: string,
+  dashboard?: DashboardWithCards,
   location: { query: { [key: string]: string }, hash: string },
   parameters?: Parameter[],
   parameterValues?: { [key: string]: string },
@@ -53,6 +56,7 @@ export default class EmbedFrame extends Component {
     const {
       className,
       children,
+      description,
       actionButtons,
       location,
       parameters,
@@ -85,10 +89,13 @@ export default class EmbedFrame extends Component {
         >
           {name || (parameters && parameters.length > 0) ? (
             <div className="EmbedFrame-header flex align-center p1 sm-p2 lg-p3">
-              {name && <div className="h4 text-bold sm-h3 md-h2">{name}</div>}
+              {name && (
+                <TitleAndDescription title={name} description={description} />
+              )}
               {parameters && parameters.length > 0 ? (
                 <div className="flex ml-auto">
                   <Parameters
+                    dashboard={this.props.dashboard}
                     parameters={parameters.map(p => ({
                       ...p,
                       value: parameterValues && parameterValues[p.id],

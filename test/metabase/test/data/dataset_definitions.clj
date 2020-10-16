@@ -51,6 +51,13 @@
   not explicitly marked as a foreign key, because the test dataset syntax does not yet have a way to support nullable
   foreign keys.)")
 
+(tx/defdataset-edn airports
+  "Major international airports from around the world. Location information is broken out into a series of tables:
+
+    Continent > Country > Region (e.g. State) > Municipality (e.g. City) > Airport
+
+  This makes this dataset ideal for testing things where we must join multiple levels of tables.")
+
 (defn- date-only
   "Convert date or datetime temporal value to `t` to an appropriate date type, discarding time information."
   [t]

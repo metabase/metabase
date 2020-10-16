@@ -42,7 +42,11 @@
   (testing "POST /api/session"
     (testing "Test that we can login"
       (is (schema= SessionResponse
-                   (mt/client :post 200 "session" (mt/user->credentials :rasta)))))))
+                   (mt/client :post 200 "session" (mt/user->credentials :rasta)))))
+    (testing "Test that we can login with email of mixed case"
+      (let [creds (update (mt/user->credentials :rasta) :username u/upper-case-en)]
+        (is (schema= SessionResponse
+                     (mt/client :post 200 "session" creds)))))))
 
 (deftest login-validation-test
   (testing "POST /api/session"

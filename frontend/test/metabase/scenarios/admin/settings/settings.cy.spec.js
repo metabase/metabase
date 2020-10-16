@@ -9,6 +9,35 @@ describe("scenarios > admin > settings", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
+  it("should surface an error when validation for any field fails (metabase#4506)", () => {
+    const BASE_URL = Cypress.config().baseUrl;
+    const DOMAIN_AND_PORT = BASE_URL.replace("http://", "");
+    const ERR_MESSAGE = `Invalid site URL: "${BASE_URL}!"`;
+
+    cy.server();
+    cy.route("PUT", "/api/setting/site-url").as("url");
+
+    cy.visit("/admin/settings/general");
+
+    // Needed to strip down protocol from the url to accomodate our UI (<select> PORT | <input> DOMAIN_AND_PORT)
+    cy.findByDisplayValue(DOMAIN_AND_PORT) // findByDisplayValue comes from @testing-library/cypress
+      .click()
+      .type("!")
+      .blur();
+
+    cy.wait("@url")
+      .wait("@url") // cy.wait("@url.2") doesn't work for some reason
+      .should(xhr => {
+        expect(xhr.status).to.eq(500);
+        expect(xhr.response.body.cause).to.eq(ERR_MESSAGE);
+      });
+
+    // NOTE: This test is not concerned with HOW we style the error message - only that there is one.
+    //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
+    cy.log("**Making sure we display an error message in UI**");
+    cy.get(".SaveStatus").contains(`Error: ${ERR_MESSAGE}`);
+  });
+
   it("should render the proper auth options", () => {
     // Ported from `SettingsAuthenticationOptions.e2e.spec.js`
     // Google sign in
@@ -50,6 +79,7 @@ describe("scenarios > admin > settings", () => {
         .find("input");
 
     emailInput()
+      .click()
       .clear()
       .type("other.email@metabase.com")
       .blur();
@@ -61,6 +91,7 @@ describe("scenarios > admin > settings", () => {
 
     // reset the email
     emailInput()
+      .click()
       .clear()
       .type("bob@metabase.com")
       .blur();

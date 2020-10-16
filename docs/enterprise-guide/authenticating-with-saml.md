@@ -19,8 +19,6 @@ At the top, **make sure to click the toggle to enable SAML authentication**, oth
 
 The form itself is broken up into three parts: information about Metabase that you'll have to input into your identity provider (IdP); information about your IdP that you'll need to tell Metabase about; and some optional settings at the bottom.
 
-**Note:** If you change any of the settings of an existing SAML active setup, then you will need to restart Metabase for them to take effect.
-
 ### Setting up SAML with your IdP
 
 So, first you'll need to make sure things are configured correctly with your IdP. Each provider handles SAML setup differently, so here are some documentation links that may help:
@@ -100,7 +98,6 @@ That should be all the info you'll need to get from Metabase while setting up SA
 Your SAML provider may ask for an "ACS URL". This the URL that your SAML provider will redirect your users to after they authenticate. The ACS URL for Metabase is the base URL of where you are hosting Metabase plus "/auth/sso". For example, if you are hosting your Metabase at "https://metabase.mycompany.com" then the ACS URL would be "https://metabase.mycompany.com/auth/sso".
 
 #### Settings for signing SSO requests (optional)
-
 These are additional settings you can fill in to sign SSO requests to
 ensure they don’t get tampered with.
 

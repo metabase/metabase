@@ -12,7 +12,6 @@
              [jdbc :as jdbc]]
             [clojure.string :as str]
             [colorize.core :as color]
-            [me.raynes.fs :as fs]
             [metabase
              [db :as mdb]
              [util :as u]]
@@ -97,15 +96,16 @@
 
   Defaults to using `@metabase.db/db-file` as the connection string.
 
-  Target H2 DB will be deleted if it exists, unless `keep-existing` is truthy."
-  [h2-filename keep-existing]
+  Target H2 DB will be deleted if it exists, unless `keep-existing?` is truthy."
+  [h2-filename & [{:keys [keep-existing?]
+                   :or   {keep-existing? false}}]]
   (let [h2-filename (or h2-filename "metabase_dump.h2")]
     (println "Dumping to " h2-filename)
     (doseq [filename [h2-filename
-                    (str h2-filename ".mv.db")]]
+                      (str h2-filename ".mv.db")]]
       (when (and (.exists (io/file filename))
-                 (not keep-existing))
-        (fs/delete filename)
+                 (not keep-existing?))
+        (io/delete-file filename)
         (println (u/format-color 'red (trs "Output H2 database already exists: %s, removing.") filename))))
 
     (println "Dumping from configured Metabase db to H2 file" h2-filename)

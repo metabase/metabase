@@ -39,8 +39,10 @@ export default class DimensionOptions {
 
   sections({ extraItems = [] } = {}): Section[] {
     const table = this.dimensions[0] && this.dimensions[0].field().table;
+    const tableName =
+      table && !table.isSavedQuestion() ? table.objectName() : null;
     const mainSection = {
-      name: this.name || (table && table.objectName()),
+      name: this.name || tableName,
       icon: this.icon || "table2",
       items: [
         ...extraItems,
