@@ -64,7 +64,13 @@
                                :arg  (deferred-tru "[Unknown Metric]")}]}
                (sut/generate-query-description (Table (mt/id :venues))
                                                (:query (mt/mbql-query :venues
-                                                         {:aggregation [[:metric -1]]}))))))
+                                                         {:aggregation [[:metric -1]]})))))
+
+        ;; confirm that it doesn't crash for non-integer metrics
+        (is (= {}
+               (sut/generate-query-description (Table (mt/id :venues))
+                                               (:query (mt/mbql-query :venues
+                                                         {:aggregation [[:metric "not-a-integer"]]}))))))
 
       (testing "with segment filters"
         (tt/with-temp Segment [segment {:name "Test Segment 1"}]

@@ -1,6 +1,7 @@
 (ns metabase.api.query-description
   "Functions for generating human friendly query descriptions"
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.mbql
              [predicates :as mbql.preds]
              [util :as mbql.u]]
@@ -109,6 +110,10 @@
 
   This data structure allows the UI to format the strings appropriately (including JSX)"
   [metadata query]
-  (apply merge
-         (map (fn [f] (f metadata query))
-              query-descriptor-functions)))
+  (try
+    (apply merge
+           (map (fn [f] (f metadata query))
+                query-descriptor-functions))
+    (catch Exception e
+      (log/warn e "Error generating query description")
+      {})))
