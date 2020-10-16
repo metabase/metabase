@@ -55,10 +55,10 @@
   "Standard date/time format for any of the :type/Date variants with a Time"
   "m/d/yy HH:MM:ss")
 
-(defn- set-cell! [^Cell cell format date]
+(defn- set-cell! [^Cell cell format-string date]
   (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
   (.setCellValue cell ^Date date)
-  (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) format)))
+  (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) format-string)))
 
 (defmethod spreadsheet/set-cell! LocalDate [^Cell cell val]
   ;; this truncates the time to midnight UTC on the given date
