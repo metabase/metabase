@@ -19,7 +19,9 @@
             [metabase.query-processor
              [interface :as i]
              [store :as qp.store]]
-            [metabase.query-processor.middleware.annotate :as annotate]
+            [metabase.query-processor.middleware
+             [annotate :as annotate]
+             [wrap-value-literals :as value-literal]]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [deferred-tru]]
@@ -27,7 +29,8 @@
             [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
-  (:import metabase.util.honeysql_extensions.Identifier))
+  (:import metabase.models.field.FieldInstance
+           metabase.util.honeysql_extensions.Identifier))
 
 ;; TODO - yet another `*query*` dynamic var. We should really consolidate them all so we only need a single one.
 (def ^:dynamic *query*
@@ -634,9 +637,21 @@
   [driver [_ field value]]
   [:= (->honeysql driver field) (->honeysql driver value)])
 
+(defn- correct-null-behaviour
+  [driver [op & args]]
+  (let [field-arg (mbql.u/match-one args
+                    FieldInstance               &match
+                    #{:field-id :field-literal} &match)]
+    ;; We must not transform the head again else we'll have an infinite loop
+    ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
+    [:or (into [op] (map (partial ->honeysql driver)) args)
+     [:= (->honeysql driver field-arg) nil]]))
+
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]
-  [:not= (->honeysql driver field) (->honeysql driver value)])
+  (if (nil? (value-literal/unwrap-value-literal value))
+    [:not= (->honeysql driver field) (->honeysql driver value)]
+    (correct-null-behaviour driver [:not= field value])))
 
 (defmethod ->honeysql [:sql :and]
   [driver [_ & subclauses]]
@@ -646,9 +661,14 @@
   [driver [_ & subclauses]]
   (apply vector :or (map (partial ->honeysql driver) subclauses)))
 
+(def ^:private clause-needs-null-behaviour-correction?
+  (comp #{:contains :starts-with :ends-with} first))
+
 (defmethod ->honeysql [:sql :not]
   [driver [_ subclause]]
-  [:not (->honeysql driver subclause)])
+  (if (clause-needs-null-behaviour-correction? subclause)
+    (correct-null-behaviour driver [:not subclause])
+    [:not (->honeysql driver subclause)]))
 
 (defmethod apply-top-level-clause [:sql :filter]
   [driver _ honeysql-form {clause :filter}]
