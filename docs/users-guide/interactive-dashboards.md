@@ -57,7 +57,7 @@ Once you select a column, Metabase will display the column used to pass the valu
 
 In the example above, when a user clicks on the **Orders by product category** card, Metabase will pass the clicked category to the destination dashboard ("Interactive Dashboard"), which will then filter its cards by that category.
 
-You can also send the currently selected value of a dashboard filter on the current dashboard to the destination. And if you're using [Metabase Enterprise Edition](https://www.metabase.com/enterprise/scale/), you can pass a user attribute provided by SSO to the destination, too. Those user attributes will show up as options when you click on one of the destination's filters ( provided the values are compatible with that filter).
+You can also send the currently selected value of a dashboard filter on the current dashboard to the destination. And if you're using [Metabase Enterprise Edition](https://www.metabase.com/enterprise/scale/index.html), you can pass a user attribute provided by SSO to the destination, too. Those user attributes will show up as options when you click on one of the destination's filters ( provided the values are compatible with that filter).
 
 When displaying questions as tables, you can select different click behaviors for different columns in the table. You can also modify the contents of the cells in a given column, replacing the value with custom text. For example, if you had a column that listed categories, you could change the text in the cell to read: "Click for details about {{Category}}".
 

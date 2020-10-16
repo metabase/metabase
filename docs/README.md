@@ -24,6 +24,9 @@ This guide contains more detailed information about how to install Metabase for 
 #### [Enterprise Features Guide](./enterprise-guide/start.md)
 Here’s where to go for help using the features included in the Enterprise Edition of Metabase.
 
+## Metabase Cloud
+
+Don't want to host Metabase yourself? Check out [Metabase Cloud](https://www.metabase.com/start/hosted/index.html).
 
 ## For Developers
 
