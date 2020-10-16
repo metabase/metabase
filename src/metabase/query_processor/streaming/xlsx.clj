@@ -1,5 +1,6 @@
 (ns metabase.query-processor.streaming.xlsx
   (:require [cheshire.core :as json]
+            [clojure.tools.logging :as log]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
             [metabase.query-processor.streaming.interface :as i]
@@ -23,42 +24,57 @@
 ;; since this hasn't been addressed at the library level, we have to do some workarounds
 
 ;; this method is private in the docjure library, but we need to able to call it from here
-(defn- ^:dynamic create-date-format [^Workbook workbook ^String format-string]
-  (let [date-style (.createCellStyle workbook)
-        format-helper (.getCreationHelper workbook)]
-    (doto date-style
-          (.setDataFormat (.. format-helper createDataFormat (getFormat format-string))))))
+;; also, the version in Docjure doesn't keep track of created cell styles, which is bad
+;; these need to be memoized per Workbook
+
+(def ^:dynamic *cell-styles*
+  "The active cell styles in a workbook. Excel has a limit of 64k cell styles in a workbook, so
+   this helps ensure we reuse cell styles where possible."
+  nil)
+
+(defn- create-or-get-date-format [^Workbook workbook ^String format-string]
+  (when-not (contains? *cell-styles* format-string)
+    (let [new-val (let [format-helper (.getCreationHelper workbook)
+                        date-style (.createCellStyle workbook)]
+                    (assoc
+                     *cell-styles*
+                     format-string
+                     (doto date-style
+                       (.setDataFormat (.. format-helper createDataFormat (getFormat format-string))))))]
+      (log/spy :error new-val)
+      (set! *cell-styles* new-val)))
+  (get *cell-styles* format-string))
 
 ;; the docjure library does not handle the difference between a date and date+time column
 ;; as a result, we'll add overrides that can do it
-(intern 'dk.ative.docjure.spreadsheet 'create-date-format create-date-format)
+(intern 'dk.ative.docjure.spreadsheet 'create-date-format create-or-get-date-format)
 
 (defmethod spreadsheet/set-cell! LocalDate [^Cell cell val]
   (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
   (.setCellValue cell ^Date (t/java-date (t/zoned-date-time val (t/zone-id))))
-  (.setCellStyle cell (create-date-format (.. cell getSheet getWorkbook) "m/d/yy")))
+  (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) "m/d/yy")))
 
 (defmethod spreadsheet/set-cell! LocalDateTime [^Cell cell val]
   (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
   (.setCellValue cell ^Date (t/java-date (t/zoned-date-time val (t/zone-id))))
-  (.setCellStyle cell (create-date-format (.. cell getSheet getWorkbook) "m/d/yy HH:mm:ss")))
+  (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) "m/d/yy HH:mm:ss")))
 
 (defmethod spreadsheet/set-cell! ZonedDateTime [^Cell cell val]
   (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
   (.setCellValue cell ^Date (t/java-date val))
-  (.setCellStyle cell (create-date-format (.. cell getSheet getWorkbook) "m/d/yy HH:mm:ss")))
+  (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) "m/d/yy HH:mm:ss")))
 
 (defmethod spreadsheet/set-cell! OffsetDateTime [^Cell cell val]
   (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
   (.setCellValue cell ^Date (t/java-date val))
-  (.setCellStyle cell (create-date-format (.. cell getSheet getWorkbook) "m/d/yy HH:mm:ss")))
+  (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) "m/d/yy HH:mm:ss")))
 
 ;; overrides the default implementation from docjure, so that a plain Date object
 ;; carries its time too
 (defmethod spreadsheet/set-cell! Date [^Cell cell val]
   (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
   (.setCellValue cell ^Date val)
-  (.setCellStyle cell (create-date-format (.. cell getSheet getWorkbook) "m/d/yy HH:mm:ss")))
+  (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) "m/d/yy HH:mm:ss")))
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
 ;; implementations we've already defined for encoding things as JSON. These implementations live in
@@ -78,14 +94,15 @@
   [_ ^OutputStream os]
   (let [workbook (SXSSFWorkbook.)
         sheet    (spreadsheet/add-sheet! workbook (tru "Query result"))]
-    (reify i/StreamingResultsWriter
-      (begin! [_ {{:keys [cols]} :data}]
-        (spreadsheet/add-row! sheet (map (some-fn :display_name :name) cols)))
+    (binding [*cell-styles* {}]
+     (reify i/StreamingResultsWriter
+       (begin! [_ {{:keys [cols]} :data}]
+         (spreadsheet/add-row! sheet (map (some-fn :display_name :name) cols)))
 
-      (write-row! [_ row _]
-        (spreadsheet/add-row! sheet row))
+       (write-row! [_ row _]
+         (spreadsheet/add-row! sheet row))
 
-      (finish! [_ _]
-        (spreadsheet/save-workbook-into-stream! os workbook)
-        (.dispose workbook)
-        (.close os)))))
+       (finish! [_ _]
+         (spreadsheet/save-workbook-into-stream! os workbook)
+         (.dispose workbook)
+         (.close os))))))
