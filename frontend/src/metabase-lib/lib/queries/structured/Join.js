@@ -156,20 +156,34 @@ export default class Join extends MBQLObjectClause {
   }
 
   setDefaultAlias() {
-    const parentDimension = this.parentDimension();
-    if (parentDimension && parentDimension.field().isFK()) {
-      return this.setAlias(parentDimension.field().targetObjectName());
-    } else {
-      const table = this.joinedTable();
-      // $FlowFixMe
-      const match = String(table.id).match(/card__(\d+)/);
-      if (match) {
-        // NOTE: special case for "Saved Questions" tables
-        return this.setAlias(`Question ${match[1]}`);
-      } else {
-        return this.setAlias((table && table.display_name) || "source");
-      }
+    // The Join alias should be Table - Field if possible. We need both to disamiguate sitatutions where we have
+    // multiple FKs that point to the same Table -- see #8418 and #11452.
+
+    // $FlowFixMe
+    const table = this.joinedTable();
+    const match = String(table.id).match(/card__(\d+)/);
+    if (match) {
+      // NOTE: special case for "Saved Questions" tables
+      return this.setAlias(`Question ${match[1]}`);
     }
+
+    const tableName = table && table.display_name;
+
+    const parentDimension = this.parentDimension();
+    const fieldName =
+      parentDimension &&
+      parentDimension.field().isFK() &&
+      parentDimension.field().targetObjectName();
+
+    // if for whatever reason we don't have both table *and* field name, fallback to either just field name or just
+    // table name; if the world has gone mad just use 'source' instead of nothing
+    const alias =
+      (tableName && fieldName && tableName + " - " + fieldName) ||
+      fieldName ||
+      tableName ||
+      "source";
+
+    return this.setAlias(alias);
   }
 
   // STRATEGY
