@@ -123,3 +123,8 @@ To see concrete examples of how to embed Metabase in applications under a number
 ## Premium embedding
 
 If you'd like to embed Metabase dashboards or charts in your application without the "Powered by Metabase" attribution, you can purchase premium embedding from the Metabase store. [Find out more here](https://store.metabase.com/product/embedding).
+
+To learn more about embedding, check out these articles:
+
+- [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/blog/external-facing-analytics/index.html).
+- [How to embed Metabase in your app to deliver multi-tenant, self-service analytics](https://www.metabase.com/blog/embedding/index.html).

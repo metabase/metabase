@@ -68,7 +68,7 @@ To make sure your data looks great at any size, questions in your dashboard will
 
 ### Changing a question's visualization settings
 
-You can change a question's visualization settings on a dashboard, without affecting the original question. You can add a goal line, pick another type of chart, whatever you like. Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the palette icon to edit the question's visualization's settings.
+You can change a question's visualization settings on a dashboard (to add a goal line, for example,) without affecting the original question. Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the palette icon to edit the question's visualization's settings.
 
 ![Visualization settings](images/dashboards/visualization-settings.png).
 
@@ -140,6 +140,8 @@ Some tips:
 - **Keep dashboards focused**. If you have more than 10 cards on a dashboard, think about breaking the dashboard into two separate ones. You don't want to overwhelm people with too much information, and each dashboard should revolve around one theme or topic. Remember — you can make as many dashboards as you want, so you don’t have to cram everything into just one.
 - **Add filters to your dashboard**. [Adding filters](08-dashboard-filters.md) to dashboards makes them more useful. For example, instead of your dashboard being full of questions that are restricted to a specific time span, you can make more general questions and use dashboard filters to change the time span you're looking at.
 - **Make your dashboards interactive.** [Customize what happens when users click on a chart or table in your dashboard](interactive-dashboards.md).
+
+See [Making dashboards faster](https://www.metabase.com/blog/faster-dashboards/index.html) for tips on improving dashboard performance.
 
 ---
 
