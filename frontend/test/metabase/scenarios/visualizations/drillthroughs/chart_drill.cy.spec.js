@@ -115,21 +115,23 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("Dominique Leffler");
   });
 
-  it.skip("should drill through a with date filter", () => {
+  it.skip("should drill through a with date filter (metabase#12496)", () => {
     // save a question of orders by week
-    cy.request("POST", "/api/card", {
-      name: "Orders by Created At: Week",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": 2,
-          aggregation: [["count"]],
-          breakout: [["datetime-field", ["field-id", 15], "week"]],
+    withSampleDataset(({ ORDERS }) => {
+      cy.request("POST", "/api/card", {
+        name: "Orders by Created At: Week",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": 2,
+            aggregation: [["count"]],
+            breakout: [["datetime-field", ORDERS.CREATED_AT, "week"]],
+          },
+          type: "query",
         },
-        type: "query",
-      },
-      display: "line",
-      visualization_settings: {},
+        display: "line",
+        visualization_settings: {},
+      });
     });
 
     // Load the question up
@@ -146,6 +148,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // check that filter is applied and rows displayed
     cy.contains("Showing 127 rows");
 
+    cy.log("**Filter should show the range between two dates**");
     // Now click on the filter widget to see if the proper parameters got passed in
     cy.contains("Created At between").click();
   });
