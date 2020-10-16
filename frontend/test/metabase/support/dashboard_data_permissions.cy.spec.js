@@ -17,7 +17,8 @@ function filterDashboard(suggests = true) {
     cy.contains("Category").type("Aerodynamic Bronze Hat");
   }
   cy.contains("Add filter").click();
-  cy.contains("Rows 1-1 of 96");
+  cy.contains("Aerodynamic Bronze Hat");
+  cy.contains(/Rows \d-\d of 96/);
 }
 
 describe("support > permissions (metabase#8472)", () => {
@@ -30,7 +31,7 @@ describe("support > permissions (metabase#8472)", () => {
     // click pencil icon to edit
     cy.get(".Icon-pencil").click();
 
-    cy.get(".Icon-funnel_add").click();
+    cy.get(".Icon-filter").click();
     popover()
       .contains("Other Categories")
       .click();
