@@ -150,16 +150,16 @@
 
         (testing ":json download response format"
           (is (= [{:Count 100}]
-                 (http/client :get 202 (str "public/card/" uuid "/query/json")))))
+                 (http/client :get 200 (str "public/card/" uuid "/query/json")))))
 
         (testing ":csv download response format"
           (is (= "Count\n100\n"
-                 (http/client :get 202 (str "public/card/" uuid "/query/csv"), :format :csv))))
+                 (http/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv))))
 
         (testing ":xlsx download response format"
           (is (= [{:col "Count"} {:col 100.0}]
                  (parse-xlsx-response
-                  (http/client :get 202 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})))))))))
+                  (http/client :get 200 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})))))))))
 
 (deftest execute-public-card-as-user-without-perms-test
   (testing "A user that doesn't have permissions to run the query normally should still be able to run a public Card as if they weren't logged in"
@@ -234,7 +234,7 @@
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (mt/with-temp Card [{uuid :public_uuid} (card-with-date-field-filter)]
       (is (= "count\n107\n"
-             (http/client :get 202 (str "public/card/" uuid "/query/csv")
+             (http/client :get 200 (str "public/card/" uuid "/query/csv")
                           :parameters (json/encode [{:type   :date/quarter-year
                                                      :target [:dimension [:template-tag :date]]
                                                      :value  "Q1-2014"}])))))))
@@ -247,7 +247,7 @@
       (binding [http/*url-prefix* (str/replace http/*url-prefix* #"/api/$" "/")]
         (mt/with-temporary-setting-values [site-url http/*url-prefix*]
           (is (= "count\n107\n"
-                 (http/client :get 202 (str "public/question/" uuid ".csv")
+                 (http/client :get 200 (str "public/question/" uuid ".csv")
                               :parameters (json/encode [{:type   :date/quarter-year
                                                          :target [:dimension [:template-tag :date]]
                                                          :value  "Q1-2014"}])))))))))
