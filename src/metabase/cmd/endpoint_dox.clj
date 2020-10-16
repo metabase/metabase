@@ -10,7 +10,7 @@
   []
   (str "# API Documentation for Metabase"
        "\n\n"
-       "_This file was generated from source comments by `lein run api-documentation`._"
+       "_This file was generated from source comments by `lein run api-documentation`. For an introduction to the API, see [Working with the Metabase API](https://www.metabase.com/blog/metabase-api/index.html)._"
        "\n\n"
        (str/join "\n\n\n" (for [ns-symb     u/metabase-namespace-symbols
                                 :when       (.startsWith (name ns-symb) "metabase.api.")
