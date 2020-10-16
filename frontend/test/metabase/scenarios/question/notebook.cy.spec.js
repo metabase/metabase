@@ -2,8 +2,11 @@ import {
   createNativeQuestion,
   restore,
   signInAsAdmin,
+  openOrdersTable,
+  openProductsTable,
   popover,
   modal,
+  typeAndBlurUsingLabel,
 } from "__support__/cypress";
 
 describe("scenarios > question > notebook", () => {
@@ -129,6 +132,143 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Question 5 → B Column");
       cy.findByText("Showing 1 row");
     });
+
+    it("should allow joins based on saved questions (metabase#13000)", () => {
+      cy.server();
+      cy.route("POST", "/api/card/*/query").as("card");
+
+      cy.log("**Prepare Question 1**");
+      openOrdersTable();
+
+      cy.findByText("Summarize").click();
+      cy.findByText("Count").click();
+      popover().within(() => {
+        cy.findByText("Sum of ...").click();
+        cy.findByText("Total").click();
+      });
+
+      cy.findByText("Group by")
+        .parent()
+        .contains("Product ID")
+        .click();
+
+      // Mid-point check - generated title should be:
+      cy.contains("Sum of Total by Product ID");
+
+      cy.findByText("Done").click();
+      cy.findByText("Save").click();
+      // Save as Q1
+      modal().within(() => {
+        typeAndBlurUsingLabel("Name", "Q1");
+        cy.findByText("Save").click();
+      });
+      cy.findByText("Not now").click();
+
+      cy.log("**Prepare Question 2**");
+      openProductsTable();
+
+      cy.findByText("Summarize").click();
+      cy.findByText("Count").click();
+
+      popover().within(() => {
+        cy.findByText("Sum of ...").click();
+        cy.findByText("Rating").click();
+      });
+
+      cy.findByText("Group by")
+        .parent()
+        .contains("ID")
+        .click();
+
+      // Mid-point check - generated title should be:
+      cy.contains("Sum of Rating by ID");
+
+      cy.findByText("Done").click();
+      cy.findByText("Save").click();
+      // Save as Q2
+      modal().within(() => {
+        typeAndBlurUsingLabel("Name", "Q2");
+        cy.findByText("Save").click();
+      });
+      cy.findByText("Not now").click();
+
+      cy.log("**Create Question 3 based on 2 previously saved questions**");
+
+      cy.findByText("Ask a question").click();
+      cy.findByText("Custom question").click();
+      // Choose Q1
+      popover().within(() => {
+        cy.findByText("Saved Questions").click();
+        cy.findByText("Q1").click();
+      });
+      // and join it
+      cy.get(".Icon-join_left_outer").click();
+      // with Q2
+      popover().within(() => {
+        cy.findByText("Sample Dataset").click();
+        cy.findByText("Saved Questions").click();
+        cy.findByText("Q2").click();
+      });
+      // on Product ID = ID
+      popover()
+        .contains("Product ID")
+        .click();
+      popover()
+        .contains("ID")
+        .click();
+      // Save as Q3
+      cy.findByText("Save").click();
+      cy.get(".Modal").within(() => {
+        typeAndBlurUsingLabel("Name", "Q3");
+        cy.findByText("Save").click();
+      });
+      cy.findByText("Not now").click();
+
+      cy.log("**Assert that the Q3 is in 'Our analytics'**");
+
+      cy.visit("/");
+      cy.findByText("Browse all items").click();
+
+      cy.contains("Q3").click({ force: true });
+      cy.wait("@card");
+
+      cy.log("**The point where bug originated in v0.36.0**");
+      cy.get(".Icon-notebook").click();
+      cy.url().should("contain", "/notebook");
+      cy.findByText("Visualize").should("exist");
+    });
+
+    it("should show correct column title with foreign keys (metabase#11452)", () => {
+      // (Orders join Reviews on Product ID)
+      openOrdersTable();
+      cy.get(".Icon-notebook").click();
+      cy.findByText("Join data").click();
+      cy.findByText("Reviews").click();
+      cy.findByText("Product ID").click();
+      popover().within(() => {
+        cy.findByText("Product ID").click();
+      });
+
+      cy.log("**It shouldn't use FK for a column title**");
+      cy.findByText("Summarize").click();
+      cy.findByText("Pick a column to group by").click();
+
+      // NOTE: Since there is no better way to "get" the element we need, below is a representation of the current DOM structure.
+      //       This can also be useful because some future DOM changes could easily introduce a flake.
+      //  the common parent
+      //    wrapper for the icon
+      //      the actual svg icon with the class `.Icon-join_left_outer`
+      //    h3.List-section-title with the text content we're actually testing
+      popover().within(() => {
+        cy.get(".Icon-join_left_outer")
+          .parent()
+          .next()
+          // NOTE from Flamber's warning:
+          // this name COULD be "normalized" to "Review - Product" instead of "Reviews - Products" - that's why we use Regex match here
+          .invoke("text")
+          .should("match", /reviews? - products?/i);
+      });
+    });
   });
 
   describe("nested", () => {
@@ -164,9 +304,7 @@ describe("scenarios > question > notebook", () => {
         cy.findByText("Save").click();
       });
 
-      modal().within(() => {
-        cy.findByText("Not now").click();
-      });
+      cy.findByText("Not now").click();
 
       cy.get(".Icon-notebook").click();
 
