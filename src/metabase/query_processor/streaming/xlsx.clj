@@ -40,7 +40,7 @@
                      format-string
                      (doto date-style
                        (.setDataFormat (.. format-helper createDataFormat (getFormat format-string))))))]
-      (reset! *cell-styles* new-val)))
+      (swap! *cell-styles* (constantly new-val))))
   (get @*cell-styles* format-string))
 
 ;; the docjure library does not handle the difference between a date and date+time column
