@@ -19,12 +19,14 @@ describe("scenarios > question > null", () => {
       openOrdersTable();
       cy.wait("@dataset");
       cy.contains("Summarize").click();
-      cy.contains("Summarize by");
-      cy.contains("Count of rows").click();
-      cy.contains("Cumulative sum of").click();
-      popover()
-        .contains("Discount")
-        .click();
+      // remove pre-selected "Count"
+      cy.get(".Icon-close").click();
+      // dropdown immediately opens with the new set of metrics to choose from
+      popover().within(() => {
+        cy.findByText("Cumulative sum of ...").click();
+        cy.findByText("Discount").click();
+      });
+      // Group by
       cy.contains("Created At").click();
       cy.contains("Cumulative sum of Discount by Created At: Month");
       cy.wait(["@dataset", "@dataset"]).then(xhrs => {
