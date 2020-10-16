@@ -92,5 +92,26 @@ describe("scenarios > question > new", () => {
         cy.get("[contentEditable=true]").contains(FORMULA);
       });
     });
+
+    it.skip("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
+      // go directly to custom question in "Reviews" table
+      cy.visit("/question/new?database=1&table=4&mode=notebook");
+      cy.findByText("Summarize").click();
+      popover()
+        .contains("Custom Expression")
+        .click();
+
+      cy.get("[contentEditable=true]")
+        .click()
+        .type("Distinct([R");
+
+      cy.log(
+        "**The point of failure for ANY non-numeric value reported in v0.36.4**",
+      );
+      // the default type for "Reviewer" is "No special type"
+      cy.findByText("Fields")
+        .parent()
+        .contains("Reviewer");
+    });
   });
 });
