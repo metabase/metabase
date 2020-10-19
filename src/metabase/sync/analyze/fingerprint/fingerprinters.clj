@@ -246,6 +246,7 @@
    (robust-fuse {:percent-json   (stats/share valid-serialized-json?)
                  :percent-url    (stats/share u/url?)
                  :percent-email  (stats/share u/email?)
+                 :percent-state  (stats/share u/state?)
                  :average-length ((map count) stats/mean)})))
 
 (defn fingerprint-fields
