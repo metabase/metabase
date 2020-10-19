@@ -2,7 +2,7 @@
 
 import d3 from "d3";
 import inflection from "inflection";
-import moment from "moment";
+import moment from "moment-timezone";
 import Humanize from "humanize-plus";
 import React from "react";
 import { ngettext, msgid } from "ttag";
@@ -436,13 +436,12 @@ export function formatDateTimeRangeWithUnit(
       );
     }
   } else {
+    // TODO: when is this used?
     return formatWeek(m, options);
   }
 }
 
 function formatWeek(m: Moment, options: FormattingOptions = {}) {
-  // force 'en' locale for now since our weeks currently always start on Sundays
-  m = m.locale("en");
   return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
 }
 

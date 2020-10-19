@@ -3,7 +3,7 @@
 import _ from "underscore";
 import d3 from "d3";
 import dc from "dc";
-import moment from "moment";
+import moment from "moment-timezone";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";

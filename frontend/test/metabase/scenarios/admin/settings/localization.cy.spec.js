@@ -4,7 +4,7 @@ describe("scenarios > admin > permissions", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
-  it.skip("should correctly apply start of the week to a bar chart (metabase#13516)", () => {
+  it("should correctly apply start of the week to a bar chart (metabase#13516)", () => {
     // set the beginning of the week to "Monday"
     cy.visit("/admin/settings/localization");
     cy.findByText("Sunday").click();
