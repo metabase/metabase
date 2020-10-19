@@ -238,6 +238,22 @@ describe("timeseriesScale", () => {
     );
   });
 
+  it(`should shift week ticks by shiftDays`, () => {
+    const ticks = timeseriesScale({
+      interval: "week",
+      count: 1,
+      timezone: "Etc/UTC",
+      shiftDays: 1,
+    })
+      .domain([moment("2000-01-02T12:34:56Z"), moment("2000-02-02T12:34:56Z")])
+      .ticks();
+
+    expect(ticks[0].toISOString()).toEqual("2000-01-03T00:00:00.000Z");
+    expect(ticks[ticks.length - 1].toISOString()).toEqual(
+      "2000-01-31T00:00:00.000Z",
+    );
+  });
+
   it("should evenly space months", () => {
     const scale = timeseriesScale({
       interval: "month",
