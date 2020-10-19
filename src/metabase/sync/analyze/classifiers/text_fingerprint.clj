@@ -43,7 +43,10 @@
         percent-key->special-type))
 
 (defn- can-edit-special-type?
-  "We can edit the special type if its currently unset or if it was set during the current analysis phase."
+  "We can edit the special type if its currently unset or if it was set during the current analysis phase. The original
+  field might exist in the metadata at `:sync.classify/original`. This is an attempt at classifier refinement: we
+  never want to overwrite a user selection of special type but we allow for fingerprint results to give a better
+  special type than previous classifiers."
   [field]
   (or (nil? (:special_type field))
       (let [original (get (meta field) :sync.classify/original)]

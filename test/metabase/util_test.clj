@@ -77,7 +77,10 @@
     "WASHINGTON"     true
     "CA"             true
     "NY"             true
-    "random"         false))
+    "random"         false
+    nil              false
+    3                false
+    (Object.)        false))
 
 (deftest qualified-name-test
   (are+ [k expected] (= expected

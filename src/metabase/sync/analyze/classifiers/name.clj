@@ -40,8 +40,6 @@
    [#"^.*_url$"                    text-type        :type/URL]
    [#"^_latitude$"                 float-type       :type/Latitude]
    [#"^active$"                    bool-or-int-type :type/Category]
-   ;; state is conspicuously absent here as we use fingerprints to infer this to prevent marking fields like
-   ;; "order_state" (think status) as US states (#2735)
    [#"^city$"                      text-type        :type/City]
    [#"^country"                    text-type        :type/Country]
    [#"_country$"                   text-type        :type/Country]
