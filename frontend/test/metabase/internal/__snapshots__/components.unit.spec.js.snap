@@ -234,12 +234,13 @@ exports[`Card should render "normal" correctly 1`] = `
 
 exports[`CheckBox should render "Default - Off" correctly 1`] = `
 <div
-  className="flex align-center justify-center rounded cursor-pointer"
+  className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
   style={
     Object {
       "backgroundColor": "white",
       "border": "2px solid #C7CFD4",
+      "borderRadius": 4,
       "height": 16,
       "width": 16,
     }
@@ -249,12 +250,13 @@ exports[`CheckBox should render "Default - Off" correctly 1`] = `
 
 exports[`CheckBox should render "Green" correctly 1`] = `
 <div
-  className="flex align-center justify-center rounded cursor-pointer"
+  className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
   style={
     Object {
       "backgroundColor": "#88BF4D",
       "border": "2px solid #88BF4D",
+      "borderRadius": 4,
       "height": 16,
       "width": 16,
     }
@@ -283,12 +285,13 @@ exports[`CheckBox should render "Green" correctly 1`] = `
 
 exports[`CheckBox should render "On - Default blue" correctly 1`] = `
 <div
-  className="flex align-center justify-center rounded cursor-pointer"
+  className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
   style={
     Object {
       "backgroundColor": "#509EE3",
       "border": "2px solid #509EE3",
+      "borderRadius": 4,
       "height": 16,
       "width": 16,
     }
@@ -317,12 +320,13 @@ exports[`CheckBox should render "On - Default blue" correctly 1`] = `
 
 exports[`CheckBox should render "Purple" correctly 1`] = `
 <div
-  className="flex align-center justify-center rounded cursor-pointer"
+  className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
   style={
     Object {
       "backgroundColor": "#A989C5",
       "border": "2px solid #A989C5",
+      "borderRadius": 4,
       "height": 16,
       "width": 16,
     }
@@ -351,12 +355,13 @@ exports[`CheckBox should render "Purple" correctly 1`] = `
 
 exports[`CheckBox should render "Red" correctly 1`] = `
 <div
-  className="flex align-center justify-center rounded cursor-pointer"
+  className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
   style={
     Object {
       "backgroundColor": "#EF8C8C",
       "border": "2px solid #EF8C8C",
+      "borderRadius": 4,
       "height": 16,
       "width": 16,
     }
@@ -385,12 +390,13 @@ exports[`CheckBox should render "Red" correctly 1`] = `
 
 exports[`CheckBox should render "Yellow" correctly 1`] = `
 <div
-  className="flex align-center justify-center rounded cursor-pointer"
+  className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
   style={
     Object {
       "backgroundColor": "#F9D45C",
       "border": "2px solid #F9D45C",
+      "borderRadius": 4,
       "height": 16,
       "width": 16,
     }
@@ -1206,12 +1212,13 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
   }
 >
   <div
-    className="flex align-center justify-center rounded cursor-pointer"
+    className="flex align-center justify-center cursor-pointer"
     onClick={[Function]}
     style={
       Object {
         "backgroundColor": "#A989C5",
         "border": "2px solid #A989C5",
+        "borderRadius": 4,
         "height": 16,
         "width": 16,
       }
@@ -1237,12 +1244,13 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
     </svg>
   </div>
   <div
-    className="absolute flex align-center justify-center rounded cursor-pointer"
+    className="absolute flex align-center justify-center cursor-pointer"
     onClick={[Function]}
     style={
       Object {
         "backgroundColor": "#A989C5",
         "border": "2px solid #A989C5",
+        "borderRadius": 4,
         "height": 16,
         "left": 4,
         "top": -4,
@@ -1264,12 +1272,13 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
   }
 >
   <div
-    className="flex align-center justify-center rounded cursor-pointer"
+    className="flex align-center justify-center cursor-pointer"
     onClick={[Function]}
     style={
       Object {
         "backgroundColor": "#509EE3",
         "border": "2px solid #509EE3",
+        "borderRadius": 4,
         "height": 16,
         "width": 16,
       }
@@ -1295,12 +1304,13 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
     </svg>
   </div>
   <div
-    className="absolute flex align-center justify-center rounded cursor-pointer"
+    className="absolute flex align-center justify-center cursor-pointer"
     onClick={[Function]}
     style={
       Object {
         "backgroundColor": "#509EE3",
         "border": "2px solid #509EE3",
+        "borderRadius": 4,
         "height": 16,
         "left": 4,
         "top": -4,
@@ -1322,24 +1332,26 @@ exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
   }
 >
   <div
-    className="flex align-center justify-center rounded cursor-pointer"
+    className="flex align-center justify-center cursor-pointer"
     onClick={[Function]}
     style={
       Object {
         "backgroundColor": "white",
         "border": "2px solid #C7CFD4",
+        "borderRadius": 4,
         "height": 16,
         "width": 16,
       }
     }
   />
   <div
-    className="absolute flex align-center justify-center rounded cursor-pointer"
+    className="absolute flex align-center justify-center cursor-pointer"
     onClick={[Function]}
     style={
       Object {
         "backgroundColor": "white",
         "border": "2px solid #C7CFD4",
+        "borderRadius": 4,
         "height": 16,
         "left": 4,
         "top": -4,
@@ -1572,5 +1584,13 @@ exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
       </div>
     </li>
   </ul>
+</div>
+`;
+
+exports[`UserAvatar should render "" correctly 1`] = `
+<div
+  className="UserAvatar-sc-1vvsbyl-1 dGmEol UserAvatar__Avatar-sc-1vvsbyl-0 bmsXls sc-htpNat hnUQrH"
+>
+  ?
 </div>
 `;
