@@ -2,7 +2,9 @@ import {
   signInAsAdmin,
   restore,
   withSampleDataset,
+  openOrdersTable,
   openProductsTable,
+  popover,
   sidebar,
 } from "__support__/cypress";
 
@@ -151,6 +153,48 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.log("**Filter should show the range between two dates**");
     // Now click on the filter widget to see if the proper parameters got passed in
     cy.contains("Created At between").click();
+  });
+
+  it.skip("should drill-through on filtered aggregated results (metabase#13504)", () => {
+    // go straight to "orders" in custom questions
+    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    cy.findByText("Summarize").click();
+    cy.findByText("Count of rows").click();
+    cy.findByText("Pick a column to group by").click();
+    cy.findByText("Created At").click();
+
+    // add filter: Count > 1
+    cy.findByText("Filter").click();
+    popover().within(() => {
+      cy.findByText("Count").click();
+      cy.findByText("Equal to").click();
+    });
+    cy.findByText("Greater than").click();
+    cy.findByPlaceholderText("Enter a number")
+      .click()
+      .type("1");
+    cy.findByText("Add filter").click();
+
+    // Visualize: line
+    cy.findByText("Visualize").click();
+    cy.findByText("Visualization").click();
+    cy.get(".Icon-line").click();
+    cy.findByText("Done").click();
+    cy.log("**Mid-point assertion**");
+    cy.contains("Count by Created At: Month");
+    // at this point, filter is still present in the page
+    cy.contains("Count is greater than 1");
+
+    // drill-through
+    cy.get(".dot")
+      .eq(10) // random dot
+      .click({ force: true });
+    cy.findByText("View these Orders").click();
+
+    cy.log("**Reproduced on 0.34.3, 0.35.4, 0.36.7 and 0.37.0-rc2**");
+    // when the bug is present, filter is missing name
+    cy.contains("Count is greater than 1");
+    cy.findByText("There was a problem with your question").should("not.exist");
   });
 
   describe("for an unsaved question", () => {
