@@ -1,9 +1,4 @@
-import {
-  restore,
-  withSampleDataset,
-  openOrdersTable,
-  signInAsAdmin,
-} from "__support__/cypress";
+import { restore, withSampleDataset, signInAsAdmin } from "__support__/cypress";
 
 describe("scenarios > admin > permissions", () => {
   before(restore);
