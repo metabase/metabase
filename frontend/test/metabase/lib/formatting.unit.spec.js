@@ -1,5 +1,5 @@
 import { isElementOfType } from "react-dom/test-utils";
-import moment from "moment";
+import moment from "moment-timezone";
 
 import {
   formatNumber,
