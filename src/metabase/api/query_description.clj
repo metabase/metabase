@@ -30,11 +30,13 @@
                              [(operator :guard #{:+ :- :/ :*}) & args]
                              (interpose (name operator) (map field-name args))
 
-                             [:metric arg]    {:type :metric
-                                               :arg  (let [metric (Metric arg)]
-                                                       (if (not (str/blank? (:name metric)))
-                                                         (:name metric)
-                                                         (deferred-tru "[Unknown Metric]")))}
+                             [:metric (arg :guard integer?)]
+                             {:type :metric
+                              :arg  (let [metric (Metric arg)]
+                                      (if (not (str/blank? (:name metric)))
+                                        (:name metric)
+                                        (deferred-tru "[Unknown Metric]")))}
+
                              [:rows]          {:type :rows}
                              [:count]         {:type :count}
                              [:cum-count]     {:type :cum-count}
