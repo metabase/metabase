@@ -8,19 +8,21 @@
 
 A dashboard comprises a set of cards arranged on a grid. These cards can be questions - such as tables, charts, or maps - or cards can be text boxes.
 
-You can add filters to dashboards that filter data across multiple questions, and customize what happens when people click on a chart or a table.
+You can add filter widgets to dashboards that filter data across multiple questions, and customize what happens when people click on a chart or a table.
 
 You can make as many dashboards as you want. Go nuts.
 
 ### How to create a dashboard
 
-In the top right of the screen, click the **+** icon to open the Create menu, and select **New Dashboard**. Give your new dashboard a name and a description, choose which [collection](06-sharing-answers.md#collections) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
+In the top right of the screen, click the **+** icon to open the **Create** menu, and select **New Dashboard**. Give your new dashboard a name and a description, choose which [collection](06-sharing-answers.md#collections) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
 
 ![Create Dashboard](images/dashboards/DashboardCreate.png)
 
 If you don't want to build a dashboard from scratch, or want to experiment by making changes to an existing dashboard without affecting the original, you can **duplicate** an existing dashboard. From an existing dashboard, click on the **...** menu in the upper right, and select **Duplicate**.
 
 ### Adding saved questions to a dashboard
+
+There are two ways to add questions to a dashboard: from the dashboard, or from the question you want to add.
 
 **From a question**: you can add a newly saved question to a dashboard directly from the window that pops up after you save the question for the first time. You can also add a question to a dashboard by clicking on the **pencil** icon next to the name of the question, and selecting **Add to dashboard**.
 
@@ -32,7 +34,7 @@ Once you add a question to your dashboard, it’ll look something like this:
 
 ### Adding headings or descriptions with text cards
 
-Another neat thing you can do is add text cards to your dashboards so that you can write descriptions, explanations, notes, or even add images and GIFs. You can also use text cards can also to create separations between sections of charts in your dashboards.
+Another neat thing you can do is add text cards to your dashboards. Text cards allow you to include descriptions, explanations, notes, or even images and GIFs to your dashboards. You can also use text cards to create separations between sections of charts in your dashboards, or include links to other dashboards, questions, or websites.
 
 To add a new text card, create a new dashboard (or edit an existing one) and click on the text card button, **Aa**, in the top-right:
 
@@ -50,7 +52,7 @@ Click the **eye** icon to see what your formatted Markdown will look like when y
 
 ![Result](images/dashboards/text-cards/result.png)
 
-See [Fun with Markdown in your dashboards](https://www.metabase.com/blog/markdown-in-dashboards/index.html).
+To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.com/blog/markdown-in-dashboards/index.html).
 
 ### Arranging cards
 
@@ -64,7 +66,7 @@ Once you're in edit mode, you'll see a grid appear. You can move and resize the 
 - **To resize a card**, click the handle at the bottom right corner of the card, and drag to resize.
 - **To remove a card**, hover over the card, and click the X icon in the top right corner.
 
-To make sure your data looks great at any size, questions in your dashboard will automatically update their display based on the size you choose.
+Metabase will automatically update a question's display to make sure your data looks great at any size you choose.
 
 ### Changing a question's visualization settings
 
@@ -74,15 +76,15 @@ You can change a question's visualization settings on a dashboard (to add a goal
 
 ### Finding dashboards
 
-You can also search for any dashboard (or question, collection, or pulse) by its title in the big search box at the top of Metabase.
+You can search for any dashboard (or question, collection, or pulse) by its title in the big search box at the top of Metabase.
 
-After a while, your team might have a lot of dashboards. To make it easier to find dashboards that your team looks at often, you can pin them to the top of a collection. From the collection screen, click and drag a dashboard to the top, or click on the **...** menu and select **Pin this item**.
+After a while, your team might accumulate a lot of dashboards. To make it easier to find dashboards that your team looks at often, you can pin them to the top of a collection. From the collection screen, click and drag a dashboard to the top, or click on the **...** menu and select **Pin this item**.
 
 ![Pinning a dashboard in a collection](images/dashboards/pinning-dashboard.png)
 
 ### Fullscreen dashboards
 
-After you've made your ideal dashboard, you may want to put it on a TV to help keep your team up-to-date throughout the day.
+After you've made your ideal dashboard, you may want to put the dashboard on a TV to help keep your team up-to-date throughout the day.
 
 To enter fullscreen mode, click the **fullscreen** icon in the top right of the dashboard (the icon with the arrows pointing in opposite directions).
 
@@ -108,19 +110,19 @@ If your Metabase administrator has enabled [public sharing](../administration-gu
 
 ![Share icon](images/share-icon.png)
 
-Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post.
+Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../administration-guide/13-embedding.md), check out our article on [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/blog/external-facing-analytics/index.html), as well as an article on how to combine branding, Single Sign-On, full app embedding, and data sandboxing to deliver [multi-tenant, self-service analytics](https://www.metabase.com/blog/embedding/index.html).
 
 ### Configuring a dashboard through its URL
 
-You can amend the URL of a dashboard to automatically enter fullscreen, enable night mode, or auto-refresh the dashboard. Customizing the dashboard's URL allows you to configure the dashboard even when you do not have any input access to the device where the dashboard will be displayed, like scripted screens, for example.
+You can amend the URL of a dashboard to automatically enter fullscreen, enable night mode, or auto-refresh the dashboard. Customizing the dashboard's URL allows you to configure the dashboard - even when you do not have any input access to the device where the dashboard will be displayed, like scripted screens, for example.
 
 To configure a dashboard using its URL, you can add the following optional keywords: `fullscreen`, `night`, or `refresh`. Here's an example:
 
 `https://metabase.mydomain.com/dash/2#refresh=60&fullscreen&night`
 
-The part that says `refresh=60` sets the dashboard to automatically refresh every 60 seconds, `fullscreen` sets it to fullscreen mode, and `night` sets it to night mode (night mode only works when using fullscreen). Use an `&` in between keywords, and make sure there's a hash `#` after the dashboard's ID number.
+The part that says `refresh=60` sets the dashboard to automatically refresh every 60 seconds, `fullscreen` sets it to fullscreen mode, and `night` sets it to night mode (night mode only works when using fullscreen). Use an ampersand, `&`, in between keywords, and make sure there's a hash, `#`, after the dashboard's ID number.
 
-There is one important limitation with the `fullscreen` option. For security reasons, many browsers require user interaction to initiate fullscreen. In those browsers, using the `fullscreen` option will enable the fullscreen UI in Metabase, but it won't expand the browser content to fill the screen. To ensure the dashboard occupies the entire screen, either activate fullscreen by clicking the button in the UI, or use the `fullscreen` URL option and launch the browser in fullscreen or kiosk mode.
+There is one important limitation with the `fullscreen` option: for security reasons, many browsers require user interaction to initiate fullscreen. In those browsers, using the `fullscreen` option will enable the fullscreen UI in Metabase, but it won't expand the browser content to fill the screen. To ensure the dashboard occupies the entire screen, either activate fullscreen by clicking the button in the UI, or use the `fullscreen` URL option and launch the browser in fullscreen or kiosk mode.
 
 ### Archiving a dashboard
 
@@ -128,7 +130,7 @@ Archiving a dashboard removes the dashboard from searches and collections. Archi
  
 To archive a dashboard, click the **pencil** icon to enter edit mode, then click the **...** menu, and select **Archive**.
 
-To view all archived items, click the **menu** icon in the top-right of any collection page. You can unarchive a dashboard by clicking the icon of the box with the upward arrow next to that dashboard.
+To view all archived items, click the **menu** icon in the top-right of any collection page. You can **unarchive** a dashboard by clicking the icon of the box with the upward arrow next to that dashboard.
 
 ## Tips on creating helpful dashboards
 
