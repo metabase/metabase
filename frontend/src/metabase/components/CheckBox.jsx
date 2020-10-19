@@ -55,12 +55,13 @@ export default class CheckBox extends Component {
       height: size,
       backgroundColor: checked ? checkedColor : "white",
       border: `2px solid ${checked ? checkedColor : uncheckedColor}`,
+      borderRadius: 4,
     };
     return (
       <div
         className={cx(
           className,
-          "flex align-center justify-center rounded cursor-pointer",
+          "flex align-center justify-center cursor-pointer",
         )}
         style={{ ...style, ...checkboxStyle }}
         onClick={e => {
