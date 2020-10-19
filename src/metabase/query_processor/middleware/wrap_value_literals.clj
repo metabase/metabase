@@ -119,6 +119,13 @@
     (let [s (add-type-info s (type-info field), :parse-datetime-strings? false)]
       (into [clause field s] more))))
 
+(defn unwrap-value-literal
+  "Extract value literal from `:value` form or returns form as is if not a `:value` form."
+  [maybe-value-form]
+  (mbql.u/match-one maybe-value-form
+    [:value x & _] x
+    _              &match))
+
 (defn ^:private wrap-value-literals-in-mbql-query
   [{:keys [source-query], :as inner-query} options]
   (let [inner-query (cond-> inner-query

@@ -3,6 +3,7 @@
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
+             [query-processor :as qp]
              [test :as mt]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.setting :as setting]
@@ -159,7 +160,7 @@
   (testing "params from source queries should get passed in to the top-level. Semicolons should be removed"
     (mt/with-everything-store
       (driver/with-driver :h2
-        (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM some_table WHERE name = ?) \"source\" WHERE \"source\".\"name\" <> ?"
+        (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM some_table WHERE name = ?) \"source\" WHERE (\"source\".\"name\" <> ? OR \"source\".\"name\" IS NULL)"
                 :params ["Cam" "Lucky Pigeon"]}
                (sql.qp/mbql->native :h2
                  (mt/mbql-query venues
@@ -209,3 +210,24 @@
                     setting/get-keyword     (constantly :monday)]
         (is (= (hsql/call :week :created_at)
                (sql.qp/adjust-start-of-week :h2 (partial hsql/call :week) :created_at)))))))
+
+(defn- query-on-dataset-with-nils
+  [query]
+  (mt/rows
+    (qp/process-query {:database (mt/id)
+                       :type     :query
+                       :query    (merge
+                                  {:source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}
+                                   :order-by     [[:asc [:field-literal "A" :type/Text]]]}
+                                  query)})))
+
+(deftest correct-for-null-behaviour
+  (testing "NULLs should be treated intuitively in filters (SQL has somewhat unintuitive semantics where NULLs get propagated out of expressions)."
+    (is (= [[nil] ["bar"]]
+           (query-on-dataset-with-nils {:filter [:not [:starts-with [:field-literal "A" :type/Text] "f"]]})))
+    (is (= [[nil] ["bar"]]
+           (query-on-dataset-with-nils {:filter [:not [:ends-with [:field-literal "A" :type/Text] "o"]]})))
+    (is (= [[nil] ["bar"]]
+           (query-on-dataset-with-nils {:filter [:not [:contains [:field-literal "A" :type/Text] "f"]]})))
+    (is (= [[nil] ["bar"]]
+           (query-on-dataset-with-nils {:filter [:!= [:field-literal "A" :type/Text] "foo"]})))))

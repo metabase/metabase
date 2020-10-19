@@ -72,6 +72,12 @@ export function sidebar() {
 }
 
 // Metabase utility functions for commonly-used patterns
+export function selectDashboardFilter(selection, filterName) {
+  selection.contains("Select…").click();
+  popover()
+    .contains(filterName)
+    .click({ force: true });
+}
 
 export function openOrdersTable() {
   cy.visit("/question/new?database=1&table=2");
