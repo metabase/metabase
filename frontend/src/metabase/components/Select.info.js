@@ -3,6 +3,7 @@ import { t } from "ttag";
 import Select from "metabase/components/Select";
 
 export const component = Select;
+export const category = "input";
 
 export const description = t`
     A component used to make a selection
