@@ -1,11 +1,13 @@
 (ns metabase.api.query-description-test
   (:require [clojure.test :refer :all]
+            [metabase
+             [db :as app-db]
+             [test :as mt]]
             [metabase.api.query-description :as sut]
             [metabase.models
              [metric :refer [Metric]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
-            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util.i18n :as ui18n :refer [deferred-tru]]
             [toucan.util.test :as tt]))
@@ -26,7 +28,7 @@
                 :limit 10}
                (sut/generate-query-description (Table (mt/id :venues))
                                                (:query (mt/mbql-query :venues
-                                                         {:limit 10}))))))
+                                                                      {:limit 10}))))))
 
       (testing "with cumulative sum of price"
         (is (= {:table       "Venues"
@@ -34,43 +36,49 @@
                                :arg  "Price"}]}
                (sut/generate-query-description (Table (mt/id :venues))
                                                (:query (mt/mbql-query :venues
-                                                         {:aggregation [[:cum-sum $price]]}))))))
+                                                                      {:aggregation [[:cum-sum $price]]}))))))
       (testing "with equality filter"
         (is (= {:table  "Venues"
                 :filter [{:field "Price"}]}
                (sut/generate-query-description (Table (mt/id :venues))
                                                (:query (mt/mbql-query :venues
-                                                         {:filter [:= [$price 1234]]}))))))
+                                                                      {:filter [:= [$price 1234]]}))))))
 
       (testing "with order-by clause"
         (is (= {:table    "Venues"
-                :order-by [{:field "Price" :direction :asc}]}
+                :order-by [{:field     "Price"
+                            :direction :asc}]}
                (sut/generate-query-description (Table (mt/id :venues))
                                                (:query (mt/mbql-query :venues
-                                                         {:order-by [[:asc $price]]}))))))
+                                                                      {:order-by [[:asc $price]]}))))))
 
       (testing "with an aggregation metric"
-        (tt/with-temp Metric [metric {:table_id   (mt/id :venues) :name "Test Metric 1"
+        (tt/with-temp Metric [metric {:table_id   (mt/id :venues)
+                                      :name       "Test Metric 1"
                                       :definition {:aggregation [[:count]]}}]
           (is (= {:table       "Venues"
                   :aggregation [{:type :metric
                                  :arg  "Test Metric 1"}]}
                  (sut/generate-query-description (Table (mt/id :venues))
                                                  (:query (mt/mbql-query :venues
-                                                           {:aggregation [[:metric (:id metric)]]}))))))
+                                                                        {:aggregation [[:metric (:id metric)]]}))))))
 
         (is (= {:table       "Venues"
                 :aggregation [{:type :metric
                                :arg  (deferred-tru "[Unknown Metric]")}]}
                (sut/generate-query-description (Table (mt/id :venues))
                                                (:query (mt/mbql-query :venues
-                                                         {:aggregation [[:metric -1]]})))))
+                                                                      {:aggregation [[:metric -1]]})))))
 
         ;; confirm that it doesn't crash for non-integer metrics
-        (is (= {}
-               (sut/generate-query-description (Table (mt/id :venues))
-                                               (:query (mt/mbql-query :venues
-                                                         {:aggregation [[:metric "not-a-integer"]]}))))))
+        ;; this is just ensuring that when an exception occurs, we return an empty description
+        ;; an easy way to reproduce this is a invalid metric ID against the H2 app-db, since it
+        ;; will throw a NumberFormatException for this
+        (when (= (app-db/db-type) :h2)
+          (is (= {}
+                 (sut/generate-query-description (Table (mt/id :venues))
+                                                 (:query (mt/mbql-query :venues
+                                                                        {:aggregation [[:metric "not-a-integer"]]})))))))
 
       (testing "with segment filters"
         (tt/with-temp Segment [segment {:name "Test Segment 1"}]
@@ -78,17 +86,18 @@
                   :filter [{:segment "Test Segment 1"}]}
                  (sut/generate-query-description (Table (mt/id :venues))
                                                  (:query (mt/mbql-query :venues
-                                                           {:filter [[:segment (:id segment)]]}))))))
+                                                                        {:filter [[:segment (:id segment)]]}))))))
 
         (is (= {:table  "Venues"
                 :filter [{:segment (deferred-tru "[Unknown Segment]")}]}
                (sut/generate-query-description (Table (mt/id :venues))
                                                (:query (mt/mbql-query :venues
-                                                         {:filter [[:segment -1]]}))))))
+                                                                      {:filter [[:segment -1]]}))))))
 
       (testing "with named aggregation"
         (is (= {:table       "Venues"
-                :aggregation [{:type :aggregation :arg "Nonsensical named metric"}]}
+                :aggregation [{:type :aggregation
+                               :arg  "Nonsensical named metric"}]}
                (sut/generate-query-description (Table (mt/id :venues))
                                                {:aggregation [[:aggregation-options
                                                                [:sum [:*
@@ -97,16 +106,18 @@
                                                                {:display-name "Nonsensical named metric"}]]}))))
 
       (testing "with unnamed complex aggregation"
-        (is (= {:table "Venues"
-                :aggregation [{:type :sum :arg ["Latitude" "*" "Longitude"]}]}
+        (is (= {:table       "Venues"
+                :aggregation [{:type :sum
+                               :arg  ["Latitude" "*" "Longitude"]}]}
                (sut/generate-query-description (Table (mt/id :venues))
                                                {:aggregation [[:sum [:*
                                                                      [:field-id (mt/id :venues :latitude)]
                                                                      [:field-id (mt/id :venues :longitude)]]]]}))))
 
       (testing "with unnamed complex aggregation with multiple arguments"
-        (is (= {:table "Venues"
-                :aggregation [{:type :sum :arg ["Latitude" "+" "Longitude" "+" "ID"]}]}
+        (is (= {:table       "Venues"
+                :aggregation [{:type :sum
+                               :arg  ["Latitude" "+" "Longitude" "+" "ID"]}]}
                (sut/generate-query-description (Table (mt/id :venues))
                                                {:aggregation [[:sum [:+
                                                                      [:field-id (mt/id :venues :latitude)]
