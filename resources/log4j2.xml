@@ -7,6 +7,8 @@
       </PatternLayout>
     </Console>
 
+    <!-- This file appender is provided as an example -->
+    <!--
     <RollingFile name="FILE" fileName="${logfile.path}/metabase.log" filePattern="${logfile.path}/metabase.log.%i">
       <Policies>
         <SizeBasedTriggeringPolicy size="500 MB"/>
@@ -16,6 +18,7 @@
         <replace regex=":basic-auth \\[.*\\]" replacement=":basic-auth [redacted]"/>
       </PatternLayout>
     </RollingFile>
+    -->
   </Appenders>
 
   <Loggers>
