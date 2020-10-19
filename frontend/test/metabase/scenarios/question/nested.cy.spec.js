@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { signInAsAdmin, withSampleDataset, restore } from "__support__/cypress";
 
 describe("scenarios > question > nested (metabase#12568)", () => {
   before(() => {
@@ -6,19 +6,21 @@ describe("scenarios > question > nested (metabase#12568)", () => {
     signInAsAdmin();
 
     // Create a simple question of orders by week
-    cy.request("POST", "/api/card", {
-      name: "GH_12568: Simple",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": 2,
-          aggregation: [["count"]],
-          breakout: [["datetime-field", ["field-id", 15], "week"]],
+    withSampleDataset(({ ORDERS }) => {
+      cy.request("POST", "/api/card", {
+        name: "GH_12568: Simple",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": 2,
+            aggregation: [["count"]],
+            breakout: [["datetime-field", ORDERS.CREATED_AT, "week"]],
+          },
+          type: "query",
         },
-        type: "query",
-      },
-      display: "line",
-      visualization_settings: {},
+        display: "line",
+        visualization_settings: {},
+      });
     });
 
     // Create a native question of orders by day
