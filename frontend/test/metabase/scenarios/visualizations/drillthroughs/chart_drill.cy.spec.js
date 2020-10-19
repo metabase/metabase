@@ -2,7 +2,6 @@ import {
   signInAsAdmin,
   restore,
   withSampleDataset,
-  openOrdersTable,
   openProductsTable,
   popover,
   sidebar,
@@ -182,7 +181,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findByText("Done").click();
     cy.log("**Mid-point assertion**");
     cy.contains("Count by Created At: Month");
-    // at this point, filter is still present in the page
+    // at this point, filter is displaying correctly with the name
     cy.contains("Count is greater than 1");
 
     // drill-through
@@ -192,8 +191,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findByText("View these Orders").click();
 
     cy.log("**Reproduced on 0.34.3, 0.35.4, 0.36.7 and 0.37.0-rc2**");
-    // when the bug is present, filter is missing name
-    cy.contains("Count is greater than 1");
+    // when the bug is present, filter is missing a name (showing only "is 256")
+    cy.contains("Count is equal to 256");
     cy.findByText("There was a problem with your question").should("not.exist");
   });
 
