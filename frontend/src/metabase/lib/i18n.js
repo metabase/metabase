@@ -1,5 +1,5 @@
 import { addLocale, useLocale } from "ttag";
-import moment from "moment";
+import moment from "moment-timezone";
 
 // note this won't refresh strings that are evaluated at load time
 export async function loadLocalization(locale) {
