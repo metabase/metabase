@@ -79,6 +79,19 @@
     ;; nil .getAuthority needs to be handled or NullPointerException
     "http:/"                                                                                 false))
 
+(deftest state?-test
+  (are+ [s expected] (= expected
+                        (u/state? s))
+    "louisiana"      true
+    "north carolina" true
+    "WASHINGTON"     true
+    "CA"             true
+    "NY"             true
+    "random"         false
+    nil              false
+    3                false
+    (Object.)        false))
+
 (deftest qualified-name-test
   (are+ [k expected] (= expected
                         (u/qualified-name k))

@@ -94,6 +94,23 @@
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (str/lower-case s)))))
 
+(defn state?
+  "Is `s` a state string?"
+  ^Boolean [^String s]
+  (boolean
+    (when (string? s)
+      (contains? #{"alabama" "alaska" "arizona" "arkansas" "california" "colorado" "connecticut" "delaware"
+                   "florida" "georgia" "hawaii" "idaho" "illinois" "indiana" "iowa" "kansas" "kentucky" "louisiana"
+                   "maine" "maryland" "massachusetts" "michigan" "minnesota" "mississippi" "missouri" "montana"
+                   "nebraska" "nevada" "new hampshire" "new jersey" "new mexico" "new york" "north carolina"
+                   "north dakota" "ohio" "oklahoma" "oregon" "pennsylvania" "rhode island" "south carolina"
+                   "south dakota" "tennessee" "texas" "utah" "vermont" "virginia" "washington" "west virginia"
+                   "wisconsin" "wyoming"
+                   "ak" "al" "ar" "az" "ca" "co" "ct" "de" "fl" "ga" "hi" "ia" "id" "il" "in" "ks" "ky" "la"
+                   "ma" "md" "me" "mi" "mn" "mo" "ms" "mt" "nc" "nd" "ne" "nh" "nj" "nm" "nv" "ny" "oh" "ok"
+                   "or" "pa" "ri" "sc" "sd" "tn" "tx" "ut" "va" "vt" "wa" "wi" "wv" "wy"}
+                 (str/lower-case s)))))
+
 (defn url?
   "Is `s` a valid HTTP/HTTPS URL string?"
   ^Boolean [s]

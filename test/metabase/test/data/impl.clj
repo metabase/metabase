@@ -162,6 +162,8 @@
 (defn do-with-db
   "Internal impl of `data/with-db`."
   [db f]
+  (assert (and (map? db) (integer? (:id db)))
+          (format "Not a valid database: %s" (pr-str db)))
   (binding [*get-db* (constantly db)]
     (f)))
 

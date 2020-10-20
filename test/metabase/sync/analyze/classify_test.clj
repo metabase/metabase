@@ -1,75 +1,134 @@
 (ns metabase.sync.analyze.classify-test
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
             [metabase.models
              [database :refer [Database]]
-             [field :refer [Field]]
+             [field :as field :refer [Field]]
+             [field-values :as field-values]
              [table :refer [Table]]]
             [metabase.sync.analyze.classify :as classify]
             [metabase.sync.interface :as i]
             [metabase.util :as u]
             [toucan.util.test :as tt]))
 
-;; Check that only the right Fields get classified
-(expect
-  ["Current fingerprint, not analyzed"]
-  ;; For max version pick something we'll hopefully never hit. Don't think we'll ever have 32k different versions :D
-  (with-redefs [i/latest-fingerprint-version Short/MAX_VALUE]
+(deftest fields-to-classify-test
+  (testing "Finds current fingerprinted versions that are not analyzed"
     (tt/with-temp* [Table [table]
                     Field [_ {:table_id            (u/get-id table)
-                              :name                "Current fingerprint, not analyzed"
-                              :fingerprint_version Short/MAX_VALUE
+                              :name                "expected"
+                              :description         "Current fingerprint, not analyzed"
+                              :fingerprint_version i/latest-fingerprint-version
                               :last_analyzed       nil}]
                     Field [_ {:table_id            (u/get-id table)
-                              :name                "Current fingerprint, already analzed"
-                              :fingerprint_version Short/MAX_VALUE
+                              :name                "not expected 1"
+                              :description         "Current fingerprint, already analzed"
+                              :fingerprint_version i/latest-fingerprint-version
                               :last_analyzed       #t "2017-08-09"}]
                     Field [_ {:table_id            (u/get-id table)
-                              :name                "Old fingerprint, not analyzed"
-                              :fingerprint_version (dec Short/MAX_VALUE)
+                              :name                "not expected 2"
+                              :description         "Old fingerprint, not analyzed"
+                              :fingerprint_version (dec i/latest-fingerprint-version)
                               :last_analyzed       nil}]
                     Field [_ {:table_id            (u/get-id table)
-                              :name                "Old fingerprint, already analzed"
-                              :fingerprint_version (dec Short/MAX_VALUE)
+                              :name                "not expected 3"
+                              :description         "Old fingerprint, already analzed"
+                              :fingerprint_version (dec i/latest-fingerprint-version)
                               :last_analyzed       #t "2017-08-09"}]]
-      (for [field (#'classify/fields-to-classify table)]
-        (:name field)))))
+      (is (= ["expected"]
+             (for [field (#'classify/fields-to-classify table)]
+               (:name field))))))
+  (testing "Finds previously marked :type/category fields for state"
+    (tt/with-temp* [Table [table]
+                    Field [_ {:table_id            (u/get-id table)
+                              :name                "expected"
+                              :description         "Current fingerprint, not analyzed"
+                              :fingerprint_version i/latest-fingerprint-version
+                              :last_analyzed       nil}]
+                    Field [_ {:table_id            (u/get-id table)
+                              :name                "not expected 1"
+                              :description         "Current fingerprint, already analzed"
+                              :fingerprint_version i/latest-fingerprint-version
+                              :last_analyzed       #t "2017-08-09"}]
+                    Field [_ {:table_id            (u/get-id table)
+                              :name                "not expected 2"
+                              :description         "Old fingerprint, not analyzed"
+                              :fingerprint_version (dec i/latest-fingerprint-version)
+                              :last_analyzed       nil}]
+                    Field [_ {:table_id            (u/get-id table)
+                              :name                "not expected 3"
+                              :description         "Old fingerprint, already analzed"
+                              :fingerprint_version (dec i/latest-fingerprint-version)
+                              :last_analyzed       #t "2017-08-09"}]])))
 
-;; Check that we can classify decimal fields that have specially handled NaN values
-(expect
-  [nil :type/Income]
-  (tt/with-temp* [Database [db]
-                  Table    [table {:db_id (u/get-id db)}]
-                  Field    [field {:table_id            (u/get-id table)
-                                   :name                "Income"
-                                   :base_type           :type/Float
-                                   :special_type        nil
-                                   :fingerprint_version i/latest-fingerprint-version
-                                   :fingerprint         {:type   {:type/Number {:min "NaN"
-                                                                                :max "NaN"
-                                                                                :avg "NaN"}}
-                                                         :global {:distinct-count 3}}
-                                   :last_analyzed       nil}]]
-    [(:special_type (Field (u/get-id field)))
-     (do
-       (classify/classify-fields-for-db! db [table] (constantly nil))
-       (:special_type (Field (u/get-id field))))]))
+(deftest classify-fields-for-db!-test
+  (testing "We classify decimal fields that have specially handled NaN values"
+    (tt/with-temp* [Database [db]
+                    Table    [table {:db_id (u/get-id db)}]
+                    Field    [field {:table_id            (u/get-id table)
+                                     :name                "Income"
+                                     :base_type           :type/Float
+                                     :special_type        nil
+                                     :fingerprint_version i/latest-fingerprint-version
+                                     :fingerprint         {:type   {:type/Number {:min "NaN"
+                                                                                  :max "NaN"
+                                                                                  :avg "NaN"}}
+                                                           :global {:distinct-count 3}}
+                                     :last_analyzed       nil}]]
+      (is (nil? (:special_type (Field (u/get-id field)))))
+      (classify/classify-fields-for-db! db [table] (constantly nil))
+      (is (= :type/Income (:special_type (Field (u/get-id field)))))))
+  (testing "We can classify decimal fields that have specially handled infinity values"
+    (tt/with-temp* [Database [db]
+                    Table    [table {:db_id (u/get-id db)}]
+                    Field    [field {:table_id            (u/get-id table)
+                                     :name                "Income"
+                                     :base_type           :type/Float
+                                     :special_type        nil
+                                     :fingerprint_version i/latest-fingerprint-version
+                                     :fingerprint         {:type   {:type/Number {:min "-Infinity"
+                                                                                  :max "Infinity"
+                                                                                  :avg "Infinity"}}
+                                                           :global {:distinct-count 3}}
+                                     :last_analyzed       nil}]]
+      (is (nil? (:special_type (Field (u/get-id field)))))
+      (classify/classify-fields-for-db! db [table] (constantly nil))
+      (is (= :type/Income (:special_type (Field (u/get-id field))))))))
 
-;; Check that we can classify decimal fields that have specially handled infinity values
-(expect
-  [nil :type/Income]
-  (tt/with-temp* [Database [db]
-                  Table    [table {:db_id (u/get-id db)}]
-                  Field    [field {:table_id            (u/get-id table)
-                                   :name                "Income"
-                                   :base_type           :type/Float
-                                   :special_type        nil
-                                   :fingerprint_version i/latest-fingerprint-version
-                                   :fingerprint         {:type   {:type/Number {:min "-Infinity"
-                                                                                :max "Infinity"
-                                                                                :avg "Infinity"}}
-                                                         :global {:distinct-count 3}}
-                                   :last_analyzed       nil}]]
-    [(:special_type (Field (u/get-id field)))
-     (do
-       (classify/classify-fields-for-db! db [table] (constantly nil))
-       (:special_type (Field (u/get-id field))))]))
+(defn- ->field [field]
+  (field/map->FieldInstance
+    (merge {:fingerprint_version i/latest-fingerprint-version
+            :special_type        nil}
+           field)))
+
+(deftest run-classifiers-test
+  (testing "Fields marked state are not overridden"
+    (let [field (->field {:name "state", :base_type :type/Text, :special_type :type/State})]
+      (is (= :type/State (:special_type (classify/run-classifiers field nil))))))
+  (testing "Fields with few values are marked as category and list"
+    (let [field      (->field {:name "state", :base_type :type/Text})
+          classified (classify/run-classifiers field {:global
+                                                      {:distinct-count
+                                                       (dec field-values/category-cardinality-threshold)
+                                                       :nil% 0.3}})]
+      (is (= {:has_field_values :auto-list, :special_type :type/Category}
+             (select-keys classified [:has_field_values :special_type])))))
+  (testing "Earlier classifiers prevent later classifiers"
+    (let [field       (->field {:name "site_url" :base_type :type/Text})
+          fingerprint {:global {:distinct-count 4
+                                :nil%           0}}
+          classified  (classify/run-classifiers field fingerprint)]
+      (is (= {:has_field_values :auto-list, :special_type :type/URL}
+             (select-keys classified [:has_field_values :special_type])))))
+  (testing "Classififying using fingerprinters can override previous classifications"
+    (testing "Classify state fields on fingerprint rather than name"
+      (let [field       (->field {:name "order_state" :base_type :type/Text})
+            fingerprint {:global {:distinct-count 4
+                                  :nil%           0}
+                         :type   {:type/Text {:percent-state 0.98}}}
+            classified  (classify/run-classifiers field fingerprint)]
+        (is (= {:has_field_values :auto-list, :special_type :type/State}
+               (select-keys classified [:has_field_values :special_type])))))
+    (let [field       (->field {:name "order_status" :base_type :type/Text})
+          fingerprint {:type {:type/Text {:percent-json 0.99}}}]
+      (is (= :type/SerializedJSON
+             ;; this will be marked as :type/Category based on name, but fingerprinters should override
+             (:special_type (classify/run-classifiers field fingerprint)))))))

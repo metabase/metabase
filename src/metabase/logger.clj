@@ -25,7 +25,7 @@
    :fqns         (.getLoggerName event)
    :msg          (.getMessage event)
    :exception    (when-let [throwable (.getThrown event)]
-                   (ExceptionUtils/getStackFrames throwable))
+                   (seq (ExceptionUtils/getStackFrames throwable)))
    :process_uuid local-process-uuid})
 
 (defn- metabase-appender ^Appender []
