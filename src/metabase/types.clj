@@ -95,6 +95,7 @@
 (derive :type/DateTimeWithLocalTZ :type/DateTimeWithTZ)    ; a column that is timezone-aware, but normalized to UTC or another offset at rest.
 (derive :type/DateTimeWithZoneOffset :type/DateTimeWithTZ) ; a column that stores its timezone offset, e.g. `-08:00`
 (derive :type/DateTimeWithZoneID :type/DateTimeWithTZ)     ; a column that stores its timezone ID, e.g. `US/Pacific`
+(derive :type/ISO8601DateTime :type/Temporal)              ; a column that stores its timezone in string ISO8601 format 
 
 ;; An `Instant` is a timestamp in (milli-)seconds since the epoch, UTC. Since it doesn't store TZ information, but is
 ;; normalized to UTC, it is a DateTimeWithLocalTZ

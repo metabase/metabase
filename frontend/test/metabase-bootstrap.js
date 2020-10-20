@@ -49,6 +49,7 @@ window.MetabaseBootstrap = {
     "type/CancelationTime": ["type/Date", "type/CancelationTimestamp"],
     "type/DeletionDate": ["type/Date", "type/DeletionTimestamp"],
     "type/DateTimeWithZoneID": ["type/DateTimeWithTZ"],
+    "type/ISO8601DateTime": ["type/Temporal"],
     "type/Address": ["type/*"],
     "type/Source": ["type/Category"],
     "type/Name": ["type/Category", "type/Text"],
