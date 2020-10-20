@@ -410,6 +410,9 @@ export function createEntity(def: EntityDefinition): Entity {
       // contains the actual entries, if that is on the response we should
       // use that as the 'results'
       const results = fetched.data ? fetched.data : fetched;
+      if (!Array.isArray(results)) {
+        throw `Invalid response listing ${entity.name}`;
+      }
       return {
         ...entity.normalizeList(results),
         entityQuery,
