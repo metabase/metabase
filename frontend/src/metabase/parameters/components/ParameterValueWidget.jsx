@@ -90,7 +90,9 @@ export default class ParameterValueWidget extends Component {
     if (!metadata) {
       return [];
     }
-    return this.fieldIds(this.props).map(id => metadata.field(id));
+    return this.fieldIds(this.props)
+      .map(id => metadata.field(id))
+      .filter(f => f != null);
   }
 
   getWidget() {
