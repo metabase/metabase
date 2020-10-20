@@ -177,12 +177,13 @@
     (fn [~(vary-meta response-binding assoc :tag 'com.google.api.services.bigquery.model.GetQueryResultsResponse)]
       ~@body)))
 
-(defn- ^QueryResponse get-query-results [^Bigquery client ^String project-id ^String job-id ^String page-token]
+(defn- ^GetQueryResultsResponse get-query-results
+  [^Bigquery client ^String project-id ^String job-id ^String page-token]
   (let [request (doto (.getQueryResults (.jobs client) project-id job-id)
                   (.setPageToken page-token))]
     (google/execute request)))
 
-(defn- ^QueryResponse execute-bigquery
+(defn- ^GetQueryResultsResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} sql parameters]
    (execute-bigquery (database->client database) (find-project-id project-id (database->credential database)) sql parameters))
 
@@ -262,7 +263,7 @@
 
 (defmethod driver/execute-reducible-query :bigquery
   ;; TODO - it doesn't actually cancel queries the way we'd expect
-  [driver {{sql :query, :keys [params table-name mbql?]} :native, :as outer-query} _ respond]
+  [_ {{sql :query, :keys [params]} :native, :as outer-query} _ respond]
   (let [database (qp.store/database)]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
