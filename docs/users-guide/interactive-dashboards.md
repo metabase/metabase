@@ -6,8 +6,8 @@ By default, when you create charts using Metabase's graphical query builder, you
 
 You can set up a dashboard card to:
 
-- Send the user to a custom destination: a dashboard, question, or custom URL.
-- Update a dashboard filter (see [use a chart to filter a dashboard](#Use-a-chart-to-filter-a-dashboard)).
+- Send the user to a [custom destination](#custom-destinations): a dashboard, question, or custom URL.
+- [Update a dashboard filter](#use-a-chart-to-filter-a-dashboard).
 
 To configure this interactivity, you'll use the **click behavior** option on a dashboard card to slide out the click behavior.
 
@@ -21,11 +21,11 @@ Metabase will slide out the **Click behavior sidebar**. For questions composed u
 
 - Open the Metabase action menu.
 - Go to a custom destination.
-- Update a dashboard filter (if the dashboard has a filter)
+- Update a dashboard filter (if the dashboard has a filter).
 
 SQL questions will only have the option to **Go to a custom destination**, and **Update a dashboard filter**, as the action menu (which allows users to [drill through the data](https://www.metabase.com/blog/drilling-through-data/index.html)) is only available to questions composed with the query builder.
 
-If your dashboard has a filter, you'll also see an option to update the filter (see [cross-filtering](#cross---filtering-a-dashboard) below).
+If your dashboard has a filter, you'll also see an option to [update the filter](#use-a-chart-to-filter-a-dashboard).
 
 ![Click behavior menu](images/interactive-dashboards/click-behavior-menu.png)
 
@@ -63,13 +63,25 @@ In the example above, when a user clicks on the **Orders by product category** c
 
 You can also send the currently selected value of a dashboard filter on the current dashboard to the destination. And if you're using [Metabase Enterprise Edition](https://www.metabase.com/enterprise/scale/index.html), you can pass a user attribute provided by SSO to the destination, too. Those user attributes will show up as options when you click on one of the destination's filters (provided the values are compatible with that filter).
 
-When displaying questions as tables, you can select different click behaviors for different columns in the table. You can also modify the contents of the cells in a given column, replacing the value with custom text. For example, if you had a column that listed categories, you could change the text in the cell to read: "Click for details about {{Category}}", where `Category` is the name of your column.
+When displaying questions as tables, you can select different click behaviors for different columns in the table. You can also modify the contents of the cells in a given column, replacing the value with custom text. For example, if you had a column that listed categories, you could change the text in the cell to read: "Click for details about {% raw %}{{Category}}{% endraw %}", where `Category` is the name of your column.
 
 You can also use values to construct URLs to external resources.
 
 ![Enter a URL](images/interactive-dashboards/enter-a-url.png)
 
-From the **Click behavior** sidebar, select **Go to a custom destination** and link to **URL**. The **Enter a URL to link to** modal will pop up, allowing you to specify a URL, as well as specify the value of a column or dashboard filter. Click on the dropdown menu **Values you can reference** to see your options.
+From the **Click behavior** sidebar, select **Go to a custom destination** and link to **URL**. The **Enter a URL to link to** modal will pop up, allowing you to specify a URL, as well as a column or dashboard filter.
+
+What we need to do here is to type in the full URL of where a user should go when they click on a value in a card. But the really powerful thing we can do is to include variables in the URL. These variables will insert the value that the user clicks on into the URL. 
+
+For example, we could type a URL like this:
+
+ ```
+ https://www.metabase.com/search.html?query={% raw %}{{Category}}{% endraw %}
+ ```
+ 
+ The important part is the `{% raw %}{{Category}}{% endraw %}` bit. What we’re doing here is referring to the `Category` that the user clicked on. So if a user clicks on the `Widget` bar in our chart, the value of the `Category` column for that bar (`Widget`) would be inserted into our URL: `https://www.metabase.com/search.html?query=Widget`. Your URL can use as many column variables you want - you can even refer to the same column multiple times in different parts of the URL. Click on the dropdown menu **Values you can reference** to see your options for which variables you can include in the URL.
+
+Next we’ll click **Done**, then **Save** our dashboard. Now when we click our chart, we’ll be taken to the URL that we entered above, with the value of the clicked bar inserted into the URL.
 
 ### Use a chart to filter a dashboard
 

@@ -4,28 +4,20 @@ While tables are useful for looking up information or finding specific numbers, 
 
 In Metabase, an answer to a question can be visualized in a number of ways:
 
-- [Visualizing results](#visualizing-results)
-  - [Visualization types and options](#visualization-types-and-options)
-    - [Numbers](#numbers)
-    - [Trends](#trends)
-    - [Progress bars](#progress-bars)
-    - [Gauges](#gauges)
-    - [Tables](#tables)
-      - [Rearranging, adding, and removing columns](#rearranging-adding-and-removing-columns)
-      - [Column formatting options](#column-formatting-options)
-      - [Formatting data in charts](#formatting-data-in-charts)
-      - [Conditional table formatting](#conditional-table-formatting)
-      - [Pivoted tables](#pivoted-tables)
-    - [Line, bar, and area charts](#line-bar-and-area-charts)
-    - [Combo charts <a name="line-plus-bar-charts"></a>](#combo-charts-)
-    - [Row charts](#row-charts)
-      - [Histograms](#histograms)
-      - [Options for line, bar, and area charts](#options-for-line-bar-and-area-charts)
-    - [Scatterplots and bubble charts](#scatterplots-and-bubble-charts)
-    - [Pie or donut charts](#pie-or-donut-charts)
-    - [Funnel](#funnel)
-    - [Maps](#maps)
-  - [Next: Sharing and organizing questions](#next-sharing-and-organizing-questions)
+- [Numbers](#numbers)
+- [Trend](#trends)
+- [Progress bar](#progress-bars)
+- [Gauge](#gauges)
+- [Table](#tables)
+- [Line chart](#line-bar-and-area-charts)
+- [Bar chart](#line-bar-and-area-charts)
+- [Combo chart](#line-plus-bar-charts)
+- [Row chart](#row-charts)
+- [Area chart](#line-bar-and-area-charts)
+- [Scatterplot or bubble chart](#scatterplots-and-bubble-charts)
+- [Pie/donut chart](#pie-or-donut-charts)
+- [Funnel](#funnel)
+- [Map](#maps)
 
 To change how the answer to your question is displayed, click on the **Visualization** button in the bottom-right of the screen to open the visualization sidebar.
 
@@ -150,7 +142,7 @@ If your table is a result that contains one numeric column and two grouping colu
 
 ### Line, bar, and area charts
 
-**Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values. [Bar charts](https://www.metabase.com/blog/bar-chart/index.html) are great for displaying a number grouped by a category (e.g., the number of users you have by country). Bar charts can also be useful for showing a number over time if you have a smaller number of x-axis values (like orders per month this year).
+**Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values. Bar charts are great for displaying a number grouped by a category (e.g., the number of users you have by country). Bar charts can also be useful for showing a number over time if you have a smaller number of x-axis values (like orders per month this year).
 
 ![Bar chart](images/visualizations/bar.png)
 

@@ -12,7 +12,3 @@ The Enterprise Edition of Metabase provides added functionality and solutions fo
 * [Copying contents of one Metabase instance to another (serialization)](serialization.md)
 * [Using the audit logs](audit.md)
 * [Organizing SQL snippets with folders and permissions](sql-snippets.md)
-
-## Metabase Cloud
-
-Don't want to host Metabase yourself? Check out [Metabase Cloud](https://www.metabase.com/start/hosted/index.html).
