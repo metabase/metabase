@@ -278,7 +278,7 @@ When you open up the Map options, you can manually switch between a region map (
 
 Metabase also allows administrators to add custom region maps via GeoJSON files through the Metabase **Admin Panel**.
 
-Learn more about [Visualizing data with maps](https://www.metabase.com/blog/map-visualization/index.html).
+Learn more about [visualizing data with maps](https://www.metabase.com/blog/map-visualization/index.html).
 
 ---
 

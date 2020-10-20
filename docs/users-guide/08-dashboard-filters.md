@@ -30,7 +30,7 @@ When picking a Time filter, Metabase will prompt you to pick a specific type of 
 - Single Date
 - Date Range
 - Relative Date
-- All Options.
+- All Options
 
 Single Date and Date Range will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. To get a widget that's just like the time filter in the graphical query builder, choose All options.
 
@@ -110,7 +110,7 @@ If Metabase somehow picked the wrong behavior for your field, admins can go to t
 
 You can also **link filters** so that a child filter knows to limit its choices based on the activation of a parent filter.
 
-Say you have two filters, one to filter by state, the other to filter by city. You can link the city filter to the state filter so that when someone filter for California, the city filter will "know" to only show cities in California. In this case, state is the parent filter, and city is the child filter.
+Say you have two filters, one to filter by state, the other to filter by city. You can link the city filter to the state filter so that when someone filters by California, the city filter will "know" to only show cities in California. In this case, state is the parent filter, and city is the child filter.
 
 To link filters, you'll need to set up this parent-child relationship. And you set up this relationship through the child filter. In the above scenario, with a state and city filter, we'd edit the child filter, city, by clicking on the **gears** icon on the city filter. From the filter sidebar on the right, select the **Linked filters** tab. 
 

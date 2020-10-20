@@ -17,7 +17,7 @@ From your dashboard, click on the **pencil** icon to enter dashboard edit mode. 
 
 ![Click behavior icon](images/interactive-dashboards/click-behavior-icon.png)
 
-Metabase will slide out the **Click behavior sidebar**. For questions composed using the query builder, you can select from 3 options:
+Metabase will slide out the **Click behavior sidebar**. For questions composed using the query builder, you can select from three options:
 
 - Open the Metabase action menu.
 - Go to a custom destination.
@@ -61,9 +61,9 @@ Once you select a column, the sidebar will display the column used to pass the v
 
 In the example above, when a user clicks on the **Orders by product category** card, Metabase will pass the clicked `Category` to the destination dashboard ("Interactive Dashboard"), which will then filter its cards by that `Category`.
 
-You can also send the currently selected value of a dashboard filter on the current dashboard to the destination. And if you're using [Metabase Enterprise Edition](https://www.metabase.com/enterprise/scale/index.html), you can pass a user attribute provided by SSO to the destination, too. Those user attributes will show up as options when you click on one of the destination's filters ( provided the values are compatible with that filter).
+You can also send the currently selected value of a dashboard filter on the current dashboard to the destination. And if you're using [Metabase Enterprise Edition](https://www.metabase.com/enterprise/scale/index.html), you can pass a user attribute provided by SSO to the destination, too. Those user attributes will show up as options when you click on one of the destination's filters (provided the values are compatible with that filter).
 
-When displaying questions as tables, you can select different click behaviors for different columns in the table. You can also modify the contents of the cells in a given column, replacing the value with custom text. For example, if you had a column that listed categories, you could change the text in the cell to read: "Click for details about {{Category}}".
+When displaying questions as tables, you can select different click behaviors for different columns in the table. You can also modify the contents of the cells in a given column, replacing the value with custom text. For example, if you had a column that listed categories, you could change the text in the cell to read: "Click for details about {{Category}}", where `Category` is the name of your column.
 
 You can also use values to construct URLs to external resources.
 
@@ -81,7 +81,7 @@ For example, clicking on the `Widget` bar will update the current dashboard's **
 
 ![Cross-filtering](images/interactive-dashboards/cross-filter.png)
 
-To set up cross-filtering, choose a dashboard filter that you'd like to update on click, and a question to use to update that filter. You can think of this question as your "navigation question". Instead of wiring this navigation question up to the filter, you'll [wire up every other question on the dashboard to the filter](08-dashboard-filters.md). 
+To set up cross-filtering, choose a dashboard filter that you'd like to update on click, and a question to use to update that filter. You can think of this question as your "navigation question." Instead of wiring this navigation question up to the filter, you'll [wire up every other question on the dashboard to the filter](08-dashboard-filters.md). 
 
 Below, we'll use the **Orders by product category question** as our navigation question, so we'll leave this question disconnected from the filter, and connect all the other questions to the **Category** filter.
 
@@ -89,13 +89,13 @@ Below, we'll use the **Orders by product category question** as our navigation q
 
 With your filter wired up, stay in dashboard edit mode, and hover over the question you want to use as your navigation question to filter the dashboard. Click on the **click behavior** icon, then select the **Update a dashboard filter**.
 
-Metabase will list the available filters to update below. Here we select the **Category** filter, and supply the value to that filter from the question's `Product -> Category` column.
+Metabase will list the filters you can update. Here we select the **Category** filter, and supply the value to that filter from the question's `Product -> Category` column.
 
 ![Update a dashboard filter](images/interactive-dashboards/update-a-dashboard-filter.png)
 
 Click **Done** in the sidebar, then **Save** your dashboard. 
 
-Now we can use our navigation question (Orders by product category) to interactively filter the data across your dashboard. When people click on a value in the navigation question, Metabase will send the clicked value to the filter, and update every card on the dashboard by filtering them for the clicked value - every card except for the navigation question: Orders by product category. The reason we don't want the navigation question to update is so that we can select a different category to filter the dashboard.
+Now we can use our navigation question (Orders by product category) to interactively filter the data across your dashboard. When people click on a value in the navigation question, Metabase will send the clicked value to the filter, and update every card on the dashboard by filtering them for the clicked value - every card except for the navigation question: Orders by product category. The reason we don't want the navigation question to be filtered is to make sure all of the bars remain present, so that we can click on a different one to select it instead.
 
 ---
 
