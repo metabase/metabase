@@ -13,9 +13,6 @@
 
 (def ^:private dir "/tmp/metabase.com")
 
-(def ^:private cloudfront-distribution-id
-  "EV92R9NDSZSCE")
-
 (defn- update-website!* []
   (let [tag (str \v (c/version))]
     (u/delete-file! dir)
