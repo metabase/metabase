@@ -84,7 +84,7 @@ After a while, your team might accumulate a lot of dashboards. To make it easier
 
 ### Fullscreen dashboards
 
-After you've made your ideal dashboard, you may want to put the dashboard on a TV to help keep your team up-to-date throughout the day.
+After you've made your ideal dashboard, you may want to put the dashboard on a TV to help keep your team up to date throughout the day.
 
 To enter fullscreen mode, click the **fullscreen** icon in the top right of the dashboard (the icon with the arrows pointing in opposite directions).
 

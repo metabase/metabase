@@ -130,4 +130,4 @@ Here are a few tips to get the most out of dashboard filters:
 
 ## Next: Interactive dashboards
 
-We'll learn how to [customize what happens when people click on questions in your dashboards](interactive-dashboards.md).
+We'll learn how to [make our dashboards interactive](interactive-dashboards.md).
