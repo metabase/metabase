@@ -235,5 +235,32 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
       cy.findByText(metricName);
     });
+
+    it.skip("should show CE that uses 'AND/OR' (metabase#13070)", () => {
+      cy.visit("/admin/datamodel/metrics");
+      cy.findByText("New metric").click();
+      cy.findByText("Select a table").click();
+      cy.findByText("Orders").click();
+      cy.findByText("Add filters to narrow your answer").click();
+      cy.findByText("Custom Expression").click();
+      cy.get("[contenteditable='true']")
+        .click()
+        .clear()
+        .type("[ID] > 0 OR [ID] < 9876543210", { delay: 100 });
+      cy.findByPlaceholderText("Name (required)")
+        .click()
+        .type("CE", { delay: 100 });
+
+      popover().within(() => {
+        cy.get(".Button--primary")
+          .should("not.be.disabled")
+          .click();
+      });
+
+      // NOTE: This is not the final assertion
+      // waiting on metabase#13069 fix first
+      cy.log("**Assert that there is a filter text visible**");
+      cy.findByText("ID > 0 OR ID < 9876543210");
+    });
   });
 });
