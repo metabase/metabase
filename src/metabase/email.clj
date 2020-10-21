@@ -41,10 +41,13 @@
 
 ;; ## PUBLIC INTERFACE
 
-(def ^{:arglists '([smtp-credentials email-details]), :style/indent 1} send-email!
+(defn send-email!
   "Internal function used to send messages. Should take 2 args - a map of SMTP credentials, and a map of email details.
    Provided so you can swap this out with an \"inbox\" for test purposes."
-  postal/send-message)
+  [smtp-credentials email-details]
+  (System/setProperty "mail.mime.splitlongparameters" "false") ; https://github.com/metabase/metabase/issues/11879#issuecomment-713816386
+  (postal/send-message smtp-credentials email-details))
+
 
 (defsetting email-configured?
   "Check if email is enabled and that the mandatory settings are configured."
