@@ -13073,7 +13073,7 @@ styled-components@3.2.6, styled-components@>=3.0.0:
     stylis-rule-sheet "^0.0.10"
     supports-color "^3.2.3"
 
-styled-system@2.2.5, "styled-system@>=1.1 || >=2.0", styled-system@>=2.0.1, styled-system@>=2.0.2:
+styled-system@2.2.5, "styled-system@>=2.0.0 || >=3.0.0", styled-system@>=2.0.1, styled-system@>=2.0.2:
   version "2.2.5"
   resolved "https://registry.yarnpkg.com/styled-system/-/styled-system-2.2.5.tgz#95f1e2c2c9ddc5c462cc56237cf039aa9ecfd27d"
   integrity sha512-/KJxEzd+mPQxTdr85l7K3b6ac97R4G0M2SlTm9sM48dGkg1CjTIURIvvSV3Y92kE+9GUfrPsG2MpeV8QnmSIQg==
@@ -13528,10 +13528,10 @@ typedarray@^0.0.6, typedarray@~0.0.5:
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
   integrity sha1-hnrHTjhkGHsdPUfZlqeOxciDB3c=
 
-ua-parser-js@^0.7.9:
-  version "0.7.17"
-  resolved "https://registry.yarnpkg.com/ua-parser-js/-/ua-parser-js-0.7.17.tgz#e9ec5f9498b9ec910e7ae3ac626a805c4d09ecac"
-  integrity sha512-uRdSdu1oA1rncCQL7sCj8vSyZkgtL7faaw9Tc9rZ3mGgraQ7+Pdx7w5mnOSF3gw9ZNG6oc+KXfkon3bKuROm0g==
+ua-parser-js@^0.7.18:
+  version "0.7.22"
+  resolved "https://registry.yarnpkg.com/ua-parser-js/-/ua-parser-js-0.7.22.tgz#960df60a5f911ea8f1c818f3747b99c6e177eae3"
+  integrity sha512-YUxzMjJ5T71w6a8WWVcMGM6YWOTX27rCoIQgLXiWaxqXSx9D7DNjiGWn1aJIRSQ5qr0xuhra77bSIh6voR/46Q==
 
 uglify-es@^3.3.4:
   version "3.3.5"
