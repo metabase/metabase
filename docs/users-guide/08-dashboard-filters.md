@@ -86,7 +86,7 @@ Once you’ve added a filter to your dashboard, just click on the filter to sele
 
 ![Using a filter](images/dashboard-filters/08-use-filter.png)
 
-You can also set up a dashboard question to [update a filter on click](interactive-dashboards.md#cross---filtering-a-dashboard).
+You can also set up a dashboard question to [update a filter on click](interactive-dashboards.md#use-a-chart-to-filter-a-dashboard).
 
 ### Choosing between a dropdown or autocomplete for your filter
 
