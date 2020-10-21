@@ -12,10 +12,11 @@
     (case (count candidate-tables)
       1 [:joined-field (-> candidate-tables first :alias) [:field-id id]]
       0 [:field-id id]
-      (throw (ex-info (tru "Cannot resolve joined field due to ambigious joins: table {0} joined multiple times. You need to wrap field references in explicit :joined-field clauses."
-                           (qp.store/table table_id))
-               {:error error-type/invalid-query
-                :joins joins})))))
+      (let [{:keys [id name]} (qp.store/table table_id)]
+        (throw (ex-info (tru "Cannot resolve joined field due to ambigious joins: table {0} (ID {1}) joined multiple times. You need to wrap field references in explicit :joined-field clauses."
+                             name id)
+                 {:error error-type/invalid-query
+                  :joins joins}))))))
 
 (defn- wrap-fields-in-joined-field-if-needed
   [{:keys [source-table source-query joins] :as form}]
