@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration>
+  <Properties>
+    <Property name="disableAnsi">${env:NO_COLOR:-false}</Property>
+  </Properties>
+
   <Appenders>
     <Console name="STDOUT" target="SYSTEM_OUT">
-      <PatternLayout pattern="%d %highlight{%p} %style{%c{2}}{bright} :: %m%n">
+      <PatternLayout pattern="%d %highlight{%p} %style{%c{2}}{bright} :: %m%n" disableAnsi="${disableAnsi}">
         <replace regex=":basic-auth \\[.*\\]" replacement=":basic-auth [redacted]"/>
       </PatternLayout>
     </Console>
