@@ -36,6 +36,11 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   const { type, linkType, parameterMapping, targetId } = clickBehavior;
 
   let behavior;
+
+  if (!hasLinkTargetData(clickBehavior, extraData)) {
+    return [];
+  }
+
   if (type === "crossfilter") {
     const valuesToSet = _.chain(parameterMapping)
       .values()
@@ -116,4 +121,14 @@ function getTypeForSource(source, extraData) {
     return type;
   }
   return "text";
+}
+
+function hasLinkTargetData(clickBehavior, extraData) {
+  const { linkType, targetId } = clickBehavior;
+  if (linkType === "question") {
+    return getIn(extraData, ["questions", targetId]) != null;
+  } else if (linkType === "dashboard") {
+    return getIn(extraData, ["dashboards", targetId]) != null;
+  }
+  return true;
 }
