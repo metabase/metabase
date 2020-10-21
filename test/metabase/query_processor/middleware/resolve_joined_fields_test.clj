@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.resolve-joins-test
+(ns metabase.query-processor.middleware.resolve-joined-fields-test
   (:require [clojure.test :refer :all]
             [metabase
              [driver :as driver]
