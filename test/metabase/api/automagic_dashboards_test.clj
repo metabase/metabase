@@ -32,13 +32,13 @@
    (mt/with-test-user :rasta
      (with-dashboard-cleanup
        (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)
-             result       (validation-fn ((mt/user->client :rasta) :get 200 api-endpoint))]
+             result       (validation-fn (mt/user-http-request :rasta :get 200 api-endpoint))]
          (when (and result
                     (try
                       (testing "Endpoint should return 403 if user does not have permissions"
                         (perms/revoke-permissions! (perms-group/all-users) (mt/id))
                         (revoke-fn)
-                        (let [result ((mt/user->client :rasta) :get 403 api-endpoint)]
+                        (let [result (mt/user-http-request :rasta :get 403 api-endpoint)]
                           (is (= "You don't have permissions to do that."
                                  result))
                           (= "You don't have permissions to do that." result)))
