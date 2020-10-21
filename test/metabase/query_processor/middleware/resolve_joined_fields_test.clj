@@ -28,4 +28,16 @@
             {:filter [:!= [:field-id (mt/id :users :name)] nil]
              :joins  [{:source-table $$users
                        :alias        "u"
-                       :condition    [:= $user_id &u.users.id]}]})))))
+                       :condition    [:= $user_id &u.users.id]}]}))))
+  (testing "Do we correctly recurse into `:source-query`"
+    (is (= (mt/mbql-query checkins
+             {:source-query {:filter [:!= [:joined-field "u" [:field-id (mt/id :users :name)]] nil]
+                             :joins  [{:source-table $$users
+                                       :alias        "u"
+                                       :condition    [:= $user_id &u.users.id]}]}})
+           (wrap-joined-fields
+            (mt/mbql-query checkins
+              {:source-query {:filter [:!= [:field-id (mt/id :users :name)] nil]
+                              :joins  [{:source-table $$users
+                                        :alias        "u"
+                                        :condition    [:= $user_id &u.users.id]}]}}))))))
