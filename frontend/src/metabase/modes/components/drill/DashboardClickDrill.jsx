@@ -38,7 +38,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   let behavior;
 
   if (!hasLinkTargetData(clickBehavior, extraData)) {
-    return;
+    return [];
   }
 
   if (type === "crossfilter") {
