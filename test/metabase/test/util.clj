@@ -27,7 +27,9 @@
             [metabase.test.util.log :as tu.log]
             [potemkin :as p]
             [schema.core :as s]
-            [toucan.db :as db]
+            [toucan
+             [db :as db]
+             [models :as t.models]]
             [toucan.util.test :as tt])
   (:import java.util.concurrent.TimeoutException
            java.util.Locale
@@ -280,7 +282,6 @@
 (defn- namespace-or-symbol? [x]
   (or (symbol? x)
       (instance? clojure.lang.Namespace x)))
-
 
 (defn obj->json->obj
   "Convert an object to JSON and back again. This can be done to ensure something will match its serialized +
@@ -547,35 +548,50 @@
            .getZone
            .getID)))))
 
-(defmulti ^:private ^:deprecated do-model-cleanup! class)
+(defn do-with-model-cleanup [models f]
+  {:pre [(sequential? models) (every? t.models/model? models)]}
+  (let [model->old-max-id (into {} (for [model models]
+                                     [model (:max-id (db/select-one [model [:%max.id :max-id]]))]))]
+    (try
+      (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name models))) "\n")
+        (f))
+      (finally
+        (doseq [model models
+                :let  [old-max-id (get model->old-max-id model)]]
+          (db/delete! model :id [:> old-max-id]))))))
 
-(defmethod do-model-cleanup! :default
-  [model]
-  (db/delete! model))
+(defmacro with-model-cleanup
+  "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
+  defined any `pre-delete` behavior, that will be preserved.
 
-(defmethod do-model-cleanup! (class Collection)
-  [_]
-  ;; don't delete Personal Collections <3
-  (db/delete! Collection :personal_owner_id nil))
+  It's preferable to use `with-temp` instead, but you can use this macro if `with-temp` wouldn't work in your
+  situation (e.g. when creating objects via the API).
 
-(defn ^:deprecated do-with-model-cleanup [model-seq f]
-  (try
-    (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name model-seq))) "\n")
-      (f))
-    (finally
-      (doseq [model model-seq]
-        (do-model-cleanup! (db/resolve-model model))))))
+    (with-model-cleanup [Card]
+      (create-card-via-api!)
+      (is (= ...)))"
+  [models & body]
+  `(do-with-model-cleanup ~models (fn [] ~@body)))
 
-(defmacro ^:deprecated with-model-cleanup
-  "This will delete all rows found for each model in `model-seq`. By default, this calls `delete!`, so if the model has
-  defined any `pre-delete` behavior, that will be preserved. Alternatively, you can define a custom implementation by
-  using the `do-model-cleanup!` multimethod above.
+(deftest with-model-cleanup-test
+  (testing "Make sure the with-model-cleanup macro actually works as expected"
+    (tt/with-temp Card [other-card]
+      (let [card-count-before (db/count Card)
+            card-name         (random-name)]
+        (with-model-cleanup [Card]
+          (db/insert! Card (-> other-card (dissoc :id) (assoc :name card-name)))
+          (testing "Card count should have increased by one"
+            (is (= (inc card-count-before)
+                   (db/count Card))))
+          (testing "Card should exist"
+            (is (db/exists? Card :name card-name))))
+        (testing "Card should be deleted at end of with-model-cleanup form"
+          (is (= card-count-before
+                 (db/count Card)))
+          (is (not (db/exists? Card :name card-name)))
+          (testing "Shouldn't delete other Cards"
+            (is (pos? (db/count Card)))))))))
 
-  DEPRECATED -- don't use this going forward because it deletes *everything* in the app DB of this Model, not just
-  stuff created for the test. Use `with-temp` wherever possible, or manually delete things inside of `try-finally`
-  blocks."
-  [model-seq & body]
-  `(do-with-model-cleanup ~model-seq (fn [] ~@body)))
 
 ;; TODO - not 100% sure I understand
 (defn call-with-paused-query
