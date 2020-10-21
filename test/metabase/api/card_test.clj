@@ -721,6 +721,7 @@
   (testing "POST /api/card"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp Collection [collection]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (doseq [{:keys [message position expected]}
                 [{:message  (str "Add a new card to an existing collection at position 1, will cause all existing "
                                  "positions to increment by 1")
@@ -752,7 +753,6 @@
             (with-ordered-items collection [Dashboard a
                                             Pulse     b
                                             Card      c]
-              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
               (testing "Original collection, before adding the new card"
                 (is (= {"a" 1
                         "b" 2
@@ -770,6 +770,7 @@
   (testing "PUT /api/card/:id"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp Collection [collection]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (doseq [{:keys [message position expected]}
                 [{:message  "Move existing Card to front"
                   :position 1
@@ -803,7 +804,6 @@
                                             Card      d
                                             Pulse     e
                                             Pulse     f]
-              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
               (testing "Original collection, before moving the Card"
                 (is (= {"a" 1
                         "b" 2

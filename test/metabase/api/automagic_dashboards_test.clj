@@ -160,7 +160,7 @@
     (mt/with-test-user :rasta
       (transforms.test/with-test-transform-specs
         (de.test/with-test-domain-entity-specs
-          (mt/with-model-cleanup ['Card 'Collection]
+          (mt/with-model-cleanup [Card Collection]
             (transforms/apply-transform! (mt/id) "PUBLIC" (first @transforms.specs/transform-specs))
             (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 1.5 4 3 2 1]
                     [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 2.0 11 2 1 1]
