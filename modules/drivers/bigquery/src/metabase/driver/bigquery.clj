@@ -144,8 +144,8 @@
 
 (def ^:private ^:const ^Integer query-timeout-seconds 60)
 
-(def ^:private ^:dynamic ^Long max-results
-  "Maximum number of rows to return per request in a query."
+(def ^:private ^:dynamic ^Long max-results-per-page
+  "Maximum number of rows to return per page in a query."
   20000)
 
 (def ^:private ^:dynamic page-callback
@@ -171,8 +171,6 @@
       :else
       (throw (ex-info "Query timed out." (into {} response))))))
 
-;;
-;;
 (defmacro with-finished-response
   "Exeecute `body` with after waiting for `response` to complete. Throws exception if response does not complete before
   `query-timeout-seconds`.
@@ -190,7 +188,7 @@
   (when page-callback
     (page-callback))
   (let [request (doto (.getQueryResults (.jobs client) project-id job-id)
-                  (.setMaxResults max-results)
+                  (.setMaxResults max-results-per-page)
                   (.setPageToken page-token))]
     (google/execute request)))
 
@@ -238,17 +236,17 @@
       (respond
        {:cols columns}
        (letfn [(fetch-page [^GetQueryResultsResponse response]
-                           (lazy-cat
-                            (.getRows response)
-                            (when-let [next-page-token (.getPageToken response)]
-                              (with-finished-response [next-resp (get-query-results (database->client database)
-                                                                                    (.getProjectId (.getJobReference response))
-                                                                                    (.getJobId (.getJobReference response))
-                                                                                    next-page-token)]
-                                (fetch-page next-resp)))))]
-        (for [^TableRow row (fetch-page response)]
-          (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
-            (when-let [v (.getV cell)]
+                 (lazy-cat
+                  (.getRows response)
+                  (when-let [next-page-token (.getPageToken response)]
+                    (with-finished-response [next-resp (get-query-results (database->client database)
+                                                                          (.getProjectId (.getJobReference response))
+                                                                          (.getJobId (.getJobReference response))
+                                                                          next-page-token)]
+                      (fetch-page next-resp)))))]
+         (for [^TableRow row (fetch-page response)]
+           (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
+             (when-let [v (.getV cell)]
              ;; There is a weird error where everything that *should* be NULL comes back as an Object.
              ;; See https://jira.talendforge.org/browse/TBD-1592
              ;; Everything else comes back as a String luckily so we can proceed normally.
