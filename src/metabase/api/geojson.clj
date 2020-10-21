@@ -1,10 +1,8 @@
 (ns metabase.api.geojson
-  (:require [cheshire.core :as json]
-            [clojure.java.io :as io]
+  (:require [clojure.java.io :as io]
             [compojure.core :refer [GET]]
             [metabase.api.common :as api]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util :as u]
             [metabase.util
              [i18n :as ui18n :refer [deferred-tru tru]]
              [schema :as su]]
