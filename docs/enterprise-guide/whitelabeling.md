@@ -20,5 +20,5 @@ To learn more, check out this article on [branding your Metabase instance](https
 
 ---
 
-## Next: customizing drill-through
-Find out how you can [customize drill-through](customizing-drill-through.md) when users click on a chart to go to a custom destination.
+## Next: Copying contents of one Metabase instance to another
+Learn how to use [serialization](serialization.md) to create and load data dumps of the contents of a Metabase instance.
