@@ -144,6 +144,14 @@
 
 (def ^:private ^:const ^Integer query-timeout-seconds 60)
 
+(def ^:private ^:dynamic ^Long max-results
+  "Maximum number of rows to return per request in a query."
+  20000)
+
+(def ^:private ^:dynamic page-callback
+  "Callback to execute when a new page is retrieved, used for testing"
+  nil)
+
 (defn do-with-finished-response
   "Impl for `with-finished-response`."
   {:style/indent 1}
@@ -179,7 +187,10 @@
 
 (defn- ^GetQueryResultsResponse get-query-results
   [^Bigquery client ^String project-id ^String job-id ^String page-token]
+  (when page-callback
+    (page-callback))
   (let [request (doto (.getQueryResults (.jobs client) project-id job-id)
+                  (.setMaxResults max-results)
                   (.setPageToken page-token))]
     (google/execute request)))
 
