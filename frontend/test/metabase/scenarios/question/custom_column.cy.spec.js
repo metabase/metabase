@@ -210,4 +210,35 @@ describe("scenarios > question > custom columns", () => {
 
     cy.findByText("There was a problem with your question").should("not.exist");
   });
+
+  it.skip("should not return same results for columns with the same name (metabase#12649)", () => {
+    // go straight to "orders" in custom questions
+    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    // join with Products
+    cy.findByText("Join data").click();
+    cy.findByText("Products").click();
+
+    // add custom column
+    cy.findByText("Custom column").click();
+    _typeUsingGet("[contenteditable='true']", "1 + 1");
+    _typeUsingPlaceholder("Something nice and descriptive", "X");
+    cy.findByText("Done").click();
+
+    cy.findByText("Visualize").click();
+
+    // wait for results to load
+    cy.get(".LoadingSpinner").should("not.exist");
+    cy.findByText("Visualize").should("not.exist");
+
+    cy.log(
+      "**Fails in 0.35.0, 0.35.1, 0.35.2, 0.35.4 and the latest master (2020-10-21)**",
+    );
+    cy.log("**Works in 0.35.3**");
+    // ID should be "1" but it is picking the product ID and is showing "14"
+    cy.get(".TableInteractive-cellWrapper--firstColumn")
+      .eq(1) // the second cell from the top in the first column (the first one is a header cell)
+      .within(() => {
+        cy.findByText("1");
+      });
+  });
 });
