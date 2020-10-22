@@ -137,9 +137,10 @@
 (def Fingerprint
   "Schema for a Field 'fingerprint' generated as part of the analysis stage. Used to power the 'classification'
    sub-stage of analysis. Stored as the `fingerprint` column of Field."
-  {(s/optional-key :global)       GlobalFingerprint
-   (s/optional-key :type)         TypeSpecificFingerprint
-   (s/optional-key :experimental) {s/Keyword s/Any}})
+  (su/open-schema
+    {(s/optional-key :global)       GlobalFingerprint
+     (s/optional-key :type)         TypeSpecificFingerprint
+     (s/optional-key :experimental) {s/Keyword s/Any}}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -13,6 +13,7 @@
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.sync.interface :as i]
             [metabase.test.data :as data]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -238,3 +239,16 @@
           (let [field' (db/select-one [Field :fingerprint] :id (u/id field))
                 fingerprinted-size (get-in field' [:fingerprint :type :type/Text :average-length])]
             (is (<= fingerprinted-size size))))))))
+
+(deftest fingerprint-schema-test
+  (testing "allows for extra keywords"
+    (let [base {:global
+                {:distinct-count 2, :nil% 0.0}}]
+      (doseq [path [[:type :type/Text]
+                    [:type :type/Number]
+                    [:type :type/DateTime]
+                    [:global]
+                    [:experimental]
+                    [:top-level]
+                    []]]
+        (s/validate i/Fingerprint (assoc-in base (conj path :extra-key) (rand-nth [3 :extra-value 4.0 {:stuff :stuff}])))))))

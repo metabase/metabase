@@ -179,6 +179,12 @@
    "/csv"  nil
    "/xlsx" {:as :byte-array}})
 
+(def ^:private response-format->status-code
+  {""      202
+   "/json" 200
+   "/csv"  200
+   "/xlsx" 200})
+
 (defmacro ^:private do-response-formats {:style/indent 1} [[response-format-binding request-options-binding] & body]
   `(doseq [[response-format# ~request-options-binding] response-format->request-options
            :let                                        [~response-format-binding response-format#]]
@@ -196,19 +202,20 @@
                      (http/client :get 400 (card-query-url card response-format))))))))
 
       (with-embedding-enabled-and-new-secret-key
-        (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
-          (with-temp-card [card {:enable_embedding true}]
-            (is (expect= (successful-query-results response-format)
-                         (http/client :get 202 (card-query-url card response-format) {:request-options request-options})))))
+        (let [expected-status (response-format->status-code response-format)]
+          (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
+            (with-temp-card [card {:enable_embedding true}]
+              (is (expect= (successful-query-results response-format)
+                           (http/client :get expected-status (card-query-url card response-format) {:request-options request-options})))))
 
-        (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" "
-                      "exception (rather than leaking query info)")
-          (mt/suppress-output
-            (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
-                                                                           :type     :native
-                                                                           :native   {:query "SELECT * FROM XYZ"}}}]
-              (is (= {:status "failed" :error "An error occurred while running the query."}
-                     (http/client :get 202 (card-query-url card response-format)))))))
+          (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" "
+                        "exception (rather than leaking query info)")
+            (mt/suppress-output
+             (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
+                                                                            :type     :native
+                                                                            :native   {:query "SELECT * FROM XYZ"}}}]
+               (is (= {:status "failed" :error "An error occurred while running the query."}
+                      (http/client :get expected-status (card-query-url card response-format))))))))
 
         (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
           (with-temp-card [card]
@@ -233,7 +240,7 @@
                                                         :middleware
                                                         {:add-default-userland-constraints? true
                                                          :userland-query?                   true})}]
-          (let [results (http/client :get 202 (card-query-url card "/csv"))]
+          (let [results (http/client :get 200 (card-query-url card "/csv"))]
             (is (= 101
                    (count (csv/read-csv results))))))))))
 
@@ -307,7 +314,7 @@
     (with-embedding-enabled-and-new-secret-key
       (tt/with-temp Card [card (card-with-date-field-filter)]
         (is (= "count\n107\n"
-               (http/client :get 202 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
+               (http/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
   (with-embedding-enabled-and-new-secret-key
@@ -316,7 +323,8 @@
       (binding [http/*url-prefix* (str/replace http/*url-prefix* #"/api/$" "/")]
         (tu/with-temporary-setting-values [site-url http/*url-prefix*]
           (is (= "count\n107\n"
-                 (http/client :get 202 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))))
+                 (http/client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))))
+
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------
 
@@ -395,7 +403,7 @@
                                                                     :middleware
                                                                     {:add-default-userland-constraints? true
                                                                      :userland-query?                   true})}}]
-          (let [results (http/client :get 202 (str (dashcard-url dashcard) "/csv"))]
+          (let [results (http/client :get 200 (str (dashcard-url dashcard) "/csv"))]
             (is (= 101
                    (count (csv/read-csv results))))))))))
 
