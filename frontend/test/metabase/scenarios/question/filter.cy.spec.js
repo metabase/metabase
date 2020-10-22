@@ -69,7 +69,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Add filter").click();
   });
 
-  it.skip("should filter a joined table by 'Is not' filter (metabase#13534)", () => {
+  it("should filter a joined table by 'Is not' filter (metabase#13534)", () => {
     // NOTE: the original issue mentions "Is not" and "Does not contain" filters
     // we're testing for one filter only to keep things simple
 
@@ -80,7 +80,12 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Products").click();
     // add filter
     cy.findByText("Filter").click();
-    cy.findByText("Product").click();
+    popover().within(() => {
+      // we've run into weird "name normalization" issue
+      // where it displays "Product" locally, and "Products" in CI
+      // also, we need to eliminate "Product ID" - that's why I used `$`
+      cy.contains(/products?$/i).click();
+    });
     cy.findByText("Category").click();
     cy.findByText("Is").click();
     cy.findByText("Is not").click();
@@ -92,7 +97,7 @@ describe("scenarios > question > filter", () => {
     // wait for results to load
     cy.get(".LoadingSpinner").should("not.exist");
     cy.log("**The point of failure in 0.37.0-rc3**");
-    cy.findAllByText("Doohickey");
+    cy.contains("37.65");
     cy.findByText("There was a problem with your question").should("not.exist");
     // this is not the point of this repro, but additionally make sure the filter is working as intended on "Gizmo"
     cy.findByText("3621077291879").should("not.exist"); // one of the "Gizmo" EANs

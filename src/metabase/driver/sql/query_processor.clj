@@ -640,8 +640,8 @@
 (defn- correct-null-behaviour
   [driver [op & args]]
   (let [field-arg (mbql.u/match-one args
-                    FieldInstance               &match
-                    #{:field-id :field-literal} &match)]
+                    FieldInstance                             &match
+                    #{:joined-field :field-id :field-literal} &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
     [:or (into [op] (map (partial ->honeysql driver)) args)
