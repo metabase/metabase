@@ -51,9 +51,12 @@
   OffsetDateTime
   (format-value [t, ^ZoneId timezone-id]
     (t/format :iso-offset-date-time
-              (let [rules  (.getRules timezone-id)
-                    offset (.getOffset rules (t/instant t))]
-                (t/with-offset-same-instant t offset))))
+              (if (or (= t OffsetDateTime/MAX)
+                      (= t OffsetDateTime/MIN))
+                t
+                (let [rules  (.getRules timezone-id)
+                      offset (.getOffset rules (t/instant t))]
+                  (t/with-offset-same-instant t offset)))))
 
   ZonedDateTime
   (format-value [t timezone-id]

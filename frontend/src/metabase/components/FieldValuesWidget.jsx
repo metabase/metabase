@@ -151,17 +151,20 @@ export class FieldValuesWidget extends Component {
       options: [],
     });
 
-    const { dashboard, parameter, parameters } = this.props;
-    const options = await fetchParameterPossibleValues(
-      dashboard && dashboard.id,
-      parameter,
-      parameters,
-    );
-
-    this.setState({
-      loadingState: "LOADED",
-      options,
-    });
+    let options;
+    try {
+      const { dashboard, parameter, parameters } = this.props;
+      options = await fetchParameterPossibleValues(
+        dashboard && dashboard.id,
+        parameter,
+        parameters,
+      );
+    } finally {
+      this.setState({
+        loadingState: "LOADED",
+        options,
+      });
+    }
   };
 
   componentWillUnmount() {
@@ -303,7 +306,12 @@ export class FieldValuesWidget extends Component {
       cancelDeferred.resolve();
     };
 
-    const results = await this.search(value, cancelDeferred.promise);
+    let results;
+    try {
+      results = await this.search(value, cancelDeferred.promise);
+    } catch (e) {
+      console.warn(e);
+    }
 
     this._cancel = null;
 
@@ -408,7 +416,7 @@ export class FieldValuesWidget extends Component {
     }
 
     let options = [];
-    if (this.hasList()) {
+    if (this.hasList() && !this.useChainFilterEndpoints()) {
       options = dedupeValues(fields.map(field => field.values));
     } else if (
       loadingState === "LOADED" &&

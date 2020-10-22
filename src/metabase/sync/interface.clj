@@ -114,6 +114,7 @@
   {(s/optional-key :percent-json)   (s/maybe Percent)
    (s/optional-key :percent-url)    (s/maybe Percent)
    (s/optional-key :percent-email)  (s/maybe Percent)
+   (s/optional-key :percent-state)  (s/maybe Percent)
    (s/optional-key :average-length) (s/maybe s/Num)})
 
 (def TemporalFingerprint
@@ -170,7 +171,8 @@
   {1 #{:type/*}
    2 #{:type/Number}
    3 #{:type/DateTime}
-   4 #{:type/*}})
+   4 #{:type/*}
+   5 #{:type/Text}})
 
 (def latest-fingerprint-version
   "The newest (highest-numbered) version of our Field fingerprints."

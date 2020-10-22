@@ -547,7 +547,7 @@
            .getZone
            .getID)))))
 
-(defmulti ^:private do-model-cleanup! class)
+(defmulti ^:private ^:deprecated do-model-cleanup! class)
 
 (defmethod do-model-cleanup! :default
   [model]
@@ -558,7 +558,7 @@
   ;; don't delete Personal Collections <3
   (db/delete! Collection :personal_owner_id nil))
 
-(defn do-with-model-cleanup [model-seq f]
+(defn ^:deprecated do-with-model-cleanup [model-seq f]
   (try
     (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name model-seq))) "\n")
       (f))
@@ -571,8 +571,9 @@
   defined any `pre-delete` behavior, that will be preserved. Alternatively, you can define a custom implementation by
   using the `do-model-cleanup!` multimethod above.
 
-  DEPRECATED -- using this in tests means running tests from the REPL can delete stuff you were using locally! It's
-  better to write tests that clean up after themselves without having to resort to using this function."
+  DEPRECATED -- don't use this going forward because it deletes *everything* in the app DB of this Model, not just
+  stuff created for the test. Use `with-temp` wherever possible, or manually delete things inside of `try-finally`
+  blocks."
   [model-seq & body]
   `(do-with-model-cleanup ~model-seq (fn [] ~@body)))
 
@@ -626,6 +627,25 @@
                             (throw (RuntimeException. ~(format "%s should not be called!" fn-symb))))]
      ~@body))
 
+(defn do-with-discarded-collections-perms-changes [collection-or-id f]
+  (initialize/initialize-if-needed! :db)
+  (let [read-path                   (perms/collection-read-path collection-or-id)
+        readwrite-path              (perms/collection-readwrite-path collection-or-id)
+        groups-with-read-perms      (db/select-field :group_id Permissions :object read-path)
+        groups-with-readwrite-perms (db/select-field :group_id Permissions :object readwrite-path)]
+    (try
+      (f)
+      (finally
+        (db/delete! Permissions :object [:in #{read-path readwrite-path}])
+        (doseq [group-id groups-with-read-perms]
+          (perms/grant-collection-read-permissions! group-id collection-or-id))
+        (doseq [group-id groups-with-readwrite-perms]
+          (perms/grant-collection-readwrite-permissions! group-id collection-or-id))))))
+
+(defmacro with-discarded-collections-perms-changes
+  "Execute `body`; then, in a `finally` block, restore permissions to `collection-or-id` to what they were originally."
+  [collection-or-id & body]
+  `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
 
 (defn do-with-non-admin-groups-no-root-collection-perms [f]
   (initialize/initialize-if-needed! :db)
@@ -647,6 +667,13 @@
   [& body]
   `(do-with-non-admin-groups-no-root-collection-perms (fn [] ~@body)))
 
+(defmacro with-non-admin-groups-no-root-collection-for-namespace-perms
+  "Like `with-non-admin-groups-no-root-collection-perms`, but for the Root Collection of a non-default namespace."
+  [collection-namespace & body]
+  `(do-with-non-admin-groups-no-collection-perms
+    (assoc collection/root-collection
+           :namespace (name ~collection-namespace))
+    (fn [] ~@body) ))
 
 (defn doall-recursive
   "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.

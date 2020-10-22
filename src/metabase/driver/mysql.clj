@@ -183,8 +183,10 @@
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
 ;; explanation of format specifiers
+;; this will generate a SQL statement casting the TIME to a DATETIME so date_format doesn't fail:
+;; date_format(CAST(mytime AS DATETIME), '%Y-%m-%d %H') AS mytime
 (defn- trunc-with-format [format-str expr]
-  (str-to-date format-str (date-format format-str expr)))
+  (str-to-date format-str (date-format format-str (hx/cast :DATETIME expr))))
 
 (defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:mysql :minute]          [_ _ expr] (trunc-with-format "%Y-%m-%d %H:%i" expr))
@@ -264,7 +266,7 @@
     :TINYTEXT   :type/Text
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
-    :YEAR       :type/Integer}
+    :YEAR       :type/Date}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
 
@@ -372,6 +374,15 @@
         (parent-thunk)
         (catch Throwable _
           (.getString rs i))))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/DATE]
+  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (if (= "YEAR" (.getColumnTypeName rsmeta i))
+    (fn read-time-thunk []
+      (when-let [x (.getObject rs i)]
+        (.toLocalDate ^java.sql.Date x)))
+    (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/DATE]) driver rs rsmeta i)]
+      parent-thunk)))
 
 (defn- format-offset [t]
   (let [offset (t/format "ZZZZZ" (t/zone-offset t))]

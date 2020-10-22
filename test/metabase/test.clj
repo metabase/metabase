@@ -139,9 +139,10 @@
  [test-users
   fetch-user
   test-user?
-  user->id
   user->client
   user->credentials
+  user->id
+  user-http-request
   with-test-user]
 
  [tt
@@ -161,8 +162,13 @@
   round-all-decimals
   scheduler-current-tasks
   throw-if-called
+  with-discarded-collections-perms-changes
   with-locale
+  with-log-level
+  with-log-messages
+  with-log-messages-for-level
   with-model-cleanup
+  with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
   with-scheduler
   with-temp-scheduler

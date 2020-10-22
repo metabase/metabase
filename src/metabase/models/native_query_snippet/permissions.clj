@@ -5,7 +5,8 @@
   The code in this namespace provides sort of a strategy pattern interface to the underlying permissions operations.
   The default implementation is defined below and can be swapped out at runtime with the more advanced EE
   implementation."
-  (:require [potemkin.types :as p.types]
+  (:require [clojure.tools.logging :as log]
+            [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]))
 
 (p.types/defprotocol+ PermissionsImpl
@@ -14,8 +15,10 @@
     "Can the current User read this `snippet`?")
   (can-write?*  [this snippet] [this model id]
     "Can the current User edit this `snippet`?")
-  (can-create?* [this snippet] [this model id]
-    "Can the current User save a new `snippet` with these values?"))
+  (can-create?* [this model m]
+    "Can the current User save a new Snippet with the values in `m`?")
+  (can-update?* [this snippet changes]
+    "Can the current User apply a map of `changes` to a `snippet`?"))
 
 (defonce ^:private impl (atom nil))
 
@@ -23,6 +26,7 @@
   "Change the implementation used for NativeQuerySnippet permissions. `new-impl` must satisfy the `PermissionsImpl`
   protocol defined above."
   [new-impl]
+  (log/debugf "NativeQueryPermissions impl set to %s" (pr-str new-impl))
   (reset! impl new-impl))
 
 (def default-impl
@@ -36,8 +40,8 @@
     (can-read?* [_ _ _] true)
     (can-write?* [_ _] true)
     (can-write?* [_ _ _] true)
-    (can-create?* [_ _] true)
-    (can-create?* [_ _ _] true)))
+    (can-create?* [_ _ _] true)
+    (can-update?* [_ _ _] true)))
 
 (when-not @impl
   (set-impl! default-impl))
@@ -57,8 +61,11 @@
    (can-write?* @impl model id)))
 
 (defn can-create?
-  "Can the current User save a new `snippet` with these values?"
-  ([snippet]
-   (can-create?* @impl snippet))
-  ([model id]
-   (can-create?* @impl model id)))
+  "Can the current User save a new Snippet with the values in `m`?"
+  [model m]
+  (can-create?* @impl model m))
+
+(defn can-update?
+  "Can the current User apply a map of `changes` to a `snippet`?"
+  [snippet changes]
+  (can-update?* @impl snippet changes))

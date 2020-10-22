@@ -2,6 +2,7 @@ import React from "react";
 import AccordionList from "metabase/components/AccordionList";
 
 export const component = AccordionList;
+export const category = "pickers";
 
 // disable snapshot testing due to issue with Popover
 export const noSnapshotTest = true;

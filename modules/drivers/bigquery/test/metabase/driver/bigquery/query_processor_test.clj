@@ -284,11 +284,17 @@
       ;; `hx/identifier`s to SQL
       (binding [sql.qp/*table-alias* "ABC"
                 *print-meta*         true]
-        (let [fields {:date      date-field
-                      :datetime  datetime-field
-                      :timestamp timestamp-field}]
+        (let [fields                     {:date      date-field
+                                          :datetime  datetime-field
+                                          :timestamp timestamp-field}
+              build-honeysql-clause-head (fn [{:keys [honeysql]} field-arg args]
+                                           (if (fn? honeysql)
+                                             (honeysql field-arg args)
+                                             (into [honeysql field-arg] args)))]
           (doseq [clause [{:args 2, :mbql :=, :honeysql :=}
-                          {:args 2, :mbql :!=, :honeysql :not=}
+                          {:args 2, :mbql :!=, :honeysql (fn [identifier args]
+                                                           [:or (into [:not= identifier] args)
+                                                            [:= identifier nil]])}
                           {:args 2, :mbql :>, :honeysql :>}
                           {:args 2, :mbql :>=, :honeysql :>=}
                           {:args 2, :mbql :<, :honeysql :<}
@@ -313,8 +319,9 @@
                                                       (repeat (dec (:args clause)) filter-value))
                             expected-identifier (hx/identifier :field "ABC" (name temporal-type))
                             expected-value      (get-in value [:as temporal-type] (:value value))
-                            expected-clause     (into [(:honeysql clause) expected-identifier]
-                                                      (repeat (dec (:args clause)) expected-value))]
+                            expected-clause     (build-honeysql-clause-head clause
+                                                                            expected-identifier
+                                                                            (repeat (dec (:args clause)) expected-value))]
                         (testing (format "\nreconcile %s -> %s"
                                          (into [(:mbql clause) temporal-type] (repeat (dec (:args clause)) (:type value)))
                                          (into [(:mbql clause) temporal-type] (repeat (dec (:args clause)) temporal-type)))

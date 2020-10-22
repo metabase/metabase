@@ -621,20 +621,6 @@ jobs:
           paths:
             - /home/circleci/metabase/metabase/resources/frontend_client
 
-  fe-tests-e2e:
-    executor: clojure-and-node
-    steps:
-      - run-yarn-command:
-          command-name: Run frontend e2e tests
-          command: run test-e2e-no-build
-          before-steps:
-            - restore_cache:
-                keys:
-                  - uberjar-{{ checksum "./backend-checksums.txt" }}
-            - run:
-                name: Generate version file
-                command: ./bin/build version
-
   fe-tests-cypress:
     parameters:
       e:
@@ -944,10 +930,6 @@ workflows:
       - build-uberjar:
           requires:
             - be-deps
-      - fe-tests-e2e:
-          requires:
-            - build-uberjar
-            - fe-deps
       - fe-tests-cypress:
           name: fe-tests-cypress-1
           requires:
@@ -1036,7 +1018,6 @@ workflows:
             - fe-linter-prettier
             - fe-linter-docs-links
 
-            - fe-tests-e2e
             - fe-tests-integration
             - fe-tests-timezones
             - fe-tests-unit

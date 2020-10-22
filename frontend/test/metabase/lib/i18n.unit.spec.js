@@ -1,4 +1,4 @@
-import moment from "moment";
+import moment from "moment-timezone";
 
 import { isLocale24Hour } from "metabase/lib/i18n";
 

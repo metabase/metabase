@@ -155,7 +155,22 @@ describe("snapshots", () => {
 
     // dashboard 1: Orders in a dashboard
     cy.request("POST", "/api/dashboard", { name: "Orders in a dashboard" });
-    cy.request("POST", `/api/dashboard/1/cards`, { cardId: 1 });
+    cy.request("POST", `/api/dashboard/1/cards`, { cardId: 1 }).then(
+      ({ body: { id: dashCardId } }) => {
+        cy.request("PUT", `/api/dashboard/1/cards`, {
+          cards: [
+            {
+              id: dashCardId,
+              card_id: 1,
+              row: 0,
+              col: 0,
+              sizeX: 12,
+              sizeY: 8,
+            },
+          ],
+        });
+      },
+    );
 
     // dismiss the "it's ok to play around" modal
     Object.values(USERS).map((_, index) =>

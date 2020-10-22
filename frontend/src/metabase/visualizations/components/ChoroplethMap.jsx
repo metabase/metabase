@@ -261,7 +261,18 @@ export default class ChoroplethMap extends Component {
                 column: cols[dimensionIndex],
               },
             ],
-            data: row.map((value, index) => ({ value, col: cols[index] })),
+            data: row.map((value, index) => ({
+              value:
+                index === dimensionIndex
+                  ? feature != null
+                    ? getFeatureName(feature)
+                    : row[dimensionIndex]
+                  : value,
+              // We set clickBehaviorValue to the raw data value for use in a filter via crossfiltering.
+              // `value` above is used in the tool tips so it needs to use `getFeatureName`.
+              clickBehaviorValue: value,
+              col: cols[index],
+            })),
             origin: { row, cols },
             settings,
           };

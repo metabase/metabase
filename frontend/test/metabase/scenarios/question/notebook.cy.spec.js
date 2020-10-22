@@ -13,6 +13,22 @@ describe("scenarios > question > notebook", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
+  it.skip("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
+    openOrdersTable();
+    // save question initially
+    cy.findByText("Save").click();
+    cy.get(".ModalBody")
+      .contains("Save")
+      .click();
+    cy.findByText("Not now").click();
+    // enter "notebook" and visualize without changing anything
+    cy.get(".Icon-notebook").click();
+    cy.findByText("Visualize").click();
+
+    // there were no changes to the question, so we shouldn't have the option to "Save"
+    cy.findByText("Save").should("not.exist");
+  });
+
   it("should allow post-aggregation filters", () => {
     // start a custom question with orders
     cy.visit("/question/new");
@@ -238,7 +254,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Visualize").should("exist");
     });
 
-    it.skip("should show correct column title with foreign keys (metabase#11452)", () => {
+    it("should show correct column title with foreign keys (metabase#11452)", () => {
       // (Orders join Reviews on Product ID)
       openOrdersTable();
       cy.get(".Icon-notebook").click();
@@ -264,9 +280,9 @@ describe("scenarios > question > notebook", () => {
           .parent()
           .next()
           // NOTE from Flamber's warning:
-          // this name COULD be "normalized" to "Review" instead of "Reviews" - that's why we use Regex match here
+          // this name COULD be "normalized" to "Review - Product" instead of "Reviews - Products" - that's why we use Regex match here
           .invoke("text")
-          .should("match", /review/i);
+          .should("match", /reviews? - products?/i);
       });
     });
   });

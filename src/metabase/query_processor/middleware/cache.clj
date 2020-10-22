@@ -100,7 +100,7 @@
        (a/put! in-chan (if (map? result) (m/dissoc-in result [:data :rows]) {}))
        (a/close! in-chan)
        (let [duration-ms (- (System/currentTimeMillis) start-time)]
-         (log/info (trs "Query took {0} to run; miminum for cache eligibility is {1}"
+         (log/info (trs "Query took {0} to run; minimum for cache eligibility is {1}"
                         (u/format-milliseconds duration-ms) (u/format-milliseconds (min-duration-ms))))
          (when (> duration-ms (min-duration-ms))
            (cache-results-async! query-hash out-chan)))

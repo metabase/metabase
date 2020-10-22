@@ -2,7 +2,8 @@
   (:require [clojure.test :refer :all]
             [metabase
              [query-processor :as qp]
-             [test :as mt]]))
+             [test :as mt]]
+            [metabase.query-processor.middleware.large-int-id :as large-int-id]))
 
 (deftest convert-ids
   (let [query (mt/mbql-query users
@@ -66,10 +67,10 @@
                  :limit    5})]
     (testing "joins work correctly"
       (is (= [["1" "5" "Quentin Sören" "12" "The Misfit Restaurant + Bar"]
-	      ["2" "1" "Plato Yeshua" "31" "Bludso's BBQ"]
-	      ["3" "8" "Szymon Theutrich" "56" "Philippe the Original"]
-	      ["4" "5" "Quentin Sören" "4" "Wurstküche"]
-	      ["5" "3" "Kaneonuskatew Eiran" "49" "Hotel Biron"]]
+              ["2" "1" "Plato Yeshua" "31" "Bludso's BBQ"]
+              ["3" "8" "Szymon Theutrich" "56" "Philippe the Original"]
+              ["4" "5" "Quentin Sören" "4" "Wurstküche"]
+              ["5" "3" "Kaneonuskatew Eiran" "49" "Hotel Biron"]]
              (mt/rows
                (qp/process-query (assoc query :middleware {:js-int-to-string? true})))))))
 
@@ -95,3 +96,24 @@
               [4 62]]
              (mt/rows
                (qp/process-query (assoc query :middleware {}))))))))
+
+(deftest different-row-types-test
+  (testing "Middleware should work regardless of the type of each row (#13475)"
+    (doseq [rows [[[1]
+                   [Integer/MAX_VALUE]]
+                  [(list 1)
+                   (list Integer/MAX_VALUE)]
+                  [(cons 1 nil)
+                   (cons Integer/MAX_VALUE nil)]
+                  [(lazy-seq [1])
+                   (lazy-seq [Integer/MAX_VALUE])]]]
+      (testing (format "rows = ^%s %s" (.getCanonicalName (class rows)) (pr-str rows))
+        (is (= [["1"]
+                ["2147483647"]]
+               (:post
+                (mt/test-qp-middleware
+                 large-int-id/convert-id-to-string
+                 {:type       :query
+                  :query      {:fields [[:field-id (mt/id :venues :id)]]}
+                  :middleware {:js-int-to-string? true}}
+                 rows))))))))

@@ -9,16 +9,20 @@
              [sync :as sync]
              [test :as mt]
              [util :as u]]
+            [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
+            [metabase.sync.analyze.fingerprint :as fingerprint]
             [metabase.test.data.interface :as tx]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import [java.time ZonedDateTime ZoneId]
+           java.time.format.DateTimeFormatter))
 
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
@@ -81,6 +85,27 @@
                    {:name "id", :base_type :type/Integer, :special_type :type/PK}
                    {:name "thing", :base_type :type/Text, :special_type :type/Category}}
                  (db->fields db))))))))
+
+(tx/defdataset ^:private year-db
+  [["years"
+    [{:field-name "year_column", :base-type {:native "YEAR"}}]
+    [[2001] [2002] [1999]]]])
+
+(deftest year-test
+  (mt/test-driver :mysql
+    (mt/dataset year-db
+      (testing "By default YEAR"
+        (is (= #{{:name "year_column", :base_type :type/Date, :special_type nil}
+                 {:name "id", :base_type :type/Integer, :special_type :type/PK}}
+               (db->fields (mt/db)))))
+      (let [table  (db/select-one Table :db_id (u/id (mt/db)))
+            fields (db/select Field :table_id (u/id table) :name "year_column")]
+        (testing "Can select from this table"
+          (is (= [[#t "2001-01-01"] [#t "2002-01-01"] [#t "1999-01-01"]]
+                 (metadata-queries/table-rows-sample table fields))))
+        (testing "We can fingerprint this table"
+          (is (= 1
+                 (:updated-fingerprints (#'fingerprint/fingerprint-table! table fields)))))))))
 
 (deftest db-timezone-id-test
   (mt/test-driver :mysql
@@ -258,3 +283,35 @@
                                   :base_type :type/Text}]}]
                       (->> (hydrate (db/select Table :db_id (:id database) {:order-by [:name]}) :fields)
                            (map table-fingerprint))))))))))))
+
+(deftest group-on-time-column-test
+  (let [driver :mysql]
+    (mt/test-driver driver
+      (let [db-name "time_test"
+            spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details driver :server nil))]
+        (doseq [stmt ["DROP DATABASE IF EXISTS time_test;"
+                      "CREATE DATABASE time_test;"]]
+          (jdbc/execute! spec [stmt]))
+        (let [details (tx/dbdef->connection-details driver :db {:database-name db-name})
+              spec (sql-jdbc.conn/connection-details->spec driver details)]
+          (doseq [stmt ["DROP TABLE IF EXISTS time_table;"
+                        "CREATE TABLE time_table (id serial, mytime time);"
+                        "INSERT INTO time_table (mytime) VALUES ('00:00'), ('00:00'), ('23:01'), ('23:01'), ('18:43');"]]
+            (jdbc/execute! spec [stmt]))
+          (mt/with-temp Database [db {:engine driver :details details}]
+            (sync/sync-database! db)
+            (mt/with-db db
+              (testing "can group on TIME columns"
+                (let [now (ZonedDateTime/now (ZoneId/of "UTC"))
+                      now-date-str (.format now (DateTimeFormatter/ISO_LOCAL_DATE))
+                      add-date-fn (fn [t] [(str now-date-str "T" t)])]
+                  (is (= (map add-date-fn ["00:00:00Z" "18:43:00Z" "23:01:00Z"])
+                         (mt/rows
+                           (mt/run-mbql-query time_table
+                             {:breakout [[:datetime-field (mt/id :time_table :mytime) :minute]]
+                              :order-by [[:asc [:datetime-field (mt/id :time_table :mytime) :minute]]]}))))
+                  (is (= (map add-date-fn ["23:00:00Z" "18:00:00Z" "00:00:00Z"])
+                         (mt/rows
+                           (mt/run-mbql-query time_table
+                             {:breakout [[:datetime-field (mt/id :time_table :mytime) :hour]]
+                              :order-by [[:desc [:datetime-field (mt/id :time_table :mytime) :hour]]]})))))))))))))

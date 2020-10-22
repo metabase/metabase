@@ -23,6 +23,7 @@
              [fixtures :as fixtures]
              [util :as tu]]
             [metabase.util.schema :as su]
+            [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -365,9 +366,22 @@
       (not-any?
        :is_saved_questions
        ((mt/user->client :lucky) :get 200 "database?saved=true")))
-    (testing "Ommit virtual DB if nested queries are disabled"
+    (testing "Omit virtual DB if nested queries are disabled"
       (tu/with-temporary-setting-values [enable-nested-queries false]
         (every? some? ((mt/user->client :lucky) :get 200 "database?saved=true"))))))
+
+(deftest fetch-databases-with-invalid-driver-test
+  (testing "GET /api/database"
+    (testing "\nEndpoint should still work even if there is a Database saved with a invalid driver"
+      (mt/with-temp Database [{db-id :id} {:engine "my-invalid-driver"}]
+        (testing (format "\nID of Database with invalid driver = %d" db-id)
+          (doseq [params [nil
+                          "?saved=true"
+                          "?include=tables"]]
+            (testing (format "\nparams = %s" (pr-str params))
+              (let [db-ids (set (map :id ((mt/user->client :lucky) :get 200 (str "database" params))))]
+                (testing "DB should still come back, even though driver is invalid :shrug:"
+                  (is (contains? db-ids db-id)))))))))))
 
 (def ^:private SavedQuestionsDB
   "Schema for the expected shape of info about the 'saved questions' virtual DB from API responses."
@@ -903,3 +917,27 @@
       (testing "to fetch Tables with `nil` or empty schemas, use the blank string"
         (is (= ["t1" "t2"]
                (map :name ((mt/user->client :lucky) :get 200 (format "database/%d/schema/" db-id)))))))))
+
+(deftest slashes-in-identifiers-test
+  (testing "We should handle Databases with slashes in identifiers correctly (#12450)"
+    (mt/with-temp Database [{db-id :id} {:name "my/database"}]
+      (doseq [schema-name ["my/schema"
+                           "my//schema"
+                           "my\\schema"
+                           "my\\\\schema"
+                           "my\\//schema"
+                           "my_schema/"
+                           "my_schema\\"]]
+        (testing (format "\nschema name = %s" (pr-str schema-name))
+          (mt/with-temp Table [{table-id :id} {:db_id db-id, :schema schema-name, :name "my/table"}]
+            (testing "\nFetch schemas"
+              (testing "\nGET /api/database/:id/schemas/"
+                (is (= [schema-name]
+                       ((mt/user->client :rasta) :get 200 (format "database/%d/schemas" db-id))))))
+            (testing (str "\nFetch schema tables -- should work if you URL escape the schema name"
+                          "\nGET /api/database/:id/schema/:schema")
+              (let [url (format "database/%d/schema/%s" db-id (codec/url-encode schema-name))]
+                (testing (str "\nGET /api/" url)
+                  (is (schema= [{:schema (s/eq schema-name)
+                                 s/Keyword s/Any}]
+                               ((mt/user->client :rasta) :get 200 url))))))))))))

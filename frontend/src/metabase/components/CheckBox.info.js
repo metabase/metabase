@@ -2,6 +2,7 @@ import React from "react";
 import CheckBox from "metabase/components/CheckBox";
 
 export const component = CheckBox;
+export const category = "input";
 
 export const description = `
 A standard checkbox.

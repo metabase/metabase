@@ -72,6 +72,12 @@ export function sidebar() {
 }
 
 // Metabase utility functions for commonly-used patterns
+export function selectDashboardFilter(selection, filterName) {
+  selection.contains("Select…").click();
+  popover()
+    .contains(filterName)
+    .click({ force: true });
+}
 
 export function openOrdersTable() {
   cy.visit("/question/new?database=1&table=2");
@@ -167,4 +173,23 @@ export function createNativeQuestion(name, query) {
     display: "table",
     visualization_settings: {},
   });
+}
+
+// TODO: does this really need to be a global helper function?
+export function createBasicAlert({ firstAlert, includeNormal } = {}) {
+  cy.get(".Icon-bell").click();
+  if (firstAlert) {
+    cy.findByText("Set up an alert").click();
+  }
+  cy.findByText("Let's set up your alert");
+  if (includeNormal) {
+    cy.findByText("Email alerts to:")
+      .parent()
+      .children()
+      .last()
+      .click();
+    cy.findByText("Robert Tableton").click();
+  }
+  cy.findByText("Done").click();
+  cy.findByText("Let's set up your alert").should("not.exist");
 }

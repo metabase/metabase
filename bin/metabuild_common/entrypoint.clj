@@ -10,7 +10,8 @@
       (let [e-map (Throwable->map e)]
         (println (colorize/red (str "Command failed: " (:cause e-map))))
         (binding [pprint/*print-right-margin* 120]
-          (pprint/pprint e-map))))))
+          (pprint/pprint e-map)))
+      (System/exit -1))))
 
 (defmacro exit-when-finished-nonzero-on-exception
   "Execute `body` and catch exceptions. If an Exception is thrown, exit with status code 0; if an exception was

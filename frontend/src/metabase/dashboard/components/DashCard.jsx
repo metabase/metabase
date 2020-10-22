@@ -49,6 +49,7 @@ const WrappedVisualization = WithVizSettingsData(
 export default class DashCard extends Component {
   static propTypes = {
     dashcard: PropTypes.object.isRequired,
+    gridItemWidth: PropTypes.number.isRequired,
     dashcardData: PropTypes.object.isRequired,
     slowCards: PropTypes.object.isRequired,
     parameterValues: PropTypes.object.isRequired,
@@ -219,6 +220,7 @@ export default class DashCard extends Component {
             ) : clickBehaviorSidebarDashcard != null ? (
               <ClickBehaviorSidebarOverlay
                 dashcard={dashcard}
+                dashcardWidth={this.props.gridItemWidth}
                 dashboard={dashboard}
                 showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
                 isShowingThisClickBehaviorSidebar={
@@ -372,8 +374,11 @@ function getSeriesIconName(series) {
   }
 }
 
+const MIN_WIDTH_FOR_ON_CLICK_LABEL = 330;
+
 const ClickBehaviorSidebarOverlay = ({
   dashcard,
+  dashcardWidth,
   dashboard,
   showClickBehaviorSidebar,
   isShowingThisClickBehaviorSidebar,
@@ -393,9 +398,13 @@ const ClickBehaviorSidebarOverlay = ({
       >
         <Icon
           name="click"
-          className={cx({ "text-light": !isShowingThisClickBehaviorSidebar })}
+          className={cx("mr1", {
+            "text-light": !isShowingThisClickBehaviorSidebar,
+          })}
         />
-        <div className="ml1 mr2">{t`On click`}</div>
+        {dashcardWidth > MIN_WIDTH_FOR_ON_CLICK_LABEL && (
+          <div className="mr2">{t`On click`}</div>
+        )}
         <div
           className={cx({ "text-brand": !isShowingThisClickBehaviorSidebar })}
         >

@@ -457,7 +457,7 @@ const helperTextStrings = [
       },
       {
         name: t`text`,
-        description: t`Type of internal like "day", "month", "year".`,
+        description: t`Type of interval like "day", "month", "year".`,
       },
     ],
   },

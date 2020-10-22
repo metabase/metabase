@@ -323,6 +323,7 @@ export default class Dashboard extends Component {
 }
 
 function Sidebars({
+  dashboard,
   parameters,
   showAddParameterPopover,
   removeParameter,
@@ -343,6 +344,7 @@ function Sidebars({
   if (clickBehaviorSidebarDashcard) {
     return (
       <ClickBehaviorSidebar
+        dashboard={dashboard}
         dashcard={clickBehaviorSidebarDashcard}
         parameters={parameters}
         dashcardData={dashcardData[clickBehaviorSidebarDashcard.id]}
