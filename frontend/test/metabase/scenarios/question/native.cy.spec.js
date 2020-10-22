@@ -217,7 +217,7 @@ describe("scenarios > question > native", () => {
     cy.contains("Native query").click();
     cy.get(".ace_content")
       .should("be.visible")
-      .type(`SELECT null AS "V" UNION ALL SELECT 'This has a value' AS "V"`);
+      .type(`SELECT null AS "V", 1 as "N" UNION ALL SELECT 'This has a value' AS "V", 2 as "N"`);
     cy.findByText("Save").click();
 
     modal().within(() => {
