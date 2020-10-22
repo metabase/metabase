@@ -330,4 +330,67 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Category is Gadget").should("exist");
     });
   });
+
+  // TODO: add positive assertions to all 4 tests when we figure out implementation details
+  describe.skip("arithmetic (metabase#13175)", () => {
+    beforeEach(() => {
+      cy.visit("/question/new?database=1&table=2&mode=notebook");
+    });
+
+    it("should work on custom column with `case`", () => {
+      cy.get(".Icon-add_data").click();
+      cy.get("[contenteditable='true']")
+        .click()
+        .clear()
+        .type("case([Subtotal] + Tax > 100, 'Big', 'Small')", { delay: 50 });
+      cy.findByPlaceholderText("Something nice and descriptive")
+        .click()
+        .type("Example", { delay: 100 });
+
+      cy.findAllByRole("button")
+        .contains("Done")
+        .should("not.be.disabled");
+    });
+
+    it("should work on custom filter", () => {
+      cy.findByText("Filter").click();
+      cy.findByText("Custom Expression").click();
+
+      cy.get("[contenteditable='true']")
+        .click()
+        .clear()
+        .type("[Subtotal] - Tax > 20", { delay: 50 });
+
+      cy.findAllByRole("button")
+        .contains("Done")
+        .should("not.be.disabled")
+        .click();
+
+      cy.contains(/^redundant input/i).should("not.exist");
+    });
+
+    const CASES = {
+      CountIf: "CountIf(([Subtotal] + [Tax]) > 10)",
+      SumIf: "SumIf([Subtotal], ([Subtotal] + [Tax] > 20))",
+    };
+
+    Object.entries(CASES).forEach(([filter, formula]) => {
+      it(`should work on custom aggregation with ${filter}`, () => {
+        cy.findByText("Summarize").click();
+        cy.findByText("Custom Expression").click();
+
+        cy.get("[contenteditable='true']")
+          .click()
+          .clear()
+          .type(formula, { delay: 50 });
+
+        cy.findByPlaceholderText("Name (required)")
+          .click()
+          .type("Ex", { delay: 100 });
+
+        cy.contains(/^expected closing parenthesis/i).should("not.exist");
+        cy.contains(/^redundant input/i).should("not.exist");
+      });
+    });
+  });
 });
