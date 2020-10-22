@@ -16,6 +16,7 @@
   [_]
   {:content-type              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
    :write-keepalive-newlines? false
+   :status                    200
    :headers                   {"Content-Disposition" (format "attachment; filename=\"query_result_%s.xlsx\""
                                                              (u.date/format (t/zoned-date-time)))}})
 
