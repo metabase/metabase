@@ -149,7 +149,6 @@
         (is (= "Message seems corrupt or manipulated."
                (http/client :get 400 (with-new-secret-key (card-url card)))))))))
 
-
 (deftest check-that-only-enabled-params-that-are-not-present-in-the-jwt-come-back
   (testing "check that only ENABLED params that ARE NOT PRESENT IN THE JWT come back"
     (with-embedding-enabled-and-new-secret-key
@@ -255,7 +254,7 @@
 
         (testing "if `:locked` param is present, request should succeed"
           (is (expect= (successful-query-results response-format)
-                       (http/client :get 202
+                       (http/client :get (response-format->status-code response-format)
                                     (card-query-url card response-format {:params {:abc 100}})
                                     {:request-options request-options}))))
 
@@ -287,13 +286,13 @@
 
         (testing "If an `:enabled` param is present in the JWT, that's ok"
           (is (expect= (successful-query-results response-format)
-                       (http/client :get 202
+                       (http/client :get (response-format->status-code response-format)
                                     (card-query-url card response-format {:params {:abc "enabled"}})
                                     {:request-options request-options}))))
 
         (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
           (is (expect= (successful-query-results response-format)
-                       (http/client :get 202
+                       (http/client :get (response-format->status-code response-format)
                                     (str (card-query-url card response-format) "?abc=200")
                                     {:request-options request-options}))))))))
 
