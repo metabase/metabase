@@ -4,7 +4,7 @@ Thanks to our amazing user community, Metabase has been translated into a variet
 
 ## Currently available languages
 
-The available languages as of the 0.35 release are:
+The languages you can currently pick from in Metabase are:
 
 - English (default)
 - Bulgarian
