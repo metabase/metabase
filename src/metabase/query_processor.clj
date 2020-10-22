@@ -19,6 +19,7 @@
              [add-timezone-info :as add-timezone-info]
              [annotate :as annotate]
              [auto-bucket-datetimes :as bucket-datetime]
+             [auto-parse-filter-values :as auto-parse-filter-values]
              [binning :as binning]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
@@ -41,6 +42,7 @@
              [reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
              [resolve-database-and-driver :as resolve-database-and-driver]
              [resolve-fields :as resolve-fields]
+             [resolve-joined-fields :as resolve-joined-fields]
              [resolve-joins :as resolve-joins]
              [resolve-referenced :as resolve-referenced]
              [resolve-source-table :as resolve-source-table]
@@ -62,11 +64,13 @@
   [#'mbql-to-native/mbql->native
    #'check-features/check-features
    #'optimize-datetime-filters/optimize-datetime-filters
+   #'auto-parse-filter-values/auto-parse-filter-values
    #'wrap-value-literals/wrap-value-literals
    #'annotate/add-column-info
    #'perms/check-query-permissions
    #'pre-alias-ags/pre-alias-aggregations
    #'cumulative-ags/handle-cumulative-aggregations
+   #'resolve-joined-fields/resolve-joined-fields
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
    #'large-int-id/convert-id-to-string

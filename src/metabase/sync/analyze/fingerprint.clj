@@ -50,22 +50,22 @@
   [table :- i/TableInstance, fields :- [i/FieldInstance]]
   (transduce identity
              (redux/post-complete
-              (f/fingerprint-fields fields)
-              (fn [fingerprints]
-                (reduce (fn [count-info [field fingerprint]]
-                          (cond
-                            (instance? Throwable fingerprint)
-                            (update count-info :failed-fingerprints inc)
+               (f/fingerprint-fields fields)
+               (fn [fingerprints]
+                 (reduce (fn [count-info [field fingerprint]]
+                           (cond
+                             (instance? Throwable fingerprint)
+                             (update count-info :failed-fingerprints inc)
 
-                            (some-> fingerprint :global :distinct-count zero?)
-                            (update count-info :no-data-fingerprints inc)
+                             (some-> fingerprint :global :distinct-count zero?)
+                             (update count-info :no-data-fingerprints inc)
 
-                            :else
-                            (do
-                              (save-fingerprint! field fingerprint)
-                              (update count-info :updated-fingerprints inc))))
-                        (empty-stats-map (count fingerprints))
-                        (map vector fields fingerprints))))
+                             :else
+                             (do
+                               (save-fingerprint! field fingerprint)
+                               (update count-info :updated-fingerprints inc))))
+                         (empty-stats-map (count fingerprints))
+                         (map vector fields fingerprints))))
              (metadata-queries/table-rows-sample table fields {:truncation-size truncation-size})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

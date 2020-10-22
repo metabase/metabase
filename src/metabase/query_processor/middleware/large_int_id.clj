@@ -9,7 +9,7 @@
     ([] (rf))
     ([result] (rf result))
     ([result row]
-     (rf result (reduce #(update-in %1 [%2] str) row field-indexes)))))
+     (rf result (reduce #(update (vec %1) %2 str) row field-indexes)))))
 
 (defn convert-id-to-string
   "Converts any ID (:type/PK and :type/FK) in a result to a string to handle a number > 2^51

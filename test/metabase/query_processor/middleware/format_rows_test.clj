@@ -160,7 +160,10 @@
         (mt/with-clock (t/mock-clock (t/instant clock-instant) clock-zone)
           (is (= expected
                  (format-rows/format-value t (t/zone-id zone)))
-              (format "format %s '%s' with results timezone ID '%s'" (.getName (class t)) t zone)))))))
+              (format "format %s '%s' with results timezone ID '%s'" (.getName (class t)) t zone))))))
+  (testing "can handle infinity dates (#12761)"
+    (is (format-rows/format-value java.time.OffsetDateTime/MAX (t/zone-id "UTC")))
+    (is (format-rows/format-value java.time.OffsetDateTime/MIN (t/zone-id "UTC")))))
 
 (deftest results-timezone-test
   (testing "Make sure ISO-8601 timestamps are written correctly based on the report-timezone"

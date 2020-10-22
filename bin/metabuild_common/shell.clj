@@ -33,7 +33,7 @@
   * `env` -- environment variables (as a map) to use when running `cmd`. If `:env` is `nil`, the default parent
     environment (i.e., the environment in which this Clojure code itself is ran) will be used; if `:env` IS passed, it
     completely replaces the parent environment in which this script is ran -- make sure you pass anything that might be
-    needed such as `JAVA_HOME` if you do this
+    needed such as `JAVA_HOME` and `PATH` if you do this
 
   * `dir` -- current directory to use when running the shell command. If not specified, command is run in the same
     current directory as the Clojure scripts, `bin/build-drivers`

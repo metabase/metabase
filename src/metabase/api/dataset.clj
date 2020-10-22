@@ -87,10 +87,11 @@
     (let [query (-> (assoc query :async? true)
                     (dissoc :constraints)
                     (update :middleware #(-> %
-                                             (dissoc :add-default-userland-constraints?)
+                                             (dissoc :add-default-userland-constraints? :js-int-to-string?)
                                              (assoc :skip-results-metadata? true
                                                     :format-rows? false))))
-          info  {:executed-by api/*current-user-id*, :context (export-format->context export-format)}]
+          info  {:executed-by api/*current-user-id*
+                 :context     (export-format->context export-format)}]
       (qp.streaming/streaming-response [context export-format]
         (qp/process-query-and-save-execution! query info context)))))
 

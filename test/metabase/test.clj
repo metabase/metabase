@@ -139,9 +139,10 @@
  [test-users
   fetch-user
   test-user?
-  user->id
   user->client
   user->credentials
+  user->id
+  user-http-request
   with-test-user]
 
  [tt

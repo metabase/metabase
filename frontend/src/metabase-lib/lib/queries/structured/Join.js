@@ -7,6 +7,8 @@ import StructuredQuery from "../StructuredQuery";
 import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
+import { pluralize } from "metabase/lib/formatting";
+
 import { TableId } from "metabase-types/types/Table";
 import type {
   Join as JoinObject,
@@ -156,20 +158,49 @@ export default class Join extends MBQLObjectClause {
   }
 
   setDefaultAlias() {
-    const parentDimension = this.parentDimension();
-    if (parentDimension && parentDimension.field().isFK()) {
-      return this.setAlias(parentDimension.field().targetObjectName());
-    } else {
-      const table = this.joinedTable();
-      // $FlowFixMe
-      const match = String(table.id).match(/card__(\d+)/);
-      if (match) {
-        // NOTE: special case for "Saved Questions" tables
-        return this.setAlias(`Question ${match[1]}`);
-      } else {
-        return this.setAlias((table && table.display_name) || "source");
-      }
+    // The Join alias should be "Table - FK Field" if possible. We need both to disamiguate sitatutions where we have
+    // multiple FKs that point to the same Table -- see #8418 and #11452.
+    //
+    // The exception to this rule is cases where the the FK Field is basically the same as the Table name, e.g. a
+    // "Product[s]" Table and a "product_id" FK Field (displayed as "Product"). It looks rediculous having
+    // "Product[s] - Product". So in that case just show one or the other.
+
+    const table = this.joinedTable();
+    // $FlowFixMe
+    const match = String(table.id).match(/card__(\d+)/);
+    if (match) {
+      // NOTE: special case for "Saved Questions" tables
+      return this.setAlias(`Question ${match[1]}`);
     }
+
+    const tableName = table && table.display_name;
+
+    const parentDimension = this.parentDimension();
+    const fieldName =
+      parentDimension &&
+      parentDimension.field().isFK() &&
+      parentDimension.field().targetObjectName();
+
+    const similarTableAndFieldNames =
+      tableName &&
+      fieldName &&
+      (tableName === fieldName ||
+        pluralize(tableName) === fieldName ||
+        tableName === pluralize(fieldName) ||
+        pluralize(tableName) === pluralize(fieldName));
+
+    // if for whatever reason we don't have both table *and* field name, fallback to either just field name or just
+    // table name; if the world has gone mad just use 'source' instead of nothing
+    const alias =
+      (tableName &&
+        fieldName &&
+        !similarTableAndFieldNames &&
+        tableName + " - " + fieldName) ||
+      tableName ||
+      fieldName ||
+      "source";
+
+    return this.setAlias(alias);
   }
 
   // STRATEGY

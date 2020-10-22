@@ -1,5 +1,6 @@
 (ns metabuild-common.core
   (:require [metabuild-common
+             [aws :as aws]
              [entrypoint :as entrypoint]
              [env :as build.env]
              [files :as files]
@@ -9,7 +10,8 @@
              [steps :as steps]]
             [potemkin :as p]))
 
-(comment entrypoint/keep-me
+(comment aws/keep-me
+         entrypoint/keep-me
          build.env/env
          files/keep-me
          input/keep-me
@@ -18,6 +20,10 @@
          steps/keep-me)
 
 (p/import-vars
+ [aws
+  create-cloudfront-invalidation!
+  s3-copy!]
+
  [entrypoint
   exit-when-finished-nonzero-on-exception]
 

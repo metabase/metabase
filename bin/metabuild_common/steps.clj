@@ -36,7 +36,7 @@
   (out/safe-println "step, or 'fail' to exit unsuccessfully and return to the prompt that spawned this REPL.")
   (let [result (promise)]
     (main/repl :init (fn []
-                       (require step-ns)
+                       (require step-ns '[clojure.core :refer :all])
                        (in-ns step-ns)
                        (intern step-ns 'e* e))
                :read (step-failure-repl-read step-ns message thunk result))
@@ -51,7 +51,7 @@
                                        "[F]ail -- pass the failure of this step to the parent step (which can be retried)\n"
                                        "[S]kip this step\n"
                                        "[R]EPL -- open a REPL so you can debug things\n"
-                                       "[Q]uit to top level")
+                                       "[Q]uit the build script (or return to the top level if running from the REPL)")
                                   [:t :f :s :r :q])
     :t
     (do

@@ -1,39 +1,23 @@
 import React from "react";
-import cx from "classnames";
 import pure from "recompose/pure";
+import cx from "classnames";
 
 import Popover from "./Popover";
 
-// if the tooltip is passed a long description we'll want to conditionally
-// format it to make it easier to read.
-// we use the number of words as an approximation
-const CONDITIONAL_WORD_COUNT = 10;
-
-const wordCount = string => string.split(" ").length;
-
-const TooltipPopover = ({ children, maxWidth, ...props }) => {
+const TooltipPopover = ({ children, constrainedWidth, ...props }) => {
   let popoverContent;
 
   if (typeof children === "string") {
-    const needsSpace = wordCount(children) > CONDITIONAL_WORD_COUNT;
-    popoverContent = (
-      <div
-        className={cx({ "py1 px2": !needsSpace }, { "py2 px3": needsSpace })}
-        style={{
-          maxWidth: maxWidth || "12em",
-          lineHeight: needsSpace ? 1.54 : 1,
-        }}
-      >
-        {children}
-      </div>
-    );
+    popoverContent = <span>{children}</span>;
   } else {
     popoverContent = children;
   }
 
   return (
     <Popover
-      className="PopoverBody--tooltip"
+      className={cx("PopoverBody--tooltip", {
+        "PopoverBody--tooltipConstrainedWidth": constrainedWidth,
+      })}
       targetOffsetY={10}
       hasArrow
       horizontalAttachments={["center", "left", "right"]}
@@ -45,6 +29,11 @@ const TooltipPopover = ({ children, maxWidth, ...props }) => {
       {popoverContent}
     </Popover>
   );
+};
+
+TooltipPopover.defaultProps = {
+  // default to having a constrained toolip, which limits the width so longer strings wrap.
+  constrainedWidth: true,
 };
 
 export default pure(TooltipPopover);

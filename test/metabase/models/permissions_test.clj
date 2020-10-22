@@ -32,15 +32,27 @@
              "/db/1/schema/public/table/1/"
              "/db/1/schema/PUBLIC/table/1/"
              "/db/1/schema//table/1/"
-             "/db/1/schema/1234/table/1/"]]
-      (testing path
+             "/db/1/schema/1234/table/1/"
+             "/db/1/schema/PUBLIC/table/1/query/"
+             "/db/1/schema/PUBLIC/table/1/query/segmented/"]]
+      (testing (pr-str path)
         (is (= true
                (perms/valid-object-path? path)))))
 
-    ;; TODO -- we need to esacpe forward-slashes as well
-    (testing "We should allow backslashes in permissions paths? (#8693)"
-      (is (= true
-             (perms/valid-object-path? "/db/16/schema/COMPANY-NET\\john.doe/")))))
+    (testing "\nWe should allow slashes in permissions paths? (#8693, #13263)\n"
+      (doseq [path [ ;; COMPANY-NET\ should get escaped to COMPANY-NET\\
+                    "/db/16/schema/COMPANY-NET\\\\john.doe/"
+                    ;; COMPANY-NET/ should get escaped to COMPANY-NET\/
+                    "/db/16/schema/COMPANY-NET\\/john.doe/"
+                    ;; my\schema should get escaped to my\\schema
+                    "/db/1/schema/my\\\\schema/table/1/"
+                    ;; my\\schema should get escaped to my\\\\schema
+                    "/db/1/schema/my\\\\\\\\schema/table/1/"
+                    ;; my/schema should get escaped to my\/schema
+                    "/db/1/schema/my\\/schema/table/1/"]]
+        (testing (pr-str path)
+          (is (= true
+                 (perms/valid-object-path? path)))))))
 
   (testing "invalid paths"
     (doseq [[reason paths]
@@ -127,12 +139,33 @@
               "/DB/1/"
               "/db/1/SCHEMA/"
               "/db/1/SCHEMA/PUBLIC/"
-              "/db/1/schema/PUBLIC/TABLE/1/"]}]
+              "/db/1/schema/PUBLIC/TABLE/1/"]
+
+             "odd number of backslashes: backslash must be escaped by another backslash" ; e.g. \ -> \\
+             ["/db/1/schema/my\\schema/table/1/"
+              "/db/1/schema/my\\\\\\schema/table/1/"]
+
+             "forward slash must be escaped by a backslash" ; e.g. / -> \/
+             ["/db/1/schema/my/schema/table/1/"]}]
       (testing reason
         (doseq [path paths]
-          (testing path
+          (testing (str "\n" (pr-str path))
             (is (= false
                    (perms/valid-object-path? path)))))))))
+
+(deftest valid-object-path-backslashes-test
+  (testing "Only even numbers of backslashes should be valid (backslash must be escaped by another backslash)"
+    (doseq [[num-backslashes expected schema-name] [[0 true "PUBLIC"]
+                                                    [0 true  "my_schema"]
+                                                    [2 false "my\\schema"]
+                                                    [4 true  "my\\\\schema"]
+                                                    [6 false "my\\\\\\schema"]
+                                                    [8 true  "my\\\\\\\\schema"]]]
+      (doseq [path [(format "/db/1/schema/%s/table/2/" schema-name)
+                    (format "/db/1/schema/%s/table/2/query/" schema-name)]]
+        (testing (str "\n" (pr-str path))
+          (is (= expected
+                 (perms/valid-object-path? path))))))))
 
 
 ;;; -------------------------------------------------- object-path ---------------------------------------------------
@@ -171,8 +204,37 @@
                     [1 "public" {}]
                     [1 "public" []]]]
         (testing (pr-str (cons 'perms/object-path args))
-          (is (thrown? Exception
-                       (apply perms/object-path args))))))))
+          (is (thrown?
+               Exception
+               (apply perms/object-path args))))))))
+
+(deftest object-path-escape-slashes-test
+  (doseq [{:keys [slash-direction schema-name expected-escaped]} [{:slash-direction  "back (#8693)"
+                                                                   :schema-name      "my\\schema"
+                                                                   :expected-escaped "my\\\\schema"}
+                                                                  {:slash-direction  "back (multiple)"
+                                                                   :schema-name      "my\\\\schema"
+                                                                   :expected-escaped "my\\\\\\\\schema"}
+                                                                  {:slash-direction  "forward (#12450)"
+                                                                   :schema-name      "my/schema"
+                                                                   :expected-escaped "my\\/schema"}
+                                                                  {:slash-direction  "both"
+                                                                   :schema-name      "my\\/schema"
+                                                                   :expected-escaped "my\\\\\\/schema"}
+                                                                  {:slash-direction  "both (multiple)"
+                                                                   :schema-name      "my\\\\/schema"
+                                                                   :expected-escaped "my\\\\\\\\\\/schema"}]]
+    (testing (format "We should handle slashes in permissions paths\nDirection = %s\nSchema = %s\n"
+                     slash-direction (pr-str schema-name))
+      (testing (pr-str (list 'object-path {:id 1}))
+        (is (= "/db/1/"
+               (perms/object-path {:id 1}))))
+      (testing (pr-str (list 'object-path {:id 1} schema-name))
+        (is (= (format "/db/1/schema/%s/" expected-escaped)
+               (perms/object-path {:id 1} schema-name))))
+      (testing (pr-str (list 'object-path {:id 1} schema-name {:id 2}))
+        (is (= (format "/db/1/schema/%s/table/2/" expected-escaped)
+               (perms/object-path {:id 1} schema-name {:id 2})))))))
 
 
 ;;; ---------------------------------- Generating permissions paths for Collections ----------------------------------
