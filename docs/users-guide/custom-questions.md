@@ -76,7 +76,7 @@ The row limit step lets you limit how many rows you want from the previous resul
 
 ![Joining](./images/notebook/join-step.png)
 
-The join step allows you to combine your current data with another table, or even with a saved question.
+You can [join data](https://www.metabase.com/blog/joining-tables/index.html) to combine your current data with another table, or even with a saved question.
 
 Currently you can't use joins if your starting data is from a Google Analytics or MongoDB database.
 
@@ -102,6 +102,8 @@ Here are the basic types of joins:
 In many cases you might have tables A, B, and C, where A and B have a connection, and B and C have a connection, but A and C don't. If you want to join A to B to C, all you have to do is add multiple join steps. Click on Join Data, join table A to table B, then click the Join Data step below that completed join block to add a second join step, and join the results of your last join to table C.
 
 ![An A to B to C join](./images/notebook/join-a-b-c.png)
+
+See [Joins in Metabase](https://www.metabase.com/blog/joining-tables/index.html) to learn more.
 
 ### Viewing the SQL that powers your question
 
