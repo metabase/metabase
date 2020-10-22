@@ -236,7 +236,7 @@
 (defn do-with-pulse-in-collection [f]
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [collection]
-                    Pulse      [pulse  {:collection_id (u/get-id collection)}]
+                    Pulse      [pulse {:collection_id (u/get-id collection)}]
                     Database   [db    {:engine :h2}]
                     Table      [table {:db_id (u/get-id db)}]
                     Card       [card  {:dataset_query {:database (u/get-id db)
