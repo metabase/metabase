@@ -230,4 +230,13 @@
     (is (= [[nil] ["bar"]]
            (query-on-dataset-with-nils {:filter [:not [:contains [:field-literal "A" :type/Text] "f"]]})))
     (is (= [[nil] ["bar"]]
-           (query-on-dataset-with-nils {:filter [:!= [:field-literal "A" :type/Text] "foo"]})))))
+           (query-on-dataset-with-nils {:filter [:!= [:field-literal "A" :type/Text] "foo"]}))))
+  (testing "Null behaviour correction fix should work with joined fields (#13534)"
+    (is (= [[1000]]
+           (mt/rows
+             (mt/run-mbql-query checkins
+               {:filter      [:!= &u.users.name "foo"]
+                :aggregation [:count]
+                :joins       [{:source-table $$users
+                               :alias        "u"
+                               :condition    [:= $user_id &u.users.id]}]}))))))

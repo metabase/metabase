@@ -69,7 +69,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Add filter").click();
   });
 
-  it.skip("should filter a joined table by 'Is not' filter (metabase#13534)", () => {
+  it("should filter a joined table by 'Is not' filter (metabase#13534)", () => {
     // NOTE: the original issue mentions "Is not" and "Does not contain" filters
     // we're testing for one filter only to keep things simple
 
