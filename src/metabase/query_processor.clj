@@ -42,6 +42,7 @@
              [reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
              [resolve-database-and-driver :as resolve-database-and-driver]
              [resolve-fields :as resolve-fields]
+             [resolve-joined-fields :as resolve-joined-fields]
              [resolve-joins :as resolve-joins]
              [resolve-referenced :as resolve-referenced]
              [resolve-source-table :as resolve-source-table]
@@ -69,6 +70,7 @@
    #'perms/check-query-permissions
    #'pre-alias-ags/pre-alias-aggregations
    #'cumulative-ags/handle-cumulative-aggregations
+   #'resolve-joined-fields/resolve-joined-fields
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
    #'large-int-id/convert-id-to-string
