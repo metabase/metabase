@@ -22,7 +22,7 @@ ENV LC_CTYPE en_US.UTF-8
 RUN apk add --no-cache coreutils bash yarn git wget curl make gettext java-cacerts
 
 # lein:    backend dependencies and building
-COPY https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
+ADD https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
 RUN chmod 744 /usr/local/bin/lein
 RUN lein upgrade
 
@@ -48,7 +48,7 @@ COPY . .
 RUN INTERACTIVE=false bin/build
 
 # import AWS RDS cert into /etc/ssl/certs/java/cacerts
-COPY https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem .
+ADD https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem .
 RUN keytool -noprompt -import -trustcacerts -alias aws-rds \
   -file rds-combined-ca-bundle.pem \
   -keystore /etc/ssl/certs/java/cacerts \
