@@ -24,8 +24,9 @@
 (def ^:private command-timeout-ms (* 15 60 1000)) ; 15 minutes
 
 (defn sh*
-  "Run a shell command. Like `clojure.java.shell/sh`, but prints output to stdout/stderr and returns results as a vector
-  of lines.
+  "Run a shell command. Like `clojure.java.shell/sh`, but prints output to stdout/stderr and returns a map with keys
+  `:exit`, `:out`, and `:err` (`:out` and `:err` are vectors of lines). Does not throw Exception if process exits with
+  non-zero status code.
 
   Options:
 
