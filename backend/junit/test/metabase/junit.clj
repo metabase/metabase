@@ -3,11 +3,24 @@
   (:require [clojure
              [pprint :as pp]
              [string :as str]]
+            [medley.core :as m]
             [metabase.util :as u]
             [pjstadig.print :as p]
             [test-report-junit-xml.core :as junit-xml]
-            [test_report_junit_xml.shaded.clojure.data.xml :as xml])
-  #_(:import org.apache.commons.lang3.StringEscapeUtils))
+            [test_report_junit_xml.shaded.clojure.data.xml :as xml]))
+
+(defn- escape-unprintable-characters
+  [s]
+  (str/join (for [c s]
+              (if (and (Character/isISOControl c)
+                       (not (Character/isWhitespace c)))
+                (format "&#%d;" (int c))
+                c))))
+
+(defn- decolorize-and-escape
+  "Remove ANSI color escape sequences, then encode things as character entities as needed"
+  [s]
+  (-> s u/decolorize escape-unprintable-characters))
 
 (defn- event-description [{:keys [file line context message]}]
   (str
@@ -43,9 +56,7 @@
                       (pp/pprint b))
                     (p/clear))
                   (print-expected expected actual)))))]
-    ;; remove ANSI color escape sequences, then encode things as character entities as needed
-    (u/decolorize s)
-    #_(-> s u/decolorize StringEscapeUtils/escapeXml11)))
+    (decolorize-and-escape s)))
 
 (defmulti format-result
   {:arglists '([event])}
@@ -53,7 +64,9 @@
 
 (defmethod format-result :default
   [event]
-  (#'junit-xml/format-result event))
+  (-> (#'junit-xml/format-result event)
+      (m/update-existing-in [:attrs :message] decolorize-and-escape)
+      (m/update-existing :content (comp xml/cdata decolorize-and-escape))))
 
 (defmethod format-result :fail
   [event]
