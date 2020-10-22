@@ -1,5 +1,7 @@
 (ns metabase.metabot.command-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]]
             [metabase
              [test :as mt]
              [util :as u]]
@@ -14,7 +16,8 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.util.i18n :refer [tru]]))
+            [metabase.util.i18n :refer [tru]]
+            [toucan.db :as db]))
 
 (defn- command [& args]
   (tu/with-temporary-setting-values [site-url "https://metabase.mysite.com"]
@@ -34,24 +37,27 @@
   (testing "with one relevant card"
     (mt/with-temp* [Card [{:keys [name id]}]
                     Card [_ {:archived true}]]
-      (is (=
-           {:response (format "Here are your 1 most recent cards:\n%d.  <https://metabase.mysite.com/question/%d|\"%s\">"
-                              id id name)
-            :messages []}
-           (command "list")))))
+      (let [{:keys [response messages]} (command "list")]
+        (is (= []
+               messages))
+        (is (re= #"(?s)^Here are your \d+ most recent cards.*"
+                 response))
+        (is (str/includes? response
+                           (format "%d.  <https://metabase.mysite.com/question/%d|\"%s\">" id id name))))))
   (testing "with two cards"
     (mt/with-temp* [Card [_]
                     Card [_]]
-      (is (re-find #"2 most recent cards"
-                   (metabot.cmd/command "list")))))
+      (is (re= #"(?s).+\d+ most recent cards.+"
+               (metabot.cmd/command "list")))))
   (testing "with only archived cards"
     (mt/with-temp Card [_ {:dataset_query (venues-count-query), :name "Cam's Cool MetaBot Card", :archived true}]
-      (is (=
-           {:response '(Exception. "Card Cam's Cool MetaBot Card not found.")
-            :messages []}
-           (command "show" "Cam's Cool MetaBot Card")))
-      (is (re-find #"You don't have any cards yet"
-                   (metabot.cmd/command "list")))))
+      ;; normally when running tests this will be empty, but if running from the REPL we can skip it.
+      (when (empty? (db/select Card :archived false))
+        (is (= {:response '(Exception. "Card Cam's Cool MetaBot Card not found.")
+                :messages []}
+               (command "show" "Cam's Cool MetaBot Card")))
+        (is (re= #"You don't have any cards yet"
+                 (metabot.cmd/command "list"))))))
   (testing "with ambiguous matches"
     (mt/with-temp* [Card [{card-1-id :id} {:dataset_query (venues-count-query), :name "Cam's Cool MetaBot Card 1"}]
                     Card [{card-2-id :id} {:dataset_query (venues-count-query), :name "Cam's Cool MetaBot Card 2"}]]
