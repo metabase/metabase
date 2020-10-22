@@ -80,7 +80,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Products").click();
     // add filter
     cy.findByText("Filter").click();
-    cy.findByText("Product").click();
+    cy.findByText("Products").click();
     cy.findByText("Category").click();
     cy.findByText("Is").click();
     cy.findByText("Is not").click();
