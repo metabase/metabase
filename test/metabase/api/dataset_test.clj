@@ -222,7 +222,7 @@
 (deftest sqlite-datetime-test
   (mt/test-driver :sqlite
     (testing "SQLite doesn't return proper date objects but strings, they just pass through the qp untouched"
-      (let [result ((mt/user->client :rasta) :post 202 "dataset/csv" :query
+      (let [result ((mt/user->client :rasta) :post 200 "dataset/csv" :query
                     (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
         (is (= [["1" "2014-04-07" "5" "12"]
                 ["2" "2014-09-18" "1" "31"]
