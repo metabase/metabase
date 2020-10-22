@@ -1,6 +1,7 @@
 (ns metabase.related-test
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase
              [models :refer [Card Collection Metric Segment]]
              [related :as r :refer :all]
@@ -39,6 +40,8 @@
           (is (= expected-similarity
                  (double (#'r/similarity (Card (get cards card-x)) (Card (get cards card-y)))))))))))
 
+(def ^:private ^:dynamic *world*)
+
 (defn- do-with-world [f]
   (mt/with-temp* [Collection [{collection-id :id}]
                   Metric     [{metric-id-a :id} (mt/$ids venues
@@ -74,14 +77,15 @@
                                                 {:aggregation [:sum $longitude]
                                                  :breakout    [[:field-id (mt/id :venues :name)]
                                                                $latitude]})}]]
-    (f {:collection-id collection-id
-        :metric-id-a   metric-id-a
-        :metric-id-b   metric-id-b
-        :segment-id-a  segment-id-a
-        :segment-id-b  segment-id-b
-        :card-id-a     card-id-a
-        :card-id-b     card-id-b
-        :card-id-c     card-id-c})))
+    (binding [*world* {:collection-id collection-id
+                       :metric-id-a   metric-id-a
+                       :metric-id-b   metric-id-b
+                       :segment-id-a  segment-id-a
+                       :segment-id-b  segment-id-b
+                       :card-id-a     card-id-a
+                       :card-id-b     card-id-b
+                       :card-id-c     card-id-c}]
+      (f *world*))))
 
 (defmacro ^:private with-world [& body]
   `(do-with-world
@@ -93,11 +97,15 @@
 
 (defn- result-mask
   [x]
-  (into {}
-        (for [[k v] x]
-          [k (if (sequential? v)
-               (sort (map :id v))
-               (:id v))])))
+  (let [m (into {}
+                (for [[k v] x]
+                  [k (if (sequential? v)
+                       (sort (map :id v))
+                       (:id v))]))]
+    ;; filter out Cards not created as part of `with-world` so these tests can be ran from the REPL.
+    (m/update-existing m
+                       :similar-questions
+                       (partial filter (set ((juxt :card-id-a :card-id-b :card-id-c) *world*))))))
 
 (deftest related-cards-test
   (with-world
