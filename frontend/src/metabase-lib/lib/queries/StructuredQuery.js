@@ -1483,7 +1483,12 @@ export default class StructuredQuery extends AtomicQuery {
     // source-table, if set
     const tableId = this.sourceTableId();
     if (tableId) {
-      addDependency({ type: "table", id: tableId, foreignTables });
+      addDependency({
+        type: "table",
+        id: tableId,
+        databaseId: this.databaseId(),
+        foreignTables,
+      });
     }
 
     // any explicitly joined tables

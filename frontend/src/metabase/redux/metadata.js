@@ -325,17 +325,33 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
 
 export const loadMetadataForQuery = query => loadMetadataForQueries([query]);
 
+const FETCH_ENTIRE_DATABASE_THRESHOLD = 5;
 export const loadMetadataForQueries = queries => dispatch =>
   Promise.all(
     _.chain(queries)
       .map(q => q.dependentMetadata())
       .flatten()
       .uniq(false, dep => dep.type + dep.id)
+      .groupBy(dep => dep.databaseId)
+      .pairs()
+      .map(([databaseId, deps]) => {
+        if (
+          deps.length > FETCH_ENTIRE_DATABASE_THRESHOLD &&
+          deps.every(dep => dep.type === "table")
+        ) {
+          // when there are a bunch of tables in the same db, just fetch the whole thing in one go
+          return [{ type: "database", id: parseInt(databaseId) }];
+        }
+        return deps;
+      })
+      .flatten()
       .map(({ type, id, foreignTables }) => {
         if (type === "table") {
           return (foreignTables
             ? Tables.actions.fetchMetadataAndForeignTables
             : Tables.actions.fetchMetadata)({ id });
+        } else if (type === "database") {
+          return Databases.actions.fetchDatabaseMetadata({ id });
         } else {
           console.warn(`loadMetadataForQueries: type ${type} not implemented`);
         }
