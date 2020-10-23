@@ -101,6 +101,7 @@
     :CHARACTER                  :type/Text
     :STRING                     :type/Text
     :TEXT                       :type/Text
+    :GEOGRAPHY                  :type/SerializedJSON
     :BINARY                     :type/*
     :VARBINARY                  :type/*
     :BOOLEAN                    :type/Boolean
