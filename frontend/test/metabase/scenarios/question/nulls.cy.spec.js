@@ -3,11 +3,38 @@ import {
   signInAsAdmin,
   openOrdersTable,
   popover,
+  withSampleDataset,
 } from "__support__/cypress";
 
 describe("scenarios > question > null", () => {
   before(restore);
   beforeEach(signInAsAdmin);
+
+  it.skip("should display rows whose value is `null` (metabase#13571)", () => {
+    withSampleDataset(({ ORDERS }) => {
+      cy.request("POST", "/api/card", {
+        name: "13571",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": 2,
+            fields: [ORDERS.DISCOUNT],
+            filter: ["=", ORDERS.ID, 1],
+          },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {},
+      });
+
+      // find and open previously created question
+      cy.visit("/collection/root");
+      cy.findByText("13571").click();
+
+      cy.log("**'No Results reported in v0.37.0**");
+      cy.contains("37.65"); // subtotal for order #1
+    });
+  });
 
   describe("aggregations with null values", () => {
     beforeEach(() => {
