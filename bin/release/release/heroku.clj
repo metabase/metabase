@@ -1,8 +1,7 @@
 (ns release.heroku
   "Code related to updating the Heroku build pack."
   (:require [metabuild-common.core :as u]
-            [release.common :as c]
-            [release.common.git :as git]))
+            [release.common :as c]))
 
 (def ^:private heroku-repo "metabase/metabase-buildpack")
 
@@ -36,5 +35,13 @@
           (spit version-file (str (c/version) "\n"))
           (when-not (zero? (:exit (u/sh* {:dir dir} "git" "commit" "-am" (format "v%s" (c/version)))))
             (u/announce "Nothing to update")))
-        (git/recreate-and-push-tag! dir (c/version))
+        (u/step "Delete old tags"
+          (try
+            (u/sh {:dir dir} "git" "push" "--delete" "origin" (c/version))
+            (catch Throwable _
+              (u/announce "Nothing to delete."))))
+        (u/step "Push updated tag"
+          (u/sh {:dir dir} "git" "tag" (c/version))
+          (u/sh {:dir dir} "git" "push")
+          (u/sh {:dir dir} "git" "push" "--tags" "origin" "master"))
         (validate-heroku-buildpack)))))
