@@ -71,7 +71,7 @@
     (not (zero? (Integer/parseUnsignedInt patch)))
     false))
 
-(defn docker-repo []
+(defn docker-image-name []
   (case (edition)
     :ce "metabase/metabase"
     :ee "metabase/metabase-enterprise"))
@@ -108,4 +108,4 @@
     :ee "metabase/metabase-enterprise"))
 
 (defn docker-tag []
-  (format "%s:v%s" (docker-repo) (version)))
+  (format "%s:v%s" (docker-image-name) (version)))

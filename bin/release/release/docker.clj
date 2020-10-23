@@ -21,10 +21,9 @@
 (defn push-docker-image! []
   (u/step "Push Docker image"
     (u/sh "docker" "push" (c/docker-tag))
-    (when (and (= (c/edition) :ee)
-               (not (c/pre-release-version?)))
-      (let [latest-tag "metabase/metabase-enterprise:latest"]
+    (when-not (c/pre-release-version?)
+      (let [latest-tag (str (c/docker-image-name) ":latest")]
         (u/step (format "Pushing tag %s" latest-tag)
           (u/sh "docker" "tag" (c/docker-tag) latest-tag)
-          (u/sh "docker" "push" latest-tag )))))
+          (u/sh "docker" "push" latest-tag)))))
   (validate-docker-image))

@@ -3,8 +3,7 @@
             [clojure.string :as str]
             [metabuild-common.core :as u]
             [net.cgrand.tagsoup :as tagsoup]
-            [release.common :as c]
-            [release.common.git :as git]))
+            [release.common :as c]))
 
 (def ^:private website-git-repo
   "metabase/metabase.github.io")
@@ -26,7 +25,12 @@
     (u/step "Commit updated docs"
       (u/sh {:dir dir} "git" "add" ".")
       (u/sh* {:dir dir} "git" "commit" "-m" tag))
-    (git/recreate-and-push-tag! dir tag)))
+    (u/step "delete old tags"
+      (u/sh* {:dir dir} "git" "push" "--delete" "origin" tag)
+      (u/sh* {:dir dir} "git" "tag" "--delete" "origin" tag))
+    (u/step "tag it"
+      (u/sh {:dir dir} "git" "tag" "-a" tag "-m" tag)
+      (u/sh {:dir dir} "git" "push" "--follow-tags" "-u" "origin" website-branch))))
 
 (defn- parse-html-from-url [url]
   (let [{:keys [status ^String body]} (http/get url)]
