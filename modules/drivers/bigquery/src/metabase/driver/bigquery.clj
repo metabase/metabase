@@ -152,15 +152,26 @@
   "Callback to execute when a new page is retrieved, used for testing"
   nil)
 
+(defprotocol GetJobComplete
+  "A Clojure protocol for the .getJobComplete method on disparate Google BigQuery results"
+  (get-job-complete [this] "Call .getJobComplete on a BigQuery API response"))
+
+(extend-protocol GetJobComplete
+  com.google.api.services.bigquery.model.QueryResponse
+  (get-job-complete [this] (.getJobComplete ^QueryResponse this))
+
+  com.google.api.services.bigquery.model.GetQueryResultsResponse
+  (get-job-complete [this] (.getJobComplete ^GetQueryResultsResponse this)))
+
 (defn do-with-finished-response
   "Impl for `with-finished-response`."
   {:style/indent 1}
-  [^GetQueryResultsResponse response, f]
+  [response f]
   ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't,
   ;; wait a few seconds for the job to finish.
   (loop [remaining-timeout (double query-timeout-seconds)]
     (cond
-      (.getJobComplete response)
+      (get-job-complete response)
       (f response)
 
       (pos? remaining-timeout)
@@ -180,7 +191,7 @@
   [[response-binding response] & body]
   `(do-with-finished-response
     ~response
-    (fn [~(vary-meta response-binding assoc :tag 'com.google.api.services.bigquery.model.GetQueryResultsResponse)]
+    (fn [~response-binding]
       ~@body)))
 
 (defn- ^GetQueryResultsResponse get-query-results
@@ -208,15 +219,16 @@
          job-ref (.getJobReference query-response)
          job-id (.getJobId job-ref)
          proj-id (.getProjectId job-ref)]
-     (get-query-results client proj-id job-id nil))))
+     (with-finished-response [_ query-response]
+       (get-query-results client proj-id job-id nil)))))
 
 (defn- post-process-native
   "Parse results of a BigQuery query. `respond` is the same function passed to
   `metabase.driver/execute-reducible-query`, and has the signature
 
     (respond results-metadata rows)"
-  [database respond ^QueryResponse resp]
-  (with-finished-response [response resp]
+  [database respond ^GetQueryResultsResponse resp]
+  (with-finished-response [^GetQueryResultsResponse response resp]
     (let [^TableSchema schema
           (.getSchema response)
 
