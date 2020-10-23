@@ -152,7 +152,8 @@
         job-ref (.getJobReference query-response)
         job-id (.getJobId job-ref)
         proj-id (.getProjectId job-ref)
-        response (#'bigquery/get-query-results client proj-id job-id nil)]
+        location (.getLocation job-ref)
+        response (#'bigquery/get-query-results client proj-id job-id location nil)]
     (#'bigquery/post-process-native @details respond response)))
 
 (defprotocol ^:private Insertable
