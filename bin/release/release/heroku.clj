@@ -1,11 +1,14 @@
 (ns release.heroku
   "Code related to updating the Heroku build pack."
   (:require [metabuild-common.core :as u]
-            [release.common :as c]))
+            [release.common :as c]
+            [release.common.git :as git]))
 
 (def ^:private heroku-repo "metabase/metabase-buildpack")
 
 (def ^:private dir "/tmp/metabase-heroku-buildpack")
+
+(def ^:private version-file (str dir "/bin/version"))
 
 (defn- validate-heroku-buildpack []
   (u/step "Validate Heroku buildpack"
@@ -25,20 +28,13 @@
 
       :else
       (do
-        (u/step "Clone Herkou Buildpack repo"
+        (u/step (format "Clone Herkou Buildpack repo %s to %s" heroku-repo dir)
           (u/delete-file! dir)
           (u/sh "git" "clone" (format "git@github.com:%s.git" heroku-repo) dir))
-        (let [version-file (u/assert-file-exists (str dir "/bin/version"))]
-          (u/step (format "Update %s" (pr-str version-file))
-            (spit version-file (str (c/version) "\n"))
-            (u/sh {:dir dir} "git" "commit" "-m" (format "v%s" (c/version)))))
-        (u/step "Delete old tags"
-          (try
-            (u/sh {:dir dir} "git" "push" "--delete" "origin" (c/version))
-            (catch Throwable _
-              (u/announce "Nothing to delete."))))
-        (u/step "Push updated tag"
-          (u/sh {:dir dir} "git" "tag" (c/version))
-          (u/sh {:dir dir} "git" "push")
-          (u/sh {:dir dir} "git" "push" "--tags" "origin" "master"))
+        (u/step (format "Update %s" (pr-str version-file))
+          (u/assert-file-exists version-file)
+          (spit version-file (str (c/version) "\n"))
+          (when-not (zero? (:exit (u/sh* {:dir dir} "git" "commit" "-am" (format "v%s" (c/version)))))
+            (u/announce "Nothing to update")))
+        (git/recreate-and-push-tag! dir (c/version))
         (validate-heroku-buildpack)))))

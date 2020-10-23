@@ -38,19 +38,26 @@
                   :body    body}))))
 
 (defn- validate-github-release []
-  (u/step "Validate GitHub release"
-    (throw (ex-info "TODO" {}))
-    #_(u/step (format "Validate latest release version is %s" (c/version))
-        ;;   latest_release=$(github-api "releases/latest" | jq -r '.tag_name')
-        ;;   check-equals "github: latest release" "v$VERSION" "$latest_release"
-        (throw (ex-info "TODO" {})))
-    #_(u/step (format "Validate release note JAR checksum matches checksum of %s" (c/artifact-download-url "metabase.jar"))
-      ;;   download-jar
-
-      ;;   jar_checksum=$(shasum -a 256 "$jar_file" | cut -d " " -f 1)
-      ;;   release_checksum=$(github-api "releases/tags/v$VERSION" | jq -r '.body' | grep -Eo '[a-f0-9]{64}' || true)
-      ;;   check-equals "github: release checksum" "$jar_checksum" "$release_checksum"
-      (throw (ex-info "TODO" {})))))
+  (u/step (format "Validate GitHub release on %s" (c/metabase-repo))
+    (u/step (format "Validate release %s" (c/version))
+      (let [{:keys [status body]} (http/get (str (github/github-api-base) "/releases")
+                                            {:headers (github/github-api-request-headers)})
+            _                     (assert (= status 200))
+            release               (some
+                                   (fn [release]
+                                     (when (= (:tag_name release) (str "v" (c/version)))
+                                       release))
+                                   (json/parse-string body true))]
+        (u/step (format "Check that GitHub release v%s exists" (c/version))
+          (assert release (format "No release with version v%s found." (c/version))))
+        (u/step "Validate JAR checksum in GitHub release"
+          (assert (string? (:body release)))
+          (let [[_ release-hash] (re-find #"```\s*([0-9a-f]{64})\s*```" (:body release))]
+            (when-not release-hash
+              (throw (ex-info "Error parsing release hash" {:body body})))
+            (u/announce "Release has JAR hash %s" release-hash)
+            (u/announce "The correct JAR hash is %s" (hash/sha-256-sum c/uberjar-path))
+            (assert (= (hash/sha-256-sum c/uberjar-path) release-hash) "Incorrect hash on GitHub release")))))))
 
 (defn create-draft-release! []
   (u/step "Create draft release"

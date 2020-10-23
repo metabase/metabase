@@ -3,34 +3,30 @@
             [clojure.string :as str]
             [metabuild-common.core :as u]
             [net.cgrand.tagsoup :as tagsoup]
-            [release.common :as c]))
+            [release.common :as c]
+            [release.common.git :as git]))
 
 (def ^:private website-git-repo
-  "git@github.com:metabase/metabase.github.io.git")
+  "metabase/metabase.github.io")
 
 (def ^:private website-branch "master")
 
+(def ^:private dir "/tmp/metabase.com")
+
 (defn- update-website!* []
-  (let [dir (u/filename c/root-directory "target" "website")
-        tag (str \v (c/version))]
-    (u/create-directory-unless-exists! (u/filename c/root-directory "target"))
+  (let [tag (str \v (c/version))]
     (u/delete-file! dir)
-    (u/step "Checkout website git repo"
-      (u/sh "git" "checkout" website-git-repo dir)
+    (u/step (format "Checkout website git repo %s to %s" website-git-repo dir)
+      (u/sh "git" "clone" (format "git@github.com:%s.git" website-git-repo) dir)
       (u/sh {:dir dir} "git" "checkout" website-branch))
     (u/step "Install yarn dependencies"
       (u/sh {:dir dir} "yarn" "install"))
     (u/step "Run docs script"
-      (u/sh {:dir dir} "./script/docs" tag "$*"))
+      (u/sh {:dir dir} "./script/docs" tag "--latest"))
     (u/step "Commit updated docs"
       (u/sh {:dir dir} "git" "add" ".")
-      (u/sh* {:dir dir} "git" "commit" "-m" "v$VERSION"))
-    (u/step "delete old tags"
-      (u/sh* {:dir dir} "git" "push" "--delete" "origin" tag)
-      (u/sh* {:dir dir} "git" "tag" "--delete" "origin" tag))
-    (u/step "tag it"
-      (u/sh {:dir dir} "git" "tag" "-a" tag "-m" tag)
-      (u/sh {:dir dir} "git" "push" "--follow-tags" "-u" "origin" website-branch))))
+      (u/sh* {:dir dir} "git" "commit" "-m" tag))
+    (git/recreate-and-push-tag! dir tag)))
 
 (defn- parse-html-from-url [url]
   (let [{:keys [status ^String body]} (http/get url)]
@@ -77,9 +73,11 @@
                         {}))))))
 
 (defn- validate-website []
-  (u/step "Validate website updated"
-    (check-docs-version)
-    (check-jar-version)))
+  (u/step "Validate website updates"
+    (u/announce "NOTE: skipped for now, since it takes up to 10 minutes for changes to propagate.")
+    ;; TODO -- maybe just hard-reset the git repo to master and make sure the source files are in the correct place.
+    #_(check-docs-version)
+    #_(check-jar-version)))
 
 (defn update-website! []
   (u/step "Update Metabase.com with latest docs"

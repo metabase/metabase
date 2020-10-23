@@ -6,21 +6,29 @@
             [release.common :as c]
             [release.common
              [hash :as hash]
-             [http :as common.http]
-             [s3 :as s3]]))
+             [http :as common.http]]))
+
+(def ^:private cloudfront-distribution-id
+  "E35CJLWZIZVG7K")
 
 (def ^:private bin-version-file
   (str c/root-directory "/bin/version"))
+
+(defn- s3-artifact-path
+  ([filename]
+   (s3-artifact-path (c/version) filename))
+
+  ([version filename]
+   (format "/%s/%s"
+           (if (= version "latest") "latest" (str "v" version))
+           filename)))
 
 (defn- s3-artifact-url
   ([filename]
    (s3-artifact-url (c/version) filename))
 
   ([version filename]
-   (format "s3://%s/v%s/%s"
-           (c/downloads-url)
-           (if (= version "latest") "latest" (str "v" version))
-           filename)))
+   (format "s3://%s%s" (c/downloads-url) (s3-artifact-path version filename))))
 
 (defn- update-version-info! []
   (u/step (format "Update %s if needed" (u/assert-file-exists bin-version-file))
@@ -46,6 +54,7 @@
     (u/delete-file! (str c/root-directory "/target"))
     (u/sh {:dir c/root-directory
            :env (merge {"JAVA_HOME" (env/env :java-home)
+                        "PATH"      (env/env :path)
                         "HOME"      (env/env :user-home)}
                        (when (= (c/edition) :ee)
                          {"MB_EDITION" "ENTERPRISE"}))}
@@ -56,15 +65,15 @@
 (defn- validate-uberjar []
   (u/step "Validate uberjar(s) on downloads.metabase.com"
     (doseq [url   [(c/artifact-download-url "metabase.jar")
-                 (when (= (c/edition) :ee)
-                   (c/artifact-download-url "latest" "metabase.jar"))]
+                   (when (= (c/edition) :ee)
+                     (c/artifact-download-url "latest" "metabase.jar"))]
             :when url]
       (u/step (format "Validate %s" url)
         (common.http/check-url-exists url)
         (u/step (format "Check hash of %s" url)
           (let [temp-location "/tmp/metabase.jar"]
             (u/delete-file! temp-location)
-            (u/sh "wget" url temp-location)
+            (u/sh {:quiet? true} "wget" "--quiet" "--no-cache" "--output-document" temp-location url)
             (let [uberjar-hash (hash/sha-256-sum c/uberjar-path)
                   url-hash     (hash/sha-256-sum temp-location)]
               (u/announce "Hash of local metabase.jar is %s" uberjar-hash)
@@ -72,9 +81,12 @@
               (assert (= uberjar-hash url-hash)))))))))
 
 (defn upload-uberjar! []
-  (u/step (format "Upload uberjar to %s" (c/artifact-download-url "metabase.jar"))
-    (s3/s3-copy! (u/assert-file-exists c/uberjar-path) (s3-artifact-url "metabase.jar")))
-  (when (= (c/edition) :ee)
-    (u/step (format "Upload uberjar to %s" (c/artifact-download-url "latest" "metabase.jar"))
-      (s3/s3-copy! (u/assert-file-exists c/uberjar-path) (s3-artifact-url "latest" "metabase.jar"))))
-  (validate-uberjar))
+  (u/step "Upload uberjar and validate"
+    (u/step (format "Upload uberjar to %s" (c/artifact-download-url "metabase.jar"))
+      (u/s3-copy! (u/assert-file-exists c/uberjar-path) (s3-artifact-url "metabase.jar"))
+      (u/create-cloudfront-invalidation! cloudfront-distribution-id (s3-artifact-path "metabase.jar")))
+    (when (= (c/edition) :ee)
+      (u/step (format "Upload uberjar to %s" (c/artifact-download-url "latest" "metabase.jar"))
+        (u/s3-copy! (u/assert-file-exists c/uberjar-path) (s3-artifact-url "latest" "metabase.jar"))
+        (u/create-cloudfront-invalidation! cloudfront-distribution-id (s3-artifact-path "latest" "metabase.jar"))))
+    (validate-uberjar)))

@@ -26,7 +26,9 @@
           (throw e))
         (u/error msg)
         (if (u/yes-or-no-prompt "Would you like to run this right now?")
-          ((requiring-resolve 'release.set-build-options/prompt-and-set-build-options!))
+          (do
+            ((requiring-resolve 'release.set-build-options/prompt-and-set-build-options!))
+            (build-option-or-throw k))
           (throw e)))))
 
 (defn version
