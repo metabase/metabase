@@ -4170,9 +4170,6 @@ databaseChangeLog:
                     nullable: false
                     references: report_card(id)
                     foreignKeyName: fk_gtap_card_id
-                    # This one is not ON DELETE CASCADE because we do not want people going around deleting Cards and
-                    # accidentally deleting their GTAPs that depend on them. However since Cards get archived instead
-                    # of deleted it shouldn't matter anyway
               - column:
                   name: attribute_remappings
                   type: text

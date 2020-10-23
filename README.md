@@ -102,8 +102,8 @@ Metabase also allows you to hit our Query API directly from Javascript to integr
 
 # License
 
-Unless otherwise noted, all Metabase source files are made available under the terms of the GNU Affero General Public License (AGPL).
+This repository contains the source code for both the Open Source edition of Metabase, released under the AGPL, as well as the commercial edition of Metabase Enterprise, released under the Metabase Commercial Software License. 
 
-See [LICENSE.txt](https://github.com/metabase/metabase/blob/master/LICENSE.txt) for details and exceptions.
+See [LICENSE.txt](./LICENSE.txt) for details.
 
 Unless otherwise noted, all files © 2020 Metabase, Inc.

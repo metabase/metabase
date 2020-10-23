@@ -1,6 +1,7 @@
 (ns metabase.public-settings.metastore
   "Settings related to checking token validity and accessing the MetaStore."
   (:require [cheshire.core :as json]
+            [clj-http.client :as http]
             [clojure.core.memoize :as memoize]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -12,7 +13,8 @@
             [metabase.util
              [i18n :refer [deferred-tru trs tru]]
              [schema :as su]]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (def ^:private ValidToken
   "Schema for a valid metastore token. Must be 64 lower-case hex characters."
@@ -33,6 +35,11 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                TOKEN VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- active-user-count []
+  ;; NOTE: models.user imports public settings, which imports this namespace,
+  ;; so we can't import the User model here.
+  (db/count 'User :is_active true))
 
 (defn- token-status-url [token]
   (when (seq token)
@@ -58,26 +65,28 @@
   (log/info (trs "Checking with the MetaStore to see whether {0} is valid..." token))
   (deref
    (future
-     (log/debug (u/format-color 'green (trs "Using this URL to check token: {0}" (token-status-url token))))
+     (log/info (u/format-color 'green (trs "Using this URL to check token: {0}" (token-status-url token))))
      (try (some-> (token-status-url token)
-                  slurp
+                  (http/get {:query-params {:users (active-user-count)}})
+                  :body
                   (json/parse-string keyword))
-          ;; slurp will throw a FileNotFoundException for 404s, so in that case just return an appropriate
-          ;; 'Not Found' message
-          (catch java.io.FileNotFoundException e
-            {:valid false, :status (tru "Unable to validate token: 404 not found.")})
-          ;; if there was any other error fetching the token, log it and return a generic message about the
+          ;; if there was an error fetching the token, log it and return a generic message about the
           ;; token being invalid. This message will get displayed in the Settings page in the admin panel so
           ;; we do not want something complicated
-          (catch Throwable e
+          (catch clojure.lang.ExceptionInfo e
             (log/error e (trs "Error fetching token status:"))
-            {:valid false, :status (str (deferred-tru "There was an error checking whether this token was valid:")
-                                        " "
-                                        (.getMessage e))})))
+            (let [body (u/ignore-exceptions (some-> (ex-data e) :object :body (json/parse-string keyword)))]
+              (or
+               body
+               {:valid         false
+                :status        (tru "Unable to validate token")
+                :error-details (.getMessage e)})))))
    fetch-token-status-timeout-ms
-   {:valid false, :status (tru "Token validation timed out.")}))
+   {:valid         false
+    :status        (tru "Unable to validate token")
+    :error-details (tru "Token validation timed out.")}))
 
-(def ^:private ^{:arglists '([token])} fetch-token-status
+(def ^{:arglists '([token])} fetch-token-status
   "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
   too many API calls to the Store, which will throttle us if we make too many requests; putting in a bad token could
   otherwise put us in a state where `valid-token->features*` made API calls over and over, never itself getting cached
@@ -88,10 +97,11 @@
 
 (s/defn ^:private valid-token->features* :- #{su/NonBlankString}
   [token :- ValidToken]
-  (let [{:keys [valid status features]} (fetch-token-status token)]
+  (let [{:keys [valid status features error-details]} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
     (when-not valid
-      (throw (Exception. ^String status)))
+      (throw (ex-info status
+               {:status-code 400, :error-details error-details})))
     ;; otherwise return the features this token supports
     (set features)))
 
@@ -118,14 +128,16 @@
     (try
       (when (seq new-value)
         (when (s/check ValidToken new-value)
-          (throw (ex-info (tru "Token format is invalid. Token should be 64 hexadecimal characters.")
-                   {:status-code 400})))
+          (throw (ex-info (tru "Token format is invalid.")
+                   {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
         (valid-token->features new-value)
         (log/info (trs "Token is valid.")))
       (setting/set-string! :premium-embedding-token new-value)
       (catch Throwable e
         (log/error e (trs "Error setting premium features token"))
-        (throw (ex-info (.getMessage e) {:status-code 400}))))))
+        (throw (ex-info (.getMessage e) (merge
+                                         {:message (.getMessage e), :status-code 400}
+                                         (ex-data e)))))))) ; merge in error-details if present
 
 (s/defn ^:private token-features :- #{su/NonBlankString}
   "Get the features associated with the system's premium features token."
@@ -134,7 +146,7 @@
     (or (some-> (premium-embedding-token) valid-token->features)
         #{})
     (catch Throwable e
-      (log/error (trs "Error validating token:") (.getMessage e))
+      (log/error e (trs "Error validating token"))
       #{})))
 
 (defsetting hide-embed-branding?
@@ -144,3 +156,44 @@
   :visibility :public
   :setter     :none
   :getter     (fn [] (boolean ((token-features) "embedding"))))
+
+(defsetting enable-whitelabeling?
+  "Should we allow full whitelabel embedding (reskinning the entire interface?)"
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (boolean ((token-features) "whitelabel"))))
+
+(defsetting enable-audit-app?
+  "Should we allow use of the audit app?"
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (boolean ((token-features) "audit-app"))))
+
+(defsetting enable-sandboxes?
+  "Should we enable data sandboxes (row and column-level permissions?"
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (boolean ((token-features) "sandboxes"))))
+
+(defsetting enable-sso?
+  "Should we enable SAML/JWT sign-in?"
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (boolean ((token-features) "sso"))))
+
+;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
+;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
+;; future.)
+;;
+;; By checking whether `(token-features)` is non-empty we can see whether we have a valid EE token. If the token is
+;; valid, we can enable EE enhancements.
+(defsetting enable-enhancements?
+  "Should we various other enhancements, e.g. NativeQuerySnippet collection permissions?"
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (boolean (seq (token-features)))))

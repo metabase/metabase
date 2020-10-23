@@ -112,7 +112,9 @@
 (defn require
   "Just like vanilla `require`, but ensures we're using our shared classloader to do it. Always use this over vanilla
   `require` -- otherwise namespaces might get loaded by the wrong ClassLoader, resulting in weird, hard-to-debug
-  errors."
+  errors.
+
+  Added benefit -- this is also thread-safe, unlike vanilla require."
   [& args]
   ;; done for side-effects to ensure context classloader is the right one
   (the-classloader)

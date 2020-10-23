@@ -48,7 +48,7 @@
     :else
     (throw (IllegalArgumentException. (str (deferred-trs "Don't know how to wrap:") " " field-id-or-form)))))
 
-(s/defn ^:private field-ids->param-field-values
+(s/defn field-ids->param-field-values
   "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference. This map is
   returned by various endpoints as `:param_values`."
   [param-field-ids :- (s/maybe #{su/IntGreaterThanZero})]
@@ -77,7 +77,6 @@
              dimension))
           (catch Throwable e
             (log/error e (tru "Could not find matching Field ID for target:") target)))))))
-
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."

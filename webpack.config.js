@@ -21,6 +21,8 @@ const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
+const ENTERPRISE_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/metabase-enterprise";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
@@ -104,6 +106,7 @@ const config = (module.exports = {
       fonts: FONTS_PATH,
       metabase: SRC_PATH,
       "metabase-lib": LIB_SRC_PATH,
+      "metabase-enterprise": ENTERPRISE_SRC_PATH,
       "metabase-types": TYPES_SRC_PATH,
       __support__: TEST_SUPPORT_PATH,
       style: SRC_PATH + "/css/core/index",
@@ -112,6 +115,11 @@ const config = (module.exports = {
       // icepick 2.x is es6 by defalt, to maintain backwards compatability
       // with ie11 point to the minified version
       icepick: __dirname + "/node_modules/icepick/icepick.min",
+      // conditionally load either the EE plugins file or a empty file in the CE code tree
+      "ee-plugins":
+        process.env.MB_EDITION === "ENTERPRISE"
+          ? ENTERPRISE_SRC_PATH + "/plugins"
+          : SRC_PATH + "/lib/noop",
     },
   },
 
@@ -169,9 +177,8 @@ const config = (module.exports = {
       outputPath: __dirname + "/resources/frontend_client/app/dist",
     }),
     new webpack.DefinePlugin({
-      "process.env": {
-        NODE_ENV: JSON.stringify(NODE_ENV),
-      },
+      "process.env": { NODE_ENV: JSON.stringify(NODE_ENV) },
+      INCLUDE_EE_PLUGINS: JSON.stringify(process.env.MB_EDITION === "ee"),
     }),
     new BannerWebpackPlugin({
       chunks: {
@@ -253,11 +260,11 @@ if (NODE_ENV !== "production") {
     }
   }
 
-  // enable "cheap" source maps in hot or watch mode since re-build speed overhead is < 1 second
-  // config.devtool = "cheap-module-source-map";
-
-  // works with breakpoints and makes stacktraces readable
-  config.devtool = "inline-module-source-map";
+  // by default enable "cheap" source maps for fast re-build speed
+  // with BETTER_SOURCE_MAPS we switch to sourcemaps that work with breakpoints and makes stacktraces readable
+  config.devtool = process.env.BETTER_SOURCE_MAPS
+    ? "inline-module-source-map"
+    : "cheap-module-source-map";
 
   // helps with source maps
   config.output.devtoolModuleFilenameTemplate = "[absolute-resource-path]";

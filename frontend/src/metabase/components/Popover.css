@@ -40,7 +40,6 @@
   line-height: 1.26;
   padding: 10px 12px;
 }
-
 .PopoverBody.PopoverBody--tooltip.PopoverBody--tooltipConstrainedWidth {
   font-size: 12px;
   max-width: 200px;

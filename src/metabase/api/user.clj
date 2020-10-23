@@ -12,6 +12,7 @@
              [collection :as collection :refer [Collection]]
              [permissions-group :as group]
              [user :as user :refer [User]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util
              [i18n :as i18n :refer [tru]]
@@ -20,6 +21,8 @@
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
+
+(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
 
 (defn- check-self-or-superuser
   "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -70,7 +73,7 @@
 (api/defendpoint GET "/"
   "Fetch a list of `Users` for the admin People page or for Pulses. By default returns only active users. If
   `include_deactivated` is true, return all Users (active and inactive). (Using `include_deactivated` requires
-  superuser permissions.)"
+  superuser permissions.). For users with segmented permissions, return only themselves."
   [include_deactivated]
   {include_deactivated (s/maybe su/BooleanString)}
   (when include_deactivated
@@ -81,7 +84,10 @@
             (-> {}
                 (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
                 (hh/merge-where (when-not include_deactivated
-                                  [:= :is_active true]))))
+                                  [:= :is_active true]))
+                (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+                                  (when (segmented-user?)
+                                    [:= :id api/*current-user-id*])))))
     ;; For admins, also include the IDs of the  Users' Personal Collections
     api/*is-superuser?* (hydrate :personal_collection_id :group_ids)))
 

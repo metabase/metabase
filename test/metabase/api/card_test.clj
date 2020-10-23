@@ -9,7 +9,8 @@
             [medley.core :as m]
             [metabase
              [http-client :as http :refer :all]
-             [models :refer [Card CardFavorite Collection Dashboard Database Pulse PulseCard PulseChannel PulseChannelRecipient Table ViewLog]]
+             [models :refer [Card CardFavorite Collection Dashboard Database Pulse PulseCard PulseChannel
+                             PulseChannelRecipient Table ViewLog]]
              [test :as mt]
              [util :as u]]
             [metabase.api.card :as card-api]
@@ -51,7 +52,7 @@
    :cache_ttl           nil
    :result_metadata     nil})
 
-(defn- mbql-count-query
+(defn mbql-count-query
   ([]
    (mbql-count-query (mt/id) (mt/id :venues)))
 
@@ -60,12 +61,13 @@
     :type     :query
     :query    {:source-table (u/get-id table-or-id), :aggregation [[:count]]}}))
 
-(defn- card-with-name-and-query
+(defn card-with-name-and-query
   ([]
    (card-with-name-and-query (mt/random-name)))
 
   ([card-name]
    (card-with-name-and-query card-name (mbql-count-query)))
+
   ([card-name query]
    {:name                   card-name
     :display                "scalar"
@@ -478,7 +480,6 @@
                                          :collection_position 1))
             (is (nil? (some-> (db/select-one [Card :collection_id :collection_position] :name card-name)
                               (update :collection_id (partial = (u/get-id collection))))))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FETCHING A SPECIFIC CARD                                            |

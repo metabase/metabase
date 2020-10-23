@@ -1,3 +1,5 @@
+/* eslint-disable no-import-assign*/
+
 global.ga = () => {};
 global.ace.define = () => {};
 global.ace.require = () => {};

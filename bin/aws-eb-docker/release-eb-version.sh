@@ -3,7 +3,12 @@
 BASEDIR=$(dirname $0)
 CURRENTDIR=$PWD
 
-DOCKERHUB_REPO=metabase
+if [ "$MB_EDITION" = "ENTERPRISE" ]; then
+    DOCKERHUB_REPO=metabase-enterprise
+else
+    DOCKERHUB_REPO=metabase
+fi
+
 S3_BUCKET=downloads.metabase.com
 
 
@@ -22,8 +27,8 @@ fi
 # TODO: improve this (hard coding)
 EB_FILE=/tmp/${MB_TAG}.zip
 EB_LAUNCH_FILE=launch-aws-eb.html
-S3_FILE=s3://${S3_BUCKET}/${MB_TAG}/metabase-aws-eb.zip
-S3_LAUNCH_FILE=s3://${S3_BUCKET}/${MB_TAG}/${EB_LAUNCH_FILE}
+S3_FILE=s3://${S3_BUCKET}/enterprise/${MB_TAG}/metabase-aws-eb.zip
+S3_LAUNCH_FILE=s3://${S3_BUCKET}/enterprise/${MB_TAG}/${EB_LAUNCH_FILE}
 
 # make the release file
 ${BASEDIR}/build-eb-version.sh ${MB_TAG} ${DOCKERHUB_REPO}

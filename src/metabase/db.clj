@@ -101,7 +101,7 @@
   (or (:type @connection-string-details)
       (config/config-kw :mb-db-type)))
 
-(def ^:private db-connection-details
+(def db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
   SQL driver functions on the Metabase DB itself)."
   (delay

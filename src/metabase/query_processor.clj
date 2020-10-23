@@ -1,10 +1,17 @@
 (ns metabase.query-processor
-  "The main entrypoint to running queries."
+  "Primary entrypoints to running Metabase (MBQL) queries.
+
+    (metabase.query-processor/process-query {:type :query, :database 1, :query {:source-table 2}})
+
+  Various REST API endpoints, such as `POST /api/dataset`, return the results of queries; calling one variations of
+  `process-userland-query` (see documentation below)."
   (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
-             [driver :as driver]]
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.util :as driver.u]
+            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor
              [context :as context]
              [error-type :as error-type]
@@ -58,6 +65,12 @@
 ;;; |                                                QUERY PROCESSOR                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(u/ignore-exceptions
+  (classloader/require '[metabase-enterprise.audit.query-processor.middleware.handle-audit-queries :as ee.audit]
+                       '[metabase-enterprise.sandbox.query-processor.middleware
+                         [column-level-perms-check :as ee.sandbox.columns]
+                         [row-level-restrictions :as ee.sandbox.rows]]))
+
 ;; ▼▼▼ POST-PROCESSING ▼▼▼  happens from TOP-TO-BOTTOM, e.g. the results of `f` are (eventually) passed to `limit`
 (def default-middleware
   "The default set of middleware applied to queries ran via `process-query`."
@@ -70,6 +83,8 @@
    #'perms/check-query-permissions
    #'pre-alias-ags/pre-alias-aggregations
    #'cumulative-ags/handle-cumulative-aggregations
+   ;; yes, this is called a second time, because we need to handle any joins that got added
+   (resolve 'ee.sandbox.rows/apply-row-level-permissions)
    #'resolve-joined-fields/resolve-joined-fields
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
@@ -81,7 +96,9 @@
    #'resolve-fields/resolve-fields
    #'add-dim/add-remapping
    #'implicit-clauses/add-implicit-clauses
+   (resolve 'ee.sandbox.rows/apply-row-level-permissions)
    #'add-source-metadata/add-source-metadata-for-source-queries
+   (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)
    #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
    #'bucket-datetime/auto-bucket-datetimes
    #'resolve-source-table/resolve-source-tables
@@ -97,6 +114,7 @@
    #'validate/validate-query
    #'normalize/normalize
    #'add-rows-truncated/add-rows-truncated
+   (resolve 'ee.audit/handle-internal-queries)
    #'results-metadata/record-and-return-metadata!])
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`

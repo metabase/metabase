@@ -3,6 +3,7 @@
  */
 :root {
   --color-brand: #509ee3;
+  --color-brand-light: #ddecfa;
   --color-accent1: #88bf4d;
   --color-accent2: #a989c5;
   --color-accent3: #ef8c8c;
@@ -110,7 +111,21 @@
 :local(.text-brand-light),
 .text-brand-light-hover:hover,
 :local(.text-brand-light-hover):hover {
-  color: var(--color-text-light);
+  color: var(--color-brand-light);
+}
+
+.bg-brand-light {
+  background-color: var(--color-brand-light);
+}
+
+.bg-brand-dark,
+.bg-brand-dark-hover:hover {
+  background-color: color(var(--color-brand) blackness(+12%));
+}
+
+.bg-brand-dark,
+.bg-brand-dark-hover:hover {
+  background-color: color(var(--color-brand) blackness(+12%));
 }
 
 .bg-brand-dark,

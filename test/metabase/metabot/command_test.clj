@@ -56,7 +56,7 @@
         (is (= {:response '(Exception. "Card Cam's Cool MetaBot Card not found.")
                 :messages []}
                (command "show" "Cam's Cool MetaBot Card")))
-        (is (re= #"You don't have any cards yet"
+        (is (re= #"You don't have any cards yet\."
                  (metabot.cmd/command "list"))))))
   (testing "with ambiguous matches"
     (mt/with-temp* [Card [{card-1-id :id} {:dataset_query (venues-count-query), :name "Cam's Cool MetaBot Card 1"}]

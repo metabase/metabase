@@ -27,7 +27,7 @@ mkdir -p "locales"
 #######################
 
 # NOTE: about twice as fast to call babel directly rather than a full webpack build
-BABEL_ENV=extract ./node_modules/.bin/babel -q -x .js,.jsx -o /dev/null frontend/src
+BABEL_ENV=extract ./node_modules/.bin/babel -q -x .js,.jsx -o /dev/null {enterprise/,}frontend/src
 # BABEL_ENV=extract BABEL_DISABLE_CACHE=1 yarn run build
 
 # NOTE: replace ttag's "${ 0 }" style references with xgettext "{0}" style references for consistency
@@ -43,7 +43,7 @@ rm "$POT_FRONTEND_NAME.bak"
 # info on those systems, and only file names where xgettext supports it
 LOC_OPT=$(xgettext --add-location=file -f - </dev/null >/dev/null 2>&1 && echo --add-location=file || echo --add-location)
 
-find src -name "*.clj" | xgettext                   \
+find . -name "*.clj" | xgettext                     \
   --from-code=UTF-8                                 \
   --language=lisp                                   \
   --copyright-holder='Metabase <docs@metabase.com>' \

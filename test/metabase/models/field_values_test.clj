@@ -1,6 +1,7 @@
 (ns metabase.models.field-values-test
   "Tests for specific behavior related to FieldValues and functions in the `metabase.models.field-values` namespace."
-  (:require [clojure
+  (:require [cheshire.core :as json]
+            [clojure
              [string :as str]
              [test :refer :all]]
             [clojure.java.jdbc :as jdbc]
@@ -121,6 +122,32 @@
   (sync/sync-database! db)
   (find-values field-values-id))
 
+(deftest values-less-than-total-max-length?-test
+  (testing "values-less-than-total-max-length?"
+    (with-redefs [field-values/total-max-length 10]
+      (is (= true
+             (#'field-values/values-less-than-total-max-length? ["a" "b" "c"])))
+      (is (= false
+             (#'field-values/values-less-than-total-max-length? ["123" "4567" "8901"])))
+      (testing "Should only consume enough values to determine whether length is over limit"
+        (let [realized? (atom false)
+              vs        (lazy-cat ["123" "4567" "8901" "2345"] (do (reset! realized? true) ["Shouldn't get here"]))]
+          (is (= false
+                 (#'field-values/values-less-than-total-max-length? vs)))
+          (testing "Entire lazy seq shouldn't be realized"
+            (is (= false
+                   @realized?))))))))
+
+(deftest normalize-human-readable-values-test
+  (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
+    (mt/with-temp FieldValues [fv {:field_id (mt/id :venues :id)
+                                   :values   (json/generate-string ["1" "2" "3"])}]
+      (db/execute! {:update FieldValues
+                    :set    {:human_readable_values (json/generate-string {"1" "a", "2" "b", "3" "c"})}
+                    :where  [:= :id (:id fv)]})
+      (is (= ["a" "b" "c"]
+             (:human_readable_values (FieldValues (:id fv))))))))
+
 (deftest update-human-readable-values-test
   (testing "Test \"fixing\" of human readable values when field values change"
     (binding [mdb/*allow-potentailly-unsafe-connections* true]
@@ -142,7 +169,7 @@
                 field-id        (db/select-one-field :id Field :table_id table-id :name "CATEGORY_ID")
                 field-values-id (db/select-one-field :id FieldValues :field_id field-id)]
             ;; Add in human readable values for remapping
-            (db/update! FieldValues field-values-id {:human_readable_values "[\"a\",\"b\",\"c\"]"})
+            (db/update! FieldValues field-values-id {:human_readable_values ["a" "b" "c"]})
             (let [expected-original-values {:values                [1 2 3]
                                             :human_readable_values ["a" "b" "c"]}
                   expected-updated-values  {:values                [-2 -1 0 1 2 3]
@@ -170,3 +197,17 @@
                 (jdbc/delete! conn :foo ["id in (?,?,?)" 1 2 3])
                 (is (= {:values [-2 -1 0] :human_readable_values ["-2" "-1" "0"]}
                        (sync-and-find-values db field-values-id)))))))))))
+
+(deftest validate-human-readable-values-test
+  (testing "Should validate FieldValues :human_readable_values when"
+    (testing "creating"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid human-readable-values"
+           (mt/with-temp FieldValues [_ {:field_id (mt/id :venues :id), :human_readable_values {"1" "A", "2", "B"}}]))))
+    (testing "updating"
+      (mt/with-temp FieldValues [{:keys [id]} {:field_id (mt/id :venues :id), :human_readable_values []}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid human-readable-values"
+             (db/update! FieldValues id :human_readable_values {"1" "A", "2", "B"})))))))

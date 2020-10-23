@@ -77,3 +77,17 @@
      request
      (comp respond maybe-add-disable-buffering-header)
      raise)))
+
+
+;;; -------------------------------------------------- Bind request --------------------------------------------------
+
+(def ^:dynamic *request*
+  "The Ring request currently being handled by this thread, if any."
+  nil)
+
+(defn bind-request
+  "Ring middleware that binds `*request*` for the duration of this Ring request."
+  [handler]
+  (fn [request respond raise]
+    (binding [*request* request]
+      (handler request respond raise))))

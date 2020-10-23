@@ -30,18 +30,25 @@
 (defn execute-card
   "Execute the query for a single Card. `options` are passed along to the Query Processor."
   [{pulse-creator-id :creator_id} card-or-id & {:as options}]
+  ;; The Card must either be executed in the context of a User or by the MetaBot which itself is not a User
+  {:pre [(or (integer? pulse-creator-id)
+             (= (:context options) :metabot))]}
   (let [card-id (u/get-id card-or-id)]
     (try
       (when-let [{query :dataset_query, :as card} (Card :id card-id, :archived false)]
-        (let [query (assoc query :async? false)]
-          (session/with-current-user pulse-creator-id
-            {:card   card
-             :result (qp/process-query-and-save-with-max-results-constraints!
-                      query
-                      (merge {:executed-by pulse-creator-id
-                              :context     :pulse
-                              :card-id     card-id}
-                             options))})))
+        (let [query         (assoc query :async? false)
+              process-query (fn []
+                              (qp/process-query-and-save-with-max-results-constraints!
+                               query
+                               (merge {:executed-by pulse-creator-id
+                                       :context     :pulse
+                                       :card-id     card-id}
+                                      options)))]
+          {:card   card
+           :result (if pulse-creator-id
+                     (session/with-current-user pulse-creator-id
+                       (process-query))
+                     (process-query))}))
       (catch Throwable e
         (log/warn e (trs "Error running query for Card {0}" card-id))))))
 
@@ -266,7 +273,7 @@
        (send-pulse! pulse)                       Send to all Channels
        (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
   [{:keys [cards], :as pulse} & {:keys [channel-ids]}]
-  {:pre [(map? pulse)]}
+  {:pre [(map? pulse) (integer? (:creator_id pulse))]}
   (let [pulse (-> pulse
                   pulse/map->PulseInstance
                   ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
