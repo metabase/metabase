@@ -166,12 +166,12 @@
      (when-not card-id
        (throw (Exception. (tru "Card {0} not found." card-id-or-name))))
      (with-metabot-permissions
-       (read-check Card card-id))
-     (metabot.slack/async
-       (let [attachments (pulse/create-and-upload-slack-attachments!
-                          (pulse/create-slack-attachment-data
-                           [(pulse/execute-card {} card-id, :context :metabot)]))]
-         (metabot.slack/post-chat-message! nil attachments)))
+       (read-check Card card-id)
+       (metabot.slack/async
+         (let [attachments (pulse/create-and-upload-slack-attachments!
+                            (pulse/create-slack-attachment-data
+                             [(pulse/execute-card {} card-id, :context :metabot)]))]
+           (metabot.slack/post-chat-message! nil attachments))))
      (tru "Ok, just a second...")))
 
   ;; If the card name comes without spaces, e.g. (show 'my 'wacky 'card) turn it into a string an recur: (show "my

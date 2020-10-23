@@ -98,6 +98,11 @@
     (recur driver hsql-form (/ amount 1000.0) :second)
     (hsql/call :date_add hsql-form (hsql/raw (format "INTERVAL %s %s" amount (name unit))))))
 
+;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
+(defmethod sql.qp/current-datetime-honeysql-form :mysql
+  [_]
+  (hsql/call :now 6))
+
 (defmethod driver/humanize-connection-error-message :mysql
   [_ message]
   (condp re-matches message

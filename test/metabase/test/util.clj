@@ -550,6 +550,7 @@
 
 (defn do-with-model-cleanup [models f]
   {:pre [(sequential? models) (every? t.models/model? models)]}
+  (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
                                      [model (:max-id (db/select-one [model [:%max.id :max-id]]))]))]
     (try
@@ -557,7 +558,9 @@
         (f))
       (finally
         (doseq [model models
-                :let  [old-max-id (get model->old-max-id model)]]
+                ;; might not have an old max ID if this is the first time the macro is used in this test run.
+                :let  [old-max-id (or (get model->old-max-id model)
+                                      0)]]
           (db/delete! model :id [:> old-max-id]))))))
 
 (defmacro with-model-cleanup
@@ -663,25 +666,35 @@
   [collection-or-id & body]
   `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
 
-(defn do-with-non-admin-groups-no-root-collection-perms [f]
-  (initialize/initialize-if-needed! :db)
+(defn do-with-non-admin-groups-no-collection-perms [collection f]
   (try
-    (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
-      (perms/revoke-collection-permissions! group-id collection/root-collection))
-    (f)
+    (do-with-discarded-collections-perms-changes
+     collection
+     (fn []
+       (db/delete! Permissions
+         :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
+         :group_id [:not= (u/get-id (group/admin))])
+       (f)))
+    ;; if this is the default namespace Root Collection, then double-check to make sure all non-admin groups get
+    ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
+    ;; rewriting a few tests.
     (finally
-      (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
-        (when-not (db/exists? Permissions
-                    :group_id group-id
-                    :object   (perms/collection-readwrite-path collection/root-collection))
-          (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))))))
+      (when (and (:metabase.models.collection.root/is-root? collection)
+                 (not (:namespace collection)))
+        (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
+          (when-not (db/exists? Permissions :group_id group-id, :object "/collection/root/")
+            (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
 (defmacro with-non-admin-groups-no-root-collection-perms
   "Temporarily remove Root Collection perms for all Groups besides the Admin group (which cannot have them removed). By
   default, all Groups have full readwrite perms for the Root Collection; use this macro to test situations where an
-  admin has removed them."
+  admin has removed them.
+
+  Only affects the Root Collection for the default namespace. Use
+  `with-non-admin-groups-no-root-collection-for-namespace-perms` to do the same thing for the Root Collection of other
+  namespaces."
   [& body]
-  `(do-with-non-admin-groups-no-root-collection-perms (fn [] ~@body)))
+  `(do-with-non-admin-groups-no-collection-perms collection/root-collection (fn [] ~@body)))
 
 (defmacro with-non-admin-groups-no-root-collection-for-namespace-perms
   "Like `with-non-admin-groups-no-root-collection-perms`, but for the Root Collection of a non-default namespace."

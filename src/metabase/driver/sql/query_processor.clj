@@ -51,9 +51,11 @@
     (dorun (map hformat/add-anon-param params))
     ;; strip off any trailing semicolons
     (str "(" (str/replace sql #";+\s*$" "") ")"))
+
   PrettyPrintable
   (pretty [_]
     (list 'SQLSourceQuery. sql params))
+
   Object
   (equals [_ other]
     (and (instance? SQLSourceQuery other)

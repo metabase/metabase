@@ -34,7 +34,7 @@
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
 (defn- group-id->permissions-set []
-  (into {} (for [[group-id perms] (group-by :group_id (db/select 'Permissions))]
+  (into {} (for [[group-id perms] (group-by :group_id (db/select Permissions))]
              {group-id (set (map :object perms))})))
 
 (s/defn ^:private perms-type-for-collection :- CollectionPermissions
@@ -46,9 +46,9 @@
 
 (s/defn ^:private group-permissions-graph :- GroupPermissionsGraph
   "Return the permissions graph for a single group having `permissions-set`."
-  [permissions-set collection-ids]
+  [collection-namespace permissions-set collection-ids]
   (into
-   {:root (perms-type-for-collection permissions-set collection/root-collection)}
+   {:root (perms-type-for-collection permissions-set (assoc collection/root-collection :namespace collection-namespace))}
    (for [collection-id collection-ids]
      {collection-id (perms-type-for-collection permissions-set collection-id)})))
 
@@ -59,9 +59,7 @@
   (let [personal-collection-ids (db/select-ids Collection :personal_owner_id [:not= nil])
         honeysql-form           (cond-> {:select [[:id :id]]
                                          :from   [Collection]
-                                         :where  (if (= collection-namespace ::all)
-                                                   [:= 1 1]
-                                                   [:= :namespace (u/qualified-name collection-namespace)])}
+                                         :where  [:= :namespace (u/qualified-name collection-namespace)]}
                                   (seq personal-collection-ids)
                                   (h/merge-where [:not-in :id (set personal-collection-ids)]))
         honeysql-form           (reduce
@@ -77,8 +75,7 @@
   function.
 
   The graph is restricted to a given namespace by the optional `collection-namespace` param; by default, `nil`, which
-  restricts it to the 'default' namespace containing normal Card/Dashboard/Pulse Collections. Pass `::all` to get a
-  combined graph of all namespaces, for the purposes of recording graph revisions.
+  restricts it to the 'default' namespace containing normal Card/Dashboard/Pulse Collections.
 
   Note: All Collections are returned at the same level of the 'graph', regardless of how the Collection hierarchy is
   structured. Collections do not inherit permissions from ancestor Collections in the same way data permissions are
@@ -93,17 +90,18 @@
          collection-ids  (non-personal-collection-ids collection-namespace)]
      {:revision (collection-revision/latest-id)
       :groups   (into {} (for [group-id (db/select-ids PermissionsGroup)]
-                           {group-id (group-permissions-graph (group-id->perms group-id) collection-ids)}))})))
+                           {group-id (group-permissions-graph collection-namespace (group-id->perms group-id) collection-ids)}))})))
 
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
 (s/defn ^:private update-collection-permissions!
-  [group-id             :- su/IntGreaterThanZero
+  [collection-namespace :- (s/maybe su/KeywordOrString)
+   group-id             :- su/IntGreaterThanZero
    collection-id        :- (s/cond-pre (s/eq :root) su/IntGreaterThanZero)
    new-collection-perms :- CollectionPermissions]
   (let [collection-id (if (= collection-id :root)
-                        collection/root-collection
+                        (assoc collection/root-collection :namespace collection-namespace)
                         collection-id)]
     ;; remove whatever entry is already there (if any) and add a new entry if applicable
     (perms/revoke-collection-permissions! group-id collection-id)
@@ -113,9 +111,11 @@
       :none  nil)))
 
 (s/defn ^:private update-group-permissions!
-  [group-id :- su/IntGreaterThanZero, new-group-perms :- GroupPermissionsGraph]
+  [collection-namespace :- (s/maybe su/KeywordOrString)
+   group-id             :- su/IntGreaterThanZero
+   new-group-perms      :- GroupPermissionsGraph]
   (doseq [[collection-id new-perms] new-group-perms]
-    (update-collection-permissions! group-id collection-id new-perms)))
+    (update-collection-permissions! collection-namespace group-id collection-id new-perms)))
 
 (defn- save-perms-revision!
   "Save changes made to the collection permissions graph for logging/auditing purposes. This doesn't do anything if
@@ -123,13 +123,13 @@
 
   *  `before-graph`-- the entire graph as it existed before the revision.
   *  `changes` -- set of changes applied in this revision."
-  [current-revision before-graph changes]
+  [collection-namespace current-revision before-graph changes]
   (when *current-user-id*
     ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
     ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
     (db/insert! CollectionRevision
       :id     (inc current-revision)
-      :before  before-graph
+      :before  (assoc before-graph :namespace collection-namespace)
       :after   changes
       :user_id *current-user-id*)))
 
@@ -142,20 +142,18 @@
 
   ([collection-namespace :- (s/maybe su/KeywordOrString), new-graph :- PermissionsGraph]
    (let [old-graph          (graph collection-namespace)
-         ;; fetch the *entire* graph before making any updates. We'll record this in the perms revision.
-         entire-graph       (graph ::all)
          old-perms          (:groups old-graph)
          new-perms          (:groups new-graph)
          ;; filter out any groups not in the old graph
          new-perms          (select-keys new-perms (keys old-perms))
          ;; filter out any collections not in the old graph
          new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
-                                       [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
+                              [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
          [diff-old changes] (data/diff old-perms new-perms)]
      (perms/log-permissions-changes diff-old changes)
      (perms/check-revision-numbers old-graph new-graph)
      (when (seq changes)
        (db/transaction
          (doseq [[group-id changes] changes]
-           (update-group-permissions! group-id changes))
-         (save-perms-revision! (:revision old-graph) entire-graph changes))))))
+           (update-group-permissions! collection-namespace group-id changes))
+         (save-perms-revision! collection-namespace (:revision old-graph) old-graph changes))))))

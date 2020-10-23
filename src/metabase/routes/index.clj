@@ -78,6 +78,8 @@
       :googleAnalyticsJS  (load-inline-js "index_ganalytics")
       :bootstrapJSON      (escape-script (json/generate-string public-settings))
       :localizationJSON   (escape-script (load-localization))
+      :favicon            (h.util/escape-html (public-settings/application-favicon-url))
+      :applicationName    (h.util/escape-html (public-settings/application-name))
       :uri                (h.util/escape-html uri)
       :baseHref           (h.util/escape-html (base-href))
       :embedCode          (when embeddable? (embed/head uri))

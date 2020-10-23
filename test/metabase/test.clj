@@ -14,8 +14,10 @@
              [email-test :as et]
              [http-client :as http]
              [query-processor :as qp]
-             [query-processor-test :as qp.test]]
+             [query-processor-test :as qp.test]
+             [util :as u]]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor
              [context :as qp.context]
              [reducible :as qp.reducible]
@@ -48,6 +50,7 @@
   http/keep-me
   i18n.tu/keep-me
   initialize/keep-me
+  mt.tu/keep-me
   qp/keep-me
   qp.test-util/keep-me
   qp.test/keep-me
@@ -74,8 +77,7 @@
   query
   run-mbql-query
   with-db
-  with-temp-copy-of-db
-  with-temp-objects]
+  with-temp-copy-of-db]
 
  [datasets
   test-driver
@@ -207,6 +209,11 @@
  [tx.env
   set-test-drivers!
   with-test-drivers])
+
+;; ee-only stuff
+(u/ignore-exceptions
+  (classloader/require 'metabase-enterprise.sandbox.test-util)
+  (eval '(potemkin/import-vars [metabase-enterprise.sandbox.test-util with-gtaps])))
 
 ;; TODO -- move this stuff into some other namespace and refer to it here
 

@@ -17,7 +17,7 @@
           "head")
    (s/cond-pre s/Int su/KeywordOrString (s/recursive #'FieldReference))])
 
-(def ^:private ^{:arglists '([form])} field-reference?
+(def ^{:arglists '([form])} field-reference?
   "Is given form an MBQL field reference?"
   (complement (s/checker FieldReference)))
 

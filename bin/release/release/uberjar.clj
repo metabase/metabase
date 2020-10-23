@@ -19,16 +19,19 @@
    (s3-artifact-path (c/version) filename))
 
   ([version filename]
-   (format "/%s/%s"
-           (if (= version "latest") "latest" (str "v" version))
-           filename)))
+   (str
+    (when (= (c/edition) :ee)
+      "/enterprise")
+    (format "/%s/%s"
+            (if (= version "latest") "latest" (str "v" version))
+            filename))))
 
 (defn- s3-artifact-url
   ([filename]
    (s3-artifact-url (c/version) filename))
 
   ([version filename]
-   (format "s3://%s%s" (c/downloads-url) (s3-artifact-path version filename))))
+   (format "s3://downloads.metabase.com%s" (s3-artifact-path version filename))))
 
 (defn- update-version-info! []
   (u/step (format "Update %s if needed" (u/assert-file-exists bin-version-file))

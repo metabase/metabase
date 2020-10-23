@@ -10,7 +10,8 @@
             [metabase.models
              [common :as common]
              [setting :as setting :refer [defsetting]]]
-            metabase.public-settings.metastore
+            [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.metastore :as metastore]
             [metabase.util
              [i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
              [password :as password]]
@@ -19,6 +20,26 @@
 
 ;; These modules register settings but are otherwise unused. They still must be imported.
 (comment metabase.public-settings.metastore/keep-me)
+
+(defn- google-auth-configured? []
+  (boolean (setting/get :google-auth-client-id)))
+
+(defn- ldap-configured? []
+  (do (classloader/require 'metabase.integrations.ldap)
+      ((resolve 'metabase.integrations.ldap/ldap-configured?))))
+
+(defn- ee-sso-configured? []
+  (u/ignore-exceptions
+    (classloader/require 'metabase-enterprise.sso.integrations.sso-settings))
+  (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-configured?)]
+    (varr)))
+
+(defn- sso-configured?
+  "Any SSO provider is configured"
+  []
+  (or (google-auth-configured?)
+      (ldap-configured?)
+      (ee-sso-configured?)))
 
 (defsetting check-for-updates
   (deferred-tru "Identify when new versions of Metabase are available.")
@@ -111,6 +132,12 @@
   :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
   :visibility :public)
 
+(defsetting landing-page
+  (deferred-tru "Default page to show the user")
+  :visibility :public
+  :type       :string
+  :default    "")
+
 (defsetting enable-public-sharing
   (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
   :type       :boolean
@@ -122,6 +149,10 @@
   :type       :boolean
   :default    false
   :visibility :authenticated)
+
+(defsetting embedding-app-origin
+  (deferred-tru "Allow this origin to embed the full Metabase application")
+  :visibility :public)
 
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question as the source for other queries?")
@@ -177,6 +208,44 @@
        (deferred-tru "So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
   :type    :integer
   :default 10)
+
+(defsetting application-name
+  (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
+  :visibility :public
+  :type       :string
+  :default    "Metabase")
+
+(defsetting application-colors
+  (deferred-tru "These are the primary colors used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect.")
+  :visibility :public
+  :type       :json
+  :default    {})
+
+(defn application-color
+  "The primary color, a.k.a. brand color"
+  []
+  (or (:brand (setting/get-json :application-colors)) "#509EE3"))
+
+(defsetting application-logo-url
+  (deferred-tru "For best results, use an SVG file with a transparent background.")
+  :visibility :public
+  :type       :string
+  :default    "app/assets/img/logo.svg")
+
+(defsetting application-favicon-url
+  (deferred-tru "The url or image that you want to use as the favicon.")
+  :visibility :public
+  :type       :string
+  :default    "frontend_client/favicon.ico")
+
+(defsetting enable-password-login
+  (deferred-tru "Allow logging in by email and password.")
+  :visibility :public
+  :type       :boolean
+  :default    true
+  :getter     (fn []
+                (or (setting/get-boolean :enable-password-login)
+                    (not (sso-configured?)))))
 
 (defsetting breakout-bins-num
   (deferred-tru "When using the default binning strategy and a number of bins is not provided, this number will be used as the default.")
@@ -288,6 +357,16 @@
   :visibility :public
   :setter     :none
   :getter     (constantly config/mb-version-info))
+
+(defsetting premium-features
+  "Premium EE features enabled for this instance."
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] {:embedding  (metastore/hide-embed-branding?)
+                      :whitelabel (metastore/enable-whitelabeling?)
+                      :audit_app  (metastore/enable-audit-app?)
+                      :sandboxes  (metastore/enable-sandboxes?)
+                      :sso        (metastore/enable-sso?)}))
 
 (defsetting redirect-all-requests-to-https
   (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")

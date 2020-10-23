@@ -87,7 +87,7 @@
     "styled-system": "2.2.5",
     "system-components": "2.0.3",
     "tether": "^1.2.0",
-    "ttag": "^1.7.8",
+    "ttag": "1.7.15",
     "underscore": "^1.8.3",
     "webpack-dev-middleware": "^1.12.0",
     "z-index": "0.0.1"

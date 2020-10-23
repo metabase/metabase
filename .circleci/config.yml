@@ -185,6 +185,12 @@ executors:
 #                                                       COMMANDS                                                       #
 ########################################################################################################################
 
+# `default_parameters` isn't a key that CircleCI uses, but this form lets us reuse parameter definitions
+default_parameters: &Params
+  edition:
+    type: string
+    default: "oss"
+
 commands:
   attach-workspace:
     steps:
@@ -278,7 +284,7 @@ jobs:
       - run:
           name: Generate checksums of all backend source files to use as Uberjar cache key
           command: >
-            for file in `find ./src ./backend -type f -name '*.clj' | sort`;
+            for file in `find ./src ./backend ./enterprise/backend/src -type f -name '*.clj' | sort`;
               do echo `md5sum $file` >> backend-checksums.txt;
             done;
             echo `md5sum project.clj` >> backend-checksums.txt
@@ -286,7 +292,7 @@ jobs:
       - run:
           name: Generate checksums of all frontend source files to use as Uberjar cache key
           command: >
-            for file in `find ./frontend -type f | sort`;
+            for file in `find ./frontend ./enterpise/frontend -type f | sort`;
               do echo `md5sum $file` >> frontend-checksums.txt;
             done;
             echo `md5sum yarn.lock` >> frontend-checksums.txt
@@ -338,7 +344,9 @@ jobs:
           command: sudo apt-get install gettext
       - run:
           name: Check i18n tags/make sure template can be built
-          command: ./bin/i18n/update-translation-template
+          # fix OOM when running -- see https://stackoverflow.com/a/59572966/1198455
+          # without this option, sometimes this step will fail with an OOM error.
+          command: NODE_OPTIONS='--max-old-space-size=2048' ./bin/i18n/update-translation-template
           no_output_timeout: 2m
       - run:
           name: Verify i18n translations (.po files)
@@ -352,10 +360,12 @@ jobs:
 
   be-deps:
     executor: clojure
+    parameters:
+      <<: *Params
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - run: lein with-profile +include-all-drivers,+cloverage,+junit deps
+      - run: lein with-profile +include-all-drivers,+cloverage,+junit,+<< parameters.edition >> deps
       - save_cache:
           key: be-deps-v2-{{ checksum "project.clj" }}
           paths:
@@ -374,13 +384,14 @@ jobs:
       after-steps:
         type: steps
         default: []
+      <<: *Params
     executor: << parameters.e >>
     steps:
       - attach-workspace
       - restore-be-deps-cache
       - steps: << parameters.before-steps >>
       - run:
-          command: lein with-profile +ci << parameters.lein-command >>
+          command: lein with-profile +ci,+<< parameters.edition >> << parameters.lein-command >>
           no_output_timeout: 5m
       - steps: << parameters.after-steps >>
       - store_test_results:
@@ -427,9 +438,10 @@ jobs:
                 name: Test << parameters.driver >> driver << parameters.description >>
                 environment:
                   DRIVERS: h2,<< parameters.driver >>
+                  MB_EDITION: ee
                 command: >
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-                  lein with-profile +ci,+junit test
+                  lein with-profile +ci,+junit,+$MB_EDITION test
                 no_output_timeout: << parameters.timeout >>
       # This is exactly the same as without auto-retry but will try running the tests a second time if they fail
       - when:
@@ -439,9 +451,10 @@ jobs:
                 name: Test << parameters.driver >> driver
                 environment:
                   DRIVERS: h2,<< parameters.driver >>
+                  MB_EDITION: ee
                 command: >
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-                  lein with-profile +ci,+junit test || lein with-profile +ci,+junit test
+                  lein with-profile +ci,+junit,+$MB_EDITION test || lein with-profile +ci,+junit,+$MB_EDITION test
                 no_output_timeout: << parameters.timeout >>
       - store_test_results:
           path: /home/circleci/metabase/metabase/target/junit
@@ -452,6 +465,7 @@ jobs:
         type: executor
       db-type:
         type: string
+      <<: *Params
     executor: << parameters.e >>
     steps:
       - attach-workspace
@@ -461,6 +475,7 @@ jobs:
           environment:
             MB_DB_TYPE: << parameters.db-type >>
             MB_DB_HOST: localhost
+            MB_EDITION: << parameters.edition >>
           command: >
             ./bin/test-load-and-dump.sh
           no_output_timeout: 5m
@@ -544,6 +559,8 @@ jobs:
           command: run test-timezones
 
   build-uberjar:
+    parameters:
+      <<: *Params
     executor: clojure-and-node
     steps:
       - attach-workspace
@@ -551,7 +568,7 @@ jobs:
       # restore already-built uberjar
       - restore_cache:
           keys:
-            - uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
+            - uberjar-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
       # restore the local maven installation of Metabase which is needed for building drivers
       - restore_cache:
           keys:
@@ -574,6 +591,8 @@ jobs:
             sudo ./linux-install-1.10.1.708.sh
       - run:
           name: Build frontend if needed
+          environment:
+            MB_EDITION: << parameters.edition >>
           command: >
             if [ ! -f './resources/frontend_client/index.html' ];
               then ./bin/build version frontend;
@@ -581,6 +600,8 @@ jobs:
           no_output_timeout: 5m
       - run:
           name: Build uberjar if needed
+          environment:
+            MB_EDITION: << parameters.edition >>
           command: >
             if [ ! -f './target/uberjar/metabase.jar' ]; then
               # INTERACTIVE=false will tell the clojure build scripts not to do interactive retries etc.
@@ -592,7 +613,7 @@ jobs:
           path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
       # Cache the built uberjar
       - save_cache:
-          key: uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
+          key: uberjar-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
       # Cache the maven installation of metabase-core
@@ -639,6 +660,7 @@ jobs:
       driver:
         type: string
         default: ""
+      <<: *Params
     executor: << parameters.e >>
     environment:
       CYPRESS_GROUP:  << parameters.cypress-group >>
@@ -649,9 +671,11 @@ jobs:
           before-steps:
             - restore_cache:
                 keys:
-                  - uberjar-{{ checksum "./backend-checksums.txt" }}
+                  - uberjar-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}
             - run:
                 name: Generate version file
+                environment:
+                  MB_EDITION: << parameters.edition >>
                 command: ./bin/build version
       - store_artifacts:
           path: /home/circleci/metabase/metabase/cypress
@@ -673,6 +697,12 @@ jobs:
 #                                                      WORKFLOWS                                                       #
 ########################################################################################################################
 
+# `default_matrix` isn't a key that CircleCI uses, but this form lets us reuse the matrix: block
+default_matrix: &Matrix
+  matrix:
+    parameters:
+      edition: ["ee", "oss"]
+
 workflows:
   version: 2
   build:
@@ -693,17 +723,19 @@ workflows:
             - checkout
 
       - lein:
-          name: be-tests
+          name: be-tests-<< matrix.edition >>
           requires:
             - be-deps
           lein-command: with-profile +junit test
+          <<: *Matrix
 
       - lein:
-          name: be-tests-java-11
+          name: be-tests-java-11-<< matrix.edition >>
           requires:
             - be-deps
           e: java-11
           lein-command: with-profile +junit test
+          <<: *Matrix
 
       - lein:
           name: be-linter-eastwood
@@ -744,70 +776,70 @@ workflows:
             - be-deps
 
       - test-driver:
-          name: be-tests-bigquery
+          name: be-tests-bigquery-ee
           requires:
-            - be-tests
+            - be-tests-ee
           driver: bigquery
 
       - test-driver:
-          name: be-tests-druid
+          name: be-tests-druid-ee
           requires:
-            - be-tests
+            - be-tests-ee
           driver: druid
 
       - test-driver:
-          name: be-tests-googleanalytics
+          name: be-tests-googleanalytics-ee
           requires:
-            - be-tests
+            - be-tests-ee
           driver: googleanalytics
 
       - test-driver:
-          name: be-tests-mongo
+          name: be-tests-mongo-ee
           requires:
-            - be-tests
+            - be-tests-ee
           e: mongo
           driver: mongo
 
       - test-driver:
-          name: be-tests-mysql
+          name: be-tests-mysql-ee
           description: "(MySQL 5.7)"
           requires:
-            - be-tests
+            - be-tests-ee
           e:
             name: mysql-5-7
           driver: mysql
 
       - test-driver:
-          name: be-tests-mysql-latest
+          name: be-tests-mysql-latest-ee
           description: "(MySQL latest)"
           requires:
-            - be-tests
+            - be-tests-ee
           e:
             name: mysql-latest
           driver: mysql
 
       - test-driver:
-          name: be-tests-mariadb
+          name: be-tests-mariadb-ee
           description: "(MariaDB 10.2)"
           requires:
-            - be-tests
+            - be-tests-ee
           e:
             name: mariadb-10-2
           driver: mysql
 
       - test-driver:
-          name: be-tests-mariadb-latest
+          name: be-tests-mariadb-latest-ee
           description: "(MariaDB latest)"
           requires:
-            - be-tests
+            - be-tests-ee
           e:
             name: mariadb-latest
           driver: mysql
 
       - test-driver:
-          name: be-tests-oracle
+          name: be-tests-oracle-ee
           requires:
-            - be-tests
+            - be-tests-ee
           before-steps:
             - fetch-jdbc-driver:
                 source: ORACLE_JDBC_JAR
@@ -816,25 +848,25 @@ workflows:
           driver: oracle
 
       - test-driver:
-          name: be-tests-postgres
+          name: be-tests-postgres-ee
           description: "(9.6)"
           requires:
-            - be-tests
+            - be-tests-ee
           e: postgres-9-6
           driver: postgres
 
       - test-driver:
-          name: be-tests-postgres-latest
+          name: be-tests-postgres-latest-ee
           description: "(Latest)"
           requires:
-            - be-tests
+            - be-tests-ee
           e: postgres-latest
           driver: postgres
 
       - test-driver:
-          name: be-tests-presto
+          name: be-tests-presto-ee
           requires:
-            - be-tests
+            - be-tests-ee
           e: presto
           before-steps:
             - wait-for-port:
@@ -842,23 +874,23 @@ workflows:
           driver: presto
 
       - test-driver:
-          name: be-tests-redshift
+          name: be-tests-redshift-ee
           requires:
-            - be-tests
+            - be-tests-ee
           driver: redshift
           timeout: 10m
 
       - test-driver:
-          name: be-tests-snowflake
+          name: be-tests-snowflake-ee
           requires:
-            - be-tests
+            - be-tests-ee
           driver: snowflake
           timeout: 15m
 
       - test-driver:
-          name: be-tests-sparksql
+          name: be-tests-sparksql-ee
           requires:
-            - be-tests
+            - be-tests-ee
           e: sparksql
           before-steps:
             - wait-for-port:
@@ -866,22 +898,22 @@ workflows:
           driver: sparksql
 
       - test-driver:
-          name: be-tests-sqlite
+          name: be-tests-sqlite-ee
           requires:
-            - be-tests
+            - be-tests-ee
           driver: sqlite
 
       - test-driver:
-          name: be-tests-sqlserver
+          name: be-tests-sqlserver-ee
           requires:
-            - be-tests
+            - be-tests-ee
           e: sqlserver
           driver: sqlserver
 
       - test-driver:
-          name: be-tests-vertica
+          name: be-tests-vertica-ee
           requires:
-            - be-tests
+            - be-tests-ee
           e: vertica
           before-steps:
             - fetch-jdbc-driver:
@@ -892,18 +924,20 @@ workflows:
           auto-retry: true
 
       - test-migrate-from-h2:
-          name: be-tests-migrate-to-postgres
+          name: be-tests-migrate-to-postgres-<< matrix.edition >>
           requires:
-            - be-tests
+            - be-tests-<< matrix.edition >>
           e: postgres-9-6
           db-type: postgres
+          <<: *Matrix
 
       - test-migrate-from-h2:
-          name: be-tests-migrate-to-mysql
+          name: be-tests-migrate-to-mysql-<< matrix.edition >>
           requires:
-            - be-tests
+            - be-tests-<< matrix.edition >>
           e: mysql-5-7
           db-type: mysql
+          <<: *Matrix
 
       - fe-deps:
           requires:
@@ -930,99 +964,59 @@ workflows:
           requires:
             - fe-deps
       - build-uberjar:
+          name: build-uberjar-<< matrix.edition >>
           requires:
             - be-deps
-      - fe-tests-cypress:
-          name: fe-tests-cypress-1
-          requires:
-            - build-uberjar
-            - fe-deps
-          cypress-group: "default"
-      - fe-tests-cypress:
-          name: fe-tests-cypress-2
-          requires:
-            - build-uberjar
-            - fe-deps
-          cypress-group: "default"
-      - fe-tests-cypress:
-          name: fe-tests-cypress-3
-          requires:
-            - build-uberjar
-            - fe-deps
-          cypress-group: "default"
-      - fe-tests-cypress:
-          name: fe-tests-cypress-4
-          requires:
-            - build-uberjar
-            - fe-deps
-          cypress-group: "default"
+          <<: *Matrix
 
       - fe-tests-cypress:
-          name: fe-tests-cypress-mongo
+          name: fe-tests-cypress-1-<< matrix.edition >>
           requires:
-            - build-uberjar
+            - build-uberjar-<< matrix.edition >>
+            - fe-deps
+          cypress-group: "default"
+          <<: *Matrix
+      - fe-tests-cypress:
+          name: fe-tests-cypress-2-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+            - fe-deps
+          cypress-group: "default"
+          <<: *Matrix
+      - fe-tests-cypress:
+          name: fe-tests-cypress-3-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+            - fe-deps
+          cypress-group: "default"
+          <<: *Matrix
+      - fe-tests-cypress:
+          name: fe-tests-cypress-4-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+            - fe-deps
+          cypress-group: "default"
+          <<: *Matrix
+
+      - fe-tests-cypress:
+          name: fe-tests-cypress-mongo-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
             - fe-deps
           e: fe-mongo
           cypress-group: "mongo"
           driver: mongo
           only-single-database: true
           test-files-location: frontend/test/metabase-db/mongo
+          <<: *Matrix
 
       - fe-tests-cypress:
-          name: fe-tests-cypress-postgres-12
+          name: fe-tests-cypress-postgres-12-<< matrix.edition >>
           requires:
-            - build-uberjar
+            - build-uberjar-<< matrix.edition >>
             - fe-deps
           e: fe-postgres-12
           cypress-group: "postgres"
           only-single-database: true
           test-files-location: frontend/test/metabase-db/postgres
-
-      - deploy-master:
-          requires:
-            - yaml-linter
-            - verify-i18n-files
-
-            - be-linter-bikeshed
-            - be-linter-cloverage
-            - be-linter-docstring-checker
-            - be-linter-eastwood
-            - be-linter-namespace-decls
-            - be-linter-reflection-warnings
-
-            - be-tests
-            - be-tests-java-11
-
-            - be-tests-bigquery
-            - be-tests-druid
-            - be-tests-googleanalytics
-            - be-tests-mongo
-            - be-tests-mysql
-            - be-tests-mysql-latest
-            - be-tests-mariadb
-            - be-tests-mariadb-latest
-            - be-tests-oracle
-            - be-tests-postgres
-            - be-tests-postgres-latest
-            - be-tests-presto
-            - be-tests-redshift
-            - be-tests-snowflake
-            - be-tests-sparksql
-            - be-tests-sqlite
-            - be-tests-sqlserver
-            - be-tests-vertica
-
-            - be-tests-migrate-to-mysql
-            - be-tests-migrate-to-postgres
-
-            - fe-linter-eslint
-            - fe-linter-flow
-            - fe-linter-prettier
-            - fe-linter-docs-links
-
-            - fe-tests-integration
-            - fe-tests-timezones
-            - fe-tests-unit
-          filters:
-            branches:
-              only: master
+          <<: *Matrix

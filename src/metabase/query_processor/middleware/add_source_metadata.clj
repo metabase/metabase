@@ -44,9 +44,9 @@
          {:source-query source-query}))
       nil)))
 
-(s/defn ^:private mbql-source-query->metadata :- [mbql.s/SourceQueryMetadata]
+(s/defn mbql-source-query->metadata :- [mbql.s/SourceQueryMetadata]
   "Preprocess a `source-query` so we can determine the result columns."
-  [source-query]
+  [source-query :- mbql.s/MBQLQuery]
   (try
     (let [cols (binding [api/*current-user-id* nil]
                  ((resolve 'metabase.query-processor/query->expected-cols) {:database (:id (qp.store/database))

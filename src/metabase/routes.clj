@@ -11,8 +11,11 @@
              [dataset :as dataset-api]
              [routes :as api]]
             [metabase.core.initialization-status :as init-status]
+            [metabase.plugins.classloader :as classloader]
             [metabase.routes.index :as index]
             [ring.util.response :as resp]))
+
+(u/ignore-exceptions (classloader/require '[metabase-enterprise.sso.api.routes :as ee.sso.routes]))
 
 (defn- redirect-including-query-string
   "Like `resp/redirect`, but passes along query string URL params as well. This is important because the public and
@@ -21,14 +24,12 @@
   (fn [{:keys [query-string]} respond _]
     (respond (resp/redirect (str url "?" query-string)))))
 
-
 ;; /public routes. /public/question/:uuid.:export-format redirects to /api/public/card/:uuid/query/:export-format
 (defroutes ^:private public-routes
   (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format dataset-api/export-format-regex]
        [uuid export-format]
        (redirect-including-query-string (format "%s/api/public/card/%s/query/%s" (public-settings/site-url) uuid export-format)))
   (GET "*" [] index/public))
-
 
 ;; /embed routes. /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
 (defroutes ^:private embed-routes
@@ -37,18 +38,21 @@
        (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (public-settings/site-url) token export-format)))
   (GET "*" [] index/embed))
 
-
-;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes ^{:doc "Top-level ring routes for Metabase."} routes
+  (or (some-> (resolve 'ee.sso.routes/routes) var-get)
+      (fn [_ respond _]
+        (respond nil)))
   ;; ^/$ -> index.html
   (GET "/" [] index/index)
-  (GET "/favicon.ico" [] (resp/resource-response "frontend_client/favicon.ico"))
+  (GET "/favicon.ico" [] (resp/resource-response (public-settings/application-favicon-url)))
   ;; ^/api/health -> Health Check Endpoint
   (GET "/api/health" [] (if (init-status/complete?)
                           {:status 200, :body {:status "ok"}}
                           {:status 503, :body {:status "initializing", :progress (init-status/progress)}}))
   ;; ^/api/ -> All other API routes
   (context "/api" [] (fn [& args]
+                       ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
+                       ;;
                        ;; if Metabase is not finished initializing, return a generic error message rather than
                        ;; something potentially confusing like "DB is not set up"
                        (if-not (init-status/complete?)

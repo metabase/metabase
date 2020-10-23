@@ -1,5 +1,7 @@
 import "@testing-library/cypress/add-commands";
 
+export const version = require("../../../version.json");
+
 export const USERS = {
   admin: {
     first_name: "Bobby",
@@ -174,6 +176,10 @@ export function createNativeQuestion(name, query) {
     visualization_settings: {},
   });
 }
+
+export const describeWithToken = Cypress.env("HAS_ENTERPRISE_TOKEN")
+  ? describe
+  : describe.skip;
 
 // TODO: does this really need to be a global helper function?
 export function createBasicAlert({ firstAlert, includeNormal } = {}) {

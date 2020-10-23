@@ -2,7 +2,7 @@
 ;; full set of options are here .. https://github.com/technomancy/leiningen/blob/master/sample.project.clj
 
 (defproject metabase-core "1.0.0-SNAPSHOT"
-  :description      "Metabase Community Edition"
+  :description      "Metabase"
   :url              "https://metabase.com/"
   :min-lein-version "2.5.0"
 
@@ -12,11 +12,17 @@
                                         "-user" "" "-password" "" "-driver" "org.h2.Driver"]
    "generate-automagic-dashboards-pot" ["with-profile" "+generate-automagic-dashboards-pot" "run"]
    "install"                           ["with-profile" "+install" "install"]
+   "install-ee"                        ["with-profile" "+install,+ee" "install"]
    "install-for-building-drivers"      ["with-profile" "install-for-building-drivers" "install"]
+   "install-for-building-drivers-ee"   ["with-profile" "install-for-building-drivers,+ee" "install"]
    "run"                               ["with-profile" "+run" "run"]
+   "run-ee"                            ["with-profile" "+run,+ee" "run"]
    "run-with-repl"                     ["with-profile" "+run-with-repl" "repl"]
+   "run-with-repl-ee"                  ["with-profile" "+run-with-repl,+ee" "repl"]
    "ring"                              ["with-profile" "+ring" "ring"]
+   "ring-ee"                           ["with-profile" "+ring,+ee" "ring"]
    "test"                              ["with-profile" "+test" "test"]
+   "test-ee"                           ["with-profile" "+test,+ee" "test"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
                                         "--max-line-length" "205"
                                         ;; see https://github.com/dakrone/lein-bikeshed/issues/41
@@ -29,8 +35,11 @@
    ;; `lein lint` will run all linters
    "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"] ["cloverage"]]
    "repl"                              ["with-profile" "+repl" "repl"]
+   "repl-ee"                           ["with-profile" "+repl,+ee" "repl"]
    "strip-and-compress"                ["with-profile" "+strip-and-compress,-user,-dev" "run"]
-   "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]}
+   "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]
+   "uberjar"                           ["uberjar"]
+   "uberjar-ee"                        ["with-profile" "+ee" "uberjar"]}
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
@@ -105,7 +114,10 @@
    [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
    [medley "1.3.0"]                                                   ; lightweight lib of useful functions
    [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
+   [metabase/saml20-clj "2.0.0"]                                      ; EE SAML integration
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
+   [net.redhogs.cronparser/cron-parser-core "3.4"                     ; describe Cron schedule in human-readable language
+    :exclusions [org.slf4j/slf4j-api]]
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.10"]                          ; helper methods for working with java.lang stuff
    [org.apache.logging.log4j/log4j-api "2.13.3"]                      ; apache logging framework
@@ -174,10 +186,16 @@
   "metabase.jar"
 
   :profiles
-  {:dev
-   {:source-paths ["dev/src" "local/src"]
+  {:oss ; exists for symmetry with the ee profile
+   {}
 
-    :test-paths ["test" "backend/mbql/test"]
+   :ee
+   {:source-paths ["enterprise/backend/src"]
+    :test-paths   ["enterprise/backend/test"]}
+
+   :dev
+   {:source-paths ["dev/src" "local/src"]
+    :test-paths   ["test" "backend/mbql/test"]
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
@@ -293,7 +311,7 @@
      :mb-api-key      "test-api-key"
      ;; use a random port between 3001 and 3501. That way if you run multiple sets of tests at the same time locally
      ;; they won't stomp on each other
-     :mb-jetty-port   #=(eval (str (+ 3001 (rand-int 500))))}
+     :mb-jetty-port   #= (eval (str (+ 3001 (rand-int 500))))}
 
     :jvm-opts
     ["-Duser.timezone=UTC"
@@ -314,13 +332,21 @@
     ;; so running the tests doesn't give you different answers
     {:jvm-opts ["-Duser.timezone=UTC"]}]
 
-   :bikeshed
+   ;; shared stuff between all linter profiles.
+   :linters-common
    [:include-all-drivers
+    :ee
+    :test-common
+    ;; always use in-memory H2 database for linters
+    {:env {:mb-db-type "h2"}}]
+
+   :bikeshed
+   [:linters-common
     {:plugins
      [[lein-bikeshed "0.5.2"]]}]
 
    :eastwood
-   [:include-all-drivers
+   [:linters-common
     {:plugins
      [[jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]]
 
@@ -338,7 +364,7 @@
                            ;; get them to work
                            #_:unused-fn-args
                            #_:unused-locals]
-      :exclude-linters    [; Turn this off temporarily until we finish removing self-deprecated functions & macros
+      :exclude-linters    [    ; Turn this off temporarily until we finish removing self-deprecated functions & macros
                            :deprecations
                            ;; this has a fit in libs that use Potemin `import-vars` such as `java-time`
                            :implicit-dependencies
@@ -348,11 +374,12 @@
    ;; run ./bin/reflection-linter to check for reflection warnings
    :reflection-warnings
    [:include-all-drivers
+    :ee
     {:global-vars {*warn-on-reflection* true}}]
 
    ;; Check that all public vars have docstrings. Run with 'lein docstring-checker'
    :docstring-checker
-   [:include-all-drivers
+   [:linters-common
     {:plugins
      [[docstring-checker "1.1.0"]]
 
@@ -362,28 +389,22 @@
                 #"^metabase\.http-client$"]}}]
 
    :check-namespace-decls
-   [:include-all-drivers
+   [:linters-common
     {:plugins               [[lein-check-namespace-decls "1.0.2"]]
-     :source-paths          ^:replace ["src" "backend/mbql/src" "test" "backend/mbql/test"]
      :check-namespace-decls {:prefix-rewriting true}}]
 
    :cloverage
    [:test-common
     {:dependencies [[camsaul/cloverage "1.2.1.1" :exclusions [riddley]]]
      :plugins      [[camsaul/lein-cloverage  "1.2.1.1"]]
-     :source-paths ^:replace ["src" "backend/mbql/src"]
-     :test-paths   ^:replace ["test" "backend/mbql/test"]
+     :source-paths ^:replace ["src" "backend/mbql/src" "enterprise/backend/src"]
+     :test-paths   ^:replace ["test" "backend/mbql/test" "enterprise/backend/test"]
      :cloverage    {:fail-threshold 69
                     :exclude-call
                     [;; don't instrument logging forms, since they won't get executed as part of tests anyway
                      ;; log calls expand to these
                      clojure.tools.logging/logf
-                     clojure.tools.logging/logp
-                     ;; defonce and defmulti forms get instrumented incorrectly and are false negatives
-                     ;; -- see https://github.com/cloverage/cloverage/issues/294. Once this issue is
-                     ;; fixed we can remove this exception.
-                     defonce
-                     defmulti]}}]
+                     clojure.tools.logging/logp]}}]
 
    ;; build the uberjar with `lein uberjar`
    :uberjar
