@@ -2,7 +2,9 @@
   "Various schemas that are useful throughout the app."
   (:refer-clojure :exclude [distinct])
   (:require [cheshire.core :as json]
-            [clojure.string :as str]
+            [clojure
+             [string :as str]
+             [walk :as walk]]
             [medley.core :as m]
             [metabase.util :as u]
             [metabase.util
@@ -135,6 +137,27 @@
   [schema]
   (with-api-error-message (s/constrained schema empty-or-distinct? "distinct")
     (str (api-error-message schema) " " (deferred-tru "All elements must be distinct."))))
+
+(defn open-schema
+  "Allow for extra keys (recursively) in a schema.
+  For instance:
+
+  {(s/optional-key :thing) s/Int
+   (s/optional-key :sub)   {(s/optional-key :key) s/Int}}
+
+  can validate a map with extra keys:
+
+  {:thing     3
+   :extra-key 5
+   :sub       {:key 3 :another-extra 5}}
+
+  https://github.com/plumatic/schema/issues/120"
+  [m]
+  (walk/prewalk (fn [x]
+                  (if (and (map? x) (not (record? x)))
+                    (assoc (dissoc x (s/find-extra-keys-schema x)) s/Any s/Any)
+                    x))
+                m))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

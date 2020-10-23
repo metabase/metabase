@@ -1081,7 +1081,7 @@
         (is (= ["COUNT(*)"
                 "75"]
                (str/split-lines
-                (mt/user-http-request :rasta :post 202 (format "card/%d/query/csv"
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv"
                                                                (u/get-id card)))))))))
   (testing "with-paramters"
     (with-temp-native-card-with-params [_ card]
@@ -1089,7 +1089,7 @@
         (is (= ["COUNT(*)"
                 "8"]
                (str/split-lines
-                (mt/user-http-request :rasta :post 202 (format "card/%d/query/csv?parameters=%s"
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv?parameters=%s"
                                                                (u/get-id card) encoded-params)))))))))
 
 (deftest json-download-test
@@ -1097,12 +1097,12 @@
     (with-temp-native-card [_ card]
       (with-cards-in-readable-collection card
         (is (= [{(keyword "COUNT(*)") 75}]
-               (mt/user-http-request :rasta :post 202 (format "card/%d/query/json" (u/get-id card))))))))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/get-id card))))))))
   (testing "with parameters"
     (with-temp-native-card-with-params [_ card]
       (with-cards-in-readable-collection card
         (is (= [{(keyword "COUNT(*)") 8}]
-               (mt/user-http-request :rasta :post 202 (format "card/%d/query/json?parameters=%s"
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json?parameters=%s"
                                                               (u/get-id card) encoded-params))))))))
 
 (defn- parse-xlsx-results [results]
@@ -1118,14 +1118,14 @@
       (with-cards-in-readable-collection card
         (is (= [{:col "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
-                (mt/user-http-request :rasta :post 202 (format "card/%d/query/xlsx" (u/get-id card))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/get-id card))
                                       {:request-options {:as :byte-array}})))))))
   (testing "with parameters"
     (with-temp-native-card-with-params [_ card]
       (with-cards-in-readable-collection card
         (is (= [{:col "COUNT(*)"} {:col 8.0}]
                (parse-xlsx-results
-                (mt/user-http-request :rasta :post 202 (format "card/%d/query/xlsx?parameters=%s"
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx?parameters=%s"
                                                                (u/get-id card) encoded-params)
                                       {:request-options {:as :byte-array}}))))))))
 

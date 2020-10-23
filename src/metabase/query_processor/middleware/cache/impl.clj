@@ -9,7 +9,8 @@
   (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayOutputStream DataInputStream DataOutputStream EOFException FilterOutputStream InputStream OutputStream]
            [java.util.zip GZIPInputStream GZIPOutputStream]))
 
-(defn- max-bytes-output-stream ^OutputStream [max-bytes ^OutputStream os]
+(defn- max-bytes-output-stream ^OutputStream
+  [max-bytes ^OutputStream os]
   (let [byte-count  (atom 0)
         check-total (fn [current-total]
                       (when (> current-total max-bytes)
@@ -52,7 +53,8 @@
     (a/close! out-chan)
     (a/close! in-chan)))
 
-(defn- freeze! [^OutputStream os obj]
+(defn- freeze!
+  [^OutputStream os obj]
   (try
     (nippy/freeze-to-out! os obj)
     (.flush os)
@@ -119,12 +121,15 @@
      (start-input-loop! in-chan out-chan bos os)
      {:in-chan in-chan, :out-chan out-chan})))
 
-(defn- thaw! [^InputStream is]
-  (try (nippy/thaw-from-in! is)
-       (catch EOFException _
-         ::eof)))
+(defn- thaw!
+  [^InputStream is]
+  (try
+    (nippy/thaw-from-in! is)
+    (catch EOFException e
+      ::eof)))
 
-(defn- reducible-rows [^InputStream is]
+(defn- reducible-rows
+  [^InputStream is]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
       (loop [acc init]

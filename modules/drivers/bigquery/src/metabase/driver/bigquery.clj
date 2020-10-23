@@ -22,7 +22,7 @@
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
-           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
+           [com.google.api.services.bigquery.model GetQueryResultsResponse QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
             TableList$Tables TableReference TableRow TableSchema]
            java.util.Collections))
 
@@ -144,10 +144,18 @@
 
 (def ^:private ^:const ^Integer query-timeout-seconds 60)
 
+(def ^:private ^:dynamic ^Long max-results-per-page
+  "Maximum number of rows to return per page in a query."
+  20000)
+
+(def ^:private ^:dynamic page-callback
+  "Callback to execute when a new page is retrieved, used for testing"
+  nil)
+
 (defn do-with-finished-response
   "Impl for `with-finished-response`."
   {:style/indent 1}
-  [^QueryResponse response, f]
+  [^GetQueryResultsResponse response, f]
   ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't,
   ;; wait a few seconds for the job to finish.
   (loop [remaining-timeout (double query-timeout-seconds)]
@@ -172,15 +180,42 @@
   [[response-binding response] & body]
   `(do-with-finished-response
     ~response
-    (fn [~(vary-meta response-binding assoc :tag 'com.google.api.services.bigquery.model.QueryResponse)]
+    (fn [~(vary-meta response-binding assoc :tag 'com.google.api.services.bigquery.model.GetQueryResultsResponse)]
       ~@body)))
+
+(defn- ^GetQueryResultsResponse get-query-results
+  [^Bigquery client ^String project-id ^String job-id ^String page-token]
+  (when page-callback
+    (page-callback))
+  (let [request (doto (.getQueryResults (.jobs client) project-id job-id)
+                  (.setMaxResults max-results-per-page)
+                  (.setPageToken page-token))]
+    (google/execute request)))
+
+(defn- ^GetQueryResultsResponse execute-bigquery
+  ([{{:keys [project-id]} :details, :as database} sql parameters]
+   (execute-bigquery (database->client database) (find-project-id project-id (database->credential database)) sql parameters))
+
+  ([^Bigquery client ^String project-id ^String sql parameters]
+   {:pre [client (seq project-id) (seq sql)]}
+   (let [request (doto (QueryRequest.)
+                   (.setTimeoutMs (* query-timeout-seconds 1000))
+                   ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
+                   (.setUseLegacySql (str/includes? (str/lower-case sql) "#legacysql"))
+                   (.setQuery sql)
+                   (bigquery.params/set-parameters! parameters))
+         query-response ^QueryResponse (google/execute (.query (.jobs client) project-id request))
+         job-ref (.getJobReference query-response)
+         job-id (.getJobId job-ref)
+         proj-id (.getProjectId job-ref)]
+     (get-query-results client proj-id job-id nil))))
 
 (defn- post-process-native
   "Parse results of a BigQuery query. `respond` is the same function passed to
   `metabase.driver/execute-reducible-query`, and has the signature
 
     (respond results-metadata rows)"
-  [respond ^QueryResponse resp]
+  [database respond ^QueryResponse resp]
   (with-finished-response [response resp]
     (let [^TableSchema schema
           (.getSchema response)
@@ -200,35 +235,30 @@
                 (dissoc :database-type :database-position)))]
       (respond
        {:cols columns}
-       (for [^TableRow row (.getRows response)]
-         (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
-           (when-let [v (.getV cell)]
+       (letfn [(fetch-page [^GetQueryResultsResponse response]
+                 (lazy-cat
+                  (.getRows response)
+                  (when-let [next-page-token (.getPageToken response)]
+                    (with-finished-response [next-resp (get-query-results (database->client database)
+                                                                          (.getProjectId (.getJobReference response))
+                                                                          (.getJobId (.getJobReference response))
+                                                                          next-page-token)]
+                      (fetch-page next-resp)))))]
+         (for [^TableRow row (fetch-page response)]
+           (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
+             (when-let [v (.getV cell)]
              ;; There is a weird error where everything that *should* be NULL comes back as an Object.
              ;; See https://jira.talendforge.org/browse/TBD-1592
              ;; Everything else comes back as a String luckily so we can proceed normally.
-             (when-not (= (class v) Object)
-               (parser v)))))))))
-
-(defn- ^QueryResponse execute-bigquery
-  ([{{:keys [project-id]} :details, :as database} sql parameters]
-   (execute-bigquery (database->client database) (find-project-id project-id (database->credential database)) sql parameters))
-
-  ([^Bigquery client ^String project-id ^String sql parameters]
-   {:pre [client (seq project-id) (seq sql)]}
-   (let [request (doto (QueryRequest.)
-                   (.setTimeoutMs (* query-timeout-seconds 1000))
-                   ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
-                   (.setUseLegacySql (str/includes? (str/lower-case sql) "#legacysql"))
-                   (.setQuery sql)
-                   (bigquery.params/set-parameters! parameters))]
-     (google/execute (.query (.jobs client) project-id request)))))
+              (when-not (= (class v) Object)
+                (parser v))))))))))
 
 (defn- process-native* [respond database sql parameters]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`
   (letfn [(thunk []
-            (post-process-native respond (execute-bigquery database sql parameters)))]
+            (post-process-native database respond (execute-bigquery database sql parameters)))]
     (try
       (thunk)
       (catch Throwable e
@@ -242,7 +272,7 @@
 
 (defmethod driver/execute-reducible-query :bigquery
   ;; TODO - it doesn't actually cancel queries the way we'd expect
-  [driver {{sql :query, :keys [params table-name mbql?]} :native, :as outer-query} _ respond]
+  [_ {{sql :query, :keys [params]} :native, :as outer-query} _ respond]
   (let [database (qp.store/database)]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
