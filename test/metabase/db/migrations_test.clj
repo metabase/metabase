@@ -129,18 +129,24 @@
       (mt/with-temp* [Pulse     [_]
                       Card      [_]
                       Dashboard [_]]
-        (let [collections-before (db/select-field :name Collection)]
-          (#'migrations/add-migrated-collections)
-          (is (= migrated-collection-names
-                 (set/difference (db/select-field :name Collection) collections-before)))))))
+        (#'migrations/add-migrated-collections)
+        (let [collections (db/select-field :name Collection)]
+          (doseq [collection-name migrated-collection-names]
+            (is (contains? collections collection-name)))))))
 
   (testing "Shouldn't create new Collections for models where there's nothing to migrate"
     (with-add-migrated-collections-cleanup
       (mt/with-temp Dashboard [_]
-        (let [collections-before (db/select-field :name Collection)]
-          (#'migrations/add-migrated-collections)
-          (is (= #{"Migrated Dashboards"}
-                 (set/difference (db/select-field :name Collection) collections-before))))))))
+        (let [collections-before (db/select-field :name Collection)
+              orig-db-exists?    db/exists?]
+          ;; pretend no Pulses or Cards exist if we happen to be running this from the REPL.
+          (with-redefs [db/exists? (fn [model & args]
+                                     (if (#{Pulse Card} model)
+                                       false
+                                       (apply orig-db-exists? model args)))]
+            (#'migrations/add-migrated-collections)
+            (is (= #{"Migrated Dashboards"}
+                   (set/difference (db/select-field :name Collection) collections-before)))))))))
 
 (deftest add-migrated-collections-move-objects-test
   (testing "Should move stuff into the new Collections as appropriate"

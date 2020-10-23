@@ -72,19 +72,23 @@
    :debug Level/DEBUG
    :trace Level/TRACE})
 
-(defn do-with-log-messages-for-level [level thunk]
-  (let [new-level (or (get level-kwd->level (keyword level))
-                      (throw (ex-info "Invalid log level" {:level level})))
-        ctx       ^LoggerContext (LogManager/getContext true)
-        cfg       (.getConfiguration ctx)
-        mb-logger (.getLoggerConfig cfg "metabase")
-        old-level (.getLevel mb-logger)]
+(defn do-with-log-messages-for-level [x thunk]
+  (let [[namespace-symb level] (if (sequential? x)
+                                 x
+                                 ['metabase x])
+        _                      (assert (symbol? namespace-symb))
+        new-level              (or (get level-kwd->level (keyword level))
+                                   (throw (ex-info "Invalid log level" {:level level})))
+        ctx                    ^LoggerContext (LogManager/getContext true)
+        cfg                    (.getConfiguration ctx)
+        logger                 (.getLoggerConfig cfg (name namespace-symb))
+        old-level              (.getLevel logger)]
     (try
-      (.setLevel mb-logger new-level)
+      (.setLevel logger new-level)
       (.updateLoggers ctx)
       (thunk)
       (finally
-        (.setLevel mb-logger old-level)
+        (.setLevel logger old-level)
         (.updateLoggers ctx)))))
 
 (defmacro with-log-level
@@ -92,7 +96,14 @@
   the REPL or for tests.
 
     (with-log-level :debug
-      (do-something))"
+      (do-something))
+
+  You can optionally change the level for only some namespaces. Pass in a pair of `[namespace level]` to change the
+  log level for a namespace and any sub-namespaces (e.g., passing `metabase` will change the log levels for all
+  namespaces starting with `metabase.`:
+
+    (with-log-level [metabase.query-processor :debug]
+      ...)"
   [level & body]
   `(do-with-log-messages-for-level ~level (fn [] ~@body)))
 
