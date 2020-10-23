@@ -1,4 +1,10 @@
-import { signIn, restore, modal, popover } from "__support__/cypress";
+import {
+  signIn,
+  restore,
+  modal,
+  popover,
+  selectDashboardFilter,
+} from "__support__/cypress";
 
 describe("scenarios > dashboard > dashboard drill", () => {
   before(restore);
@@ -163,6 +169,76 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByText("My Param")
       .parent()
       .within(() => cy.findByText("foo"));
+  });
+
+  it("should pass multiple filters for numeric column on drill-through (metabase#13062)", () => {
+    // go to admin > data model > sample dataset > reviews
+    cy.visit("/admin/datamodel/database/1/table/4");
+
+    // Set "Rating" Field type to: "Category" ("Score" is selected by default)
+    cy.findByText("Score").click();
+    // "Category" is not visible and any other method couldn't find it, including `Popover().contains("Category")`
+    cy.get(".ReactVirtualized__Grid")
+      .scrollTo("top")
+      .contains("Category")
+      .click();
+    // make sure the field updated before navigating away
+    cy.findByText("Category");
+
+    // go straight to simple question > reviews
+    cy.visit("/question/new?database=1&table=4");
+
+    // save the question
+    cy.findByText("Save").click();
+    cy.get(".Modal").within(() => {
+      cy.findByText("Save").click();
+    });
+    // and add it to a new dashboard
+    cy.findByText("Yes please!").click();
+    cy.findByText("Create a new dashboard").click();
+    cy.findByLabelText("Name")
+      .click()
+      .type("13062");
+    cy.findByText("Create").click();
+
+    // make sure we switched to the dashboard in edit mode
+    cy.findByText("You're editing this dashboard.");
+
+    // add filter
+    cy.get(".Icon-filter").click();
+    cy.findByText("Other Categories").click();
+    // and link it to the card
+    selectDashboardFilter(cy.get(".DashCard"), "Rating");
+
+    // save the dashboard and exit editing mode
+    cy.findByText("Save").click();
+    cy.findByText("You're editing this dashboard.").should("not.exist");
+
+    // add values to the filter
+    cy.findByText("Category").click();
+    popover().within(() => {
+      cy.findByText("5").click();
+      cy.findByText("4").click();
+    });
+    cy.findByText("Add filter").click();
+
+    // drill-through
+    cy.findByText("xavier").click();
+    cy.findByText("=").click();
+
+    cy.log("**Reported failing on Metabase 1.34.3 and 0.36.2**");
+    cy.findByText("Reviewer is xavier");
+    cy.findByText("Rating is equal to 2 selections");
+    // wait for data to finish loading
+    cy.get(".LoadingSpinner").should("not.exist");
+
+    cy.log("**Test the second case reported in this issue**");
+    // go back to the dashboard
+    cy.visit("/dashboard/2?category=5&category=4");
+    cy.findByText("2 selections");
+
+    cy.findByText("Reviews").click(); // the card title
+    cy.findByText("Rating is equal to 2 selections");
   });
 });
 
