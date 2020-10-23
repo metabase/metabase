@@ -234,7 +234,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     cy.log("**Test the second case reported in this issue**");
     // go back to the dashboard
-    cy.visit("/dashboard/2?category=5&category=4");
+    cy.visit("/dashboard/6?category=5&category=4");
     cy.findByText("2 selections");
 
     cy.findByText("Reviews").click(); // the card title
