@@ -93,9 +93,9 @@
     (u/sh {:dir (c/driver-project-dir driver)} "lein" "clean")
     (u/sh {:dir (c/driver-project-dir driver)
            :env {"LEIN_SNAPSHOTS_IN_RELEASE" "true"
-                 #_"DEBUG"                     #_"1"
-                 "JAVA_HOME"                 (env/env :java-home)
-                 "HOME"                      (env/env :user-home)}}
+                 "HOME"                      (env/env :user-home)
+                 "PATH"                      (env/env :path)
+                 "JAVA_HOME"                 (env/env :java-home)}}
           "lein" "uberjar")
     (strip-and-compress-uberjar! driver)
     (u/announce "%s uberjar build successfully." driver)))

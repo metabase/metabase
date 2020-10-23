@@ -24,15 +24,16 @@
 (def ^:private command-timeout-ms (* 15 60 1000)) ; 15 minutes
 
 (defn sh*
-  "Run a shell command. Like `clojure.java.shell/sh`, but prints output to stdout/stderr and returns results as a vector
-  of lines.
+  "Run a shell command. Like `clojure.java.shell/sh`, but prints output to stdout/stderr and returns a map with keys
+  `:exit`, `:out`, and `:err` (`:out` and `:err` are vectors of lines). Does not throw Exception if process exits with
+  non-zero status code.
 
   Options:
 
   * `env` -- environment variables (as a map) to use when running `cmd`. If `:env` is `nil`, the default parent
     environment (i.e., the environment in which this Clojure code itself is ran) will be used; if `:env` IS passed, it
     completely replaces the parent environment in which this script is ran -- make sure you pass anything that might be
-    needed such as `JAVA_HOME` if you do this
+    needed such as `JAVA_HOME` and `PATH` if you do this
 
   * `dir` -- current directory to use when running the shell command. If not specified, command is run in the same
     current directory as the Clojure scripts, `bin/build-drivers`
