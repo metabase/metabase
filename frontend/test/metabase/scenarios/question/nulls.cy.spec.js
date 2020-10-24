@@ -31,8 +31,8 @@ describe("scenarios > question > null", () => {
       cy.visit("/collection/root");
       cy.findByText("13571").click();
 
-      cy.log("**'No Results reported in v0.37.0**");
-      cy.contains("37.65"); // subtotal for order #1
+      cy.log("**'No Results since at least v0.34.3**");
+      cy.findByText("No results!").should("not.exist");
     });
   });
 
