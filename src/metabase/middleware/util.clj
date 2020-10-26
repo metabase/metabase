@@ -69,3 +69,11 @@
   "Whether this frontend client that made this request is embedded inside an `<iframe>`."
   [request]
   (some-> request (get-in [:headers "x-metabase-embedded"]) Boolean/parseBoolean))
+
+(defn cacheable-24h?
+  "Can the ring request be privately cached?"
+  [{:keys [uri query-string], :as request}]
+  ;; cache /api/database/\d+/.+ and /api/collection/root/items endpoints
+  (or
+   (re-matches #"^/api/collection/root/items$" uri)
+   (re-matches #"^/api/database/\d+/.+" uri)))

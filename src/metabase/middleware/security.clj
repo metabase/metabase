@@ -45,6 +45,11 @@
    []
    {"Cache-Control" "public, max-age=31536000"})
 
+(defn- cache-24h-headers
+  "Headers that tell browsers to cache /api/database/[0-9]+/.+ endpoints for 24 hours"
+  []
+  {"Cache-Control" "private, max-age=86400, must-revalidate, proxy-revalidate"})
+
 (def ^:private ^:const strict-transport-security-header
   "Tell browsers to only access this resource over HTTPS for the next year (prevent MTM attacks). (This only applies if
   the original request was HTTPS; if sent in response to an HTTP request, this is simply ignored)"
@@ -111,12 +116,14 @@
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
-  [& {:keys [allow-iframes? allow-cache?]
-      :or   {allow-iframes? false, allow-cache? false}}]
+  [& {:keys [allow-iframes? allow-cache? allow-24h-cache?]
+      :or   {allow-iframes? false, allow-cache? false, allow-24h-cache? false}}]
   (merge
    (if allow-cache?
      (cache-far-future-headers)
-     (cache-prevention-headers))
+     (if allow-24h-cache?
+       (cache-24h-headers)
+       (cache-prevention-headers)))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes?)
    (when-not allow-iframes?
@@ -134,7 +141,8 @@
 (defn- add-security-headers* [request response]
   (update response :headers merge (security-headers
                                    :allow-iframes? ((some-fn middleware.u/public? middleware.u/embed?) request)
-                                   :allow-cache?   (middleware.u/cacheable? request))))
+                                   :allow-cache?   (middleware.u/cacheable? request)
+                                   :allow-24h-cache? (middleware.u/cacheable-24h? request))))
 
 (defn add-security-headers
   "Add HTTP security and cache-busting headers."
