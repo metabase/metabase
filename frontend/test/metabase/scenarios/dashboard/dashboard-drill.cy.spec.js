@@ -179,6 +179,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByText("Score").click();
     // "Category" is not visible and any other method couldn't find it, including `Popover().contains("Category")`
     cy.get(".ReactVirtualized__Grid")
+      .contains("Score")
       .scrollTo("top")
       .contains("Category")
       .click();
