@@ -1,0 +1,33 @@
+info:
+  name: Metabase Exasol Driver
+  version: 1.0.0-SNAPSHOT
+  description: Allows Metabase to connect to Exasol databases.
+dependencies:
+  - class: com.exasol.jdbc.EXADriver
+    message: >
+      Metabase requires the JDBC EXA driver in order to connect to Exasol databases.
+driver:
+  name: exasol
+  display-name: Exasol
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - name: host
+      display-name: Host
+    - name: port
+      display-name: Port
+    - name: schema
+      display-name: Schema
+    - name: user
+      display-name: Database username
+    - name: password
+      display-name: Database password
+    - name: querytimeout
+      display-name: Query timeout
+      default: 180
+  connection-properties-include-tunnel-config: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.exasol
+  - step: register-jdbc-driver
+    class: com.exasol.jdbc.EXADriver
