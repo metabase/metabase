@@ -10,7 +10,7 @@ describe("scenarios > question > null", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
-  it.skip("should display rows whose value is `null` (metabase#13571)", () => {
+  it("should display rows whose value is `null` (metabase#13571)", () => {
     withSampleDataset(({ ORDERS }) => {
       cy.request("POST", "/api/card", {
         name: "13571",
