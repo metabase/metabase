@@ -317,7 +317,7 @@
 
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
   [_]
-  "SET SESSION TIMEZONE TO %s;")
+  "SET statement_timeout = 60000; SET SESSION TIMEZONE TO %s;")
 
 ;; for some reason postgres `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems like a
 ;; bug with the JDBC driver?
