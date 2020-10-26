@@ -28,7 +28,6 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = {
-  prefetchTables: () => Database.actions.fetchList({ include: "tables" }),
   prefetchDatabases: () => Database.actions.fetchList({ saved: true }),
   push,
 };
@@ -44,7 +43,6 @@ export default class NewQueryOptions extends Component {
   props: Props;
 
   componentWillMount(props) {
-    this.props.prefetchTables();
     this.props.prefetchDatabases();
     const { location, push } = this.props;
     if (Object.keys(location.query).length > 0) {
