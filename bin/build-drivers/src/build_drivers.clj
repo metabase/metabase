@@ -10,7 +10,8 @@
 (defn build-drivers! []
   (u/step "Building all drivers"
     (doseq [driver (all-drivers)]
-      (build-driver/build-driver! driver))
+      (if (contains? #{:google :bigquery :exasol :presto} driver)
+        (build-driver/build-driver! driver)))
     (u/announce "Successfully built all drivers.")))
 
 (defn -main []
