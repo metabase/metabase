@@ -195,12 +195,13 @@
       ~@body)))
 
 (defn- ^GetQueryResultsResponse get-query-results
-  [^Bigquery client ^String project-id ^String job-id ^String page-token]
+  [^Bigquery client ^String project-id ^String job-id ^String location ^String page-token]
   (when page-callback
     (page-callback))
   (let [request (doto (.getQueryResults (.jobs client) project-id job-id)
                   (.setMaxResults max-results-per-page)
-                  (.setPageToken page-token))]
+                  (.setPageToken page-token)
+                  (.setLocation location))]
     (google/execute request)))
 
 (defn- ^GetQueryResultsResponse execute-bigquery
@@ -217,10 +218,11 @@
                    (bigquery.params/set-parameters! parameters))
          query-response ^QueryResponse (google/execute (.query (.jobs client) project-id request))
          job-ref (.getJobReference query-response)
+         location (.getLocation job-ref)
          job-id (.getJobId job-ref)
          proj-id (.getProjectId job-ref)]
      (with-finished-response [_ query-response]
-       (get-query-results client proj-id job-id nil)))))
+       (get-query-results client proj-id job-id location nil)))))
 
 (defn- post-process-native
   "Parse results of a BigQuery query. `respond` is the same function passed to
@@ -254,6 +256,7 @@
                     (with-finished-response [next-resp (get-query-results (database->client database)
                                                                           (.getProjectId (.getJobReference response))
                                                                           (.getJobId (.getJobReference response))
+                                                                          (.getLocation (.getJobReference response))
                                                                           next-page-token)]
                       (fetch-page next-resp)))))]
          (for [^TableRow row (fetch-page response)]
