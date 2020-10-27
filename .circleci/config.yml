@@ -706,6 +706,7 @@ workflows:
       - yaml-linter:
           requires:
             - checkout
+            - fe-deps
 
       - verify-i18n-files:
           requires:
