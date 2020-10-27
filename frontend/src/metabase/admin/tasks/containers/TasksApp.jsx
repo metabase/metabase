@@ -25,9 +25,10 @@ class TasksApp extends React.Component {
       onPreviousPage,
       children,
     } = this.props;
-    const db_id_to_engine = {};
+    const databaseByID = {};
+    // index databases by id for lookup
     for (const db of databases) {
-      db_id_to_engine[db.id] = db.engine;
+      databaseByID[db.id] = db;
     }
     return (
       <Box p={3}>
@@ -62,8 +63,8 @@ class TasksApp extends React.Component {
           <thead>
             <tr>
               <th>{t`Task`}</th>
-              <th>{t`DB ID`}</th>
-              <th>{t`Engine`}</th>
+              <th>{t`DB Name`}</th>
+              <th>{t`DB Engine`}</th>
               <th>{t`Started at`}</th>
               <th>{t`Ended at`}</th>
               <th>{t`Duration (ms)`}</th>
@@ -71,26 +72,28 @@ class TasksApp extends React.Component {
             </tr>
           </thead>
           <tbody>
-            {tasks.map(task => (
-              <tr key={task.id}>
-                <td className="text-bold">{task.task}</td>
-                <td>{task.db_id}</td>
-                <td>
-                  {task.db_id
-                    ? db_id_to_engine[task.db_id] || "Unknown engine"
-                    : null}
-                </td>
-                <td>{task.started_at}</td>
-                <td>{task.ended_at}</td>
-                <td>{task.duration}</td>
-                <td>
-                  <Link
-                    className="link text-bold"
-                    to={`/admin/troubleshooting/tasks/${task.id}`}
-                  >{t`View`}</Link>
-                </td>
-              </tr>
-            ))}
+            {tasks.map(task => {
+              const db = task.db_id ? databaseByID[task.db_id] : null;
+              const name = db ? db.name : null;
+              const engine = db ? db.engine : null;
+              return (
+                <tr key={task.id}>
+                  <td className="text-bold">{task.task}</td>
+                  // only want unknown if there is a db on the task and we don't have info
+                  <td>{task.db_id ? name || t`Unknown name` : null}</td>
+                  <td>{task.db_id ? engine || t`Unknown engine` : null}</td>
+                  <td>{task.started_at}</td>
+                  <td>{task.ended_at}</td>
+                  <td>{task.duration}</td>
+                  <td>
+                    <Link
+                      className="link text-bold"
+                      to={`/admin/troubleshooting/tasks/${task.id}`}
+                    >{t`View`}</Link>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {
