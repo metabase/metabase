@@ -21,13 +21,12 @@ export function processSource(options) {
 
   // COMPILE
   if (parserErrors.length > 0) {
-    console.log("parse errors", parserErrors);
     compileError = parserErrors;
   } else {
     try {
       expression = compile({ cst, tokenVector, ...options });
     } catch (e) {
-      console.log("compile error", e);
+      console.warn("compile error", e);
       compileError = e;
     }
   }
@@ -40,9 +39,8 @@ export function processSource(options) {
         tokenVector,
         ...options,
       }));
-      console.log("suggestions", suggestions);
     } catch (e) {
-      console.log("suggest error", e);
+      console.warn("suggest error", e);
     }
   }
 
@@ -50,7 +48,7 @@ export function processSource(options) {
   try {
     syntaxTree = syntax({ cst, tokenVector, ...options });
   } catch (e) {
-    console.log("syntax error", e);
+    console.warn("syntax error", e);
   }
 
   return {

@@ -38,14 +38,19 @@ fi
 
 
 if [ "$BUILD_TYPE" == "release" ]; then
-    DOCKERHUB_REPOSITORY=metabase
-    DOCKER_IMAGE="${DOCKERHUB_REPOSITORY}:${MB_TAG}"
+    if [ "$MB_EDITION" = "ENTERPRISE" ]; then
+        DOCKERHUB_REPO=metabase-enterprise
+    else
+        DOCKERHUB_REPO=metabase
+    fi
+
+    DOCKER_IMAGE="${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPOSITORY}:${MB_TAG}"
 
     echo "Building Docker image ${DOCKER_IMAGE} from official Metabase release ${MB_TAG}"
 
     # download the official version of Metabase which matches our tag
     # http://downloads.metabase.com/${MB_TAG}/metabase.jar
-    curl -L -f -o ${BASEDIR}/metabase.jar https://s3.amazonaws.com/goldbely-production/metabase/latest/metabase.jar
+    curl -L -f -o ${BASEDIR}/metabase.jar https://s3.amazonaws.com/goldbely-production/metabase/${MB_TAG}/metabase.jar
 
     if [[ $? -ne 0 ]]; then
         echo "Download failed!"

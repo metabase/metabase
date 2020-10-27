@@ -9,7 +9,7 @@ import Icon from "metabase/components/Icon";
 import cx from "classnames";
 import { t } from "ttag";
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 const HEADER_ICON_SIZE = 16;
 

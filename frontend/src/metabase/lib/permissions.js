@@ -1,8 +1,8 @@
 import { getIn, setIn } from "icepick";
 import _ from "underscore";
 
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { SchemaName, TableId } from "metabase/meta/types/Table";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { SchemaName, TableId } from "metabase-types/types/Table";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
@@ -14,7 +14,7 @@ import type {
   Group,
   GroupId,
   GroupsPermissions,
-} from "metabase/meta/types/Permissions";
+} from "metabase-types/types/Permissions";
 
 type TableEntityId = {
   databaseId: DatabaseId,
@@ -107,7 +107,7 @@ export const getTablesPermission = (
     return getPermission(
       permissions,
       groupId,
-      [databaseId, "schemas", schemaName],
+      [databaseId, "schemas", schemaName || ""],
       true,
     );
   } else {
@@ -128,7 +128,7 @@ export const getFieldsPermission = (
     return getPermission(
       permissions,
       groupId,
-      [databaseId, "schemas", schemaName, tableId],
+      [databaseId, "schemas", schemaName || "", tableId],
       true,
     );
   } else {
@@ -200,7 +200,7 @@ function inferEntityPermissionValueFromChildTables(
   metadata: Metadata,
 ) {
   const { databaseId } = entityId;
-  const database = metadata && metadata.databases[databaseId];
+  const database = metadata && metadata.database(databaseId);
 
   const entityIdsForDescendantTables: TableEntityId[] = _.chain(database.tables)
     .filter(t => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
@@ -232,7 +232,8 @@ export function inferAndUpdateEntityPermissions(
   metadata: Metadata,
 ) {
   // $FlowFixMe
-  const { databaseId, schemaName } = entityId;
+  const { databaseId } = entityId;
+  const schemaName = entityId.schemaName || "";
 
   if (schemaName) {
     // Check all tables for current schema if their shared schema-level permission value should be updated
@@ -286,7 +287,8 @@ export function updateFieldsPermission(
   value: string,
   metadata: Metadata,
 ): GroupsPermissions {
-  const { databaseId, schemaName, tableId } = entityId;
+  const { databaseId, tableId } = entityId;
+  const schemaName = entityId.schemaName || "";
 
   permissions = updateTablesPermission(
     permissions,
@@ -325,7 +327,7 @@ export function updateTablesPermission(
   permissions = updatePermission(
     permissions,
     groupId,
-    [databaseId, "schemas", schemaName],
+    [databaseId, "schemas", schemaName || ""],
     value,
     tableIds,
   );
@@ -340,10 +342,14 @@ export function updateSchemasPermission(
   value: string,
   metadata: Metadata,
 ): GroupsPermissions {
-  const database = metadata.databases[databaseId];
+  const database = metadata.database(databaseId);
   const schemaNames = database && database.schemaNames();
   const schemaNamesOrNoSchema =
-    schemaNames && schemaNames.length > 0 ? schemaNames : [""];
+    schemaNames &&
+    schemaNames.length > 0 &&
+    !(schemaNames.length === 1 && schemaNames[0] === null)
+      ? schemaNames
+      : [""];
 
   permissions = downgradeNativePermissionsIfNeeded(
     permissions,

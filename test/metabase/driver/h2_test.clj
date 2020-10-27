@@ -1,5 +1,6 @@
 (ns metabase.driver.h2-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase
              [db :as mdb]
@@ -7,6 +8,7 @@
              [models :refer [Database]]
              [query-processor :as qp]
              [test :as mt]]
+            [metabase.db.spec :as db.spec]
             [metabase.driver.h2 :as h2]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.test.util :as tu]
@@ -44,7 +46,6 @@
     (is (= "cam"
            (#'h2/db-details->user {:db "file:my_db.db;USER=cam"})))))
 
-
 (deftest only-connect-to-existing-dbs-test
   (testing "Make sure we *cannot* connect to a non-existent database by default"
     (is (= ::exception-thrown
@@ -76,11 +77,11 @@
 
 (deftest add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
-    (is (= (hsql/call :dateadd (hx/literal "millisecond") 100500 :%now)
+    (is (= (hsql/call :dateadd (hx/literal "millisecond") (hsql/call :cast 100500.0 (hsql/raw "long")) :%now)
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.5 :second))))
 
   (testing "Non-fractional seconds should remain seconds, but be cast to longs"
-    (is (= (hsql/call :dateadd (hx/literal "second") 100 :%now)
+    (is (= (hsql/call :dateadd (hx/literal "second") (hsql/call :cast 100.0 (hsql/raw "long")) :%now)
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
 
 (deftest clob-test
@@ -107,3 +108,9 @@
                :field_ref    [:field-literal "D" :type/DateTime]
                :name         "D"}]
              (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
+
+(deftest timestamp-with-timezone-test
+  (testing "Make sure TIMESTAMP WITH TIME ZONEs come back as OffsetDateTimes."
+    (is (= [{:t #t "2020-05-28T18:06-07:00"}]
+           (jdbc/query (db.spec/h2 {:db "mem:test_db"})
+                       "SELECT TIMESTAMP WITH TIME ZONE '2020-05-28 18:06:00.000 America/Los_Angeles' AS t")))))

@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import DetailPane from "./DetailPane";
 import QueryButton from "metabase/components/QueryButton";
-import QueryDefinition from "./QueryDefinition";
+import QueryDefinition from "../QueryDefinition";
 
 import { createCard } from "metabase/lib/card";
 import * as Q_DEPRECATED from "metabase/lib/query";
@@ -50,7 +50,7 @@ export default class MetricPane extends Component {
 
   newCard() {
     const { metric, metadata } = this.props;
-    const table = metadata && metadata.tables[metric.table_id];
+    const table = metadata && metadata.table(metric.table_id);
 
     if (table) {
       const card = createCard();
@@ -74,7 +74,7 @@ export default class MetricPane extends Component {
   }
 
   render() {
-    const { metric, metadata } = this.props;
+    const { metric } = this.props;
 
     const metricName = metric.name;
 
@@ -96,12 +96,10 @@ export default class MetricPane extends Component {
         useForCurrentQuestion={useForCurrentQuestion}
         usefulQuestions={usefulQuestions}
         extra={
-          metadata && (
-            <div>
-              <p className="text-bold">{t`Metric Definition`}</p>
-              <QueryDefinition object={metric} metadata={metadata} />
-            </div>
-          )
+          <div>
+            <p className="text-bold">{t`Metric Definition`}</p>
+            <QueryDefinition object={metric} />
+          </div>
         }
       />
     );

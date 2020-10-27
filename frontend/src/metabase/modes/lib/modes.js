@@ -9,7 +9,7 @@ import PivotMode from "../components/modes/PivotMode";
 import NativeMode from "../components/modes/NativeMode";
 import DefaultMode from "../components/modes/DefaultMode";
 
-import type { QueryMode } from "metabase/meta/types/Visualization";
+import type { QueryMode } from "metabase-types/types/Visualization";
 
 import type Question from "metabase-lib/lib/Question";
 

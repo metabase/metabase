@@ -17,6 +17,7 @@
   (merge models/IModelDefaults
          {:types (constantly {:query :json})}))
 
+
 ;;; Helper Fns
 
 (defn average-execution-time-ms

@@ -217,7 +217,7 @@
   [_ render-type timezone-id card {:keys [rows cols] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
-        rows           (sparkline/sparkline-rows timezone-id card data)
+        rows           (sparkline/cleaned-rows timezone-id card data)
         last-rows      (reverse (take-last 2 rows))
         values         (for [row last-rows]
                          (some-> row y-axis-rowfn common/format-number))

@@ -6,8 +6,6 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { loadTableAndForeignKeys } from "metabase/lib/table";
-
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import View from "../components/view/View";
@@ -39,6 +37,8 @@ import {
   getIsRunnable,
   getIsResultDirty,
   getMode,
+  getModalSnippet,
+  getSnippetCollectionId,
   getQuery,
   getQuestion,
   getOriginalQuestion,
@@ -52,6 +52,8 @@ import {
   getIsPreviewable,
   getIsVisualized,
   getIsLiveResizable,
+  getNativeEditorCursorOffset,
+  getNativeEditorSelectedText,
 } from "../selectors";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -134,7 +136,6 @@ const mapStateToProps = (state, props) => {
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
 
-    loadTableAndForeignKeysFn: loadTableAndForeignKeys,
     autocompleteResultsFn: prefix => autocompleteResults(state.qb.card, prefix),
     instanceSettings: getSettings(state),
 
@@ -143,6 +144,10 @@ const mapStateToProps = (state, props) => {
       props,
     ),
     queryStartTime: getQueryStartTime(state),
+    nativeEditorCursorOffset: getNativeEditorCursorOffset(state),
+    nativeEditorSelectedText: getNativeEditorSelectedText(state),
+    modalSnippet: getModalSnippet(state),
+    snippetCollectionId: getSnippetCollectionId(state),
   };
 };
 

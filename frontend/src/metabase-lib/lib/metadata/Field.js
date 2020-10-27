@@ -5,6 +5,8 @@ import Table from "./Table";
 
 import moment from "moment";
 
+import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+
 import Dimension from "../Dimension";
 
 import { formatField, stripId } from "metabase/lib/formatting";
@@ -34,7 +36,7 @@ import {
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
 
-import type { FieldValues } from "metabase/meta/types/Field";
+import type { FieldValues } from "metabase-types/types/Field";
 
 /**
  * Wrapper class for field metadata objects. Belongs to a Table.
@@ -48,7 +50,7 @@ export default class Field extends Base {
   name_field: ?Field;
 
   parent() {
-    return this.metadata ? this.metadata.fields[this.parent_id] : null;
+    return this.metadata ? this.metadata.field(this.parent_id) : null;
   }
 
   path() {
@@ -187,27 +189,69 @@ export default class Field extends Base {
     return d && d.field();
   }
 
+  // FILTERS
+
+  @memoize
+  filterOperators(selected) {
+    return getFilterOperators(this, this.table, selected);
+  }
+
+  @memoize
+  filterOperatorsLookup() {
+    return createLookupByProperty(this.filterOperators(), "name");
+  }
+
   filterOperator(operatorName) {
-    if (this.filter_operators_lookup) {
-      return this.filter_operators_lookup[operatorName];
-    } else {
-      return this.filterOperators().find(o => o.name === operatorName);
-    }
+    return this.filterOperatorsLookup()[operatorName];
   }
 
-  filterOperators() {
-    return this.filter_operators || getFilterOperators(this, this.table);
+  // @deprecated: use filterOperators
+  // $FlowFixMe: known to not have side-effects
+  get filter_operators() {
+    return this.filterOperators();
+  }
+  // @deprecated: use filterOperatorsLookup
+  // $FlowFixMe: known to not have side-effects
+  get filter_operators_lookup() {
+    return this.filterOperatorsLookup();
   }
 
+  // AGGREGATIONS
+
+  @memoize
   aggregationOperators() {
     return this.table
-      ? this.table.aggregation_operators.filter(
-          aggregation =>
-            aggregation.validFieldsFilters[0] &&
-            aggregation.validFieldsFilters[0]([this]).length === 1,
-        )
+      ? this.table
+          .aggregationOperators()
+          .filter(
+            aggregation =>
+              aggregation.validFieldsFilters[0] &&
+              aggregation.validFieldsFilters[0]([this]).length === 1,
+          )
       : null;
   }
+
+  @memoize
+  aggregationOperatorsLookup() {
+    return createLookupByProperty(this.aggregationOperators(), "short");
+  }
+
+  aggregationOperator(short) {
+    return this.aggregationOperatorsLookup()[short];
+  }
+
+  // @deprecated: use aggregationOperators
+  // $FlowFixMe: known to not have side-effects
+  get aggregation_operators() {
+    return this.aggregationOperators();
+  }
+  // @deprecated: use aggregationOperatorsLookup
+  // $FlowFixMe: known to not have side-effects
+  get aggregation_operators_lookup() {
+    return this.aggregationOperatorsLookup();
+  }
+
+  // BREAKOUTS
 
   /**
    * Returns a default breakout MBQL clause for this field
@@ -240,6 +284,8 @@ export default class Field extends Base {
     }
   }
 
+  // REMAPPINGS
+
   /**
    * Returns the remapped field, if any
    */
@@ -247,7 +293,7 @@ export default class Field extends Base {
     const displayFieldId =
       this.dimensions && this.dimensions.human_readable_field_id;
     if (displayFieldId != null) {
-      return this.metadata.fields[displayFieldId];
+      return this.metadata.field(displayFieldId);
     }
     // this enables "implicit" remappings from type/PK to type/Name on the same table,
     // used in FieldValuesWidget, but not table/object detail listings

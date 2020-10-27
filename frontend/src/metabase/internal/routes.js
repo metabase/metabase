@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { Link, Route, IndexRedirect } from "react-router";
+import { Route, IndexRedirect } from "react-router";
 
 import {
   Archived,
@@ -10,12 +10,7 @@ import {
   Unauthorized,
 } from "metabase/containers/ErrorPages";
 
-import ModalsPage from "./pages/ModalsPage";
-
-import fitViewport from "metabase/hoc/FitViewPort";
-
-const ErrorWithDetails = () => <GenericError details="Example error message" />;
-
+// Import legacy apps - TODO - move this to a different style of documentation
 // $FlowFixMe: doesn't know about require.context
 const req = require.context(
   "metabase/internal/components",
@@ -23,62 +18,41 @@ const req = require.context(
   /(\w+)App.jsx$/,
 );
 
-const PAGES = {};
+const APPS = {};
 for (const key of req.keys()) {
   const name = key.match(/(\w+)App.jsx$/)[1];
-  PAGES[name] = req(key).default;
+  APPS[name] = req(key).default;
 }
 
-const WelcomeApp = () => {
-  return (
-    <div className="wrapper flex flex-column justify-center">
-      <div className="my4">
-        <h1>Metabase Style Guide</h1>
-        <p className="text-paragraph">
-          Reference and samples for how to make things the Metabase way.
-        </p>
-      </div>
-    </div>
-  );
-};
+/* Pages - In order they appear in nav */
+import WelcomePage from "metabase/internal/pages/WelcomePage";
+import TypePage from "metabase/internal/pages/TypePage";
+import IconsPage from "metabase/internal/pages/IconsPage";
+import ColorsPage from "metabase/internal/pages/ColorsPage";
+import ComponentsPage from "metabase/internal/pages/ComponentsPage";
+import ModalsPage from "metabase/internal/pages/ModalsPage";
 
-const InternalLayout = fitViewport(({ children }) => {
-  return (
-    <div className="flex flex-column flex-full">
-      <nav className="wrapper flex align-center py3 border-bottom">
-        <a className="text-brand-hover" href="/_internal">
-          <h4>Style Guide</h4>
-        </a>
-        <ul className="flex ml-auto">
-          {Object.keys(PAGES).map(name => (
-            <li key={name}>
-              <Link
-                className="link mx2"
-                to={"/_internal/" + name.toLowerCase()}
-              >
-                {name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      <div className="flex flex-full">{children}</div>
-    </div>
-  );
-});
+import { InternalLayout } from "metabase/internal/components/Layout";
+
+const ErrorWithDetails = () => <GenericError details="Example error message" />;
 
 export default (
   <Route component={InternalLayout}>
     <IndexRedirect to="welcome" />
-    <Route path="welcome" component={WelcomeApp} />
-    {Object.entries(PAGES).map(
+    <Route path="welcome" component={WelcomePage} />
+    <Route path="type" component={TypePage} />
+    <Route path="icons" component={IconsPage} />
+    <Route path="colors" component={ColorsPage} />
+    <Route path="components/:componentName" component={ComponentsPage} />
+    <Route path="modals" component={ModalsPage} />
+    {/* Legacy App pages - not really style guide related, but keep for now */}
+    {Object.entries(APPS).map(
       ([name, Component]) =>
         Component &&
         (Component.routes || (
           <Route path={name.toLowerCase()} component={Component} />
         )),
     )}
-    <Route path="modals" component={ModalsPage} />
     <Route path="errors">
       <Route path="404" component={NotFound} />
       <Route path="archived" component={Archived} />

@@ -1,8 +1,13 @@
 (ns leiningen.include-drivers
-  (:require [clojure.string :as str]
-            [colorize.core :as colorize]
-            [leiningen.core.project :as p])
-  (:import java.io.File))
+     (:require [clojure.string :as str]
+               [colorize.core :as colorize]
+               [leiningen.core.project :as p])
+     (:import java.io.File))
+
+(defonce ^:private ^{:arglists '([s]), :doc "Log a message `s` the first time we see it. This middleware might run
+  multiple times, and we only really need to log a message the first time we see it."}
+  log-once
+  (comp (memoize println) str))
 
 (defn- file-exists? [^String filename]
   (.exists (File. filename)))
@@ -35,12 +40,12 @@
   {:pre [(string? driver) (seq driver)]}
   (if-let [{:keys [include-drivers-dependencies]} (driver->project driver)]
     (or (every? plugins-file-exists? include-drivers-dependencies)
-        (println
+        (log-once
          (colorize/color
           :red
           (format "[include-drivers middleware] Not including %s because not all dependencies matching %s found in /plugins"
                   driver (set include-drivers-dependencies)))))
-    (println
+    (log-once
      (colorize/color
       :red
       (format "[include-drivers middleware] Not including %s because we could not its project.clj" driver)))))
@@ -59,7 +64,7 @@
           :else
           (some-> (System/getenv "DRIVERS") (str/split #",") set (disj "h2" "postgres" "mysql")))
 
-        _ (println
+        _ (log-once
            (colorize/color
             :magenta
             (format "[include-drivers middleware] Attempting to include these drivers: %s" (set drivers))))
@@ -120,7 +125,7 @@
 (defn- test-drivers-profile [project]
   (let [test-drivers  (test-drivers project)
         test-projects (test-drivers-projects test-drivers)]
-    (println
+    (log-once
      (colorize/color
       :magenta
       (format "[include-drivers middleware] including these drivers: %s" (set test-drivers))))
@@ -130,17 +135,13 @@
      :source-paths (test-drivers-source-paths test-drivers)
      :test-paths   (test-drivers-test-paths   test-drivers)}))
 
-;; When we merge a new profile into the project Leiningen will reload the project, which will cause our middleware to
-;; run a second time. Make sure we don't add the profile a second time or we'll be stuck in an infinite loop of adding
-;; a new profile and reloading.
-(defonce ^:private has-added-test-drivers-profile? (atom false))
-
 (defn middleware
   "Add dependencies, source paths, and test paths for to Metabase drivers that are packaged as separate projects and
   specified by the `DRIVERS` env var."
   [project]
-  (if @has-added-test-drivers-profile?
+  ;; When we merge a new profile into the project Leiningen will reload the project, which will cause our middleware
+  ;; to run a second time. Make sure we don't add the profile a second time or we'll be stuck in an infinite loop of
+  ;; adding a new profile and reloading.
+  (if (::has-driver-profiles? project)
     project
-    (do
-      (reset! has-added-test-drivers-profile? true)
-      (p/merge-profiles project [(test-drivers-profile project)]))))
+    (p/merge-profiles project [(test-drivers-profile project) {::has-driver-profiles? true}])))

@@ -83,7 +83,7 @@
   [_]
   (ssh/with-tunnel-config
     [driver.common/default-host-details
-     (assoc driver.common/default-port-details :default 3306)
+     (assoc driver.common/default-port-details :placeholder 3306)
      driver.common/default-dbname-details
      driver.common/default-user-details
      driver.common/default-password-details
@@ -97,6 +97,11 @@
   (if (= unit :millisecond)
     (recur driver hsql-form (/ amount 1000.0) :second)
     (hsql/call :date_add hsql-form (hsql/raw (format "INTERVAL %s %s" amount (name unit))))))
+
+;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
+(defmethod sql.qp/current-datetime-honeysql-form :mysql
+  [_]
+  (hsql/call :now 6))
 
 (defmethod driver/humanize-connection-error-message :mysql
   [_ message]
@@ -150,6 +155,10 @@
 ;; users in the UI
 (defmethod driver/supports? [:mysql :case-sensitivity-string-filter-options] [_ _] false)
 
+(defmethod driver/db-start-of-week :mysql
+  [_]
+  :sunday)
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -179,8 +188,10 @@
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
 ;; explanation of format specifiers
+;; this will generate a SQL statement casting the TIME to a DATETIME so date_format doesn't fail:
+;; date_format(CAST(mytime AS DATETIME), '%Y-%m-%d %H') AS mytime
 (defn- trunc-with-format [format-str expr]
-  (str-to-date format-str (date-format format-str expr)))
+  (str-to-date format-str (date-format format-str (hx/cast :DATETIME expr))))
 
 (defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:mysql :minute]          [_ _ expr] (trunc-with-format "%Y-%m-%d %H:%i" expr))
@@ -188,23 +199,24 @@
 (defmethod sql.qp/date [:mysql :hour]            [_ _ expr] (trunc-with-format "%Y-%m-%d %H" expr))
 (defmethod sql.qp/date [:mysql :hour-of-day]     [_ _ expr] (hx/hour expr))
 (defmethod sql.qp/date [:mysql :day]             [_ _ expr] (hsql/call :date expr))
-(defmethod sql.qp/date [:mysql :day-of-week]     [_ _ expr] (hsql/call :dayofweek expr))
 (defmethod sql.qp/date [:mysql :day-of-month]    [_ _ expr] (hsql/call :dayofmonth expr))
 (defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr] (hsql/call :dayofyear expr))
 (defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (hx/month expr))
 (defmethod sql.qp/date [:mysql :quarter-of-year] [_ _ expr] (hx/quarter expr))
 (defmethod sql.qp/date [:mysql :year]            [_ _ expr] (hsql/call :makedate (hx/year expr) 1))
 
+(defmethod sql.qp/date [:mysql :day-of-week]
+  [_ _ expr]
+  (sql.qp/adjust-day-of-week :mysql (hsql/call :dayofweek expr)))
+
 ;; To convert a YEARWEEK (e.g. 201530) back to a date you need tell MySQL which day of the week to use,
 ;; because otherwise as far as MySQL is concerned you could be talking about any of the days in that week
 (defmethod sql.qp/date [:mysql :week] [_ _ expr]
-  (str-to-date "%X%V %W"
-               (hx/concat (hsql/call :yearweek expr)
-                          (hx/literal " Sunday"))))
-
-;; mode 6: Sunday is first day of week, first week of year is the first one with 4+ days
-(defmethod sql.qp/date [:mysql :week-of-year] [_ _ expr]
-  (hx/inc (hx/week expr 6)))
+  (let [extract-week-fn (fn [expr]
+                          (str-to-date "%X%V %W"
+                                       (hx/concat (hsql/call :yearweek expr)
+                                                  (hx/literal " Sunday"))))]
+    (sql.qp/adjust-start-of-week :mysql extract-week-fn expr)))
 
 (defmethod sql.qp/date [:mysql :month] [_ _ expr]
   (str-to-date "%Y-%m-%d"
@@ -259,7 +271,7 @@
     :TINYTEXT   :type/Text
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
-    :YEAR       :type/Integer}
+    :YEAR       :type/Date}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
 
@@ -338,15 +350,44 @@
 
 ;; MySQL TIMESTAMPS are actually TIMESTAMP WITH LOCAL TIME ZONE, i.e. they are stored normalized to UTC when stored.
 ;; However, MySQL returns them in the report time zone in an effort to make our lives horrible.
+(defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/TIMESTAMP]
+  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  ;; Check and see if the column type is `TIMESTAMP` (as opposed to `DATETIME`, which is the equivalent of
+  ;; LocalDateTime), and normalize it to a UTC timestamp if so.
+  (if (= (.getColumnTypeName rsmeta i) "TIMESTAMP")
+    (fn read-timestamp-thunk []
+      (when-let [t (.getObject rs i LocalDateTime)]
+        (t/with-offset-same-instant (t/offset-date-time t (t/zone-id (qp.timezone/results-timezone-id))) (t/zone-offset 0))))
+    (fn read-datetime-thunk []
+      (.getObject rs i LocalDateTime))))
+
+;; Results of `timediff()` might come back as negative values, or might come back as values that aren't valid
+;; `LocalTime`s e.g. `-01:00:00` or `25:00:00`.
 ;;
-;; Check and see if the column type is `TIMESTAMP` (as opposed to `DATETIME`, which is the equivalent of
-;; LocalDateTime), and normalize it to a UTC timestamp if so.
-(defmethod sql-jdbc.execute/read-column [:mysql Types/TIMESTAMP]
-  [_ _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (when-let [t (.getObject rs i LocalDateTime)]
-    (if (= (.getColumnTypeName rsmeta i) "TIMESTAMP")
-      (t/with-offset-same-instant (t/offset-date-time t (t/zone-id (qp.timezone/results-timezone-id))) (t/zone-offset 0))
-      t)))
+;; There is currently no way to tell whether the column is the result of a `timediff()` call (i.e., a duration) or a
+;; normal `LocalTime` -- JDBC doesn't have interval/duration type enums. `java.time.LocalTime`only accepts values of
+;; hour between 0 and 23 (inclusive). The MariaDB JDBC driver's implementations of `(.getObject rs i
+;; java.time.LocalTime)` will throw Exceptions theses cases.
+;;
+;; Thus we should attempt to fetch temporal results the normal way and fall back to string representations for cases
+;; where the values are unparseable.
+(defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/TIME]
+  [driver ^ResultSet rs rsmeta ^Integer i]
+  (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/TIME]) driver rs rsmeta i)]
+    (fn read-time-thunk []
+      (try
+        (parent-thunk)
+        (catch Throwable _
+          (.getString rs i))))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/DATE]
+  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (if (= "YEAR" (.getColumnTypeName rsmeta i))
+    (fn read-time-thunk []
+      (when-let [x (.getObject rs i)]
+        (.toLocalDate ^java.sql.Date x)))
+    (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/DATE]) driver rs rsmeta i)]
+      parent-thunk)))
 
 (defn- format-offset [t]
   (let [offset (t/format "ZZZZZ" (t/zone-offset t))]

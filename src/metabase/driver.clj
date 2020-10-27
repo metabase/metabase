@@ -1,7 +1,7 @@
 (ns metabase.driver
   "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like
   introspecting their schemas and processing and running MBQL queries. Drivers must implement some or all of the
-  multimethods defined below, and register themselves with a call to `regsiter!`.
+  multimethods defined below, and register themselves with a call to `register!`.
 
   SQL-based drivers can use the `:sql` driver as a parent, and JDBC-based SQL drivers can use `:sql-jdbc`. Both of
   these drivers define additional multimethods that child drivers should implement; see `metabase.driver.sql` and
@@ -259,6 +259,16 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti escape-entity-name-for-metadata
+  "escaping for when calling `.getColumns` or `.getTables` on table names or schema names. Useful for when a database
+  driver has difference escaping rules for table or schema names when used from metadata.
+
+  For example, oracle treats slashes differently when querying versus when used with `.getTables` or `.getColumns`"
+  {:arglists '([driver table-name])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod escape-entity-name-for-metadata :default [_driver table-name] table-name)
 
 (defmulti describe-table-fks
   "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys`. Results
@@ -283,7 +293,8 @@
     :display-name su/NonBlankString
 
     ;; Type of this property. Defaults to `:string` if unspecified.
-    (s/optional-key :type) (s/enum :string :integer :boolean :password)
+    ;; `:select` is a `String` in the backend.
+    (s/optional-key :type) (s/enum :string :integer :boolean :password :select :text)
 
     ;; A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a
     ;; placeholder.
@@ -295,7 +306,10 @@
     (s/optional-key :placeholder) s/Any
 
     ;; Is this property required? Defaults to `false`.
-    (s/optional-key :required?) s/Bool}
+    (s/optional-key :required?) s/Bool
+
+    ;; Any options for `:select` types
+    (s/optional-key :options) {s/Keyword s/Str}}
 
    (complement (every-pred #(contains? % :default) #(contains? % :placeholder)))
    "connection details that does not have both default and placeholder"))
@@ -325,7 +339,6 @@
   You can use `qp.reducible/reducible-rows` to create reducible, streaming results.
 
   Example impl:
-
 
     (defmethod reducible-query :my-driver
       [_ query context respond]
@@ -505,7 +518,8 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod splice-parameters-into-native-query ::driver [_ query]
+(defmethod splice-parameters-into-native-query ::driver
+  [_ query]
   query)
 
 
@@ -588,5 +602,19 @@
   this method.`Driver-agnostic end-to-end native parameter tests live in
   `metabase.query-processor-test.parameters-test` and other namespaces."
   {:arglists '([driver inner-query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti default-field-order
+  "Return how fields should be sorted by default for this database."
+  {:added "0.36.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod default-field-order ::driver [_] :database)
+
+(defmulti db-start-of-week
+  "Return start of week for given database"
+  {:added "0.37.0" :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

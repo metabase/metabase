@@ -267,6 +267,10 @@ function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
 export const isRemappedToString = series =>
   hasRemappingAndValuesAreStrings(getFirstNonEmptySeries(series).data);
 
+export const hasClickBehavior = series =>
+  getIn(series, [0, "card", "visualization_settings", "click_behavior"]) !=
+  null;
+
 // is this a dashboard multiseries?
 // TODO: better way to detect this?
 export const isMultiCardSeries = series =>

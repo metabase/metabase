@@ -81,7 +81,7 @@ export const fetchRealDatabases = (reload = false) => {
 export const FETCH_DATABASE_METADATA = Databases.actions.fetchDatabaseMetadata.toString();
 export const fetchDatabaseMetadata = (dbId, reload = false) => {
   deprecated("metabase/redux/metadata fetchDatabaseMetadata");
-  return Databases.actions.fetchDatabaseMetadata({ id: dbId }, reload);
+  return Databases.actions.fetchDatabaseMetadata({ id: dbId }, { reload });
 };
 
 export const updateDatabase = database => {
@@ -323,17 +323,25 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
   },
 );
 
-export const loadMetadataForQuery = query => dispatch =>
+export const loadMetadataForQuery = query => loadMetadataForQueries([query]);
+
+export const loadMetadataForQueries = queries => dispatch =>
   Promise.all(
-    query.dependentMetadata().map(({ type, id, ...options }) => {
-      if (type === "table") {
-        if (options.foreignTables) {
-          return dispatch(Tables.actions.fetchMetadataAndForeignTables({ id }));
+    _.chain(queries)
+      .map(q => q.dependentMetadata())
+      .flatten()
+      .uniq(false, dep => dep.type + dep.id)
+      .map(({ type, id, foreignTables }) => {
+        if (type === "table") {
+          return (foreignTables
+            ? Tables.actions.fetchMetadataAndForeignTables
+            : Tables.actions.fetchMetadata)({ id });
         } else {
-          return dispatch(Tables.actions.fetchMetadata({ id }));
+          console.warn(`loadMetadataForQueries: type ${type} not implemented`);
         }
-      } else {
-        console.warn(`loadQueryMetadata: type ${type} not implemented`);
-      }
-    }),
+      })
+      // unrecognized types would result in undefined, so we filter that out
+      .filter(action => action !== undefined)
+      .map(dispatch)
+      .value(),
   ).catch(e => console.error("Failed loading metadata for query", e));

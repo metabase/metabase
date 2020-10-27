@@ -1,3 +1,5 @@
+import Field from "metabase-lib/lib/metadata/Field";
+
 import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
 
 import { parseQueryParam } from "metabase/parameters/components/Parameters";
@@ -23,6 +25,14 @@ describe("Parameters", () => {
     it("should not parse if there are no fields", () => {
       const result = parseQueryParam("123", []);
       expect(result).toBe("123");
+    });
+    it("should not parse date/numeric fields", () => {
+      const dateField = new Field({
+        ...ORDERS.QUANTITY, // some numeric field
+        special_type: "type/UNIXTimestampSeconds", // make it a date
+      });
+      const result = parseQueryParam("past30days", [dateField]);
+      expect(result).toBe("past30days");
     });
   });
 });

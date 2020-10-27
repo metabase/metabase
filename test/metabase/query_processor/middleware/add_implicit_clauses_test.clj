@@ -19,11 +19,11 @@
             ;; PK
             {:position 0, :name "ID", :special_type :type/PK}
             ;; Name
-            {:position 0, :name "NAME", :special_type :type/Name}
+            {:position 1, :name "NAME", :special_type :type/Name}
             ;; The rest are sorted by name
-            {:position 0, :name "CATEGORY_ID", :special_type :type/FK}
-            {:position 0, :name "LATITUDE", :special_type :type/Latitude}
-            {:position 0, :name "LONGITUDE", :special_type :type/Longitude}]
+            {:position 2, :name "CATEGORY_ID", :special_type :type/FK}
+            {:position 3, :name "LATITUDE", :special_type :type/Latitude}
+            {:position 4, :name "LONGITUDE", :special_type :type/Longitude}]
            (tu/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
              (let [ids       (map second (#'add-implicit-clauses/sorted-implicit-fields-for-table (data/id :venues)))
                    id->field (u/key-by :id (db/select [Field :id :position :name :special_type] :id [:in ids]))]
@@ -91,20 +91,20 @@
   (#'add-implicit-clauses/add-implicit-fields (:query (data/mbql-query venues))))
 
 ;; when adding sorted implicit Fields, Field positions should be taken into account
-(tt/expect-with-temp [Field [field-1 {:table_id (data/id :venues), :position 1, :name "bbbbb"}]
-                      Field [field-2 {:table_id (data/id :venues), :position 2, :name "aaaaa"}]]
+(tt/expect-with-temp [Field [field-1 {:table_id (data/id :venues), :position 100, :name "bbbbb"}]
+                      Field [field-2 {:table_id (data/id :venues), :position 101, :name "aaaaa"}]]
   (:query
    (data/mbql-query venues
-     {:fields [ ;; all fields with position = 0 should get sorted first according to rules above
+     {:fields [ ;; all fields with lower positions should get sorted first according to rules above
                $id $name $category_id $latitude $longitude $price
-               ;; followed by position = 1, then position = 2
+               ;; followed by position = 100, then position = 101
                [:field-id (u/get-id field-1)]
                [:field-id (u/get-id field-2)]]}))
   (#'add-implicit-clauses/add-implicit-fields (:query (data/mbql-query venues))))
 
 (deftest default-bucketing-test
   (testing "datetime Fields should get default bucketing of :day"
-    (tt/with-temp* [Field [field {:table_id (data/id :venues), :position 0, :name "aaaaa", :base_type :type/DateTime}]]
+    (tt/with-temp* [Field [field {:table_id (data/id :venues), :position 2, :name "aaaaa", :base_type :type/DateTime}]]
       (is (= (:query
               (data/mbql-query venues
                 {:fields [[:field-id (data/id :venues :id)]

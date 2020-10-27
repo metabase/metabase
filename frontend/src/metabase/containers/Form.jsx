@@ -31,7 +31,8 @@ type FormFieldType =
   | "text"
   | "color"
   | "hidden"
-  | "collection";
+  | "collection"
+  | "snippetCollection";
 
 type FormValue = any;
 type FormError = string;
@@ -46,6 +47,7 @@ export type FormFieldDefinition = {
   initial?: FormValue | (() => FormValue),
   normalize?: (value: FormValue) => FormValue,
   validate?: (value: FormValue, props: FormProps) => ?FormError | boolean,
+  readOnly?: boolean,
 };
 
 export type FormDefinition = {
@@ -181,11 +183,29 @@ export default class Form extends React.Component {
       formDef => makeFormObject(formDef),
     );
     const getInitialValues = createSelector(
-      [getFormObject, (state, props) => props.initialValues || {}],
-      (formObject, initialValues) => ({
-        ...formObject.initial(),
-        ...initialValues,
-      }),
+      [
+        getFormObject,
+        (state, props) => props.initialValues || {},
+        (state, props) => props.values || {},
+      ],
+      (formObject, initialValues, values) => {
+        const formInitialValues = formObject.initial(values);
+        // merge nested fields: {details: {foo: 123}} + {details: {bar: 321}} => {details: {foo: 123, bar: 321}}
+        const merged = {};
+        for (const k of Object.keys(initialValues)) {
+          if (
+            typeof initialValues[k] === "object" &&
+            typeof formInitialValues[k] === "object"
+          ) {
+            merged[k] = { ...formInitialValues[k], ...initialValues[k] };
+          }
+        }
+        return {
+          ...initialValues,
+          ...formInitialValues,
+          ...merged,
+        };
+      },
     );
     const getFieldNames = createSelector(
       [getFormObject, getInitialValues, (state, props) => props.values || {}],
@@ -215,18 +235,16 @@ export default class Form extends React.Component {
   };
 
   componentDidUpdate(prevProps: Props, prevState: State) {
-    if (!this.props.form) {
-      // HACK: when new fields are added they aren't initialized with their intialValues, so we have to force it here:
-      const newFields = _.difference(
-        Object.keys(this.state.inlineFields),
-        Object.keys(prevState.inlineFields),
+    // HACK: when new fields are added they aren't initialized with their intialValues, so we have to force it here:
+    const newFields = _.difference(
+      Object.keys(this.state.inlineFields),
+      Object.keys(prevState.inlineFields),
+    );
+    if (newFields.length > 0) {
+      // $FlowFixMe: dispatch provided by connect
+      this.props.dispatch(
+        initialize(this.props.formName, this._getInitialValues(), newFields),
       );
-      if (newFields.length > 0) {
-        // $FlowFixMe: dispatch provided by connect
-        this.props.dispatch(
-          initialize(this.props.formName, this._getInitialValues(), newFields),
-        );
-      }
     }
   }
 
@@ -314,6 +332,7 @@ export default class Form extends React.Component {
     return (
       <ReduxFormComponent
         {...this.props}
+        overwriteOnInitialValuesChange={false}
         formObject={formObject}
         // redux-form props:
         form={formName}

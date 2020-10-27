@@ -64,8 +64,13 @@
                "END $$;\n")
           (name database-name)))
 
-(defmethod ddl/drop-db-ddl-statements :postgres [driver {:keys [database-name], :as dbdef} & options]
-  ;; add an additonal statement to the front to kill open connections to the DB before dropping
+(defmethod ddl/drop-db-ddl-statements :postgres
+  [driver {:keys [database-name], :as dbdef} & options]
+  (when-not (string? database-name)
+    (throw (ex-info (format "Expected String database name; got ^%s %s"
+                            (some-> database-name class .getCanonicalName) (pr-str database-name))
+                    {:driver driver, :dbdef dbdef})))
+  ;; add an additional statement to the front to kill open connections to the DB before dropping
   (cons
    (kill-connections-to-db-sql database-name)
    (apply (get-method ddl/drop-db-ddl-statements :sql-jdbc/test-extensions) :postgres dbdef options)))

@@ -5,11 +5,14 @@
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
-  (:import java.sql.DatabaseMetaData))
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.util.honeysql-extensions :as hx])
+  (:import (java.sql Connection DatabaseMetaData ResultSetMetaData)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
@@ -25,14 +28,14 @@
   functions for more details on the differences.
 
   `metabase` is an instance of `DatabaseMetaData`."
-  {:arglists '([driver metadata])}
+  {:arglists '([driver database metadata])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (declare fast-active-tables)
 
-(defmethod active-tables :sql-jdbc [driver metadata]
-  (fast-active-tables driver metadata))
+(defmethod active-tables :sql-jdbc [driver database metadata]
+  (fast-active-tables driver database metadata))
 
 
 (defmulti excluded-schemas
@@ -80,21 +83,60 @@
           (re-find pattern column-type) base-type
           (seq more)                    (recur more))))))
 
+(defn- ->spec [db-or-id-or-spec]
+  (if (u/id db-or-id-or-spec)
+    (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
+    db-or-id-or-spec))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Sync Impl                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - we should reduce the metadata ResultSets instead of realizing the entire thing in memory at once and then
-;; filtering/transforming in Clojure-land
-
-(defn- get-tables
-  "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
-  [^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
+(defn- db-tables
+  "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
+  schema."
+  [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
-  (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
-                             (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
-    (vec (jdbc/metadata-result rs))))
+  (with-open [rs (.getTables metadata db-name-or-nil (driver/escape-entity-name-for-metadata driver schema-or-nil) "%"
+                             (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW" "EXTERNAL TABLE"]))]
+    (into []
+          (map (fn [row] (select-keys row [:table_name :remarks :table_schem])))
+          (jdbc/reducible-result-set rs {}))))
+
+(defn- simple-select-probe
+  "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata."
+  [driver schema table]
+  ;; Using our SQL compiler here to get portable LIMIT
+  (sql.qp/format-honeysql driver
+    (sql.qp/apply-top-level-clause driver :limit
+      {:select [:*]
+       :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]}
+      {:limit 1})))
+
+(defmulti execute-query-for-sync
+  "Execute given SQL query. Used during parts of sync where we don't have metadata populated and
+  can't use our default query processing pipeline."
+  {:arglists '([driver db-or-id-or-spec query])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod execute-query-for-sync :sql-jdbc
+  [_ db-or-id-or-spec query]
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec) query))
+
+(defn have-select-privilege?
+  "Check if we have select privilege for given table"
+  [driver db-or-id-or-spec {:keys [table_name table_schem] :as table}]
+  (when (u/ignore-exceptions
+          (execute-query-for-sync driver db-or-id-or-spec
+                                  (simple-select-probe driver table_schem table_name)))
+    table))
+
+(defn- all-schemas
+  [^DatabaseMetaData metadata]
+  (with-open [rs (.getSchemas metadata)]
+    (set (map :table_schem (jdbc/result-set-seq rs)))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -102,29 +144,19 @@
 
   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds
   vs 60)."
-  [driver ^DatabaseMetaData metadata & [db-name-or-nil]]
-  (with-open [rs (.getSchemas metadata)]
-    (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))
-          schemas     (set/difference all-schemas (excluded-schemas driver))]
-      (set (for [schema schemas
-                 table  (get-tables metadata schema db-name-or-nil)]
-             (let [remarks (:remarks table)]
-               {:name        (:table_name table)
-                :schema      schema
-                :description (when-not (str/blank? remarks)
-                               remarks)}))))))
+  [driver, db-or-id-or-spec, ^DatabaseMetaData metadata, & [db-name-or-nil]]
+  (->> (set/difference (all-schemas metadata) (excluded-schemas driver))
+       (mapcat (fn [schema]
+                 (db-tables driver metadata schema db-name-or-nil)))
+       (filter (partial have-select-privilege? driver db-or-id-or-spec))))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
-  [driver, ^DatabaseMetaData metadata, & [db-name-or-nil]]
-  (set (for [table   (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                             (get-tables metadata nil nil))]
-         (let [remarks (:remarks table)]
-           {:name        (:table_name  table)
-            :schema      (:table_schem table)
-            :description (when-not (str/blank? remarks)
-                           remarks)}))))
+  [driver, db-or-id-or-spec, ^DatabaseMetaData metadata, & [db-name-or-nil]]
+  (filter (every-pred (partial have-select-privilege? driver db-or-id-or-spec)
+                      (comp not (partial contains? (excluded-schemas driver)) :table_schem))
+          (db-tables driver metadata nil db-name-or-nil)))
 
 (defn get-catalogs
   "Returns a set of all of the catalogs found via `metadata`"
@@ -148,22 +180,45 @@
       (str "Invalid type: " special-type))
     special-type))
 
+(defn- fields-metadata
+  [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name :as table}, & [^String db-name-or-nil]]
+  (with-open [rs (.getColumns metadata
+                              db-name-or-nil
+                              (driver/escape-entity-name-for-metadata driver schema)
+                              (driver/escape-entity-name-for-metadata driver table-name)
+                              nil)]
+    (let [result (jdbc/result-set-seq rs)]
+      ;; In some rare cases `:column_name` is blank (eg. SQLite's views with group by),
+      ;; fallback to sniffing the type from a SELECT * query
+      (if (some (comp str/blank? :type_name) result)
+        (jdbc/with-db-connection [conn (->spec (:db_id table))]
+          (let [^Connection conn            (:connection conn)
+                ^ResultSetMetaData metadata (->> (simple-select-probe driver schema table-name)
+                                                 first
+                                                 (.executeQuery (.createStatement conn))
+                                                 (.getMetaData))]
+            (doall
+             (for [i (range 1 (inc (.getColumnCount metadata)))]
+               {:type_name   (.getColumnTypeName metadata i)
+                :column_name (.getColumnName metadata i)}))))
+        result))))
+
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
-  [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name}, & [^String db-name-or-nil]]
-  (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
-    (set
-     (for [{database-type :type_name
-            column-name   :column_name
-            remarks       :remarks} (jdbc/metadata-result rs)]
-       (merge
-        {:name          column-name
-         :database-type database-type
-         :base-type     (database-type->base-type-or-warn driver database-type)}
-        (when (not (str/blank? remarks))
-          {:field-comment remarks})
-        (when-let [special-type (calculated-special-type driver column-name database-type)]
-          {:special-type special-type}))))))
+  [^DatabaseMetaData metadata, driver, table, & [^String db-name-or-nil]]
+  (set
+   (for [[idx {database-type :type_name
+               column-name   :column_name
+               remarks       :remarks}] (m/indexed (fields-metadata metadata driver table db-name-or-nil))]
+     (merge
+      {:name              column-name
+       :database-type     database-type
+       :base-type         (database-type->base-type-or-warn driver database-type)
+       :database-position idx}
+      (when (not (str/blank? remarks))
+        {:field-comment remarks})
+      (when-let [special-type (calculated-special-type driver column-name database-type)]
+        {:special-type special-type})))))
 
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
@@ -181,30 +236,29 @@
 ;;; |                            Default SQL JDBC metabase.driver impls for sync methods                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- ->spec [db-or-id-or-spec]
-  (if (u/id db-or-id-or-spec)
-    (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-    db-or-id-or-spec))
-
 (defn describe-database
   "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec]
-  (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
-    {:tables (active-tables driver metadata)}))
+  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)]
+    {:tables (set (for [table (active-tables driver db-or-id-or-spec metadata)]
+                    (let [remarks (:remarks table)]
+                      {:name        (:table_name table)
+                       :schema      (:table_schem table)
+                       :description (when-not (str/blank? remarks)
+                                      remarks)})))}))
 
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec table]
-  (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
-    (->>
-     (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
-     ;; find PKs and mark them
-     (add-table-pks metadata))))
+  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)]
+    (->> (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
+         ;; find PKs and mark them
+         (add-table-pks metadata))))
 
 (defn describe-table-fks
   "Default implementation of `driver/describe-table-fks` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec table & [^String db-name-or-nil]]
-  (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
+  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)]
     (with-open [rs (.getImportedKeys metadata db-name-or-nil, ^String (:schema table), ^String (:name table))]
       (set
        (for [result (jdbc/metadata-result rs)]

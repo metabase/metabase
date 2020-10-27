@@ -113,6 +113,10 @@ describe("LineAreaBarRenderer", () => {
       ["2020-02-16T00:00:00.000Z", 1],
       ["2020-02-23T00:00:00.000Z", 1],
       ["2020-03-01T00:00:00.000Z", 1],
+      ["2020-03-08T00:00:00.000Z", 1],
+      ["2020-03-15T00:00:00.000Z", 1],
+      ["2020-03-22T00:00:00.000Z", 1],
+      ["2020-03-29T00:00:00.000Z", 1],
     ];
 
     // column settings are cached based on name.
@@ -138,7 +142,12 @@ describe("LineAreaBarRenderer", () => {
     expect(formattedWeek).toEqual("January 5 – 11, 2020");
 
     const ticks = qsa(".axis.x .tick text").map(e => e.textContent);
-    expect(ticks).toEqual(["January, 2020", "February, 2020", "March, 2020"]);
+    expect(ticks).toEqual([
+      "January, 2020",
+      "February, 2020",
+      "March, 2020",
+      "April, 2020",
+    ]);
   });
 
   it("should use column settings for tick formatting and tooltips", () => {

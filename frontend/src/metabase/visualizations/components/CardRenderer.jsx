@@ -11,7 +11,7 @@ import { startTimer } from "metabase/lib/performance";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 type DeregisterFunction = () => void;
 

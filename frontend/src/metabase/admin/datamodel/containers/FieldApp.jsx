@@ -47,20 +47,22 @@ import { has_field_values_options } from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { isCurrency } from "metabase/lib/schema_metadata";
 
-import type { ColumnSettings as ColumnSettingsType } from "metabase/meta/types/Dataset";
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { TableId } from "metabase/meta/types/Table";
-import type { FieldId } from "metabase/meta/types/Field";
+import type { ColumnSettings as ColumnSettingsType } from "metabase-types/types/Dataset";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { TableId } from "metabase-types/types/Table";
+import type { FieldId } from "metabase-types/types/Field";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
 
 const mapStateToProps = (state, props) => {
   const databaseId = parseInt(props.params.databaseId);
+  const fieldId = parseInt(props.params.fieldId);
   return {
     databaseId,
+    fieldId,
+    field: Fields.selectors.getObjectUnfiltered(state, { entityId: fieldId }),
     tableId: parseInt(props.params.tableId),
-    fieldId: parseInt(props.params.fieldId),
     metadata: getMetadata(state),
     idfields: Databases.selectors.getIdfields(state, { databaseId }),
   };
@@ -93,6 +95,7 @@ export default class FieldApp extends React.Component {
     databaseId: DatabaseId,
     tableId: TableId,
     fieldId: FieldId,
+    field: Object,
     metadata: Metadata,
     idfields: Object[],
 
@@ -125,11 +128,17 @@ export default class FieldApp extends React.Component {
     await Promise.all([
       // A complete database metadata is needed in case that foreign key is
       // changed and then we need to show FK remapping options for a new table
-      fetchDatabaseMetadata({ id: databaseId }),
+      fetchDatabaseMetadata(
+        { id: databaseId },
+        { params: { include_hidden: true } },
+      ),
 
       // Only fetchTableMetadata hydrates `dimension` in the field object
       // Force reload to ensure that we are not showing stale information
-      fetchTableMetadata({ id: tableId }, { reload: true }),
+      fetchTableMetadata(
+        { id: tableId },
+        { reload: true, params: { include_sensitive_fields: true } },
+      ),
 
       // always load field values even though it's only needed if
       // has_field_values === "list"
@@ -144,14 +153,13 @@ export default class FieldApp extends React.Component {
   };
 
   onUpdateFieldProperties = this.linkWithSaveStatus(async fieldProps => {
-    const { metadata, fieldId } = this.props;
-    const field = metadata.fields[fieldId];
+    const { field } = this.props;
 
     if (field) {
       // `table` and `target` propertes is part of the fully connected metadata graph; drop it because it
       // makes conversion to JSON impossible due to cyclical data structure
       await this.props.updateField({
-        ...field.getPlainObject(),
+        ...field,
         ...fieldProps,
       });
     } else {
@@ -176,7 +184,7 @@ export default class FieldApp extends React.Component {
   render() {
     const {
       metadata,
-      fieldId,
+      field,
       databaseId,
       tableId,
       idfields,
@@ -187,9 +195,8 @@ export default class FieldApp extends React.Component {
       params: { section },
     } = this.props;
 
-    const db = metadata.databases[databaseId];
-    const field = metadata.fields[fieldId];
-    const table = metadata.tables[tableId];
+    const db = metadata.database(databaseId);
+    const table = metadata.table(tableId);
 
     const isLoading = !field || !table || !idfields;
 
@@ -217,18 +224,20 @@ export default class FieldApp extends React.Component {
             }
           >
             <div className="wrapper">
-              <div className="mb4 pt2 ml-auto mr-auto">
-                <Breadcrumbs
-                  crumbs={[
-                    [db.name, `/admin/datamodel/database/${db.id}`],
-                    [
-                      table.display_name,
-                      `/admin/datamodel/database/${db.id}/table/${table.id}`,
-                    ],
-                    t`${field.display_name} – Field Settings`,
-                  ]}
-                />
-              </div>
+              {db && table && (
+                <div className="mb4 pt2 ml-auto mr-auto">
+                  <Breadcrumbs
+                    crumbs={[
+                      [db.name, `/admin/datamodel/database/${db.id}`],
+                      [
+                        table.display_name,
+                        `/admin/datamodel/database/${db.id}/table/${table.id}`,
+                      ],
+                      t`${field.display_name} – Field Settings`,
+                    ]}
+                  />
+                </div>
+              )}
               <div className="absolute top right mt4 mr4">
                 <SaveStatus ref={ref => (this.saveStatus = ref)} />
               </div>
@@ -290,7 +299,7 @@ const FieldGeneralPane = ({
       />
       <div style={{ maxWidth: 400 }}>
         <FieldVisibilityPicker
-          field={field.getPlainObject()}
+          field={field}
           updateField={onUpdateFieldProperties}
         />
       </div>
@@ -300,7 +309,7 @@ const FieldGeneralPane = ({
       <SectionHeader title={t`Field Type`} />
       <SpecialTypeAndTargetPicker
         className="flex align-center"
-        field={field.getPlainObject()}
+        field={field}
         updateField={onUpdateFieldProperties}
         idfields={idfields}
         selectSeparator={<SelectSeparator />}
@@ -313,6 +322,7 @@ const FieldGeneralPane = ({
         description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
       />
       <Select
+        className="inline-block"
         value={field.has_field_values}
         onChange={({ target: { value } }) =>
           onUpdateFieldProperties({

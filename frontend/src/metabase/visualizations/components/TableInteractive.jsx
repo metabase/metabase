@@ -45,9 +45,9 @@ let DRAG_COUNTER = 0;
 import type {
   VisualizationProps,
   ClickObject,
-} from "metabase/meta/types/Visualization";
-import type { VisualizationSettings } from "metabase/meta/types/Card";
-import type { DatasetData } from "metabase/meta/types/Dataset";
+} from "metabase-types/types/Visualization";
+import type { VisualizationSettings } from "metabase-types/types/Card";
+import type { DatasetData } from "metabase-types/types/Dataset";
 
 function pickRowsToMeasure(rows, columnIndex, count = 10) {
   const rowIndexes = [];
@@ -335,6 +335,7 @@ export default class TableInteractive extends Component {
     try {
       return this._getCellClickedObjectCached(
         this.props.data,
+        this.props.settings,
         rowIndex,
         columnIndex,
         this.props.isPivoted,
@@ -347,11 +348,18 @@ export default class TableInteractive extends Component {
   @memoize
   _getCellClickedObjectCached(
     data: DatasetData,
+    settings: VisualizationSettings,
     rowIndex: number,
     columnIndex: number,
     isPivoted: boolean,
   ) {
-    return getTableCellClickedObject(data, rowIndex, columnIndex, isPivoted);
+    return getTableCellClickedObject(
+      data,
+      settings,
+      rowIndex,
+      columnIndex,
+      isPivoted,
+    );
   }
 
   getHeaderClickedObject(columnIndex: number) {

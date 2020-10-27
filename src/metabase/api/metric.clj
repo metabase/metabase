@@ -7,7 +7,9 @@
              [events :as events]
              [related :as related]
              [util :as u]]
-            [metabase.api.common :as api]
+            [metabase.api
+             [common :as api]
+             [query-description :as qd]]
             [metabase.mbql.normalize :as normalize]
             [metabase.models
              [interface :as mi]
@@ -45,10 +47,19 @@
   (-> (api/read-check (Metric id))
       (hydrate :creator)))
 
+(defn- add-query-descriptions
+  [metrics] {:pre [(coll? metrics)]}
+  (when (some? metrics)
+    (for [metric metrics]
+      (let [table (Table (:table_id metric))]
+        (assoc metric
+               :query_description
+               (qd/generate-query-description table (:definition metric)))))))
+
 (api/defendpoint GET "/:id"
   "Fetch `Metric` with ID."
   [id]
-  (hydrated-metric id))
+  (first (add-query-descriptions [(hydrated-metric id)])))
 
 (defn- add-db-ids
   "Add `:database_id` fields to `metrics` by looking them up from their `:table_id`."
@@ -64,7 +75,8 @@
   (as-> (db/select Metric, :archived false, {:order-by [:%lower.name]}) metrics
     (hydrate metrics :creator)
     (add-db-ids metrics)
-    (filter mi/can-read? metrics)))
+    (filter mi/can-read? metrics)
+    (add-query-descriptions metrics)))
 
 (defn- write-check-and-update-metric!
   "Check whether current user has write permissions, then update Metric with values in `body`. Publishes appropriate

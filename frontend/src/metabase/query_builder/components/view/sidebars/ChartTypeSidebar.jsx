@@ -61,8 +61,9 @@ const ChartTypeSidebar = ({
                   }
                   onClick={() => {
                     question
-                      .setSelectedDisplay(type)
-                      .update(null, { reload: false });
+                      .setDisplay(type)
+                      .lockDisplay(true) // prevent viz auto-selection
+                      .update(null, { reload: false, shouldUpdateUrl: true });
                     onOpenChartSettings({ section: t`Data` });
                     setUIControls({ isShowingRawTable: false });
                   }}

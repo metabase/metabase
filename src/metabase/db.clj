@@ -101,7 +101,7 @@
   (or (:type @connection-string-details)
       (config/config-kw :mb-db-type)))
 
-(def ^:private db-connection-details
+(def db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
   SQL driver functions on the Metabase DB itself)."
   (delay
@@ -116,7 +116,7 @@
            (trs "If you decide to continue to use H2, please be sure to back up the database file regularly.")
            " "
            (trs "For more information, see")
-           "https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"))))
+           " https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"))))
    (or @connection-string-details
        (case (db-type)
          ;; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
@@ -248,14 +248,21 @@
    (when-let [max-pool-size (config/config-int :mb-application-db-max-connection-pool-size)]
      {"maxPoolSize" max-pool-size})))
 
+(defn quoting-style
+  "HoneySQL quoting style to use for application DBs of the given type. Note for H2 application DBs we automatically
+  uppercase all identifiers (since this is H2's default behavior) whereas in the SQL QP we stick with the case we got
+  when we synced the DB."
+  [db-type]
+  (case db-type
+    :postgres :ansi
+    :h2       :h2
+    :mysql    :mysql))
+
 (defn- create-connection-pool!
   "Create a connection pool for the application DB and set it as the default Toucan connection. This is normally called
   once during start up; calling it a second time (e.g. from the REPL) will "
   [jdbc-spec]
-  (db/set-default-quoting-style! (case (db-type)
-                                   :postgres :ansi
-                                   :h2       :h2
-                                   :mysql    :mysql))
+  (db/set-default-quoting-style! (quoting-style (db-type)))
   ;; REPL usage only: kill the old pool if one exists
   (u/ignore-exceptions
     (when-let [^PoolBackedDataSource pool (:datasource (db/connection))]
@@ -271,7 +278,7 @@
 ;;; |                                                    DB SETUP                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private db-setup-finished?
+(defonce ^:private db-setup-finished?
   (atom false))
 
 (defn db-is-setup?
@@ -348,27 +355,26 @@
       (run-data-migrations!)))
   nil)
 
-(defn- setup-db-from-env!* []
+(defn- setup-db-from-env!
+  "Set up the application DB using environment variables (`@db-connection-details`) for connection info. This is the
+  default way the application database is set up -- the only situations where it is not set up this way is when
+  running special commands such as `load-from-h2` or `dump-to-h2`."
+  []
   (let [db-details   @db-connection-details
         auto-migrate (config/config-bool :mb-db-automigrate)]
-    (setup-db!* db-details auto-migrate)
-    (reset! db-setup-finished? true))
+    (setup-db!* db-details auto-migrate))
   nil)
-
-(defonce ^:private db-setup-complete? (atom false))
-(defonce ^:private setup-db-lock (Object.))
 
 (defn setup-db!
   "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
   database migrations. If DB is already set up, this function will no-op. Thread-safe."
   []
-  (when-not @db-setup-complete?
-    (locking setup-db-lock
-      (when-not @db-setup-complete?
-        (setup-db-from-env!*)
-        (reset! db-setup-complete? true))))
+  (when-not @db-setup-finished?
+    (locking db-setup-finished?
+      (when-not @db-setup-finished?
+        (setup-db-from-env!)
+        (reset! db-setup-finished? true))))
   :done)
-
 
 ;;; Various convenience fns
 

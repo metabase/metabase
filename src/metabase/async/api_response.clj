@@ -195,7 +195,7 @@
   ManyToManyChannel
   (send* [input-chan _ respond _]
     (respond (assoc (response/response input-chan)
-                    :content-type "applicaton/json; charset=utf-8"
+                    :content-type "application/json; charset=utf-8"
                     :status 202))))
 
 ;; everthing in this namespace is deprecated!

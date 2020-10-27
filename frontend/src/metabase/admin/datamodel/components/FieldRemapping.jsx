@@ -66,7 +66,9 @@ export default class FieldRemapping extends React.Component {
     // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
     const hasMappableNumeralValues =
       field.remapping.size > 0 &&
-      [...field.remapping.keys()].every(key => typeof key === "number");
+      [...field.remapping.keys()].every(
+        key => typeof key === "number" || key === null,
+      );
 
     return [
       MAP_OPTIONS.original,
@@ -328,9 +330,18 @@ export class ValueRemappings extends React.Component {
     this._updateEditingRemappings(this.props.remappings);
   }
 
-  componentWillReceiveProps(nextProps) {
-    if (nextProps.remappings !== this.props.remappings) {
-      this._updateEditingRemappings(nextProps.remappings);
+  componentDidUpdate(prevProps) {
+    const { remappings } = this.props;
+    if (
+      !// check if the Maps are different
+      (
+        prevProps.remappings &&
+        remappings &&
+        prevProps.remappings.size === remappings.size &&
+        [...remappings].every(([k, v]) => prevProps.remappings.get(k) === v)
+      )
+    ) {
+      this._updateEditingRemappings(remappings);
     }
   }
 
@@ -344,6 +355,8 @@ export class ValueRemappings extends React.Component {
         const mappedString =
           mappedOrUndefined !== undefined
             ? mappedOrUndefined.toString()
+            : original === null
+            ? "null"
             : original.toString();
 
         return [original, mappedString];

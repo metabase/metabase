@@ -3,7 +3,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { Series } from "metabase/meta/types/Visualization";
+import type { Series } from "metabase-types/types/Visualization";
 
 const visualizations = new Map();
 const aliases = new Map();
@@ -18,7 +18,11 @@ visualizations.get = function(key) {
 
 export function getSensibleDisplays(data) {
   return Array.from(visualizations)
-    .filter(([, viz]) => viz.isSensible && viz.isSensible(data))
+    .filter(
+      ([, viz]) =>
+        // don't rule out displays if there's no data
+        data.rows.length <= 1 || (viz.isSensible && viz.isSensible(data)),
+    )
     .map(([display]) => display);
 }
 

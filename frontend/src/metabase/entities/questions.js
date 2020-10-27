@@ -19,6 +19,7 @@ const UNFAVORITE_ACTION = `metabase/entities/questions/UNFAVORITE`;
 
 const Questions = createEntity({
   name: "questions",
+  nameOne: "question",
   path: "/api/card",
 
   api: {

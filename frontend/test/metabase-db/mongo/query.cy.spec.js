@@ -101,9 +101,7 @@ describe("mongodb > user > query", () => {
       expect(status).to.equal(202);
     });
 
-    modal()
-      .contains("Not now")
-      .click();
+    cy.findByText("Not now").click();
 
     cy.url().should("match", /\/question\/\d+$/);
   });

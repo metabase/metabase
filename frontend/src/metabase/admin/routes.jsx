@@ -22,8 +22,11 @@ import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp
 import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp";
 
 // Metadata / Data model
+import DataModelApp from "metabase/admin/datamodel/containers/DataModelApp";
 import MetadataEditorApp from "metabase/admin/datamodel/containers/MetadataEditorApp";
+import MetricListApp from "metabase/admin/datamodel/containers/MetricListApp";
 import MetricApp from "metabase/admin/datamodel/containers/MetricApp";
+import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp";
@@ -60,7 +63,7 @@ const getRoutes = (store, IsAdmin) => (
       <Route path=":databaseId" component={DatabaseEditApp} />
     </Route>
 
-    <Route path="datamodel" title={t`Data Model`}>
+    <Route path="datamodel" title={t`Data Model`} component={DataModelApp}>
       <IndexRedirect to="database" />
       <Route path="database" component={MetadataEditorApp} />
       <Route path="database/:databaseId" component={MetadataEditorApp} />
@@ -77,8 +80,10 @@ const getRoutes = (store, IsAdmin) => (
         <IndexRedirect to="general" />
         <Route path=":section" component={FieldApp} />
       </Route>
+      <Route path="metrics" component={MetricListApp} />
       <Route path="metric/create" component={MetricApp} />
       <Route path="metric/:id" component={MetricApp} />
+      <Route path="segments" component={SegmentListApp} />
       <Route path="segment/create" component={SegmentApp} />
       <Route path="segment/:id" component={SegmentApp} />
       <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />

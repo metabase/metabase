@@ -1,12 +1,17 @@
 (ns metabase.query-processor
-  "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific
-  implementations."
+  "Primary entrypoints to running Metabase (MBQL) queries.
+
+    (metabase.query-processor/process-query {:type :query, :database 1, :query {:source-table 2}})
+
+  Various REST API endpoints, such as `POST /api/dataset`, return the results of queries; calling one variations of
+  `process-userland-query` (see documentation below)."
   (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
-             [driver :as driver]]
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.util :as driver.u]
-            [metabase.mbql.schema :as mbql.s]
+            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor
              [context :as context]
              [error-type :as error-type]
@@ -21,6 +26,7 @@
              [add-timezone-info :as add-timezone-info]
              [annotate :as annotate]
              [auto-bucket-datetimes :as bucket-datetime]
+             [auto-parse-filter-values :as auto-parse-filter-values]
              [binning :as binning]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
@@ -31,6 +37,7 @@
              [expand-macros :as expand-macros]
              [fetch-source-query :as fetch-source-query]
              [format-rows :as format-rows]
+             [large-int-id :as large-int-id]
              [limit :as limit]
              [mbql-to-native :as mbql-to-native]
              [normalize-query :as normalize]
@@ -42,6 +49,7 @@
              [reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
              [resolve-database-and-driver :as resolve-database-and-driver]
              [resolve-fields :as resolve-fields]
+             [resolve-joined-fields :as resolve-joined-fields]
              [resolve-joins :as resolve-joins]
              [resolve-referenced :as resolve-referenced]
              [resolve-source-table :as resolve-source-table]
@@ -57,19 +65,30 @@
 ;;; |                                                QUERY PROCESSOR                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(u/ignore-exceptions
+  (classloader/require '[metabase-enterprise.audit.query-processor.middleware.handle-audit-queries :as ee.audit]
+                       '[metabase-enterprise.sandbox.query-processor.middleware
+                         [column-level-perms-check :as ee.sandbox.columns]
+                         [row-level-restrictions :as ee.sandbox.rows]]))
+
 ;; ▼▼▼ POST-PROCESSING ▼▼▼  happens from TOP-TO-BOTTOM, e.g. the results of `f` are (eventually) passed to `limit`
 (def default-middleware
   "The default set of middleware applied to queries ran via `process-query`."
   [#'mbql-to-native/mbql->native
    #'check-features/check-features
    #'optimize-datetime-filters/optimize-datetime-filters
+   #'auto-parse-filter-values/auto-parse-filter-values
    #'wrap-value-literals/wrap-value-literals
    #'annotate/add-column-info
    #'perms/check-query-permissions
    #'pre-alias-ags/pre-alias-aggregations
    #'cumulative-ags/handle-cumulative-aggregations
+   ;; yes, this is called a second time, because we need to handle any joins that got added
+   (resolve 'ee.sandbox.rows/apply-row-level-permissions)
+   #'resolve-joined-fields/resolve-joined-fields
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
+   #'large-int-id/convert-id-to-string
    #'limit/limit
    #'format-rows/format-rows
    #'desugar/desugar
@@ -77,7 +96,9 @@
    #'resolve-fields/resolve-fields
    #'add-dim/add-remapping
    #'implicit-clauses/add-implicit-clauses
+   (resolve 'ee.sandbox.rows/apply-row-level-permissions)
    #'add-source-metadata/add-source-metadata-for-source-queries
+   (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)
    #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
    #'bucket-datetime/auto-bucket-datetimes
    #'resolve-source-table/resolve-source-tables
@@ -93,6 +114,7 @@
    #'validate/validate-query
    #'normalize/normalize
    #'add-rows-truncated/add-rows-truncated
+   (resolve 'ee.audit/handle-internal-queries)
    #'results-metadata/record-and-return-metadata!])
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`
@@ -166,11 +188,8 @@
 
 (defn query->native
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
-  SQL form). (Like `preprocess`, this function will throw an Exception if preprocessing was not successful.)
-  (Currently, this function is mostly used by tests and in the REPL; `mbql-to-native/mbql->native` middleware handles
-  simliar functionality for queries that are actually executed.)"
+  SQL form). Like `preprocess`, this function will throw an Exception if preprocessing was not successful."
   [query]
-  (perms/check-current-user-has-adhoc-native-query-perms query)
   (preprocess-query query {:nativef
                            (fn [query context]
                              (context/raisef (qp.reducible/quit query) context))}))
@@ -219,18 +238,15 @@
          query
          args))
 
-(s/defn ^:private add-info [query info :- mbql.s/Info]
-  (update query :info merge info))
-
 (s/defn process-query-and-save-execution!
   "Process and run a 'userland' MBQL query (e.g. one ran as the result of an API call, scheduled Pulse, MetaBot query,
   etc.). Returns results in a format appropriate for consumption by FE client. Saves QueryExecution row in application
   DB."
   ([query info]
-   (process-userland-query (add-info query info)))
+   (process-userland-query (assoc query :info info)))
 
   ([query info context]
-   (process-userland-query (add-info query info) context)))
+   (process-userland-query (assoc query :info info) context)))
 
 (defn- add-default-constraints [query]
   (assoc-in query [:middleware :add-default-userland-constraints?] true))

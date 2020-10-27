@@ -10,7 +10,7 @@ import _ from "underscore";
 import type {
   ParameterMappingUIOption,
   ParameterTarget,
-} from "metabase/meta/types/Parameter";
+} from "metabase-types/types/Parameter";
 
 type Props = {
   target: ?ParameterTarget,

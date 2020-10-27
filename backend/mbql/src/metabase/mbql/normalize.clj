@@ -344,7 +344,9 @@
     ;; all the other filter types have an implict field ID for the first arg
     ;; (e.g. [:= 10 20] gets canonicalized to [:= [:field-id 10] 20]
     [(filter-name :guard #{:starts-with :ends-with :contains :does-not-contain
-                           := :!= :< :<= :> :>= :is-null :not-null :between :inside :time-interval}) arg & args]
+                           := :!= :< :<= :> :>=
+                           :is-empty :not-empty :is-null :not-null
+                           :between :inside :time-interval}) arg & args]
     (apply vector filter-name (if (mbql-clause? arg)
                                 (canonicalize-expression-subclause arg)
                                 ;; Support legacy expressions like [:> 1 25] where 1 is a field id.
@@ -622,7 +624,7 @@
     (remove-empty-clauses source-query [:query])))
 
 (def ^:private path->special-remove-empty-clauses-fn
-  {:native {:query identity}
+  {:native identity
    :query  {:source-query remove-empty-clauses-in-source-query
             :joins        {::sequence remove-empty-clauses-in-join}}})
 

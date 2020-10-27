@@ -29,13 +29,14 @@ import { isID, isFK } from "metabase/lib/schema_metadata";
 import type {
   ClickObject,
   VisualizationProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 type Props = VisualizationProps & {
   height: number,
   className?: string,
   isPivoted: boolean,
   getColumnTitle: number => string,
+  getExtraDataForClick?: Function,
 };
 
 type State = {
@@ -190,11 +191,16 @@ export default class TableSimple extends Component {
                       const column = cols[columnIndex];
                       const clicked = getTableCellClickedObject(
                         data,
+                        settings,
                         rowIndex,
                         columnIndex,
                         isPivoted,
                       );
                       const columnSettings = settings.column(column);
+
+                      const extraData = this.props.getExtraDataForClick
+                        ? this.props.getExtraDataForClick(clicked)
+                        : {};
 
                       const cellData =
                         value == null ? (
@@ -208,7 +214,7 @@ export default class TableSimple extends Component {
                         ) : (
                           formatValue(value, {
                             ...columnSettings,
-                            clicked: clicked,
+                            clicked: { ...clicked, extraData },
                             type: "cell",
                             jsx: true,
                             rich: true,
@@ -253,6 +259,7 @@ export default class TableSimple extends Component {
                                     onVisualizationClick({
                                       ...clicked,
                                       element: e.currentTarget,
+                                      extraData,
                                     });
                                   }
                                 : undefined

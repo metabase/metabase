@@ -36,6 +36,11 @@ public class MetabaseMySqlCreateTableSqlGenerator extends AbstractSqlGenerator<C
 
     @Override
     public Sql[] generateSql(CreateTableStatement statement, Database database, SqlGeneratorChain sqlGeneratorChain) {
+        // it seems like Liquibase actually ignores the `defaultValueComputed`
+        // that we set in the migrations YAML file -- see
+        // https://stackoverflow.com/questions/58816496/force-liquibase-to-current-timestamp-instead-of-now
+        database.setCurrentDateTimeFunction("current_timestamp(6)");
+
         Sql[] sqls = this.parentGenerator.generateSql(statement, database, sqlGeneratorChain);
         for (int i = 0; i < sqls.length; i++) {
             Sql sql = sqls[i];

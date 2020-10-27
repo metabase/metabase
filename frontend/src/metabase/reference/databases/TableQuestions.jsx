@@ -5,7 +5,6 @@ import { connect } from "react-redux";
 import moment from "moment";
 import { t } from "ttag";
 import visualizations from "metabase/visualizations";
-import { isQueryable } from "metabase/lib/table";
 import * as Urls from "metabase/lib/urls";
 
 import S from "metabase/components/List.css";
@@ -83,27 +82,25 @@ export default class TableQuestions extends Component {
             Object.keys(entities).length > 0 ? (
               <div className="wrapper wrapper--trim">
                 <List>
-                  {Object.values(entities)
-                    .filter(isQueryable)
-                    .map(
-                      (entity, index) =>
-                        entity &&
-                        entity.id &&
-                        entity.name && (
-                          <li className="relative" key={entity.id}>
-                            <ListItem
-                              id={entity.id}
-                              index={index}
-                              name={entity.display_name || entity.name}
-                              description={t`Created ${moment(
-                                entity.created_at,
-                              ).fromNow()} by ${entity.creator.common_name}`}
-                              url={Urls.question(entity.id)}
-                              icon={visualizations.get(entity.display).iconName}
-                            />
-                          </li>
-                        ),
-                    )}
+                  {Object.values(entities).map(
+                    (entity, index) =>
+                      entity &&
+                      entity.id &&
+                      entity.name && (
+                        <li className="relative" key={entity.id}>
+                          <ListItem
+                            id={entity.id}
+                            index={index}
+                            name={entity.display_name || entity.name}
+                            description={t`Created ${moment(
+                              entity.created_at,
+                            ).fromNow()} by ${entity.creator.common_name}`}
+                            url={Urls.question(entity.id)}
+                            icon={visualizations.get(entity.display).iconName}
+                          />
+                        </li>
+                      ),
+                  )}
                 </List>
               </div>
             ) : (

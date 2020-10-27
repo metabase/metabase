@@ -23,11 +23,14 @@
              [session :refer [Session]]
              [table :refer [Table]]
              [user :as user :refer [User]]]
+            [metabase.models.setting.cache :as setting.cache]
             [metabase.util
-             [i18n :refer [tru]]
+             [i18n :as i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan
+             [db :as db]
+             [models :as t.models]])
   (:import java.util.UUID))
 
 (def ^:private SetupToken
@@ -35,19 +38,67 @@
   (su/with-api-error-message (s/constrained su/NonBlankString setup/token-match?)
     "Token does not match the setup token."))
 
+(defn- setup-create-user! [{:keys [email first-name last-name password]}]
+  (let [session-id (str (UUID/randomUUID))
+        new-user   (db/insert! User
+                               :email        email
+                               :first_name   first-name
+                               :last_name    last-name
+                               :password     (str (UUID/randomUUID))
+                               :is_superuser true)
+        user-id    (u/get-id new-user)]
+    ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
+    (user/set-password! user-id password)
+    ;; then we create a session right away because we want our new user logged in to continue the setup process
+    (let [session (or (db/insert! Session
+                                  :id      session-id
+                                  :user_id user-id)
+                      ;; HACK -- Toucan doesn't seem to work correctly with models with string IDs
+                      (t.models/post-insert (Session (str session-id))))]
+      ;; return user ID, session ID, and the Session object itself
+      {:session-id session-id, :user-id user-id, :session session})))
+
+(defn- setup-create-database!
+  "Create a new Database. Returns newly created Database."
+  [{:keys [name driver details schedules database]}]
+  (when driver
+    (when-not (some-> (u/ignore-exceptions (driver/the-driver driver)) driver/available?)
+      (let [msg (tru "Cannot create Database: cannot find driver {0}." driver)]
+        (throw (ex-info msg {:errors {:database {:engine msg}}, :status-code 400}))))
+    (db/insert! Database
+      (merge
+       {:name name, :engine driver, :details details}
+       (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
+       (when schedules
+         (database-api/schedule-map->cron-strings schedules))))))
+
+(defn- setup-set-settings! [request {:keys [email site-name site-locale allow-tracking?]}]
+  ;; set a couple preferences
+  (public-settings/site-name site-name)
+  (public-settings/admin-email email)
+  (when site-locale
+    (public-settings/site-locale site-locale))
+  ;; default to `true` if allow_tracking isn't specified. The setting will set itself correctly whether a boolean or
+  ;; boolean string is specified
+  (public-settings/anon-tracking-enabled (or (nil? allow-tracking?)
+                                             allow-tracking?))
+  ;; set `source-address-header` to "X-Forwarded-For" if such a header is present
+  (when (get-in request [:headers "x-forwarded-for"])
+    (public-settings/source-address-header "X-Forwarded-For")))
 
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
   returns a session ID."
-  [:as {{:keys                                         [token]
+  [:as {{:keys                                          [token]
          {:keys [name engine details is_full_sync
                  is_on_demand schedules
                  auto_run_queries]
-          :as   database}                              :database
-         {:keys [first_name last_name email password]} :user
-         {:keys [allow_tracking site_name]}            :prefs} :body, :as request}]
+          :as   database}                               :database
+         {:keys [first_name last_name email password]}  :user
+         {:keys [allow_tracking site_name site_locale]} :prefs} :body, :as request}]
   {token            SetupToken
    site_name        su/NonBlankString
+   site_locale      (s/maybe su/ValidLocale)
    first_name       su/NonBlankString
    last_name        su/NonBlankString
    email            su/Email
@@ -55,49 +106,30 @@
    allow_tracking   (s/maybe (s/cond-pre s/Bool su/BooleanString))
    schedules        (s/maybe database-api/ExpandedSchedulesMap)
    auto_run_queries (s/maybe s/Bool)}
-  ;; Now create the user
-  (let [session-id (UUID/randomUUID)
-        new-user   (db/insert! User
-                     :email        email
-                     :first_name   first_name
-                     :last_name    last_name
-                     :password     (str (UUID/randomUUID))
-                     :is_superuser true)]
-    ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
-    (user/set-password! (:id new-user) password)
-    ;; set a couple preferences
-    (public-settings/site-name site_name)
-    (public-settings/admin-email email)
-    ;; default to `true` if allow_tracking isn't specified. The setting will set itself correctly whether a boolean or
-    ;; boolean string is specified
-    (public-settings/anon-tracking-enabled (or (nil? allow_tracking)
-                                               allow_tracking))
-    ;; setup database (if needed)
-    (when engine
-      (when-not (driver/available? engine)
-        (throw (ex-info (tru "Cannot create Database: cannot find driver {0}." engine)
-                 {:engine engine})))
-      (let [db (db/insert! Database
-                 (merge
-                  {:name name, :engine engine, :details details}
-                  (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
-                  (when schedules
-                    (database-api/schedule-map->cron-strings schedules))))]
-        (events/publish-event! :database-create db)))
-    ;; clear the setup token now, it's no longer needed
-    (setup/clear-token!)
-    ;; then we create a session right away because we want our new user logged in to continue the setup process
-    (db/insert! Session
-      :id      (str session-id)
-      :user_id (u/get-id new-user))
-    ;; notify that we've got a new user in the system AND that this user logged in
-    (events/publish-event! :user-create {:user_id (u/get-id new-user)})
-    (events/publish-event! :user-login {:user_id (u/get-id new-user), :session_id (str session-id), :first_login true})
-    ;; set `source-address-header` to "X-Forwarded-For" if such a header is present
-    (when (get-in request [:headers "x-forwarded-for"])
-      (public-settings/source-address-header "X-Forwarded-For"))
-    (mw.session/set-session-cookie request {:id (str session-id)} session-id)))
-
+  (letfn [(create! []
+            (try
+              (db/transaction
+                (let [user-info (setup-create-user!
+                                 {:email email, :first-name first_name, :last-name last_name, :password password})
+                      db        (setup-create-database!
+                                 {:name name, :driver engine, :details details, :schedules schedules, :database database})]
+                  (setup-set-settings!
+                   request
+                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
+                  ;; clear the setup token now, it's no longer needed
+                  (setup/clear-token!)
+                  (assoc user-info :database db)))
+              (catch Throwable e
+                ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
+                ;; endpoint (such as clearing the setup token) are reverted. We can't use `dosync` here to accomplish
+                ;; this because there is `io!` in this block
+                (setting.cache/restore-cache!)
+                (throw e))))]
+    (let [{:keys [user-id session-id database session]} (create!)]
+      (events/publish-event! :database-create database)
+      (events/publish-event! :user-login {:user_id user-id, :session_id session-id, :first_login true})
+      ;; return response with session ID and set the cookie as well
+      (mw.session/set-session-cookie request {:id session-id} session))))
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."

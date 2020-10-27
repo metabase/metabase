@@ -77,12 +77,6 @@
   (u/prog1 field
     (check-valid-types field)))
 
-(defn- pre-delete [{:keys [id]}]
-  (db/delete! Field :parent_id id)
-  (db/delete! 'FieldValues :field_id id)
-  (db/delete! 'MetricImportantField :field_id id))
-
-
 ;;; Field permissions
 ;; There are several API endpoints where large instances can return many thousands of Fields. Normally Fields require
 ;; a DB call to fetch information about their Table, because a Field's permissions set is the same as its parent
@@ -92,17 +86,17 @@
 ;;     number of DB calls that are made. See discussion below for more details.
 
 (def ^:private ^{:arglists '([table-id])} perms-objects-set*
-  "Cached lookup for the permissions set for a table with TABLE-ID. This is done so a single API call or other unit of
-   computation doesn't accidentally end up in a situation where thousands of DB calls end up being made to calculate
-   permissions for a large number of Fields. Thus, the cache only persists for 5 seconds.
+  "Cached lookup for the permissions set for a table with `table-id`. This is done so a single API call or other unit of
+  computation doesn't accidentally end up in a situation where thousands of DB calls end up being made to calculate
+  permissions for a large number of Fields. Thus, the cache only persists for 5 seconds.
 
-   Of course, no DB lookups are needed at all if the Field already has a hydrated Table. However, mistakes are
-   possible, and I did not extensively audit every single code pathway that uses sequences of Fields and permissions,
-   so this caching is added as a failsafe in case Table hydration wasn't done.
+  Of course, no DB lookups are needed at all if the Field already has a hydrated Table. However, mistakes are
+  possible, and I did not extensively audit every single code pathway that uses sequences of Fields and permissions,
+  so this caching is added as a failsafe in case Table hydration wasn't done.
 
-   Please note this only caches one entry PER TABLE ID. Thus, even a million Tables (which is more than I hope we ever
-   see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
-   seconds."
+  Please note this only caches one entry PER TABLE ID. Thus, even a million Tables (which is more than I hope we ever
+  see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
+  seconds."
   (memoize/ttl
    (fn [table-id]
      (let [{schema :schema, database-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
@@ -149,8 +143,7 @@
                                        :settings         :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
-          :pre-update     pre-update
-          :pre-delete     pre-delete})
+          :pre-update     pre-update})
 
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
@@ -169,7 +162,7 @@
     (Field fk_target_field_id)))
 
 (defn values
-  "Return the `FieldValues` associated with this FIELD."
+  "Return the `FieldValues` associated with this `field`."
   [{:keys [id]}]
   (db/select [FieldValues :field_id :values], :field_id id))
 
@@ -185,7 +178,7 @@
                           (db/select model :field_id [:in field-ids])))))
 
 (defn with-values
-  "Efficiently hydrate the `FieldValues` for a collection of FIELDS."
+  "Efficiently hydrate the `FieldValues` for a collection of `fields`."
   {:batched-hydrate :values}
   [fields]
   (let [id->field-values (select-field-id->instance fields FieldValues)]
@@ -193,7 +186,7 @@
       (assoc field :values (get id->field-values (:id field) [])))))
 
 (defn with-normal-values
-  "Efficiently hydrate the `FieldValues` for visibility_type normal FIELDS."
+  "Efficiently hydrate the `FieldValues` for visibility_type normal `fields`."
   {:batched-hydrate :normal_values}
   [fields]
   (let [id->field-values (select-field-id->instance (filter fv/field-should-have-field-values? fields)
@@ -202,7 +195,7 @@
       (assoc field :values (get id->field-values (:id field) [])))))
 
 (defn with-dimensions
-  "Efficiently hydrate the `Dimension` for a collection of FIELDS."
+  "Efficiently hydrate the `Dimension` for a collection of `fields`."
   {:batched-hydrate :dimensions}
   [fields]
   ;; TODO - it looks like we obviously thought this code would return *all* of the Dimensions for a Field, not just
@@ -256,7 +249,7 @@
     (dissoc field :table)))
 
 (defn with-targets
-  "Efficiently hydrate the FK target fields for a collection of FIELDS."
+  "Efficiently hydrate the FK target fields for a collection of `fields`."
   {:batched-hydrate :target}
   [fields]
   (let [target-field-ids (set (for [field fields
@@ -271,7 +264,7 @@
 
 
 (defn qualified-name-components
-  "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
+  "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
   (conj (vec (if-let [parent (Field parent-id)]
                (qualified-name-components parent)
@@ -282,9 +275,23 @@
         field-name))
 
 (defn qualified-name
-  "Return a combined qualified name for FIELD, e.g. `table_name.parent_field_name.field_name`."
+  "Return a combined qualified name for `field`, e.g. `table_name.parent_field_name.field_name`."
   [field]
   (str/join \. (qualified-name-components field)))
+
+(def ^{:arglists '([field-id])} field-id->table-id
+  "Return the ID of the Table this Field belongs to."
+  (memoize
+   (fn [field-id]
+     {:pre [(integer? field-id)]}
+     (db/select-one-field :table_id Field, :id field-id))))
+
+(defn field-id->database-id
+  "Return the ID of the Database this Field belongs to."
+  [field-id]
+  {:pre [(integer? field-id)]}
+  (let [table-id (field-id->table-id field-id)]
+    ((requiring-resolve 'metabase.models.table/table-id->database-id) table-id)))
 
 (defn table
   "Return the `Table` associated with this `Field`."

@@ -1,11 +1,13 @@
 /* @flow */
 
-import type { DatasetData, Column } from "metabase/meta/types/Dataset";
-import type { ClickObject } from "metabase/meta/types/Visualization";
+import type { DatasetData, Column } from "metabase-types/types/Dataset";
+import type { ClickObject } from "metabase-types/types/Visualization";
+import type { VisualizationSettings } from "metabase-types/types/Card";
 import { isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 
 export function getTableCellClickedObject(
   data: DatasetData,
+  settings: VisualizationSettings,
   rowIndex: number,
   columnIndex: number,
   isPivoted: boolean,
@@ -15,6 +17,7 @@ export function getTableCellClickedObject(
   const column = cols[columnIndex];
   const row = rows[rowIndex];
   const value = row[columnIndex];
+  const dataForClick = row.map((value, index) => ({ value, col: cols[index] }));
 
   if (isPivoted) {
     // if it's a pivot table, the first column is
@@ -25,21 +28,31 @@ export function getTableCellClickedObject(
       return {
         value,
         column,
+        settings,
         // $FlowFixMe: _dimension
         dimensions: [row._dimension, column._dimension],
+        data: dataForClick,
       };
     }
   } else if (column.source === "aggregation") {
     return {
       value,
       column,
+      settings,
       dimensions: cols
         .map((column, index) => ({ value: row[index], column }))
         .filter(dimension => dimension.column.source === "breakout"),
       origin: { rowIndex, row, cols },
+      data: dataForClick,
     };
   } else {
-    return { value, column, origin: { rowIndex, row, cols } };
+    return {
+      value,
+      column,
+      settings,
+      origin: { rowIndex, row, cols },
+      data: dataForClick,
+    };
   }
 }
 

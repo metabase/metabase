@@ -18,19 +18,38 @@
              [troubleshooting :as troubleshooting]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
-            [metabase.models
-             [setting :as setting]
-             [user :refer [User]]]
+            [metabase.models.user :refer [User]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.util.i18n :refer [deferred-trs set-locale trs]]
+            [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
+
+(def ^:private ee-available?
+  (try
+    (classloader/require 'metabase-enterprise.core)
+    true
+    (catch Throwable _
+      false)))
+
+;; don't i18n this, it's legalese
+(log/info
+ (format "\nMetabase %s" config/mb-version-string)
+
+ (format "\n\nCopyright © %d Metabase, Inc." (.getYear (java.time.LocalDate/now)))
+
+ (str "\n\n"
+      (if ee-available?
+        (str (deferred-trs "Metabase Enterprise Edition extensions are PRESENT.")
+             "\n\n"
+             (deferred-trs "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License.")
+             (deferred-trs "See {0} for details." "https://www.metabase.com/license/commercial/"))
+        (deferred-trs "Metabase Enterprise Edition extensions are NOT PRESENT."))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- -init-create-setup-token
   "Create and set a new setup token and log it."
   []
-  (setup/create-token!)                    ; we need this here to create the initial token
+  (setup/create-token!)                 ; we need this here to create the initial token
   (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
         port      (config/config-int :mb-jetty-port)
         setup-url (str "http://"
@@ -106,8 +125,6 @@
 
     ;; start the metabot thread
     (metabot/start-metabot!))
-
-  (set-locale (setting/get :site-locale))
 
   (init-status/set-complete!)
   (log/info (trs "Metabase Initialization COMPLETE")))

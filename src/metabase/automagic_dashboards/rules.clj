@@ -267,7 +267,7 @@
                              (->entity table-type)
                              (->type table-type))])))
     LocalizedString (fn [s]
-                      (i18n/->UserLocalizedString (namespace-munge *ns*) s nil))}))
+                      (i18n/->UserLocalizedString s nil))}))
 
 (def ^:private rules-dir "automagic_dashboards/")
 

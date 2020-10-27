@@ -57,6 +57,7 @@ export default class SettingsSetting extends Component {
       Widget = SettingInput;
     }
     return (
+      // TODO - this formatting needs to be moved outside this component
       <li className="m2 mb4">
         {!setting.noHeader && <SettingHeader setting={setting} />}
         <div className="flex">

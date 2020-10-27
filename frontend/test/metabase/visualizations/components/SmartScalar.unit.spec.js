@@ -1,5 +1,5 @@
 import React from "react";
-import { render, cleanup } from "@testing-library/react";
+import { render } from "@testing-library/react";
 
 import { NumberColumn, DateTimeColumn } from "../__support__/visualizations";
 
@@ -15,8 +15,6 @@ const series = ({ rows, insights }) => {
 };
 
 describe("SmartScalar", () => {
-  afterEach(cleanup);
-
   it("should show 20% increase", () => {
     const rows = [["2019-10-01T00:00:00", 100], [("2019-11-01T00:00:00", 120)]];
     const insights = [

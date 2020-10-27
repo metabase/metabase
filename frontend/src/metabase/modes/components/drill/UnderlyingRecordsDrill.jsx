@@ -8,7 +8,7 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 import { AggregationDimension } from "metabase-lib/lib/Dimension";
 
@@ -44,7 +44,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
         : null;
   }
 
-  const recordName = query.table().displayName();
+  const recordName = query.table() && query.table().displayName();
   const inflectedTableName = recordName
     ? inflect(recordName, count)
     : ngettext(msgid`record`, `records`, count);

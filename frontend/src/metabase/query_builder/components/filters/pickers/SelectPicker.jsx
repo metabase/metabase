@@ -81,7 +81,10 @@ export default class SelectPicker extends Component {
   nameForOption(option: SelectOption) {
     if (option.name === "") {
       return t`Empty`;
-    } else if (typeof option.name === "string") {
+    } else if (
+      option.name instanceof String ||
+      typeof option.name === "string"
+    ) {
       return option.name;
     } else {
       return capitalize(String(option.name));

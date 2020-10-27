@@ -1,16 +1,24 @@
 import * as Card from "metabase/meta/Card";
 
 import { assocIn, dissoc } from "icepick";
+import { getMetadata } from "metabase/selectors/metadata";
 
 describe("metabase/meta/Card", () => {
   describe("questionUrlWithParameters", () => {
-    const metadata = {
-      fields: {
-        2: {
-          base_type: "type/Integer",
+    const metadata = getMetadata({
+      entities: {
+        databases: {},
+        schemas: {},
+        tables: {},
+        fields: {
+          2: {
+            base_type: "type/Integer",
+          },
         },
+        metrics: {},
+        segments: {},
       },
-    };
+    });
 
     const parameters = [
       {
@@ -164,7 +172,7 @@ describe("metabase/meta/Card", () => {
           card,
           metadata,
           parameters,
-          { "2": "123" },
+          { "2": 123 },
           parameterMappings,
         );
         expect(parseUrl(url)).toEqual({

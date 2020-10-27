@@ -20,8 +20,8 @@
 ;; Tell the JSON middleware to use a date format that includes milliseconds (why?)
 (def ^:private default-date-format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 
-(intern 'cheshire.factory 'default-date-format default-date-format)
-(intern 'cheshire.generate '*date-format* default-date-format)
+(alter-var-root #'cheshire.factory/default-date-format (constantly default-date-format))
+(alter-var-root #'cheshire.generate/*date-format* (constantly default-date-format))
 
 ;; ## Custom JSON encoders
 

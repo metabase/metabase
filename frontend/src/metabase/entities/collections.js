@@ -195,7 +195,7 @@ type ExpandedCollection = {
 // given list of collections with { id, name, location } returns a map of ids to
 // expanded collection objects like { id, name, location, path, children }
 // including a root collection
-function getExpandedCollectionsById(
+export function getExpandedCollectionsById(
   collections: Collection[],
   userPersonalCollectionId: ?CollectionId,
 ): { [key: PseudoCollectionId]: ExpandedCollection } {

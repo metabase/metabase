@@ -214,11 +214,20 @@ text.value-label {
 
 text.value-label-outline {
   font-weight: 800;
-  stroke-width: 4px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  stroke-width: 3px;
   stroke: var(--color-text-white);
 }
 
 text.value-label {
   fill: var(--color-text-dark);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+text.value-label-white {
+  fill: var(--color-text-white);
   font-weight: 800;
 }

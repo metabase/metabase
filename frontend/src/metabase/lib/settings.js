@@ -14,6 +14,7 @@ export type SettingName =
   | "custom-geojson"
   | "email-configured?"
   | "enable-embedding"
+  | "enable-enhancements?"
   | "enable-public-sharing"
   | "enable-xrays"
   | "engines"
@@ -76,6 +77,10 @@ class Settings {
     return this.get("admin-email");
   }
 
+  enhancementsEnabled() {
+    return this.get("enable-enhancements?");
+  }
+
   isEmailConfigured() {
     return this.get("email-configured?");
   }
@@ -106,16 +111,20 @@ class Settings {
 
   docsUrl(page = "", anchor = "") {
     let { tag } = this.get("version", {});
-    if (!tag) {
+    if (/^v1\.\d+\.\d+$/.test(tag)) {
+      // if it's a normal EE version, link to the corresponding CE docs
+      tag = tag.replace("v1", "v0");
+    } else if (!tag || /v1/.test(tag)) {
+      // if there's no tag or it's an EE version that might not have a matching CE version, link to latest
       tag = "latest";
     }
     if (page) {
-      page = `/${page}.html`;
+      page = `${page}.html`;
     }
     if (anchor) {
       anchor = `#${anchor}`;
     }
-    return `https://metabase.com/docs/${tag}${page}${anchor}`;
+    return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
   }
 
   newVersionAvailable() {
@@ -185,7 +194,7 @@ class Settings {
     }
 
     const { total, ...rest } = descriptions;
-    const includes = Object.values(rest).join(t`, `);
+    const includes = Object.values(rest).join(", ");
     if (total && includes) {
       return t`must be ${total} and include ${includes}.`;
     } else if (total) {

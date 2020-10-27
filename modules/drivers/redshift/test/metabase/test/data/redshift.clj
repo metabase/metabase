@@ -46,7 +46,7 @@
 (defonce ^:private session-schema-number
   (rand-int 240)) ; there's a maximum of 256 schemas per DB so make sure we don't go over that limit
 
-(defonce ^:private session-schema-name
+(defonce session-schema-name
   (str "schema_" session-schema-number))
 
 ;; When we test against Redshift we use a session-unique schema so we can run simultaneous tests

@@ -14,13 +14,18 @@ import "number-to-locale-string";
 import "metabase/lib/i18n-debug";
 
 // set the locale before loading anything else
-import "metabase/lib/i18n";
+import { loadLocalization } from "metabase/lib/i18n";
 
 // NOTE: why do we need to load this here?
 import "metabase/lib/colors";
 
 // NOTE: this loads all builtin plugins
 import "metabase/plugins/builtin";
+
+// This is conditionally aliased in the webpack config.
+// If EE isn't enabled, it loads an empty file.
+// $FlowFixMe
+import "ee-plugins"; // eslint-disable-line import/no-unresolved
 
 import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
 
@@ -100,6 +105,16 @@ function _init(reducers, getRoutes, callback) {
     window[
       "ga-disable-" + MetabaseSettings.get("ga-code")
     ] = MetabaseSettings.isTrackingEnabled() ? null : true;
+  });
+
+  MetabaseSettings.on("user-locale", async locale => {
+    // reload locale definition and site settings with the new locale
+    await Promise.all([
+      loadLocalization(locale),
+      store.dispatch(refreshSiteSettings({ locale })),
+    ]);
+    // force re-render of React application
+    root.forceUpdate();
   });
 
   PLUGIN_APP_INIT_FUCTIONS.forEach(init => init({ root }));
