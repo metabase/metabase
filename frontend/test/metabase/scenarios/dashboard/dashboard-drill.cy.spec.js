@@ -247,6 +247,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
         cy.findByText("Reviewer is xavier");
         cy.findByText("Rating is equal to 2 selections");
+        cy.contains("Reprehenderit non error"); // xavier's review
 
         cy.log("**The second case**");
         // go back to the dashboard
@@ -255,6 +256,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
         cy.findByText("13062Q").click(); // the card title
         cy.findByText("Rating is equal to 2 selections");
+        cy.contains("Ad perspiciatis quis et consectetur."); // 5 star review
       });
     });
   });
