@@ -76,10 +76,10 @@ class TasksApp extends React.Component {
               const db = task.db_id ? databaseByID[task.db_id] : null;
               const name = db ? db.name : null;
               const engine = db ? db.engine : null;
+              // only want unknown if there is a db on the task and we don't have info
               return (
                 <tr key={task.id}>
                   <td className="text-bold">{task.task}</td>
-                  // only want unknown if there is a db on the task and we don't have info
                   <td>{task.db_id ? name || t`Unknown name` : null}</td>
                   <td>{task.db_id ? engine || t`Unknown engine` : null}</td>
                   <td>{task.started_at}</td>
