@@ -151,8 +151,8 @@
     (with-open [file (io/writer <>)]
       (.write ^java.io.Writer file ^String content))))
 
-(defn postal-send-message-mock
-  "Stubs out postal/send-message, instead returning the would-be email contents as a string"
+(defn mock-send-email!
+  "To stub out email sending, instead returning the would-be email contents as a string"
   [smtp-credentials email-details]
   (-> email-details
       message/make-jmessage
@@ -209,7 +209,7 @@
                  (m/mapply email/send-message! params)
                  (@inbox recipient)))))
         (testing "it does not wrap long, non-ASCII filenames"
-          (with-redefs [postal/send-message postal-send-message-mock]
+          (with-redefs [email/send-email! mock-send-email!]
             (let [basename                     "this-is-quite-long-and-has-non-Âſçïı-characters"
                   csv-file                     (temp-csv basename csv-contents)
                   params-with-problematic-file (-> params

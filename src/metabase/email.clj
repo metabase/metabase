@@ -11,6 +11,10 @@
             [schema.core :as s])
   (:import javax.mail.Session))
 
+;; https://github.com/metabase/metabase/issues/11879#issuecomment-713816386
+(when-not *compile-files*
+  (System/setProperty "mail.mime.splitlongparameters" "false"))
+
 ;;; CONFIG
 
 (defsetting email-from-address
@@ -41,13 +45,10 @@
 
 ;; ## PUBLIC INTERFACE
 
-(defn send-email!
+(def ^{:arglists '([smtp-credentials email-details]), :style/indent 1} send-email!
   "Internal function used to send messages. Should take 2 args - a map of SMTP credentials, and a map of email details.
    Provided so you can swap this out with an \"inbox\" for test purposes."
-  [smtp-credentials email-details]
-  (System/setProperty "mail.mime.splitlongparameters" "false") ; https://github.com/metabase/metabase/issues/11879#issuecomment-713816386
-  (postal/send-message smtp-credentials email-details))
-
+  postal/send-message)
 
 (defsetting email-configured?
   "Check if email is enabled and that the mandatory settings are configured."
