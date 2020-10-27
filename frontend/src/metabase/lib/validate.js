@@ -7,7 +7,7 @@ export const validators = {
   email: () => value =>
     !Utils.validEmail(value) && t`must be a valid email address`,
   maxLength: max => value =>
-    value && value.length > 100 && t`must be ${max} characters or less`,
+    value && value.length > max && t`must be ${max} characters or less`,
   passwordComplexity: () => value =>
     Settings.passwordComplexityDescription(value),
 };

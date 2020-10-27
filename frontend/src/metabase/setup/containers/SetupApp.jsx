@@ -12,6 +12,7 @@ import {
   setActiveStep,
   validateDatabase,
   setDatabaseDetails,
+  setLanguageDetails,
   setAllowTracking,
   submitSetup,
 } from "../actions";
@@ -19,11 +20,12 @@ import {
 const mapStateToProps = setupSelectors;
 
 const mapDispatchToProps = {
+  setLanguageDetails,
   setUserDetails,
+  setDatabaseDetails,
   validatePassword,
   setActiveStep,
   validateDatabase,
-  setDatabaseDetails,
   setAllowTracking,
   submitSetup,
 };

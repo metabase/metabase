@@ -1,35 +1,10 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 
-import Icon from "metabase/components/Icon";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import CheckBox from "metabase/components/CheckBox";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import GroupSelect from "./GroupSelect";
-import GroupSummary from "./GroupSummary";
-
-const GroupOption = ({ name, color, selected, disabled, onChange }) => (
-  <div
-    className={cx("flex align-center p1 px2", { "cursor-pointer": !disabled })}
-    onClick={() => !disabled && onChange(!selected)}
-  >
-    <span className={cx("pr1", color, { disabled })}>
-      <CheckBox checked={selected} size={18} />
-    </span>
-    {name}
-  </div>
-);
-
-GroupOption.propTypes = {
-  name: PropTypes.string,
-  color: PropTypes.string,
-  selected: PropTypes.bool,
-  disabled: PropTypes.bool,
-  onChange: PropTypes.func,
-};
 
 export default class UserGroupSelect extends Component {
   static propTypes = {
@@ -70,28 +45,16 @@ export default class UserGroupSelect extends Component {
         });
       }
     };
-
+    const selectedGroupIds = Object.values(user.memberships).map(
+      m => m.group_id,
+    );
     return (
-      <PopoverWithTrigger
-        ref="popover"
-        triggerElement={
-          <div className="flex align-center">
-            <span className="mr1 text-medium">
-              <GroupSummary groups={groups} selectedGroups={user.memberships} />
-            </span>
-            <Icon className="text-light" name="chevrondown" size={10} />
-          </div>
-        }
-        triggerClasses="AdminSelectBorderless py1"
-        sizeToFit
-      >
-        <GroupSelect
-          groups={groups}
-          selectedGroups={user.memberships}
-          onGroupChange={changeMembership}
-          isCurrentUser={isCurrentUser}
-        />
-      </PopoverWithTrigger>
+      <GroupSelect
+        groups={groups}
+        selectedGroupIds={selectedGroupIds}
+        onGroupChange={changeMembership}
+        isCurrentUser={isCurrentUser}
+      />
     );
   }
 }

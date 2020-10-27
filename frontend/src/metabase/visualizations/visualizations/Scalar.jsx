@@ -14,9 +14,9 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import cx from "classnames";
 import _ from "underscore";
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
-import type { Column } from "metabase/meta/types/Dataset";
-import type { VisualizationSettings } from "metabase/meta/types/Card";
+import type { VisualizationProps } from "metabase-types/types/Visualization";
+import type { Column } from "metabase-types/types/Dataset";
+import type { VisualizationSettings } from "metabase-types/types/Card";
 
 import ScalarValue, {
   ScalarWrapper,
@@ -159,6 +159,7 @@ export default class Scalar extends Component {
       // title: t`Multiply by a number`,
       // widget: "number",
     },
+    click_behavior: {},
   };
 
   _getColumnIndex(cols: Column[], settings: VisualizationSettings) {
@@ -208,7 +209,12 @@ export default class Scalar extends Component {
       fullScalarValue.length > COMPACT_MIN_LENGTH && width < COMPACT_MAX_WIDTH;
     const displayValue = displayCompact ? compactScalarValue : fullScalarValue;
 
-    const clicked = { value, column };
+    const clicked = {
+      value,
+      column,
+      data: rows[0].map((value, index) => ({ value, col: cols[index] })),
+      settings,
+    };
     const isClickable = visualizationIsClickable(clicked);
 
     return (

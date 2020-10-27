@@ -1,6 +1,6 @@
 /* @flow */
 
-import type { LimitClause } from "metabase/meta/types/Query";
+import type { LimitClause } from "metabase-types/types/Query";
 
 export function getLimit(lc: ?LimitClause): ?number {
   return lc;

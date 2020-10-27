@@ -29,12 +29,17 @@ export default class Select extends Component {
     children: PropTypes.any,
 
     value: PropTypes.any.isRequired,
+    defaultValue: PropTypes.any,
     onChange: PropTypes.func.isRequired,
     multiple: PropTypes.bool,
     placeholder: PropTypes.string,
 
     // PopoverWithTrigger props
     isInitiallyOpen: PropTypes.bool,
+    triggerElement: PropTypes.any,
+
+    // SelectButton props
+    buttonProps: PropTypes.object,
 
     // AccordianList props
     searchProp: PropTypes.string,
@@ -47,6 +52,7 @@ export default class Select extends Component {
     optionSectionFn: PropTypes.func,
     optionDisabledFn: PropTypes.func,
     optionIconFn: PropTypes.func,
+    optionClassNameFn: PropTypes.func,
   };
 
   static defaultProps = {
@@ -61,7 +67,14 @@ export default class Select extends Component {
     super(props);
 
     // reselect selectors
-    const _getValue = props => props.value;
+    const _getValue = props =>
+      // If a defaultValue is passed, replace a null value with it.
+      // Otherwise, allow null values since we sometimes want them.
+      Object.prototype.hasOwnProperty.call(props, "defaultValue") &&
+      props.value == null
+        ? props.defaultValue
+        : props.value;
+
     const _getValues = createSelector(
       [_getValue],
       value => (Array.isArray(value) ? value : [value]),
@@ -156,6 +169,7 @@ export default class Select extends Component {
 
   render() {
     const {
+      buttonProps,
       className,
       placeholder,
       searchProp,
@@ -176,19 +190,22 @@ export default class Select extends Component {
       <PopoverWithTrigger
         ref={ref => (this._popover = ref)}
         triggerElement={
-          <SelectButton
-            className="full-width"
-            hasValue={selectedNames.length > 0}
-          >
-            {selectedNames.length > 0
-              ? selectedNames.map((name, index) => (
-                  <span key={index}>
-                    {name}
-                    {index < selectedNames.length - 1 ? ", " : ""}
-                  </span>
-                ))
-              : placeholder}
-          </SelectButton>
+          this.props.triggerElement || (
+            <SelectButton
+              className="flex-full"
+              hasValue={selectedNames.length > 0}
+              {...buttonProps}
+            >
+              {selectedNames.length > 0
+                ? selectedNames.map((name, index) => (
+                    <span key={index}>
+                      {name}
+                      {index < selectedNames.length - 1 ? ", " : ""}
+                    </span>
+                  ))
+                : placeholder}
+            </SelectButton>
+          )
         }
         triggerClasses={cx("flex", className)}
         isInitiallyOpen={isInitiallyOpen}
@@ -204,6 +221,7 @@ export default class Select extends Component {
           itemIsSelected={this.itemIsSelected}
           itemIsClickable={this.itemIsClickable}
           renderItemName={this.props.optionNameFn}
+          getItemClassName={this.props.optionClassNameFn}
           renderItemDescription={this.props.optionDescriptionFn}
           renderItemIcon={this.renderItemIcon}
           onChange={this.handleChange}

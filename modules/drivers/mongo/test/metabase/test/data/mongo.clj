@@ -18,12 +18,12 @@
 
 (defmethod tx/dbdef->connection-details :mongo
   [_ _ dbdef]
-  {:dbname (tx/escaped-name dbdef)
+  {:dbname (tx/escaped-database-name dbdef)
    :host   "localhost"})
 
 (defn- destroy-db! [driver dbdef]
   (with-open [mongo-connection (mg/connect (tx/dbdef->connection-details driver :server dbdef))]
-    (mg/drop-db mongo-connection (tx/escaped-name dbdef))))
+    (mg/drop-db mongo-connection (tx/escaped-database-name dbdef))))
 
 (defmethod tx/create-db! :mongo
   [driver {:keys [table-definitions], :as dbdef} & {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
@@ -37,10 +37,14 @@
         (doseq [[i row] (map-indexed (partial vector) rows)]
           (try
             ;; Insert each row
-            (mc/insert mongo-db (name table-name) (assoc (zipmap field-names row)
-                                                         :_id (inc i)))
+            (mc/insert mongo-db (name table-name) (into {:_id (inc i)}
+                                                        (zipmap field-names row)))
             ;; If row already exists then nothing to do
             (catch com.mongodb.MongoException _)))))))
+
+(defmethod tx/destroy-db! :mongo
+  [driver dbdef]
+  (destroy-db! driver dbdef))
 
 (defmethod tx/format-name :mongo
   [_ table-or-field-name]

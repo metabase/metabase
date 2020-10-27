@@ -3,7 +3,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [trs]]
+             [i18n :refer [trs tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -34,12 +34,50 @@
 
 (models/defmodel FieldValues :metabase_fieldvalues)
 
+(defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
+  (when (s/check (s/maybe [(s/maybe su/NonBlankString)]) human-readable-values)
+    (throw (ex-info (tru "Invalid human-readable-values: values must be a sequence; each item must be nil or a string")
+                    {:human-readable-values human-readable-values
+                     :status-code           400}))))
+
+(defn- pre-insert [field-values]
+  (u/prog1 field-values
+    (assert-valid-human-readable-values field-values)))
+
+(defn- pre-update [field-values]
+  (u/prog1 field-values
+    (assert-valid-human-readable-values field-values)))
+
+(defn- post-select [field-values]
+  (cond-> field-values
+    (contains? field-values :human_readable_values)
+    (update :human_readable_values (fn [human-readable-values]
+                                     (cond
+                                       (sequential? human-readable-values)
+                                       human-readable-values
+
+                                       ;; in some places human readable values were incorrectly saved as a map. If
+                                       ;; that's the case, convert them back to a sequence
+                                       (map? human-readable-values)
+                                       (do
+                                         (assert (:values field-values)
+                                                 (tru ":values must be present to fetch :human_readable_values"))
+                                         (mapv human-readable-values (:values field-values)))
+
+                                       ;; if the `:human_readable_values` key is present (i.e., if we are fetching the
+                                       ;; whole row), but `nil`, then replace the `nil` value with an empty vector. The
+                                       ;; client likes this better.
+                                       :else
+                                       [])))))
+
 (u/strict-extend (class FieldValues)
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true})
-          :types       (constantly {:human_readable_values :json, :values :json})
-          :post-select (u/rpartial update :human_readable_values #(or % {}))}))
+          :types       (constantly {:human_readable_values :json-no-keywordization, :values :json})
+          :pre-insert  pre-insert
+          :pre-update  pre-update
+          :post-select post-select}))
 
 
 ;; ## FieldValues Helper Functions
@@ -61,18 +99,26 @@
   "`true` if the combined length of all the values in `distinct-values` is below the threshold for what we'll allow in a
   FieldValues entry. Does some logging as well."
   [distinct-values]
-  (let [total-length (reduce + (map (comp count str)
-                                    distinct-values))]
+  ;; only consume enough values to determine whether the total length is > `total-max-length` -- if it is, we can stop
+  (let [total-length (reduce
+                      (fn [total-length v]
+                        (let [new-total (+ total-length (count (str v)))]
+                          (if (>= new-total total-max-length)
+                            (reduced new-total)
+                            new-total)))
+                      0
+                      distinct-values)]
     (u/prog1 (<= total-length total-max-length)
-      (log/debug (trs "Field values total length is {0} (max {1})." total-length total-max-length)
+      (log/debug (trs "Field values total length is > {0}." total-max-length)
                  (if <>
                    (trs "FieldValues are allowed for this Field.")
                    (trs "FieldValues are NOT allowed for this Field."))))))
 
-
-(defn- distinct-values
+(defn distinct-values
   "Fetch a sequence of distinct values for `field` that are below the `total-max-length` threshold. If the values are
-  past the threshold, this returns `nil`."
+  past the threshold, this returns `nil`. (This function provides the values that normally get saved as a Field's
+  FieldValues. You most likely should not be using this directly in code outside of this namespace, unless it's for a
+  very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
   [field]
   (classloader/require 'metabase.db.metadata-queries)
   (try

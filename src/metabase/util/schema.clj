@@ -2,16 +2,23 @@
   "Various schemas that are useful throughout the app."
   (:refer-clojure :exclude [distinct])
   (:require [cheshire.core :as json]
-            [clojure.string :as str]
+            [clojure
+             [string :as str]
+             [walk :as walk]]
             [medley.core :as m]
-            [metabase.util :as u]
+            [metabase
+             [types :as types]
+             [util :as u]]
             [metabase.util
-             [i18n :refer [deferred-tru]]
+             [i18n :as i18n :refer [deferred-tru]]
              [password :as password]]
             [schema
              [core :as s]
              [macros :as s.macros]
              [utils :as s.utils]]))
+
+;; So the `:type/` hierarchy is loaded.
+(comment types/keep-me)
 
 ;; always validate all schemas in s/defn function declarations. See
 ;; https://github.com/plumatic/schema#schemas-in-practice for details.
@@ -27,7 +34,7 @@
                          {:value value, :error error}))
       value)))
 
-(intern 'schema.core 'validator schema-core-validator)
+(alter-var-root #'schema.core/validator (constantly schema-core-validator))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -136,6 +143,27 @@
   (with-api-error-message (s/constrained schema empty-or-distinct? "distinct")
     (str (api-error-message schema) " " (deferred-tru "All elements must be distinct."))))
 
+(defn open-schema
+  "Allow for extra keys (recursively) in a schema.
+  For instance:
+
+  {(s/optional-key :thing) s/Int
+   (s/optional-key :sub)   {(s/optional-key :key) s/Int}}
+
+  can validate a map with extra keys:
+
+  {:thing     3
+   :extra-key 5
+   :sub       {:key 3 :another-extra 5}}
+
+  https://github.com/plumatic/schema/issues/120"
+  [m]
+  (walk/prewalk (fn [x]
+                  (if (and (map? x) (not (record? x)))
+                    (assoc (dissoc x (s/find-extra-keys-schema x)) s/Any s/Any)
+                    x))
+                m))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 USEFUL `schema`S                                                 |
@@ -173,11 +201,12 @@
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
-  (s/named (s/cond-pre s/Keyword s/Str) (deferred-tru "Keyword or string")))
+  (with-api-error-message (s/named (s/cond-pre s/Keyword s/Str) (deferred-tru "Keyword or string"))
+    (deferred-tru "value must be a keyword or string.")))
 
 (def FieldType
   "Schema for a valid Field type (does it derive from `:type/*`)?"
-  (with-api-error-message (s/pred (u/rpartial isa? :type/*) (deferred-tru "Valid field type"))
+  (with-api-error-message (s/pred #(isa? % :type/*) (deferred-tru "Valid field type"))
     (deferred-tru "value must be a valid field type.")))
 
 (def FieldTypeKeywordOrString
@@ -249,3 +278,8 @@
   "Schema for a valid map of embedding params."
   (with-api-error-message (s/maybe {s/Keyword (s/enum "disabled" "enabled" "locked")})
     (deferred-tru "value must be a valid embedding params map.")))
+
+(def ValidLocale
+  "Schema for a valid ISO Locale code e.g. `en` or `en-US`. Case-insensitive and allows dashes or underscores."
+  (with-api-error-message (s/constrained NonBlankString i18n/available-locale?)
+    (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.")))

@@ -18,7 +18,7 @@ import {
   formatStringLiteral,
   hasOptions,
 } from ".";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 export { DISPLAY_QUOTES, EDITOR_QUOTES } from "./config";
 

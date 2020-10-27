@@ -14,6 +14,7 @@ export default function FilterPopoverHeader({
 }) {
   const dimension = filter.dimension();
   const field = dimension.field();
+  const operator = filter.operatorName();
 
   const showOperatorSelector = !(field.isTime() || field.isDate());
   const showHeader = showFieldPicker || showOperatorSelector;
@@ -33,7 +34,9 @@ export default function FilterPopoverHeader({
     >
       {showFieldPicker && (
         <SidebarHeader
-          className={cx("text-default py1")}
+          className={cx("text-default py1", {
+            pr2: !showOperatorSelectorOnOwnRow,
+          })}
           title={
             (field.table ? field.table.displayName() + " – " : "") +
             field.displayName()
@@ -47,8 +50,8 @@ export default function FilterPopoverHeader({
             "ml-auto": !showOperatorSelectorOnOwnRow,
             my1: showOperatorSelectorOnOwnRow,
           })}
-          operator={filter.operatorName()}
-          operators={filter.filterOperators()}
+          operator={operator}
+          operators={filter.filterOperators(operator)}
           onOperatorChange={setOperator}
         />
       )}

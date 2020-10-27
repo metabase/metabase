@@ -112,7 +112,7 @@ export default class DatabaseConnectionStep extends Component {
       return (
         <CollapsedStep
           stepNumber={stepNumber}
-          stepCircleText="2"
+          stepCircleText={String(stepNumber)}
           stepText={stepText}
           isCompleted={activeStep > stepNumber}
           setActiveStep={setActiveStep}
@@ -124,7 +124,7 @@ export default class DatabaseConnectionStep extends Component {
           p={4}
           className="SetupStep bg-white rounded full relative SetupStep--active"
         >
-          <StepTitle title={stepText} circleText={"2"} />
+          <StepTitle title={stepText} circleText={String(stepNumber)} />
 
           <div className="Form-field">
             {t`You’ll need some info about your database, like the username and password. If you don’t have that right now, Metabase also comes with a sample dataset you can get started with.`}

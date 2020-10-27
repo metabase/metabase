@@ -26,21 +26,26 @@ const mapDispatchToProps = {
 @withRouter
 class ArchiveCollectionModal extends React.Component {
   archive = async () => {
-    const { object, setCollectionArchived, push, params } = this.props;
+    const { setCollectionArchived, params } = this.props;
     await setCollectionArchived({ id: params.collectionId }, true);
+  };
+  close = () => {
+    const { onClose, object, push } = this.props;
+    // close the modal
+    onClose();
     const parentId =
       object.effective_ancestors.length > 0
         ? object.effective_ancestors.pop().id
         : null;
+    // redirect to the proper parent collection
     push(Urls.collection(parentId));
   };
   render() {
-    const { onClose } = this.props;
     return (
       <ArchiveModal
         title={t`Archive this collection?`}
         message={t`The dashboards, collections, and pulses in this collection will also be archived.`}
-        onClose={onClose}
+        onClose={this.close}
         onArchive={this.archive}
       />
     );

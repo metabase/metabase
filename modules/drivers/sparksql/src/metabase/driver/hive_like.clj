@@ -1,14 +1,16 @@
 (ns metabase.driver.hive-like
-  (:require [clojure.string :as str]
+  (:require [buddy.core.codecs :as codecs]
             [honeysql.core :as hsql]
             [java-time :as t]
             [metabase.driver :as driver]
+            [metabase.driver.sql
+             [query-processor :as sql.qp]
+             [util :as sql.u]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
-            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.table :refer [Table]]
             [metabase.util
@@ -21,6 +23,10 @@
 (driver/register! :hive-like
   :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set}
   :abstract? true)
+
+(defmethod driver/db-start-of-week :hive-like
+  [_]
+  :sunday)
 
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :hive-like
   [driver]
@@ -80,7 +86,6 @@
 (defmethod sql.qp/date [:hive-like :day]             [_ _ expr] (trunc-with-format "yyyy-MM-dd" (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :day-of-month]    [_ _ expr] (hsql/call :dayofmonth (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :day-of-year]     [_ _ expr] (hx/->integer (date-format "D" (hx/->timestamp expr))))
-(defmethod sql.qp/date [:hive-like :week-of-year]    [_ _ expr] (hsql/call :weekofyear (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :month]           [_ _ expr] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :MM)))
 (defmethod sql.qp/date [:hive-like :month-of-year]   [_ _ expr] (hsql/call :month (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :quarter-of-year] [_ _ expr] (hsql/call :quarter (hx/->timestamp expr)))
@@ -88,18 +93,20 @@
 
 (defmethod sql.qp/date [:hive-like :day-of-week]
   [_ _ expr]
-  (hx/->integer (date-format "u"
-                             (hx/+ (hx/->timestamp expr)
-                                   (hsql/raw "interval '1' day")))))
+  (sql.qp/adjust-day-of-week :hive-like
+                             (hx/->integer (date-format "u"
+                                                        (hx/+ (hx/->timestamp expr)
+                                                              (hsql/raw "interval '1' day"))))))
 
 (defmethod sql.qp/date [:hive-like :week]
   [_ _ expr]
-  (hsql/call :date_sub
-    (hx/+ (hx/->timestamp expr)
-          (hsql/raw "interval '1' day"))
-    (date-format "u"
-                 (hx/+ (hx/->timestamp expr)
-                       (hsql/raw "interval '1' day")))))
+  (let [week-extract-fn (fn [expr]
+                          (hsql/call :date_sub
+                            (hx/+ (hx/->timestamp expr)
+                                  (hsql/raw "interval '1' day"))
+                            (date-format "u" (hx/+ (hx/->timestamp expr)
+                                                   (hsql/raw "interval '1' day")))))]
+    (sql.qp/adjust-start-of-week :hive-like week-extract-fn expr)))
 
 (defmethod sql.qp/date [:hive-like :quarter]
   [_ _ expr]
@@ -111,7 +118,10 @@
 
 (defmethod sql.qp/->honeysql [:hive-like :replace]
   [driver [_ arg pattern replacement]]
-  (hsql/call :regexp_replace (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern) (sql.qp/->honeysql driver replacement)))
+  (hsql/call :regexp_replace
+    (sql.qp/->honeysql driver arg)
+    (sql.qp/->honeysql driver pattern)
+    (sql.qp/->honeysql driver replacement)))
 
 (defmethod sql.qp/->honeysql [:hive-like :regex-match-first]
   [driver [_ arg pattern]]
@@ -139,9 +149,20 @@
   [_ field]
   (apply hsql/qualify (qualified-name-components field)))
 
+(def ^:dynamic *param-splice-style*
+  "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.
+  `:friendly` makes a best-effort attempt to escape strings and generate SQL that is nice to look at, but should not
+  be considered safe against all SQL injection -- use this for 'convert to SQL' functionality. `:paranoid` hex-encodes
+  strings so SQL injection is impossible; this isn't nice to look at, so use this for actually running a query."
+  :friendly)
+
 (defmethod unprepare/unprepare-value [:hive-like String]
-  [_ value]
-  (str \' (str/replace value "'" "\\\\'") \'))
+  [_ ^String s]
+  ;; Because Spark SQL doesn't support parameterized queries (e.g. `?`) convert the entire String to hex and decode.
+  ;; e.g. encode `abc` as `decode(unhex('616263'), 'utf-8')` to prevent SQL injection
+  (case *param-splice-style*
+    :friendly (str \' (sql.u/escape-sql s :backslashes) \')
+    :paranoid (format "decode(unhex('%s'), 'utf-8')" (codecs/bytes->hex (.getBytes s "UTF-8")))))
 
 ;; Hive/Spark SQL doesn't seem to like DATEs so convert it to a DATETIME first
 (defmethod unprepare/unprepare-value [:hive-like LocalDate]

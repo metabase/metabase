@@ -8,6 +8,7 @@
             [java-time :as t]
             [medley.core :as m]
             [metabase
+             [public-settings :as public-settings]
              [query-processor :as qp]
              [test :as mt]
              [util :as u]]
@@ -18,7 +19,9 @@
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
             [metabase.query-processor.middleware.cache.impl :as impl]
-            [metabase.test.fixtures :as fixtures]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [pretty.core :as pretty]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -312,6 +315,30 @@
                            (m/dissoc-in [:data :results_metadata :checksum])))
                     "Cached result should be in the same format as the uncached result, except for added keys")))))))))
 
+(deftest insights-from-cache-test
+  (testing "Insights should work on cahced results (#12556)"
+    (with-mock-cache [save-chan]
+      (let [query (-> checkins
+                      (mt/mbql-query {:breakout    [[:datetime-field (mt/id :checkins :date) :month]]
+                                      :aggregation [[:count]]})
+                      (assoc :cache-ttl 100))]
+        (qp/process-query query)
+        ;; clear any existing values in the `save-chan`
+        (while (a/poll! save-chan))
+        (mt/wait-for-result save-chan)
+        (is (= {:previous-value 24
+                :unit           :month
+                :offset         -45.27
+                :last-change    -0.46
+                :last-value     13
+                :col            "count"}
+               (tu/round-all-decimals 2 (-> query
+                                            qp/process-query
+                                            :data
+                                            :insights
+                                            first
+                                            (dissoc :best-fit :slope)))))))))
+
 (deftest export-test
   (testing "Should be able to cache results streaming as an alternate download format, e.g. csv"
     (with-mock-cache [save-chan]
@@ -359,3 +386,18 @@
                      (dissoc :updated_at)
                      (m/dissoc-in [:data :results_metadata :checksum])))
               "Query should be cached and results should match those ran without cache"))))))
+
+(deftest caching-big-resultsets
+  (testing "Make sure we can save large result sets without tripping over internal async buffers"
+    (is (= 10000 (count (transduce identity
+                                   (#'cache/save-results-xform 0 {} (byte 0) conj)
+                                   (repeat 10000 [1]))))))
+  (testing "Make sure we don't block somewhere if we decide not to save results"
+    (is (= 10000 (count (transduce identity
+                                   (#'cache/save-results-xform (System/currentTimeMillis) {} (byte 0) conj)
+                                   (repeat 10000 [1]))))))
+  (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
+    (let [max-bytes (* (public-settings/query-caching-max-kb) 1024)]
+      (is (= max-bytes (count (transduce identity
+                                         (#'cache/save-results-xform 0 {} (byte 0) conj)
+                                         (repeat max-bytes [1]))))))))

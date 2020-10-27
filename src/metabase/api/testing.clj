@@ -12,11 +12,13 @@
   (str "frontend/test/snapshots/" (str/replace snapshot-name #"\W" "_") ".sql"))
 
 (api/defendpoint POST "/snapshot/:name"
+  "Snapshot the database for testing purposes."
   [name]
   (jdbc/query (db/connection) ["SCRIPT TO ?" (snapshot-path-for-name name)])
   nil)
 
 (api/defendpoint POST "/restore/:name"
+  "Restore a database snapshot for testing purposes."
   [name]
   (jdbc/execute! (db/connection) ["DROP ALL OBJECTS"])
   (jdbc/execute! (db/connection) ["RUNSCRIPT FROM ?" (snapshot-path-for-name name)])

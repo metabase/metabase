@@ -3,8 +3,8 @@
 import React from "react";
 import { defer } from "metabase/lib/promise";
 
-import type { Dataset } from "metabase/meta/types/Dataset";
-import type { RawSeries } from "metabase/meta/types/Visualization";
+import type { Dataset } from "metabase-types/types/Dataset";
+import type { RawSeries } from "metabase-types/types/Visualization";
 
 import Question from "metabase-lib/lib/Question";
 

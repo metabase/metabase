@@ -179,12 +179,12 @@
 
 (defn- respond
   [{:keys [^HttpServletResponse response ^AsyncContext async-context request-map response-map request]}
-   f {:keys [content-type], :as options} finished-chan]
+   f {:keys [content-type status headers], :as options} finished-chan]
   (let [canceled-chan (a/promise-chan)]
     (try
-      (.setStatus response 202)
+      (.setStatus response (or status 202))
       (let [gzip?   (should-gzip-response? request-map)
-            headers (cond-> (assoc (:headers response-map) "Content-Type" content-type)
+            headers (cond-> (assoc (merge headers (:headers response-map)) "Content-Type" content-type)
                       gzip? (assoc "Content-Encoding" "gzip"))]
         (#'ring.servlet/set-headers response headers)
         (let [output-stream-delay (output-stream-delay gzip? response)
@@ -257,7 +257,7 @@
 
   Minimal example:
 
-    (streaming-response {:content-type \"applicaton/json; charset=utf-8\"} [os canceled-chan]
+    (streaming-response {:content-type \"application/json; charset=utf-8\"} [os canceled-chan]
       (write-something-to-stream! os))
 
   `f` should block until it is completely finished writing to the stream, which will be closed thereafter.

@@ -14,11 +14,11 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import type { DatasetQuery } from "metabase/meta/types/Card";
-import type { TableId } from "metabase/meta/types/Table";
-import type { Database } from "metabase/meta/types/Database";
-import type { TemplateTag } from "metabase/meta/types/Query";
-import type { Field as FieldObject } from "metabase/meta/types/Field";
+import type { DatasetQuery } from "metabase-types/types/Card";
+import type { TableId } from "metabase-types/types/Table";
+import type { Database } from "metabase-types/types/Database";
+import type { TemplateTag } from "metabase-types/types/Query";
+import type { Field as FieldObject } from "metabase-types/types/Field";
 
 type Props = {
   query: NativeQuery,
@@ -70,7 +70,8 @@ export default class TagEditorSidebar extends React.Component {
       updateTemplateTag,
       onClose,
     } = this.props;
-    const tags = query.templateTags();
+    // The tag editor sidebar excludes snippets since they have a separate sidebar.
+    const tags = query.templateTagsWithoutSnippets();
     const database = query.database();
 
     let section;

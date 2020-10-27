@@ -24,14 +24,6 @@
            javax.xml.bind.DatatypeConverter
            [org.apache.commons.validator.routines RegexValidator UrlValidator]))
 
-;; This is the very first log message that will get printed.
-;;
-;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the
-;; logger It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many
-;; other namespaces need to get loaded
-(when-not *compile-files*
-  (log/info (trs "Loading Metabase...")))
-
 (defn format-bytes
   "Nicely format `num-bytes` as kilobytes/megabytes/etc.
 
@@ -49,7 +41,7 @@
 
 ;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
 ;; for pprinting huge things like expanded queries
-(intern 'clojure.pprint '*print-right-margin* 200)
+(alter-var-root #'clojure.pprint/*print-right-margin* (constantly 200))
 
 (defmacro ignore-exceptions
   "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
@@ -93,6 +85,23 @@
   (boolean (when (string? s)
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (str/lower-case s)))))
+
+(defn state?
+  "Is `s` a state string?"
+  ^Boolean [^String s]
+  (boolean
+    (when (string? s)
+      (contains? #{"alabama" "alaska" "arizona" "arkansas" "california" "colorado" "connecticut" "delaware"
+                   "florida" "georgia" "hawaii" "idaho" "illinois" "indiana" "iowa" "kansas" "kentucky" "louisiana"
+                   "maine" "maryland" "massachusetts" "michigan" "minnesota" "mississippi" "missouri" "montana"
+                   "nebraska" "nevada" "new hampshire" "new jersey" "new mexico" "new york" "north carolina"
+                   "north dakota" "ohio" "oklahoma" "oregon" "pennsylvania" "rhode island" "south carolina"
+                   "south dakota" "tennessee" "texas" "utah" "vermont" "virginia" "washington" "west virginia"
+                   "wisconsin" "wyoming"
+                   "ak" "al" "ar" "az" "ca" "co" "ct" "de" "fl" "ga" "hi" "ia" "id" "il" "in" "ks" "ky" "la"
+                   "ma" "md" "me" "mi" "mn" "mo" "ms" "mt" "nc" "nd" "ne" "nh" "nj" "nm" "nv" "ny" "oh" "ok"
+                   "or" "pa" "ri" "sc" "sd" "tn" "tx" "ut" "va" "vt" "wa" "wi" "wv" "wy"}
+                 (str/lower-case s)))))
 
 (defn url?
   "Is `s` a valid HTTP/HTTPS URL string?"
@@ -222,6 +231,11 @@
       (colorize/color (keyword color) (str x)))
     (fn [_ x]
       (str x))))
+
+(defn decolorize
+  "Remove ANSI escape sequences from a String `s`."
+  ^String [s]
+  (some-> s (str/replace #"\[[;\d]*m" "")))
 
 (defn format-color
   "With one arg, converts something to a string and colorizes it. With two args, behaves like `format`, but colorizes
@@ -384,7 +398,7 @@
   "Return a version of String `s` appropriate for use as a URL slug.
    Downcase the name, remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores;
    URL-encode non-ASCII characters. (Non-ASCII characters are encoded rather than replaced with underscores in order
-   to support languages that don't use the Latin alphabet; see issue #3818).
+   to support languages that don't use the Latin alphabet; see metabase#3818).
 
    Optionally specify `max-length` which will truncate the slug after that many characters."
   (^String [^String s]
@@ -538,7 +552,7 @@
   "Is `s` a Base-64 encoded string?"
   ^Boolean [s]
   (boolean (when (string? s)
-             (re-find #"^[0-9A-Za-z/+]+=*$" s))))
+             (re-matches #"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$" s))))
 
 (defn decode-base64
   "Decodes a Base64 string to a UTF-8 string"
@@ -553,15 +567,6 @@
 (def ^{:arglists '([n])} safe-inc
   "Increment `n` if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
   (fnil inc 0))
-
-(defn occurances-of-substring
-  "Return the number of times SUBSTR occurs in string S."
-  ^Long [^String s, ^String substr]
-  (when (and (seq s) (seq substr))
-    (loop [index 0, cnt 0]
-      (if-let [^long new-index (str/index-of s substr index)]
-        (recur (inc new-index) (inc cnt))
-        cnt))))
 
 (defn select-non-nil-keys
   "Like `select-keys`, but returns a map only containing keys in KS that are present *and non-nil* in M.
@@ -595,6 +600,22 @@
     0
     (long (math/floor (/ (Math/log (math/abs x))
                          (Math/log 10))))))
+
+(defn update-when
+  "Like `clojure.core/update` but does not create a new key if it does not exist. Useful when you don't want to create
+  cruft."
+  [m k f & args]
+  (if (contains? m k)
+    (apply update m k f args)
+    m))
+
+(defn update-in-when
+  "Like `clojure.core/update-in` but does not create new keys if they do not exist. Useful when you don't want to create
+  cruft."
+  [m ks f & args]
+  (if (not= ::not-found (get-in m ks ::not-found))
+    (apply update-in m ks f args)
+    m))
 
 (defn index-of
   "Return index of the first element in `coll` for which `pred` reutrns true."
@@ -728,6 +749,14 @@
   `Locale/US` locale."
   [^CharSequence s]
   (.. s toString (toLowerCase (Locale/US))))
+
+(defn upper-case-en
+  "Locale-agnostic version of `clojure.string/upper-case`.
+  `clojure.string/upper-case` uses the default locale in conversions, turning
+  `id` into `İD`, in the Turkish locale. This function always uses the
+  `Locale/US` locale."
+  [^CharSequence s]
+  (.. s toString (toUpperCase (Locale/US))))
 
 (defn lower-case-map-keys
   "Changes the keys of a given map to lower case."

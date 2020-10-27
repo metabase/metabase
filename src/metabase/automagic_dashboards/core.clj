@@ -851,6 +851,7 @@
          :dimensions
          vals
          (mapcat :matches)
+         (filter mi/can-read?)
          filters/interesting-fields
          (map ->related-entity)
          (hash-map :drilldown-fields))))
@@ -996,13 +997,13 @@
                                            ;; (no chunking).
                                            first))]
     (let [show (or show max-cards)]
-      (log/infof (trs "Applying heuristic {0} to {1}." (:rule rule) full-name))
-      (log/infof (trs "Dimensions bindings:\n{0}"
+      (log/debug (trs "Applying heuristic {0} to {1}." (:rule rule) full-name))
+      (log/debug (trs "Dimensions bindings:\n{0}"
                       (->> context
                            :dimensions
                            (m/map-vals #(update % :matches (partial map :name)))
                            u/pprint-to-str)))
-      (log/infof (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
+      (log/debug (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
                       (->> context :metrics (m/map-vals :metric) u/pprint-to-str)
                       (-> context :filters u/pprint-to-str)))
       (-> dashboard

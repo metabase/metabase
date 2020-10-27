@@ -89,4 +89,4 @@
     (one-of field-id field-literal)"
   [& clauses]
   `(one-of* ~@(for [clause clauses]
-                [`(:clause-name (meta (var ~clause))) clause])))
+                [`(:clause-name (meta (resolve '~clause))) clause])))

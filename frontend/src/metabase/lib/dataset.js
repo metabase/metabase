@@ -7,8 +7,8 @@ import type {
   Column,
   ColumnName,
   DatasetData,
-} from "metabase/meta/types/Dataset";
-import type { Field as FieldReference } from "metabase/meta/types/Query";
+} from "metabase-types/types/Dataset";
+import type { Field as FieldReference } from "metabase-types/types/Query";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";

@@ -66,7 +66,8 @@
                   (when-let [chan @start-execution-chan]
                     (a/>!! chan ::started))
                   (Thread/sleep sleep)
-                  (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]])
+                  (mt/suppress-output
+                    (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]]))
                   (catch InterruptedException e
                     (reset! canceled? true)
                     (throw e))))]

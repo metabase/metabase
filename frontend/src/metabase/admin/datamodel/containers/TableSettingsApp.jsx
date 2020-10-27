@@ -48,7 +48,10 @@ export default class TableSettingsApp extends Component {
 }
 
 @Databases.load({ id: (state, { databaseId }) => databaseId })
-@Tables.load({ id: (state, { tableId }) => tableId })
+@Tables.load({
+  id: (state, { tableId }) => tableId,
+  selectorName: "getObjectUnfiltered",
+})
 class Nav extends Component {
   render() {
     const { database: db, table } = this.props;

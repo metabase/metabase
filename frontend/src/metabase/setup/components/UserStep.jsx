@@ -53,7 +53,7 @@ export default class UserStep extends Component {
       return (
         <CollapsedStep
           stepNumber={stepNumber}
-          stepCircleText="1"
+          stepCircleText={String(stepNumber)}
           stepText={stepText}
           isCompleted={activeStep > stepNumber}
           setActiveStep={setActiveStep}
@@ -65,11 +65,11 @@ export default class UserStep extends Component {
           p={4}
           className="SetupStep SetupStep--active rounded bg-white full relative"
         >
-          <StepTitle title={stepText} circleText={"1"} />
+          <StepTitle title={stepText} circleText={String(stepNumber)} />
 
           <User.Form
             className="mt1"
-            form={User.forms.setup}
+            form={User.forms.setup()}
             user={
               userDetails && {
                 ...userDetails,

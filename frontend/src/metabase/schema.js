@@ -32,6 +32,8 @@ export const TableSchema = new schema.Entity(
 export const FieldSchema = new schema.Entity("fields");
 export const SegmentSchema = new schema.Entity("segments");
 export const MetricSchema = new schema.Entity("metrics");
+export const SnippetSchema = new schema.Entity("snippets");
+export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
 
 DatabaseSchema.define({
   tables: [TableSchema],
@@ -82,6 +84,8 @@ export const ENTITIES_SCHEMA_MAP = {
   collections: CollectionSchema,
   segments: SegmentSchema,
   metrics: MetricSchema,
+  snippets: SnippetSchema,
+  snippetCollections: SnippetCollectionSchema,
 };
 
 export const ObjectUnionSchema = new schema.Union(

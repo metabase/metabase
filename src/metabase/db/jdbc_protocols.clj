@@ -10,7 +10,7 @@
             [metabase.util.date-2 :as u.date])
   (:import java.io.BufferedReader
            [java.sql PreparedStatement ResultSet ResultSetMetaData Types]
-           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
+           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset]))
 
 (def ^:private db-type
   (delay
@@ -88,7 +88,14 @@
 
   org.h2.jdbc.JdbcClob
   (result-set-read-column [clob _ _]
-    (clob->str clob)))
+    (clob->str clob))
+
+  org.h2.api.TimestampWithTimeZone
+  (result-set-read-column [t _ _]
+    (let [date        (t/local-date (.getYear t) (.getMonth t) (.getDay t))
+          time        (LocalTime/ofNanoOfDay (.getNanosSinceMidnight t))
+          zone-offset (ZoneOffset/ofTotalSeconds (* (.getTimeZoneOffsetMins t) 60))]
+      (t/offset-date-time date time zone-offset))))
 
 (defmulti ^:private read-column
   {:arglists '([rs rsmeta i])}

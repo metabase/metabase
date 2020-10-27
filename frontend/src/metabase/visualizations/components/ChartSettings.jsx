@@ -169,6 +169,23 @@ class ChartSettings extends Component {
     }
 
     const sectionNames = Object.keys(sections);
+
+    // This sorts the section radio buttons.
+    const sectionSortOrder = [
+      "data",
+      "display",
+      "axes",
+      "labels",
+      // include all section names so any forgotten sections are sorted to the end
+      ...sectionNames.map(x => x.toLowerCase()),
+    ];
+    sectionNames.sort((a, b) => {
+      const [aIdx, bIdx] = [a, b].map(x =>
+        sectionSortOrder.indexOf(x.toLowerCase()),
+      );
+      return aIdx - bIdx;
+    });
+
     const currentSection =
       this.state.currentSection && sections[this.state.currentSection]
         ? this.state.currentSection

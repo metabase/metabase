@@ -347,10 +347,7 @@ export default class ExpressionEditorTextfield extends React.Component {
               <a
                 className="link text-bold block my1"
                 target="_blank"
-                href={MetabaseSettings.docsUrl(
-                  "users-guide/04-asking-questions",
-                  "creating-a-custom-field",
-                )}
+                href={MetabaseSettings.docsUrl("users-guide/expressions")}
               >
                 <Icon name="reference" size={12} className="mr1" />
                 {t`Learn more`}
@@ -360,7 +357,7 @@ export default class ExpressionEditorTextfield extends React.Component {
         )}
         {suggestions.length ? (
           <Popover
-            className="pb1 not-rounded border-dark"
+            className="not-rounded border-dark"
             hasArrow={false}
             tetherOptions={{
               attachment: "top left",
@@ -368,7 +365,7 @@ export default class ExpressionEditorTextfield extends React.Component {
             }}
             sizeToFit
           >
-            <ul style={{ minWidth: 150, overflowY: "scroll" }}>
+            <ul className="pb1" style={{ minWidth: 150, overflowY: "auto" }}>
               {suggestions.map((suggestion, i) =>
                 // insert section title. assumes they're sorted by type
                 [

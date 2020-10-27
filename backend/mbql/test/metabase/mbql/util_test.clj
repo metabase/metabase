@@ -645,7 +645,15 @@
            (mbql.u/desugar-filter-clause [:is-null [:field-id 1]]))))
   (testing "desugaring :not-null"
     (is (= [:!= [:field-id 1] nil]
-           (mbql.u/desugar-filter-clause [:not-null [:field-id 1]])))))
+           (mbql.u/desugar-filter-clause [:not-null [:field-id 1]]))))
+  (testing "desugaring :is-empty"
+    (is (= [:or [:= [:field-id 1] nil]
+                [:= [:field-id 1] ""]]
+           (mbql.u/desugar-filter-clause [:is-empty [:field-id 1]]))))
+  (testing "desugaring :not-empty"
+    (is (= [:and [:!= [:field-id 1] nil]
+                 [:!= [:field-id 1] ""]]
+           (mbql.u/desugar-filter-clause [:not-empty [:field-id 1]])))))
 
 (deftest desugar-does-not-contain-test
   (testing "desugaring does-not-contain without options"
@@ -901,6 +909,17 @@
     [:sum [:field-id 1]]
     [:aggregation-options [:sum [:field-id 1]] {:name "sum_2", :display-name "Sum of Field 1"}]]))
 
+(deftest unique-name-generator-test
+  (testing "Can we get a simple unique name generator"
+    (is (= ["count" "sum" "count_2" "count_2_2"]
+           (map (mbql.u/unique-name-generator) ["count" "sum" "count" "count_2"]))))
+  (testing "Can we get an idempotent unique name generator"
+    (is (= ["count" "sum" "count" "count_2"]
+           (map (mbql.u/unique-name-generator) [:x :y :x :z] ["count" "sum" "count" "count_2"]))))
+  (testing "Can the same object have multiple aliases"
+    (is (= ["count" "sum" "count" "count_2"]
+           (map (mbql.u/unique-name-generator) [:x :y :x :x] ["count" "sum" "count" "count_2"])))))
+
 
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
 
@@ -1040,3 +1059,15 @@
                                 :query    {:source-query {:expressions  {:two [:+ 1 1]}
                                                           :source-table 1}}}
                                "two"))
+
+(expect
+  1
+  (mbql.u/field-clause->id-or-literal [:field-id 1]))
+
+(expect
+  "foo"
+  (mbql.u/field-clause->id-or-literal [:field-literal "foo" :type/Integer]))
+
+(expect
+  "foo"
+  (mbql.u/field-clause->id-or-literal [:expression "foo"]))

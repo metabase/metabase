@@ -90,6 +90,15 @@ Currently we use HTTP cookies to authenticate embedded Metabase users. A limitat
 
 When signing JWTs for either SSO (i.e., in full-app embedding) or standalone question/dashboard embedding, you should always include an expiration time `exp` property appropriate for your application. For SSO it can be very short (e.g., 1 minute) as the token is immediately used to create a session. For embedding it can be short if there are no parameters you expect the user to change, otherwise it should be as long as you expect the user to view and change parameters.
 
+
+## Learn More
+
+Check out these articles:
+
+- [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/blog/external-facing-analytics/index.html).
+- [How to embed Metabase in your app to deliver multi-tenant, self-service analytics](https://www.metabase.com/blog/embedding/index.html).
+
+
 ---
 
 ## Next: white labeling

@@ -7,9 +7,9 @@ import DimensionList from "./DimensionList";
 import Dimension from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
-import type { StructuredQuery, ConcreteField } from "metabase/meta/types/Query";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type { ConcreteField } from "metabase-types/types/Query";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 // import type { Section } from "metabase/components/AccordionList";
 export type AccordionListItem = {};
@@ -27,7 +27,6 @@ type Props = {
   // HACK: for segments
   onFilterChange?: (filter: any) => void,
 
-  table?: Table,
   // query should be included otherwise FieldList may not display field-literal display name correctly
   query?: StructuredQuery,
   metadata?: Metadata,
@@ -63,7 +62,6 @@ export default class FieldList extends Component {
   _updateSections({
     fieldOptions = { dimensions: [], fks: [] },
     segmentOptions = [],
-    table = null,
   } = {}) {
     const sections = new DimensionOptions(fieldOptions).sections({
       extraItems: segmentOptions.map(segment => ({
@@ -87,11 +85,16 @@ export default class FieldList extends Component {
   };
 
   render() {
-    const { field, metadata, query } = this.props;
+    const { field, query, metadata } = this.props;
+    const dimension =
+      field &&
+      (query
+        ? query.parseFieldReference(field)
+        : Dimension.parseMBQL(field, metadata));
     return (
       <DimensionList
         sections={this.state.sections}
-        dimension={field && Dimension.parseMBQL(field, metadata, query)}
+        dimension={dimension}
         onChangeDimension={this.handleChangeDimension}
         onChangeOther={this.handleChangeOther}
         // forward AccordionList props

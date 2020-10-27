@@ -145,7 +145,7 @@ export const MultiseriesLineCard = (name, ...overrides) =>
 function deepExtend(target, ...sources) {
   for (const source of sources) {
     for (const prop in source) {
-      if (source.hasOwnProperty(prop)) {
+      if (Object.prototype.hasOwnProperty.call(source, prop)) {
         if (
           target[prop] &&
           typeof target[prop] === "object" &&

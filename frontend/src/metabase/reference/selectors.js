@@ -5,7 +5,7 @@ import Dashboards from "metabase/entities/dashboards";
 
 import * as Query from "metabase/lib/query/query";
 import * as Filter from "metabase/lib/query/filter";
-import * as A_DEPRECATED from "metabase/lib/query_aggregation";
+import * as Aggregation from "metabase/lib/query/aggregation";
 
 import { resourceListToMap } from "metabase/lib/redux";
 
@@ -126,7 +126,7 @@ export const getMetricQuestions = createSelector(
           question.dataset_query.type === "query" &&
           _.any(
             Query.getAggregations(question.dataset_query.query),
-            aggregation => A_DEPRECATED.getMetric(aggregation) === metricId,
+            aggregation => Aggregation.getMetric(aggregation) === metricId,
           ),
       )
       .reduce((map, question) => assoc(map, question.id, question), {}),

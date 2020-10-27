@@ -35,7 +35,6 @@
   color: var(--color-text-dark);
   background-color: var(--color-bg-white);
   padding: 0.75em;
-  line-height: 1;
 }
 
 .Form-input,
@@ -43,6 +42,46 @@
   border: 1px solid var(--form-field-border-color);
   border-radius: 4px;
   outline: none;
+}
+
+.Form-file-input::-webkit-file-upload-button {
+  visibility: hidden;
+  padding-right: 32px;
+  padding-top: 8px;
+}
+.Form-file-input--has-value {
+  color: var(--color-text-dark);
+  font-weight: bold;
+}
+.Form-file-input::before {
+  background: transparent;
+  border: 1px solid color(var(--color-border) blackness(+ 5%));
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: var(--color-text-dark);
+  content: "Select a file";
+  cursor: pointer;
+  display: inline-block;
+  font-family: "Lato", sans-serif;
+  font-size: 14px;
+  font-weight: bold;
+  outline: none;
+  padding: 0.5rem 0.75rem;
+  white-space: nowrap;
+  -webkit-user-select: none;
+}
+.Form-file-input:hover::before {
+  transition: all 0.5s ease;
+  border-color: var(--color-brand);
+}
+.Form-file-input:active {
+  outline: none;
+}
+.Form-file-input:focus {
+  outline: none;
+}
+.Form-file-input:active::before {
+  background: transparent;
 }
 
 .Form-field.Form--fieldError .Form-input {

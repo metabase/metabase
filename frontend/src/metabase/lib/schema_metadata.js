@@ -292,6 +292,12 @@ const FIELD_FILTER_OPERATORS = {
     validArgumentsFilters: [equivalentArgument],
     multi: true,
   },
+  "is-empty": {
+    validArgumentsFilters: [],
+  },
+  "not-empty": {
+    validArgumentsFilters: [],
+  },
   "is-null": {
     validArgumentsFilters: [],
   },
@@ -383,16 +389,20 @@ const FILTER_OPERATORS_BY_TYPE_ORDERED = {
     { name: "!=", verboseName: t`Is not` },
     { name: "contains", verboseName: t`Contains` },
     { name: "does-not-contain", verboseName: t`Does not contain` },
-    { name: "is-null", verboseName: t`Is empty` },
-    { name: "not-null", verboseName: t`Not empty` },
+    { name: "is-null", verboseName: t`Is null` },
+    { name: "not-null", verboseName: t`Not null` },
+    { name: "is-empty", verboseName: t`Is empty` },
+    { name: "not-empty", verboseName: t`Not empty` },
     { name: "starts-with", verboseName: t`Starts with` },
     { name: "ends-with", verboseName: t`Ends with` },
   ],
   [STRING_LIKE]: [
     { name: "=", verboseName: t`Is` },
     { name: "!=", verboseName: t`Is not` },
-    { name: "is-null", verboseName: t`Is empty` },
-    { name: "not-null", verboseName: t`Not empty` },
+    { name: "is-null", verboseName: t`Is null` },
+    { name: "not-null", verboseName: t`Not null` },
+    { name: "is-empty", verboseName: t`Is empty` },
+    { name: "not-empty", verboseName: t`Not empty` },
   ],
   [TEMPORAL]: [
     { name: "=", verboseName: t`Is` },
@@ -429,26 +439,47 @@ const MORE_VERBOSE_NAMES = {
   before: "is before",
   after: "is after",
   "not empty": "is not empty",
+  "not null": "is not null",
   "less than": "is less than",
   "greater than": "is greater than",
   "less than or equal to": "is less than or equal to",
   "greater than or equal to": "is greater than or equal to",
 };
 
-export function getFilterOperators(field, table) {
+export function getFilterOperators(field, table, selected) {
   const type = getFieldType(field) || UNKNOWN;
-  return FILTER_OPERATORS_BY_TYPE_ORDERED[type].map(operatorForType => {
-    const operator = FIELD_FILTER_OPERATORS[operatorForType.name];
-    const verboseNameLower = operatorForType.verboseName.toLowerCase();
-    return {
-      ...operator,
-      ...operatorForType,
-      moreVerboseName: MORE_VERBOSE_NAMES[verboseNameLower] || verboseNameLower,
-      fields: operator.validArgumentsFilters.map(validArgumentsFilter =>
-        validArgumentsFilter(field, table),
-      ),
-    };
-  });
+  return FILTER_OPERATORS_BY_TYPE_ORDERED[type]
+    .map(operatorForType => {
+      const operator = FIELD_FILTER_OPERATORS[operatorForType.name];
+      const verboseNameLower = operatorForType.verboseName.toLowerCase();
+      return {
+        ...operator,
+        ...operatorForType,
+        moreVerboseName:
+          MORE_VERBOSE_NAMES[verboseNameLower] || verboseNameLower,
+        fields: operator.validArgumentsFilters.map(validArgumentsFilter =>
+          validArgumentsFilter(field, table),
+        ),
+      };
+    })
+    .filter(operator => {
+      if (selected === undefined) {
+        return true;
+      }
+      if (type === "STRING" || type === "STRING_LIKE") {
+        // Text fields should only have is-null / not-null if it was already selected
+        if (selected === "is-null") {
+          return operator["name"] !== "not-null";
+        } else if (selected === "not-null") {
+          return operator["name"] !== "is-null";
+        } else {
+          return (
+            operator["name"] !== "not-null" && operator["name"] !== "is-null"
+          );
+        }
+      }
+      return true;
+    });
 }
 
 // Breakouts and Aggregation options

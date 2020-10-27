@@ -9,7 +9,7 @@ import cx from "classnames";
 import type {
   FilterOperator,
   FilterOperatorName,
-} from "metabase/meta/types/Metadata";
+} from "metabase-types/types/Metadata";
 
 type Props = {
   operator: string,

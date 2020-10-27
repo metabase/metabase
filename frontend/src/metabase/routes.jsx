@@ -81,9 +81,11 @@ import getAdminRoutes from "metabase/admin/routes";
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
+import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
 import DashboardHistoryModal from "metabase/dashboard/components/DashboardHistoryModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
+import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import CollectionLanding from "metabase/components/CollectionLanding";
@@ -105,16 +107,7 @@ const UserIsAuthenticated = UserAuthWrapper({
   failureRedirectPath: "/auth/login",
   authSelector: state => state.currentUser,
   wrapperDisplayName: "UserIsAuthenticated",
-  redirectAction: location =>
-    // HACK: workaround for redux-auth-wrapper not including hash
-    // https://github.com/mjrussell/redux-auth-wrapper/issues/121
-    routerActions.replace({
-      ...location,
-      query: {
-        ...location.query,
-        redirect: location.query.redirect + (window.location.hash || ""),
-      },
-    }),
+  redirectAction: routerActions.replace,
 });
 
 const UserIsAdmin = UserAuthWrapper({
@@ -227,6 +220,8 @@ export const getRoutes = store => (
           <ModalRoute path="history" modal={DashboardHistoryModal} />
           <ModalRoute path="move" modal={DashboardMoveModal} />
           <ModalRoute path="copy" modal={DashboardCopyModal} />
+          <ModalRoute path="details" modal={DashboardDetailsModal} />
+          <ModalRoute path="archive" modal={ArchiveDashboardModal} />
         </Route>
         <Route path="dashboard/:dashboardId/present" component={Presentation}>
           <Route path=":slideIndex" component={Presentation} />

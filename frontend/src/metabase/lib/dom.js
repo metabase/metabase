@@ -402,3 +402,10 @@ export function initializeIframeResizer(readyCallback = () => {}) {
     });
   }
 }
+
+export function isEventOverElement(event, element) {
+  const { clientX: x, clientY: y } = event;
+  const { top, bottom, left, right } = element.getBoundingClientRect();
+
+  return y >= top && y <= bottom && x >= left && x <= right;
+}

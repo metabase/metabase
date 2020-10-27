@@ -79,7 +79,9 @@
 
 (defmethod driver/describe-table ::moviedb [_ _ table]
   (-> (get moviedb-tables (:name table))
-      (dissoc :fks)))
+      (dissoc :fks)
+      (update :fields (partial map-indexed (fn [idx field]
+                                             (assoc field :database-position idx))))))
 
 (defmethod driver/describe-table-fks ::moviedb [_ _ table]
   (-> (get moviedb-tables (:name table))

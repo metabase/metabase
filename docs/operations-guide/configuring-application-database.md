@@ -48,6 +48,10 @@ You can change the application database to use Postgres using a few simple envir
     export MB_DB_HOST=localhost
     java -jar metabase.jar
 
+Metabase will not create this database for you. Example command to create the database:
+
+    createdb --encoding=UTF8 -e metabase 
+
 This will tell Metabase to look for its application database using the supplied Postgres connection information. Metabase also supports providing a full JDBC connection URI if you have additional parameters:
 
     export MB_DB_CONNECTION_URI="postgres://localhost:5432/metabase?user=<username>&password=<password>"
@@ -65,6 +69,10 @@ If you prefer to use MySQL or MariaDB we've got you covered. The minimum recomme
     export MB_DB_HOST=localhost
     java -jar metabase.jar
 
+Metabase will not create this database for you. Example SQL statement to create the database:
+
+    CREATE DATABASE metabase CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    
 This will tell Metabase to look for its application database using the supplied MySQL connection information. Metabase also supports providing a full JDBC connection URI if you have additional parameters:
 
     export MB_DB_CONNECTION_URI="mysql://localhost:3306/metabase?user=<username>&password=<password>"

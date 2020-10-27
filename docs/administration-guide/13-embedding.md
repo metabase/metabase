@@ -63,6 +63,16 @@ If you wish to have a parameter locked down to prevent your embedding applicatio
 
 ![Locked parameters](images/embedding/06-locked.png)
 
+When using locked Field Filters with multiple selected values, then it is provided as a JSON array. Example:
+
+```
+...
+params: {
+  foo: ['Value1', 'Value2'],
+},
+...
+```
+
 ### Hiding parameters
 
 If you have parameters that aren't required, but that you'd like to be hidden, instead of marking them as Locked you can use the `hide_parameters` URL option to hide one or more parameters (i.e., prevent it from showing up as a filter widget on screen). You'll want to add this option to the Metabase URL specified in your embedding iframe.
@@ -113,3 +123,8 @@ To see concrete examples of how to embed Metabase in applications under a number
 ## Premium embedding
 
 If you'd like to embed Metabase dashboards or charts in your application without the "Powered by Metabase" attribution, you can purchase premium embedding from the Metabase store. [Find out more here](https://store.metabase.com/product/embedding).
+
+To learn more about embedding, check out these articles:
+
+- [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/blog/external-facing-analytics/index.html).
+- [How to embed Metabase in your app to deliver multi-tenant, self-service analytics](https://www.metabase.com/blog/embedding/index.html).

@@ -14,7 +14,7 @@ import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
 import type {
   Card as CardObject,
   StructuredDatasetQuery,
-} from "metabase/meta/types/Card";
+} from "metabase-types/types/Card";
 
 type Props = {
   card: CardObject,

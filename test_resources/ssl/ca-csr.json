@@ -1,0 +1,18 @@
+{
+    "hosts": [
+        "127.0.0.1"
+    ],
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "names": [
+        {
+            "C":  "US",
+            "L":  "Seattle",
+            "O":  "Someone",
+            "OU": "WWW",
+            "ST": "Washington"
+        }
+    ]
+}

@@ -2,9 +2,11 @@
 
 set -e
 
+MB_EDITION=${MB_EDITION:=oss}
+
 # Generate the resources/version.properties file
 version() {
-    VERSION_INFO=$(./bin/version)
+    VERSION_INFO=$(./bin/version $MB_EDITION)
     IFS=', ' read -a info <<< ${VERSION_INFO}
 
     echo "Tagging uberjar with version '$VERSION_INFO'..."
@@ -48,8 +50,14 @@ drivers() {
 }
 
 uberjar() {
-    echo "Running 'lein uberjar'..."
-    lein clean && lein uberjar
+    lein clean
+    if [ "$MB_EDITION" = "ENTERPRISE" ]; then
+        echo "Running 'lein with-profile +ee uberjar'..."
+        lein with-profile +ee uberjar
+    else
+        echo "Running 'lein uberjar'..."
+        lein uberjar
+    fi
 }
 
 all() {

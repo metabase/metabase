@@ -161,7 +161,7 @@
                 (swap! extra-info assoc :native query)
                 (nativef query context))
               (raisef* [e context]
-               ;; if the exception is the special quit-early exception, forward this to our parent `raisef` exception
+               ;; if the exception is the special quit-result exception, forward this to our parent `raisef` exception
                ;; handler, which has logic for handling that case
                 (if (qp.reducible/quit-result e)
                   (raisef e context)

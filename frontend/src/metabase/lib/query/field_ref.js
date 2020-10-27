@@ -3,9 +3,7 @@ import _ from "underscore";
 import Field from "metabase-lib/lib/metadata/Field";
 import * as Table from "./table";
 
-import { getFilterOperators } from "metabase/lib/schema_metadata";
 import { TYPE } from "metabase/lib/types";
-import { createLookupByProperty } from "metabase/lib/table";
 
 // DEPRECATED
 export function isRegularField(field: FieldReference): boolean {
@@ -94,6 +92,9 @@ export function getFieldTargetId(field: FieldReference): ?FieldId {
     return getFieldTargetId(field[1]);
   } else if (isFieldLiteral(field)) {
     return field;
+  } else if (isJoinedField(field)) {
+    // $FlowFixMe
+    return getFieldTargetId(field[2]);
   }
   console.warn("Unknown field type: ", field);
 }
@@ -123,24 +124,11 @@ export function getFieldTarget(field, tableDef, path = []) {
       display_name: field[1],
       name: field[1],
       expression_name: field[1],
+      table: tableDef,
       metadata: tableDef.metadata,
       // TODO: we need to do something better here because filtering depends on knowing a sensible type for the field
       base_type: TYPE.Float,
-      filter_operators_lookup: {},
-      filter_operators: [],
-      active: true,
-      fk_target_field_id: null,
-      parent_id: null,
-      preview_display: true,
-      special_type: null,
-      target: null,
-      visibility_type: "normal",
     });
-    fieldDef.filter_operators = getFilterOperators(fieldDef, tableDef);
-    fieldDef.filter_operators_lookup = createLookupByProperty(
-      fieldDef.filter_operators,
-      "name",
-    );
 
     return {
       table: tableDef,

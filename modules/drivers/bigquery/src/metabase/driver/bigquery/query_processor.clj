@@ -16,6 +16,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models
              [field :refer [Field]]
+             [setting :as setting]
              [table :as table]]
             [metabase.query-processor
              [error-type :as error-type]
@@ -23,8 +24,7 @@
             [metabase.util
              [date-2 :as u.date]
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]
-             [schema :as su]]
+             [i18n :refer [tru]]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
@@ -56,28 +56,38 @@
 
 (defmulti parse-result-of-type
   "Parse the values that come back in results of a BigQuery query based on their column type."
-  {:arglists '([column-type timezone-id v])}
-  (fn [column-type _ _] column-type))
+  {:arglists '([column-type column-mode timezone-id v])}
+  (fn [column-type _ _ _] column-type))
+
+(defn- parse-value
+  [column-mode v parse-fn]
+  ;; For results from a query like `SELECT [1,2]`, BigQuery sets the column-mode to `REPEATED` and wraps the column in an ArrayList,
+  ;; with ArrayMap entries, like: `ArrayList(ArrayMap("v", 1), ArrayMap("v", 2))`
+  (if (= "REPEATED" column-mode)
+    (for [result v
+          ^java.util.Map$Entry entry result]
+      (parse-fn (.getValue entry)))
+    (parse-fn v)))
 
 (defmethod parse-result-of-type :default
-  [_ _ v]
-  v)
+  [_ column-mode _ v]
+  (parse-value column-mode v identity))
 
 (defmethod parse-result-of-type "BOOLEAN"
-  [_ _ v]
-  (Boolean/parseBoolean v))
+  [_ column-mode _ v]
+  (parse-value column-mode v #(Boolean/parseBoolean %)))
 
 (defmethod parse-result-of-type "FLOAT"
-  [_ _ v]
-  (Double/parseDouble v))
+  [_ column-mode _ v]
+  (parse-value column-mode v #(Double/parseDouble %)))
 
 (defmethod parse-result-of-type "INTEGER"
-  [_ _ v]
-  (Long/parseLong v))
+  [_ column-mode _ v]
+  (parse-value column-mode v #(Long/parseLong %)))
 
 (defmethod parse-result-of-type "NUMERIC"
-  [_ _ v]
-  (bigdec v))
+  [_ column-mode _ v]
+  (parse-value column-mode v bigdec))
 
 (defn- parse-timestamp-str [timezone-id s]
   ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in µs, e.g. "1.3963104E9"
@@ -87,20 +97,20 @@
     (u.date/parse s timezone-id)))
 
 (defmethod parse-result-of-type "DATE"
-  [_ timezone-id s]
-  (parse-timestamp-str timezone-id s))
+  [_ column-mode timezone-id v]
+  (parse-value column-mode v (partial parse-timestamp-str timezone-id)))
 
 (defmethod parse-result-of-type "DATETIME"
-  [_ timezone-id s]
-  (parse-timestamp-str timezone-id s))
+  [_ column-mode timezone-id v]
+  (parse-value column-mode v (partial parse-timestamp-str timezone-id)))
 
 (defmethod parse-result-of-type "TIMESTAMP"
-  [_ timezone-id s]
-  (parse-timestamp-str timezone-id s))
+  [_ column-mode timezone-id v]
+  (parse-value column-mode v (partial parse-timestamp-str timezone-id)))
 
 (defmethod parse-result-of-type "TIME"
-  [_ timezone-id s]
-  (u.date/parse s timezone-id))
+  [_ column-mode timezone-id v]
+  (parse-value column-mode v (fn [v] (u.date/parse v timezone-id))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -329,17 +339,21 @@
 (defmethod sql.qp/date [:bigquery :hour]            [_ _ expr] (trunc   :hour      expr))
 (defmethod sql.qp/date [:bigquery :hour-of-day]     [_ _ expr] (extract :hour      expr))
 (defmethod sql.qp/date [:bigquery :day]             [_ _ expr] (trunc   :day       expr))
-(defmethod sql.qp/date [:bigquery :day-of-week]     [_ _ expr] (extract :dayofweek expr))
 (defmethod sql.qp/date [:bigquery :day-of-month]    [_ _ expr] (extract :day       expr))
 (defmethod sql.qp/date [:bigquery :day-of-year]     [_ _ expr] (extract :dayofyear expr))
-(defmethod sql.qp/date [:bigquery :week]            [_ _ expr] (trunc   :week      expr))
-;; ; BigQuery's impl of `week` uses 0 for the first week; we use 1
-(defmethod sql.qp/date [:bigquery :week-of-year]    [_ _ expr] (-> (extract :week  expr) hx/inc))
 (defmethod sql.qp/date [:bigquery :month]           [_ _ expr] (trunc   :month     expr))
 (defmethod sql.qp/date [:bigquery :month-of-year]   [_ _ expr] (extract :month     expr))
 (defmethod sql.qp/date [:bigquery :quarter]         [_ _ expr] (trunc   :quarter   expr))
 (defmethod sql.qp/date [:bigquery :quarter-of-year] [_ _ expr] (extract :quarter   expr))
 (defmethod sql.qp/date [:bigquery :year]            [_ _ expr] (trunc   :year      expr))
+
+(defmethod sql.qp/date [:bigquery :day-of-week]
+  [_ _ expr]
+  (sql.qp/adjust-day-of-week :bigquery (extract :dayofweek expr)))
+
+(defmethod sql.qp/date [:bigquery :week]
+  [_ _ expr]
+  (trunc (keyword (format "week(%s)" (name (setting/get-keyword :start-of-week)))) expr))
 
 (doseq [[unix-timestamp-type bigquery-fn] {:seconds      :timestamp_seconds
                                            :milliseconds :timestamp_millis}]
@@ -435,13 +449,6 @@
     (cond->> ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)
       t (->temporal-type t))))
 
-(s/defn ^:private honeysql-form->sql :- s/Str
-  [driver, honeysql-form :- su/Map]
-  (let [[sql & args :as sql+args] (sql.qp/format-honeysql driver honeysql-form)]
-    (if (seq args)
-      (unprepare/unprepare driver sql+args)
-      sql)))
-
 ;; From the dox: Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be
 ;; at most 128 characters long.
 (defmethod driver/format-custom-field-name :bigquery
@@ -451,25 +458,17 @@
                          (str/replace #"(^\d)" "_$1"))]
     (subs replaced-str 0 (min 128 (count replaced-str)))))
 
-;; These provide implementations of `->honeysql` that prevent HoneySQL from converting forms to prepared statement
-;; parameters (`?` symbols)
-;;
-;; TODO - these should probably be impls of `unprepare-value` instead, but it effectively ends up doing the same thing
-;; either way
-(defmethod sql.qp/->honeysql [:bigquery String]
-  [_ s]
-  (hx/literal s))
-
-(defmethod sql.qp/->honeysql [:bigquery Boolean]
-  [_ bool]
-  (hsql/raw (if bool "TRUE" "FALSE")))
-
 ;; See:
 ;;
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/time_functions
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions
+
+(defmethod unprepare/unprepare-value [:bigquery String]
+  [_ s]
+  ;; escape single-quotes like Cam's String -> Cam\'s String
+  (str \' (str/replace s "'" "\\\\'") \'))
 
 (defmethod unprepare/unprepare-value [:bigquery LocalTime]
   [_ t]
@@ -614,13 +613,15 @@
         {table-name :name} (some-> source-table-id qp.store/table)]
     (assert (seq dataset-id))
     (binding [sql.qp/*query* (assoc outer-query :dataset-id dataset-id)]
-      {:query      (->> outer-query
-                        (sql.qp/build-honeysql-form driver)
-                        (honeysql-form->sql driver))
-       :table-name (or table-name
-                       (when source-query
-                         sql.qp/source-query-alias))
-       :mbql?      true})))
+      (let [[sql & params] (->> outer-query
+                                (sql.qp/build-honeysql-form driver)
+                                (sql.qp/format-honeysql driver))]
+        {:query      sql
+         :params     params
+         :table-name (or table-name
+                         (when source-query
+                           sql.qp/source-query-alias))
+         :mbql?      true}))))
 
 (defrecord ^:private CurrentMomentForm [t]
   hformat/ToSql

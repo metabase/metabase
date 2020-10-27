@@ -48,9 +48,10 @@
 
 (defmethod tx/dbdef->connection-details :h2
   [_ context dbdef]
-  {:db (str "mem:" (tx/escaped-name dbdef) (when (= context :db)
-                                             ;; Return details with the GUEST user added so SQL queries are allowed.
-                                             ";USER=GUEST;PASSWORD=guest"))})
+  {:db (str "mem:" (tx/escaped-database-name dbdef) (when (= context :db)
+                                                      ;; Return details with the GUEST user added so SQL queries are
+                                                      ;; allowed.
+                                                      ";USER=GUEST;PASSWORD=guest"))})
 
 (defmethod sql.tx/pk-sql-type :h2 [_] "BIGINT AUTO_INCREMENT")
 
@@ -58,7 +59,8 @@
 
 (defmethod sql.tx/drop-db-if-exists-sql :h2 [& _] nil)
 
-(defmethod sql.tx/create-db-sql :h2 [& _]
+(defmethod sql.tx/create-db-sql :h2
+  [& _]
   (str
    ;; We don't need to actually do anything to create a database here. Just disable the undo
    ;; log (i.e., transactions) for this DB session because the bulk operations to load data don't need to be atomic

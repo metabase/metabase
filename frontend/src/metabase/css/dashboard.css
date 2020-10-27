@@ -55,9 +55,8 @@
   color: var(--color-text-white);
 }
 
-.Dashboard.Dashboard--night .Header-button,
-.Dashboard.Dashboard--night .Header-button svg {
-  color: color(var(--color-text-medium) alpha(-70%));
+.Dashboard.Dashboard--night .Header-button {
+  color: var(--color-text-medium);
 }
 
 .Dashboard.Dashboard--fullscreen .fullscreen-normal-text {
@@ -118,9 +117,6 @@
   pointer-events: none;
   transition: border 0.3s, background-color 0.3s;
 }
-.Dash--editing.Dash--editingParameter .DashCard .Card {
-  pointer-events: auto;
-}
 
 @keyframes fade-out-yellow {
   from {
@@ -171,6 +167,8 @@
 
 .DashCard .Card {
   box-shadow: 0px 1px 3px var(--color-shadow);
+  border-color: transparent;
+  border-radius: 8px;
 }
 
 .Dash--editing .DashCard.dragging .Card {
@@ -372,6 +370,7 @@
 
 .Dashboard text.value-label,
 .Dashboard text.value-label-outline,
+.Dashboard text.value-label-white,
 .Dashboard .LineAreaBarChart .dc-chart .axis text {
   font-size: 12px;
 }

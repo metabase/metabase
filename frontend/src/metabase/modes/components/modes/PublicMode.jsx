@@ -1,12 +1,11 @@
 /* @flow */
 
-import type { QueryMode } from "metabase/meta/types/Visualization";
-
-import { PLUGIN_DRILLS } from "metabase/plugins";
+import type { QueryMode } from "metabase-types/types/Visualization";
+import DashboardClickDrill from "metabase/modes/components/drill/DashboardClickDrill";
 
 const PublicMode: QueryMode = {
   name: "public",
-  drills: () => PLUGIN_DRILLS,
+  drills: () => [DashboardClickDrill],
 };
 
 export default PublicMode;

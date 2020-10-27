@@ -22,20 +22,23 @@
 ;; Is calculating permissions for queries complicated? Some would say so. Refer to this handy flow chart to see how
 ;; things get calculated.
 ;;
-;;                   perms-set
-;;                        |
-;;                        |
-;;                        |
-;;   native query? <------+-----> mbql query?
-;;         ↓                           ↓
-;; adhoc-native-query-path     mbql-perms-path-set
-;;                                      |
-;;                no source card <------+----> has source card
-;;                        ↓                          ↓
-;;          tables->permissions-path-set   source-card-read-perms
-;;                        ↓
-;;                 table-query-path
+;;                      perms-set
+;;                           |
+;;                           |
+;;                           |
+;;      native query? <------+-----> mbql query?
+;;            ↓                           ↓
+;;    adhoc-native-query-path     mbql-perms-path-set
+;;                                         |
+;;                   no source card <------+----> has source card
+;;                           ↓                          ↓
+;;             tables->permissions-path-set   source-card-read-perms
+;;                           ↓
+;;                    table-query-path
 ;;
+;; `segmented-perms-set` follows the same graph as above, but instead of `table-query-path`, it returns
+;; `table-segmented-query-path`. `perms-set` will require full access to the tables, `segmented-perms-set` will only
+;; require segmented access
 
 (s/defn ^:private query->source-table-ids :- #{(s/cond-pre (s/eq ::native) su/IntGreaterThanZero)}
   "Return a sequence of all Table IDs referenced by `query`."
@@ -140,6 +143,12 @@
     (= (keyword query-type) :query)  (mbql-permissions-path-set query perms-opts)
     :else                            (throw (Exception. (tru "Invalid query type: {0}" query-type)))))
 
+(defn segmented-perms-set
+  "Calculate the set of permissions including segmented (not full) table permissions."
+  {:arglists '([query & {:keys [throw-exceptions? already-preprocessed?]}])}
+  [query & {:as perms-opts}]
+  (perms-set* query (assoc perms-opts :segmented-perms? true)))
+
 (defn perms-set
   "Calculate the set of permissions required to run an ad-hoc `query`. Returns permissions for full table access (not
   segmented)"
@@ -152,4 +161,5 @@
   permissions and segmented table permissions"
   [query]
   (let [user-perms @api/*current-user-permissions-set*]
-    (perms/set-has-full-permissions-for-set? user-perms (perms-set query))))
+    (or (perms/set-has-full-permissions-for-set? user-perms (perms-set query))
+        (perms/set-has-full-permissions-for-set? user-perms (segmented-perms-set query)))))

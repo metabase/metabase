@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.add-implicit-joins-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [driver :as driver]
              [test :as mt]]
@@ -53,6 +54,29 @@
      {:source-query
       {:source-table $$venues
        :fields       [$name $category_id->categories.name]}})))
+
+(deftest reuse-existing-joins
+  (is (= (mt/mbql-query venues
+           {:source-query
+            {:source-table $$venues
+             :fields       [$name &CATEGORIES__via__CATEGORY_ID.categories.name]
+             :joins        [{:source-table $$categories
+                             :alias        "CATEGORIES__via__CATEGORY_ID"
+                             :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                             :strategy     :left-join
+                             :fields       [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                             :fk-field-id  %category_id}]}})
+         (add-implicit-joins
+          (mt/mbql-query venues
+            {:source-query
+             {:source-table $$venues
+              :fields       [$name $category_id->categories.name]
+              :joins        [{:source-table $$categories
+                              :alias        "CATEGORIES__via__CATEGORY_ID"
+                              :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                              :strategy     :left-join
+                              :fields       [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                              :fk-field-id  %category_id}]}})))))
 
 ;; we should handle nested-nested queries correctly as well
 (expect

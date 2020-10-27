@@ -124,21 +124,9 @@ describe("visualization_settings", () => {
       });
     });
     describe("graph.show_values", () => {
-      it("should show values on a bar chart with ten bars", () => {
+      it("should not show values on a bar chart by default", () => {
         const card = { visualization_settings: {}, display: "bar" };
         const data = { rows: new Array(10).fill([1]) };
-        const settings = getComputedSettingsForSeries([{ card, data }]);
-        expect(settings["graph.show_values"]).toBe(true);
-      });
-      it("should not show values on a line chart with ten value", () => {
-        const card = { visualization_settings: {}, display: "line" };
-        const data = { rows: new Array(10).fill([1]) };
-        const settings = getComputedSettingsForSeries([{ card, data }]);
-        expect(settings["graph.show_values"]).toBe(false);
-      });
-      it("should not show values on a bar chart with thirty bars", () => {
-        const card = { visualization_settings: {}, display: "bar" };
-        const data = { rows: new Array(30).fill([1]) };
         const settings = getComputedSettingsForSeries([{ card, data }]);
         expect(settings["graph.show_values"]).toBe(false);
       });

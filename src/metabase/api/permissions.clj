@@ -28,7 +28,6 @@
   (api/check-superuser)
   (perms/graph))
 
-
 (api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
   format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This
