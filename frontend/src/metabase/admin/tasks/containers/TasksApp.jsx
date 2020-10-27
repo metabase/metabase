@@ -2,6 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import { Box, Flex } from "grid-styled";
 
+import Database from "metabase/entities/databases";
 import Task from "metabase/entities/tasks";
 
 import AdminHeader from "metabase/components/AdminHeader";
@@ -12,16 +13,22 @@ import Tooltip from "metabase/components/Tooltip";
 @Task.loadList({
   pageSize: 50,
 })
+@Database.loadList()
 class TasksApp extends React.Component {
   render() {
     const {
       tasks,
+      databases,
       page,
       pageSize,
       onNextPage,
       onPreviousPage,
       children,
     } = this.props;
+    let db_id_to_engine = {};
+    for (const db of databases) {
+      db_id_to_engine[db.id] = db.engine;
+    }
     return (
       <Box p={3}>
         <Flex align="center">
@@ -53,18 +60,26 @@ class TasksApp extends React.Component {
 
         <table className="ContentTable mt2">
           <thead>
-            <th>{t`Task`}</th>
-            <th>{t`DB ID`}</th>
-            <th>{t`Started at`}</th>
-            <th>{t`Ended at`}</th>
-            <th>{t`Duration (ms)`}</th>
-            <th>{t`Details`}</th>
+            <tr>
+              <th>{t`Task`}</th>
+              <th>{t`DB ID`}</th>
+              <th>{t`Engine`}</th>
+              <th>{t`Started at`}</th>
+              <th>{t`Ended at`}</th>
+              <th>{t`Duration (ms)`}</th>
+              <th>{t`Details`}</th>
+            </tr>
           </thead>
           <tbody>
             {tasks.map(task => (
               <tr key={task.id}>
                 <td className="text-bold">{task.task}</td>
                 <td>{task.db_id}</td>
+                <td>
+                  {task.db_id
+                    ? db_id_to_engine[task.db_id] || "Unknown engine"
+                    : null}
+                </td>
                 <td>{task.started_at}</td>
                 <td>{task.ended_at}</td>
                 <td>{task.duration}</td>
