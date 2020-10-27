@@ -1,24 +1,13 @@
 import React from "react";
-import PageHeader from "./PageHeader";
-import Subhead from "metabase/components/type/Subhead";
+import { PageHeader, PageTools, PageActions, PageTabs } from "./Page";
+
 import Icon from "metabase/components/Icon";
-import { Flex } from "grid-styled";
-
 import Radio from "metabase/components/Radio";
-
-const PageTabs = ({ children }) => <div>{children}</div>;
+import Subhead from "metabase/components/type/Subhead";
 
 export const component = PageHeader;
 export const category = "admin";
 export const description = `Layout recipes for admin page headers`;
-
-const PageTools = ({ children }) => <Flex align="center">{children}</Flex>;
-
-const PageActions = ({ children }) => (
-  <Flex align="center" ml="auto">
-    {children}
-  </Flex>
-);
 
 export const examples = {
   "": (
