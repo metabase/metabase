@@ -171,7 +171,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .within(() => cy.findByText("foo"));
   });
 
-  it("should pass multiple filters for numeric column on drill-through (metabase#13062)", () => {
+  it.skip("should pass multiple filters for numeric column on drill-through (metabase#13062)", () => {
     // go to admin > data model > sample dataset > reviews
     cy.visit("/admin/datamodel/database/1/table/4");
 
@@ -179,6 +179,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByText("Score").click();
     // "Category" is not visible and any other method couldn't find it, including `Popover().contains("Category")`
     cy.get(".ReactVirtualized__Grid")
+      .contains("Score")
       .scrollTo("top")
       .contains("Category")
       .click();

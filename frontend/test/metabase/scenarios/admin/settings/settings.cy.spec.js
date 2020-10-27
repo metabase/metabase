@@ -64,7 +64,7 @@ describe("scenarios > admin > settings", () => {
     cy.findByText("Save changes");
   });
 
-  it("should save a setting", () => {
+  it.skip("should save a setting", () => {
     cy.server();
     cy.route("PUT", "**/admin-email").as("saveSettings");
 

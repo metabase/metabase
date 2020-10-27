@@ -11,6 +11,10 @@
             [schema.core :as s])
   (:import javax.mail.Session))
 
+;; https://github.com/metabase/metabase/issues/11879#issuecomment-713816386
+(when-not *compile-files*
+  (System/setProperty "mail.mime.splitlongparameters" "false"))
+
 ;;; CONFIG
 
 (defsetting email-from-address
