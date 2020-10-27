@@ -25,7 +25,7 @@ class TasksApp extends React.Component {
       onPreviousPage,
       children,
     } = this.props;
-    let db_id_to_engine = {};
+    const db_id_to_engine = {};
     for (const db of databases) {
       db_id_to_engine[db.id] = db.engine;
     }
