@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-set -euo pipefail
+set -uo pipefail
 
 source "./bin/check-clojure-cli.sh"
 check_clojure_cli
