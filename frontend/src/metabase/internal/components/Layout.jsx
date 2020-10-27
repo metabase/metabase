@@ -21,6 +21,7 @@ export const CATEGORIES = {
   modal: "Modal",
   form: "Form",
   visualization: "Visualizations",
+  admin: "Admin",
 };
 
 import COMPONENTS from "../lib/components-webpack";

@@ -1,6 +1,6 @@
 // import all modules in this directory (http://stackoverflow.com/a/31770875)
 const componentsReq = require.context(
-  "metabase/components",
+  "metabase/",
   true,
   /^(.*\.info\.(js$))[^.]*$/im,
 );
