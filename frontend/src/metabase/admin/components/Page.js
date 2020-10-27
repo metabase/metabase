@@ -7,7 +7,7 @@ export const PageHeader = ({ children }) => (
   </Box>
 );
 
-export const PageTabs = ({ children }) => <div>{children}</div>;
+export const PageTabs = ({ children }) => <Box mt="14px">{children}</Box>;
 
 export const PageTools = ({ children }) => (
   <Flex align="center">{children}</Flex>
