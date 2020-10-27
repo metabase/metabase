@@ -102,10 +102,10 @@
     :ce "metabase/metabase-buildpack"
     nil))
 
-(defn metabase-repo []
-  (case (edition)
-    :ce "metabase/metabase"
-    :ee "metabase/metabase-enterprise"))
+(defn metabase-repo
+  "Metabase GitHub repo"
+  []
+  "metabase/metabase")
 
 (defn docker-tag []
   (format "%s:v%s" (docker-image-name) (version)))

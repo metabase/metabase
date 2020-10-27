@@ -27,8 +27,14 @@ fi
 # TODO: improve this (hard coding)
 EB_FILE=/tmp/${MB_TAG}.zip
 EB_LAUNCH_FILE=launch-aws-eb.html
-S3_FILE=s3://${S3_BUCKET}/enterprise/${MB_TAG}/metabase-aws-eb.zip
-S3_LAUNCH_FILE=s3://${S3_BUCKET}/enterprise/${MB_TAG}/${EB_LAUNCH_FILE}
+
+if [ "$MB_EDITION" = "ENTERPRISE" ]; then
+    S3_FILE=s3://${S3_BUCKET}/enterprise/${MB_TAG}/metabase-aws-eb.zip
+    S3_LAUNCH_FILE=s3://${S3_BUCKET}/enterprise/${MB_TAG}/${EB_LAUNCH_FILE}
+else
+    S3_FILE=s3://${S3_BUCKET}/${MB_TAG}/metabase-aws-eb.zip
+    S3_LAUNCH_FILE=s3://${S3_BUCKET}/${MB_TAG}/${EB_LAUNCH_FILE}
+fi
 
 # make the release file
 ${BASEDIR}/build-eb-version.sh ${MB_TAG} ${DOCKERHUB_REPO}
