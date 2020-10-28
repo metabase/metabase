@@ -5,8 +5,8 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import styled from "styled-components";
-
 import cx from "classnames";
+
 import MetabaseSettings from "metabase/lib/settings";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -27,6 +27,16 @@ import Label from "metabase/components/type/Label";
 import Link from "metabase/components/Link";
 
 import { Box, Flex } from "grid-styled";
+
+const AddButton = () => (
+  <Link
+    to="/admin/databases/create"
+    className="Button Button--primary circle flex align-center justify-center"
+    style={{ width: 24, height: 34 }}
+  >
+    <Icon name="add" size={14} />
+  </Link>
+);
 
 const DatabaseCard = styled(Card)`
   border: none;
@@ -101,12 +111,7 @@ export default class DatabaseList extends Component {
           <PageTools>
             <Subhead>{t`Databases`}</Subhead>
             <PageActions>
-              <Link
-                to="/admin/databases/create"
-                className="Button Button--primary circle flex align-center justify-center"
-              >
-                <Icon name="add" />
-              </Link>
+              <AddButton />
               {deletionError && (
                 <section>
                   <FormMessage formError={deletionError} />
@@ -144,8 +149,11 @@ export default class DatabaseList extends Component {
                             </Link>
                             <Flex ml="auto" align="center">
                               <Box>
-                                <Label>{engine}</Label>
-                                <Label color="medium">{t`Database type`}</Label>
+                                <Label mb="0px">{engine}</Label>
+                                <Label
+                                  color="medium"
+                                  mt="0px"
+                                >{t`Database type`}</Label>
                               </Box>
                               {isDeleting ? (
                                 <Box className="text-right">{t`Deleting...`}</Box>
@@ -159,7 +167,11 @@ export default class DatabaseList extends Component {
                                 >
                                   <ModalWithTrigger
                                     ref={"deleteDatabaseModal_" + database.id}
-                                    triggerElement={<Icon name="trash" />}
+                                    triggerElement={
+                                      <span className="text-light text-error-hover transition-color">
+                                        <Icon name="trash" />
+                                      </span>
+                                    }
                                   >
                                     <DeleteDatabaseModal
                                       database={database}
