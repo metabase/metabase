@@ -10,7 +10,9 @@ export const PageHeader = ({ children }) => (
 export const PageTabs = ({ children }) => <Box mt="14px">{children}</Box>;
 
 export const PageTools = ({ children }) => (
-  <Flex align="center">{children}</Flex>
+  <Flex align="center" className="wrapper">
+    {children}
+  </Flex>
 );
 
 export const PageActions = ({ children }) => (
