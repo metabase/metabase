@@ -3,6 +3,7 @@ import {
   restore,
   openProductsTable,
   popover,
+  withSampleDataset,
 } from "__support__/cypress";
 
 describe("scenarios > question > filter", () => {
@@ -104,27 +105,47 @@ describe("scenarios > question > filter", () => {
   });
 
   it.skip("'Between Dates' filter should behave consistently (metabase#12872)", () => {
-    cy.request("POST", "/api/card", {
-      name: "12872",
-      dataset_query: {
-        type: "native",
-        native: {
-          query: `SELECT count(*) AS "count"
-                  FROM "PUBLIC"."PRODUCTS"
-                  LEFT JOIN "PUBLIC"."PRODUCTS" "Products" ON "PUBLIC"."PRODUCTS"."ID" = "Products"."ID"
-                  WHERE (("PUBLIC"."PRODUCTS"."CREATED_AT" >= timestamp with time zone '2019-04-15 00:00:00.000+02:00'
-                    AND "PUBLIC"."PRODUCTS"."CREATED_AT" < timestamp with time zone '2019-04-16 00:00:00.000+02:00')
-                  AND "Products"."CREATED_AT" BETWEEN timestamp with time zone '2019-04-15 00:00:00.000+02:00' AND timestamp with time zone '2019-04-15 00:00:00.000+02:00')`,
+    withSampleDataset(({ PRODUCTS }) => {
+      cy.request("POST", "/api/card", {
+        name: "12872",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": 1,
+            aggregation: [["count"]],
+            filter: [
+              "and",
+              ["between", PRODUCTS.CREATED_AT, "2019-04-15", "2019-04-15"],
+              [
+                "between",
+                ["joined-field", "Products", ["field-id", 7]],
+                "2019-04-15",
+                "2019-04-15",
+              ],
+            ],
+            joins: [
+              {
+                alias: "Products",
+                condition: [
+                  "=",
+                  PRODUCTS.ID,
+                  ["joined-field", "Products", ["field-id", 8]],
+                ],
+                fields: "all",
+                "source-table": 1,
+              },
+            ],
+          },
+          type: "query",
         },
-        database: 1,
-      },
-      display: "scalar",
-      visualization_settings: {},
-    }).then(({ body: { id: questionId } }) => {
-      cy.visit(`/question/${questionId}`);
-      cy.findByText("This question is written in SQL.");
-      cy.log("**At the moment of unfixed issue, it's showing '0'**");
-      cy.get(".ScalarValue").contains("1");
+        display: "scalar",
+        visualization_settings: {},
+      }).then(({ body: { id: questionId } }) => {
+        cy.visit(`/question/${questionId}`);
+        cy.findByText("12872");
+        cy.log("**At the moment of unfixed issue, it's showing '0'**");
+        cy.get(".ScalarValue").contains("1");
+      });
     });
   });
 });
