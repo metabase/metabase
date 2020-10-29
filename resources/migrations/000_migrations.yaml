@@ -7730,25 +7730,14 @@ databaseChangeLog:
       changes:
         - addDefaultValue:
             tableName: core_user
-            columnName: date_joined
-            columnDataType: datetime
-            defaultValueComputed: current_timestamp
-
-  - changeSet:
-      id: 274
-      author: camsaul
-      comment: Added 0.37.2
-      changes:
-        - addDefaultValue:
-            tableName: core_user
             columnName: is_superuser
             columnDataType: boolean
             defaultValueBoolean: false
 
   - changeSet:
-      id: 275
+      id: 274
       author: camsaul
-      comment: Added 0.37.2
+      comment: Added 0.37.1
       changes:
         - addDefaultValue:
             tableName: core_user

@@ -75,7 +75,7 @@
 (defn do-with-log-messages-for-level [x thunk]
   (let [[namespace-symb level] (if (sequential? x)
                                  x
-                                 ['metabase x])
+                                 ['root x])
         _                      (assert (symbol? namespace-symb))
         new-level              (or (get level-kwd->level (keyword level))
                                    (throw (ex-info "Invalid log level" {:level level})))
