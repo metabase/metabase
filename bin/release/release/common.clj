@@ -107,5 +107,7 @@
   []
   "metabase/metabase")
 
-(defn docker-tag []
+(defn docker-tag
+  "The complete image name + tag e.g. \"metabase/metabase:v0.37.0\""
+  []
   (format "%s:v%s" (docker-image-name) (version)))
