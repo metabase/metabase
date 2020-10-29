@@ -36,10 +36,10 @@ describe("scenarios > question > filter", () => {
 
     // Add Q2 to a dashboard
     cy.findByText("Yes please!").click();
-    cy.get(".Icon-dashboard").click();
+    cy.findByText("Orders in a dashboard").click();
 
     // Add two dashboard filters
-    cy.get(".Icon-funnel_add").click();
+    cy.get(".Icon-filter").click();
     cy.findByText("Time").click();
     cy.findByText("All Options").click();
     cy.findAllByText("Select…")
@@ -47,7 +47,7 @@ describe("scenarios > question > filter", () => {
       .click();
     cy.findByText("Created At").click();
 
-    cy.get(".Icon-funnel_add").click();
+    cy.get(".Icon-filter").click();
     cy.findByText("Other Categories").click();
     cy.findAllByText("Select…")
       .last()
@@ -57,14 +57,20 @@ describe("scenarios > question > filter", () => {
     });
 
     // Save dashboard and refresh page
-    cy.findByText("Done").click();
-    cy.findByText("You're editing this dashboard.");
+    cy.findAllByText("Done")
+      .first()
+      .click();
+
     cy.findByText("Save").click();
-    cy.findByText("Save").should("not.exist");
+    cy.findByText("You're editing this dashboard.").should("not.exist");
 
     // Check category search
-    cy.get(".Icon-empty").should("not.exist");
-    cy.findByText("Category").click();
+    cy.get("fieldset")
+      .last()
+      .within(() => {
+        cy.findByText("Category").click();
+      });
+    cy.log("**Failing to show dropdown in v0.36.0 through v.0.37.0**");
     cy.findByText("Gadget").click();
     cy.findByText("Add filter").click();
   });

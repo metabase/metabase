@@ -234,6 +234,21 @@ if (NODE_ENV === "hot") {
     headers: {
       "Access-Control-Allow-Origin": "*",
     },
+    // tweak stats to make the output in the console more legible
+    // TODO - once we update webpack to v4+ we can just use `errors-warnings` preset
+    stats: {
+      assets: false,
+      cached: false,
+      cachedAssets: false,
+      chunks: false,
+      chunkModules: false,
+      chunkOrigins: false,
+      modules: false,
+      color: true,
+      hash: false,
+      warnings: true,
+      errorDetals: false,
+    },
     // if webpack doesn't reload UI after code change in development
     // watchOptions: {
     //     aggregateTimeout: 300,
