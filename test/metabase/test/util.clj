@@ -561,7 +561,7 @@
                 ;; might not have an old max ID if this is the first time the macro is used in this test run.
                 :let  [old-max-id (or (get model->old-max-id model)
                                       0)]]
-          (db/delete! model :id [:> old-max-id]))))))
+          (db/simple-delete! model :id [:> old-max-id]))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has

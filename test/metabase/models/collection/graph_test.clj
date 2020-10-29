@@ -1,7 +1,9 @@
 (ns metabase.models.collection.graph-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.test :refer :all]
             [medley.core :as m]
             [metabase
+             [models :refer [User]]
              [test :as mt]
              [util :as u]]
             [metabase.api.common :refer [*current-user-id*]]
@@ -14,7 +16,8 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -415,3 +418,38 @@
                               :after    {(keyword (str group-id)) {:root (s/eq "write")}}
                               s/Keyword s/Any}
                              (db/select-one CollectionRevision {:order-by [[:id :desc]]})))))))))))
+
+(defn- do-with-n-temp-users-with-personal-collections! [num-users thunk]
+  (mt/with-model-cleanup [User Collection]
+    ;; insert all the users
+    (let [user-ids (jdbc/execute!
+                    (db/connection)
+                    (db/honeysql->sql
+                     {:insert-into User
+                      :values      (repeatedly num-users #(tt/with-temp-defaults User))}))
+          max-id   (:max-id (db/select-one [User [:%max.id :max-id]]))
+          ;; determine the range of IDs we inserted -- MySQL doesn't support INSERT INTO ... RETURNING like Postgres
+          ;; so this is the fastest way to do this
+          user-ids (range (inc (- max-id num-users)) (inc max-id))]
+      (assert (= (count user-ids) num-users))
+      ;; insert the Collections
+      (jdbc/execute!
+       (db/connection)
+       (db/honeysql->sql
+        {:insert-into Collection
+         :values      (for [user-id user-ids
+                            :let    [collection (tt/with-temp-defaults Collection)]]
+                        (assoc collection
+                               :personal_owner_id user-id
+                               :slug "my_collection"))})))
+    ;; now run the thunk
+    (thunk)))
+
+(defmacro ^:private with-n-temp-users-with-personal-collections [num-users & body]
+  `(do-with-n-temp-users-with-personal-collections! ~num-users (fn [] ~@body)))
+
+(deftest mega-graph-test
+  (testing "A truly insane amount of Personal Collections shouldn't cause a Stack Overflow (#13211)"
+    (with-n-temp-users-with-personal-collections 2000
+      (is (>= (db/count Collection :personal_owner_id [:not= nil]) 2000))
+      (is (map? (graph/graph))))))
