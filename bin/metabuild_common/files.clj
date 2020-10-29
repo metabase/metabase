@@ -28,7 +28,7 @@
       (.mkdirs (File. dir))))
   dir)
 
-(defn delete-file!
+(defn delete-file-if-exists!
   "Delete a file or directory (recursively) if it exists."
   ([^String filename]
    (steps/step (format "Deleting %s..." filename)
@@ -42,7 +42,13 @@
      (assert (not (file-exists? filename)))))
 
   ([file & more]
-   (dorun (map delete-file! (cons file more)))))
+   (dorun (map delete-file-if-exists! (cons file more)))))
+
+(defn ^:deprecated delete-file!
+  "Alias for `delete-file-if-exists!`. Here for backwards compatibility. Prefer `delete-file-if-exists!` going
+  forward."
+  [& args]
+  (apply delete-file-if-exists! args))
 
 (defn copy-file!
   "Copy a `source` file (or directory, recursively) to `dest`."
