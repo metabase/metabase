@@ -64,7 +64,7 @@ describe("scenarios > admin > settings", () => {
     cy.findByText("Save changes");
   });
 
-  it.skip("should save a setting", () => {
+  it("should save a setting", () => {
     cy.server();
     cy.route("PUT", "**/admin-email").as("saveSettings");
 
@@ -81,8 +81,9 @@ describe("scenarios > admin > settings", () => {
 
     emailInput()
       .click()
-      .clear()
-      .type("other.email@metabase.com")
+      // "hack" substitute for `cy.clear()` as per:
+      // https://github.com/cypress-io/cypress/issues/2056#issuecomment-702607741
+      .type("{selectall}other.email@metabase.com")
       .blur();
     cy.wait("@saveSettings");
 
@@ -91,12 +92,9 @@ describe("scenarios > admin > settings", () => {
     emailInput().should("have.value", "other.email@metabase.com");
 
     // reset the email
-    emailInput()
-      .click()
-      .clear()
-      .type("bob@metabase.com")
-      .blur();
-    cy.wait("@saveSettings");
+    cy.request("PUT", "/api/setting/admin-email", {
+      value: "bob@metabase.com",
+    });
   });
 
   it("should check for working https before enabling a redirect", () => {
