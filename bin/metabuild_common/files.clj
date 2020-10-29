@@ -23,15 +23,17 @@
   (str filename))
 
 (defn create-directory-unless-exists! [^String dir]
-  (when-not (file-exists? dir)
-    (steps/step (format "Creating directory %s..." dir)
-      (.mkdirs (File. dir))))
+  (steps/step (format "Create directory %s if it does not exist" dir)
+    (if (file-exists? dir)
+      (out/announce "%s already exists." dir)
+      (steps/step (format "Create directory %s" dir)
+        (.mkdirs (File. dir)))))
   dir)
 
 (defn delete-file-if-exists!
   "Delete a file or directory (recursively) if it exists."
   ([^String filename]
-   (steps/step (format "Deleting %s..." filename)
+   (steps/step (format "Delete %s if exists" filename)
      (if (file-exists? filename)
        (let [file (File. filename)]
          (if (.isDirectory file)
