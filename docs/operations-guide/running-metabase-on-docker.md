@@ -155,3 +155,10 @@ To add external dependency JAR files such as the Oracle or Vertica JDBC drivers 
       --name metabase metabase/metabase
 
 Note that Metabase will use this directory to extract plugins bundled with the default Metabase distribution (such as drivers for various databases such as SQLite), thus it must be readable and writable by Docker.
+
+You can chek the directory permition with:
+    ls -ld /path/to/plugins
+
+And if necessary, give it full access on the path which the plugins are available, outside of container as following example:
+
+    chmod a+rwx /path/to/plugins
