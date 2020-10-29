@@ -102,4 +102,29 @@ describe("scenarios > question > filter", () => {
     // this is not the point of this repro, but additionally make sure the filter is working as intended on "Gizmo"
     cy.findByText("3621077291879").should("not.exist"); // one of the "Gizmo" EANs
   });
+
+  it.skip("'Between Dates' filter should behave consistently (metabase#12872)", () => {
+    cy.request("POST", "/api/card", {
+      name: "12872",
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `SELECT count(*) AS "count"
+                  FROM "PUBLIC"."PRODUCTS"
+                  LEFT JOIN "PUBLIC"."PRODUCTS" "Products" ON "PUBLIC"."PRODUCTS"."ID" = "Products"."ID"
+                  WHERE (("PUBLIC"."PRODUCTS"."CREATED_AT" >= timestamp with time zone '2019-04-15 00:00:00.000+02:00'
+                    AND "PUBLIC"."PRODUCTS"."CREATED_AT" < timestamp with time zone '2019-04-16 00:00:00.000+02:00')
+                  AND "Products"."CREATED_AT" BETWEEN timestamp with time zone '2019-04-15 00:00:00.000+02:00' AND timestamp with time zone '2019-04-15 00:00:00.000+02:00')`,
+        },
+        database: 1,
+      },
+      display: "scalar",
+      visualization_settings: {},
+    }).then(({ body: { id: questionId } }) => {
+      cy.visit(`/question/${questionId}`);
+      cy.findByText("This question is written in SQL.");
+      cy.log("**At the moment of unfixed issue, it's showing '0'**");
+      cy.get(".ScalarValue").contains("1");
+    });
+  });
 });
