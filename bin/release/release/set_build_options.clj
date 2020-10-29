@@ -7,11 +7,10 @@
                            (u/sh "git" "symbolic-ref" "--short" "HEAD"))]
     (loop []
       (let [version (u/read-line-with-prompt "What version are we building (e.g. 0.36.0)?")
-            branch  (u/read-line-with-prompt "What branch are we building from?" :default current-branch)
-            edition (case (u/letter-options-prompt "Is this a [C]ommunity Edition release or an [E]nterprise Edition release?"
-                                                   [:c :e])
-                      :c :ce
-                      :e :ee)]
+            branch  current-branch
+            edition (case (first (c/version))
+                      \0 :ce
+                      \1 :ee)]
         (if-not (u/yes-or-no-prompt (format "Building %s version %s from branch %s. Is this correct?"
                                             (pr-str edition) (pr-str version) (pr-str branch)))
           (do
