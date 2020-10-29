@@ -4,7 +4,7 @@
             [metabuild-common.core :as u]))
 
 (def ^:private required-commands
-  ["git" "node" "yarn" "aws" "docker" "java" "wget" "shasum" "gettext"])
+  ["git" "node" "yarn" "aws" "docker" "java" "wget" "shasum" "gettext" "zip"])
 
 (defn- check-for-required-commands []
   (u/step "Verify required external commands are available"
