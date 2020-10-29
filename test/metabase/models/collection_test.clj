@@ -330,75 +330,82 @@
 ;;; |                                Nested Collections: CRUD Constraints & Behavior                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Can we INSERT a Collection with a valid path?
-(defn- insert-collection-with-location! [location]
-  (mt/with-model-cleanup [Collection]
-    (-> (db/insert! Collection :name (mt/random-name), :color "#ABCDEF", :location location)
-        :location
-        (= location))))
+(defmacro ^:private with-collection-in-lo [[collection-binding location] & body]
+  `(let [name# (mt/random-name)]
+     (try
+       (let [~collection-binding (db/insert! Collection :name name#, :color "#ABCDEF", :location ~location)]
+         ~@body)
+       (finally
+         (db/delete! Collection :name name#)))))
 
-(expect
-  (mt/with-temp Collection [parent]
-    (insert-collection-with-location! (collection/location-path parent))))
-
-;; Make sure we can't INSERT a Collection with an invalid path
 (defn- nonexistent-collection-id []
   (inc (or (:max (db/select-one [Collection [:%max.id :max]]))
            0)))
 
-(expect
-  Exception
-  (insert-collection-with-location! "/a/"))
+(deftest crud-validate-path-test
+  (testing "Make sure we can't INSERT a Collection with an invalid location"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid Collection location: path is invalid"
+         (with-collection-in-lo [_ "/a/"]))))
 
-;; Make sure we can't INSERT a Collection with an non-existent ancestors
-(expect
-  Exception
-  (insert-collection-with-location! (collection/location-path (nonexistent-collection-id))))
+  (testing "We should be able to INSERT a Collection with a *valid* location"
+    (mt/with-temp Collection [parent]
+      (with-collection-in-lo [collection (collection/location-path parent)]
+        (is (= (collection/location-path parent)
+               (:location collection))))))
 
-;; MAae sure we can UPDATE a Collection and give it a new, *valid* location
-(expect
-  (mt/with-temp* [Collection [collection-1]
-                  Collection [collection-2]]
-    (db/update! Collection (u/get-id collection-1) :location (collection/location-path collection-2))))
+  (testing "Make sure we can't UPDATE a Collection to give it an invalid location"
+    (mt/with-temp Collection [collection]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid Collection location: path is invalid"
+           (db/update! Collection (u/get-id collection) :location "/a/")))))
 
-;; Make sure we can't UPDATE a Collection to give it an valid path
-(expect
-  Exception
-  (mt/with-temp Collection [collection]
-    (db/update! Collection (u/get-id collection) :location "/a/")))
+  (testing "We should be able to UPDATE a Collection and give it a new, *valid* location"
+    (mt/with-temp* [Collection [collection-1]
+                    Collection [collection-2]]
+      (is (= true
+             (db/update! Collection (u/get-id collection-1) :location (collection/location-path collection-2)))))))
 
-;; Make sure we can't UPDATE a Collection to give it a non-existent ancestors
-(expect
-  Exception
-  (mt/with-temp Collection [collection]
-    (db/update! Collection (u/get-id collection) :location (collection/location-path (nonexistent-collection-id)))))
+(deftest crud-validate-ancestors-test
+  (testing "Make sure we can't INSERT a Collection with an non-existent ancestors"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid Collection location: some or all ancestors do not exist"
+         (with-collection-in-lo [_ (collection/location-path (nonexistent-collection-id))]))))
 
+  (testing "Make sure we can't UPDATE a Collection to give it a non-existent ancestors"
+    (mt/with-temp Collection [collection]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid Collection location: some or all ancestors do not exist"
+           (db/update! Collection (u/get-id collection) :location (collection/location-path (nonexistent-collection-id))))))))
 
-;; When we delete a Collection do its descendants get deleted as well?
-;;
-;;    +-> B
-;;    |
-;; x -+-> C -+-> D -> E     ===>     x
-;;           |
-;;           +-> F -> G
-(expect
-  0
-  (with-collection-hierarchy [{:keys [a b c d e f g]}]
-    (db/delete! Collection :id (u/get-id a))
-    (db/count Collection :id [:in (map u/get-id [a b c d e f g])])))
+(deftest delete-descendant-collections-test
+  (testing "When we delete a Collection do its descendants get deleted as well?"
+    ;;    +-> B
+    ;;    |
+    ;; x -+-> C -+-> D -> E     ===>     x
+    ;;           |
+    ;;           +-> F -> G
+    (with-collection-hierarchy [{:keys [a b c d e f g]}]
+      (db/delete! Collection :id (u/get-id a))
+      (is (= 0
+             (db/count Collection :id [:in (map u/get-id [a b c d e f g])])))))
 
-;; ...put parents & siblings should be untouched
-;;
-;;    +-> B                             +-> B
-;;    |                                 |
-;; A -+-> x -+-> D -> E     ===>     A -+
-;;           |
-;;           +-> F -> G
-(expect
-  2
-  (with-collection-hierarchy [{:keys [a b c d e f g]}]
-    (db/delete! Collection :id (u/get-id c))
-    (db/count Collection :id [:in (map u/get-id [a b c d e f g])])))
+  (testing "parents & siblings should be untouched"
+    ;; ...put
+    ;;
+    ;;    +-> B                             +-> B
+    ;;    |                                 |
+    ;; A -+-> x -+-> D -> E     ===>     A -+
+    ;;           |
+    ;;           +-> F -> G
+    (with-collection-hierarchy [{:keys [a b c d e f g]}]
+      (db/delete! Collection :id (u/get-id c))
+      (is (= 2
+             (db/count Collection :id [:in (map u/get-id [a b c d e f g])]))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -408,22 +415,16 @@
 (defn- ancestors [collection]
   (map :name (#'collection/ancestors collection)))
 
-;; Can we hydrate `ancestors` the way we'd hope?
-(expect
-  ["A" "C"]
-  (with-collection-hierarchy [{:keys [d]}]
-    (ancestors d)))
-
-(expect
-  ["A" "C" "D"]
-  (with-collection-hierarchy [{:keys [e]}]
-    (ancestors e)))
-
-;; trying it on C should give us only A
-(expect
-  ["A"]
-  (with-collection-hierarchy [{:keys [c]}]
-    (ancestors c)))
+(deftest ancestors-test
+  (with-collection-hierarchy [{:keys [c d e]}]
+    (testing "Can we hydrate `ancestors` the way we'd hope?"
+      (is (= ["A" "C"]
+             (ancestors d)))
+      (is (= ["A" "C" "D"]
+             (ancestors e))))
+    (testing "trying it on C should give us only A"
+      (is (= ["A"]
+             (ancestors c))))))
 
 
 ;;; ---------------------------------------------- Effective Ancestors -----------------------------------------------
@@ -431,33 +432,27 @@
 (defn- effective-ancestors [collection]
   (map :name (collection/effective-ancestors collection)))
 
-;; For D: if we don't have permissions for C, we should only see A
-(expect
-  ["A"]
-  (with-collection-hierarchy [{:keys [a d]}]
-    (with-current-user-perms-for-collections [a d]
-      (effective-ancestors d))))
-
-;; For D: if we don't have permissions for A, we should only see C
-(expect
-  ["C"]
-  (with-collection-hierarchy [{:keys [c d]}]
-    (with-current-user-perms-for-collections [c d]
-      (effective-ancestors d))))
-
-;; For D: if we have perms for all ancestors we should see them all
-(expect
-  ["A" "C"]
+(deftest effective-ancestors-test
   (with-collection-hierarchy [{:keys [a c d]}]
-    (with-current-user-perms-for-collections [a c d]
-      (effective-ancestors d))))
+    (testing "For D: if we don't have permissions for C, we should only see A"
+      (with-current-user-perms-for-collections [a d]
+        (is (= ["A"]
+               (effective-ancestors d)))))
 
-;; For D: if we have permissions for no ancestors, we should see nothing
-(expect
-  []
-  (with-collection-hierarchy [{:keys [a c d]}]
-    (with-current-user-perms-for-collections [d]
-      (effective-ancestors d))))
+    (testing "For D: if we don't have permissions for A, we should only see C"
+      (with-current-user-perms-for-collections [c d]
+        (is (= ["C"]
+               (effective-ancestors d)))))
+
+    (testing "For D: if we have perms for all ancestors we should see them all"
+      (with-current-user-perms-for-collections [a c d]
+        (is (= ["A" "C"]
+               (effective-ancestors d)))))
+
+    (testing "For D: if we have permissions for no ancestors, we should see nothing"
+      (with-current-user-perms-for-collections [d]
+        (is (= []
+               (effective-ancestors d)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -479,88 +474,84 @@
   (-> (#'collection/descendants collection)
       format-collections))
 
-;; make sure we can fetch the descendants of a Collection in the hierarchy we'd expect
-(expect
-  #{{:name "B", :id true, :location "/A/", :children #{}, :description nil}
-    {:name        "C"
-     :id          true
-     :description nil
-     :location    "/A/"
-     :children    #{{:name        "D"
-                     :id          true
-                     :description nil
-                     :location    "/A/C/"
-                     :children    #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}}
-                    {:name        "F"
-                     :id          true
-                     :description nil
-                     :location    "/A/C/"
-                     :children    #{{:name "G", :id true, :description nil, :location "/A/C/F/", :children #{}}}}}}}
-  (with-collection-hierarchy [{:keys [a]}]
-    (descendants a)))
+(deftest descendants-test
+  (with-collection-hierarchy [{:keys [a b c d]}]
+    (testing "make sure we can fetch the descendants of a Collection in the hierarchy we'd expect"
+      (is (= #{{:name "B", :id true, :location "/A/", :children #{}, :description nil}
+               {:name        "C"
+                :id          true
+                :description nil
+                :location    "/A/"
+                :children    #{{:name        "D"
+                                :id          true
+                                :description nil
+                                :location    "/A/C/"
+                                :children    #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}}
+                               {:name        "F"
+                                :id          true
+                                :description nil
+                                :location    "/A/C/"
+                                :children    #{{:name "G", :id true, :description nil, :location "/A/C/F/", :children #{}}}}}}}
+             (descendants a))))
 
-;; try for one of the children, make sure we get just that subtree
-(expect
-  #{}
-  (with-collection-hierarchy [{:keys [b]}]
-    (descendants b)))
+    (testing "try for one of the children, make sure we get just that subtree"
+      (is (= #{}
+             (descendants b))))
 
-;; try for the other child, we should get just that subtree!
-(expect
-  #{{:name        "D"
-     :id          true
-     :description nil
-     :location    "/A/C/"
-     :children    #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}}
-    {:name        "F"
-     :id          true
-     :description nil
-     :location    "/A/C/"
-     :children    #{{:name "G", :id true, :description nil, :location "/A/C/F/", :children #{}}}}}
-  (with-collection-hierarchy [{:keys [c]}]
-    (descendants c)))
+    (testing "try for the other child, we should get just that subtree!"
+      (is (= #{{:name        "D"
+                :id          true
+                :description nil
+                :location    "/A/C/"
+                :children    #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}}
+               {:name        "F"
+                :id          true
+                :description nil
+                :location    "/A/C/"
+                :children    #{{:name "G", :id true, :description nil, :location "/A/C/F/", :children #{}}}}}
+             (descendants c))))
 
-;; try for a grandchild
-(expect
-  #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}
-  (with-collection-hierarchy [{:keys [d]}]
-    (descendants d)))
+    (testing "try for a grandchild"
+      (= #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}
+         (descendants d)))))
 
-;; For the *Root* Collection, can we get top-level Collections?
-(expect
-  #{{:name        "A"
-     :id          true
-     :description nil
-     :location    "/"
-     :children    #{{:name        "C"
-                     :id          true
-                     :description nil
-                     :location    "/A/"
-                     :children    #{{:name        "D"
-                                     :id          true
-                                     :description nil
-                                     :location    "/A/C/"
-                                     :children    #{{:name        "E"
-                                                     :id          true
-                                                     :description nil
-                                                     :location    "/A/C/D/"
-                                                     :children    #{}}}}
-                                    {:name        "F"
-                                     :id          true
-                                     :description nil
-                                     :location    "/A/C/"
-                                     :children    #{{:name        "G"
-                                                     :id          true
-                                                     :description nil
-                                                     :location    "/A/C/F/"
-                                                     :children    #{}}}}}}
-                    {:name        "B"
-                     :id          true
-                     :description nil
-                     :location    "/A/"
-                     :children    #{}}}}}
-  (with-collection-hierarchy [{:keys [a b c d e f g]}]
-    (descendants collection/root-collection)))
+(deftest root-collection-descendants-test
+  (testing "For the *Root* Collection, can we get top-level Collections?"
+    (with-collection-hierarchy [{:keys [a b c d e f g]}]
+      (= #{{:name        "A"
+            :id          true
+            :description nil
+            :location    "/"
+            :children    #{{:name        "C"
+                            :id          true
+                            :description nil
+                            :location    "/A/"
+                            :children    #{{:name        "D"
+                                            :id          true
+                                            :description nil
+                                            :location    "/A/C/"
+                                            :children    #{{:name        "E"
+                                                            :id          true
+                                                            :description nil
+                                                            :location    "/A/C/D/"
+                                                            :children    #{}}}}
+                                           {:name        "F"
+                                            :id          true
+                                            :description nil
+                                            :location    "/A/C/"
+                                            :children    #{{:name        "G"
+                                                            :id          true
+                                                            :description nil
+                                                            :location    "/A/C/F/"
+                                                            :children    #{}}}}}}
+                           {:name        "B"
+                            :id          true
+                            :description nil
+                            :location    "/A/"
+                            :children    #{}}}}}
+         (descendants collection/root-collection)))))
+
+
 
 (deftest descendant-ids-test
   (testing "double-check that descendant-ids is working right too"
@@ -1119,38 +1110,48 @@
            collections)
    (db/select-field :object Permissions :group_id (u/get-id perms-group))))
 
-;; Make sure that when creating a new Collection at the Root Level, we copy the group permissions for the Root
-;; Collection
-(expect
-  #{"/collection/{new}/"
-    "/collection/root/"}
-  (mt/with-temp PermissionsGroup [group]
-    (perms/grant-collection-readwrite-permissions! group collection/root-collection)
-    (mt/with-temp Collection [collection {:name "{new}"}]
-      (group->perms [collection] group))))
+(deftest copy-root-collection-perms-test
+  (testing (str "Make sure that when creating a new Collection at the Root Level, we copy the group permissions for "
+                "the Root Collection\n")
+    (doseq [collection-namespace [nil "currency"]
+            :let                 [root-collection       (assoc collection/root-collection :namespace collection-namespace)
+                                  other-namespace      (if collection-namespace nil "currency")
+                                  other-root-collection (assoc collection/root-collection :namespace other-namespace)]]
+      (testing (format "Collection namespace = %s\n" (pr-str collection-namespace))
+        (mt/with-temp PermissionsGroup [group]
+          (testing "no perms beforehand = no perms after"
+            (mt/with-temp Collection [collection {:name "{new}", :namespace collection-namespace}]
+              (is (= #{}
+                     (group->perms [collection] group)))))
 
-(expect
-  #{"/collection/{new}/read/"
-    "/collection/root/read/"}
-  (mt/with-temp PermissionsGroup [group]
-    (perms/grant-collection-read-permissions! group collection/root-collection)
-    (mt/with-temp Collection [collection {:name "{new}"}]
-      (group->perms [collection] group))))
+          (perms/grant-collection-read-permissions! group root-collection)
+          (mt/with-temp Collection [collection {:name "{new}", :namespace collection-namespace}]
+            (testing "copy read perms"
+              (is (= #{"/collection/{new}/read/"
+                       (perms/collection-read-path root-collection)}
+                     (group->perms [collection] group))))
 
-;; Needless to say, no perms before hand = no perms after
-(expect
-  #{}
-  (mt/with-temp PermissionsGroup [group]
-    (mt/with-temp Collection [collection {:name "{new}"}]
-      (group->perms [collection] group))))
+            (testing "revoking root collection perms shouldn't affect perms of existing children"
+              (perms/revoke-collection-permissions! group root-collection)
+              (is (= #{"/collection/{new}/read/"}
+                     (group->perms [collection] group))))
 
-;; ...and granting perms after shouldn't affect Collections already created
-(expect
-  #{"/collection/root/read/"}
-  (mt/with-temp* [PermissionsGroup [group]
-                  Collection [collection {:name "{new}"}]]
-    (perms/grant-collection-read-permissions! group collection/root-collection)
-    (group->perms [collection] group)))
+            (testing "granting new root collection perms shouldn't affect perms of existing children"
+              (perms/grant-collection-readwrite-permissions! group root-collection)
+              (is (= #{(perms/collection-readwrite-path root-collection) "/collection/{new}/read/"}
+                     (group->perms [collection] group)))))
+
+          (testing "copy readwrite perms"
+            (mt/with-temp Collection [collection {:name "{new}", :namespace collection-namespace}]
+              (is (= #{"/collection/{new}/"
+                       (perms/collection-readwrite-path root-collection)}
+                     (group->perms [collection] group)))))
+
+          (testing (format "Perms for Root Collection in %s namespace should not affect Collections in %s namespace"
+                           (pr-str collection-namespace) (pr-str other-namespace))
+            (mt/with-temp Collection [collection {:name "{new}", :namespace other-namespace}]
+              (is (= #{(perms/collection-readwrite-path root-collection)}
+                     (group->perms [collection] group))))))))))
 
 ;; Make sure that when creating a new Collection as a child of another, we copy the group permissions for its parent
 (expect

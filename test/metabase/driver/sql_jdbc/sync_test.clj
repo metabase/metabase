@@ -6,11 +6,14 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
+             [sync :as sync]
              [test :as mt]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]]
-            [metabase.models.table :refer [Table]])
+            [metabase.models.table :refer [Table]]
+            [metabase.test.data.one-off-dbs :as one-off-dbs]
+            [toucan.db :as db])
   (:import java.sql.ResultSet))
 
 (defn- sql-jdbc-drivers-with-default-describe-database-impl
@@ -51,6 +54,26 @@
         (reduce + (for [^ResultSet rs @resultsets]
                     (if (.isClosed rs) 0 1)))))))
 
+(defn- count-active-tables-in-db
+  [db-id]
+  (db/count Table
+    :db_id  db-id
+    :active true))
+
+(deftest sync-only-accessable
+  (one-off-dbs/with-blank-db
+    (doseq [statement ["set db_close_delay -1;"
+                       "drop table if exists \"birds\";"
+                       "create table \"birds\" ();"]]
+      (jdbc/execute! one-off-dbs/*conn* [statement]))
+    (sync/sync-database! (mt/db))
+    (is (= 1 (count-active-tables-in-db (mt/id))))
+    ;; We have to mock this as H2 doesn't have the notion of a user connecting to it
+    (with-redefs [sql-jdbc.sync/have-select-privilege? (constantly false)]
+      (sync/sync-database! (mt/db))
+      (is (= 0 (count-active-tables-in-db (mt/id)))
+          "We shouldn't sync tables for which we don't have select privilege"))))
+
 (deftest dont-leak-resultsets-test
   (mt/test-drivers (sql-jdbc-drivers-with-default-describe-database-impl)
     (testing (str "make sure that running the sync process doesn't leak cursors because it's not closing the ResultSets. "
@@ -63,7 +86,7 @@
     (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
            (mt/rows
              (qp/process-query
-              (mt/native-query {:query (sql-jdbc.sync/simple-select-probe (or driver/*driver* :h2) schema name)})))))))
+              (mt/native-query {:query (first (#'sql-jdbc.sync/simple-select-probe (or driver/*driver* :h2) schema name))})))))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
@@ -96,3 +119,13 @@
                   :fields
                   (filter :special-type)
                   (map (juxt (comp str/lower-case :name) :special-type))))))))
+
+(deftest fast-active-tables-test
+  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+    ;; We have to mock this to make it work with all DBs
+    (with-redefs [sql-jdbc.sync/all-schemas (constantly #{"PUBLIC"})]
+      (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
+             (->> metadata
+                  (sql-jdbc.sync/fast-active-tables (or driver/*driver* :h2) (mt/db))
+                  (map :table_name)
+                  sort))))))

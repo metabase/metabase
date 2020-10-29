@@ -47,9 +47,9 @@
   (delay
     (reduce
      (fn [acc env-var]
-       (assoc acc env-var (tx/db-test-env-var-or-throw :bigquery env-var)))
+       (assoc acc env-var (tx/db-test-env-var :bigquery env-var)))
      {}
-     [:project-id :client-id :client-secret :access-token :refresh-token])))
+     [:project-id :client-id :client-secret :access-token :refresh-token :service-account-json])))
 
 (defn project-id
   "BigQuery project ID that we're using for tests, from the env var `MB_BIGQUERY_TEST_PROJECT_ID`."
@@ -142,13 +142,18 @@
   (let [sql      (format "SELECT count(*) FROM `%s.%s.%s`" (project-id) dataset-id table-id)
         respond  (fn [_ rows]
                    (ffirst rows))
-        response (google/execute
-                  (.query (.jobs (bigquery)) (project-id)
-                          (doto (QueryRequest.)
-                            (.setUseQueryCache false)
-                            (.setUseLegacySql false)
-                            (.setQuery sql))))]
-    (#'bigquery/post-process-native respond response)))
+        client (bigquery)
+        query-response (google/execute
+                        (.query (.jobs client) (project-id)
+                                (doto (QueryRequest.)
+                                  (.setUseQueryCache false)
+                                  (.setUseLegacySql false)
+                                  (.setQuery sql))))
+        job-ref (.getJobReference query-response)
+        job-id (.getJobId job-ref)
+        proj-id (.getProjectId job-ref)
+        response (#'bigquery/get-query-results client proj-id job-id nil)]
+    (#'bigquery/post-process-native @details respond response)))
 
 (defprotocol ^:private Insertable
   (^:private ->insertable [this]

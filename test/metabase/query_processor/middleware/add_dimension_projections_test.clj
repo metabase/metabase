@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -10,44 +11,94 @@
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
 
 (def ^:private example-query
-  {:database 1
+  {:database (mt/id)
    :type     :query
-   :query    {:source-table 1
-              :fields       [[:field-id 1]
-                             [:field-id 2]
-                             [:field-id 3]]}})
+   :query    {:source-table (mt/id :venues)
+              :fields       [[:field-id (mt/id :venues :price)]
+                             [:field-id (mt/id :venues :longitude)]
+                             [:field-id (mt/id :venues :category_id)]]}})
+
+(def ^:private remapped-field
+  {:name                      "Product"
+   :field_id                  (mt/id :venues :category_id)
+   :human_readable_field_id   (mt/id :categories :name)
+   :field_name                "CATEGORY_ID"
+   :human_readable_field_name "NAME"})
 
 (defn- do-with-fake-remappings-for-field-3 [f]
   (with-redefs [add-dim-projections/fields->field-id->remapping-dimension
                 (constantly
-                 {3 {:name "Product", :field_id 3, :human_readable_field_id 4}})]
+                 {(mt/id :venues :category_id) {:name                    "Product"
+                                                :field_id                (mt/id :venues :category_id)
+                                                :human_readable_field_id (mt/id :categories :name)}})]
     (f)))
 
 (deftest create-remap-col-tuples
   (testing "make sure we create the remap column tuples correctly"
     (do-with-fake-remappings-for-field-3
      (fn []
-       (is (= [[[:field-id 3]
-                [:fk-> [:field-id 3] [:field-id 4]]
-                {:name "Product", :field_id 3, :human_readable_field_id 4}]]
-              (#'add-dim-projections/create-remap-col-tuples [[:field-id 1] [:field-id 2] [:field-id 3]])))))))
+       (is (= [[[:field-id (mt/id :venues :category_id)]
+                [:fk-> [:field-id (mt/id :venues :category_id)] [:field-id (mt/id :categories :name)]]
+                remapped-field]]
+              (#'add-dim-projections/create-remap-col-tuples [[:field-id (mt/id :venues :price)]
+                                                              [:field-id (mt/id :venues :longitude)]
+                                                              [:field-id (mt/id :venues :category_id)]])))))))
 
 (deftest add-fk-remaps-test
   (do-with-fake-remappings-for-field-3
    (fn []
      (testing "make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]"
-       (is (= [[{:name "Product", :field_id 3, :human_readable_field_id 4}]
+       (is (= [[remapped-field]
                (update-in example-query [:query :fields]
-                          conj [:fk-> [:field-id 3] [:field-id 4]])]
+                          conj [:fk-> [:field-id (mt/id :venues :category_id)]
+                                [:field-id (mt/id :categories :name)]])]
               (#'add-dim-projections/add-fk-remaps example-query))))
 
+     (testing "make sure we don't duplicate remappings"
+       (is (= [[remapped-field]
+               (update-in example-query [:query :fields]
+                          conj [:fk-> [:field-id (mt/id :venues :category_id)]
+                                [:field-id (mt/id :categories :name)]])]
+              (#'add-dim-projections/add-fk-remaps
+               (update-in example-query [:query :fields]
+                          conj [:fk-> [:field-id (mt/id :venues :category_id)]
+                                [:field-id (mt/id :categories :name)]])))))
+
      (testing "adding FK remaps should replace any existing order-bys for a field with order bys for the FK remapping Field"
-       (is (= [[{:name "Product", :field_id 3, :human_readable_field_id 4}]
+       (is (= [[remapped-field]
                (-> example-query
-                   (assoc-in [:query :order-by] [[:asc [:fk-> [:field-id 3] [:field-id 4]]]])
+                   (assoc-in [:query :order-by]
+                             [[:asc [:fk-> [:field-id (mt/id :venues :category_id)]
+                                     [:field-id (mt/id :categories :name)]]]])
                    (update-in [:query :fields]
-                              conj [:fk-> [:field-id 3] [:field-id 4]]))]
-              (#'add-dim-projections/add-fk-remaps (assoc-in example-query [:query :order-by] [[:asc [:field-id 3]]]))))))))
+                              conj [:fk-> [:field-id (mt/id :venues :category_id)]
+                                    [:field-id (mt/id :categories :name)]]))]
+              (-> example-query
+                  (assoc-in [:query :order-by] [[:asc [:field-id (mt/id :venues :category_id)]]])
+                  (#'add-dim-projections/add-fk-remaps)))))
+
+     (testing "adding FK remaps should replace any existing breakouts for a field with order bys for the FK remapping Field"
+       (is (= [[remapped-field]
+               (-> example-query
+                   (assoc-in [:query :aggregation] [[:count]])
+                   (assoc-in [:query :breakout]
+                             [[:fk-> [:field-id (mt/id :venues :category_id)]
+                               [:field-id (mt/id :categories :name)]]
+                              [:field-id (mt/id :venues :category_id)]])
+                   (m/dissoc-in [:query :fields]))]
+              (-> example-query
+                  (m/dissoc-in [:query :fields])
+                  (assoc-in [:query :aggregation] [[:count]])
+                  (assoc-in [:query :breakout] [[:field-id (mt/id :venues :category_id)]])
+                  (#'add-dim-projections/add-fk-remaps)))))
+
+     (testing "make sure FK remaps work with nested queries"
+       (let [example-query (assoc example-query :query {:source-query (:query example-query)})]
+         (is (= [[remapped-field]
+                 (update-in example-query [:query :source-query :fields]
+                            conj [:fk-> [:field-id (mt/id :venues :category_id)]
+                                  [:field-id (mt/id :categories :name)]])]
+                (#'add-dim-projections/add-fk-remaps example-query))))))))
 
 
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------

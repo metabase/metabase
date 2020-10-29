@@ -35,7 +35,7 @@
                              "LIMIT 2;")})))))
 
     (testing (str "make sure that BigQuery native queries maintain the column ordering specified in the SQL -- "
-                  "post-processing ordering shouldn't apply (Issue #2821)")
+                  "post-processing ordering shouldn't apply (metabase#2821)")
       (is (= [{:name         "venue_id"
                :display_name "venue_id"
                :source       :native
@@ -58,6 +58,30 @@
                                         "       `v2_test_data.checkins`.`id` AS `checkins_id` "
                                         "FROM `v2_test_data.checkins` "
                                         "LIMIT 2")}
+                 :type     :native
+                 :database (mt/id)})))))
+
+    (testing "queries with array result columns deserialize properly (metabase#10275)"
+      (is (= [[["foo" "bar"]
+               [1 2]
+               [3.14159265359 0.5772156649]
+               [1234M 5678M]
+               [#t "2018-01-01T00:00Z[UTC]" #t "2018-12-31T00:00Z[UTC]"]
+               [#t "12:34" #t "20:01:13.230"]
+               [#t "1957-05-17T03:35Z[UTC]" #t "2018-06-01T01:15:34.120Z[UTC]"]
+               [#t "2014-09-27T20:30:00.450Z[UTC]" #t "2020-09-27T14:57:00.450Z[UTC]"]
+               []]]
+             (mt/rows
+              (qp/process-query
+               {:native   {:query (str "SELECT ['foo', 'bar'], "
+                                       "[1, 2], "
+                                       "[3.14159265359, 0.5772156649], "
+                                       "[NUMERIC '1234', NUMERIC '5678'], "
+                                       "[DATE '2018-01-01', DATE '2018-12-31'], "
+                                       "[TIME '12:34:00.00', TIME '20:01:13.23'], "
+                                       "[DATETIME '1957-05-17 03:35:00.00', DATETIME '2018-06-01 01:15:34.12'], "
+                                       "[TIMESTAMP '2014-09-27 12:30:00.45-08', TIMESTAMP '2020-09-27 09:57:00.45-05'], "
+                                       "[]")}
                  :type     :native
                  :database (mt/id)})))))))
 
@@ -260,11 +284,17 @@
       ;; `hx/identifier`s to SQL
       (binding [sql.qp/*table-alias* "ABC"
                 *print-meta*         true]
-        (let [fields {:date      date-field
-                      :datetime  datetime-field
-                      :timestamp timestamp-field}]
+        (let [fields                     {:date      date-field
+                                          :datetime  datetime-field
+                                          :timestamp timestamp-field}
+              build-honeysql-clause-head (fn [{:keys [honeysql]} field-arg args]
+                                           (if (fn? honeysql)
+                                             (honeysql field-arg args)
+                                             (into [honeysql field-arg] args)))]
           (doseq [clause [{:args 2, :mbql :=, :honeysql :=}
-                          {:args 2, :mbql :!=, :honeysql :not=}
+                          {:args 2, :mbql :!=, :honeysql (fn [identifier args]
+                                                           [:or (into [:not= identifier] args)
+                                                            [:= identifier nil]])}
                           {:args 2, :mbql :>, :honeysql :>}
                           {:args 2, :mbql :>=, :honeysql :>=}
                           {:args 2, :mbql :<, :honeysql :<}
@@ -289,8 +319,9 @@
                                                       (repeat (dec (:args clause)) filter-value))
                             expected-identifier (hx/identifier :field "ABC" (name temporal-type))
                             expected-value      (get-in value [:as temporal-type] (:value value))
-                            expected-clause     (into [(:honeysql clause) expected-identifier]
-                                                      (repeat (dec (:args clause)) expected-value))]
+                            expected-clause     (build-honeysql-clause-head clause
+                                                                            expected-identifier
+                                                                            (repeat (dec (:args clause)) expected-value))]
                         (testing (format "\nreconcile %s -> %s"
                                          (into [(:mbql clause) temporal-type] (repeat (dec (:args clause)) (:type value)))
                                          (into [(:mbql clause) temporal-type] (repeat (dec (:args clause)) temporal-type)))

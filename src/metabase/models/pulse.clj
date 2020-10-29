@@ -1,12 +1,12 @@
 (ns metabase.models.pulse
-  "Notifcations are ways to deliver the results of Questions to users without going through the normal Metabase UI. At
+  "Notifications are ways to deliver the results of Questions to users without going through the normal Metabase UI. At
   the time of this writing, there are two delivery mechanisms for Notifications -- email and Slack notifications;
   these destinations are known as 'Channels'. Notifications themselves are futher divied into two categories --
   'Pulses', which are sent at specified intervals, and 'Alerts', which are sent when certain conditions are met (such
   as a query returning results).
 
   Because 'Pulses' were originally the only type of Notification, this name is still used for the model itself, and in
-  some of the functions below. To keep things clear try to make sure you use the term 'Notification' for things that
+  some of the functions below. To keep things clear, try to make sure you use the term 'Notification' for things that
   work with either type.
 
   One more thing to keep in mind: this code is pretty old and doesn't follow the code patterns used in the other
@@ -59,7 +59,12 @@
    ;; can only have one Card
    (-> (hydrate alert :cards) :cards first)
    ;; if there's still not a Card, throw an Exception!
-   (throw (Exception. (tru "Invalid Alert: Alert does not have a Card assoicated with it")))))
+   (throw (Exception. (tru "Invalid Alert: Alert does not have a Card associated with it")))))
+
+(defn is-alert?
+  "Whether `notification` is an Alert (as opposed to a regular Pulse)."
+  [notification]
+  (boolean (:alert_condition notification)))
 
 (defn- perms-objects-set
   "Permissions to read or write a *Pulse* are the same as those of its parent Collection.
@@ -67,10 +72,9 @@
   Permissions to read or write an *Alert* are the same as those of its 'parent' *Card*. For all intents and purposes,
   an Alert cannot be put into a Collection."
   [notification read-or-write]
-  (let [is-alert? (boolean (:alert_condition notification))]
-    (if is-alert?
-      (i/perms-objects-set (alert->card notification) read-or-write)
-      (perms/perms-objects-set-for-parent-collection notification read-or-write))))
+  (if (is-alert? notification)
+    (i/perms-objects-set (alert->card notification) read-or-write)
+    (perms/perms-objects-set-for-parent-collection notification read-or-write)))
 
 (u/strict-extend (class Pulse)
   models/IModel
@@ -149,11 +153,18 @@
 ;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
 
 (s/defn hydrate-notification :- PulseInstance
-  "Hydrate a Pulse or Alert with the Fields needed for sending it."
+  "Hydrate Pulse or Alert with the Fields needed for sending it."
   [notification :- PulseInstance]
   (-> notification
       (hydrate :creator :cards [:channels :recipients])
       (m/dissoc-in [:details :emails])))
+
+(s/defn ^:private hydrate-notifications :- [PulseInstance]
+  "Batched-hydrate multiple Pulses or Alerts."
+  [notifications :- [PulseInstance]]
+  (as-> notifications <>
+    (hydrate <> :creator :cards [:channels :recipients])
+    (map #(m/dissoc-in % [:details :emails]) <>)))
 
 (s/defn ^:private notification->pulse :- PulseInstance
   "Take a generic `Notification`, and put it in the standard Pulse format the frontend expects. This really just
@@ -197,12 +208,19 @@
   "Fetch all Alerts."
   ([]
    (retrieve-alerts nil))
+
   ([{:keys [archived?]
      :or   {archived? false}}]
-   (for [alert (db/select Pulse, :alert_condition [:not= nil], :archived archived?, {:order-by [[:%lower.name :asc]]})]
-     (-> alert
-         hydrate-notification
-         notification->alert))))
+   (for [alert (hydrate-notifications (db/select Pulse
+                                        :alert_condition [:not= nil]
+                                        :archived        archived?
+                                        {:order-by [[:%lower.name :asc]]}))
+         :let [alert (notification->alert alert)]
+         ;; if for whatever reason the Alert doesn't have a Card associated with it (e.g. the Card was deleted) don't
+         ;; return the Alert -- it's basically orphaned/invalid at this point. See #13575 -- we *should* be deleting
+         ;; Alerts if their associated PulseCard is deleted, but that's not currently the case.
+         :when (:card alert)]
+     alert)))
 
 (s/defn retrieve-pulses :- [PulseInstance]
   "Fetch all `Pulses`."
@@ -234,7 +252,7 @@
                            [:= :pcr.user_id user-id]]})))
 
 (defn retrieve-alerts-for-cards
-  "Find all alerts for `CARD-IDS`, used for admin users"
+  "Find all alerts for `card-ids`, used for admin users"
   [& card-ids]
   (when (seq card-ids)
     (map (comp notification->alert hydrate-notification)
@@ -287,6 +305,7 @@
   (let [channel (when new-channel (assoc new-channel
                                     :pulse_id       (u/get-id notification-or-id)
                                     :id             (:id existing-channel)
+                                    :enabled        (:enabled new-channel)
                                     :channel_type   (keyword (:channel_type new-channel))
                                     :schedule_type  (keyword (:schedule_type new-channel))
                                     :schedule_frame (keyword (:schedule_frame new-channel))))]
@@ -412,10 +431,11 @@
 (defn- alert->notification
   "Convert an 'Alert` back into the generic 'Notification' format."
   [{:keys [card cards], :as alert}]
-  (let [card (or card (first cards))]
-    (-> alert
-        (assoc :skip_if_empty true, :cards (when card [(card->ref card)]))
-        (dissoc :card))))
+  (let [card  (or card (first cards))
+        cards (when card [(card->ref card)])]
+    (cond-> (-> (assoc alert :skip_if_empty true)
+                (dissoc :card))
+      (seq cards) (assoc :cards cards))))
 
 ;; TODO - why do we make sure to strictly validate everything when we create a PULSE but not when we create an ALERT?
 (defn update-alert!

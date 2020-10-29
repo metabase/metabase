@@ -41,7 +41,7 @@
   (testing "we should not be allowed to set an invalid `site-url` (#9850)"
     (mt/discard-setting-changes [site-url]
       (is (thrown?
-           AssertionError
+           clojure.lang.ExceptionInfo
            (public-settings/site-url "http://https://www.camsaul.com"))))))
 
 (deftest site-url-settings-set-valid-domain-name

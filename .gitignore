@@ -8,6 +8,7 @@
 *.xcworkspacedata
 .DS_Store
 .\#*
+.cpcache/
 .eastwood
 .idea/
 .nrepl-port
@@ -71,3 +72,4 @@ profiles.clj
 target/checksum.txt
 xcshareddata
 xcuserdata
+dev/src/dev/nocommit/

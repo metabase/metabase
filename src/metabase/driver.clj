@@ -259,6 +259,16 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti escape-entity-name-for-metadata
+  "escaping for when calling `.getColumns` or `.getTables` on table names or schema names. Useful for when a database
+  driver has difference escaping rules for table or schema names when used from metadata.
+
+  For example, oracle treats slashes differently when querying versus when used with `.getTables` or `.getColumns`"
+  {:arglists '([driver table-name])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod escape-entity-name-for-metadata :default [_driver table-name] table-name)
 
 (defmulti describe-table-fks
   "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys`. Results
@@ -602,3 +612,9 @@
   :hierarchy #'hierarchy)
 
 (defmethod default-field-order ::driver [_] :database)
+
+(defmulti db-start-of-week
+  "Return start of week for given database"
+  {:added "0.37.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)

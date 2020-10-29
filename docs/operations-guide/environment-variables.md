@@ -40,7 +40,7 @@ Session expiration, defined in minutes (default is 2 weeks), which will log out 
 
 Note: This setting is not an idle/inactivity timeout. If you set this to 15 minutes, your users have to login (or re-authenticate) again every 15 minutes.
 
-Use [MB_SESSION_COOKIES](#MB_SESSION_COOKIES) to also expire sessions, when browser is closed.
+Use [MB_SESSION_COOKIES](#mb_session_cookies) to also expire sessions, when browser is closed.
 
 Also see the [Changing session expiration](changing-session-expiration.md) documentation page.
 
@@ -85,7 +85,7 @@ Change this to a higher value if you notice that regular usage consumes all or c
 
 To see how many connections are being used, check the Metabase logs and look for lines that contains the following: `… App DB connections: 12/15 …`. In this example, 12 out of 15 available connections are being used.
 
-See [MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE](#MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE) for setting maximum connections to the databases connected to Metabase.
+See [MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE](#mb_jdbc_data_warehouse_max_connection_pool_size) for setting maximum connections to the databases connected to Metabase.
 
 #### `MB_APPLICATION_FAVICON_URL`
 
@@ -117,7 +117,7 @@ Type: integer<br>
 Default: `50`<br>
 Since: 0.35.0
 
-Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#MB_JETTY_MAXTHREADS) will be used, otherwise it will use the default.
+Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#mb_jetty_maxthreads) will be used, otherwise it will use the default.
 
 #### `MB_BREAKOUT_BIN_WIDTH`
 
@@ -152,7 +152,7 @@ Used to recognize the Mac App client, which then defaults to `"OSX"`.
 Type: boolean<br>
 Default: `true`
 
-Color log lines. When set to `false` it will disable log line colors. This is disabled on Windows. Related to [MB_EMOJI_IN_LOGS](#MB_EMOJI_IN_LOGS).
+Color log lines. When set to `false` it will disable log line colors. This is disabled on Windows. Related to [MB_EMOJI_IN_LOGS](#mb_emoji_in_logs).
 
 #### `MB_CUSTOM_FORMATTING`
 
@@ -187,7 +187,7 @@ Timeout in milliseconds for connecting to the application database.
 Type: string<br>
 Default: `null`
 
-A JDBC-style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#MB_DB_HOST). Also used when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#MB_DB_TYPE).
+A JDBC-style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#mb_db_host). Also used when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#mb_db_type).
 
 Example: `postgres://dbuser:dbpassword@db.example.com:port/mydb?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory`
 
@@ -196,14 +196,14 @@ Example: `postgres://dbuser:dbpassword@db.example.com:port/mydb?ssl=true&sslfact
 Type: string<br>
 Default: `null`
 
-The database name of the application database used with [MB_DB_HOST](#MB_DB_HOST).
+The database name of the application database used with [MB_DB_HOST](#mb_db_host).
 
 #### `MB_DB_FILE`
 
 Type: string<br>
 Default: `"metabase.db"`
 
-Location of H2 database file. Should not include the `.mv.db` (or `.h2.db`) file extension. Used when [MB_DB_TYPE](#MB_DB_TYPE) is set to`"h2"`.
+Location of H2 database file. Should not include the `.mv.db` (or `.h2.db`) file extension. Used when [MB_DB_TYPE](#mb_db_type) is set to`"h2"`.
 
 Can also be used when migrating away from H2 to specify where the existing data should be read from.
 
@@ -212,42 +212,42 @@ Can also be used when migrating away from H2 to specify where the existing data 
 Type: string<br>
 Default: `null`
 
-The host name or IP address of the application database. Used when [MB_DB_TYPE](#MB_DB_TYPE) is different than `"h2"`.
+The host name or IP address of the application database. Used when [MB_DB_TYPE](#mb_db_type) is different than `"h2"`.
 
 #### `MB_DB_IN_MEMORY`
 
 Type: boolean<br>
 Default: `null`
 
-Used for testing with [MB_DB_FILE](#MB_DB_FILE).
+Used for testing with [MB_DB_FILE](#mb_db_file).
 
 #### `MB_DB_PASS`
 
 Type: string<br>
 Default: `null`
 
-The password for [MB_DB_HOST](#MB_DB_HOST).
+The password for [MB_DB_HOST](#mb_db_host).
 
 #### `MB_DB_PORT`
 
 Type: integer<br>
 Default: `null`
 
-The port for [MB_DB_HOST](#MB_DB_HOST).
+The port for [MB_DB_HOST](#mb_db_host).
 
 #### `MB_DB_TYPE`
 
 Type: string (`"h2"`, `"postgres"`, `"mysql"`)<br>
 Default: `"h2"`
 
-When `"h2"`, the application database is loaded from [MB_DB_FILE](#MB_DB_FILE), otherwise [MB_DB_HOST](#MB_DB_HOST) will be used to define application database.
+When `"h2"`, the application database is loaded from [MB_DB_FILE](#mb_db_file), otherwise [MB_DB_HOST](#mb_db_host) will be used to define application database.
 
 #### `MB_DB_USER`
 
 Type: string<br>
 Default: `null`
 
-The username for [MB_DB_HOST](#MB_DB_HOST).
+The username for [MB_DB_HOST](#mb_db_host).
 
 #### `MB_DISABLE_SESSION_THROTTLE`
 
@@ -256,7 +256,7 @@ Default: `false`
 
 When `true`, this will disable session throttling. **Warning:** It is not recommended to disable throttling, since it is a protective measure against brute-force attacks.
 
-Use [MB_SOURCE_ADDRESS_HEADER](#MB_SOURCE_ADDRESS_HEADER) to set the IP address of the remote client from e.g. a reverse-proxy.
+Use [MB_SOURCE_ADDRESS_HEADER](#mb_source_address_header) to set the IP address of the remote client from e.g. a reverse-proxy.
 
 #### `MB_EMAIL_FROM_ADDRESS`
 
@@ -313,7 +313,7 @@ URL of origin allowed to embed the full Metabase application.
 Type: boolean<br>
 Default: `true`
 
-Emojis on log lines. When set to `false` it will disable log line emojis. This is disabled on Windows. Related to [MB_COLORIZE_LOGS](#MB_COLORIZE_LOGS).
+Emojis on log lines. When set to `false` it will disable log line emojis. This is disabled on Windows. Related to [MB_COLORIZE_LOGS](#mb_colorize_logs).
 
 #### `MB_ENABLE_EMBEDDING`
 
@@ -398,7 +398,7 @@ Maximum number of connections to the data source databases. The maximum is for e
 
 Change this to a higher value if you notice that regular usage consumes all or close to all connections. When all connections are in use then Metabase will be slower to return results for queries, since it would have to wait for an available connection before processing the next query in the queue.
 
-See [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE) for setting maximum connections to the Metabase application database.
+See [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size) for setting maximum connections to the Metabase application database.
 
 #### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
@@ -420,7 +420,7 @@ Use daemon threads.
 Type: string<br>
 Default: `localhost` for JAR, `0.0.0.0` for Docker
 
-Configure a host either as a host name or IP address to identify a specific network interface on which to listen. If set to `"0.0.0.0"`, Metabase listens on all network interfaces. It will listen on the port specified in [MB_JETTY_PORT](#MB_JETTY_PORT).
+Configure a host either as a host name or IP address to identify a specific network interface on which to listen. If set to `"0.0.0.0"`, Metabase listens on all network interfaces. It will listen on the port specified in [MB_JETTY_PORT](#mb_jetty_port).
 
 #### `MB_JETTY_JOIN`
 
@@ -428,14 +428,6 @@ Type: boolean<br>
 Default: `true`
 
 Blocks the thread until server ends.
-
-#### `MB_JETTY_MAX_REQUEST_HEADER_SIZE`
-
-Type: integer<br>
-Default: `8192`<br>
-Since: 0.36.0
-
-Maximum size of a request header, in bytes. Increase this value if you are experiencing errors like "Request Header Fields Too Large".
 
 #### `MB_JETTY_MAXIDLETIME`
 
@@ -462,7 +454,7 @@ Change this to a higher value if you notice that regular usage consumes all or c
 
 To see how many threads are being used, check the Metabase logs and look for lines that contain the following: `… Jetty threads: 45/50 …`, which in this case would indicate 45 out of 50 available threads are being used.
 
-Related [MB_ASYNC_QUERY_THREAD_POOL_SIZE](#MB_ASYNC_QUERY_THREAD_POOL_SIZE).
+Related [MB_ASYNC_QUERY_THREAD_POOL_SIZE](#mb_async_query_thread_pool_size).
 
 #### `MB_JETTY_MINTHREADS`
 
@@ -476,7 +468,15 @@ Minimum number of threads.
 Type: integer<br>
 Default: `3000`
 
-Configure which port to use for HTTP. It will listen on the interface specified in [MB_JETTY_HOST](#MB_JETTY_HOST).
+Configure which port to use for HTTP. It will listen on the interface specified in [MB_JETTY_HOST](#mb_jetty_host).
+
+#### `MB_JETTY_REQUEST_HEADER_SIZE`
+
+Type: integer<br>
+Default: `8192`<br>
+Since: 0.36.0
+
+Maximum size of a request header, in bytes. Increase this value if you are experiencing errors like "Request Header Fields Too Large".
 
 #### `MB_JETTY_SSL`
 
@@ -506,7 +506,7 @@ Password for Java KeyStore file.
 Type: integer<br>
 Default: `null`
 
-Configure which port to use for HTTPS. It will listen on the interface specified in [MB_JETTY_HOST](#MB_JETTY_HOST).
+Configure which port to use for HTTPS. It will listen on the interface specified in [MB_JETTY_HOST](#mb_jetty_host).
 
 #### `MB_JETTY_SSL_TRUSTSTORE`
 
@@ -742,7 +742,7 @@ Comma-separated namespaces to trace. **WARNING:** Could log sensitive informatio
 Type: string (`"weak"`, `"normal"`, `"strong"`)<br>
 Default: `"normal"`
 
-Enforce a password complexity rule to increase security for regular logins. This only applies to new users or users that are changing their password. Related [MB_PASSWORD_LENGTH](#MB_PASSWORD_LENGTH)
+Enforce a password complexity rule to increase security for regular logins. This only applies to new users or users that are changing their password. Related [MB_PASSWORD_LENGTH](#mb_password_length)
 
 - `weak` requires length of 6 characters
 - `normal` requires at least 1 digit and length of 6 characters
@@ -753,7 +753,7 @@ Enforce a password complexity rule to increase security for regular logins. This
 Type: integer<br>
 Default: `6`
 
-Set a minimum password length to increase security for regular logins. This only applies to new users or users that are changing their password. Uses the length of [MB_PASSWORD_COMPLEXITY](#MB_PASSWORD_COMPLEXITY) if not set.
+Set a minimum password length to increase security for regular logins. This only applies to new users or users that are changing their password. Uses the length of [MB_PASSWORD_COMPLEXITY](#mb_password_complexity) if not set.
 
 #### `MB_PLUGINS_DIR`
 
@@ -769,7 +769,7 @@ The location is where custom third-party drivers should be added. Then Metabase 
 Type: string<br>
 Default: `null`
 
-Token for premium features.
+Token for Enterprise Edition and Premium features.
 
 #### `MB_QP_CACHE_BACKEND`
 
@@ -812,7 +812,7 @@ Type: boolean<br>
 Default: `false`<br>
 Since: 0.36.0
 
-Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS. Related [MB_SITE_URL](#MB_SITE_URL)
+Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS. Related [MB_SITE_URL](#mb_site_url)
 
 #### `MB_REPORT_TIMEZONE`
 
@@ -938,7 +938,7 @@ Send email notifications to users in Admin group, when a new SSO users is create
 Type: boolean<br>
 Default: `null`
 
-When set to `true`, the user login session will expire, when the browser is closed. The user login session will always expire after the amount of time defined in [MAX_SESSION_AGE](#MAX_SESSION_AGE) (by default 2 weeks).
+When set to `true`, the user login session will expire, when the browser is closed. The user login session will always expire after the amount of time defined in [MAX_SESSION_AGE](#max_session_age) (by default 2 weeks).
 
 Also see the [Changing session expiration](changing-session-expiration.md) documentation page.
 
@@ -1003,7 +1003,7 @@ Slack API bearer token obtained from https://api.slack.com/web#authentication
 Type: string<br>
 Default: `X-Forwarded-For`
 
-Identify the source of HTTP requests by this header's value, instead of its remote address. Related to [MB_DISABLE_SESSION_THROTTLE](#MB_DISABLE_SESSION_THROTTLE).
+Identify the source of HTTP requests by this header's value, instead of its remote address. Related to [MB_DISABLE_SESSION_THROTTLE](#mb_disable_session_throttle).
 
 #### `MB_SSL_CERTIFICATE_PUBLIC_KEY`
 

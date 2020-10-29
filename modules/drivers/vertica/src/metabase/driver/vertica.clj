@@ -24,6 +24,9 @@
 
 (defmethod driver/supports? [:vertica :percentile-aggregations] [_ _] false)
 
+(defmethod driver/db-start-of-week :vertica
+  [_]
+  :monday)
 
 (defmethod sql-jdbc.sync/database-type->base-type :vertica
   [_ database-type]
@@ -76,18 +79,14 @@
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
-(def ^:private one-day (hsql/raw "INTERVAL '1 day'"))
-
 (defmethod sql.qp/date [:vertica :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:vertica :minute]          [_ _ expr] (date-trunc :minute expr))
 (defmethod sql.qp/date [:vertica :minute-of-hour]  [_ _ expr] (extract-integer :minute expr))
 (defmethod sql.qp/date [:vertica :hour]            [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:vertica :hour-of-day]     [_ _ expr] (extract-integer :hour expr))
 (defmethod sql.qp/date [:vertica :day]             [_ _ expr] (hx/->date expr))
-(defmethod sql.qp/date [:vertica :day-of-week]     [_ _ expr] (hx/inc (extract-integer :dow expr)))
 (defmethod sql.qp/date [:vertica :day-of-month]    [_ _ expr] (extract-integer :day expr))
 (defmethod sql.qp/date [:vertica :day-of-year]     [_ _ expr] (extract-integer :doy expr))
-(defmethod sql.qp/date [:vertica :week-of-year]    [_ _ expr] (hx/week expr))
 (defmethod sql.qp/date [:vertica :month]           [_ _ expr] (date-trunc :month expr))
 (defmethod sql.qp/date [:vertica :month-of-year]   [_ _ expr] (extract-integer :month expr))
 (defmethod sql.qp/date [:vertica :quarter]         [_ _ expr] (date-trunc :quarter expr))
@@ -96,9 +95,11 @@
 
 (defmethod sql.qp/date [:vertica :week]
   [_ _ expr]
-  (hx/- (date-trunc :week (hx/+ (cast-timestamp expr)
-                                one-day))
-        one-day))
+  (sql.qp/adjust-start-of-week :vertica (partial date-trunc :week) (cast-timestamp expr)))
+
+(defmethod sql.qp/date [:vertica :day-of-week]
+  [_ _ expr]
+  (sql.qp/adjust-day-of-week :vertica (hsql/call :dayofweek_iso expr)))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
   [driver [_ & args]]

@@ -107,9 +107,9 @@ export default class PublicDashboard extends Component {
     } = this.props;
 
     if (uuid) {
-      setPublicDashboardEndpoints(uuid);
+      setPublicDashboardEndpoints();
     } else if (token) {
-      setEmbedDashboardEndpoints(token);
+      setEmbedDashboardEndpoints();
     }
 
     initialize();
@@ -147,6 +147,7 @@ export default class PublicDashboard extends Component {
       <EmbedFrame
         name={dashboard && dashboard.name}
         description={dashboard && dashboard.description}
+        dashboard={dashboard}
         parameters={parameters}
         parameterValues={parameterValues}
         setParameterValue={this.props.setParameterValue}

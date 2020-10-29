@@ -42,7 +42,7 @@
        :exceptions @exceptions})))
 
 ;; Test that when we attempt to send a pulse that is archived, it just skips the pulse and sends nothing. Previously
-;; this failed schema validation (see issue #8581)
+;; this failed schema validation (see metabase#8581)
 (expect
   {:emails     (et/email-to :rasta
                             {:subject "Test"

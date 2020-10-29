@@ -855,11 +855,13 @@
                  (-> ((mt/user->client :rasta) :get 200 "pulse/form_input")
                      (get-in [:channels :slack :fields])))))))
 
-    (testing "When slack is not configured, `form_input` returns just the #genreal slack channel"
+    (testing "When slack is not configured, `form_input` returns no channels"
       (mt/with-temporary-setting-values [slack-token nil]
-        (is (= [{:name "channel", :type "select", :displayName "Post to", :options ["#general"], :required true}]
+        (is (empty?
                (-> ((mt/user->client :rasta) :get 200 "pulse/form_input")
-                   (get-in [:channels :slack :fields]))))))))
+                   (get-in [:channels :slack :fields])
+                   (first)
+                   (:options))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -18,6 +18,7 @@
              [pulse :as pulse :refer [Pulse]]
              [pulse-channel :refer [channel-types PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.pulse.render :as render]
             [metabase.util
              [i18n :refer [tru]]
@@ -28,6 +29,8 @@
              [db :as db]
              [hydrate :refer [hydrate]]])
   (:import java.io.ByteArrayInputStream))
+
+(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
 
 (api/defendpoint GET "/"
   "Fetch all Pulses"
@@ -121,10 +124,17 @@
   (let [chan-types (-> channel-types
                        (assoc-in [:slack :configured] (slack/slack-configured?))
                        (assoc-in [:email :configured] (email/email-configured?)))]
-    {:channels (if-not (get-in chan-types [:slack :configured])
+    {:channels (cond
+                 (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+                   (segmented-user?))
+                 (dissoc chan-types :slack)
+
                  ;; no Slack integration, so we are g2g
+                 (not (get-in chan-types [:slack :configured]))
                  chan-types
+
                  ;; if we have Slack enabled build a dynamic list of channels/users
+                 :else
                  (try
                    (let [slack-channels (for [channel (slack/conversations-list)]
                                           (str \# (:name channel)))
@@ -191,7 +201,7 @@
    collection_id       (s/maybe su/IntGreaterThanZero)
    collection_position (s/maybe su/IntGreaterThanZero)}
   (check-card-read-permissions cards)
-  (p/send-pulse! body)
+  (p/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 
 (api/defendpoint DELETE "/:id/subscription/email"

@@ -12,6 +12,7 @@
              [interface :as i]
              [permissions :as perms :refer [Permissions]]]
             [metabase.models.collection.root :as collection.root]
+            [metabase.public-settings.metastore :as settings.metastore]
             [metabase.util :as u]
             [metabase.util
              [i18n :as ui18n :refer [trs tru]]
@@ -173,9 +174,11 @@
 
 (defn root-collection-with-ui-details
   "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
-  []
+  [collection-namespace]
   (assoc root-collection
-         :name (tru "Our analytics")
+         :name (case (keyword collection-namespace)
+                 :snippets (tru "Top folder")
+                 (tru "Our analytics"))
          :id   "root"))
 
 (def ^:private CollectionWithLocationOrRoot
@@ -336,7 +339,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (if (collection.root/is-root-collection? collection)
     []
-    (filter i/can-read? (cons (root-collection-with-ui-details) (ancestors collection)))))
+    (filter i/can-read? (cons (root-collection-with-ui-details (:namespace collection)) (ancestors collection)))))
 
 (s/defn parent-id :- (s/maybe su/IntGreaterThanZero)
   "Get the immediate parent `collection` id, if set."
@@ -631,10 +634,11 @@
   application database.
 
   For newly created Collections at the root-level, copy the existing permissions for the Root Collection."
-  [{:keys [location id], :as collection}]
+  [{:keys [location id], collection-namespace :namespace, :as collection}]
   (when-not (is-personal-collection-or-descendant-of-one? collection)
     (let [parent-collection-id (location-path->parent-id location)]
-      (copy-collection-permissions! (or parent-collection-id root-collection) [id]))))
+      (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
+                                    [id]))))
 
 (defn- post-insert [collection]
   (u/prog1 collection
@@ -809,12 +813,18 @@
 (defn perms-objects-set
   "Return the required set of permissions to `read-or-write` `collection-or-id`."
   [collection-or-id read-or-write]
-  ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
-  ;; name) but if you have write perms you can add/remove cards
-  #{(case read-or-write
-      :read  (perms/collection-read-path collection-or-id)
-      :write (perms/collection-readwrite-path collection-or-id))})
-
+  (let [collection (if (integer? collection-or-id)
+                     (db/select-one [Collection :id :namespace] :id (collection-or-id))
+                     collection-or-id)]
+    ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
+    (if (and (= (u/qualified-name (:namespace collection)) "snippets")
+             (not (settings.metastore/enable-enhancements?)))
+      #{}
+      ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
+      ;; name) but if you have write perms you can add/remove cards
+      #{(case read-or-write
+          :read  (perms/collection-read-path collection-or-id)
+          :write (perms/collection-readwrite-path collection-or-id))})))
 
 (u/strict-extend (class Collection)
   models/IModel
@@ -947,8 +957,8 @@
                                                 (user->personal-collection-id (u/get-id user))))))))
 
 (defmulti allowed-namespaces
-  "Set of Collection namespaces instances of this model are allowed to go in. By default, only the default
-  namespace (namespace = `nil`)."
+  "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in. By default, only the
+  default namespace (namespace = `nil`)."
   {:arglists '([model])}
   class)
 

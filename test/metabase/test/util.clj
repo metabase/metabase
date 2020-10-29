@@ -5,7 +5,6 @@
              [string :as str]
              [test :refer :all]
              [walk :as walk]]
-            [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.scheduler :as qs]
             [colorize.core :as colorize]
             [java-time :as t]
@@ -25,13 +24,27 @@
             [metabase.test
              [data :as data]
              [initialize :as initialize]]
+            [metabase.test.util.log :as tu.log]
+            [potemkin :as p]
             [schema.core :as s]
-            [toucan.db :as db]
+            [toucan
+             [db :as db]
+             [models :as t.models]]
             [toucan.util.test :as tt])
   (:import java.util.concurrent.TimeoutException
            java.util.Locale
-           org.apache.log4j.Logger
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
+
+(comment tu.log/keep-me)
+
+;; these are imported because these functions originally lived in this namespace, and some tests might still be
+;; referencing them from here. We can remove the imports once everyone is using `metabase.test` instead of using this
+;; namespace directly.
+(p/import-vars
+ [tu.log
+  with-log-level
+  with-log-messages
+  with-log-messages-for-level])
 
 (defmethod assert-expr 're= [msg [_ pattern actual]]
   `(let [pattern#  ~pattern
@@ -84,11 +97,10 @@
 (defn random-email
   "Generate a random email address."
   []
-  (str (random-name) "@metabase.com"))
+  (str (u/lower-case-en (random-name)) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
-  "Useful for unit test comparisons. Converts map keys found in `DATA`
-  satisfying `PRED` with booleans when not nil"
+  "Useful for unit test comparisons. Converts map keys found in `data` satisfying `pred` with booleans when not nil."
   ([data]
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
@@ -271,7 +283,6 @@
   (or (symbol? x)
       (instance? clojure.lang.Namespace x)))
 
-
 (defn obj->json->obj
   "Convert an object to JSON and back again. This can be done to ensure something will match its serialized +
   deserialized form, e.g. keywords that aren't map keys, record types vs. plain map types, or timestamps vs ISO-8601
@@ -390,68 +401,6 @@
   ^Boolean [^String s]
   (boolean (when (string? s)
              (re-matches #"^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$" s))))
-
-(defn do-with-log-messages [f]
-  (let [messages (atom [])]
-    (with-redefs [log/log* (fn [_ & message]
-                             (swap! messages conj (vec message)))]
-      (f))
-    @messages))
-
-(defmacro with-log-messages
-  "Execute `body`, and return a vector of all messages logged using the `log/` family of functions. Messages are of the
-  format `[:level throwable message]`, and are returned in chronological order from oldest to newest.
-
-     (with-log-messages (log/warn \"WOW\")) ; -> [[:warn nil \"WOW\"]]"
-  {:style/indent 0}
-  [& body]
-  `(do-with-log-messages (fn [] ~@body)))
-
-(def level-kwd->level
-  "Conversion from a keyword log level to the Log4J constance mapped to that log level.
-   Not intended for use outside of the `with-log-messages-for-level` macro."
-  {:error org.apache.log4j.Level/ERROR
-   :warn  org.apache.log4j.Level/WARN
-   :info  org.apache.log4j.Level/INFO
-   :debug org.apache.log4j.Level/DEBUG
-   :trace org.apache.log4j.Level/TRACE})
-
-(defn ^Logger metabase-logger
-  "Gets the root logger for all metabase namespaces. Not intended for use outside of the
-  `with-log-messages-for-level` macro."
-  []
-  (Logger/getLogger "metabase"))
-
-(defn do-with-log-messages-for-level [level thunk]
-  (let [original-level (.getLevel (metabase-logger))
-        new-level      (get level-kwd->level (keyword level))]
-    (try
-      (.setLevel (metabase-logger) new-level)
-      (thunk)
-      (finally
-        (.setLevel (metabase-logger) original-level)))))
-
-(defmacro with-log-level
-  "Sets the log level (e.g. `:debug` or `:trace`) while executing `body`. Not thread safe! But good for debugging from
-  the REPL or for tests.
-
-    (with-log-level :debug
-      (do-something))"
-  [level & body]
-  `(do-with-log-messages-for-level ~level (fn [] ~@body)))
-
-(defmacro with-log-messages-for-level
-  "Executes `body` with the metabase logging level set to `level-kwd`. This is needed when the logging level is set at a
-  higher threshold than the log messages you're wanting to example. As an example if the metabase logging level is set
-  to `ERROR` in the log4j.properties file and you are looking for a `WARN` message, it won't show up in the
-  `with-log-messages` call as there's a guard around the log invocation, if it's not enabled (it is set to `ERROR`)
-  the log function will never be invoked. This macro will temporarily set the logging level to `level-kwd`, then
-  invoke `with-log-messages`, then set the level back to what it was before the invocation. This allows testing log
-  messages even if the threshold is higher than the message you are looking for."
-  [level-kwd & body]
-  `(with-log-level ~level-kwd
-     (with-log-messages
-       ~@body)))
 
 (defn- update-in-if-present
   "If the path `KS` is found in `M`, call update-in with the original
@@ -599,31 +548,53 @@
            .getZone
            .getID)))))
 
-(defmulti ^:private do-model-cleanup! class)
-
-(defmethod do-model-cleanup! :default
-  [model]
-  (db/delete! model))
-
-(defmethod do-model-cleanup! (class Collection)
-  [_]
-  ;; don't delete Personal Collections <3
-  (db/delete! Collection :personal_owner_id nil))
-
-(defn do-with-model-cleanup [model-seq f]
-  (try
-    (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name model-seq))) "\n")
-      (f))
-    (finally
-      (doseq [model model-seq]
-        (do-model-cleanup! (db/resolve-model model))))))
+(defn do-with-model-cleanup [models f]
+  {:pre [(sequential? models) (every? t.models/model? models)]}
+  (initialize/initialize-if-needed! :db)
+  (let [model->old-max-id (into {} (for [model models]
+                                     [model (:max-id (db/select-one [model [:%max.id :max-id]]))]))]
+    (try
+      (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name models))) "\n")
+        (f))
+      (finally
+        (doseq [model models
+                ;; might not have an old max ID if this is the first time the macro is used in this test run.
+                :let  [old-max-id (or (get model->old-max-id model)
+                                      0)]]
+          (db/delete! model :id [:> old-max-id]))))))
 
 (defmacro with-model-cleanup
-  "This will delete all rows found for each model in `model-seq`. By default, this calls `delete!`, so if the model has
-  defined any `pre-delete` behavior, that will be preserved. Alternatively, you can define a custom implementation by
-  using the `do-model-cleanup!` multimethod above."
-  [model-seq & body]
-  `(do-with-model-cleanup ~model-seq (fn [] ~@body)))
+  "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
+  defined any `pre-delete` behavior, that will be preserved.
+
+  It's preferable to use `with-temp` instead, but you can use this macro if `with-temp` wouldn't work in your
+  situation (e.g. when creating objects via the API).
+
+    (with-model-cleanup [Card]
+      (create-card-via-api!)
+      (is (= ...)))"
+  [models & body]
+  `(do-with-model-cleanup ~models (fn [] ~@body)))
+
+(deftest with-model-cleanup-test
+  (testing "Make sure the with-model-cleanup macro actually works as expected"
+    (tt/with-temp Card [other-card]
+      (let [card-count-before (db/count Card)
+            card-name         (random-name)]
+        (with-model-cleanup [Card]
+          (db/insert! Card (-> other-card (dissoc :id) (assoc :name card-name)))
+          (testing "Card count should have increased by one"
+            (is (= (inc card-count-before)
+                   (db/count Card))))
+          (testing "Card should exist"
+            (is (db/exists? Card :name card-name))))
+        (testing "Card should be deleted at end of with-model-cleanup form"
+          (is (= card-count-before
+                 (db/count Card)))
+          (is (not (db/exists? Card :name card-name)))
+          (testing "Shouldn't delete other Cards"
+            (is (pos? (db/count Card)))))))))
+
 
 ;; TODO - not 100% sure I understand
 (defn call-with-paused-query
@@ -675,27 +646,63 @@
                             (throw (RuntimeException. ~(format "%s should not be called!" fn-symb))))]
      ~@body))
 
-
-(defn do-with-non-admin-groups-no-root-collection-perms [f]
+(defn do-with-discarded-collections-perms-changes [collection-or-id f]
   (initialize/initialize-if-needed! :db)
+  (let [read-path                   (perms/collection-read-path collection-or-id)
+        readwrite-path              (perms/collection-readwrite-path collection-or-id)
+        groups-with-read-perms      (db/select-field :group_id Permissions :object read-path)
+        groups-with-readwrite-perms (db/select-field :group_id Permissions :object readwrite-path)]
+    (try
+      (f)
+      (finally
+        (db/delete! Permissions :object [:in #{read-path readwrite-path}])
+        (doseq [group-id groups-with-read-perms]
+          (perms/grant-collection-read-permissions! group-id collection-or-id))
+        (doseq [group-id groups-with-readwrite-perms]
+          (perms/grant-collection-readwrite-permissions! group-id collection-or-id))))))
+
+(defmacro with-discarded-collections-perms-changes
+  "Execute `body`; then, in a `finally` block, restore permissions to `collection-or-id` to what they were originally."
+  [collection-or-id & body]
+  `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
+
+(defn do-with-non-admin-groups-no-collection-perms [collection f]
   (try
-    (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
-      (perms/revoke-collection-permissions! group-id collection/root-collection))
-    (f)
+    (do-with-discarded-collections-perms-changes
+     collection
+     (fn []
+       (db/delete! Permissions
+         :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
+         :group_id [:not= (u/get-id (group/admin))])
+       (f)))
+    ;; if this is the default namespace Root Collection, then double-check to make sure all non-admin groups get
+    ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
+    ;; rewriting a few tests.
     (finally
-      (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
-        (when-not (db/exists? Permissions
-                    :group_id group-id
-                    :object   (perms/collection-readwrite-path collection/root-collection))
-          (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))))))
+      (when (and (:metabase.models.collection.root/is-root? collection)
+                 (not (:namespace collection)))
+        (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
+          (when-not (db/exists? Permissions :group_id group-id, :object "/collection/root/")
+            (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
 (defmacro with-non-admin-groups-no-root-collection-perms
   "Temporarily remove Root Collection perms for all Groups besides the Admin group (which cannot have them removed). By
   default, all Groups have full readwrite perms for the Root Collection; use this macro to test situations where an
-  admin has removed them."
-  [& body]
-  `(do-with-non-admin-groups-no-root-collection-perms (fn [] ~@body)))
+  admin has removed them.
 
+  Only affects the Root Collection for the default namespace. Use
+  `with-non-admin-groups-no-root-collection-for-namespace-perms` to do the same thing for the Root Collection of other
+  namespaces."
+  [& body]
+  `(do-with-non-admin-groups-no-collection-perms collection/root-collection (fn [] ~@body)))
+
+(defmacro with-non-admin-groups-no-root-collection-for-namespace-perms
+  "Like `with-non-admin-groups-no-root-collection-perms`, but for the Root Collection of a non-default namespace."
+  [collection-namespace & body]
+  `(do-with-non-admin-groups-no-collection-perms
+    (assoc collection/root-collection
+           :namespace (name ~collection-namespace))
+    (fn [] ~@body) ))
 
 (defn doall-recursive
   "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.

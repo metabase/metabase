@@ -220,6 +220,7 @@ export default class TagEditorParam extends Component {
               type="text"
               value={tag["display-name"]}
               className="AdminSelect p1 text-bold text-dark bordered border-medium rounded full"
+              style={{ fontSize: "14px" }}
               onBlurChange={e =>
                 this.setParameterAttribute("display-name", e.target.value)
               }

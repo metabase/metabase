@@ -28,7 +28,7 @@
    (replace-collection-ids collection-or-id graph :COLLECTION))
 
   ([collection-or-id graph replacement-key]
-   (let [id      (u/get-id collection-or-id)
+   (let [id      (if (map? collection-or-id) (:id collection-or-id) collection-or-id)
          ;; match variations that pop up depending on whether the map was serialized to JSON. 100, :100, or "100"
          id-keys #{id (str id) (keyword (str id))}]
      (update graph :groups (partial m/map-vals (partial m/map-keys (fn [collection-id]
@@ -322,7 +322,7 @@
                      (fn
                        ([graph]
                         (-> (get-in graph [:groups group-id])
-                            (select-keys (vals id->alias))))
+                            (select-keys (cons :root (vals id->alias)))))
                        ([graph [collection-id k]]
                         (replace-collection-ids collection-id graph k)))
                      graph
@@ -330,33 +330,29 @@
           (doseq [collection [default-a default-ab currency-a currency-ab]]
             (perms/grant-collection-read-permissions! group-id collection))
           (testing "Calling (graph) with no args should only show Collections in the default namespace"
-            (is (= {"Default A" :read, "Default A -> B" :read}
+            (is (= {"Default A" :read, "Default A -> B" :read, :root :none}
                    (nice-graph (graph/graph))
                    (nice-graph (graph/graph nil)))))
 
           (testing "You should be able to pass an different namespace to (graph) to see Collections in that namespace"
-            (is (= {"Currency A" :read, "Currency A -> B" :read}
+            (is (= {"Currency A" :read, "Currency A -> B" :read, :root :none}
                    (nice-graph (graph/graph :currency)))))
-
-          (testing "Should be able to pass `::graph/all` to get a combined graph of all namespaces (used for saving revisions)"
-            (is (= {"Default A" :read, "Default A -> B" :read "Currency A" :read, "Currency A -> B" :read}
-                   (nice-graph (graph/graph ::graph/all)))))
 
           ;; bind a current user so CollectionRevisions get saved.
           (mt/with-test-user :crowberto
             (testing "Should be able to update the graph for the default namespace.\n"
-              (let [before (graph/graph ::graph/all)]
+              (let [before (graph/graph)]
                 (graph/update-graph! (assoc (graph/graph) :groups {group-id {default-ab :write, currency-ab :write}}))
-                (is (= {"Default A" :read, "Default A -> B" :write}
+                (is (= {"Default A" :read, "Default A -> B" :write, :root :none}
                        (nice-graph (graph/graph))))
 
                 (testing "Updates to Collections in other namespaces should be ignored"
-                  (is (= {"Currency A" :read, "Currency A -> B" :read}
+                  (is (= {"Currency A" :read, "Currency A -> B" :read, :root :none}
                          (nice-graph (graph/graph :currency)))))
 
                 (testing "A CollectionRevision recording the *changes* to the perms graph should be saved."
                   (is (schema= {:id         su/IntGreaterThanZero
-                                :before     (s/eq (mt/obj->json->obj before))
+                                :before     (s/eq (mt/obj->json->obj (assoc before :namespace nil)))
                                 :after      (s/eq {(keyword (str group-id)) {(keyword (str default-ab)) "write"}})
                                 :user_id    (s/eq (mt/user->id :crowberto))
                                 :created_at java.time.temporal.Temporal
@@ -364,20 +360,58 @@
                                (db/select-one CollectionRevision {:order-by [[:id :desc]]}))))))
 
             (testing "Should be able to update the graph for a non-default namespace.\n"
-              (let [before (graph/graph ::graph/all)]
+              (let [before (graph/graph :currency)]
                 (graph/update-graph! :currency (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}))
-                (is (= {"Currency A" :write, "Currency A -> B" :read}
+                (is (= {"Currency A" :write, "Currency A -> B" :read, :root :none}
                        (nice-graph (graph/graph :currency))))
 
                 (testing "Updates to Collections in other namespaces should be ignored"
-                  (is (= {"Default A" :read, "Default A -> B" :write}
+                  (is (= {"Default A" :read, "Default A -> B" :write, :root :none}
                          (nice-graph (graph/graph)))))
 
                 (testing "A CollectionRevision recording the *changes* to the perms graph should be saved."
                   (is (schema= {:id         su/IntGreaterThanZero
-                                :before     (s/eq (mt/obj->json->obj before))
+                                :before     (s/eq (mt/obj->json->obj (assoc before :namespace "currency")))
                                 :after      (s/eq {(keyword (str group-id)) {(keyword (str currency-a)) "write"}})
                                 :user_id    (s/eq (mt/user->id :crowberto))
                                 :created_at java.time.temporal.Temporal
                                 s/Keyword   s/Any}
-                               (db/select-one CollectionRevision {:order-by [[:id :desc]]}))))))))))))
+                               (db/select-one CollectionRevision {:order-by [[:id :desc]]}))))))
+
+            (testing "should be able to update permissions for the Root Collection in the default namespace via the graph"
+              (graph/update-graph! (assoc (graph/graph) :groups {group-id {:root :read}}))
+              (is (= {:root :read, "Default A" :read, "Default A -> B" :write}
+                     (nice-graph (graph/graph))))
+
+              (testing "\nshouldn't affect Root Collection perms for non-default namespaces"
+                (is (= {:root :none, "Currency A" :write, "Currency A -> B" :read}
+                       (nice-graph (graph/graph :currency)))))
+
+              (testing "A CollectionRevision recording the *changes* to the perms graph should be saved."
+                (is (schema= {:before   {:namespace (s/eq nil)
+                                         :groups    {(keyword (str group-id)) {:root     (s/eq "none")
+                                                                               s/Keyword s/Any}
+                                                     s/Keyword                s/Any}
+                                         s/Keyword  s/Any}
+                              :after    {(keyword (str group-id)) {:root (s/eq "read")}}
+                              s/Keyword s/Any}
+                             (db/select-one CollectionRevision {:order-by [[:id :desc]]})))))
+
+            (testing "should be able to update permissions for Root Collection in non-default namespace"
+              (graph/update-graph! :currency (assoc (graph/graph :currency) :groups {group-id {:root :write}}))
+              (is (= {:root :write, "Currency A" :write, "Currency A -> B" :read}
+                     (nice-graph (graph/graph :currency))))
+
+              (testing "\nshouldn't affect Root Collection perms for default namespace"
+                (is (= {:root :read, "Default A" :read, "Default A -> B" :write}
+                       (nice-graph (graph/graph)))))
+
+              (testing "A CollectionRevision recording the *changes* to the perms graph should be saved."
+                (is (schema= {:before   {:namespace (s/eq "currency")
+                                         :groups    {(keyword (str group-id)) {:root     (s/eq "none")
+                                                                               s/Keyword s/Any}
+                                                     s/Keyword                s/Any}
+                                         s/Keyword  s/Any}
+                              :after    {(keyword (str group-id)) {:root (s/eq "write")}}
+                              s/Keyword s/Any}
+                             (db/select-one CollectionRevision {:order-by [[:id :desc]]})))))))))))

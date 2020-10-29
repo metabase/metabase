@@ -12,6 +12,7 @@
              [collection :as collection :refer [Collection]]
              [permissions-group :as group]
              [user :as user :refer [User]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util
              [i18n :as i18n :refer [tru]]
@@ -20,6 +21,8 @@
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
+
+(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
 
 (defn- check-self-or-superuser
   "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -70,7 +73,7 @@
 (api/defendpoint GET "/"
   "Fetch a list of `Users` for the admin People page or for Pulses. By default returns only active users. If
   `include_deactivated` is true, return all Users (active and inactive). (Using `include_deactivated` requires
-  superuser permissions.)"
+  superuser permissions.). For users with segmented permissions, return only themselves."
   [include_deactivated]
   {include_deactivated (s/maybe su/BooleanString)}
   (when include_deactivated
@@ -81,7 +84,10 @@
             (-> {}
                 (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
                 (hh/merge-where (when-not include_deactivated
-                                  [:= :is_active true]))))
+                                  [:= :is_active true]))
+                (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+                                  (when (segmented-user?)
+                                    [:= :id api/*current-user-id*])))))
     ;; For admins, also include the IDs of the  Users' Personal Collections
     api/*is-superuser?* (hydrate :personal_collection_id :group_ids)))
 
@@ -112,7 +118,7 @@
    group_ids        (s/maybe [su/IntGreaterThanZero])
    login_attributes (s/maybe user/LoginAttributes)}
   (api/check-superuser)
-  (api/checkp (not (db/exists? User :email email))
+  (api/checkp (not (db/exists? User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))
   (db/transaction
     (let [new-user-id (u/get-id (user/create-and-invite-user!
@@ -157,7 +163,7 @@
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
     (api/check-403 (valid-email-update? user-before-update email))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-    (api/checkp (not (db/exists? User, :email email, :id [:not= id]))
+    (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
       "email" (tru "Email address already associated to another user."))
     (db/transaction
       (api/check-500
@@ -182,7 +188,7 @@
     :is_active     true
     :is_superuser  false
     ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
-    ;; (see Issue #3323)
+    ;; (see metabase#3323)
     :google_auth   (boolean (and (:google_auth existing-user)
                                  ;; if google-auth-client-id is set it means Google Auth is enabled
                                  (session-api/google-auth-client-id)))

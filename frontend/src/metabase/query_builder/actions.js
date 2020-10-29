@@ -351,12 +351,17 @@ export const initializeQB = (location, params) => {
         } else if (card.original_card_id) {
           // deserialized card contains the card id, so just populate originalCard
           originalCard = await loadCard(card.original_card_id);
-          // if the cards are equal then show the original
-          if (cardIsEquivalent(card, originalCard)) {
+          if (
+            cardIsEquivalent(card, originalCard, { checkParameters: false }) &&
+            !cardIsEquivalent(card, originalCard, { checkParameters: true })
+          ) {
+            // if the cards are equal except for parameters, copy over the id to undirty the card
+            card.id = originalCard.id;
+          } else if (cardIsEquivalent(card, originalCard)) {
+            // if the cards are equal then show the original
             card = Utils.copy(originalCard);
           }
         }
-
         // if this card has any snippet tags we might need to fetch snippets pending permissions
         if (
           Object.values(
@@ -472,9 +477,9 @@ export const initializeQB = (location, params) => {
     }
 
     let question = card && new Question(card, getMetadata(getState()));
-    if (params.cardId) {
+    if (question && question.isSaved()) {
       // loading a saved question prevents auto-viz selection
-      question = question && question.lockDisplay();
+      question = question.lockDisplay();
     }
 
     if (question && question.isNative() && snippetFetch) {
@@ -483,6 +488,12 @@ export const initializeQB = (location, params) => {
       question = question.setQuery(
         question.query().updateQueryTextWithNewSnippetNames(snippets),
       );
+    }
+
+    for (const [paramId, value] of Object.entries(
+      (card && card.parameterValues) || {},
+    )) {
+      dispatch(setParameterValue(paramId, value));
     }
 
     card = question && question.card();
@@ -977,7 +988,7 @@ export const runQuestionQuery = ({
     const originalQuestion: ?Question = getOriginalQuestion(getState());
 
     const cardIsDirty = originalQuestion
-      ? question.isDirtyComparedTo(originalQuestion)
+      ? question.isDirtyComparedToWithoutParameters(originalQuestion)
       : true;
 
     if (shouldUpdateUrl) {

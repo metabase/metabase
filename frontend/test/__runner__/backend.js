@@ -53,7 +53,7 @@ export const BackendResource = createSharedResource("BackendResource", {
           "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
           "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
           "-Duser.timezone=US/Pacific",
-          `-Dlog4j.configuration=file:${__dirname}/log4j.properties`,
+          `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
           "-jar",
           "target/uberjar/metabase.jar",
         ],

@@ -50,7 +50,8 @@
    i/IObjectPermissionsDefaults
    {:can-read?   snippet.perms/can-read?
     :can-write?  snippet.perms/can-write?
-    :can-create? snippet.perms/can-create?}))
+    :can-create? snippet.perms/can-create?
+    :can-update? snippet.perms/can-update?}))
 
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------

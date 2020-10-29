@@ -1,6 +1,8 @@
 (ns metabase.driver.common-test
   (:require [clojure.test :refer :all]
-            [metabase.driver.common :as driver.common]))
+            [metabase.driver :as driver]
+            [metabase.driver.common :as driver.common]
+            [metabase.models.setting :as setting]))
 
 (deftest base-type-inference-test
   (is (= :type/Text
@@ -33,3 +35,15 @@
                                                                             (do (reset! realized-lazy-seq? true)
                                                                                 [4 5 6])))
               @realized-lazy-seq?])))))
+
+(defn- test-start-of-week-offset
+  [db-start-of-week target-start-of-week]
+  (with-redefs [driver/db-start-of-week (constantly db-start-of-week)
+                setting/get-keyword     (constantly target-start-of-week)]
+    (driver.common/start-of-week-offset :sql)))
+
+(deftest start-of-week-offset-test
+  (is (= 0 (test-start-of-week-offset :sunday :sunday)))
+  (is (= -1 (test-start-of-week-offset :sunday :monday)))
+  (is (= 1 (test-start-of-week-offset :monday :sunday)))
+  (is (= 5 (test-start-of-week-offset :monday :wednesday))))

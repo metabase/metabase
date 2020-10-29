@@ -87,7 +87,7 @@ describe("scenarios > public", () => {
         .contains("Create")
         .click();
 
-      cy.get(".Icon-funnel_add").click();
+      cy.get(".Icon-filter").click();
 
       popover()
         .contains("Other Categories")
@@ -99,6 +99,7 @@ describe("scenarios > public", () => {
 
       cy.contains("Done").click();
       cy.contains("Save").click();
+      cy.findByText("You're editing this dashboard.").should("not.exist");
 
       cy.contains(COUNT_ALL);
       cy.contains("Category")
@@ -107,8 +108,11 @@ describe("scenarios > public", () => {
         .find("fieldset")
         .should("not.exist");
 
-      cy.contains("Category").click();
-      cy.focused().type("Doohickey");
+      cy.findByText("Category").click();
+
+      popover().within(() => {
+        cy.findByText("Doohickey").click();
+      });
       cy.contains("Add filter").click();
       cy.contains(COUNT_DOOHICKEY);
 

@@ -61,7 +61,7 @@ export default class GridItem extends Component {
   }
 
   render() {
-    let { width, height, top, left, minSize } = this.props;
+    let { item, itemRenderer, width, height, top, left, minSize } = this.props;
 
     if (this.state.dragging) {
       left += this.state.dragging.x;
@@ -81,7 +81,6 @@ export default class GridItem extends Component {
       position: "absolute",
     };
 
-    const child = React.Children.only(this.props.children);
     return (
       <DraggableCore
         cancel=".react-resizable-handle, .drag-disabled"
@@ -96,12 +95,14 @@ export default class GridItem extends Component {
           onResize={this.onResizeHandler("onResize")}
           onResizeStop={this.onResizeHandler("onResizeStop")}
         >
-          {React.cloneElement(child, {
-            style: style,
-            className: cx(child.props.className, {
+          {itemRenderer({
+            item,
+            style,
+            className: cx({
               dragging: !!this.state.dragging,
               resizing: !!this.state.resizing,
             }),
+            gridItemWidth: width,
           })}
         </Resizable>
       </DraggableCore>

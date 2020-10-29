@@ -9,6 +9,7 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.util :as driver.u]
+            [metabase.models.setting :as setting]
             [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :refer [deferred-tru trs tru]])
@@ -298,3 +299,15 @@
            (apply max-key val)
            key
            class->base-type)))))
+
+(def ^:private days-of-week
+  [:monday :tuesday :wednesday :thursday :friday :saturday :sunday])
+
+(defn start-of-week-offset
+  "Return the offset for start of week to have the week start on `setting/start-of-week` given  `driver`."
+  [driver]
+  (let [db-start-of-week     (.indexOf ^clojure.lang.PersistentVector days-of-week (driver/db-start-of-week driver))
+        target-start-of-week (.indexOf ^clojure.lang.PersistentVector days-of-week (setting/get-keyword :start-of-week))
+        delta                (int (- target-start-of-week db-start-of-week))]
+    (* (Integer/signum delta)
+       (- 7 (Math/abs delta)))))

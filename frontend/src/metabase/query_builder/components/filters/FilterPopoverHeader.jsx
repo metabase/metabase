@@ -34,7 +34,9 @@ export default function FilterPopoverHeader({
     >
       {showFieldPicker && (
         <SidebarHeader
-          className={cx("text-default py1")}
+          className={cx("text-default py1", {
+            pr2: !showOperatorSelectorOnOwnRow,
+          })}
           title={
             (field.table ? field.table.displayName() + " – " : "") +
             field.displayName()

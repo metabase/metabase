@@ -68,9 +68,11 @@ export const ParameterOptionsSection = ({
   section: ParameterSection,
   onClick: () => any,
 }) => (
-  <li onClick={onClick} className="p1 px2 cursor-pointer brand-hover">
-    <div className="text-brand text-bold">{section.name}</div>
-    <div>{section.description}</div>
+  <li onClick={onClick} className="p1 px3 cursor-pointer brand-hover">
+    <div className="text-brand text-bold" style={{ marginBottom: 4 }}>
+      {section.name}
+    </div>
+    <div className="text-medium">{section.description}</div>
   </li>
 );
 
@@ -82,7 +84,7 @@ export const ParameterOptionsSectionsPane = ({
   onSelectSection: ParameterSection => any,
 }) => (
   <div className="pb2">
-    <h3 className="p2">{t`What do you want to filter?`}</h3>
+    <h3 className="pb2 pt3 px3">{t`What do you want to filter?`}</h3>
     <ul>
       {sections.map(section => (
         <ParameterOptionsSection
@@ -101,9 +103,11 @@ export const ParameterOptionItem = ({
   option: ParameterOption,
   onClick: () => any,
 }) => (
-  <li onClick={onClick} className="p1 px2 cursor-pointer brand-hover">
-    <div className="text-brand text-bold">{option.menuName || option.name}</div>
-    <div>{option.description}</div>
+  <li onClick={onClick} className="p1 px3 cursor-pointer brand-hover">
+    <div className="text-brand text-bold" style={{ marginBottom: 4 }}>
+      {option.menuName || option.name}
+    </div>
+    <div className="text-medium">{option.description}</div>
   </li>
 );
 
@@ -115,7 +119,7 @@ export const ParameterOptionsPane = ({
   onSelectOption: ParameterOption => any,
 }) => (
   <div className="pb2">
-    <h3 className="p2">{t`What kind of filter?`}</h3>
+    <h3 className="pb2 pt3 px3">{t`What kind of filter?`}</h3>
     <ul>
       {options &&
         options.map(option => (

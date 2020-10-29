@@ -198,12 +198,16 @@
   "Default implementation of `create-db!` for SQL drivers."
   {:arglists '([driver dbdef & {:keys [skip-drop-db?]}])}
   [driver {:keys [table-definitions], :as dbdef} & options]
-  ;; first execute statements to drop/create the DB if needed (this will return nothing is `skip-drop-db?` is true)
+  ;; first execute statements to drop the DB if needed (this will do nothing if `skip-drop-db?` is true)
   (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef options)]
     (execute/execute-sql! driver :server dbdef statement))
+  ;; now execute statements to create the DB
+  (doseq [statement (ddl/create-db-ddl-statements driver dbdef)]
+    (execute/execute-sql! driver :server dbdef statement))
   ;; next, get a set of statements for creating the DB & Tables
-  (let [statements (apply ddl/create-db-ddl-statements driver dbdef options)]
-    ;; exec the combined statement
+  (let [statements (apply ddl/create-db-tables-ddl-statements driver dbdef options)]
+    ;; exec the combined statement. Notice we're now executing in the `:db` context e.g. executing them for a specific
+    ;; DB rather than on `:server` (no DB in particular)
     (execute/execute-sql! driver :db dbdef (str/join ";\n" statements)))
   ;; Now load the data for each Table
   (doseq [tabledef table-definitions]
@@ -213,5 +217,10 @@
 (defn destroy-db!
   "Default impl of `destroy-db!` for SQL drivers."
   [driver dbdef]
-  (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef)]
-    (execute/execute-sql! driver :server dbdef statement)))
+  (try
+    (doseq [statement (ddl/drop-db-ddl-statements driver dbdef)]
+      (execute/execute-sql! driver :server dbdef statement))
+    (catch Throwable e
+      (throw (ex-info "Error destroying database"
+                      {:driver driver, :dbdef dbdef}
+                      e)))))

@@ -9,6 +9,40 @@ function addTextBox(string) {
 }
 
 describe("scenarios > dashboard > text-box", () => {
+  before(restore);
+
+  describe("Editing", () => {
+    beforeEach(() => {
+      restore();
+      signInAsAdmin();
+
+      // Create text box card
+      cy.visit("/dashboard/1");
+      addTextBox("Text *text* __text__");
+    });
+
+    it("should render edit and preview actions when editing", () => {
+      // Check edit options
+      cy.get(".Icon-edit_document");
+      cy.get(".Icon-eye");
+    });
+
+    it("should not render edit and preview actions when not editing", () => {
+      // Exit edit mode and check for edit options
+      cy.findByText("Save").click();
+      cy.findByText("You are editing a dashboard").should("not.exist");
+      cy.contains("Text text text");
+      cy.get(".Icon-edit_document").should("not.exist");
+      cy.get(".Icon-eye").should("not.exist");
+    });
+
+    it("should switch between rendered markdown and textarea input", () => {
+      cy.findByText("Text *text* __text__");
+      cy.findByText("Save").click();
+      cy.contains("Text text text");
+    });
+  });
+
   describe("when text-box is the only element on the dashboard", () => {
     beforeEach(() => {
       restore(); // restore before each so we can reuse dashboard id
@@ -20,7 +54,8 @@ describe("scenarios > dashboard > text-box", () => {
       });
     });
 
-    it("should load after save/refresh (Issue #12914)", () => {
+    // fixed in metabase#11358
+    it("should load after save/refresh (metabase#12873)", () => {
       cy.visit(`/dashboard/2`);
 
       cy.findByText("Test Dashboard");
@@ -48,7 +83,7 @@ describe("scenarios > dashboard > text-box", () => {
       cy.findByText("Dashboard testing text");
     });
 
-    it.skip("should have a scroll bar for long text (Issue #8333)", () => {
+    it.skip("should have a scroll bar for long text (metabase#8333)", () => {
       cy.visit(`/dashboard/2`);
 
       // Add text box to dash

@@ -146,6 +146,8 @@ If your table is a result that contains one numeric column and two grouping colu
 
 ![Bar chart](images/visualizations/bar.png)
 
+Learn more about [Bar charts](https://www.metabase.com/blog/bar-chart/index.html).
+
 **Area charts** are useful when comparing the proportions of two metrics over time. Both bar and area charts can be stacked.
 
 ![Stacked area chart](images/visualizations/area.png)
@@ -182,13 +184,17 @@ If you're trying to group a number by a column that has a lot of possible values
 
 #### Histograms
 
-If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of chart called a **histogram**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically.
+If you have a bar chart like Count of Users by Age, where the x-axis is a number, you'll get a special kind of chart called a **[histogram](https://www.metabase.com/blog/histograms/index.html)**, where each bar represents a range of values (called a "bin"). Note that Metabase will automatically bin your results any time you use a number as a grouping, even if you aren't viewing a bar chart. Questions that use latitude and longitude will also get binned automatically.
 
 ![Histogram](images/histogram.png)
 
 By default, Metabase will automatically choose a good way to bin your results. But you can change how many bins your result has, or turn the binning off entirely, by clicking on the area to the right of the column you're grouping by:
 
 ![Binning options](images/notebook/histogram-bins.png)
+
+Learn more about histograms(https://www.metabase.com/blog/histograms/index.html).
+
+
 
 #### Options for line, bar, and area charts
 
@@ -263,6 +269,8 @@ When you select the **Map** visualization setting, Metabase will automatically t
 When you open up the Map options, you can manually switch between a region map (e.g., United States) and a pin map. If you're using a region map, you can also choose which field to use as the measurement, and which field to use as the region (e.g., State or Country).
 
 Metabase also allows administrators to add custom region maps via GeoJSON files through the Metabase **Admin Panel**.
+
+Learn more about [visualizing data with maps](https://www.metabase.com/blog/map-visualization/index.html).
 
 ---
 

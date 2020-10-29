@@ -15,6 +15,21 @@ describe("scenarios > admin > datamodel > metrics", () => {
       );
     });
 
+    it.skip("should have 'Custom expression' in a filter list (metabase#13069)", () => {
+      cy.visit("/admin/datamodel/metrics");
+      cy.findByText("New metric").click();
+      cy.findByText("Select a table").click();
+      popover().within(() => {
+        cy.findByText("Orders").click();
+      });
+      cy.findByText("Add filters to narrow your answer").click();
+
+      cy.log("**Fails in v0.36.0 and v0.36.3. It exists in v0.35.4**");
+      popover().within(() => {
+        cy.findByText("Custom Expression");
+      });
+    });
+
     it("should show how to create metrics", () => {
       cy.visit("/reference/metrics");
       cy.findByText(
@@ -166,6 +181,59 @@ describe("scenarios > admin > datamodel > metrics", () => {
       modal()
         .contains("button", "Retire")
         .click();
+    });
+  });
+
+  describe("custom metrics", () => {
+    it("should save the metric using custom expressions (metabase#13022)", () => {
+      cy.visit("/admin/datamodel/metrics");
+      cy.findByText("New metric").click();
+
+      cy.log("**Create new metric based on Custom Expression**");
+      cy.findByText("Select a table").click();
+      popover().within(() => {
+        cy.findByText("Sample Dataset");
+        cy.findByText("Orders").click();
+      });
+      // "Count" is selected by defauult
+      cy.get(".QueryOption")
+        .contains("Count")
+        .click();
+      // Override it with "Custom Expression"
+      popover().within(() => {
+        cy.findByText("Custom Expression").click();
+        cy.get("[contenteditable='true']")
+          .click()
+          .clear()
+          .type("Sum([Discount] * [Quantity])", { delay: 100 });
+        cy.findByPlaceholderText("Name (required)")
+          .click()
+          .type("CE", { delay: 100 });
+        cy.findByText("Done").click();
+      });
+
+      const metricName = "Test CE Metric";
+      // Give it a name
+      cy.findByPlaceholderText("Something descriptive but not too long").type(
+        metricName,
+      );
+      // and description
+      cy.findByPlaceholderText(
+        "This is a good place to be more specific about less obvious metric rules",
+      ).type("Description");
+      // Save the custom metric
+      cy.findByText("Save changes")
+        .should("not.be.disabled")
+        .click();
+
+      cy.log("**Refresh the page and assert**");
+      cy.reload();
+      cy.location("pathname").should("eq", "/admin/datamodel/metrics");
+      cy.findByText(
+        'Unexpected input given to normalize. Expected type to be "object", found "string".',
+      ).should("not.exist");
+
+      cy.findByText(metricName);
     });
   });
 });

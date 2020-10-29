@@ -31,7 +31,7 @@ describe("scenarios > question > new", () => {
       cy.contains("37.65");
     });
 
-    it.skip("should remove `/notebook` from URL when converting question to SQL/Native (Issue #12651)", () => {
+    it.skip("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
       openOrdersTable();
@@ -57,7 +57,7 @@ describe("scenarios > question > new", () => {
       cy.contains("37.65");
     });
 
-    it("should allow using `Custom Expression` in orders metrics", () => {
+    it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
       // go straight to "orders" in custom questions
       cy.visit("/question/new?database=1&table=2&mode=notebook");
       cy.findByText("Summarize").click();
@@ -71,6 +71,47 @@ describe("scenarios > question > new", () => {
       });
       cy.findByText("Visualize").click();
       cy.findByText("604.96");
+    });
+
+    it.skip("should keep manually entered parenthesis intact (metabase#13306)", () => {
+      const FORMULA =
+        "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))";
+
+      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      cy.findByText("Summarize").click();
+      popover()
+        .contains("Custom Expression")
+        .click();
+      popover().within(() => {
+        cy.get("[contentEditable=true]")
+          .type(FORMULA)
+          .blur();
+
+        cy.log("**Fails after blur in v0.36.6**");
+        // Implicit assertion
+        cy.get("[contentEditable=true]").contains(FORMULA);
+      });
+    });
+
+    it.skip("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
+      // go directly to custom question in "Reviews" table
+      cy.visit("/question/new?database=1&table=4&mode=notebook");
+      cy.findByText("Summarize").click();
+      popover()
+        .contains("Custom Expression")
+        .click();
+
+      cy.get("[contentEditable=true]")
+        .click()
+        .type("Distinct([R");
+
+      cy.log(
+        "**The point of failure for ANY non-numeric value reported in v0.36.4**",
+      );
+      // the default type for "Reviewer" is "No special type"
+      cy.findByText("Fields")
+        .parent()
+        .contains("Reviewer");
     });
   });
 });

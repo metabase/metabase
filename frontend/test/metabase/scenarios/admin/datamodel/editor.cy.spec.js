@@ -12,12 +12,12 @@ describe("scenarios > admin > datamodel > editor", () => {
   beforeEach(() => {
     restore();
     signInAsAdmin();
-    withSampleDataset(({ ORDERS_ID }) => {
-      cy.wrap(`${SAMPLE_DB_URL}/table/${ORDERS_ID}`).as(`ORDERS_URL`);
-    });
     cy.server();
     cy.route("PUT", "/api/table/*").as("tableUpdate");
     cy.route("PUT", "/api/field/*").as("fieldUpdate");
+    withSampleDataset(({ ORDERS_ID }) => {
+      cy.wrap(`${SAMPLE_DB_URL}/table/${ORDERS_ID}`).as(`ORDERS_URL`);
+    });
   });
 
   it("should allow editing of the name and description", () => {
@@ -147,6 +147,8 @@ describe("scenarios > admin > datamodel > editor", () => {
   });
 
   it("should allow sorting columns", () => {
+    cy.route("PUT", "/api/table/2/fields/order").as("fieldReorder");
+
     visitAlias("@ORDERS_URL");
     cy.contains("Column order:").click();
 
@@ -155,8 +157,9 @@ describe("scenarios > admin > datamodel > editor", () => {
       .contains("Alphabetical")
       .click({ force: true });
 
+    cy.wait("@tableUpdate");
+
     // move product_id to the top
-    cy.route("PUT", "/api/table/2/fields/order").as("fieldReorder");
     cy.get(".Grabber")
       .eq(3)
       .trigger("mousedown", 0, 0);

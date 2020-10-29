@@ -3,7 +3,7 @@ import moment from "moment-timezone";
 
 // moment-timezone based d3 scale
 const timeseriesScale = (
-  { count, interval, timezone },
+  { count, interval, timezone, shiftDays },
   linear = d3.scale.linear(),
 ) => {
   const s = x => linear(toInt(x));
@@ -31,9 +31,11 @@ const timeseriesScale = (
     return s;
   };
 
-  s.ticks = () => ticksForRange(s.domain(), { count, timezone, interval });
+  s.ticks = () =>
+    ticksForRange(s.domain(), { count, timezone, interval, shiftDays });
 
-  s.copy = () => timeseriesScale({ count, interval, timezone }, linear);
+  s.copy = () =>
+    timeseriesScale({ count, interval, timezone, shiftDays }, linear);
 
   d3.rebind(s, linear, "rangeRound", "interpolate", "clamp", "invert");
 
@@ -81,12 +83,13 @@ function firstAndLast(a) {
   return [a[0], a[a.length - 1]];
 }
 
-function ticksForRange([start, end], { count, timezone, interval }) {
+function ticksForRange([start, end], { count, timezone, interval, shiftDays }) {
   const ticks = [];
   let tick = start
     .clone()
     .tz(timezone)
-    .startOf(interval);
+    .startOf(interval)
+    .add(shiftDays, "days");
 
   // We want to use "round" ticks for a given interval (unit). If we're
   // creating ticks every 50 years, but and the start of the domain is in 1981

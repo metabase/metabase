@@ -83,10 +83,16 @@ export function cardQueryIsEquivalent(cardA: Card, cardB: Card): boolean {
   );
 }
 
-export function cardIsEquivalent(cardA: Card, cardB: Card): boolean {
+export function cardIsEquivalent(
+  cardA: Card,
+  cardB: Card,
+  { checkParameters = false }: { checkParameters: boolean } = {},
+): boolean {
   return (
     cardQueryIsEquivalent(cardA, cardB) &&
-    cardVisualizationIsEquivalent(cardA, cardB)
+    cardVisualizationIsEquivalent(cardA, cardB) &&
+    (!checkParameters ||
+      _.isEqual(cardA.parameters || [], cardB.parameters || []))
   );
 }
 
