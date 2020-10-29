@@ -23,7 +23,7 @@
 
 (def ^:private eb-extensions-source
   "Source location of the .ebextensions directory"
-  (u/assert-file-exists (u/filename c/root-directory "bin" "aws-eb-docker" ".ebextensions")))
+  (u/assert-file-exists (u/filename c/root-directory "bin" "release" "release" "elastic_beanstalk" ".ebextensions")))
 
 (def ^:private archive-temp-dir
   "Path where we'll put the contents of the ZIP file before we create it."

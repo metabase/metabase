@@ -14,7 +14,7 @@
   (.. (File. ^String (env/env :user-dir)) getParentFile getParent))
 
 (def ^String uberjar-path
-  (str root-directory "/target/uberjar/metabase.jar"))
+  (u/filename root-directory "target" "uberjar" "metabase.jar"))
 
 (defonce ^:private build-options
   (atom nil))
