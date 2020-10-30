@@ -20,6 +20,7 @@ import Alert from "metabase/components/Alert";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import UserAvatar from "metabase/components/UserAvatar";
+import Card from "metabase/components/Card";
 
 import AdminContentTable from "metabase/components/AdminContentTable";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
@@ -360,31 +361,31 @@ export default class GroupsListing extends Component {
 
     return (
       <AdminPaneLayout
-        title={t`Groups`}
         buttonText={t`Create a group`}
         buttonAction={
           this.state.showAddGroupRow
             ? null
             : this.onCreateAGroupButtonClicked.bind(this)
         }
-        description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
       >
-        <GroupsTable
-          groups={groups}
-          text={this.state.text}
-          showAddGroupRow={this.state.showAddGroupRow}
-          groupBeingEdited={this.state.groupBeingEdited}
-          onAddGroupCanceled={this.onAddGroupCanceled.bind(this)}
-          onAddGroupCreateButtonClicked={this.onAddGroupCreateButtonClicked.bind(
-            this,
-          )}
-          onAddGroupTextChanged={this.onAddGroupTextChanged.bind(this)}
-          onEditGroupClicked={this.onEditGroupClicked.bind(this)}
-          onEditGroupTextChange={this.onEditGroupTextChange.bind(this)}
-          onEditGroupCancelClicked={this.onEditGroupCancelClicked.bind(this)}
-          onEditGroupDoneClicked={this.onEditGroupDoneClicked.bind(this)}
-          onDeleteGroupClicked={this.onDeleteGroupClicked.bind(this)}
-        />
+        <Card>
+          <GroupsTable
+            groups={groups}
+            text={this.state.text}
+            showAddGroupRow={this.state.showAddGroupRow}
+            groupBeingEdited={this.state.groupBeingEdited}
+            onAddGroupCanceled={this.onAddGroupCanceled.bind(this)}
+            onAddGroupCreateButtonClicked={this.onAddGroupCreateButtonClicked.bind(
+              this,
+            )}
+            onAddGroupTextChanged={this.onAddGroupTextChanged.bind(this)}
+            onEditGroupClicked={this.onEditGroupClicked.bind(this)}
+            onEditGroupTextChange={this.onEditGroupTextChange.bind(this)}
+            onEditGroupCancelClicked={this.onEditGroupCancelClicked.bind(this)}
+            onEditGroupDoneClicked={this.onEditGroupDoneClicked.bind(this)}
+            onDeleteGroupClicked={this.onDeleteGroupClicked.bind(this)}
+          />
+        </Card>
         <Alert
           message={alertMessage}
           onClose={() => this.setState({ alertMessage: null })}

@@ -48,14 +48,11 @@ const DatabaseTitle = styled(Label)`
   font-size: 16px;
 `;
 
-const DatabasePage = styled(Box)`
-  background-image: linear-gradient(to bottom, #f9fbfe, #fff);
-`;
-
 import {
   PageHeader,
   PageActions,
   PageTools,
+  PageContent,
 } from "metabase/admin/components/Page";
 import Subhead from "metabase/components/type/Subhead";
 
@@ -120,7 +117,7 @@ export default class DatabaseList extends Component {
             </PageActions>
           </PageTools>
         </PageHeader>
-        <DatabasePage>
+        <PageContent>
           <Box pt={4} ml="auto" mr="auto" w={["95%", "80%", "80%", "60%"]}>
             <ol>
               {databases ? (
@@ -216,7 +213,7 @@ export default class DatabaseList extends Component {
               </Box>
             ) : null}
           </Box>
-        </DatabasePage>
+        </PageContent>
         <ModalWithTrigger ref="createdDatabaseModal" isInitiallyOpen={created}>
           <CreatedDatabaseModal
             databaseId={parseInt(created)}

@@ -18,6 +18,7 @@ import Link from "metabase/components/Link";
 import Radio from "metabase/components/Radio";
 import Tooltip from "metabase/components/Tooltip";
 import UserAvatar from "metabase/components/UserAvatar";
+import Card from "metabase/components/Card";
 
 import UserGroupSelect from "../components/UserGroupSelect";
 
@@ -91,7 +92,7 @@ export default class PeopleListingApp extends Component {
 
     users = showDeactivated ? deactivated : active;
 
-    let title = t`People`;
+    /*
     if (deactivated.length > 0) {
       title = (
         <div className="mb2">
@@ -109,14 +110,14 @@ export default class PeopleListingApp extends Component {
         </div>
       );
     }
+    */
 
     return (
       <AdminPaneLayout
-        title={title}
         buttonText={showDeactivated ? null : t`Add someone`}
         buttonLink={Urls.newUser()}
       >
-        <section className="pb4">
+        <Card>
           <table className="ContentTable">
             <thead>
               <tr>
@@ -218,7 +219,7 @@ export default class PeopleListingApp extends Component {
               ))}
             </tbody>
           </table>
-        </section>
+        </Card>
         {this.props.children}
       </AdminPaneLayout>
     );
