@@ -3,6 +3,7 @@ import {
   restore,
   openProductsTable,
   popover,
+  withSampleDataset,
 } from "__support__/cypress";
 
 describe("scenarios > question > filter", () => {
@@ -107,5 +108,55 @@ describe("scenarios > question > filter", () => {
     cy.findByText("There was a problem with your question").should("not.exist");
     // this is not the point of this repro, but additionally make sure the filter is working as intended on "Gizmo"
     cy.findByText("3621077291879").should("not.exist"); // one of the "Gizmo" EANs
+  });
+
+  it.skip("'Between Dates' filter should behave consistently (metabase#12872)", () => {
+    withSampleDataset(({ PRODUCTS }) => {
+      cy.request("POST", "/api/card", {
+        name: "12872",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": 1,
+            aggregation: [["count"]],
+            filter: [
+              "and",
+              [
+                "between",
+                ["field-id", PRODUCTS.CREATED_AT],
+                "2019-04-15",
+                "2019-04-15",
+              ],
+              [
+                "between",
+                ["joined-field", "Products", ["field-id", PRODUCTS.CREATED_AT]],
+                "2019-04-15",
+                "2019-04-15",
+              ],
+            ],
+            joins: [
+              {
+                alias: "Products",
+                condition: [
+                  "=",
+                  ["field-id", PRODUCTS.ID],
+                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                ],
+                fields: "all",
+                "source-table": 1,
+              },
+            ],
+          },
+          type: "query",
+        },
+        display: "scalar",
+        visualization_settings: {},
+      }).then(({ body: { id: questionId } }) => {
+        cy.visit(`/question/${questionId}`);
+        cy.findByText("12872");
+        cy.log("**At the moment of unfixed issue, it's showing '0'**");
+        cy.get(".ScalarValue").contains("1");
+      });
+    });
   });
 });
