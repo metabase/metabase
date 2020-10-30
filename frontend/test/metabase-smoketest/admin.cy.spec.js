@@ -83,7 +83,7 @@ describe("metabase-smoketest > admin", () => {
   describe("Admin has basic functionality", () => {
     beforeEach(signInAsAdmin);
 
-    it("should add a simple summarized question as admin", () => {
+    it.skip("should add a simple summarized question as admin", () => {
       cy.visit("/");
       cy.contains(", " + admin.first_name);
       // This page does not contain "OUR DATA"
@@ -128,7 +128,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Google");
     });
 
-    it("should add question to a new dashboard in my personal collection as admin", () => {
+    it.skip("should add question to a new dashboard in my personal collection as admin", () => {
       cy.findByText("Save").click();
       cy.findByLabelText("Name")
         .clear()
@@ -156,7 +156,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Save").click();
     });
 
-    it("should add a simple JOINed question as admin", () => {
+    it.skip("should add a simple JOINed question as admin", () => {
       cy.visit("/question/new");
       cy.findByText("Ask a question");
 
@@ -233,7 +233,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Not now").click();
     });
 
-    it("should create a new dashboard with the previous questions as admin", () => {
+    it.skip("should create a new dashboard with the previous questions as admin", () => {
       cy.visit("/");
       // New dashboard
       cy.get(".Icon-add").click();
@@ -257,7 +257,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Save").click();
     });
 
-    it("should add a new user who can perform basic functions", () => {
+    it.skip("should add a new user who can perform basic functions", () => {
       // Sets up route
       cy.server();
       cy.route({
