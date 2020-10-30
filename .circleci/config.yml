@@ -605,11 +605,14 @@ jobs:
           no_output_timeout: 10m
       - store_artifacts:
           path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
-      # Cache the built uberjar
+      - store_artifacts:
+          path: /home/circleci/metabase/metabase/resources/version.properties
+      # Cache the built uberjar & version.properties
       - save_cache:
           key: uberjar-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+            - /home/circleci/metabase/metabase/resources/version.properties
       # Cache the maven installation of metabase-core
       - save_cache:
           key: metabase-core-{{ checksum "./backend-checksums.txt" }}
