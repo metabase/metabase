@@ -183,8 +183,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
   });
 
   describe("custom metrics", () => {
-    // [quarantined]: flake, blocking 3rd party PR
-    it.skip("should save the metric using custom expressions (metabase#13022)", () => {
+    it("should save the metric using custom expressions (metabase#13022)", () => {
       cy.visit("/admin/datamodel/metrics");
       cy.findByText("New metric").click();
 
