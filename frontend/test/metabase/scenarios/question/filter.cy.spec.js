@@ -115,10 +115,15 @@ describe("scenarios > question > filter", () => {
             aggregation: [["count"]],
             filter: [
               "and",
-              ["between", PRODUCTS.CREATED_AT, "2019-04-15", "2019-04-15"],
               [
                 "between",
-                ["joined-field", "Products", ["field-id", 7]],
+                ["field-id", PRODUCTS.CREATED_AT],
+                "2019-04-15",
+                "2019-04-15",
+              ],
+              [
+                "between",
+                ["joined-field", "Products", ["field-id", PRODUCTS.CREATED_AT]],
                 "2019-04-15",
                 "2019-04-15",
               ],
@@ -128,8 +133,8 @@ describe("scenarios > question > filter", () => {
                 alias: "Products",
                 condition: [
                   "=",
-                  PRODUCTS.ID,
-                  ["joined-field", "Products", ["field-id", 8]],
+                  ["field-id", PRODUCTS.ID],
+                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
                 ],
                 fields: "all",
                 "source-table": 1,
