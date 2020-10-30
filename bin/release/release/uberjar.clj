@@ -39,7 +39,7 @@
                         "PATH"      (env/env :path)
                         "HOME"      (env/env :user-home)}
                        (when (= (c/edition) :ee)
-                         {"MB_EDITION" "ENTERPRISE"}))}
+                         {"MB_EDITION" "ee"}))}
           "bin/build")
     (u/step "Verify uberjar exists"
       (u/assert-file-exists c/uberjar-path))))
