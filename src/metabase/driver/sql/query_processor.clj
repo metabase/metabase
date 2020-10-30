@@ -875,24 +875,28 @@
 
 ;;; -------------------------------------------- putting it all togetrher --------------------------------------------
 
+(defn- expressions->expression-definitions
+  [expressions]
+  (for [[expression-name expression-definition] expressions]
+    [:expression-definition
+     (mbql.u/qualified-name expression-name)
+     (mbql.u/replace expression-definition
+       [:expression expr] (expressions (keyword expr)))]))
+
 (defn- expressions->subselect
-  [{:keys [expressions] :as query}]
+  [{:keys [expressions fields] :as query}]
   (let [subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata])
-                      (assoc :fields
-                             (vec
-                              (concat
-                               (for [[expression-name expression-definition] expressions]
-                                 [:expression-definition
-                                  (mbql.u/qualified-name expression-name)
-                                  (mbql.u/replace expression-definition
-                                    [:expression expr] (expressions (keyword expr)))])
-                               (distinct
-                                (mbql.u/match query [(_ :guard #{:field-literal :field-id :joined-field}) & _]))))))]
+                      (assoc :fields (-> query
+                                         (dissoc :source-query)
+                                         (mbql.u/match #{:field-literal :field-id :joined-field})
+                                         distinct
+                                         (concat (expressions->expression-definitions expressions))
+                                         vec)))]
     (-> query
         ;; TODO -- correctly handle fields in multiple tables with the same name
-        (mbql.u/replace [:joined-field alias field] [:joined-field "source" field])
-        (dissoc :source-table :source-query :joins :expressions :source-metadata)
+        (mbql.u/replace [:joined-field alias field] [:joined-field source-query-alias field])
+        (dissoc :source-table :joins :expressions :source-metadata)
         (assoc :source-query subselect))))
 
 (defn- apply-clauses
