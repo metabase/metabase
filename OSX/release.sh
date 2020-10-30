@@ -1,9 +1,9 @@
-#!/usr/bin/env bash
+#! /usr/bin/env bash
 
 set -euo pipefail
 
 source "./bin/check-clojure-cli.sh"
 check_clojure_cli
 
-cd bin/build-mb
-clojure -M -m build $@
+cd OSX/macos_release
+clojure -M -m macos-release $@

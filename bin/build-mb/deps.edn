@@ -1,0 +1,6 @@
+{:paths ["./"]
+
+ :deps
+ {common/common               {:local/root "../common"}
+  build-drivers/build-drivers {:local/root "../build-drivers"}
+  org.flatland/ordered        {:mvn/version "1.5.7"}}}

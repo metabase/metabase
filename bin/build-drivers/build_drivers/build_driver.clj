@@ -81,7 +81,7 @@
 
   ([target source]
    (u/step (format "Remove classes from %s that are present in %s and recompress" target source)
-     (u/sh {:dir c/project-root-directory}
+     (u/sh {:dir u/project-root-directory}
            "lein"
            "strip-and-compress"
            (u/assert-file-exists target)

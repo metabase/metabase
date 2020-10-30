@@ -9,10 +9,10 @@
             [metabuild-common.core :as u]))
 
 (defn- driver-local-install-path [driver]
-  (c/filename c/maven-repository-path "metabase" (format "%s-driver" (name driver))))
+  (u/filename c/maven-repository-path "metabase" (format "%s-driver" (name driver))))
 
 (defn- driver-local-install-checksum-filename [driver]
-  (c/filename (driver-local-install-path driver) "checksum.md5"))
+  (u/filename (driver-local-install-path driver) "checksum.md5"))
 
 (defn clean!
   "Delete local Maven installation of the library version of `driver`."

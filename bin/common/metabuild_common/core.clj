@@ -10,6 +10,9 @@
              [steps :as steps]]
             [potemkin :as p]))
 
+;; since this file is used pretty much everywhere, this seemed like a good place to put this.
+(set! *warn-on-reflection* true)
+
 (comment aws/keep-me
          entrypoint/keep-me
          build.env/env
@@ -38,7 +41,8 @@
   delete-file-if-exists!
   file-exists?
   filename
-  find-files]
+  find-files
+  project-root-directory]
 
  [input
   interactive?

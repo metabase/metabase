@@ -4,13 +4,11 @@
             [macos-release
              [build :as build]
              [codesign :as codesign]
-             [common :as c]
              [create-dmg :as create-dmg]
              [notarize :as notarize]
              [sparkle-artifacts :as sparkle-artifacts]
-             [upload :as upload]]))
-
-(set! *warn-on-reflection* true)
+             [upload :as upload]]
+            [metabuild-common.core :as u]))
 
 (def ^:private steps*
   (ordered-map/ordered-map
@@ -29,17 +27,13 @@
     (thunk)))
 
 (defn- do-steps! [steps]
-  (c/announce "Running steps: %s" steps)
+  (u/announce "Running steps: %s" steps)
   (doseq [step-name steps]
     (do-step! step-name))
-  (c/announce "Success."))
+  (u/announce "Success."))
 
 (defn -main [& steps]
-  (let [steps (or (seq steps)
-                  (keys steps*))]
-    (try
-      (do-steps! steps)
-      (catch Throwable e
-        (println (colorize/red (pr-str e)))
-        (System/exit -1))))
-  (System/exit 0))
+  (u/exit-when-finished-nonzero-on-exception
+    (let [steps (or (seq steps)
+                    (keys steps*))]
+      (do-steps! steps))))
