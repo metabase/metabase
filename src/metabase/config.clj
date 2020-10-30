@@ -1,7 +1,5 @@
 (ns metabase.config
-  (:require [clojure.java
-             [io :as io]
-             [shell :as shell]]
+  (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [environ.core :as environ]
             [metabase.plugins.classloader :as classloader])
