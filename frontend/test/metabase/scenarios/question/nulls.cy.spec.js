@@ -32,7 +32,8 @@ describe("scenarios > question > null", () => {
       cy.findByText("13571").click();
 
       cy.log("**'No Results since at least v0.34.3**");
-      cy.findByText("No results!").should("not.exist");
+      cy.findByText("Discount");
+      cy.findByText("Empty");
     });
   });
 
