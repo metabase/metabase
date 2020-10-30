@@ -13,6 +13,7 @@
             [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
+             [database :as database :refer [protected-password]]
              [permissions :as perms]
              [permissions-group :as perms-group]]
             [metabase.sync
@@ -197,16 +198,17 @@
                       :features     (driver.u/features :h2)}
                      (into {} (db/select-one [Database :name :engine :details :is_full_sync], :id db-id)))))))))
 
-    (testing "should be able to set `auto_run_queries`"
-      (testing "when creating a Database"
-        (is (= {:auto_run_queries false}
-               (select-keys (create-db-via-api! {:auto_run_queries false}) [:auto_run_queries]))))
-      (testing "when updating a Database"
-        (mt/with-temp Database [{db-id :id} {:engine ::test-driver}]
-          (let [updates {:auto_run_queries false}]
-            ((mt/user->client :crowberto) :put 200 (format "database/%d" db-id) updates))
-          (is (= false
-                 (db/select-one-field :auto_run_queries Database, :id db-id))))))))
+    (mt/with-log-level :info
+                           (testing "should be able to set `auto_run_queries`"
+       (testing "when creating a Database"
+         (is (= {:auto_run_queries false}
+                (select-keys (create-db-via-api! {:auto_run_queries false}) [:auto_run_queries]))))
+       (testing "when updating a Database"
+         (mt/with-temp Database [{db-id :id} {:engine ::test-driver}]
+           (let [updates {:auto_run_queries false}]
+             ((mt/user->client :crowberto) :put 200 (format "database/%d" db-id) updates))
+           (is (= false
+                  (db/select-one-field :auto_run_queries Database, :id db-id)))))))))
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
@@ -941,3 +943,114 @@
                   (is (schema= [{:schema (s/eq schema-name)
                                  s/Keyword s/Any}]
                                ((mt/user->client :rasta) :get 200 url))))))))))))
+
+(deftest upsert-sensitive-values-test
+  (testing "empty maps are okay"
+    (is (= {}
+           (database-api/upsert-sensitive-fields {} {}))))
+  (testing "no details updates are okay"
+    (is (= nil
+           (database-api/upsert-sensitive-fields nil nil))))
+  (testing "fields are replaced"
+    (is (= {:use-service-account           nil
+            :dataset-id                    "dacort"
+            :use-jvm-timezone              false
+            :service-account-json          "{\"foo\": \"bar\"}"
+            :password                      "foo"
+            :pass                          "bar"
+            :tunnel-pass                   "quux"
+            :tunnel-private-key            "foobar"
+            :tunnel-private-key-passphrase "fooquux"
+            :access-token                  "foobarfoo"
+            :refresh-token                 "foobarquux"}
+           (database-api/upsert-sensitive-fields {:description nil
+                                                  :name        "customer success BQ"
+                                                  :details     {:use-service-account           nil
+                                                                :dataset-id                    "dacort"
+                                                                :service-account-json          "{}"
+                                                                :use-jvm-timezone              false
+                                                                :password                      "password"
+                                                                :pass                          "pass"
+                                                                :tunnel-pass                   "tunnel-pass"
+                                                                :tunnel-private-key            "tunnel-private-key"
+                                                                :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+                                                                :access-token                  "access-token"
+                                                                :refresh-token                 "refresh-token"}
+                                                  :id          2}
+                                                 {:service-account-json          "{\"foo\": \"bar\"}"
+                                                  :password                      "foo"
+                                                  :pass                          "bar"
+                                                  :tunnel-pass                   "quux"
+                                                  :tunnel-private-key            "foobar"
+                                                  :tunnel-private-key-passphrase "fooquux"
+                                                  :access-token                  "foobarfoo"
+                                                  :refresh-token                 "foobarquux"}))))
+  (testing "no fields are replaced"
+    (is (= {:use-service-account           nil
+            :dataset-id                    "dacort"
+            :use-jvm-timezone              false
+            :service-account-json          "{}"
+            :password                      "password"
+            :pass                          "pass"
+            :tunnel-pass                   "tunnel-pass"
+            :tunnel-private-key            "tunnel-private-key"
+            :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+            :access-token                  "access-token"
+            :refresh-token                 "refresh-token"}
+           (database-api/upsert-sensitive-fields {:description nil
+                                                  :name        "customer success BQ"
+                                                  :details     {:use-service-account           nil
+                                                                :dataset-id                    "dacort"
+                                                                :use-jvm-timezone              false
+                                                                :service-account-json          "{}"
+                                                                :password                      "password"
+                                                                :pass                          "pass"
+                                                                :tunnel-pass                   "tunnel-pass"
+                                                                :tunnel-private-key            "tunnel-private-key"
+                                                                :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+                                                                :access-token                  "access-token"
+                                                                :refresh-token                 "refresh-token"}
+                                                  :id          2}
+                                                 {:service-account-json          protected-password
+                                                  :password                      protected-password
+                                                  :pass                          protected-password
+                                                  :tunnel-pass                   protected-password
+                                                  :tunnel-private-key            protected-password
+                                                  :tunnel-private-key-passphrase protected-password
+                                                  :access-token                  protected-password
+                                                  :refresh-token                 protected-password}))))
+
+  (testing "only one field is replaced"
+    (is (= {:use-service-account           nil
+            :dataset-id                    "dacort"
+            :use-jvm-timezone              false
+            :service-account-json          "{}"
+            :password                      "new-password"
+            :pass                          "pass"
+            :tunnel-pass                   "tunnel-pass"
+            :tunnel-private-key            "tunnel-private-key"
+            :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+            :access-token                  "access-token"
+            :refresh-token                 "refresh-token"}
+           (database-api/upsert-sensitive-fields {:description nil
+                                                  :name        "customer success BQ"
+                                                  :details     {:use-service-account           nil
+                                                                :dataset-id                    "dacort"
+                                                                :use-jvm-timezone              false
+                                                                :service-account-json          "{}"
+                                                                :password                      "password"
+                                                                :pass                          "pass"
+                                                                :tunnel-pass                   "tunnel-pass"
+                                                                :tunnel-private-key            "tunnel-private-key"
+                                                                :tunnel-private-key-passphrase "tunnel-private-key-passphrase"
+                                                                :access-token                  "access-token"
+                                                                :refresh-token                 "refresh-token"}
+                                                  :id          2}
+                                                 {:service-account-json          protected-password
+                                                  :password                      "new-password"
+                                                  :pass                          protected-password
+                                                  :tunnel-pass                   protected-password
+                                                  :tunnel-private-key            protected-password
+                                                  :tunnel-private-key-passphrase protected-password
+                                                  :access-token                  protected-password
+                                                  :refresh-token                 protected-password})))))
