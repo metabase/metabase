@@ -571,11 +571,13 @@
 
 (defmethod apply-top-level-clause [:sql :breakout]
   [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
-  (as-> honeysql-form new-hsql
-    (apply h/merge-select new-hsql (vec (for [field-clause breakout-fields
-                                              :when        (not (contains? (set fields-fields) field-clause))]
-                                          (as driver field-clause))))
-    (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields))))
+  (let [unique-name-fn (mbql.u/unique-name-generator)]
+    (as-> honeysql-form new-hsql
+      (apply h/merge-select new-hsql (->> breakout-fields
+                                          (remove (set fields-fields))
+                                          (mapv (fn [field-clause]
+                                                  (as driver field-clause unique-name-fn)))))
+      (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields))))))
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
