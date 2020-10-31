@@ -577,7 +577,7 @@
                                           (remove (set fields-fields))
                                           (mapv (fn [field-clause]
                                                   (as driver field-clause unique-name-fn)))))
-      (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields))))))
+      (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields)))))
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
