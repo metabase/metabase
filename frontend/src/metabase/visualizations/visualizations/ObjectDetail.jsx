@@ -164,7 +164,7 @@ export class ObjectDetail extends Component {
         try {
           formattedJson = JSON.stringify(JSON.parse(value), null, 2);
         } catch (e) {
-          formattedJson = JSON.stringify(value, null, 2);
+          formattedJson = value;
         }
         cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
       } else if (typeof value === "object") {
