@@ -1,6 +1,6 @@
 {
   "projectId": "a394u1",
-  "testFiles": "**/settings/settings.cy.spec.js",
+  "testFiles": "**/*.cy.spec.js",
   "pluginsFile": "frontend/test/cypress-plugins.js",
   "integrationFolder": ".",
   "supportFile": "frontend/test/__support__/cypress.js",
