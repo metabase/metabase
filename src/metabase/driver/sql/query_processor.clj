@@ -45,6 +45,15 @@
   Each nested query increments this counter by 1."
   0)
 
+;; TODO - it seems to me like we could actually properly handle nested nested queries by giving each level of nesting
+;; a different alias
+(def source-query-alias
+  "Alias to use for source queries, e.g.:
+
+    SELECT source.*
+    FROM ( SELECT * FROM some_table ) source"
+  :source)
+
 (p.types/deftype+ SQLSourceQuery [sql params]
   hformat/ToSql
   (to-sql [_]
@@ -242,6 +251,10 @@
   schema + Table name. Used to implement things like `:joined-field`s."
   nil)
 
+(def ^:dynamic ^:private *joined-field?*
+  "Are we in the midst of processing a joined field?"
+  false)
+
 (defmethod ->honeysql [:sql nil]    [_ _]    nil)
 (defmethod ->honeysql [:sql Object] [_ this] this)
 
@@ -268,27 +281,58 @@
   [_ identifier]
   identifier)
 
+(defmulti prefix-field-name-with-source
+  {:arglists '([driver field-clause]), :private true}
+  (fn [_ field-clause]
+    (mbql.u/dispatch-by-clause-name-or-class field-clause)))
+
+(defmethod prefix-field-name-with-source :field-id
+  [driver [_ field-id]]
+  (prefix-field-name-with-source driver (qp.store/field field-id)))
+
+(defmethod prefix-field-name-with-source (class Field)
+  [driver {:keys [table_id] :as field}]
+  (when-let [alias (field->alias driver field)]
+    (str/join "__" [(str "table" table_id) alias])))
+
+(defmethod prefix-field-name-with-source :field-literal
+  [_ [_ field-name _ :as field-literal]]
+  (str/join "__" [(->> field-literal hash (str "form")) field-name]))
+
 (defmethod ->honeysql [:sql (class Field)]
   [driver {field-name :name, table-id :table_id, :as field}]
   ;; `indentifer` will automatically unnest nested calls to `identifier`
-  (let [qualifiers (if *table-alias*
-                     [*table-alias*]
-                     (let [{schema :schema, table-name :name} (qp.store/table table-id)]
-                       [schema table-name]))
-        identifier (->honeysql driver (apply hx/identifier :field (concat qualifiers [field-name])))]
-    (cast-unix-timestamp-field-if-needed driver field identifier)))
+  (->> (cond
+         (and *joined-field?* (= *table-alias* source-query-alias))
+         [*table-alias* (prefix-field-name-with-source driver field)]
+
+         *table-alias*
+         [*table-alias* field-name]
+
+         :else
+         (let [{schema :schema, table-name :name} (qp.store/table table-id)]
+           [schema table-name field-name]))
+       (apply hx/identifier :field)
+       (->honeysql driver)
+       (cast-unix-timestamp-field-if-needed driver field)))
 
 (defmethod ->honeysql [:sql :field-id]
   [driver [_ field-id]]
   (->honeysql driver (qp.store/field field-id)))
 
 (defmethod ->honeysql [:sql :field-literal]
-  [driver [_ field-name]]
-  (->honeysql driver (hx/identifier :field *table-alias* field-name)))
+  [driver [_ field-name :as field-clause]]
+  (->> (if (and *joined-field?* (= *table-alias* source-query-alias))
+         (prefix-field-name-with-source driver field-clause)
+         field-name)
+       (hx/identifier :field *table-alias* )
+       (->honeysql driver)))
 
 (defmethod ->honeysql [:sql :joined-field]
   [driver [_ alias field]]
-  (binding [*table-alias* alias]
+  (binding [*table-alias*   (or *table-alias* alias) ; if *table-alias* is already set we're
+                                                     ; referencing a source query, so leave it as is
+            *joined-field?* true]
     (->honeysql driver field)))
 
 ;; (p.types/defrecord+ AtTimezone [expr timezone-id]
@@ -519,6 +563,7 @@
 
   ([driver field-clause unique-name-fn]
    (when-let [alias (mbql.u/match-one field-clause
+                      [:joined-field _ inner-clause]             (prefix-field-name-with-source driver inner-clause)
                       [:expression expression-name]              expression-name
                       [:expression-definition expression-name _] expression-name
                       [:field-literal field-name _]              field-name
@@ -845,15 +890,6 @@
 
 (declare apply-clauses)
 
-;; TODO - it seems to me like we could actually properly handle nested nested queries by giving each level of nesting
-;; a different alias
-(def source-query-alias
-  "Alias to use for source queries, e.g.:
-
-    SELECT source.*
-    FROM ( SELECT * FROM some_table ) source"
-  :source)
-
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all
   source queries are aliased as `source`."
@@ -894,8 +930,6 @@
                                          (concat (expressions->expression-definitions expressions))
                                          vec)))]
     (-> query
-        ;; TODO -- correctly handle fields in multiple tables with the same name
-        (mbql.u/replace [:joined-field alias field] [:joined-field source-query-alias field])
         (dissoc :source-table :joins :expressions :source-metadata)
         (assoc :source-query subselect))))
 
@@ -938,4 +972,5 @@
   [driver {inner-query :query, database :database, :as outer-query}]
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
+    (println sql)
     {:query sql, :params args}))
