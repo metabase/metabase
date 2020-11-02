@@ -5,6 +5,8 @@ const componentsReq = require.context(
   /^(.*\.info\.(js$))[^.]*$/im,
 );
 
+const allComponentsReq = require.context("metabase/components", true);
+
 const containersReq = require.context(
   "metabase/containers",
   true,
@@ -21,5 +23,17 @@ const components = [
   ...getComponents(componentsReq),
   ...getComponents(containersReq),
 ];
+
+// provide some stats on the total vs total documented components
+const documented = getComponents(componentsReq).length;
+
+// get everything and then subtract documented
+const total = getComponents(allComponentsReq).length - documented;
+
+export const stats = {
+  total,
+  documented,
+  ratio: total / documented,
+};
 
 export default components;
