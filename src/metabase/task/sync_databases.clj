@@ -71,7 +71,7 @@
       ;; only run analysis if this is a "full sync" database
       (when (:is_full_sync database)
         (let [results (analyze/analyze-db! database)]
-          (when (should-refingerprint-fields? results)
+          (when (and (:refingerprint database) (should-refingerprint-fields? results))
             (analyze/refingerprint-db! database)))))))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} SyncAndAnalyzeDatabase [job-context]
