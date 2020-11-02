@@ -79,11 +79,15 @@ describe("scenarios > admin > settings", () => {
         .parent()
         .find("input");
 
+    // extremely ugly hack because nothing else worked
+    // for some reason, Cypress failed to clear this field quite often disrupting our CI
     emailInput()
       .click()
-      // "hack" substitute for `cy.clear()` as per:
-      // https://github.com/cypress-io/cypress/issues/2056#issuecomment-702607741
-      .type("{selectall}other.email@metabase.com")
+      .clear()
+      .type("abc", { delay: 50 })
+      .clear()
+      .click()
+      .type("other.email@metabase.com")
       .blur();
     cy.wait("@saveSettings");
 
