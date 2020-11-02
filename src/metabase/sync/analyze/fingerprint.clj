@@ -135,22 +135,37 @@
          [:< :fingerprint_version version]
          [:in :base_type not-yet-seen]]))))
 
+(def ^:private base-clause
+  [:and
+   [:= :active true]
+   [:or
+    [:not (mdb/isa :special_type :type/PK)]
+    [:= :special_type nil]]
+   [:not-in :visibility_type ["retired" "sensitive"]]
+   [:not= :base_type "type/Structured"]])
+
+(def ^:private base-clause-for-refingerprinting
+  [:and
+   [:= :active true]
+   [:not (mdb/isa :special_type :type/PK)]
+   [:not-in :visibility_type ["retired" "sensitive"]]
+   [:not= :base_type "type/Structured"]])
+
+(def ^:dynamic *refingerprint?*
+  "Whether we are refingerprinting or doing the normal fingerprinting. Refingerprinting should get fields that already
+  are analyzed and have fingerprints."
+  false)
+
 (s/defn ^:private honeysql-for-fields-that-need-fingerprint-updating :- {:where s/Any}
   "Return appropriate WHERE clause for all the Fields whose Fingerprint needs to be re-calculated."
   ([]
-   {:where [:and
-            [:= :active true]
-            [:or
-             [:not (mdb/isa :special_type :type/PK)]
-             [:= :special_type nil]]
-            [:not-in :visibility_type ["retired" "sensitive"]]
-            [:not= :base_type "type/Structured"]
-            (cons :or (versions-clauses))]})
+   {:where (if *refingerprint?*
+             base-clause-for-refingerprinting
+             (conj base-clause (cons :or (versions-clauses))))})
 
   ([table :- i/TableInstance]
    (h/merge-where (honeysql-for-fields-that-need-fingerprint-updating)
                   [:= :table_id (u/get-id table)])))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      FINGERPRINTING ALL FIELDS IN A TABLE                                      |
@@ -176,19 +191,55 @@
         stats))
     (empty-stats-map 0)))
 
+(s/defn fingerprint-fields-for-db!*
+  "Invokes `fingerprint-fields!` on every table in `database`"
+  ([database :- i/DatabaseInstance
+    tables :- [i/TableInstance]
+    log-progress-fn]
+   (fingerprint-fields-for-db!* database tables log-progress-fn (constantly true)))
+  ;; TODO: Maybe the driver should have a function to tell you if it supports fingerprinting?
+  ([database :- i/DatabaseInstance
+    tables :- [i/TableInstance]
+    log-progress-fn
+    continue?]
+   (qp.store/with-store
+     ;; store is bound so DB timezone can be used in date coercion logic
+     (qp.store/store-database! database)
+     (reduce (fn [acc table]
+               (log-progress-fn (if *refingerprint?* "fingerprint-fields" "refingerprint-fields") table)
+               (let [results (if (= :googleanalytics (:engine database))
+                               (empty-stats-map 0)
+                               (fingerprint-fields! table))
+                     new-acc (merge-with + acc results)]
+                 (if (continue? new-acc)
+                   new-acc
+                   (reduced new-acc))))
+             (empty-stats-map 0)
+             tables))))
+
 (s/defn fingerprint-fields-for-db!
   "Invokes `fingerprint-fields!` on every table in `database`"
   [database :- i/DatabaseInstance
    tables :- [i/TableInstance]
    log-progress-fn]
   ;; TODO: Maybe the driver should have a function to tell you if it supports fingerprinting?
-  (qp.store/with-store
-    ;; store is bound so DB timezone can be used in date coercion logic
-    (qp.store/store-database! database)
-    (apply merge-with + (for [table tables
-                              :let  [result (if (= :googleanalytics (:engine database))
-                                              (empty-stats-map 0)
-                                              (fingerprint-fields! table))]]
-                          (do
-                            (log-progress-fn "fingerprint-fields" table)
-                            result)))))
+  (fingerprint-fields-for-db!* database tables log-progress-fn))
+
+(def max-refingerprint-field-count
+  "Maximum number of fields to refingerprint. Balance updating our fingerprinting values while not spending too much
+  time in the db."
+  1000)
+
+(s/defn refingerprint-fields-for-db!
+  "Invokes `fingeprint-fields!` on every table in `database` up to some limit."
+  [database :- i/DatabaseInstance
+   tables :- [i/TableInstance]
+   log-progress-fn]
+  (binding [*refingerprint?* true]
+    (fingerprint-fields-for-db!* database
+                                 ;; our rudimentary refingerprint strategy is to shuffle the tables and fingerprint
+                                 ;; until we are over some threshold of fields
+                                 (shuffle tables)
+                                 log-progress-fn
+                                 (fn [stats-acc]
+                                   (< (:fingerprints-attempted stats-acc) max-refingerprint-field-count)))))
