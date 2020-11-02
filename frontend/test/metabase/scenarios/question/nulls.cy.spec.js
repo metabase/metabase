@@ -18,8 +18,8 @@ describe("scenarios > question > null", () => {
           database: 1,
           query: {
             "source-table": 2,
-            fields: [ORDERS.DISCOUNT],
-            filter: ["=", ORDERS.ID, 1],
+            fields: [["field-id", ORDERS.DISCOUNT]],
+            filter: ["=", ["field-id", ORDERS.ID], 1],
           },
           type: "query",
         },
@@ -32,7 +32,8 @@ describe("scenarios > question > null", () => {
       cy.findByText("13571").click();
 
       cy.log("**'No Results since at least v0.34.3**");
-      cy.findByText("No results!").should("not.exist");
+      cy.findByText("Discount");
+      cy.findByText("Empty");
     });
   });
 
