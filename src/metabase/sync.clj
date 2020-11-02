@@ -14,9 +14,14 @@
              [interface :as i]
              [sync-metadata :as sync-metadata]
              [util :as sync-util]]
-            [schema.core :as s]))
+            [schema.core :as s])
+  (:import java.time.temporal.Temporal))
 
-(s/defn sync-database!
+(def SyncDatabaseResults [{:start-time Temporal
+                           :end-time   Temporal
+                           :steps      [sync-util/StepNameWithMetadata]}])
+
+(s/defn sync-database! :- SyncDatabaseResults
   "Perform all the different sync operations synchronously for `database`.
 
   This is considered a 'full sync' in that all the different sync operations are performed at consecutively. Please
@@ -25,12 +30,14 @@
   {:style/indent 1}
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-    ;; First make sure Tables, Fields, and FK information is up-to-date
-    (sync-metadata/sync-db-metadata! database)
-    ;; Next, run the 'analysis' step where we do things like scan values of fields and update special types accordingly
-    (analyze/analyze-db! database)
-    ;; Finally, update cached FieldValues
-    (field-values/update-field-values! database)))
+    (mapv (fn [f] (f database))
+          [
+           ;; First make sure Tables, Fields, and FK information is up-to-date
+           sync-metadata/sync-db-metadata!
+           ;; Next, run the 'analysis' step where we do things like scan values of fields and update special types accordingly
+           analyze/analyze-db!
+           ;; Finally, update cached FieldValues
+           field-values/update-field-values!])))
 
 (s/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`."

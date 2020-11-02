@@ -85,13 +85,13 @@
      (let [start-time    (System/nanoTime)
            tracking-hash (str (java.util.UUID/randomUUID))]
        (events/publish-event! begin-event-name {:database_id (u/get-id database-or-id), :custom_id tracking-hash})
-       (f)
-       (let [total-time-ms (int (/ (- (System/nanoTime) start-time)
+       (let [return        (f)
+             total-time-ms (int (/ (- (System/nanoTime) start-time)
                                    1000000.0))]
          (events/publish-event! end-event-name {:database_id  (u/get-id database-or-id)
                                                 :custom_id    tracking-hash
-                                                :running_time total-time-ms}))
-       nil))))
+                                                :running_time total-time-ms})
+         return)))))
 
 (defn- with-start-and-finish-logging*
   "Logs start/finish messages using `log-fn`, timing `f`"
@@ -433,7 +433,8 @@
                        :end-time   end-time
                        :steps      step-metadata}]
     (store-sync-summary! operation database sync-metadata)
-    (log-sync-summary operation database sync-metadata)))
+    (log-sync-summary operation database sync-metadata)
+    sync-metadata))
 
 (defn sum-numbers
   "Similar to a 2-arg call to `map`, but will add all numbers that result from the invocations of `f`. Used mainly for

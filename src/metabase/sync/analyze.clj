@@ -120,5 +120,19 @@
   (sync-util/sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)]
       (sync-util/with-emoji-progress-bar [emoji-progress-bar (inc (* 3 (count tables)))]
-        (sync-util/run-sync-operation "analyze" database (make-analyze-steps tables (maybe-log-progress emoji-progress-bar)))
-        (update-fields-last-analyzed-for-db! database tables)))))
+        (let [results (sync-util/run-sync-operation "analyze" database (make-analyze-steps tables (maybe-log-progress emoji-progress-bar)))]
+          (update-fields-last-analyzed-for-db! database tables)
+          results)))))
+
+(s/defn refingerprint-db!
+  "Refingerprint "
+  [database :- i/DatabaseInstance]
+  (sync-util/sync-operation :refingerprint database (format "Refingerprinting tables for %s" (sync-util/name-for-logging database))
+    (let [tables (sync-util/db->sync-tables database)
+          log-fn (fn [step table]
+                   (log/info (u/format-color 'blue "%s Analyzed %s" step (sync-util/name-for-logging table))))]
+      (sync-util/run-sync-operation "refingerprint database"
+                                    database
+                                    [(sync-util/create-sync-step "refingerprinting fields"
+                                                                 #(fingerprint/refingerprint-fields-for-db! % tables log-fn)
+                                                                 fingerprint-fields-summary)]))))
