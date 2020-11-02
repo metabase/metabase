@@ -17,9 +17,11 @@
             [schema.core :as s])
   (:import java.time.temporal.Temporal))
 
-(def SyncDatabaseResults [{:start-time Temporal
-                           :end-time   Temporal
-                           :steps      [sync-util/StepNameWithMetadata]}])
+(def SyncDatabaseResults
+  "Schema for results returned from `sync-database!`"
+  [{:start-time Temporal
+    :end-time   Temporal
+    :steps      [sync-util/StepNameWithMetadata]}])
 
 (s/defn sync-database! :- SyncDatabaseResults
   "Perform all the different sync operations synchronously for `database`.
