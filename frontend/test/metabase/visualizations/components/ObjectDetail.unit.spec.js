@@ -24,6 +24,22 @@ const objectDetailCard = {
   },
 };
 
+const invalidObjectDetailCard = {
+  card: {
+    display: "object",
+  },
+  data: {
+    cols: [
+      {
+        display_name: "Details",
+        special_type: TYPE.SerializedJSON,
+      },
+    ],
+    columns: ["details"],
+    rows: [["i am not json"]],
+  },
+};
+
 describe("ObjectDetail", () => {
   describe("json field rendering", () => {
     it("should properly display JSON special type data as JSON", () => {
@@ -31,6 +47,19 @@ describe("ObjectDetail", () => {
         <ObjectDetail
           data={objectDetailCard.data}
           series={objectDetailCard}
+          loadObjectDetailFKReferences={() => ({})}
+          settings={{ column: () => ({}) }}
+        />,
+      );
+
+      expect(detail.find(".ObjectJSON").length).toEqual(1);
+    });
+
+    it("should not crash rendering invalid JSON", () => {
+      const detail = mount(
+        <ObjectDetail
+          data={invalidObjectDetailCard.data}
+          series={invalidObjectDetailCard}
           loadObjectDetailFKReferences={() => ({})}
           settings={{ column: () => ({}) }}
         />,
