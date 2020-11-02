@@ -550,9 +550,10 @@
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
-                   auto_run_queries]} :body}]
+                   auto_run_queries refingerprint]} :body}]
   {name               (s/maybe su/NonBlankString)
    engine             (s/maybe DBEngineString)
+   refingerprint      (s/maybe s/Bool)
    details            (s/maybe su/Map)
    schedules          (s/maybe ExpandedSchedulesMap)
    description        (s/maybe s/Str)                ; s/Str instead of su/NonBlankString because we don't care
@@ -581,6 +582,7 @@
                                                    {:name               name
                                                     :engine             engine
                                                     :details            details
+                                                    :refingerprint      refingerprint
                                                     :is_full_sync       full-sync?
                                                     :is_on_demand       (boolean is_on_demand)
                                                     :description        description

@@ -288,6 +288,13 @@ const forms = {
         description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`,
         hidden: !engine,
       },
+      {
+        name: "refingerprint",
+        type: "boolean",
+        title: t`Periodically refingerprint tables`,
+        description: t`Metabase will scan a subset of values of fields to gather statistics to make your Metabase instance smarter.`,
+        hidden: !engine,
+      },
       { name: "is_full_sync", type: "hidden" },
       { name: "is_on_demand", type: "hidden" },
       {
