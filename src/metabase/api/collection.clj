@@ -56,16 +56,6 @@
       (for [collection collections]
         (dissoc collection ::collection.root/is-root?)))))
 
-(def %collections%
-  '({:description nil, :archived false, :slug "a", :color "#ABCDEF", :name "A", :personal_owner_id nil, :id 66890, :location "/", :namespace nil}
-    {:description nil, :archived false, :slug "b", :color "#ABCDEF", :name "B", :personal_owner_id nil, :id 66891, :location "/66890/", :namespace nil}
-    {:description nil, :archived false, :slug "c", :color "#ABCDEF", :name "C", :personal_owner_id nil, :id 66892, :location "/66890/", :namespace nil}
-    {:description nil, :archived false, :slug "d", :color "#ABCDEF", :name "D", :personal_owner_id nil, :id 66893, :location "/66890/66892/", :namespace nil}
-    {:description nil, :archived false, :slug "e", :color "#ABCDEF", :name "E", :personal_owner_id nil, :id 66894, :location "/66890/66892/66893/", :namespace nil}
-    {:description nil, :archived false, :slug "f", :color "#ABCDEF", :name "F", :personal_owner_id nil, :id 66895, :location "/66890/66892/", :namespace nil}
-    {:description nil, :archived false, :slug "g", :color "#ABCDEF", :name "G", :personal_owner_id nil, :id 66896, :location "/66890/66892/66895/", :namespace nil}
-    {:description nil, :archived false, :slug "rasta_toucan_s_personal_collection", :color "#31698A", :name "Rasta Toucan's Personal Collection", :personal_owner_id 3, :id 2, :location "/", :namespace nil}))
-
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
@@ -80,10 +70,9 @@
   []
   (collection/collections->tree
    (db/select Collection
-     {:where    (collection/visible-collection-ids->honeysql-filter-clause
-                 :id
-                 (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
-      :order-by [[:%lower.name :asc]]})))
+     {:where (collection/visible-collection-ids->honeysql-filter-clause
+              :id
+              (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))})))
 
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------

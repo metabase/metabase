@@ -1551,4 +1551,9 @@
            {:name "aaa", :id 9, :location "/"}])))
   (is (= []
          (collection/collections->tree nil)
-         (collection/collections->tree []))))
+         (collection/collections->tree [])))
+  (testing "Make sure it doesn't throw an NPE if Collection name is nil for some reason (FE test data?)"
+    (is (= [{:name nil, :location "/", :id 1}
+            {:name "a", :location "/", :id 2}]
+           (collection/collections->tree [{:name nil, :location "/", :id 1}
+                                          {:name "a", :location "/", :id 2}])))))
