@@ -361,16 +361,6 @@ jobs:
       - store_test_results:
           path: /home/circleci/metabase/metabase/target/junit
 
-  be-linter-reflection-warnings:
-    executor: clojure
-    steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run reflection warnings checker
-          command: ./bin/reflection-linter
-          no_output_timeout: 5m
-
   test-driver:
     parameters:
       e:
@@ -672,30 +662,6 @@ workflows:
           <<: *Matrix
 
       - lein:
-          name: be-linter-eastwood
-          requires:
-            - be-deps
-          lein-command: eastwood
-
-      - lein:
-          name: be-linter-docstring-checker
-          requires:
-            - be-deps
-          lein-command: docstring-checker
-
-      - lein:
-          name: be-linter-namespace-decls
-          requires:
-            - be-deps
-          lein-command: check-namespace-decls
-
-      - lein:
-          name: be-linter-bikeshed
-          requires:
-            - be-deps
-          lein-command: bikeshed
-
-      - lein:
           name: be-linter-cloverage
           requires:
             - be-deps
@@ -704,10 +670,6 @@ workflows:
             - run:
                 name: Upload code coverage to codecov.io
                 command: bash <(curl -s https://codecov.io/bash)
-
-      - be-linter-reflection-warnings:
-          requires:
-            - be-deps
 
       - test-driver:
           name: be-tests-bigquery-ee

@@ -1,0 +1,103 @@
+name: Backend
+
+on: [push, pull_request]
+
+jobs:
+
+  be-linter-bikeshed:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
+    - run: lein with-profile +include-all-drivers,+cloverage,+junit,+oss deps
+    - run: lein with-profile +ci,+oss bikeshed
+
+  be-linter-eastwood:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
+    - run: lein with-profile +include-all-drivers,+cloverage,+junit,+oss deps
+    - run: lein with-profile +ci,+oss eastwood
+
+  be-linter-docstring-checker:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
+    - run: lein with-profile +include-all-drivers,+cloverage,+junit,+oss deps
+    - run: lein with-profile +ci,+oss docstring-checker
+
+  be-linter-namespace-decls:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
+    - run: lein with-profile +include-all-drivers,+cloverage,+junit,+oss deps
+    - run: lein with-profile +ci,+oss check-namespace-decls
+
+  be-linter-reflection-warnings:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
+    - run: lein with-profile +include-all-drivers,+cloverage,+junit,+oss deps
+    - run: ./bin/reflection-linter
+      name: Run reflection warnings checker
+
+  be-linter-cloverage:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
+    - run: lein with-profile +include-all-drivers,+cloverage,+junit,+oss deps
+    - run: lein with-profile +ci,+oss cloverage --codecov
+
