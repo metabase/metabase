@@ -1,0 +1,124 @@
+name: Frontend
+
+on: [push, pull_request]
+
+jobs:
+
+  fe-tests-unit:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
+    - name: Get yarn cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/yarn
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - run: yarn install --lockfile
+    - run: yarn run test-unit
+      name: Run frontend unit tests
+
+  fe-linter-flow:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
+    - name: Get yarn cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/yarn
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - run: yarn install --lockfile
+    - run: yarn run lint-flow
+      name: Run Flow type checker
+
+  fe-linter-prettier:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
+    - name: Get yarn cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/yarn
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - run: yarn install --lockfile
+    - run: yarn run lint-prettier
+      name: Run Prettier formatting linter
+
+  fe-linter-eslint:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
+    - name: Get yarn cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/yarn
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - run: yarn install --lockfile
+    - run: yarn run lint-eslint
+      name: Run ESLint linter
+
+  fe-linter-docs-links:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
+    - name: Get yarn cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/yarn
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - run: yarn install --lockfile
+    - run: yarn run lint-docs-links
+      name: Run docs links checker
+
+  fe-tests-integration:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
+    - name: Get yarn cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/yarn
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - run: yarn install --lockfile
+    - run: yarn run test-integration
+      name: Run frontend integration tests
+
+  fe-tests-timezones:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
+    - name: Get yarn cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/yarn
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - run: yarn install --lockfile
+    - run: yarn run test-timezones
+      name: Run frontend timezone tests

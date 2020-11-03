@@ -473,55 +473,6 @@ jobs:
             - /home/circleci/yarn.lock.checksum
             - /home/circleci/.cache/Cypress
 
-  fe-linter-eslint:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run ESLint linter
-          command: lint-eslint
-
-  fe-linter-prettier:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run Prettier formatting linter
-          command: lint-prettier
-
-  fe-linter-flow:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run Flow type checker
-          command: lint-flow
-
-  fe-linter-docs-links:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run docs links checker
-          command: lint-docs-links
-
-  fe-tests-unit:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run frontend unit tests
-          command: run test-unit
-
-  fe-tests-integration:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run frontend integration tests
-          command: run test-integration
-
-  fe-tests-timezones:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Run frontend timezone tests
-          command: run test-timezones
-
   build-uberjar:
     parameters:
       <<: *Params
@@ -925,27 +876,6 @@ workflows:
       - fe-deps:
           requires:
             - checkout
-      - fe-linter-eslint:
-          requires:
-            - fe-deps
-      - fe-linter-prettier:
-          requires:
-            - fe-deps
-      - fe-linter-flow:
-          requires:
-            - fe-deps
-      - fe-linter-docs-links:
-          requires:
-            - fe-deps
-      - fe-tests-unit:
-          requires:
-            - fe-deps
-      - fe-tests-integration:
-          requires:
-            - fe-deps
-      - fe-tests-timezones:
-          requires:
-            - fe-deps
       - build-uberjar:
           name: build-uberjar-<< matrix.edition >>
           requires:
