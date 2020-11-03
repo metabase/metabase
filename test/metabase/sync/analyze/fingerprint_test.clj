@@ -114,10 +114,12 @@
                                                                                        3 #{:type/URL}
                                                                                        4 #{:type/Float}}]
              (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating)))))
-  (testing "when refingerprinting doesn't check for versions and special type being nil"
+  (testing "when refingerprinting doesn't check for versions"
     (is (= {:where [:and
                     [:= :active true]
-                    [:not (mdb/isa :special_type :type/PK)]
+                    [:or
+                     [:not (mdb/isa :special_type :type/PK)]
+                     [:= :special_type nil]]
                     [:not-in :visibility_type ["retired" "sensitive"]]
                     [:not= :base_type "type/Structured"]]}
            (binding [fingerprint/*refingerprint?* true]
