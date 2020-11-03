@@ -1,0 +1,23 @@
+name: YAML
+
+on: [push, pull_request]
+
+jobs:
+
+  yaml-linter:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
+    - name: Get yarn cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/yarn
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - run: yarn install --lockfile
+
+    - run: yarn run lint-yaml `find resources -name '*.yaml'`
+      name: Lint YAML files

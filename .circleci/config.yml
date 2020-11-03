@@ -318,13 +318,6 @@ jobs:
           paths:
             - metabase/metabase
 
-  yaml-linter:
-    executor: node
-    steps:
-      - run-yarn-command:
-          command-name: Lint YAML files
-          command: lint-yaml `find resources -name '*.yaml'`
-
   verify-i18n-files:
     executor: node
     steps:
@@ -730,11 +723,6 @@ workflows:
   build:
     jobs:
       - checkout
-
-      - yaml-linter:
-          requires:
-            - checkout
-            - fe-deps
 
       - verify-i18n-files:
           requires:
