@@ -6,7 +6,8 @@ import {
   describeWithToken,
 } from "__support__/cypress";
 
-describeWithToken("drill through", () => {
+// [quarantine] flaky
+describe.skip("drill through", () => {
   before(restore);
 
   beforeEach(signInAsAdmin);

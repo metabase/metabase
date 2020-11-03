@@ -13,7 +13,8 @@ function saveDashboard() {
   cy.findByText("You're editing this dashboard.").should("not.exist");
 }
 
-describe("scenarios > dashboard", () => {
+// [quarantine] flaky
+describe.skip("scenarios > dashboard", () => {
   beforeEach(() => {
     restore();
     signInAsAdmin();
