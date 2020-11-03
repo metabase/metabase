@@ -1520,3 +1520,35 @@
       (db/delete! Collection :id coll-id)
       (is (db/exists? NativeQuerySnippet :id snippet-id)
           "Snippet"))))
+
+(deftest collections->tree-test
+  (is (= [{:name     "A"
+           :id       1
+           :location "/"
+           :children [{:name "B", :id 2, :location "/1/"}
+                      {:name     "C"
+                       :id       3
+                       :location "/1/"
+                       :children [{:name     "D"
+                                   :id       4
+                                   :location "/1/3/"
+                                   :children [{:name "E", :id 5, :location "/1/3/4/"}]}
+                                  {:name     "F"
+                                   :id       6
+                                   :location "/1/3/"
+                                   :children [{:name "G", :id 7, :location "/1/3/6/"}]}]}]}
+          {:name "aaa", :id 9, :location "/"}
+          {:name "H", :id 8, :location "/"}]
+         (collection/collections->tree
+          [{:name "A", :id 1, :location "/"}
+           {:name "B", :id 2, :location "/1/"}
+           {:name "C", :id 3, :location "/1/"}
+           {:name "D", :id 4, :location "/1/3/"}
+           {:name "E", :id 5, :location "/1/3/4/"}
+           {:name "F", :id 6, :location "/1/3/"}
+           {:name "G", :id 7, :location "/1/3/6/"}
+           {:name "H", :id 8, :location "/"}
+           {:name "aaa", :id 9, :location "/"}])))
+  (is (= []
+         (collection/collections->tree nil)
+         (collection/collections->tree []))))
