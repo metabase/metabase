@@ -5,6 +5,7 @@
   (:require [clojure
              [string :as str]
              [test :refer :all]]
+            [java-time :as t]
             [metabase
              [test :as mt]
              [util :as u]]
@@ -226,3 +227,29 @@
                :is_full_sync                false
                :metadata_sync_schedule      (cron-schedule-for-next-year)
                :cache_field_values_schedule "* * * * * ? *"})))))
+
+(def should-refingerprint #'sync-db/should-refingerprint-fields?)
+(def threshold @#'sync-db/analyze-duration-threshold-for-refingerprinting)
+
+(defn results [minutes-duration fingerprints-attempted]
+  (let [now (t/instant)
+        end (t/plus now (t/minutes minutes-duration))]
+    {:start-time now
+     :end-time end
+     :steps
+     [["fingerprint-fields"
+       {:no-data-fingerprints 0,
+        :failed-fingerprints 0,
+        :updated-fingerprints fingerprints-attempted,
+        :fingerprints-attempted fingerprints-attempted,
+        :start-time #t "2020-11-03T18:02:10.826813Z[UTC]",
+        :end-time #t "2020-11-03T18:02:10.864099Z[UTC]"}]]
+     :name "analyze"}))
+
+(deftest should-refingeprint-fields?-test
+  (testing "If it took too long it doesn't fingerprint"
+    (is (not (should-refingerprint (results (inc threshold) 1)))))
+  (testing "If it fingerprinted other fields it doesn't fingerprint"
+    (is (not (should-refingerprint (results (dec threshold) 10)))))
+  (testing "It will fingerprint if under time and no other fingerprints"
+    (is (should-refingerprint (results (dec threshold) 0)))))

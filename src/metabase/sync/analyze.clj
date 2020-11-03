@@ -120,9 +120,8 @@
   (sync-util/sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)]
       (sync-util/with-emoji-progress-bar [emoji-progress-bar (inc (* 3 (count tables)))]
-        (let [results (sync-util/run-sync-operation "analyze" database (make-analyze-steps tables (maybe-log-progress emoji-progress-bar)))]
-          (update-fields-last-analyzed-for-db! database tables)
-          results)))))
+        (u/prog1 (sync-util/run-sync-operation "analyze" database (make-analyze-steps tables (maybe-log-progress emoji-progress-bar)))
+          (update-fields-last-analyzed-for-db! database tables))))))
 
 (s/defn refingerprint-db!
   "Refingerprint a subset of tables in a given DATABASE.

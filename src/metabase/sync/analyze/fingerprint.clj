@@ -135,19 +135,15 @@
          [:< :fingerprint_version version]
          [:in :base_type not-yet-seen]]))))
 
-(def ^:private base-clause
+(def ^:private fields-to-fingerprint-base-clause
+  "Base clause to get fields for fingerprinting. When refingerprinting, run as is. When fingerprinting in analysis, only
+  look for fields without a fingerprint or whose version can be updated. This clauses is added on by
+  `versions-clauses`"
   [:and
    [:= :active true]
    [:or
     [:not (mdb/isa :special_type :type/PK)]
     [:= :special_type nil]]
-   [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not= :base_type "type/Structured"]])
-
-(def ^:private base-clause-for-refingerprinting
-  [:and
-   [:= :active true]
-   [:not (mdb/isa :special_type :type/PK)]
    [:not-in :visibility_type ["retired" "sensitive"]]
    [:not= :base_type "type/Structured"]])
 
@@ -159,9 +155,8 @@
 (s/defn ^:private honeysql-for-fields-that-need-fingerprint-updating :- {:where s/Any}
   "Return appropriate WHERE clause for all the Fields whose Fingerprint needs to be re-calculated."
   ([]
-   {:where (if *refingerprint?*
-             base-clause-for-refingerprinting
-             (conj base-clause (cons :or (versions-clauses))))})
+   {:where (cond-> fields-to-fingerprint-base-clause
+             (not *refingerprint?*) (conj (cons :or (versions-clauses))))})
 
   ([table :- i/TableInstance]
    (h/merge-where (honeysql-for-fields-that-need-fingerprint-updating)
