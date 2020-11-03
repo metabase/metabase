@@ -1,6 +1,7 @@
 import {
   signInAsAdmin,
   restore,
+  openOrdersTable,
   openProductsTable,
   popover,
   withSampleDataset,
@@ -157,6 +158,36 @@ describe("scenarios > question > filter", () => {
         cy.log("**At the moment of unfixed issue, it's showing '0'**");
         cy.get(".ScalarValue").contains("1");
       });
+    });
+  });
+
+  it.skip("should filter based on remapped values (metabase#13235)", () => {
+    withSampleDataset(({ ORDERS, PRODUCTS }) => {
+      // set "Filtering on this field" = "A list of all values"
+      cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
+        has_field_values: "list",
+      });
+      // "Display values" = "Use foreign key" as `Product.Title`
+      cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
+        name: "Product ID",
+        type: "external",
+        human_readable_field_id: PRODUCTS.TITLE,
+      });
+
+      // Add filter as remapped Product ID (Product name)
+      openOrdersTable();
+      cy.findByText("Filter").click();
+      cy.get(".List-item-title")
+        .contains("Product ID")
+        .click();
+      cy.get(".scroll-y")
+        .contains("Aerodynamic Linen Coat")
+        .click();
+      cy.findByText("Add filter").click();
+
+      cy.log("**Reported failing on v0.36.4 and v0.36.5.1**");
+      cy.findByText("Product ID is 7");
+      cy.findAllByText("148.23"); // one of the subtotals for this product
     });
   });
 });
