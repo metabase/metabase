@@ -113,6 +113,14 @@
                                                                                        2 #{:type/Coordinate}
                                                                                        3 #{:type/URL}
                                                                                        4 #{:type/Float}}]
+             (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating)))))
+  (testing "when refingerprinting doesn't check for versions and special type being nil"
+    (is (= {:where [:and
+                    [:= :active true]
+                    [:not (mdb/isa :special_type :type/PK)]
+                    [:not-in :visibility_type ["retired" "sensitive"]]
+                    [:not= :base_type "type/Structured"]]}
+           (binding [fingerprint/*refingerprint?* true]
              (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
 
 
@@ -194,7 +202,20 @@
     (is (= [default-stat-map false]
            (field-was-fingerprinted?
              {1 #{:type/Text}}
-             {:base_type :type/Text, :fingerprint_version 1, :visibility_type :sensitive})))))
+             {:base_type :type/Text, :fingerprint_version 1, :visibility_type :sensitive}))))
+
+  (testing "field is refingerprinted"
+    (testing "not fingerprinted because fingerprint version is up to date"
+      (is (= [default-stat-map false]
+             (field-was-fingerprinted?
+               {1 #{:type/Text}}
+               {:base_type :type/Text, :fingerprint_version 1}))))
+    (testing "is updated when we are refingerprinting"
+      (is (= [one-updated-map true]
+             (binding [fingerprint/*refingerprint?* true]
+               (field-was-fingerprinted?
+                 {1 #{:type/Text}}
+                 {:base_type :type/Text, :fingerprint_version 1})))))))
 
 
 (deftest fingerprint-table!-test

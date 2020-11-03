@@ -21,6 +21,7 @@
   "Schema for results returned from `sync-database!`"
   [{:start-time Temporal
     :end-time   Temporal
+    :name       s/Str
     :steps      [sync-util/StepNameWithMetadata]}])
 
 (s/defn sync-database! :- SyncDatabaseResults
@@ -32,14 +33,14 @@
   {:style/indent 1}
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-    (mapv (fn [f] (f database))
+    (mapv (fn [[f step-name]] (assoc (f database) :name step-name))
           [
            ;; First make sure Tables, Fields, and FK information is up-to-date
-           sync-metadata/sync-db-metadata!
+           [sync-metadata/sync-db-metadata! "metadata"]
            ;; Next, run the 'analysis' step where we do things like scan values of fields and update special types accordingly
-           analyze/analyze-db!
+           [analyze/analyze-db! "analyze"]
            ;; Finally, update cached FieldValues
-           field-values/update-field-values!])))
+           [field-values/update-field-values! "field-values"]])))
 
 (s/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`."
