@@ -186,8 +186,9 @@ describe("scenarios > question > filter", () => {
       cy.findByText("Add filter").click();
 
       cy.log("**Reported failing on v0.36.4 and v0.36.5.1**");
-      cy.findByText("Product ID is 7");
+      cy.get(".LoadingSpinner").should("not.exist");
       cy.findAllByText("148.23"); // one of the subtotals for this product
+      cy.findAllByText("Fantastic Wool Shirt").should("not.exist");
     });
   });
 });
