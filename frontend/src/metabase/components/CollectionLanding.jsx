@@ -283,7 +283,11 @@ class DefaultLanding extends React.Component {
                         </CollectionSectionHeading>
                       </Box>
                       <Collection.ListLoader>
-                        {({ list }) => <CollectionsList collections={list} />}
+                        {({ list }) => (
+                          <CollectionsList
+                            collections={list.filter(l => !l.personal_owner_id)}
+                          />
+                        )}
                       </Collection.ListLoader>
                       {/*
                       <CollectionList
@@ -750,19 +754,47 @@ class CollectionCopyEntityModal extends React.Component {
   }
 }
 
-const CollectionsList = ({ collections, isOpen }) => (
-  <Box>
-    {collections.map(c => (
+class CollectionsList extends React.Component {
+  state = {
+    // @hack - store the open collection as the collection's id.
+    // @TODO - need to figure out how to handle state when using a recursive component
+    open: null,
+  };
+  render() {
+    const { collections } = this.props;
+    const { open } = this.state;
+
+    return (
       <Box>
-        <Link className="link" my={2} to={Urls.collection(c.id)}>
-          {c.name}
-        </Link>
-        <Box ml="8px">
-          {c.children && <CollectionsList collections={c.children} />}
-        </Box>
+        {collections.map(c => (
+          <Box>
+            <Flex align="center" className="relative">
+              {c.children && (
+                <Icon
+                  className="absolute"
+                  name={open == c.id ? "chevrondown" : "chevronright"}
+                  onClick={() => this.setState({ open: c.id })}
+                  style={{ left: -20 }}
+                />
+              )}
+              <Link
+                className="block link text-bold"
+                my={"8px"}
+                to={Urls.collection(c.id)}
+              >
+                {c.name}
+              </Link>
+            </Flex>
+            {c.children && open == c.id && (
+              <Box ml="8px">
+                <CollectionsList collections={c.children} />
+              </Box>
+            )}
+          </Box>
+        ))}
       </Box>
-    ))}
-  </Box>
-);
+    );
+  }
+}
 
 export default CollectionLanding;
