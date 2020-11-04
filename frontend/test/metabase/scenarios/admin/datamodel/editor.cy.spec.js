@@ -8,7 +8,8 @@ import {
 
 const SAMPLE_DB_URL = "/admin/datamodel/database/1";
 
-describe("scenarios > admin > datamodel > editor", () => {
+// [quarantine] flaky
+describe.skip("scenarios > admin > datamodel > editor", () => {
   beforeEach(() => {
     restore();
     signInAsAdmin();
