@@ -245,7 +245,7 @@ class CollectionContent extends React.Component {
             </Flex>
           </Flex>
           {collectionHasPins ? (
-            <Box px={PAGE_PADDING} pt={2} pb={3} bg={color("bg-medium")}>
+            <Box pt={2} pb={3}>
               <CollectionSectionHeading>{t`Pins`}</CollectionSectionHeading>
               <PinDropTarget
                 pinIndex={pinned[pinned.length - 1].collection_position + 1}
