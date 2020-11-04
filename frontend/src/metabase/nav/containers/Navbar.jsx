@@ -20,9 +20,6 @@ import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
-import Modal from "metabase/components/Modal";
-
-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
@@ -171,8 +168,6 @@ class SearchBar extends React.Component {
   }
 }
 
-const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
-
 @Database.loadList({
   // set this to false to prevent a potential spinner on the main nav
   loadingAndErrorWrapper: false,
@@ -182,10 +177,6 @@ const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
   mapDispatchToProps,
 )
 export default class Navbar extends Component {
-  state = {
-    modal: null,
-  };
-
   static propTypes = {
     context: PropTypes.string.isRequired,
     path: PropTypes.string.isRequired,
@@ -194,22 +185,6 @@ export default class Navbar extends Component {
 
   isActive(path) {
     return this.props.path.startsWith(path);
-  }
-
-  setModal(modal) {
-    this.setState({ modal });
-    if (this._newPopover) {
-      this._newPopover.close();
-    }
-  }
-
-  componentDidUpdate(prevProps) {
-    if (prevProps.location !== this.props.location) {
-      this.setState({ modal: null });
-      if (this._newPopover) {
-        this._newPopover.close();
-      }
-    }
   }
 
   renderAdminNav() {
@@ -272,7 +247,6 @@ export default class Navbar extends Component {
 
           <ProfileLink {...this.props} />
         </div>
-        {this.renderModal()}
       </nav>
     );
   }
@@ -293,7 +267,6 @@ export default class Navbar extends Component {
             </Link>
           </li>
         </ul>
-        {this.renderModal()}
       </nav>
     );
   }
@@ -383,27 +356,8 @@ export default class Navbar extends Component {
           )}
           <ProfileLink {...this.props} />
         </Flex>
-        {this.renderModal()}
       </Flex>
     );
-  }
-
-  renderModal() {
-    const { modal } = this.state;
-    if (modal) {
-      return (
-        <Modal onClose={() => this.setState({ modal: null })}>
-          {modal === MODAL_NEW_DASHBOARD ? (
-            <CreateDashboardModal
-              createDashboard={this.props.createDashboard}
-              onClose={() => this.setState({ modal: null })}
-            />
-          ) : null}
-        </Modal>
-      );
-    } else {
-      return null;
-    }
   }
 
   render() {
