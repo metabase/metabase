@@ -1,7 +1,7 @@
 import React from "react";
 import styled from "styled-components";
 import { Absolute } from "metabase/components/Position";
-import { background, color, display, space } from "styled-system";
+import { color, display, space } from "styled-system";
 import { alpha, color as metabaseColor } from "metabase/lib/colors";
 
 const DEFAULT_PILL_COLOR = metabaseColor("brand");
