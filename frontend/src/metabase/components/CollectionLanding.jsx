@@ -1,16 +1,18 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
 
+import * as Urls from "metabase/lib/urls";
+
 import Collection from "metabase/entities/collections";
 
 import CollectionContent from "metabase/collections/containers/CollectionContent";
 
-import * as Urls from "metabase/lib/urls";
+import fitViewport from "metabase/hoc/FitViewPort";
 
-import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
+@fitViewport
 class CollectionLanding extends React.Component {
   render() {
     const {
@@ -18,42 +20,28 @@ class CollectionLanding extends React.Component {
     } = this.props;
     const isRoot = collectionId === "root";
 
-    const collectionWidth = [1, 1 / 3];
-    const itemWidth = [1, 2 / 3];
     return (
-      <Box>
-        <Grid>
-          <GridItem w={collectionWidth}>
-            <Box px={2}>
-              <Link
-                className="link block text-bold"
-                to={Urls.collection("root")}
-                mb={2}
-              >
-                Our analytics
-              </Link>
-              <Collection.ListLoader>
-                {({ list }) => (
-                  <CollectionsList
-                    collections={list.filter(l => !l.personal_owner_id)}
-                  />
-                )}
-              </Collection.ListLoader>
-              {/*
-                      <CollectionList
-                        analyticsContext={ANALYTICS_CONTEXT}
-                        currentCollection={collection}
-                        collections={collections}
-                        isRoot={collectionId === "root"}
-                        w={collectionGridSize}
-                      />
-                      */}
-            </Box>
-          </GridItem>
-          <GridItem w={itemWidth} bg="white">
-            <CollectionContent isRoot={isRoot} collectionId={collectionId} />
-          </GridItem>
-        </Grid>
+      <Box className={this.props.fitClassNames}>
+        <Box px={"24px"} pt={"22px"} w={300}>
+          <Link
+            className="link block text-bold"
+            to={Urls.collection("root")}
+            mb={2}
+          >
+            Our analytics
+          </Link>
+          {/* TODO - re-integrate drag and drop from metabase/components/CollectionList */}
+          <Collection.ListLoader>
+            {({ list }) => (
+              <CollectionsList
+                collections={list.filter(l => !l.personal_owner_id)}
+              />
+            )}
+          </Collection.ListLoader>
+        </Box>
+        <Box bg="white" flex={1}>
+          <CollectionContent isRoot={isRoot} collectionId={collectionId} />
+        </Box>
         {
           // Need to have this here so the child modals will show up
           this.props.children
