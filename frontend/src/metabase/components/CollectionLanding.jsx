@@ -50,7 +50,6 @@ import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import EmptyState from "metabase/components/EmptyState";
 
 const ROW_HEIGHT = 72;
-const PAGE_PADDING = [2, 3, 4];
 
 const ANALYTICS_CONTEXT = "Collection Landing";
 
