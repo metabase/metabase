@@ -3,10 +3,11 @@ import {
   signInAsAdmin,
   restore,
   modal,
-  describeWithToken,
+  // describeWithToken,
 } from "__support__/cypress";
 
 // [quarantine] flaky
+// TODO: change back to `describeWithToken`
 describe.skip("drill through", () => {
   before(restore);
 
