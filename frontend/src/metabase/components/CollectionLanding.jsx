@@ -301,69 +301,67 @@ class CollectionContent extends React.Component {
               )}
             </PinDropTarget>
           )}
-          <Box>
-            <Card mt={1} className="relative">
-              {unpinnedItems.length > 0 ? (
-                <PinDropTarget pinIndex={null} margin={8}>
-                  <Box
-                    style={{
-                      position: "relative",
-                      height: ROW_HEIGHT * unpinnedItems.length,
-                    }}
-                  >
-                    <VirtualizedList
-                      items={unpinnedItems}
-                      rowHeight={ROW_HEIGHT}
-                      renderItem={({ item, index }) => (
-                        <Box className="relative">
-                          <ItemDragSource
+          <Box className="relative" mt={1}>
+            {unpinnedItems.length > 0 ? (
+              <PinDropTarget pinIndex={null} margin={8}>
+                <Box
+                  style={{
+                    position: "relative",
+                    height: ROW_HEIGHT * unpinnedItems.length,
+                  }}
+                >
+                  <VirtualizedList
+                    items={unpinnedItems}
+                    rowHeight={ROW_HEIGHT}
+                    renderItem={({ item, index }) => (
+                      <Box className="relative">
+                        <ItemDragSource
+                          item={item}
+                          selection={selection}
+                          collection={collection}
+                        >
+                          <NormalItem
+                            key={`${item.model}:${item.id}`}
                             item={item}
-                            selection={selection}
                             collection={collection}
-                          >
-                            <NormalItem
-                              key={`${item.model}:${item.id}`}
-                              item={item}
-                              collection={collection}
-                              selection={selection}
-                              onToggleSelected={onToggleSelected}
-                              onMove={selectedItems =>
-                                this.setState({
-                                  selectedItems,
-                                  selectedAction: "move",
-                                })
-                              }
-                              onCopy={selectedItems =>
-                                this.setState({
-                                  selectedItems,
-                                  selectedAction: "copy",
-                                })
-                              }
-                            />
-                          </ItemDragSource>
-                        </Box>
-                      )}
-                    />
-                  </Box>
-                </PinDropTarget>
-              ) : (
-                <Box>
-                  {location.query.type && EMPTY_STATES[location.query.type]}
-                  <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
-                    {({ hovered }) => (
-                      <div
-                        className={cx(
-                          "m2 flex layout-centered",
-                          hovered ? "text-brand" : "text-light",
-                        )}
-                      >
-                        {t`Drag here to un-pin`}
-                      </div>
+                            selection={selection}
+                            onToggleSelected={onToggleSelected}
+                            onMove={selectedItems =>
+                              this.setState({
+                                selectedItems,
+                                selectedAction: "move",
+                              })
+                            }
+                            onCopy={selectedItems =>
+                              this.setState({
+                                selectedItems,
+                                selectedAction: "copy",
+                              })
+                            }
+                          />
+                        </ItemDragSource>
+                      </Box>
                     )}
-                  </PinDropTarget>
+                  />
                 </Box>
-              )}
-            </Card>
+              </PinDropTarget>
+            ) : (
+              <Box>
+                {location.query.type && EMPTY_STATES[location.query.type]}
+                <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
+                  {({ hovered }) => (
+                    <div
+                      className={cx(
+                        "m2 flex layout-centered",
+                        hovered ? "text-brand" : "text-light",
+                      )}
+                    >
+                      {t`Drag here to un-pin`}
+                    </div>
+                  )}
+                </PinDropTarget>
+              </Box>
+            )}
           </Box>
           {unpinned.length === 0 && (
             <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
