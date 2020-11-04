@@ -98,6 +98,10 @@ const EMPTY_STATES = {
   query: (state, props) => ({ collection: props.collectionId }),
   wrapped: true,
 })
+@Collection.load({
+  id: (state, props) => props.collectionId,
+  reload: true,
+})
 @connect((state, props) => {
   // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
   const [collections, items] = _.partition(
@@ -554,20 +558,12 @@ const SelectionControls = ({
     <StackedCheckBox checked indeterminate onChange={onSelectAll} size={size} />
   );
 
-@Collection.load({
-  id: (state, props) => props.params.collectionId,
-  reload: true,
-})
 class CollectionLanding extends React.Component {
   render() {
     const {
-      object: currentCollection,
       params: { collectionId },
     } = this.props;
     const isRoot = collectionId === "root";
-
-    const ancestors =
-      (currentCollection && currentCollection.effective_ancestors) || [];
 
     const collectionWidth = [1, 1 / 3];
     const itemWidth = [1, 2 / 3];
@@ -602,12 +598,7 @@ class CollectionLanding extends React.Component {
             </Box>
           </GridItem>
           <GridItem w={itemWidth} bg="white">
-            <CollectionContent
-              isRoot={isRoot}
-              ancestors={ancestors}
-              collection={currentCollection}
-              collectionId={collectionId}
-            />
+            <CollectionContent isRoot={isRoot} collectionId={collectionId} />
           </GridItem>
         </Grid>
         {
