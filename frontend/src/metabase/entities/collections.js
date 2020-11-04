@@ -8,6 +8,8 @@ import * as Urls from "metabase/lib/urls";
 import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
 
+import { GET } from "metabase/lib/api";
+
 import {
   getUser,
   getUserDefaultCollectionId,
@@ -16,6 +18,8 @@ import {
 
 import { t } from "ttag";
 
+const listCollections = GET("/api/collection/tree");
+
 const Collections = createEntity({
   name: "collections",
   path: "/api/collection",
@@ -23,6 +27,10 @@ const Collections = createEntity({
 
   displayNameOne: t`collection`,
   displayNameMany: t`collections`,
+
+  api: {
+    list: async (params, ...args) => listCollections(params, ...args),
+  },
 
   objectActions: {
     setArchived: ({ id }, archived, opts) =>
