@@ -7,7 +7,8 @@ import {
 } from "__support__/cypress";
 // Ported from `segments.e2e.spec.js`
 
-describe("scenarios > admin > datamodel > segments", () => {
+// [quarantine] flaky
+describe.skip("scenarios > admin > datamodel > segments", () => {
   before(restore);
   beforeEach(() => {
     signInAsAdmin();

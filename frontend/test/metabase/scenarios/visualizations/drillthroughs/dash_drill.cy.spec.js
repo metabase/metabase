@@ -17,7 +17,7 @@ function addCardToNewDash(dash_name, card_id) {
   });
 }
 
-describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
+describe.skip("scenarios > visualizations > drillthroughs > dash_drill", () => {
   describe("title click action", () => {
     before(restore);
 

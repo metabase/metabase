@@ -6,7 +6,8 @@ import {
   popover,
 } from "__support__/cypress";
 
-describe("scenarios > admin > settings", () => {
+// [quarantine] flaky
+describe.skip("scenarios > admin > settings", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
