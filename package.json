@@ -118,7 +118,7 @@
     "color-diff": "^1.1.0",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.7",
-    "cypress": "3.8.2",
+    "cypress": "^5.5.0",
     "documentation": "^4.0.0-rc.1",
     "enzyme": "^3.8.0",
     "enzyme-2": "npm:enzyme@2",
@@ -215,7 +215,7 @@
     ]
   },
   "resolutions": {
-    "cypress": "3.8.2",
+    "cypress": "5.5.0",
     "styled-components": "3.2.6",
     "styled-system": "2.2.5"
   }
