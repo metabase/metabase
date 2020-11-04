@@ -28,7 +28,6 @@ import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
 import VirtualizedList from "metabase/components/VirtualizedList";
-import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar";
 // import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import PageHeading from "metabase/components/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
@@ -303,7 +302,6 @@ class CollectionContent extends React.Component {
             </PinDropTarget>
           )}
           <Box>
-            <ItemTypeFilterBar analyticsContext={ANALYTICS_CONTEXT} />
             <Card mt={1} className="relative">
               {unpinnedItems.length > 0 ? (
                 <PinDropTarget pinIndex={null} margin={8}>
