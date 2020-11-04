@@ -188,9 +188,9 @@ class DefaultLanding extends React.Component {
     } = this.props;
     const { selectedItems, selectedAction } = this.state;
 
-    const collectionWidth = unpinned.length > 0 ? [1, 1 / 3] : 1;
-    const itemWidth = unpinned.length > 0 ? [1, 2 / 3] : 0;
-    const collectionGridSize = unpinned.length > 0 ? 1 : [1, 1 / 4];
+    const collectionWidth = [1, 1 / 3];
+    const itemWidth = [1, 2 / 3];
+    const collectionGridSize = 1;
 
     let unpinnedItems = unpinned;
 
@@ -198,17 +198,9 @@ class DefaultLanding extends React.Component {
       unpinnedItems = unpinned.filter(u => u.model === location.query.type);
     }
 
-    const collectionIsEmpty =
-      !unpinned.length > 0 && !collections.length > 0 && !pinned.length > 0;
     const collectionHasPins = pinned.length > 0;
     const collectionHasItems = unpinned.length > 0;
 
-    const showSidebar =
-      // if the user has write permissions or if there are collections then show the sidebar
-      (collection.can_write || collections.length > 0) &&
-      // there should also be at least one item, otherwise we have a different
-      // new collection CTA
-      !collectionIsEmpty;
     return (
       <Box>
         <Box>
@@ -344,24 +336,22 @@ class DefaultLanding extends React.Component {
               )}
               <Box pt={[1, 2]} px={[2, 4]}>
                 <Grid>
-                  {showSidebar && (
-                    <GridItem w={collectionWidth}>
-                      <Box pr={2} className="relative">
-                        <Box py={2}>
-                          <CollectionSectionHeading>
-                            {t`Collections`}
-                          </CollectionSectionHeading>
-                        </Box>
-                        <CollectionList
-                          analyticsContext={ANALYTICS_CONTEXT}
-                          currentCollection={collection}
-                          collections={collections}
-                          isRoot={collectionId === "root"}
-                          w={collectionGridSize}
-                        />
+                  <GridItem w={collectionWidth}>
+                    <Box pr={2} className="relative">
+                      <Box py={2}>
+                        <CollectionSectionHeading>
+                          {t`Collections`}
+                        </CollectionSectionHeading>
                       </Box>
-                    </GridItem>
-                  )}
+                      <CollectionList
+                        analyticsContext={ANALYTICS_CONTEXT}
+                        currentCollection={collection}
+                        collections={collections}
+                        isRoot={collectionId === "root"}
+                        w={collectionGridSize}
+                      />
+                    </Box>
+                  </GridItem>
                   {collectionHasItems && (
                     <GridItem w={itemWidth}>
                       <Box>
@@ -453,12 +443,6 @@ class DefaultLanding extends React.Component {
                       </Flex>
                     )}
                   </PinDropTarget>
-                )}
-
-                {collectionIsEmpty && (
-                  <Flex align="center" justify="center" w={1}>
-                    <CollectionEmptyState />
-                  </Flex>
                 )}
               </Box>
             </Box>
