@@ -23,6 +23,7 @@ import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
 import Button from "metabase/components/Button";
 import Card from "metabase/components/Card";
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import EntityMenu from "metabase/components/EntityMenu";
 import EntityItem from "metabase/components/EntityItem";
 import { Grid, GridItem } from "metabase/components/Grid";
@@ -87,6 +88,8 @@ export default class CollectionContent extends React.Component {
   state = {
     selectedItems: null,
     selectedAction: null,
+    // TODO - this should live somewhere else eventually
+    showDashboardModal: false,
   };
 
   handleBulkArchive = async () => {
@@ -198,6 +201,27 @@ export default class CollectionContent extends React.Component {
                 )}
               <Box ml={1}>
                 <CollectionBurgerMenu />
+              </Box>
+              <Box>
+                <EntityMenu
+                  tooltip={t`Create`}
+                  className="hide sm-show mr1"
+                  triggerIcon="add"
+                  items={[
+                    {
+                      title: t`New dashboard`,
+                      icon: `dashboard`,
+                      action: () => this.setState({ showDashboardModal: true }),
+                      event: `NavBar;New Dashboard Click;`,
+                    },
+                    {
+                      title: t`New pulse`,
+                      icon: `pulse`,
+                      link: Urls.newPulse(),
+                      event: `NavBar;New Pulse Click;`,
+                    },
+                  ]}
+                />
               </Box>
             </Flex>
           </Flex>
@@ -369,6 +393,14 @@ export default class CollectionContent extends React.Component {
             </Grid>
           </Box>
         </BulkActionBar>
+        {this.state.showDashboardModal && (
+          <Modal onClose={() => this.setState({ showDashboardModal: null })}>
+            <CreateDashboardModal
+              createDashboard={this.props.createDashboard}
+              onClose={() => this.setState({ modal: null })}
+            />
+          </Modal>
+        )}
         {!_.isEmpty(selectedItems) && selectedAction === "copy" && (
           <Modal onClose={this.handleCloseModal}>
             <CollectionCopyEntityModal
