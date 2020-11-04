@@ -21,14 +21,6 @@ const AGGREGATIONS = {
     section: "sum",
     title: t`Avg`,
   },
-  min: {
-    section: "sum",
-    title: t`Min`,
-  },
-  max: {
-    section: "sum",
-    title: t`Max`,
-  },
   distinct: {
     section: "sum",
     title: t`Distincts`,

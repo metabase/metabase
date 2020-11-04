@@ -37,7 +37,7 @@ export default ({
     )
     .map(aggregator => ({
       name: "summarize-by-time",
-      section: "distribution",
+      section: "sum",
       title: (
         <span>
           {capitalize(aggregator.short)} {t`over time`}
