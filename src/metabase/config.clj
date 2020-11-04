@@ -32,6 +32,12 @@
    :mb-emoji-in-logs       (str (not is-windows?))                        ; disable them by default when running on Windows. Otherwise they're enabled
    :mb-qp-cache-backend    "db"})
 
+;; separate map for EE stuff so merge conflicts aren't annoying.
+(def ^:private ee-app-defaults
+  {:embed-max-session-age      "1440"   ; how long a FULL APP EMBED session is valid for. One day, by default
+   :mb-session-cookie-samesite "lax"})
+
+(alter-var-root #'app-defaults merge ee-app-defaults)
 
 (defn config-str
   "Retrieve value for a single configuration key.  Accepts either a keyword or a string.
@@ -114,6 +120,17 @@
                 will have its own ID, making this different from the `site-uuid` Setting."}
   local-process-uuid
   (str (UUID/randomUUID)))
+
+(defn- mb-session-cookie-samesite*
+  []
+  (let [same-site (str/lower-case (config-str :mb-session-cookie-samesite))]
+    (when-not (#{"none", "lax", "strict"} same-site)
+      (throw (ex-info "Invalid value for MB_COOKIE_SAMESITE" {:mb-session-cookie-samesite same-site})))
+    (keyword same-site)))
+
+(def ^Keyword mb-session-cookie-samesite
+  "Value for session cookie's `SameSite` directive. Must be one of \"none\", \"lax\", or \"strict\" (case insensitive)."
+  (mb-session-cookie-samesite*))
 
 
 ;; This only affects dev:

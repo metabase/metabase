@@ -1,4 +1,10 @@
-import { popover, restore, signInAsAdmin } from "__support__/cypress";
+import {
+  popover,
+  restore,
+  signInAsAdmin,
+  withSampleDataset,
+  selectDashboardFilter,
+} from "__support__/cypress";
 // Mostly ported from `dashboard.e2e.spec.js`
 // *** Haven't ported: should add the parameter values to state tree for public dashboards
 
@@ -98,6 +104,84 @@ describe("scenarios > dashboard", () => {
 
     cy.findByText("Orders in a dashboard").should("not.exist");
     cy.findByText("Doppleganger");
+  });
+
+  it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
+    // programatically create and save a question as per repro instructions in #11007
+    withSampleDataset(({ ORDERS, PRODUCTS }) => {
+      cy.request("POST", "/api/card", {
+        name: "11007",
+        dataset_query: {
+          database: 1,
+          filter: [">", ["field-literal", "sum", "type/Float"], 100],
+          query: {
+            "source-table": 2,
+            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.ID],
+              ],
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.CATEGORY],
+              ],
+            ],
+            filter: ["=", ["field-id", ORDERS.USER_ID], 1],
+          },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {},
+      });
+    });
+
+    // create a dashboard
+    cy.request("POST", "/api/dashboard", {
+      name: "dash:11007",
+    });
+
+    cy.visit("/collection/root");
+    // enter newly created dashboard
+    cy.findByText("dash:11007").click();
+    cy.findByText("This dashboard is looking empty.");
+    // add previously created question to it
+    cy.get(".Icon-pencil").click();
+    cy.get(".Icon-add")
+      .last()
+      .click();
+    cy.findByText("11007").click();
+
+    // add first filter
+    cy.get(".Icon-filter").click();
+    popover().within(() => {
+      cy.findByText("Time").click();
+      cy.findByText("All Options").click();
+    });
+    // and connect it to the card
+    selectDashboardFilter(cy.get(".DashCard"), "Created At");
+
+    // add second filter
+    cy.get(".Icon-filter").click();
+    popover().within(() => {
+      cy.findByText("ID").click();
+    });
+    // and connect it to the card
+    selectDashboardFilter(cy.get(".DashCard"), "Product ID");
+
+    // add third filter
+    cy.get(".Icon-filter").click();
+    popover().within(() => {
+      cy.findByText("Other Categories").click();
+    });
+    // and connect it to the card
+    selectDashboardFilter(cy.get(".DashCard"), "Category");
+
+    cy.findByText("Save").click();
+    cy.findByText("You're editing this dashboard.").should("not.exist");
   });
 
   describe("revisions screen", () => {

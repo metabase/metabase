@@ -15,15 +15,12 @@ import Visualization from "metabase/visualizations/components/Visualization";
 
 describe("Visualization", () => {
   // eslint-disable-next-line no-unused-vars
-  let element, viz;
+  let element;
   const qs = s => element.querySelector(s);
   const qsa = s => [...element.querySelectorAll(s)];
 
   const renderViz = async series => {
-    ReactDOM.render(
-      <Visualization ref={ref => (viz = ref)} rawSeries={series} />,
-      element,
-    );
+    ReactDOM.render(<Visualization rawSeries={series} />, element);
     // The chart isn't rendered until the next tick. This is due to ExplicitSize
     // not setting the dimensions until after mounting.
     await delay(0);

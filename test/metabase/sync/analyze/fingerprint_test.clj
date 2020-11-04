@@ -13,6 +13,7 @@
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.sync.interface :as i]
             [metabase.test.data :as data]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -228,6 +229,19 @@
         (is (= (fingerprint/empty-stats-map 0)
                (fingerprint/fingerprint-fields-for-db! fake-db [(Table (data/id :venues))] (fn [_ _]))))))))
 
+(deftest fingerprint-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "Fingerprints should actually get saved with the correct values"
+      (testing "Text fingerprints"
+        (is (schema= {:global {:distinct-count (s/eq 100)
+                               :nil%           (s/eq 0.0)}
+                      :type   {:type/Text {:percent-json   (s/eq 0.0)
+                                           :percent-url    (s/eq 0.0)
+                                           :percent-email  (s/eq 0.0)
+                                           :average-length (s/pred #(< 15 % 16) "between 15 and 16")
+                                           :percent-state  (s/eq 0.0)}}}
+                     (db/select-one-field :fingerprint Field :id (mt/id :venues :name))))))))
+
 (deftest fingerprinting-test
   (testing "fingerprinting truncates text fields (see #13288)"
     (doseq [size [4 8 10]]
@@ -238,3 +252,16 @@
           (let [field' (db/select-one [Field :fingerprint] :id (u/id field))
                 fingerprinted-size (get-in field' [:fingerprint :type :type/Text :average-length])]
             (is (<= fingerprinted-size size))))))))
+
+(deftest fingerprint-schema-test
+  (testing "allows for extra keywords"
+    (let [base {:global
+                {:distinct-count 2, :nil% 0.0}}]
+      (doseq [path [[:type :type/Text]
+                    [:type :type/Number]
+                    [:type :type/DateTime]
+                    [:global]
+                    [:experimental]
+                    [:top-level]
+                    []]]
+        (s/validate i/Fingerprint (assoc-in base (conj path :extra-key) (rand-nth [3 :extra-value 4.0 {:stuff :stuff}])))))))

@@ -27,7 +27,9 @@
             [metabase.test.util.log :as tu.log]
             [potemkin :as p]
             [schema.core :as s]
-            [toucan.db :as db]
+            [toucan
+             [db :as db]
+             [models :as t.models]]
             [toucan.util.test :as tt])
   (:import java.util.concurrent.TimeoutException
            java.util.Locale
@@ -280,7 +282,6 @@
 (defn- namespace-or-symbol? [x]
   (or (symbol? x)
       (instance? clojure.lang.Namespace x)))
-
 
 (defn obj->json->obj
   "Convert an object to JSON and back again. This can be done to ensure something will match its serialized +
@@ -547,35 +548,53 @@
            .getZone
            .getID)))))
 
-(defmulti ^:private ^:deprecated do-model-cleanup! class)
+(defn do-with-model-cleanup [models f]
+  {:pre [(sequential? models) (every? t.models/model? models)]}
+  (initialize/initialize-if-needed! :db)
+  (let [model->old-max-id (into {} (for [model models]
+                                     [model (:max-id (db/select-one [model [:%max.id :max-id]]))]))]
+    (try
+      (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name models))) "\n")
+        (f))
+      (finally
+        (doseq [model models
+                ;; might not have an old max ID if this is the first time the macro is used in this test run.
+                :let  [old-max-id (or (get model->old-max-id model)
+                                      0)]]
+          (db/simple-delete! model :id [:> old-max-id]))))))
 
-(defmethod do-model-cleanup! :default
-  [model]
-  (db/delete! model))
+(defmacro with-model-cleanup
+  "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
+  defined any `pre-delete` behavior, that will be preserved.
 
-(defmethod do-model-cleanup! (class Collection)
-  [_]
-  ;; don't delete Personal Collections <3
-  (db/delete! Collection :personal_owner_id nil))
+  It's preferable to use `with-temp` instead, but you can use this macro if `with-temp` wouldn't work in your
+  situation (e.g. when creating objects via the API).
 
-(defn ^:deprecated do-with-model-cleanup [model-seq f]
-  (try
-    (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name model-seq))) "\n")
-      (f))
-    (finally
-      (doseq [model model-seq]
-        (do-model-cleanup! (db/resolve-model model))))))
+    (with-model-cleanup [Card]
+      (create-card-via-api!)
+      (is (= ...)))"
+  [models & body]
+  `(do-with-model-cleanup ~models (fn [] ~@body)))
 
-(defmacro ^:deprecated with-model-cleanup
-  "This will delete all rows found for each model in `model-seq`. By default, this calls `delete!`, so if the model has
-  defined any `pre-delete` behavior, that will be preserved. Alternatively, you can define a custom implementation by
-  using the `do-model-cleanup!` multimethod above.
+(deftest with-model-cleanup-test
+  (testing "Make sure the with-model-cleanup macro actually works as expected"
+    (tt/with-temp Card [other-card]
+      (let [card-count-before (db/count Card)
+            card-name         (random-name)]
+        (with-model-cleanup [Card]
+          (db/insert! Card (-> other-card (dissoc :id) (assoc :name card-name)))
+          (testing "Card count should have increased by one"
+            (is (= (inc card-count-before)
+                   (db/count Card))))
+          (testing "Card should exist"
+            (is (db/exists? Card :name card-name))))
+        (testing "Card should be deleted at end of with-model-cleanup form"
+          (is (= card-count-before
+                 (db/count Card)))
+          (is (not (db/exists? Card :name card-name)))
+          (testing "Shouldn't delete other Cards"
+            (is (pos? (db/count Card)))))))))
 
-  DEPRECATED -- don't use this going forward because it deletes *everything* in the app DB of this Model, not just
-  stuff created for the test. Use `with-temp` wherever possible, or manually delete things inside of `try-finally`
-  blocks."
-  [model-seq & body]
-  `(do-with-model-cleanup ~model-seq (fn [] ~@body)))
 
 ;; TODO - not 100% sure I understand
 (defn call-with-paused-query
@@ -647,25 +666,35 @@
   [collection-or-id & body]
   `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
 
-(defn do-with-non-admin-groups-no-root-collection-perms [f]
-  (initialize/initialize-if-needed! :db)
+(defn do-with-non-admin-groups-no-collection-perms [collection f]
   (try
-    (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
-      (perms/revoke-collection-permissions! group-id collection/root-collection))
-    (f)
+    (do-with-discarded-collections-perms-changes
+     collection
+     (fn []
+       (db/delete! Permissions
+         :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
+         :group_id [:not= (u/get-id (group/admin))])
+       (f)))
+    ;; if this is the default namespace Root Collection, then double-check to make sure all non-admin groups get
+    ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
+    ;; rewriting a few tests.
     (finally
-      (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
-        (when-not (db/exists? Permissions
-                    :group_id group-id
-                    :object   (perms/collection-readwrite-path collection/root-collection))
-          (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))))))
+      (when (and (:metabase.models.collection.root/is-root? collection)
+                 (not (:namespace collection)))
+        (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
+          (when-not (db/exists? Permissions :group_id group-id, :object "/collection/root/")
+            (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
 (defmacro with-non-admin-groups-no-root-collection-perms
   "Temporarily remove Root Collection perms for all Groups besides the Admin group (which cannot have them removed). By
   default, all Groups have full readwrite perms for the Root Collection; use this macro to test situations where an
-  admin has removed them."
+  admin has removed them.
+
+  Only affects the Root Collection for the default namespace. Use
+  `with-non-admin-groups-no-root-collection-for-namespace-perms` to do the same thing for the Root Collection of other
+  namespaces."
   [& body]
-  `(do-with-non-admin-groups-no-root-collection-perms (fn [] ~@body)))
+  `(do-with-non-admin-groups-no-collection-perms collection/root-collection (fn [] ~@body)))
 
 (defmacro with-non-admin-groups-no-root-collection-for-namespace-perms
   "Like `with-non-admin-groups-no-root-collection-perms`, but for the Root Collection of a non-default namespace."

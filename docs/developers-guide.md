@@ -29,6 +29,11 @@ These are the set of tools which are required in order to complete any build of 
 3. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x
 4. [Leiningen (http://leiningen.org/)](http://leiningen.org/) - latest release
 
+On a most recent stable Ubuntu/Debian, the above tools can be installed by using:
+```
+sudo apt install openjdk-11-jdk nodejs yarnpkg leiningen
+```
+
 If you are developing on Windows, make sure to use Ubuntu on Windows and follow instructions for Ubuntu/Linux instead of installing ordinary Windows versions.
 
 # Build Metabase

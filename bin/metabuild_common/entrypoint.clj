@@ -1,16 +1,14 @@
 (ns metabuild-common.entrypoint
   (:require [clojure.pprint :as pprint]
-            [colorize.core :as colorize]))
+            [colorize.core :as colorize]
+            [metabuild-common.output :as out]))
 
 (defn do-exit-when-finished-nonzero-on-exception [thunk]
   (try
     (thunk)
     (System/exit 0)
     (catch Throwable e
-      (let [e-map (Throwable->map e)]
-        (println (colorize/red (str "Command failed: " (:cause e-map))))
-        (binding [pprint/*print-right-margin* 120]
-          (pprint/pprint e-map)))
+      (out/pretty-print-exception e)
       (System/exit -1))))
 
 (defmacro exit-when-finished-nonzero-on-exception

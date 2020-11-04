@@ -120,7 +120,7 @@ export function hasOptions(aggregation: any): boolean {
   return Array.isArray(aggregation) && aggregation[0] === "aggregation-options";
 }
 export function getOptions(aggregation: any): AggregationOptions {
-  return hasOptions(aggregation) ? aggregation[2] : {};
+  return hasOptions(aggregation) && aggregation[2] ? aggregation[2] : {};
 }
 export function getContent(aggregation: any): Aggregation {
   return hasOptions(aggregation) ? aggregation[1] : aggregation;

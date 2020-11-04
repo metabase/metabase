@@ -94,7 +94,8 @@
 
 (def ^:private ^{:arglists '([entities])} filter-visible
   (partial filter (fn [{:keys [archived visibility_type active] :as entity}]
-                    (and (or (nil? visibility_type)
+                    (and (some? entity)
+                         (or (nil? visibility_type)
                              (= (qp.util/normalize-token visibility_type) :normal))
                          (not archived)
                          (not= active false)

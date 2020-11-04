@@ -3,7 +3,7 @@
 const glob = require("glob");
 const fs = require("fs");
 
-glob("./frontend/src/metabase/**/*.{js,jsx}", (err, files) => {
+glob("./{enterprise/,}frontend/src/**/*.{js,jsx}", (err, files) => {
   if (err) {
     console.log(err);
     process.exit(1);

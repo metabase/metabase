@@ -286,21 +286,26 @@
   "Implementation of `IModel` `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
   This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`), or for the Root
   Collection if `collection_id` is `nil`."
-  [this          :- {:collection_id (s/maybe su/IntGreaterThanZero), s/Keyword s/Any}
-   read-or-write :- (s/enum :read :write)]
-  ;; based on value of read-or-write determine the approprite function used to calculate the perms path
-  (let [path-fn (case read-or-write
-                  :read  collection-read-path
-                  :write collection-readwrite-path)]
-    ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
-    ;; Collection
-    #{(path-fn (or (:collection_id this)
-                   {:metabase.models.collection.root/is-root? true}))}))
+  ([this read-or-write]
+   (perms-objects-set-for-parent-collection nil this read-or-write))
+
+  ([collection-namespace :- (s/maybe su/KeywordOrString)
+    this                 :- {:collection_id (s/maybe su/IntGreaterThanZero), s/Keyword s/Any}
+    read-or-write        :- (s/enum :read :write)]
+   ;; based on value of read-or-write determine the approprite function used to calculate the perms path
+   (let [path-fn (case read-or-write
+                   :read  collection-read-path
+                   :write collection-readwrite-path)]
+     ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
+     ;; Collection
+     #{(path-fn (or (:collection_id this)
+                    {:metabase.models.collection.root/is-root? true
+                     :namespace                                collection-namespace}))})))
 
 (def IObjectPermissionsForParentCollection
-  "Implementation of `IObjectPermissions` for objects that have a `collection_id`, and thus, a parent Collection. Using
-  this will mean the current User is allowed to read or write these objects if they are allowed to read or write their
-  parent Collection."
+  "Implementation of `IObjectPermissions` for objects that have a `collection_id`, and thus, a parent Collection.
+   Using this will mean the current User is allowed to read or write these objects if they are allowed to read or
+  write their parent Collection."
   (merge i/IObjectPermissionsDefaults
          ;; TODO - we use these same partial implementations of `can-read?` and `can-write?` all over the place for
          ;; different models. Consider making them a mixin of some sort. (I was going to do this but I couldn't come
@@ -319,16 +324,14 @@
 (defn- pre-insert [permissions]
   (u/prog1 permissions
     (assert-valid permissions)
-    (log/debug (u/format-color 'green "Granting permissions for group %d: %s"
-                 (:group_id permissions) (:object permissions)))))
+    (log/debug (u/colorize 'green (trs "Granting permissions for group {0}: {1}" (:group_id permissions) (:object permissions))))))
 
 (defn- pre-update [_]
   (throw (Exception. (str (deferred-tru "You cannot update a permissions entry!")
                           (deferred-tru "Delete it and create a new one.")))))
 
 (defn- pre-delete [permissions]
-  (log/debug (u/format-color 'red "Revoking permissions for group %d: %s"
-               (:group_id permissions) (:object permissions)))
+  (log/debug (u/colorize 'red (trs "Revoking permissions for group {0}: {1}" (:group_id permissions) (:object permissions))))
   (assert-not-admin-group permissions))
 
 (u/strict-extend (class Permissions)

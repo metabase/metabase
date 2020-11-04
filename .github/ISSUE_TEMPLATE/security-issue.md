@@ -2,7 +2,7 @@
 name: Security Issue
 about: If you think you found a security vulnerability with Metabase
 title: ''
-labels: "Security, .Needs Triage"
+labels: ".Needs Triage, Security"
 assignees: ''
 
 ---

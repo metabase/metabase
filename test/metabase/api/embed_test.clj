@@ -149,7 +149,6 @@
         (is (= "Message seems corrupt or manipulated."
                (http/client :get 400 (with-new-secret-key (card-url card)))))))))
 
-
 (deftest check-that-only-enabled-params-that-are-not-present-in-the-jwt-come-back
   (testing "check that only ENABLED params that ARE NOT PRESENT IN THE JWT come back"
     (with-embedding-enabled-and-new-secret-key
@@ -179,6 +178,12 @@
    "/csv"  nil
    "/xlsx" {:as :byte-array}})
 
+(def ^:private response-format->status-code
+  {""      202
+   "/json" 200
+   "/csv"  200
+   "/xlsx" 200})
+
 (defmacro ^:private do-response-formats {:style/indent 1} [[response-format-binding request-options-binding] & body]
   `(doseq [[response-format# ~request-options-binding] response-format->request-options
            :let                                        [~response-format-binding response-format#]]
@@ -196,19 +201,20 @@
                      (http/client :get 400 (card-query-url card response-format))))))))
 
       (with-embedding-enabled-and-new-secret-key
-        (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
-          (with-temp-card [card {:enable_embedding true}]
-            (is (expect= (successful-query-results response-format)
-                         (http/client :get 202 (card-query-url card response-format) {:request-options request-options})))))
+        (let [expected-status (response-format->status-code response-format)]
+          (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
+            (with-temp-card [card {:enable_embedding true}]
+              (is (expect= (successful-query-results response-format)
+                           (http/client :get expected-status (card-query-url card response-format) {:request-options request-options})))))
 
-        (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" "
-                      "exception (rather than leaking query info)")
-          (mt/suppress-output
-            (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
-                                                                           :type     :native
-                                                                           :native   {:query "SELECT * FROM XYZ"}}}]
-              (is (= {:status "failed" :error "An error occurred while running the query."}
-                     (http/client :get 202 (card-query-url card response-format)))))))
+          (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" "
+                        "exception (rather than leaking query info)")
+            (mt/suppress-output
+             (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
+                                                                            :type     :native
+                                                                            :native   {:query "SELECT * FROM XYZ"}}}]
+               (is (= {:status "failed" :error "An error occurred while running the query."}
+                      (http/client :get expected-status (card-query-url card response-format))))))))
 
         (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
           (with-temp-card [card]
@@ -233,7 +239,7 @@
                                                         :middleware
                                                         {:add-default-userland-constraints? true
                                                          :userland-query?                   true})}]
-          (let [results (http/client :get 202 (card-query-url card "/csv"))]
+          (let [results (http/client :get 200 (card-query-url card "/csv"))]
             (is (= 101
                    (count (csv/read-csv results))))))))))
 
@@ -248,7 +254,7 @@
 
         (testing "if `:locked` param is present, request should succeed"
           (is (expect= (successful-query-results response-format)
-                       (http/client :get 202
+                       (http/client :get (response-format->status-code response-format)
                                     (card-query-url card response-format {:params {:abc 100}})
                                     {:request-options request-options}))))
 
@@ -280,13 +286,13 @@
 
         (testing "If an `:enabled` param is present in the JWT, that's ok"
           (is (expect= (successful-query-results response-format)
-                       (http/client :get 202
+                       (http/client :get (response-format->status-code response-format)
                                     (card-query-url card response-format {:params {:abc "enabled"}})
                                     {:request-options request-options}))))
 
         (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
           (is (expect= (successful-query-results response-format)
-                       (http/client :get 202
+                       (http/client :get (response-format->status-code response-format)
                                     (str (card-query-url card response-format) "?abc=200")
                                     {:request-options request-options}))))))))
 
@@ -307,7 +313,7 @@
     (with-embedding-enabled-and-new-secret-key
       (tt/with-temp Card [card (card-with-date-field-filter)]
         (is (= "count\n107\n"
-               (http/client :get 202 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
+               (http/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
   (with-embedding-enabled-and-new-secret-key
@@ -316,7 +322,8 @@
       (binding [http/*url-prefix* (str/replace http/*url-prefix* #"/api/$" "/")]
         (tu/with-temporary-setting-values [site-url http/*url-prefix*]
           (is (= "count\n107\n"
-                 (http/client :get 202 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))))
+                 (http/client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))))
+
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------
 
@@ -357,18 +364,18 @@
         (is (= "Message seems corrupt or manipulated."
                (http/client :get 400 (with-new-secret-key (dashboard-url dash)))))))))
 
-
 (deftest only-enabled-params-that-are-not-present-in-the-jwt-come-back
   (testing "check that only ENABLED params that ARE NOT PRESENT IN THE JWT come back"
     (with-embedding-enabled-and-new-secret-key
       (tt/with-temp Dashboard [dash {:enable_embedding true
                                      :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}
-                                     :parameters       [{:slug "a", :name "a", :type "date"}
-                                                        {:slug "b", :name "b", :type "date"}
-                                                        {:slug "c", :name "c", :type "date"}
-                                                        {:slug "d", :name "d", :type "date"}]}]
-        (is (= [{:slug "d", :name "d", :type "date"}]
+                                     :parameters       [{:id "_a", :slug "a", :name "a", :type "date"}
+                                                        {:id "_b", :slug "b", :name "b", :type "date"}
+                                                        {:id "_c", :slug "c", :name "c", :type "date"}
+                                                        {:id "_d", :slug "d", :name "d", :type "date"}]}]
+        (is (= [{:id "_d", :slug "d", :name "d", :type "date"}]
                (:parameters (http/client :get 200 (dashboard-url dash {:params {:c 100}})))))))))
+
 
 ;;; ---------------------- GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -----------------------
 
@@ -395,7 +402,7 @@
                                                                     :middleware
                                                                     {:add-default-userland-constraints? true
                                                                      :userland-query?                   true})}}]
-          (let [results (http/client :get 202 (str (dashcard-url dashcard) "/csv"))]
+          (let [results (http/client :get 200 (str (dashcard-url dashcard) "/csv"))]
             (is (= 101
                    (count (csv/read-csv results))))))))))
 

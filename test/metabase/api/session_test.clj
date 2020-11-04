@@ -444,9 +444,9 @@
     (mt/with-temp User [user {:email "cam@sf-toucannery.com"}]
       (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
         (testing "their account should return a Session"
-          (is (instance?
-               UUID
-               (#'session-api/google-auth-fetch-or-create-user! "Cam" "Saul" "cam@sf-toucannery.com")))))))
+          (is (schema= {:id       UUID
+                        s/Keyword s/Any}
+                       (#'session-api/google-auth-fetch-or-create-user! "Cam" "Saul" "cam@sf-toucannery.com")))))))
 
   (testing "test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an exception"
     (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain nil
@@ -460,9 +460,9 @@
       (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
                                          admin-email                             "rasta@toucans.com"]
         (try
-          (is (instance?
-               UUID
-               (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")))
+          (is (schema= {:id       UUID
+                        s/Keyword s/Any}
+                       (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")))
           (finally
             (db/delete! User :email "rasta@sf-toucannery.com")))))))
 
@@ -472,8 +472,13 @@
 (deftest ldap-login-test
   (ldap.test/with-ldap-server
     (testing "Test that we can login with LDAP"
-      (is (schema= SessionResponse
-                   (mt/client :post 200 "session" (mt/user->credentials :rasta)))))
+      (let [user-id (test-users/user->id :rasta)]
+        (try
+          (db/simple-delete! Session :user_id user-id)
+          (is (schema= SessionResponse
+                       (mt/client :post 200 "session" (mt/user->credentials :rasta))))
+          (finally
+            (db/update! User user-id :login_attributes nil)))))
 
     (testing "Test that login will fallback to local for users not in LDAP"
       (is (schema= SessionResponse
@@ -486,9 +491,15 @@
 
     (testing "Test that login will fallback to local for broken LDAP settings"
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
-        (is (schema= SessionResponse
-                     (mt/suppress-output
-                       (mt/client :post 200 "session" (mt/user->credentials :rasta)))))))
+        ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
+        (let [user-id (test-users/user->id :rasta)]
+          (try
+            (db/simple-delete! Session :user_id user-id)
+            (is (schema= SessionResponse
+                         (mt/suppress-output
+                          (mt/client :post 200 "session" (mt/user->credentials :rasta)))))
+            (finally
+              (db/update! User user-id :login_attributes nil))))))
 
     (testing "Test that we can login with LDAP with new user"
       (try

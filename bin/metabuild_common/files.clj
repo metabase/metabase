@@ -1,5 +1,6 @@
 (ns metabuild-common.files
-  (:require [metabuild-common
+  (:require [clojure.string :as str]
+            [metabuild-common
              [output :as out]
              [shell :as sh]
              [steps :as steps]])
@@ -22,15 +23,17 @@
   (str filename))
 
 (defn create-directory-unless-exists! [^String dir]
-  (when-not (file-exists? dir)
-    (steps/step (format "Creating directory %s..." dir)
-      (.mkdirs (File. dir))))
+  (steps/step (format "Create directory %s if it does not exist" dir)
+    (if (file-exists? dir)
+      (out/announce "%s already exists." dir)
+      (steps/step (format "Create directory %s" dir)
+        (.mkdirs (File. dir)))))
   dir)
 
-(defn delete-file!
+(defn delete-file-if-exists!
   "Delete a file or directory (recursively) if it exists."
   ([^String filename]
-   (steps/step (format "Deleting %s..." filename)
+   (steps/step (format "Delete %s if exists" filename)
      (if (file-exists? filename)
        (let [file (File. filename)]
          (if (.isDirectory file)
@@ -41,7 +44,13 @@
      (assert (not (file-exists? filename)))))
 
   ([file & more]
-   (dorun (map delete-file! (cons file more)))))
+   (dorun (map delete-file-if-exists! (cons file more)))))
+
+(defn ^:deprecated delete-file!
+  "Alias for `delete-file-if-exists!`. Here for backwards compatibility. Prefer `delete-file-if-exists!` going
+  forward."
+  [& args]
+  (apply delete-file-if-exists! args))
 
 (defn copy-file!
   "Copy a `source` file (or directory, recursively) to `dest`."
@@ -77,3 +86,11 @@
        .toArray
        (map str)
        sort))
+
+(defn filename
+  "Create a filename path String by joining path components:
+
+    (filename \"usr\" \"cam\" \".emacs.d\" \"init.el\")
+    ;; -> \"usr/cam/.emacs.d/init.el\""
+  [& path-components]
+  (str/join File/separatorChar path-components))

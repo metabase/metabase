@@ -1,7 +1,8 @@
 (ns build-drivers.common
   "Shared constants and functions related to source and artifact paths used throughout this code."
   (:require [clojure.string :as str]
-            [environ.core :as env])
+            [environ.core :as env]
+            [metabuild-common.core :as u])
   (:import java.io.File))
 
 ;; since this file is used pretty much everywhere, this seemed like a good place to put this.
@@ -11,14 +12,10 @@
   (throw (ex-info "Please run build-driver scripts from the `bin/build-drivers` directory e.g. `cd bin/build-drivers; clojure -m build-driver`"
                   {:user-dir (env/env :user-dir)})))
 
-(defn env-or-throw
-  "Fetch an env var value or throw an Exception if it is unset."
-  [k]
-  (or (get env/env k)
-      (throw (Exception. (format "%s is unset. Please set it and try again." (str/upper-case (str/replace (name k) #"-" "_")))))))
-
-(defn filename [& path-components]
-  (str/join File/separatorChar path-components))
+(defn ^:deprecated filename
+  "DEPRECATED -- use u/filename instead."
+  [& path-components]
+  (apply u/filename path-components))
 
 (def ^String project-root-directory
   "e.g. /Users/cam/metabase"

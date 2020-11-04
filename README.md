@@ -5,7 +5,6 @@ Metabase is the easy, open source way for everyone in your company to ask questi
 ![Metabase Product Screenshot](docs/metabase-product-screenshot.png)
 
 [![Latest Release](https://img.shields.io/github/release/metabase/metabase.svg?label=latest%20release)](https://github.com/metabase/metabase/releases)
-[![GitHub license](https://img.shields.io/badge/license-AGPL-05B8CC.svg)](https://github.com/metabase/metabase/blob/master/LICENSE.txt)
 [![Circle CI](https://circleci.com/gh/metabase/metabase.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase)
 [![codecov](https://codecov.io/gh/metabase/metabase/branch/master/graph/badge.svg)](https://codecov.io/gh/metabase/metabase)
 
@@ -103,8 +102,8 @@ Metabase also allows you to hit our Query API directly from Javascript to integr
 
 # License
 
-Unless otherwise noted, all Metabase source files are made available under the terms of the GNU Affero General Public License (AGPL).
+This repository contains the source code for both the Open Source edition of Metabase, released under the AGPL, as well as the commercial edition of Metabase Enterprise, released under the Metabase Commercial Software License. 
 
-See [LICENSE.txt](https://github.com/metabase/metabase/blob/master/LICENSE.txt) for details and exceptions.
+See [LICENSE.txt](./LICENSE.txt) for details.
 
 Unless otherwise noted, all files © 2020 Metabase, Inc.

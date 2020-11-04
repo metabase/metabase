@@ -3,7 +3,9 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [java-time :as t]
-            [metabase.config :as config]
+            [metabase
+             [config :as config]
+             [public-settings :as public-settings]]
             [metabase.middleware.util :as middleware.u]
             [metabase.models.setting :refer [defsetting]]
             [metabase.util.i18n :as ui18n :refer [deferred-tru]]
@@ -83,11 +85,29 @@
                   :manifest-src ["'self'"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
+(defn- embedding-app-origin
+  []
+  (when (and (public-settings/enable-embedding) (public-settings/embedding-app-origin))
+    (public-settings/embedding-app-origin)))
+
+(defn- content-security-policy-header-with-frame-ancestors
+  [allow-iframes?]
+  (update content-security-policy-header
+          "Content-Security-Policy"
+          #(format "%s frame-ancestors %s;" % (if allow-iframes? "*" (or (embedding-app-origin) "'none'")))))
+
 (defsetting ssl-certificate-public-key
   (str (deferred-tru "Base-64 encoded public key for this site's SSL certificate.")
        (deferred-tru "Specify this to enable HTTP Public Key Pinning.")
        (deferred-tru "See {0} for more information." "http://mzl.la/1EnfqBf")))
 ;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
+
+(defn- first-embedding-app-origin
+  "Return only the first embedding app origin."
+  []
+  (some-> (embedding-app-origin)
+          (str/split #" ")
+          first))
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
@@ -98,10 +118,12 @@
      (cache-far-future-headers)
      (cache-prevention-headers))
    strict-transport-security-header
-   content-security-policy-header
+   (content-security-policy-header-with-frame-ancestors allow-iframes?)
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
-     {"X-Frame-Options"                 "DENY"})
+     {"X-Frame-Options"                 (if (embedding-app-origin)
+                                          (format "ALLOW-FROM %s" (first-embedding-app-origin))
+                                          "DENY")})
    { ;; Tell browser to block suspected XSS attacks
     "X-XSS-Protection"                  "1; mode=block"
     ;; Prevent Flash / PDF files from including content from site.

@@ -74,6 +74,7 @@ sn: Pigeon
 uid: lucky
 mail: lucky@metabase.com
 userPassword: notalmonds
+title: King Pigeon
 
 dn: ou=Groups,dc=metabase,dc=com
 objectClass: top

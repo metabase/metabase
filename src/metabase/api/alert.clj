@@ -145,6 +145,8 @@
    archived            (s/maybe s/Bool)}
   ;; fethc the existing Alert in the DB
   (let [alert-before-update (api/check-404 (pulse/retrieve-alert id))]
+    (assert (:card alert-before-update)
+            (tru "Invalid Alert: Alert does not have a Card associated with it"))
     ;; check permissions as needed.
     ;; Check permissions to update existing Card
     (api/write-check Card (u/get-id (:card alert-before-update)))

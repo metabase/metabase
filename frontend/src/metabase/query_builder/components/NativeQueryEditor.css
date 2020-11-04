@@ -51,3 +51,34 @@
 .NativeQueryEditor .ace_editor .ace_gutter {
   background-color: var(--color-bg-light);
 }
+
+/* ace UI element styling */
+
+/* overall dropdown */
+.ace_editor.ace_autocomplete {
+  border: none;
+  box-shadow: 0 2px 3px 2px rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  background-color: white;
+  color: #4c5773;
+}
+
+.ace_editor.ace_autocomplete .ace_marker-layer .ace_active-line,
+.ace_editor.ace_autocomplete .ace_marker-layer .ace_line-hover {
+  background-color: var(--color-brand-light);
+  border: none;
+  outline: none;
+}
+
+.ace_completion-highlight {
+  color: var(--color-brand);
+}
+
+.ace_editor.ace_autocomplete .ace_line {
+  font-weight: bold;
+  padding-left: 4px;
+}
+
+.ace_editor.ace_autocomplete .ace_completion-meta {
+  font-weight: 400;
+}

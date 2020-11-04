@@ -1,8 +1,9 @@
 import {
   signInAsAdmin,
   restore,
-  popover,
   openOrdersTable,
+  version,
+  popover,
 } from "__support__/cypress";
 
 describe("scenarios > admin > settings", () => {
@@ -78,9 +79,14 @@ describe("scenarios > admin > settings", () => {
         .parent()
         .find("input");
 
+    // extremely ugly hack because nothing else worked
+    // for some reason, Cypress failed to clear this field quite often disrupting our CI
     emailInput()
       .click()
       .clear()
+      .type("abc", { delay: 50 })
+      .clear()
+      .click()
       .type("other.email@metabase.com")
       .blur();
     cy.wait("@saveSettings");
@@ -90,12 +96,9 @@ describe("scenarios > admin > settings", () => {
     emailInput().should("have.value", "other.email@metabase.com");
 
     // reset the email
-    emailInput()
-      .click()
-      .clear()
-      .type("bob@metabase.com")
-      .blur();
-    cy.wait("@saveSettings");
+    cy.request("PUT", "/api/setting/admin-email", {
+      value: "bob@metabase.com",
+    });
   });
 
   it("should check for working https before enabling a redirect", () => {
@@ -172,94 +175,96 @@ describe("scenarios > admin > settings", () => {
     cy.contains(/^February 11, 2019, 9:40 PM$/);
   });
 
-  describe(" > embedding settings", () => {
-    it("should validate a premium embedding token has a valid format", () => {
-      cy.server();
-      cy.route("PUT", "/api/setting/premium-embedding-token").as(
-        "saveEmbeddingToken",
-      );
-
-      cy.visit("/admin/settings/embedding_in_other_applications");
-      cy.contains("Premium embedding");
-      cy.contains("Enter a token").click();
-
-      // Try an invalid token format
-      cy.contains("Enter the token")
-        .next()
-        .type("Hi")
-        .blur();
-      cy.wait("@saveEmbeddingToken").then(({ response }) => {
-        expect(response.body).to.equal(
-          "Token format is invalid. Token should be 64 hexadecimal characters.",
+  if (version.edition !== "enterprise") {
+    describe(" > embedding settings", () => {
+      it("should validate a premium embedding token has a valid format", () => {
+        cy.server();
+        cy.route("PUT", "/api/setting/premium-embedding-token").as(
+          "saveEmbeddingToken",
         );
+
+        cy.visit("/admin/settings/embedding_in_other_applications");
+        cy.contains("Premium embedding");
+        cy.contains("Enter a token").click();
+
+        // Try an invalid token format
+        cy.contains("Enter the token")
+          .next()
+          .type("Hi")
+          .blur();
+        cy.wait("@saveEmbeddingToken").then(({ response }) => {
+          expect(response.body).to.equal(
+            "Token format is invalid. Token should be 64 hexadecimal characters.",
+          );
+        });
+        cy.contains("Token format is invalid.");
       });
-      cy.contains("Token format is invalid.");
-    });
 
-    it("should validate a premium embedding token exists", () => {
-      cy.server();
-      cy.route("PUT", "/api/setting/premium-embedding-token").as(
-        "saveEmbeddingToken",
-      );
-
-      cy.visit("/admin/settings/embedding_in_other_applications");
-      cy.contains("Premium embedding");
-      cy.contains("Enter a token").click();
-
-      // Try a valid format, but an invalid token
-      cy.contains("Enter the token")
-        .next()
-        .type(
-          "11397b1e60cfb1372f2f33ac8af234a15faee492bbf5c04d0edbad76da3e614a",
-        )
-        .blur();
-      cy.wait("@saveEmbeddingToken").then(({ response }) => {
-        expect(response.body).to.equal(
-          "Unable to validate token: 404 not found.",
+      it("should validate a premium embedding token exists", () => {
+        cy.server();
+        cy.route("PUT", "/api/setting/premium-embedding-token").as(
+          "saveEmbeddingToken",
         );
+
+        cy.visit("/admin/settings/embedding_in_other_applications");
+        cy.contains("Premium embedding");
+        cy.contains("Enter a token").click();
+
+        // Try a valid format, but an invalid token
+        cy.contains("Enter the token")
+          .next()
+          .type(
+            "11397b1e60cfb1372f2f33ac8af234a15faee492bbf5c04d0edbad76da3e614a",
+          )
+          .blur();
+        cy.wait("@saveEmbeddingToken").then(({ response }) => {
+          expect(response.body).to.equal(
+            "Unable to validate token: 404 not found.",
+          );
+        });
+        cy.contains("Unable to validate token: 404 not found.");
       });
-      cy.contains("Unable to validate token: 404 not found.");
-    });
 
-    it("should be able to set a premium embedding token", () => {
-      // A random embedding token with valid format
-      const embeddingToken =
-        "11397b1e60cfb1372f2f33ac8af234a15faee492bbf5c04d0edbad76da3e614a";
+      it("should be able to set a premium embedding token", () => {
+        // A random embedding token with valid format
+        const embeddingToken =
+          "11397b1e60cfb1372f2f33ac8af234a15faee492bbf5c04d0edbad76da3e614a";
 
-      cy.server();
-      cy.route({
-        method: "PUT",
-        url: "/api/setting/premium-embedding-token",
-        response: embeddingToken,
-      }).as("saveEmbeddingToken");
+        cy.server();
+        cy.route({
+          method: "PUT",
+          url: "/api/setting/premium-embedding-token",
+          response: embeddingToken,
+        }).as("saveEmbeddingToken");
 
-      cy.visit("/admin/settings/embedding_in_other_applications");
-      cy.contains("Premium embedding");
-      cy.contains("Enter a token").click();
+        cy.visit("/admin/settings/embedding_in_other_applications");
+        cy.contains("Premium embedding");
+        cy.contains("Enter a token").click();
 
-      cy.route("GET", "/api/session/properties").as("getSessionProperties");
-      cy.route({
-        method: "GET",
-        url: "/api/setting",
-        response: [
-          { key: "enable-embedding", value: true },
-          { key: "embedding-secret-key", value: embeddingToken },
-          { key: "premium-embedding-token", value: embeddingToken },
-        ],
-      }).as("getSettings");
+        cy.route("GET", "/api/session/properties").as("getSessionProperties");
+        cy.route({
+          method: "GET",
+          url: "/api/setting",
+          response: [
+            { key: "enable-embedding", value: true },
+            { key: "embedding-secret-key", value: embeddingToken },
+            { key: "premium-embedding-token", value: embeddingToken },
+          ],
+        }).as("getSettings");
 
-      cy.contains("Enter the token")
-        .next()
-        .type(embeddingToken)
-        .blur();
-      cy.wait("@saveEmbeddingToken").then(({ response }) => {
-        expect(response.body).to.equal(embeddingToken);
+        cy.contains("Enter the token")
+          .next()
+          .type(embeddingToken)
+          .blur();
+        cy.wait("@saveEmbeddingToken").then(({ response }) => {
+          expect(response.body).to.equal(embeddingToken);
+        });
+        cy.wait("@getSessionProperties");
+        cy.wait("@getSettings");
+        cy.contains("Premium embedding enabled");
       });
-      cy.wait("@getSessionProperties");
-      cy.wait("@getSettings");
-      cy.contains("Premium embedding enabled");
     });
-  });
+  }
 
   describe(" > email settings", () => {
     it("should be able to save email settings", () => {

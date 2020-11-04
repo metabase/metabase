@@ -134,7 +134,7 @@ export function seriesSetting({
       widget: "toggle",
       getHidden: (single, seriesSettings, { settings, series }) =>
         series.length <= 1 || // no need to show series-level control if there's only one series
-        !settings.hasOwnProperty("graph.show_values") || // don't show it unless this chart has a global setting
+        !Object.prototype.hasOwnProperty.call(settings, "graph.show_values") || // don't show it unless this chart has a global setting
         settings["stackable.stack_type"], // hide series controls if the chart is stacked
       getDefault: (single, seriesSettings, { settings }) =>
         settings["graph.show_values"],

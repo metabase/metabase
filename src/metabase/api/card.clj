@@ -523,7 +523,6 @@
           (reverse (range starting-position (+ (count sorted-cards) starting-position)))
           (reverse sorted-cards)))))
 
-
 (defn- move-cards-to-collection! [new-collection-id-or-nil card-ids]
   ;; if moving to a collection, make sure we have write perms for it
   (when new-collection-id-or-nil

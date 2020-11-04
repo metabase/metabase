@@ -22,6 +22,11 @@ import "metabase/lib/colors";
 // NOTE: this loads all builtin plugins
 import "metabase/plugins/builtin";
 
+// This is conditionally aliased in the webpack config.
+// If EE isn't enabled, it loads an empty file.
+// $FlowFixMe
+import "ee-plugins"; // eslint-disable-line import/no-unresolved
+
 import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
 
 import registerVisualizations from "metabase/visualizations/register";
