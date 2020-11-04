@@ -23,7 +23,6 @@ import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
 import Button from "metabase/components/Button";
 import Card from "metabase/components/Card";
-import EmptyState from "metabase/components/EmptyState";
 import EntityMenu from "metabase/components/EntityMenu";
 import EntityItem from "metabase/components/EntityItem";
 import { Grid, GridItem } from "metabase/components/Grid";
@@ -38,7 +37,7 @@ import BulkActionBar from "metabase/components/BulkActionBar";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-// import CollectionEmptyState from "metabase/components/CollectionEmptyState";
+import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 // import CollectionList from "metabase/components/CollectionList";
 
 // drag-and-drop components
@@ -48,50 +47,8 @@ import PinPositionDropTarget from "metabase/containers/dnd/PinPositionDropTarget
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 
-// import CollectionEmptyState from "metabase/components/CollectionEmptyState";
-// import CollectionList from "metabase/components/CollectionList";
-
 const ANALYTICS_CONTEXT = "Collection Landing";
 const ROW_HEIGHT = 72;
-
-const EmptyStateWrapper = ({ children }) => (
-  <Box p={5} w={1} h={"200px"}>
-    {children}
-  </Box>
-);
-
-const DashboardEmptyState = () => (
-  <EmptyStateWrapper>
-    <EmptyState
-      message={t`Dashboards let you collect and share data in one place.`}
-      illustrationElement={<Icon name="dashboard" size={32} />}
-    />
-  </EmptyStateWrapper>
-);
-
-const PulseEmptyState = () => (
-  <EmptyStateWrapper>
-    <EmptyState
-      message={t`Pulses let you send out the latest data to your team on a schedule via email or slack.`}
-      illustrationElement={<Icon name="pulse" size={32} />}
-    />
-  </EmptyStateWrapper>
-);
-
-const QuestionEmptyState = () => (
-  <EmptyStateWrapper>
-    <EmptyState
-      message={t`Questions are a saved look at your data.`}
-      illustrationElement={<Icon name="beaker" size={32} />}
-    />
-  </EmptyStateWrapper>
-);
-
-const EMPTY_STATES = {
-  dashboard: <DashboardEmptyState />,
-  pulse: <PulseEmptyState />,
-  card: <QuestionEmptyState />,
-};
 
 @Search.loadList({
   query: (state, props) => ({ collection: props.collectionId }),
@@ -347,7 +304,7 @@ export default class CollectionContent extends React.Component {
               </PinDropTarget>
             ) : (
               <Box>
-                {location.query.type && EMPTY_STATES[location.query.type]}
+                <CollectionEmptyState />
                 <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
                   {({ hovered }) => (
                     <div
