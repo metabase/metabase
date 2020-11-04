@@ -282,6 +282,10 @@ class DefaultLanding extends React.Component {
                           {t`Collections`}
                         </CollectionSectionHeading>
                       </Box>
+                      <Collection.ListLoader>
+                        {({ list }) => <CollectionsList collections={list} />}
+                      </Collection.ListLoader>
+                      {/*
                       <CollectionList
                         analyticsContext={ANALYTICS_CONTEXT}
                         currentCollection={collection}
@@ -289,6 +293,7 @@ class DefaultLanding extends React.Component {
                         isRoot={collectionId === "root"}
                         w={collectionGridSize}
                       />
+                      */}
                     </Box>
                   </GridItem>
                   {collectionHasItems && (
@@ -744,5 +749,20 @@ class CollectionCopyEntityModal extends React.Component {
     );
   }
 }
+
+const CollectionsList = ({ collections, isOpen }) => (
+  <Box>
+    {collections.map(c => (
+      <Box>
+        <Link className="link" my={2} to={Urls.collection(c.id)}>
+          {c.name}
+        </Link>
+        <Box ml="8px">
+          {c.children && <CollectionsList collections={c.children} />}
+        </Box>
+      </Box>
+    ))}
+  </Box>
+);
 
 export default CollectionLanding;
