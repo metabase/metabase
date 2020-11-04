@@ -292,7 +292,7 @@ const forms = {
         name: "refingerprint",
         type: "boolean",
         title: t`Periodically refingerprint tables`,
-        description: t`Metabase will scan a subset of values of fields to gather statistics to make your Metabase instance smarter.`,
+        description: t`When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter.`,
         hidden: !engine,
       },
       { name: "is_full_sync", type: "hidden" },
