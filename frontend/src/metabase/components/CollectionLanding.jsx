@@ -277,11 +277,13 @@ class DefaultLanding extends React.Component {
                 <Grid>
                   <GridItem w={collectionWidth}>
                     <Box pr={2} className="relative">
-                      <Box py={2}>
-                        <CollectionSectionHeading>
-                          {t`Collections`}
-                        </CollectionSectionHeading>
-                      </Box>
+                      <Link
+                        className="link block text-bold"
+                        to={Urls.collection("root")}
+                        mb={2}
+                      >
+                        Our analytics
+                      </Link>
                       <Collection.ListLoader>
                         {({ list }) => (
                           <CollectionsList
