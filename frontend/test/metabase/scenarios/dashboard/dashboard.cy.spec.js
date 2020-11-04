@@ -116,13 +116,21 @@ describe("scenarios > dashboard", () => {
           filter: [">", ["field-literal", "sum", "type/Float"], 100],
           query: {
             "source-table": 2,
-            aggregation: [["sum", ORDERS.TOTAL]],
+            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
             breakout: [
-              ["datetime-field", ORDERS.CREATED_AT, "day"],
-              ["fk->", ORDERS.PRODUCT_ID, PRODUCTS.ID],
-              ["fk->", ORDERS.PRODUCT_ID, PRODUCTS.CATEGORY],
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.ID],
+              ],
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.CATEGORY],
+              ],
             ],
-            filter: ["=", ORDERS.USER_ID, 1],
+            filter: ["=", ["field-id", ORDERS.USER_ID], 1],
           },
           type: "query",
         },
