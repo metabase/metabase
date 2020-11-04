@@ -234,43 +234,23 @@ class DefaultLanding extends React.Component {
                     </Box>
                   </GridItem>
                   <GridItem w={itemWidth} bg="white">
-                    <Flex align="center" pt={2} pb={3} px={4}>
-                      <Box>
-                        <Box mb={1}>
-                          <BrowserCrumbs
-                            analyticsContext={ANALYTICS_CONTEXT}
-                            crumbs={[
-                              ...ancestors.map(ancestor => ({
-                                title: (
-                                  <CollectionDropTarget
-                                    collection={ancestor}
-                                    margin={8}
-                                  >
-                                    {ancestor.name}
-                                  </CollectionDropTarget>
-                                ),
-                                to: Urls.collection(ancestor.id),
-                              })),
-                            ]}
-                          />
-                        </Box>
-                        <Flex align="center">
-                          <PageHeading className="text-wrap">
-                            {collection.name}
-                          </PageHeading>
-                          {collection.description && (
-                            <Tooltip tooltip={collection.description}>
-                              <Icon
-                                name="info"
-                                ml={1}
-                                mt="4px"
-                                color={color("bg-dark")}
-                                hover={{ color: color("brand") }}
-                              />
-                            </Tooltip>
-                          )}
-                        </Flex>
-                      </Box>
+                    <Flex align="center" pt={2} pb={3}>
+                      <Flex align="center">
+                        <PageHeading className="text-wrap">
+                          {collection.name}
+                        </PageHeading>
+                        {collection.description && (
+                          <Tooltip tooltip={collection.description}>
+                            <Icon
+                              name="info"
+                              ml={1}
+                              mt="4px"
+                              color={color("bg-dark")}
+                              hover={{ color: color("brand") }}
+                            />
+                          </Tooltip>
+                        )}
+                      </Flex>
 
                       <Flex ml="auto">
                         {isAdmin && !collection.personal_owner_id && (
