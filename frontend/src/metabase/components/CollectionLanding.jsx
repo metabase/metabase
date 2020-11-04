@@ -273,67 +273,6 @@ class DefaultLanding extends React.Component {
           </Flex>
           <Box>
             <Box>
-              {collectionHasPins ? (
-                <Box px={PAGE_PADDING} pt={2} pb={3} bg={color("bg-medium")}>
-                  <CollectionSectionHeading>{t`Pins`}</CollectionSectionHeading>
-                  <PinDropTarget
-                    pinIndex={pinned[pinned.length - 1].collection_position + 1}
-                    noDrop
-                    marginLeft={8}
-                    marginRight={8}
-                  >
-                    <Grid>
-                      {pinned.map((item, index) => (
-                        <GridItem
-                          w={[1, 1 / 3]}
-                          className="relative"
-                          key={index}
-                        >
-                          <ItemDragSource item={item} collection={collection}>
-                            <PinnedItem
-                              key={`${item.model}:${item.id}`}
-                              index={index}
-                              item={item}
-                              collection={collection}
-                            />
-                            <PinPositionDropTarget
-                              pinIndex={item.collection_position}
-                              left
-                            />
-                            <PinPositionDropTarget
-                              pinIndex={item.collection_position + 1}
-                              right
-                            />
-                          </ItemDragSource>
-                        </GridItem>
-                      ))}
-                      {pinned.length % 2 === 1 ? (
-                        <GridItem w={1 / 4} className="relative">
-                          <PinPositionDropTarget
-                            pinIndex={
-                              pinned[pinned.length - 1].collection_position + 1
-                            }
-                          />
-                        </GridItem>
-                      ) : null}
-                    </Grid>
-                  </PinDropTarget>
-                </Box>
-              ) : (
-                <PinDropTarget pinIndex={1} hideUntilDrag>
-                  {({ hovered }) => (
-                    <div
-                      className={cx(
-                        "p2 flex layout-centered",
-                        hovered ? "text-brand" : "text-light",
-                      )}
-                    >
-                      <Icon name="pin" mr={1} />
-                      {t`Drag something here to pin it to the top`}
-                    </div>
-                  )}
-                </PinDropTarget>
-              )}
               <Box pt={[1, 2]} px={[2, 4]}>
                 <Grid>
                   <GridItem w={collectionWidth}>
@@ -354,6 +293,78 @@ class DefaultLanding extends React.Component {
                   </GridItem>
                   {collectionHasItems && (
                     <GridItem w={itemWidth}>
+                      {collectionHasPins ? (
+                        <Box
+                          px={PAGE_PADDING}
+                          pt={2}
+                          pb={3}
+                          bg={color("bg-medium")}
+                        >
+                          <CollectionSectionHeading>{t`Pins`}</CollectionSectionHeading>
+                          <PinDropTarget
+                            pinIndex={
+                              pinned[pinned.length - 1].collection_position + 1
+                            }
+                            noDrop
+                            marginLeft={8}
+                            marginRight={8}
+                          >
+                            <Grid>
+                              {pinned.map((item, index) => (
+                                <GridItem
+                                  w={[1, 1 / 3]}
+                                  className="relative"
+                                  key={index}
+                                >
+                                  <ItemDragSource
+                                    item={item}
+                                    collection={collection}
+                                  >
+                                    <PinnedItem
+                                      key={`${item.model}:${item.id}`}
+                                      index={index}
+                                      item={item}
+                                      collection={collection}
+                                    />
+                                    <PinPositionDropTarget
+                                      pinIndex={item.collection_position}
+                                      left
+                                    />
+                                    <PinPositionDropTarget
+                                      pinIndex={item.collection_position + 1}
+                                      right
+                                    />
+                                  </ItemDragSource>
+                                </GridItem>
+                              ))}
+                              {pinned.length % 2 === 1 ? (
+                                <GridItem w={1 / 4} className="relative">
+                                  <PinPositionDropTarget
+                                    pinIndex={
+                                      pinned[pinned.length - 1]
+                                        .collection_position + 1
+                                    }
+                                  />
+                                </GridItem>
+                              ) : null}
+                            </Grid>
+                          </PinDropTarget>
+                        </Box>
+                      ) : (
+                        <PinDropTarget pinIndex={1} hideUntilDrag>
+                          {({ hovered }) => (
+                            <div
+                              className={cx(
+                                "p2 flex layout-centered",
+                                hovered ? "text-brand" : "text-light",
+                              )}
+                            >
+                              <Icon name="pin" mr={1} />
+                              {t`Drag something here to pin it to the top`}
+                            </div>
+                          )}
+                        </PinDropTarget>
+                      )}
                       <Box>
                         <ItemTypeFilterBar
                           analyticsContext={ANALYTICS_CONTEXT}
