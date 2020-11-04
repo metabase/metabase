@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
+import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -38,6 +39,16 @@ class CollectionLanding extends React.Component {
               />
             )}
           </Collection.ListLoader>
+
+          {/* TODO - need to make sure the user can create collections here */}
+          <Link
+            mt={3}
+            to={Urls.newCollection(collectionId)}
+            className="link block text-bold"
+            data-metabase-event={`Collection Landing;Collection List; New Collection Click`}
+          >
+            {t`New collection`}
+          </Link>
         </Box>
         <Box bg="white" flex={1}>
           <CollectionContent isRoot={isRoot} collectionId={collectionId} />
