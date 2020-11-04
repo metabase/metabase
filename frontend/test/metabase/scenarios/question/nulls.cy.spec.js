@@ -109,6 +109,7 @@ describe("scenarios > question > null", () => {
           cy.findByText("13626D");
 
           cy.log("**Reported failing in v0.37.0.2**");
+          // TODO: Once the issue is fixed, add a positive asssertion here
           cy.get(".DashCard").within(() => {
             cy.get(".LoadingSpinner").should("not.exist");
           });
