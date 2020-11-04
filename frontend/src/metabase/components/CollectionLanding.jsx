@@ -190,7 +190,6 @@ class DefaultLanding extends React.Component {
 
     const collectionWidth = [1, 1 / 3];
     const itemWidth = [1, 2 / 3];
-    const collectionGridSize = 1;
 
     let unpinnedItems = unpinned;
 
@@ -199,14 +198,13 @@ class DefaultLanding extends React.Component {
     }
 
     const collectionHasPins = pinned.length > 0;
-    const collectionHasItems = unpinned.length > 0;
 
     return (
       <Box>
         <Box>
           <Box>
             <Box>
-              <Box pt={[1, 2]} px={[2, 4]}>
+              <Box px={[2, 4]}>
                 <Grid>
                   <GridItem w={collectionWidth}>
                     <Box pr={2} className="relative">
@@ -235,7 +233,7 @@ class DefaultLanding extends React.Component {
                       */}
                     </Box>
                   </GridItem>
-                  <GridItem w={itemWidth}>
+                  <GridItem w={itemWidth} bg="white">
                     <Flex align="center" pt={2} pb={3} px={4}>
                       <Box>
                         <Box mb={1}>
