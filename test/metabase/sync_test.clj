@@ -199,7 +199,7 @@
                  :display_name "Studio"
                  :fields       [(field:studio-name) (field:studio-studio)]})
                studio)))))
-  (testing "stuff"
+  (testing "Returns results from sync-database step"
     (mt/with-temp Database [db {:engine ::sync-test}]
       (let [results (sync/sync-database! db)]
         (is (= ["metadata" "analyze" "field-values"]
