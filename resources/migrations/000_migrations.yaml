@@ -7722,3 +7722,25 @@ databaseChangeLog:
             tableName: core_user
             columnName: email
             newDataType: varchar_ignorecase(254)
+
+  - changeSet:
+      id: 273
+      author: camsaul
+      comment: Added 0.37.1
+      changes:
+        - addDefaultValue:
+            tableName: core_user
+            columnName: is_superuser
+            columnDataType: boolean
+            defaultValueBoolean: false
+
+  - changeSet:
+      id: 274
+      author: camsaul
+      comment: Added 0.37.1
+      changes:
+        - addDefaultValue:
+            tableName: core_user
+            columnName: is_active
+            columnDataType: boolean
+            defaultValueBoolean: true

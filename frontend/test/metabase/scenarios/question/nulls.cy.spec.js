@@ -10,7 +10,7 @@ describe("scenarios > question > null", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
-  it.skip("should display rows whose value is `null` (metabase#13571)", () => {
+  it("should display rows whose value is `null` (metabase#13571)", () => {
     withSampleDataset(({ ORDERS }) => {
       cy.request("POST", "/api/card", {
         name: "13571",
@@ -18,8 +18,8 @@ describe("scenarios > question > null", () => {
           database: 1,
           query: {
             "source-table": 2,
-            fields: [ORDERS.DISCOUNT],
-            filter: ["=", ORDERS.ID, 1],
+            fields: [["field-id", ORDERS.DISCOUNT]],
+            filter: ["=", ["field-id", ORDERS.ID], 1],
           },
           type: "query",
         },
@@ -32,7 +32,89 @@ describe("scenarios > question > null", () => {
       cy.findByText("13571").click();
 
       cy.log("**'No Results since at least v0.34.3**");
-      cy.findByText("No results!").should("not.exist");
+      cy.findByText("Discount");
+      cy.findByText("Empty");
+    });
+  });
+
+  it.skip("(metabase#13626)", () => {
+    // Preparation for the test: "Arrange and Act phase" - see repro steps in #13626
+    withSampleDataset(({ ORDERS }) => {
+      // 1. create a question
+      cy.request("POST", "/api/card", {
+        name: "13626",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": 2,
+            aggregation: [["sum", ["expression", "NewDiscount"]]],
+            breakout: [["field-id", ORDERS.ID]],
+            expressions: {
+              NewDiscount: [
+                "case",
+                [[["=", ["field-id", ORDERS.ID], 2], 0]],
+                { default: ["field-id", ORDERS.DISCOUNT] },
+              ],
+            },
+            filter: ["=", ["field-id", ORDERS.ID], 1, 2, 3],
+          },
+          type: "query",
+        },
+        display: "pie",
+        visualization_settings: {},
+      }).then(({ body: { id: questionId } }) => {
+        // 2. create a dashboard
+        cy.request("POST", "/api/dashboard", {
+          name: "13626D",
+        }).then(({ body: { id: dashboardId } }) => {
+          // add filter (ID) to the dashboard
+          cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+            parameters: [
+              {
+                id: "1f97c149",
+                name: "ID",
+                slug: "id",
+                type: "id",
+              },
+            ],
+          });
+
+          // add previously created question to the dashboard
+          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+            cardId: questionId,
+          }).then(({ body: { id: dashCardId } }) => {
+            // connect filter to that question
+            cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+              cards: [
+                {
+                  id: dashCardId,
+                  card_id: questionId,
+                  row: 0,
+                  col: 0,
+                  sizeX: 8,
+                  sizeY: 6,
+                  parameter_mappings: [
+                    {
+                      parameter_id: "1f97c149",
+                      card_id: questionId,
+                      target: ["dimension", ["field-id", ORDERS.ID]],
+                    },
+                  ],
+                },
+              ],
+            });
+          });
+          // NOTE: The actual "Assertion" phase begins here
+          cy.visit(`/dashboard/${dashboardId}?id=1`);
+          cy.findByText("13626D");
+
+          cy.log("**Reported failing in v0.37.0.2**");
+          // TODO: Once the issue is fixed, add a positive asssertion here
+          cy.get(".DashCard").within(() => {
+            cy.get(".LoadingSpinner").should("not.exist");
+          });
+        });
+      });
     });
   });
 
