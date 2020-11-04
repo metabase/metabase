@@ -3,9 +3,12 @@
    See http://www.quartz-scheduler.org/documentation/quartz-2.x/tutorials/crontrigger.html#format for details on cron
    format."
   (:require [clojure.string :as str]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :as i18n]
+             [schema :as su]]
             [schema.core :as s])
-  (:import org.quartz.CronExpression))
+  (:import net.redhogs.cronparser.CronExpressionDescriptor
+           org.quartz.CronExpression))
 
 (def CronScheduleString
   "Schema for a valid cron schedule string."
@@ -139,3 +142,8 @@
      :schedule_frame (cron-day-of-week+day-of-month->frame day-of-week day-of-month)
      :schedule_hour  (cron->hour hours)
      :schedule_type  (cron->schedule-type hours day-of-month day-of-week)}))
+
+(s/defn describe-cron-string :- su/NonBlankString
+  "Return a human-readable description of a cron expression, localized for the current User."
+  [cron-string :- CronScheduleString]
+  (CronExpressionDescriptor/getDescription ^String cron-string, ^java.util.Locale (i18n/user-locale)))

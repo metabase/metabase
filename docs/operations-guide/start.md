@@ -1,6 +1,8 @@
 # Operations Guide
 
-This guide contains detailed information about how to install and configure Metabase for production use.
+This guide contains detailed information about how to install and configure Metabase for production use. 
+
+If you'd prefer we take care of the details of running your Metabase instance for you, check out our hosted offering, [Metabase Cloud](https://www.metabase.com/start/hosted/index.html).
 
 **Covered in this guide:**
 
@@ -20,3 +22,5 @@ This guide contains detailed information about how to install and configure Meta
 *  [Configuring Logging](log-configuration.md)
 *  [How to setup monitoring via JMX](jmx-monitoring.md)
 *  [A word on Java versions](java-versions.md)
+
+For scaling best practices, check out [Metabase at Scale](https://www.metabase.com/blog/scaling-metabase/index.html).

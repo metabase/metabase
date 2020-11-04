@@ -4,7 +4,8 @@ import {
   popover,
   _typeUsingGet,
   _typeUsingPlaceholder,
-} from "../../../__support__/cypress";
+  withSampleDataset,
+} from "__support__/cypress";
 
 const customFormulas = [
   {
@@ -209,5 +210,69 @@ describe("scenarios > question > custom columns", () => {
     cy.wait("@zoom-in-dataset");
 
     cy.findByText("There was a problem with your question").should("not.exist");
+  });
+
+  it.skip("should not return same results for columns with the same name (metabase#12649)", () => {
+    // go straight to "orders" in custom questions
+    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    // join with Products
+    cy.findByText("Join data").click();
+    cy.findByText("Products").click();
+
+    // add custom column
+    cy.findByText("Custom column").click();
+    _typeUsingGet("[contenteditable='true']", "1 + 1");
+    _typeUsingPlaceholder("Something nice and descriptive", "X");
+    cy.findByText("Done").click();
+
+    cy.findByText("Visualize").click();
+
+    // wait for results to load
+    cy.get(".LoadingSpinner").should("not.exist");
+    cy.findByText("Visualize").should("not.exist");
+
+    cy.log(
+      "**Fails in 0.35.0, 0.35.1, 0.35.2, 0.35.4 and the latest master (2020-10-21)**",
+    );
+    cy.log("**Works in 0.35.3**");
+    // ID should be "1" but it is picking the product ID and is showing "14"
+    cy.get(".TableInteractive-cellWrapper--firstColumn")
+      .eq(1) // the second cell from the top in the first column (the first one is a header cell)
+      .within(() => {
+        cy.findByText("1");
+      });
+  });
+
+  it.skip("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
+    withSampleDataset(({ ORDERS }) => {
+      cy.request("POST", "/api/card", {
+        name: "13634",
+        dataset_query: {
+          database: 1,
+          query: {
+            expressions: { "Foo Bar": ["+", 57910, 1] },
+            "source-query": {
+              aggregation: [["cum-count"]],
+              breakout: [
+                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ],
+              "source-table": 2,
+            },
+          },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {},
+      }).then(({ body: { id: questionId } }) => {
+        cy.visit(`/question/${questionId}`);
+        cy.findByText("13634");
+
+        cy.log(
+          "**Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2**",
+        );
+        cy.findByText("Foo Bar");
+        cy.findAllByText("57911");
+      });
+    });
   });
 });

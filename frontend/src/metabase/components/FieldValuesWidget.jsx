@@ -178,11 +178,13 @@ export class FieldValuesWidget extends Component {
   }
 
   hasList() {
+    const nonEmptyArray = a => a && a.length > 0;
     return (
       this.shouldList() &&
       (this.useChainFilterEndpoints()
-        ? this.state.loadingState === "LOADED"
-        : this.props.fields.every(field => field.values))
+        ? this.state.loadingState === "LOADED" &&
+          nonEmptyArray(this.state.options)
+        : this.props.fields.every(field => nonEmptyArray(field.values)))
     );
   }
 

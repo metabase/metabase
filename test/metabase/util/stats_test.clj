@@ -12,6 +12,7 @@
              [query-execution :refer [QueryExecution]]]
             [metabase.test.fixtures :as fixtures]
             [metabase.util.stats :as stats-util :refer :all]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -165,20 +166,33 @@
                   PulseCard    [_ {:pulse_id (u/get-id a3), :card_id (u/get-id c)}]
                   PulseCard    [_ {:pulse_id (u/get-id a3), :card_id (u/get-id c)}]
                   PulseCard    [_ {:pulse_id (u/get-id a3), :card_id (u/get-id c)}]]
-    (is (= {:pulses               3
-            :with_table_cards     2
-            :pulse_types          {"slack" 1, "email" 2}
-            :pulse_schedules      {"daily" 2, "weekly" 1}
-            :num_pulses_per_user  {"1-5" 1}
-            :num_pulses_per_card  {"6-10" 1}
-            :num_cards_per_pulses {"1-5" 1, "6-10" 1}}
-           (#'metabase.util.stats/pulse-metrics)))
-    (is (= {:alerts               4
-            :with_table_cards     2
-            :first_time_only      1
-            :above_goal           1
-            :alert_types          {"slack" 2, "email" 2}
-            :num_alerts_per_user  {"1-5" 1}
-            :num_alerts_per_card  {"11-25" 1}
-            :num_cards_per_alerts {"1-5" 1, "6-10" 1}}
-           (#'metabase.util.stats/alert-metrics)))))
+    (letfn [(>= [n]
+              (s/pred #(clojure.core/>= % n) (format ">= %s" n)))]
+      (is (schema= {:pulses               (>= 3)
+                    :with_table_cards     (>= 2)
+                    :pulse_types          {(s/required-key "slack") (>= 1)
+                                           (s/required-key "email") (>= 2)}
+                    :pulse_schedules      {(s/required-key "daily")  (>= 2)
+                                           (s/required-key "weekly") (>= 1)}
+                    :num_pulses_per_user  {(s/required-key "1-5") (>= 1)
+                                           s/Str                  s/Any}
+                    :num_pulses_per_card  {(s/required-key "6-10") (>= 1)
+                                           s/Str                   s/Any}
+                    :num_cards_per_pulses {(s/required-key "1-5")  (>= 1)
+                                           (s/required-key "6-10") (>= 1)
+                                           s/Str                   s/Any}}
+                   (#'metabase.util.stats/pulse-metrics)))
+      (is (schema= {:alerts               (>= 4)
+                    :with_table_cards     (>= 2)
+                    :first_time_only      (>= 1)
+                    :above_goal           (>= 1)
+                    :alert_types          {(s/required-key "slack") (>= 2)
+                                           (s/required-key "email") (>= 2)}
+                    :num_alerts_per_user  {(s/required-key "1-5") (>= 1)
+                                           s/Str                  s/Any}
+                    :num_alerts_per_card  {(s/required-key "11-25") (>= 1)
+                                           s/Str                    s/Any}
+                    :num_cards_per_alerts {(s/required-key "1-5")  (>= 1)
+                                           (s/required-key "6-10") (>= 1)
+                                           s/Str                   s/Any}}
+                   (#'metabase.util.stats/alert-metrics))))))

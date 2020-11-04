@@ -12,6 +12,7 @@
              [interface :as i]
              [permissions :as perms :refer [Permissions]]]
             [metabase.models.collection.root :as collection.root]
+            [metabase.public-settings.metastore :as settings.metastore]
             [metabase.util :as u]
             [metabase.util
              [i18n :as ui18n :refer [trs tru]]
@@ -816,8 +817,8 @@
                      (db/select-one [Collection :id :namespace] :id (collection-or-id))
                      collection-or-id)]
     ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
-    ;; This code differs slightly in EE. We need to reconcile this when we do repo unification.
-    (if (= (u/qualified-name (:namespace collection)) "snippets")
+    (if (and (= (u/qualified-name (:namespace collection)) "snippets")
+             (not (settings.metastore/enable-enhancements?)))
       #{}
       ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
       ;; name) but if you have write perms you can add/remove cards

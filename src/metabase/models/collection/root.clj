@@ -2,6 +2,7 @@
   (:require [metabase.models
              [interface :as i]
              [permissions :as perms]]
+            [metabase.public-settings.metastore :as settings.metastore]
             [metabase.util :as u]
             [potemkin.types :as p.types]
             [toucan.models :as models]))
@@ -19,8 +20,8 @@
 (defn- has-perms? [collection read-or-write]
   {:pre [(map? collection)]}
   ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
-  ;; This code differs slightly in EE. We need to reconcile this when we do repo unification.
-  (if (= (u/qualified-name (:namespace collection)) "snippets")
+  (if (and (= (u/qualified-name (:namespace collection)) "snippets")
+           (not (settings.metastore/enable-enhancements?)))
     #{}
     #{((case read-or-write
          :read  perms/collection-read-path

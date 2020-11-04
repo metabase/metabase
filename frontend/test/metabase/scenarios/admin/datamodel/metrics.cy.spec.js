@@ -155,12 +155,10 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.contains("Result: 18703");
 
       // update name and description, set a revision note, and save the update
-      cy.get('[name="name"]')
-        .clear()
-        .type("orders >10");
-      cy.get('[name="description"]')
-        .clear()
-        .type("Count of orders with a total over $10.");
+      cy.get('[name="name"]').type("{selectall}orders >10");
+      cy.get('[name="description"]').type(
+        "{selectall}Count of orders with a total over $10.",
+      );
       cy.get('[name="revision_message"]').type("time for a change");
       cy.contains("Save changes").click();
 
@@ -204,8 +202,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
         cy.findByText("Custom Expression").click();
         cy.get("[contenteditable='true']")
           .click()
-          .clear()
-          .type("Sum([Discount] * [Quantity])", { delay: 100 });
+          .type("{selectall}Sum([Discount] * [Quantity])", { delay: 100 });
         cy.findByPlaceholderText("Name (required)")
           .click()
           .type("CE", { delay: 100 });

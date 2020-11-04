@@ -70,7 +70,8 @@ export default class Select extends Component {
     const _getValue = props =>
       // If a defaultValue is passed, replace a null value with it.
       // Otherwise, allow null values since we sometimes want them.
-      props.hasOwnProperty("defaultValue") && props.value == null
+      Object.prototype.hasOwnProperty.call(props, "defaultValue") &&
+      props.value == null
         ? props.defaultValue
         : props.value;
 

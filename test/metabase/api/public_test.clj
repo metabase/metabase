@@ -40,7 +40,8 @@
 
 (defmacro ^:private with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
   `(let [dashboard-settings# (merge
-                              {:parameters [{:name    "Venue ID"
+                              {:parameters [{:id      "_VENUE_ID_"
+                                             :name    "Venue ID"
                                              :slug    "venue_id"
                                              :type    "id"
                                              :target  [:dimension (mt/id :venues :id)]
@@ -109,8 +110,8 @@
                                                                    :widget-type  "category"
                                                                    :required     true}}}}}]
     (is (= {(mt/id :categories :name) {:values                75
-                                         :human_readable_values {}
-                                         :field_id              (mt/id :categories :name)}}
+                                       :human_readable_values []
+                                       :field_id              (mt/id :categories :name)}}
            (-> (:param_values (#'public-api/public-card :id (u/get-id card)))
                (update-in [(mt/id :categories :name) :values] count)
                (update (mt/id :categories :name) #(into {} %)))))))
@@ -152,16 +153,16 @@
 
         (testing ":json download response format"
           (is (= [{:Count 100}]
-                 (http/client :get 202 (str "public/card/" uuid "/query/json")))))
+                 (http/client :get 200 (str "public/card/" uuid "/query/json")))))
 
         (testing ":csv download response format"
           (is (= "Count\n100\n"
-                 (http/client :get 202 (str "public/card/" uuid "/query/csv"), :format :csv))))
+                 (http/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv))))
 
         (testing ":xlsx download response format"
           (is (= [{:col "Count"} {:col 100.0}]
                  (parse-xlsx-response
-                  (http/client :get 202 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})))))))))
+                  (http/client :get 200 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})))))))))
 
 (deftest execute-public-card-as-user-without-perms-test
   (testing "A user that doesn't have permissions to run the query normally should still be able to run a public Card as if they weren't logged in"
@@ -179,9 +180,13 @@
 (deftest check-that-we-can-exec-a-publiccard-with---parameters-
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
-      (is (= [{:name "Venue ID", :slug "venue_id", :type "id", :value 2}]
+      (is (= [{:id "_VENUE_ID_", :name "Venue ID", :slug "venue_id", :type "id", :value 2}]
              (get-in (http/client :get 202 (str "public/card/" uuid "/query")
-                                  :parameters (json/encode [{:name "Venue ID", :slug "venue_id", :type "id", :value 2}]))
+                                  :parameters (json/encode [{:id    "_VENUE_ID_"
+                                                             :name  "Venue ID"
+                                                             :slug  "venue_id"
+                                                             :type  "id"
+                                                             :value 2}]))
                      [:json_query :parameters]))))))
 
 ;; Cards with required params
@@ -236,8 +241,9 @@
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (mt/with-temp Card [{uuid :public_uuid} (card-with-date-field-filter)]
       (is (= "count\n107\n"
-             (http/client :get 202 (str "public/card/" uuid "/query/csv")
-                          :parameters (json/encode [{:type   :date/quarter-year
+             (http/client :get 200 (str "public/card/" uuid "/query/csv")
+                          :parameters (json/encode [{:id     "_DATE_"
+                                                     :type   :date/quarter-year
                                                      :target [:dimension [:template-tag :date]]
                                                      :value  "Q1-2014"}])))))))
 
@@ -249,8 +255,9 @@
       (binding [http/*url-prefix* (str/replace http/*url-prefix* #"/api/$" "/")]
         (mt/with-temporary-setting-values [site-url http/*url-prefix*]
           (is (= "count\n107\n"
-                 (http/client :get 202 (str "public/question/" uuid ".csv")
-                              :parameters (json/encode [{:type   :date/quarter-year
+                 (http/client :get 200 (str "public/question/" uuid ".csv")
+                              :parameters (json/encode [{:id     "_DATE_"
+                                                         :type   :date/quarter-year
                                                          :target [:dimension [:template-tag :date]]
                                                          :value  "Q1-2014"}])))))))))
 
@@ -350,7 +357,8 @@
                (mt/rows (http/client :get 202 (dashcard-url dash card)))))
 
         (testing "with parameters"
-          (is (= [{:name    "Venue ID"
+          (is (= [{:id      "_VENUE_ID_"
+                   :name    "Venue ID"
                    :slug    "venue_id"
                    :target  ["dimension" (mt/id :venues :id)]
                    :value   [10]
@@ -540,11 +548,11 @@
 
 (defn- price-param-values []
   {(keyword (str (mt/id :venues :price))) {:values                [1 2 3 4]
-                                             :human_readable_values {}
-                                             :field_id              (mt/id :venues :price)}})
+                                           :human_readable_values []
+                                           :field_id              (mt/id :venues :price)}})
 
 (defn- add-price-param-to-dashboard! [dashboard]
-  (db/update! Dashboard (u/get-id dashboard) :parameters [{:name "Price", :type "category", :slug "price"}]))
+  (db/update! Dashboard (u/get-id dashboard) :parameters [{:name "Price", :type "category", :slug "price", :id "_PRICE_"}]))
 
 (defn- add-dimension-param-mapping-to-dashcard! [dashcard card dimension]
   (db/update! DashboardCard (u/get-id dashcard) :parameter_mappings [{:card_id (u/get-id card)

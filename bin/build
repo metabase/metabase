@@ -2,6 +2,13 @@
 
 set -e
 
+MB_EDITION=${MB_EDITION:=oss}
+
+if [ "$MB_EDITION" != ee ] && [ "$MB_EDITION" != oss ]; then
+    echo "MB_EDITION must be either 'ee' or 'oss'."
+    exit 1
+fi
+
 # Generate the resources/version.properties file
 version() {
     VERSION_INFO=$(./bin/version)
@@ -48,8 +55,9 @@ drivers() {
 }
 
 uberjar() {
-    echo "Running 'lein uberjar'..."
-    lein clean && lein uberjar
+    lein clean
+    echo "Running 'lein with-profile +$MB_EDITION uberjar'..."
+    lein with-profile +$MB_EDITION uberjar
 }
 
 all() {

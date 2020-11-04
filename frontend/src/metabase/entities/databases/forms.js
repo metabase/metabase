@@ -10,22 +10,22 @@ import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widg
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
 
 const DATABASE_DETAIL_OVERRIDES = {
-  "tunnel-enabled": (engine, details) => ({
+  "tunnel-enabled": (engine, details, id) => ({
     title: t`Use an SSH-tunnel for database connections`,
     description: t`Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.`,
   }),
-  "use-jvm-timezone": (engine, details) => ({
+  "use-jvm-timezone": (engine, details, id) => ({
     title: t`Use the Java Virtual Machine (JVM) timezone`,
     description: t`We suggest you leave this off unless you're doing manual timezone casting in many or most of your queries with this data.`,
   }),
-  "use-srv": (engine, details) => ({
+  "use-srv": (engine, details, id) => ({
     title: t`Use DNS SRV when connecting`,
     description: t`Using this option requires that provided host is a FQDN.  If connecting to an Atlas cluster, you might need to enable this option.  If you don't know what this means, leave this disabled.`,
   }),
-  "client-id": (engine, details) => ({
+  "client-id": (engine, details, id) => ({
     description: getClientIdDescription(engine, details),
   }),
-  "auth-code": (engine, details) => ({
+  "auth-code": (engine, details, id) => ({
     description: (
       <div>
         <div>{getAuthCodeLink(engine, details)}</div>
@@ -33,8 +33,13 @@ const DATABASE_DETAIL_OVERRIDES = {
       </div>
     ),
   }),
-  "service-account-json": (engine, details) => ({
+  "service-account-json": (engine, details, id) => ({
     validate: value => {
+      // this field is only required if this is a new entry
+      if (id) {
+        return null;
+      }
+
       if (!value) {
         return t`required`;
       }
@@ -46,22 +51,22 @@ const DATABASE_DETAIL_OVERRIDES = {
       return null;
     },
   }),
-  "tunnel-private-key": (engine, details) => ({
+  "tunnel-private-key": (engine, details, id) => ({
     title: t`SSH private key`,
     placeholder: t`Paste the contents of your ssh private key here`,
     type: "text",
   }),
-  "tunnel-private-key-passphrase": (engine, details) => ({
+  "tunnel-private-key-passphrase": (engine, details, id) => ({
     title: t`Passphrase for the SSH private key`,
   }),
-  "tunnel-auth-option": (engine, details) => ({
+  "tunnel-auth-option": (engine, details, id) => ({
     title: t`SSH Authentication`,
     options: [
       { name: t`SSH Key`, value: "ssh-key" },
       { name: t`Password`, value: "password" },
     ],
   }),
-  "ssl-cert": (engine, details) => ({
+  "ssl-cert": (engine, details, id) => ({
     title: t`Server SSL certificate chain`,
     placeholder: t`Paste the contents of the server's SSL certificate chain here`,
     type: "text",
@@ -234,7 +239,7 @@ function getFieldsForEngine(engine, details, id) {
         horizontal: field.type === "boolean",
         initial: field.default,
         readOnly: field.readOnly || false,
-        ...(overrides && overrides(engine, details)),
+        ...(overrides && overrides(engine, details, id)),
       });
     }
     return fields;

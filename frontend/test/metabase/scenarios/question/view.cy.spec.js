@@ -215,7 +215,10 @@ describe("scenarios > question > view", () => {
         .first()
         .click();
       popover().within(() => {
-        cy.findByText("Widget").click();
+        cy.findByPlaceholderText("Enter some text")
+          .click()
+          .clear()
+          .type("Widget");
         cy.findByText("Add filter").click();
       });
       cy.get(".RunButton")

@@ -51,9 +51,11 @@
     (dorun (map hformat/add-anon-param params))
     ;; strip off any trailing semicolons
     (str "(" (str/replace sql #";+\s*$" "") ")"))
+
   PrettyPrintable
   (pretty [_]
     (list 'SQLSourceQuery. sql params))
+
   Object
   (equals [_ other]
     (and (instance? SQLSourceQuery other)
@@ -640,8 +642,8 @@
 (defn- correct-null-behaviour
   [driver [op & args]]
   (let [field-arg (mbql.u/match-one args
-                    FieldInstance               &match
-                    #{:field-id :field-literal} &match)]
+                    FieldInstance                             &match
+                    #{:joined-field :field-id :field-literal} &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
     [:or (into [op] (map (partial ->honeysql driver)) args)

@@ -1,5 +1,7 @@
 (ns metabuild-common.output
-  (:require [clojure.string :as str]
+  (:require [clojure
+             [pprint :as pprint]
+             [string :as str]]
             [colorize.core :as colorize]))
 
 (def ^:dynamic *steps* [])
@@ -17,8 +19,8 @@
     (apply println args)))
 
 (defn announce
-  "Like `safe-println` + `format`, but outputs text in magenta. Use this for printing messages such as when starting
-  build steps."
+  "Like `safe-println` + `format`, but outputs text in magenta. Use this for printing messages such as when something
+  has succeeded."
   ([s]
    (safe-println (colorize/magenta s)))
 
@@ -32,3 +34,9 @@
 
   ([format-string & args]
    (error (apply format format-string args))))
+
+(defn pretty-print-exception [^Throwable e]
+  (let [e-map (Throwable->map e)]
+    (println (colorize/red (str "Step failed: " (.getMessage e))))
+    (binding [pprint/*print-right-margin* 120]
+      (pprint/pprint e-map))))

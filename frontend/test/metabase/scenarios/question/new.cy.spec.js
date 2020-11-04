@@ -113,5 +113,26 @@ describe("scenarios > question > new", () => {
         .parent()
         .contains("Reviewer");
     });
+
+    it.skip("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {
+      // Go straight to orders table in custom questions
+      cy.visit("/question/new?database=1&table=2&mode=notebook");
+
+      cy.findByText("Summarize").click();
+      popover().within(() => {
+        cy.findByText("Number of distinct values of ...").click();
+        cy.log(
+          "**Test fails at this point as there isn't an extra field next to 'Created At'**",
+        );
+        // instead of relying on DOM structure that might change
+        // (i.e. find "Created At" -> parent -> parent -> parent -> find "by month")
+        // access it directly from the known common parent
+        cy.get(".List-item")
+          .contains("by month")
+          .click({ force: true });
+      });
+      // this should be among the granular selection choices
+      cy.findByText("Hour of day").click();
+    });
   });
 });

@@ -10,6 +10,8 @@ Alternatively, you can dive right in to exploring the data in Metabase by clicki
 
 ![Browse data](./images/browse-data.png)
 
+To learn more, see [Exploring data with Metabase's data browser](https://www.metabase.com/blog/data-browser/index.html).
+
 #### Exploring collections
 
 Collections in Metabase are a lot like folders. They're where all your team's dashboards and charts are kept. To explore a collection just click on one in the "Our analytics" section of the home page, or click on `Browse all items` to see everything.

@@ -13,6 +13,7 @@
 (defmethod i/stream-options :json
   [_]
   {:content-type "application/json; charset=utf-8"
+   :status       200
    :headers      {"Content-Disposition" (format "attachment; filename=\"query_result_%s.json\""
                                                 (u.date/format (t/zoned-date-time)))}})
 

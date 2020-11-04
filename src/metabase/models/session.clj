@@ -1,23 +1,35 @@
 (ns metabase.models.session
-  (:require [metabase.util :as u]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+  (:require [buddy.core
+             [codecs :as codecs]
+             [nonce :as nonce]]
+            [metabase.middleware
+             [misc :as mw.misc]
+             [util :as mw.util]]
+            [metabase.util :as u]
+            [schema.core :as s]
+            [toucan.models :as models]))
+
+(s/defn ^:private random-anti-csrf-token :- #"^[0-9a-f]{32}$"
+  []
+  (codecs/bytes->hex (nonce/random-bytes 16)))
 
 (models/defmodel Session :core_session)
 
+(defn- pre-update [_]
+  (throw (RuntimeException. "You cannot update a Session.")))
+
 (defn- pre-insert [session]
-  (assoc session :created_at :%now))
+  (cond-> (assoc session :created_at :%now)
+    (some-> mw.misc/*request* mw.util/embedded?) (assoc :anti_csrf_token (random-anti-csrf-token))))
+
+(defn- post-insert [{anti-csrf-token :anti_csrf_token, :as session}]
+  (let [session-type (if anti-csrf-token :full-app-embed :normal)]
+    (assoc session :type session-type)))
 
 (u/strict-extend (class Session)
   models/IModel
-  (merge models/IModelDefaults
-         {:pre-insert pre-insert}))
-
-;; Persistence Functions
-
-(defn first-session-for-user
-  "Retrieves the first Session `:id` for a given user (if available), or nil otherwise."
-  ^String [user-id]
-  {:pre [(integer? user-id)]}
-  (db/select-one-id Session, :user_id user-id, {:order-by [[:created_at :asc]]}))
+  (merge
+   models/IModelDefaults
+   {:pre-insert  pre-insert
+    :post-insert post-insert
+    :pre-update  pre-update}))

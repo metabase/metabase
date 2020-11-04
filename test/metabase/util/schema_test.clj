@@ -61,3 +61,45 @@
          (s/check (su/distinct [s/Int]) [1 2])))
 
   (is (some? (s/check (su/distinct [s/Int]) [1 2 1]))))
+
+(deftest open-schema-test
+  (let [value  {:thing     3
+                :extra-key 5
+                :sub       {:key 3 :another-extra 5}}
+        schema {(s/optional-key :thing) s/Int
+                (s/optional-key :sub)   {(s/optional-key :key) s/Int}}]
+    (is (= {:sub {:another-extra 'disallowed-key}, :extra-key 'disallowed-key}
+           (s/check schema value)))
+    (is (nil? (s/check (su/open-schema schema) value))))
+  (testing "handles if there are already s/Any's"
+    (let [value  {:thing     3
+                  :extra-key 5
+                  :sub       {:key 3 :another-extra 5}}
+          schema {(s/optional-key :thing) s/Int
+                  (s/optional-key :sub)   {(s/optional-key :key) s/Int
+                                           s/Any                 s/Any}
+                  s/Any                   s/Any}]
+      (is (nil? (s/check (su/open-schema schema) value)))))
+  (testing "handles if there are already s/Any's or s/Keyword's"
+    (let [value  {:thing     3
+                  :extra-key 5
+                  :sub       {:key 3 :another-extra 5}}
+          schema {(s/optional-key :thing) s/Int
+                  (s/optional-key :sub)   {(s/optional-key :key) s/Int
+                                           s/Keyword             s/Any}
+                  s/Any                   s/Any}]
+      (is (nil? (s/check (su/open-schema schema) value)))))
+  (testing "still validates the spec-ed entries"
+    (let [value  {:thing     3.0
+                  :extra-key 5
+                  :sub       {:key 3 :another-extra 5}}
+          schema {(s/optional-key :thing) s/Int
+                  (s/optional-key :sub)   {(s/optional-key :key) s/Int}}]
+      (is (contains? (s/check (su/open-schema schema) value)
+                     :thing))))
+  (testing "if it contains a generic open entry, it is replaced with an s/Any"
+    (doseq [validator [s/Keyword s/Symbol s/Str s/Int]]
+      (let [value  {:thing 3}
+            schema {(s/optional-key :thing) s/Int
+                    validator               s/Any}]
+        (is (nil? (s/check (su/open-schema schema) (assoc value :random-thing :whatever))))))))
