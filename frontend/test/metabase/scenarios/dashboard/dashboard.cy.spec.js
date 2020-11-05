@@ -13,8 +13,7 @@ function saveDashboard() {
   cy.findByText("You're editing this dashboard.").should("not.exist");
 }
 
-// [quarantine] flaky
-describe.skip("scenarios > dashboard", () => {
+describe("scenarios > dashboard", () => {
   beforeEach(() => {
     restore();
     signInAsAdmin();
@@ -191,6 +190,10 @@ describe.skip("scenarios > dashboard", () => {
       cy.get(".Icon-ellipsis").click();
       cy.findByText("Revision history").click();
 
+      cy.get(".Modal").within(() => {
+        cy.get(".LoadingSpinner").should("not.exist");
+      });
+
       cy.findByText("What");
       cy.findByText("First revision.");
 
@@ -200,6 +203,9 @@ describe.skip("scenarios > dashboard", () => {
 
     it("should open with url", () => {
       cy.visit("/dashboard/1/history");
+      cy.get(".Modal").within(() => {
+        cy.get(".LoadingSpinner").should("not.exist");
+      });
 
       cy.findByText("Revision history");
       cy.findByText("What");
