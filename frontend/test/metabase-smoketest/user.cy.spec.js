@@ -188,7 +188,7 @@ describe("smoketest > user", () => {
     cy.findAllByText("Created At");
   });
 
-  it("should be able to create custom columns in the notebook editor", () => {
+  it.skip("should be able to create custom columns in the notebook editor", () => {
     cy.get(".Icon-notebook").click();
 
     // Delete last summary
@@ -223,7 +223,7 @@ describe("smoketest > user", () => {
     cy.findByText("Products").should("not.exist");
   });
 
-  it("should be able to use all notebook editor functions", () => {
+  it.skip("should be able to use all notebook editor functions", () => {
     // Custom JOINs
 
     cy.get(".Icon-notebook").click();
@@ -262,7 +262,7 @@ describe("smoketest > user", () => {
       .click();
   });
 
-  it("should be able to do header actions", () => {
+  it.skip("should be able to do header actions", () => {
     // Reset question
 
     cy.findAllByText("Orders")
@@ -305,7 +305,7 @@ describe("smoketest > user", () => {
     cy.findByText("Sample Dataset");
   });
 
-  it("should ensuring that header actions are appropriate for different data types", () => {
+  it.skip("should ensuring that header actions are appropriate for different data types", () => {
     // *** Currently Longitude is an integer while zip codes and dates are strings in terms of header options
     cy.findAllByText("Summarize")
       .first()
