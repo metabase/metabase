@@ -693,9 +693,11 @@ jobs:
           before-steps:
             - restore_cache:
                 keys:
-                  - uberjar-{{ checksum "./backend-checksums.txt" }}
+                  - uberjar-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}
             - run:
                 name: Generate version file
+                environment:
+                  MB_EDITION: << parameters.edition >>
                 command: ./bin/build version
       - store_artifacts:
           path: /home/circleci/metabase/metabase/cypress
