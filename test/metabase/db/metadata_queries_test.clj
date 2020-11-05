@@ -63,7 +63,6 @@
               "Did not truncate a text field")))))
 
   (testing "substring checking"
-    ;; turn off validation so we can just return the query that is emitted and check for expressions
     (with-redefs [table/database (constantly (database/map->DatabaseInstance {:id 5678}))]
       (let [table  (table/map->TableInstance {:id 1234})
             fields [(field/map->FieldInstance {:id 4321 :base_type :type/Text})]]

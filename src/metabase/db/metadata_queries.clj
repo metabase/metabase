@@ -122,8 +122,8 @@
 
   Options: a map of
   `:truncation-size`: [optional] size to truncate text fields if the driver supports expressions.
-  `:rff`: [optional] a reducing function to reduce over the result set in the the query-processor rather than
-  realizing the whole collection"
+  `:rff`: [optional] a reducing function function (a function that given initial results metadata returns a reducing
+  function) to reduce over the result set in the the query-processor rather than realizing the whole collection"
   {:style/indent 1}
   ([table :- si/TableInstance, fields :- [si/FieldInstance]]
    (table-rows-sample table fields nil))
