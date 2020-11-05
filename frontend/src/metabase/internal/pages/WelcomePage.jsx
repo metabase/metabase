@@ -1,5 +1,5 @@
 import React from "react";
-import { Box } from "grid-styled";
+import { Box, Flex } from "grid-styled";
 
 import Heading from "metabase/components/type/Heading";
 import Subhead from "metabase/components/type/Subhead";
@@ -27,7 +27,17 @@ const WelcomePage = () => {
       </Text>
 
       <Box mt={3}>
-        <ProgressBar percentage={stats.ratio * 0.01} />
+        <ProgressBar percentage={stats.ratio} />
+        <Flex align="center" mt={1}>
+          <Box>
+            <Subhead>{stats.documented}</Subhead>
+            <Text>Documented</Text>
+          </Box>
+          <Box ml={"auto"} className="text-right">
+            <Subhead>{stats.total}</Subhead>
+            <Text>Total .jsx files in /components</Text>
+          </Box>
+        </Flex>
       </Box>
     </Box>
   );
