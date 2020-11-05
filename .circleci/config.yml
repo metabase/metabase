@@ -676,6 +676,32 @@ jobs:
       - store_test_results:
           path: cypress/results
 
+  fe-tests-cypress-smoketest:
+    parameters:
+      e:
+        type: executor
+        default: clojure-and-node
+      cypress-group:
+        type: string
+    executor: << parameters.e >>
+    environment:
+      CYPRESS_GROUP:  << parameters.cypress-group >>
+    steps:
+      - run-yarn-command:
+          command-name: Run Cypress tests
+          command: run test-cypress-smoketest
+          before-steps:
+            - restore_cache:
+                keys:
+                  - uberjar-{{ checksum "./backend-checksums.txt" }}
+            - run:
+                name: Generate version file
+                command: ./bin/build version
+      - store_artifacts:
+          path: /home/circleci/metabase/metabase/cypress
+      - store_test_results:
+          path: cypress/results
+
 ########################################################################################################################
 #                                                   DEPLOYMENT, ETC.                                                   #
 ########################################################################################################################
@@ -1015,3 +1041,34 @@ workflows:
           only-single-database: true
           test-files-location: frontend/test/metabase-db/postgres
           <<: *Matrix
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 * * * *"
+          filters:
+            branches:
+              only:
+                - master
+                - /release-*/
+    jobs:
+      - checkout
+
+      - be-deps:
+          requires:
+            - checkout
+
+      - fe-deps:
+          requires:
+            - checkout
+
+      - build-uberjar:
+          requires:
+            - be-deps
+
+      - fe-tests-cypress-smoketest:
+          name: fe-tests-cypress-smoketest
+          requires:
+            - build-uberjar
+            - fe-deps
+          cypress-group: "default"
