@@ -381,7 +381,8 @@ describe("scenarios > question > notebook", () => {
         cy.log(
           "**Reported failing in v1.35.4.1 and `master` on July, 16 2020**",
         );
-        cy.findByText("12928_Q1 + 12928_Q2").click();
+        cy.findByText("12928_Q1 + 12928_Q2");
+        // TODO: Add a positive assertion once this issue is fixed
         cy.findByText("There was a problem with your question").should(
           "not.exist",
         );
