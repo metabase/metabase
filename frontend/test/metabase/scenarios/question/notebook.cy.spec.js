@@ -7,6 +7,7 @@ import {
   popover,
   modal,
   typeAndBlurUsingLabel,
+  withSampleDataset,
 } from "__support__/cypress";
 
 describe("scenarios > question > notebook", () => {
@@ -283,6 +284,108 @@ describe("scenarios > question > notebook", () => {
           // this name COULD be "normalized" to "Review - Product" instead of "Reviews - Products" - that's why we use Regex match here
           .invoke("text")
           .should("match", /reviews? - products?/i);
+      });
+    });
+
+    it.skip("should join saved questions that themselves contain joins (metabase#12928)", () => {
+      withSampleDataset(({ ORDERS, PRODUCTS, PEOPLE, REVIEWS }) => {
+        // Save Question 1
+        cy.request("POST", "/api/card", {
+          name: "12928_Q1",
+          dataset_query: {
+            database: 1,
+            query: {
+              "source-table": 2,
+              aggregation: [["count"]],
+              breakout: [
+                ["joined-field", "Products", ["field-id", PRODUCTS.CATEGORY]],
+                ["joined-field", "People - User", ["field-id", PEOPLE.SOURCE]],
+              ],
+              joins: [
+                {
+                  alias: "Products",
+                  condition: [
+                    "=",
+                    ["field-id", ORDERS.PRODUCT_ID],
+                    ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                  ],
+                  fields: "all",
+                  "source-table": 1,
+                },
+                {
+                  alias: "People - User",
+                  condition: [
+                    "=",
+                    ["field-id", ORDERS.USER_ID],
+                    ["joined-field", "People - User", ["field-id", PEOPLE.ID]],
+                  ],
+                  fields: "all",
+                  "source-table": 3,
+                },
+              ],
+            },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        });
+
+        // Save Question 2
+        cy.request("POST", "/api/card", {
+          name: "12928_Q2",
+          dataset_query: {
+            database: 1,
+            query: {
+              "source-table": 4,
+              aggregation: [["avg", ["field-id", REVIEWS.RATING]]],
+              breakout: [
+                ["joined-field", "Products", ["field-id", PRODUCTS.CATEGORY]],
+              ],
+              joins: [
+                {
+                  alias: "Products",
+                  condition: [
+                    "=",
+                    ["field-id", REVIEWS.PRODUCT_ID],
+                    ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                  ],
+                  fields: "all",
+                  "source-table": 1,
+                },
+              ],
+            },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        });
+
+        // Join two previously saved questions
+        cy.visit("/");
+        cy.findByText("Ask a question").click();
+        cy.findByText("Custom question").click();
+        cy.findByText("Saved Questions").click();
+        cy.findByText("12928_Q1").click();
+        cy.get(".Icon-join_left_outer").click();
+        popover().within(() => {
+          cy.findByText("Sample Dataset").click();
+          cy.findByText("Saved Questions").click();
+        });
+        cy.findByText("12928_Q2").click();
+        cy.contains(/Products? → Category/).click();
+        popover()
+          .contains(/Products? → Category/)
+          .click();
+        cy.findByText("Visualize").click();
+
+        cy.log(
+          "**Reported failing in v1.35.4.1 and `master` on July, 16 2020**",
+        );
+        cy.findByText("12928_Q1 + 12928_Q2");
+        // TODO: Add a positive assertion once this issue is fixed
+        cy.findByText("There was a problem with your question").should(
+          "not.exist",
+        );
       });
     });
   });

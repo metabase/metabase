@@ -7,7 +7,8 @@ import {
   sidebar,
 } from "__support__/cypress";
 
-describe("scenarios > visualizations > drillthroughs > chart drill", () => {
+// [quarantine] flaky
+describe.skip("scenarios > visualizations > drillthroughs > chart drill", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 

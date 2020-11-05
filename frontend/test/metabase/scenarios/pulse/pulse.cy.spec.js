@@ -13,7 +13,8 @@ const MOCK_PULSE_FORM_INPUT = {
   },
 };
 
-describe("scenarios > pulse", () => {
+// [quarantine] flaky
+describe.skip("scenarios > pulse", () => {
   before(restore);
   beforeEach(signInAsAdmin);
   it("should be able get to the new pulse page from a collection page", () => {
