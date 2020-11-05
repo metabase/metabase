@@ -144,3 +144,48 @@ describe("scenarios > question > nested (metabase#12568)", () => {
     cy.get(".bar").should("have.length.of.at.least", 10);
   });
 });
+
+describe("scenarios > question > nested", () => {
+  before(() => {
+    restore();
+    signInAsAdmin();
+  });
+
+  it("should handle duplicate column names in nested queries (metabase#10511)", () => {
+    withSampleDataset(({ ORDERS, PRODUCTS }) => {
+      cy.request("POST", "/api/card", {
+        name: "10511",
+        dataset_query: {
+          database: 1,
+          query: {
+            filter: [">", ["field-literal", "count", "type/Integer"], 5],
+            "source-query": {
+              "source-table": 2,
+              aggregation: [["count"]],
+              breakout: [
+                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+                [
+                  "datetime-field",
+                  [
+                    "fk->",
+                    ["field-id", ORDERS.PRODUCT_ID],
+                    ["field-id", PRODUCTS.CREATED_AT],
+                  ],
+                  "month",
+                ],
+              ],
+            },
+          },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {},
+      }).then(({ body: { id: questionId } }) => {
+        cy.visit(`/question/${questionId}`);
+        cy.findByText("10511");
+        cy.findAllByText("June, 2016");
+        cy.findAllByText("13");
+      });
+    });
+  });
+});
