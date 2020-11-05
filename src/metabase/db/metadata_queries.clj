@@ -96,28 +96,29 @@
   (s/maybe {(s/optional-key :truncation-size) s/Int
             (s/optional-key :rff)             s/Any}))
 
-(defn table-rows-sample-query
-  ([table fields {:keys [truncation-size] :as _opts}]
-   (let [driver             (-> table table/database driver.u/database->driver)
-         text-fields        (filter (comp #{:type/Text} :base_type) fields)
-         field->expressions (when (and truncation-size (driver/supports? driver :expressions))
-                              (into {} (for [field text-fields]
-                                         [field [(str (gensym "substring"))
-                                                 [:substring [:field-id (u/get-id field)] 1 truncation-size]]])))]
-     {:database   (:db_id table)
-      :type       :query
-      :query      {:source-table (u/get-id table)
-                   :expressions  (into {} (vals field->expressions))
-                   :fields       (vec (for [field fields]
-                                        (if-let [[expression-name _] (get field->expressions field)]
-                                          [:expression expression-name]
-                                          [:field-id (u/get-id field)])))
-                   :limit        max-sample-rows}
-      :middleware {:format-rows?           false
-                   :skip-results-metadata? true}})))
+(defn- table-rows-sample-query
+  "Returns the mbql query to query a table for sample rows"
+  [table fields {:keys [truncation-size] :as _opts}]
+  (let [driver             (-> table table/database driver.u/database->driver)
+        text-fields        (filter (comp #{:type/Text} :base_type) fields)
+        field->expressions (when (and truncation-size (driver/supports? driver :expressions))
+                             (into {} (for [field text-fields]
+                                        [field [(str (gensym "substring"))
+                                                [:substring [:field-id (u/get-id field)] 1 truncation-size]]])))]
+    {:database   (:db_id table)
+     :type       :query
+     :query      {:source-table (u/get-id table)
+                  :expressions  (into {} (vals field->expressions))
+                  :fields       (vec (for [field fields]
+                                       (if-let [[expression-name _] (get field->expressions field)]
+                                         [:expression expression-name]
+                                         [:field-id (u/get-id field)])))
+                  :limit        max-sample-rows}
+     :middleware {:format-rows?           false
+                  :skip-results-metadata? true}}))
 
 (s/defn table-rows-sample
-  "Run a basic MBQL query to fetch a sample of rows belonging to a Table.
+  "Run a basic MBQL query to fetch a sample of rows of FIELDS belonging to a TABLE.
 
   Options: a map of
   `:truncation-size`: [optional] size to truncate text fields if the driver supports expressions.
