@@ -48,7 +48,8 @@ describe("scenarios > auth > signin", () => {
   it("should redirect to a unsaved question after login", () => {
     signIn();
     cy.visit("/");
-    cy.contains("Browse Data").click();
+    // Browse data moved to an icon
+    cy.get(".Icon-table_spaced").click();
     cy.contains("Sample Dataset").click();
     cy.contains("Orders").click();
     cy.contains("37.65");
