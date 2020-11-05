@@ -24,7 +24,8 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     {
       name: "formatting",
       section: "formatting",
-      title: t`Formatting`,
+      buttonType: "text",
+      title: t`Formatting options…`,
       action: () =>
         showChartSettings({
           widget: {

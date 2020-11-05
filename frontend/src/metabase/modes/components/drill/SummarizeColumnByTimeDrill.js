@@ -37,7 +37,8 @@ export default ({
     )
     .map(aggregator => ({
       name: "summarize-by-time",
-      section: "sum",
+      buttonType: "large",
+      section: "summarize",
       title: (
         <span>
           {capitalize(aggregator.short)} {t`over time`}

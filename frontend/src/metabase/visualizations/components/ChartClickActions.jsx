@@ -16,6 +16,7 @@ import type {
   ClickAction,
 } from "metabase-types/types/Visualization";
 
+import cx from "classnames";
 import _ from "underscore";
 
 const SECTIONS = {
@@ -36,6 +37,9 @@ const SECTIONS = {
   },
   filter: {
     icon: "funnel_outline",
+  },
+  summarize: {
+    icon: "summarize",
   },
   sum: {
     icon: "sum",
@@ -174,20 +178,40 @@ export default class ChartClickActions extends Component {
         ) : (
           <div className="text-bold">
             {sections.map(([key, actions]) => (
-              <div key={key} className="flex align-center">
+              <div className="px2 py1">
+                {SECTIONS[key].icon == "summarize" ? (
+                  <p className="text-bold text-medium block">Summarize</p>
+                ) : null}
+                <div
+                  key={key}
+                  className={cx(
+                    "flex justify-center",
+                    {
+                      "border-top": SECTIONS[key].icon == "pencil",
+                    },
+                    {
+                      "align-center":
+                        SECTIONS[key].icon == "pencil" ||
+                        SECTIONS[key].icon == "sort",
+                    },
+                  )}
+                >
+                  {/*
                 <Icon
                   name={(SECTIONS[key] && SECTIONS[key].icon) || "unknown"}
                   className="mr1 pl2 text-medium"
                   size={16}
                 />
-                {actions.map((action, index) => (
-                  <ChartClickAction
-                    index={index}
-                    action={action}
-                    isLastItem={index === actions.length - 1}
-                    handleClickAction={this.handleClickAction}
-                  />
-                ))}
+                */}
+                  {actions.map((action, index) => (
+                    <ChartClickAction
+                      index={index}
+                      action={action}
+                      isLastItem={index === actions.length - 1}
+                      handleClickAction={this.handleClickAction}
+                    />
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -206,8 +230,13 @@ export const ChartClickAction = ({
   isLastItem: any,
   handleClickAction: any,
 }) => {
-  const className =
-    "text-small text-brand-hover cursor-pointer no-decoration p2 flex-auto";
+  const className = cx("text-small cursor-pointer no-decoration", {
+    "p1 text-brand-hover justify-evenly": action.buttonType == "text",
+    "p2 rounded flex-full bg-purple text-white":
+      action.buttonType == "horizontal",
+    "bordered rounded p1 mr1": action.buttonType == "token",
+    "p4 mr1 text-white rounded bg-brand block": action.buttonType == "large",
+  });
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
   // for now since on dashboards currently they need to go through
   // navigateToNewCardFromDashboard to merge in parameters.,

@@ -40,6 +40,7 @@ export default function QuickFilterDrill({
       name: "filter-column",
       section: "filter",
       title: t`Filter`,
+      buttonType: "horizontal",
       // eslint-disable-next-line react/display-name
       popover: ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => (
         <FilterPopover
