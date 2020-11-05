@@ -15,7 +15,7 @@ const ProgressWrapper = styled.div`
   position: relative;
   border: 1px solid ${props => props.color};
   height: 10px;
-  borderradius: 99px;
+  border-radius: 99px;
 `;
 
 const Progress = styled.div`
@@ -27,7 +27,7 @@ const Progress = styled.div`
       left: 0;
       border-radius: inherit;
       border-top-left-radius: 0;
-      borderBottomLeftRadius: 0;
+      border-bottom-left-radius: 0;
       width: ${props => props.width}%;
       ":before": {
         display: ${props => (props.animated ? "block" : "none")};
@@ -42,6 +42,7 @@ const Progress = styled.div`
       },
 `;
 
+// @Question - why is this separate from our progress Viz type?
 export default class ProgressBar extends Component {
   props: Props;
 
@@ -58,7 +59,7 @@ export default class ProgressBar extends Component {
 
     return (
       <ProgressWrapper color={color}>
-        <Progress width={width} animated={animated} />
+        <Progress width={width} animated={animated} color={color} />
       </ProgressWrapper>
     );
   }
