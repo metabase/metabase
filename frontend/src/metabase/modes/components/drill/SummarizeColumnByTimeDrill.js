@@ -39,6 +39,7 @@ export default ({
       name: "summarize-by-time",
       buttonType: "large",
       section: "summarize",
+      icon: "line",
       title: (
         <span>
           {capitalize(aggregator.short)} {t`over time`}

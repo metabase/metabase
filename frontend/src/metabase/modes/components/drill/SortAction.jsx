@@ -41,6 +41,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       section: "sort",
       buttonType: "text",
       title: t`Ascending`,
+      icon: "expand_arrow",
       question: () => query.replaceSort(["asc", fieldRef]).question(),
     });
   }
@@ -50,6 +51,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       section: "sort",
       buttonType: "text",
       title: t`Descending`,
+      icon: "expand_arrow",
       question: () => query.replaceSort(["desc", fieldRef]).question(),
     });
   }

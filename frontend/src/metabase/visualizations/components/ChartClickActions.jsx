@@ -178,21 +178,23 @@ export default class ChartClickActions extends Component {
         ) : (
           <div className="text-bold">
             {sections.map(([key, actions]) => (
-              <div className="px2 py1">
-                {SECTIONS[key].icon == "summarize" ? (
-                  <p className="text-bold text-medium block">Summarize</p>
-                ) : null}
+              <div className="px2 pb1">
+                {SECTIONS[key].icon === "summarize" && (
+                  <p className="text-bold text-medium text-small block">
+                    Summarize
+                  </p>
+                )}
                 <div
                   key={key}
                   className={cx(
                     "flex justify-center",
                     {
-                      "border-top": SECTIONS[key].icon == "pencil",
+                      "border-top": SECTIONS[key].icon === "pencil",
                     },
                     {
                       "align-center":
-                        SECTIONS[key].icon == "pencil" ||
-                        SECTIONS[key].icon == "sort",
+                        SECTIONS[key].icon === "pencil" ||
+                        SECTIONS[key].icon === "sort",
                     },
                   )}
                 >
@@ -231,11 +233,13 @@ export const ChartClickAction = ({
   handleClickAction: any,
 }) => {
   const className = cx("text-small cursor-pointer no-decoration", {
-    "p1 text-brand-hover justify-evenly": action.buttonType == "text",
-    "p2 rounded flex-full bg-purple text-white":
-      action.buttonType == "horizontal",
-    "bordered rounded p1 mr1": action.buttonType == "token",
-    "p4 mr1 text-white rounded bg-brand block": action.buttonType == "large",
+    "px2 pt2 pb1 text-brand-hover justify-evenly": action.buttonType === "text",
+    "p2 rounded flex-full bg-light bg-brand-hover text-brand text-white-hover":
+      action.buttonType === "horizontal",
+    "bordered border-brand circular text-brand bg-brand-hover text-white-hover px2 py1 mr1":
+      action.buttonType === "token",
+    "px2 pt2 pb2 mr1 text-brand text-white-hover rounded bg-light bg-brand-hover":
+      action.buttonType === "large",
   });
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
   // for now since on dashboards currently they need to go through
@@ -250,23 +254,51 @@ export const ChartClickAction = ({
   // } else
   if (action.url) {
     return (
-      <Link
-        to={action.url()}
-        className={className}
-        onClick={() =>
-          MetabaseAnalytics.trackEvent(
-            "Actions",
-            "Executed Click Action",
-            getGALabelForAction(action),
-          )
-        }
-      >
-        {action.title}
-      </Link>
+      <div>
+        <Link
+          to={action.url()}
+          className={className}
+          onClick={() =>
+            MetabaseAnalytics.trackEvent(
+              "Actions",
+              "Executed Click Action",
+              getGALabelForAction(action),
+            )
+          }
+        >
+          {action.title}
+        </Link>
+      </div>
     );
   } else {
     return (
-      <div className={className} onClick={() => handleClickAction(action)}>
+      <div
+        className={cx(
+          className,
+          {
+            "flex flex-column align-center": action.buttonType === "large",
+          },
+          {
+            "flex flex-row justify-center":
+              action.buttonType === "text" ||
+              action.buttonType === "horizontal",
+          },
+        )}
+        onClick={() => handleClickAction(action)}
+      >
+        {action.icon && (
+          <Icon
+            className={cx(
+              "flex",
+              {
+                mr1: action.buttonType !== "large",
+              },
+              { mb1: action.buttonType === "large" },
+            )}
+            size={action.buttonType === "large" ? 20 : 12}
+            name={action.icon}
+          />
+        )}
         {action.title}
       </div>
     );
