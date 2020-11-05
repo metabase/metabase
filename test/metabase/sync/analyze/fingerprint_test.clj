@@ -119,63 +119,84 @@
 
 ;; Make sure that the above functions are used correctly to determine which Fields get (re-)fingerprinted
 (defn- field-was-fingerprinted? {:style/indent 0} [fingerprint-versions field-properties]
-  (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted fingerprint-versions]
-    (tt/with-temp* [Table [table]
-                    Field [field (assoc field-properties :table_id (u/get-id table))]]
-      (contains? (set (#'fingerprint/fields-to-fingerprint table)) field))))
+  (let [fingerprinted? (atom false)]
+    (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted fingerprint-versions
+                  qp/process-query                                             (fn [_ {:keys [rff]}]
+                                                                                 (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
+                  fingerprint/save-fingerprint!                                (fn [& _] (reset! fingerprinted? true))]
+      (tt/with-temp* [Table [table]
+                      Field [_ (assoc field-properties :table_id (u/get-id table))]]
+        [(fingerprint/fingerprint-fields! table)
+         @fingerprinted?]))))
+
+(def ^:private default-stat-map
+  {:no-data-fingerprints 0, :failed-fingerprints 0, :updated-fingerprints 0, :fingerprints-attempted 0})
+
+(def ^:private one-updated-map
+  (merge default-stat-map {:updated-fingerprints 1, :fingerprints-attempted 1}))
 
 ;; Field is a subtype of newer fingerprint version
 (deftest fingerprint-fields!-test
   (testing "field is a substype of newer fingerprint version"
-    (is (field-was-fingerprinted?
-          {2 #{:type/Float}}
-          {:base_type :type/Decimal, :fingerprint_version 1})))
+    (is (= [one-updated-map true]
+           (field-was-fingerprinted?
+             {2 #{:type/Float}}
+             {:base_type :type/Decimal, :fingerprint_version 1}))))
 
   (testing "field is *not* a subtype of newer fingerprint version"
-    (is (not (field-was-fingerprinted?
-               {2 #{:type/Text}}
-               {:base_type :type/Decimal, :fingerprint_version 1}))))
+    (is (= [default-stat-map false]
+           (field-was-fingerprinted?
+             {2 #{:type/Text}}
+             {:base_type :type/Decimal, :fingerprint_version 1}))))
 
   (testing "Field is a subtype of one of several types for newer fingerprint version"
-    (is (field-was-fingerprinted?
-          {2 #{:type/Float :type/Text}}
-          {:base_type :type/Decimal, :fingerprint_version 1})))
+    (is (= [one-updated-map true]
+           (field-was-fingerprinted?
+             {2 #{:type/Float :type/Text}}
+             {:base_type :type/Decimal, :fingerprint_version 1}))))
 
   (testing "Field has same version as latest fingerprint version"
-    (is (not (field-was-fingerprinted?
-               {1 #{:type/Float}}
-               {:base_type :type/Decimal, :fingerprint_version 1}))))
+    (is (= [default-stat-map false]
+           (field-was-fingerprinted?
+             {1 #{:type/Float}}
+             {:base_type :type/Decimal, :fingerprint_version 1}))))
 
   (testing "field has newer version than latest fingerprint version (should never happen)"
-    (is (not (field-was-fingerprinted?
-               {1 #{:type/Float}}
-               {:base_type :type/Decimal, :fingerprint_version 2}))))
+    (is (= [default-stat-map false]
+           (field-was-fingerprinted?
+             {1 #{:type/Float}}
+             {:base_type :type/Decimal, :fingerprint_version 2}))))
 
   (testing "field has same exact type as newer fingerprint version"
-    (is (field-was-fingerprinted?
-          {2 #{:type/Float}}
-          {:base_type :type/Float, :fingerprint_version 1})))
+    (is (= [one-updated-map true]
+           (field-was-fingerprinted?
+             {2 #{:type/Float}}
+             {:base_type :type/Float, :fingerprint_version 1}))))
 
   (testing "field is parent type of newer fingerprint version type"
-    (is (not (field-was-fingerprinted?
-               {2 #{:type/Decimal}}
-               {:base_type :type/Float, :fingerprint_version 1}))))
+    (is (= [default-stat-map false]
+           (field-was-fingerprinted?
+             {2 #{:type/Decimal}}
+             {:base_type :type/Float, :fingerprint_version 1}))))
 
   (testing "several new fingerprint versions exist"
-    (is (field-was-fingerprinted?
-          {2 #{:type/Float}
-           3 #{:type/Text}}
-          {:base_type :type/Decimal, :fingerprint_version 1})))
+    (is (= [one-updated-map true]
+           (field-was-fingerprinted?
+             {2 #{:type/Float}
+              3 #{:type/Text}}
+             {:base_type :type/Decimal, :fingerprint_version 1}))))
 
-  (is (field-was-fingerprinted?
-        {2 #{:type/Text}
-         3 #{:type/Float}}
-        {:base_type :type/Decimal, :fingerprint_version 1}))
+  (is (= [one-updated-map true]
+         (field-was-fingerprinted?
+           {2 #{:type/Text}
+            3 #{:type/Float}}
+           {:base_type :type/Decimal, :fingerprint_version 1})))
 
   (testing "field is sensitive"
-    (is (not (field-was-fingerprinted?
-               {1 #{:type/Text}}
-               {:base_type :type/Text, :fingerprint_version 1, :visibility_type :sensitive})))))
+    (is (= [default-stat-map false]
+           (field-was-fingerprinted?
+             {1 #{:type/Text}}
+             {:base_type :type/Text, :fingerprint_version 1, :visibility_type :sensitive})))))
 
 
 (deftest fingerprint-table!-test
@@ -186,8 +207,8 @@
                                 :fingerprint_version 1
                                 :last_analyzed       #t "2017-08-09T00:00:00"}]
       (with-redefs [i/latest-fingerprint-version       3
-                    qp/process-query                   (fn [_ _ {:keys [rff]}] )
-                    metadata-queries/table-rows-sample (constantly [[1] [2] [3] [4] [5]])
+                    qp/process-query                   (fn [_ {:keys [rff]}]
+                                                         (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
                     fingerprinters/fingerprinter       (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
         (is (= {:no-data-fingerprints 0, :failed-fingerprints    0,
                 :updated-fingerprints 1, :fingerprints-attempted 1}
