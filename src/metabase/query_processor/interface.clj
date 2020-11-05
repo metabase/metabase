@@ -9,7 +9,7 @@
 
    This is coming directly from the max rows allowed by Excel for now ...
    https://support.office.com/en-nz/article/Excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3"
-  1048576)
+  1048576000)
 
 ;; TODO - maybe we should do this more generally with the help of a macro like `do-with-suppressed-output` from the
 ;; test utils, perhaps implemented as separate middleware (and using a `:middleware` option). Or perhaps even make QP
