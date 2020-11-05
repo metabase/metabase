@@ -691,7 +691,7 @@ jobs:
           before-steps:
             - restore_cache:
                 keys:
-                  - uberjar-{{ checksum "./backend-checksums.txt" }}
+                  - uberjar-oss--{{ checksum "./backend-checksums.txt" }}
             - run:
                 name: Generate version file
                 command: ./bin/build version
