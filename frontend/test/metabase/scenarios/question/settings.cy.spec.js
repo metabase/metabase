@@ -74,7 +74,7 @@ describe("scenarios > question > settings", () => {
       cy.contains("Orders in a dashboard").click();
 
       // create a new question to see if the "add to a dashboard" modal is still there
-      cy.contains("Browse Data").click();
+      cy.get(".Icon-table_spaced").click();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
 

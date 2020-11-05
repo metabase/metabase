@@ -14,7 +14,7 @@ describe("scenarios > question > new", () => {
   describe("browse data", () => {
     it("should load orders table and summarize", () => {
       cy.visit("/");
-      cy.contains("Browse Data").click();
+      cy.get(".Icon-table_spaced").click();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
       cy.contains("37.65");
