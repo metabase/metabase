@@ -47,7 +47,7 @@ describe("scenarios > dashboard > parameters", () => {
 
   it("should search across multiple fields", () => {
     // create a new dashboard
-    cy.visit("/");
+    cy.visit("/collection/root");
     cy.get(".Icon-add").click();
     cy.contains("New dashboard").click();
     cy.get(`[name="name"]`).type("my dash");
