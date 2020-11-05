@@ -704,7 +704,7 @@
     query-type                                                       :type}]
   (let [safe-min          (fn [& args]
                             (when-let [args (seq (filter some? args))]
-                              (reduce min args)))
+                              (reduce max args)))
         mbql-limit        (when (= query-type :query)
                             (safe-min items limit))
         constraints-limit (or
