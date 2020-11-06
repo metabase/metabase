@@ -1,5 +1,6 @@
 (ns release.common.upload
-  (:require [release.common :as c]))
+  (:require [metabuild-common.core :as u]
+            [release.common :as c]))
 
 (defn upload-artifact!
   "Upload an artifact to downloads.metabase.com and create a CloudFront invalidation."

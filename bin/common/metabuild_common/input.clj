@@ -4,13 +4,13 @@
             [metabuild-common.output :as out]))
 
 (defn interactive?
-  "Whether we're running these scripts interactively, and can prompt the user for input. By default, this is true, but
-  if the env var `INTERACTIVE=false` is set, these scripts will not prompt for input. Be sure to set this when running
-  scripts in CI or other places that automate them."
+  "Whether we're running these scripts interactively, and can prompt the user for input. By default, this is
+  true (except when running in CircleCI), but if the env var `INTERACTIVE=false` is set, these scripts will not prompt
+  for input. Be sure to set this when running scripts in CI or other places that automate them."
   []
   (if-let [env-var (env/env :interactive)]
     (Boolean/parseBoolean env-var)
-    true))
+    (not (:circleci env/env))))
 
 (defn read-line-with-prompt
   "Prompt for and read a value from stdin. Accepts two options: `:default`, which is the default value to use if the

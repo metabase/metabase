@@ -25,15 +25,15 @@
 (defn- metabase-source-paths []
   (sort
    (cons
-    (c/filename c/project-root-directory "project.clj")
+    (u/filename u/project-root-directory "project.clj")
     (mapcat (fn [dir]
               (try
                 (u/find-files dir #(str/ends-with? % ".clj"))
                 (catch Throwable _
                   [])))
-            [(c/filename c/project-root-directory "src")
-             (c/filename c/project-root-directory "enterprise" "backend" "src")
-             (c/filename c/project-root-directory "backend" "mbql")]))))
+            [(u/filename u/project-root-directory "src")
+             (u/filename u/project-root-directory "enterprise" "backend" "src")
+             (u/filename u/project-root-directory "backend" "mbql")]))))
 
 (defn metabase-source-checksum
   "Checksum of Metabase backend source files and `project.clj`."
@@ -58,7 +58,7 @@
   (u/find-files (c/driver-project-dir driver)
                 (fn [path]
                   (or (and (str/ends-with? path ".clj")
-                           (not (str/starts-with? path (c/filename (c/driver-project-dir driver) "test"))))
+                           (not (str/starts-with? path (u/filename (c/driver-project-dir driver) "test"))))
                       (str/ends-with? path ".yaml")))))
 
 (defn driver-checksum

@@ -201,15 +201,15 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - be-deps-v2-{{ checksum "project.clj" }}
-            - be-deps-v2-
+            - be-deps-v4-{{ checksum "project.clj" }}
+            - be-deps-v4-
 
   restore-fe-deps-cache:
     steps:
       - restore_cache:
           keys:
-            - fe-deps-v2-{{ checksum "yarn.lock" }}
-            - fe-deps-v2-
+            - fe-deps-v4-{{ checksum "yarn.lock" }}
+            - fe-deps-v4-
 
   run-yarn-command:
     parameters:
@@ -361,7 +361,7 @@ jobs:
       - restore-be-deps-cache
       - run: lein with-profile +include-all-drivers,+cloverage,+junit,+<< parameters.edition >> deps
       - save_cache:
-          key: be-deps-v2-{{ checksum "project.clj" }}
+          key: be-deps-v4-{{ checksum "project.clj" }}
           paths:
             - /home/circleci/.m2
 
@@ -495,7 +495,7 @@ jobs:
           name: Save yarn checksum
           command: md5sum yarn.lock > yarn.lock.checksum
       - save_cache:
-          key: fe-deps-v2-{{ checksum "yarn.lock" }}
+          key: fe-deps-v4-{{ checksum "yarn.lock" }}
           paths:
             - /home/circleci/.yarn
             - /home/circleci/.yarn-cache
@@ -562,7 +562,7 @@ jobs:
       # restore already-built uberjar
       - restore_cache:
           keys:
-            - uberjar-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
+            - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
       # restore the local maven installation of Metabase which is needed for building drivers
       - restore_cache:
           keys:
@@ -570,13 +570,13 @@ jobs:
       # restore already-built drivers
       - restore_cache:
           keys:
-            - drivers-v3-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
-            - drivers-v3-{{ checksum "./modules-checksums.txt" }}
-            - drivers-v3-
+            - drivers-v4-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+            - drivers-v4-{{ checksum "./modules-checksums.txt" }}
+            - drivers-v4-
       # restore already-built frontend
       - restore_cache:
           keys:
-            - frontend-{{ checksum "./frontend-checksums.txt" }}
+            - frontend-v4-{{ checksum "./frontend-checksums.txt" }}
       - run:
           name: Install Clojure CLI
           command: >
@@ -605,11 +605,14 @@ jobs:
           no_output_timeout: 10m
       - store_artifacts:
           path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
-      # Cache the built uberjar
+      - store_artifacts:
+          path: /home/circleci/metabase/metabase/resources/version.properties
+      # Cache the built uberjar & version.properties
       - save_cache:
-          key: uberjar-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
+          key: uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+            - /home/circleci/metabase/metabase/resources/version.properties
       # Cache the maven installation of metabase-core
       - save_cache:
           key: metabase-core-{{ checksum "./backend-checksums.txt" }}
@@ -617,7 +620,7 @@ jobs:
             - /home/circleci/.m2/repository/metabase-core
       # Cache the built drivers
       - save_cache:
-          key: drivers-v3-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+          key: drivers-v4-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
             - /home/circleci/metabase/metabase/modules/drivers/druid/target
@@ -634,7 +637,7 @@ jobs:
             - /home/circleci/metabase/metabase/modules/drivers/vertica/target
       # Cache the built frontend
       - save_cache:
-          key: frontend-{{ checksum "./frontend-checksums.txt" }}
+          key: frontend-v4-{{ checksum "./frontend-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/resources/frontend_client
 
@@ -665,12 +668,7 @@ jobs:
           before-steps:
             - restore_cache:
                 keys:
-                  - uberjar-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}
-            - run:
-                name: Generate version file
-                environment:
-                  MB_EDITION: << parameters.edition >>
-                command: ./bin/build version
+                  - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}
       - store_artifacts:
           path: /home/circleci/metabase/metabase/cypress
       - store_test_results:
