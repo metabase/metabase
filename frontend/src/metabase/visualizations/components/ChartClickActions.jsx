@@ -20,11 +20,11 @@ import cx from "classnames";
 import _ from "underscore";
 
 const SECTIONS = {
-  zoom: {
-    icon: "zoom_in",
-  },
   records: {
     icon: "table2",
+  },
+  zoom: {
+    icon: "zoom_in",
   },
   details: {
     icon: "document",
@@ -176,9 +176,9 @@ export default class ChartClickActions extends Component {
         {popover ? (
           popover
         ) : (
-          <div className="text-bold">
+          <div className="text-bold px2 py1">
             {sections.map(([key, actions]) => (
-              <div className="px2 pb1">
+              <div className="py1">
                 {SECTIONS[key].icon === "summarize" && (
                   <p className="text-bold text-medium text-small block">
                     Summarize
@@ -189,7 +189,8 @@ export default class ChartClickActions extends Component {
                   className={cx(
                     "flex justify-center",
                     {
-                      "border-top": SECTIONS[key].icon === "pencil",
+                      "border-top pt2 text-medium":
+                        SECTIONS[key].icon === "pencil",
                     },
                     {
                       "align-center":
@@ -233,12 +234,12 @@ export const ChartClickAction = ({
   handleClickAction: any,
 }) => {
   const className = cx("text-small cursor-pointer no-decoration", {
-    "px2 pt2 pb1 text-brand-hover justify-evenly": action.buttonType === "text",
-    "p2 rounded flex-full bg-light bg-brand-hover text-brand text-white-hover":
+    "px2 text-brand-hover justify-evenly": action.buttonType === "text",
+    "p2 bordered border-brand rounded flex-full bg-brand-hover text-brand text-white-hover":
       action.buttonType === "horizontal",
     "bordered border-brand circular text-brand bg-brand-hover text-white-hover px2 py1 mr1":
       action.buttonType === "token",
-    "px2 pt2 pb2 mr1 text-brand text-white-hover rounded bg-light bg-brand-hover":
+    "px2 pt2 pb2 mr1 bordered border-brand text-brand text-white-hover rounded bg-brand-hover":
       action.buttonType === "large",
   });
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
@@ -279,7 +280,7 @@ export const ChartClickAction = ({
             "flex flex-column align-center": action.buttonType === "large",
           },
           {
-            "flex flex-row justify-center":
+            "flex flex-row justify-left":
               action.buttonType === "text" ||
               action.buttonType === "horizontal",
           },
