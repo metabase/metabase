@@ -17,7 +17,7 @@ function addCardToNewDash(dash_name, card_id) {
   });
 }
 
-describe.skip("scenarios > visualizations > drillthroughs > dash_drill", () => {
+describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
   describe("title click action", () => {
     before(restore);
 
@@ -54,7 +54,8 @@ describe.skip("scenarios > visualizations > drillthroughs > dash_drill", () => {
         cy.findByText("Orders, Count").click();
       });
 
-      it("should result in a correct query result", () => {
+      // [quarantine] flaky
+      it.skip("should result in a correct query result", () => {
         cy.log("**Assert that the url is correct**");
         cy.url().should("include", "/question/2");
 
@@ -96,7 +97,8 @@ describe.skip("scenarios > visualizations > drillthroughs > dash_drill", () => {
         cy.contains("Orders,").click();
       });
 
-      it("should result in a correct query result", () => {
+      // [quarantine] flaky
+      it.skip("should result in a correct query result", () => {
         cy.url().should("include", "/question/3");
         cy.findByText("1,000");
         cy.findByText("6,000").should("not.exist");
@@ -140,7 +142,8 @@ describe.skip("scenarios > visualizations > drillthroughs > dash_drill", () => {
         cy.contains("Multiscalar question").click({ force: true });
       });
 
-      it("should result in a correct query result", () => {
+      // [quarantine] flaky
+      it.skip("should result in a correct query result", () => {
         cy.url().should("include", "/question/4");
         cy.get(".dot");
         cy.findByText("Affiliate");
