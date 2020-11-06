@@ -37,7 +37,7 @@ describe("scenarios > question > null", () => {
     });
   });
 
-  it.skip("(metabase#13626)", () => {
+  it("(metabase#13626)", () => {
     // Preparation for the test: "Arrange and Act phase" - see repro steps in #13626
     withSampleDataset(({ ORDERS }) => {
       // 1. create a question
