@@ -1043,7 +1043,7 @@ workflows:
   nightly:
     triggers:
       - schedule:
-          cron: "0 * * * *"
+          cron: "0 9 * * *"
           filters:
             branches:
               only:
