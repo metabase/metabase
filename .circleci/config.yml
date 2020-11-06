@@ -304,9 +304,20 @@ jobs:
             for file in `find ./modules -type f -name '*.clj' -or -name '*.yaml' | sort`;
               do echo `md5sum $file` >> modules-checksums.txt;
             done;
+      # The .git directory includes a lot of info that dramatically increases the size that get saved by the
+      # `persist_to_workspace` command. It's a lot faster if we just determine the info we need now and toss the .git
+      # directory
       - run:
           name: Save last git commit message
           command: git log -1 > commit.txt
+      - run:
+          name: Save list of files that have changes relative to the parent branch
+          command: >
+            parent_commit=`git log --decorate --simplify-by-decoration --oneline | grep -v "HEAD" | head -n 1`;
+            echo "parent commit: $parent_commit";
+            parent_branch=`echo "$parent_commit" | sed -r 's/^\w+\s\(origin\/([^,)]+).+$/\1/'`;
+            echo "parent branch: $parent_branch";
+            git diff --name-only "$parent_branch" > files_with_changes.txt
       - run:
           name: Remove .git directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/.git
