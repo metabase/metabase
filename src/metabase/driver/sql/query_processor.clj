@@ -291,9 +291,11 @@
   (prefix-field-name-with-source driver (qp.store/field field-id)))
 
 (defmethod prefix-field-name-with-source (class Field)
-  [driver {:keys [table_id] :as field}]
-  (when-let [alias (field->alias driver field)]
-    (str/join "__" [(str "table" table_id) alias])))
+  [driver field]
+  (if-let [alias (field->alias driver field)] ; Respect field->alias semantics: if it returns nil,
+                                              ; don't alias
+    (str/join "__" [(str "field" (Math/abs (hash field))) alias]) ; abs so we don't get - in names
+    (:name field)))
 
 (defmethod prefix-field-name-with-source :field-literal
   [_ [_ field-name _ :as field-literal]]
@@ -330,7 +332,7 @@
 
 (defmethod ->honeysql [:sql :joined-field]
   [driver [_ alias field]]
-  (binding [*table-alias*   (or *table-alias* alias) ; if *table-alias* is already set we're
+  (binding [*table-alias*     alias;(or *table-alias* alias) ; if *table-alias* is already set we're
                                                      ; referencing a source query, so leave it as is
             *joined-field?* true]
     (->honeysql driver field)))
@@ -970,7 +972,7 @@
   "Transpile MBQL query into a native SQL statement."
   {:style/indent 1}
   [driver {inner-query :query, database :database, :as outer-query}]
+  (println inner-query)
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
-    (println sql)
     {:query sql, :params args}))

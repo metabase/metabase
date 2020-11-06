@@ -448,7 +448,7 @@
                                           :joins        [{:fields       :all
                                                           :alias        "v"
                                                           :source-table $$venues
-                                                          :condition    [:= *user_id &v.venues.id]}]
+                                                          :condition    [:= $user_id &v.venues.id]}]
                                           :order-by     [[:asc $id]]
                                           :limit        2})))]
         (is (= (mapv
@@ -463,7 +463,8 @@
                 [2 "2014-09-18T00:00:00Z" 1 31
                  1 "Plato Yeshua" "2014-04-01T08:30:00Z"
                  1 "Red Medicine" 4 10.065 -165.374 3]]
-               rows))))))
+               rows))))
+    ))
 
 (deftest sql-question-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
