@@ -194,22 +194,22 @@ describe("scenarios > dashboard", () => {
         cy.get(".LoadingSpinner").should("not.exist");
       });
 
-      cy.findByText("What");
-      cy.findByText("First revision.");
+      cy.findAllByText("Bobby Tables");
+      cy.contains(/revert/i);
 
       cy.get(".Modal .Icon-close").click();
-      cy.findByText("First revision.").should("not.exist");
+      cy.findAllByText("Bobby Tables").should("not.exist");
     });
 
     it("should open with url", () => {
       cy.visit("/dashboard/1/history");
       cy.get(".Modal").within(() => {
         cy.get(".LoadingSpinner").should("not.exist");
+        cy.findByText("Revision history");
       });
 
-      cy.findByText("Revision history");
-      cy.findByText("What");
-      cy.findByText("First revision.");
+      cy.findAllByText("Bobby Tables");
+      cy.contains(/revert/i);
     });
   });
 });
