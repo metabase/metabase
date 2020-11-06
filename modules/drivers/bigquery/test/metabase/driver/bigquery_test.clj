@@ -21,8 +21,9 @@
              [4 "Wurstküche"]
              [5 "Brite Spot Family Restaurant"]]
             (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                                                     [(Field (mt/id :venues :id))
-                                                      (Field (mt/id :venues :name))])
+                   [(Field (mt/id :venues :id))
+                    (Field (mt/id :venues :name))]
+                   (constantly conj))
                  (sort-by first)
                  (take 5)))))
 
@@ -36,7 +37,8 @@
                        #'bigquery/page-callback        page-callback}
          (let [actual (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
                              [(Field (mt/id :venues :id))
-                              (Field (mt/id :venues :name))])
+                              (Field (mt/id :venues :name))]
+                             (constantly conj))
                            (sort-by first)
                            (take 5))]
          (is (= [[1 "Red Medicine"]

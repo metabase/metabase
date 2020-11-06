@@ -125,15 +125,9 @@
   `:rff`: [optional] a reducing function function (a function that given initial results metadata returns a reducing
   function) to reduce over the result set in the the query-processor rather than realizing the whole collection"
   {:style/indent 1}
-  ([table :- si/TableInstance, fields :- [si/FieldInstance]]
-   (table-rows-sample table fields nil))
-  ([table :- si/TableInstance, fields :- [si/FieldInstance]
-    {:keys [rff] :as opts} :- TableRowsSampleOptions]
+  ([table :- si/TableInstance, fields :- [si/FieldInstance], rff]
+   (table-rows-sample table fields rff nil))
+  ([table :- si/TableInstance, fields :- [si/FieldInstance], rff, opts :- TableRowsSampleOptions]
    (let [query   (table-rows-sample-query table fields opts)
-         qp      (resolve 'metabase.query-processor/process-query)
-         results (if rff
-                   (qp query {:rff rff})
-                   (qp query))]
-     (if rff
-       results
-       (get-in results [:data :rows])))))
+         qp      (resolve 'metabase.query-processor/process-query)]
+     (qp query {:rff rff}))))
