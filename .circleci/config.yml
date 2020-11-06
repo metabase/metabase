@@ -313,7 +313,7 @@ jobs:
       - run:
           name: Save list of files that have changes relative to the parent branch
           command: >
-            .circleci/save-files-with-changes.sh
+            /home/circleci/metabase/metabase/.circleci/save-files-with-changes.sh
       - run:
           name: Remove .git directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/.git
