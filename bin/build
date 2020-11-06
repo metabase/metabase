@@ -25,7 +25,12 @@ version() {
 
 frontend-deps() {
     echo "Running 'yarn' to download javascript dependencies..." &&
-    yarn
+    if [[ -z "${CI}" ]]; then
+        yarn
+    else
+        echo "CI run: enforce the lockfile"
+        yarn install --frozen-lockfile
+    fi
 }
 
 frontend() {
