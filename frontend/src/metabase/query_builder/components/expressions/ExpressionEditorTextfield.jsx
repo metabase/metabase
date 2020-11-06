@@ -13,11 +13,7 @@ import colors from "metabase/lib/colors";
 
 import memoize from "lodash.memoize";
 
-import {
-  setCaretPosition,
-  getSelectionPosition,
-  isObscured,
-} from "metabase/lib/dom";
+import { setCaretPosition, getSelectionPosition } from "metabase/lib/dom";
 
 import {
   KEYCODE_ENTER,
@@ -36,13 +32,7 @@ import TokenizedInput from "./TokenizedInput";
 
 import { isExpression } from "metabase/lib/expressions";
 
-const SUGGESTION_SECTION_NAMES = {
-  fields: t`Fields`,
-  aggregations: t`Aggregations`,
-  operators: t`Operators`,
-  metrics: t`Metrics`,
-  other: t`Other`,
-};
+import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";
 
 @ExplicitSize()
 export default class ExpressionEditorTextfield extends React.Component {
@@ -109,17 +99,8 @@ export default class ExpressionEditorTextfield extends React.Component {
     );
   }
 
-  componentDidUpdate(prevProps, prevState) {
-    if (prevState.highlightedSuggestion !== this.state.highlightedSuggestion) {
-      if (this._selectedRow && isObscured(this._selectedRow)) {
-        this._selectedRow.scrollIntoView({ block: "nearest" });
-      }
-    }
-  }
-
-  onSuggestionAccepted = () => {
+  onSuggestionClicked = (suggestion, acceptSuggestion) => {
     const { source } = this.state;
-    const suggestion = this.state.suggestions[this.state.highlightedSuggestion];
 
     if (suggestion) {
       let prefix = source.slice(0, suggestion.index);
@@ -140,16 +121,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       );
     }
 
-    this.setState({
-      highlightedSuggestion: 0,
-    });
-  };
-
-  onSuggestionMouseDown = (event, index) => {
-    // when a suggestion is clicked, we'll highlight the clicked suggestion and then hand off to the same code that deals with ENTER / TAB keydowns
-    event.preventDefault();
-    event.stopPropagation();
-    this.setState({ highlightedSuggestion: index }, this.onSuggestionAccepted);
+    acceptSuggestion();
   };
 
   onInputKeyDown = e => {
@@ -177,7 +149,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       return;
     }
     if (e.keyCode === KEYCODE_ENTER) {
-      this.onSuggestionAccepted();
+      this.onSuggestionClicked();
       e.preventDefault();
     } else if (e.keyCode === KEYCODE_UP) {
       this.setState({
@@ -273,14 +245,69 @@ export default class ExpressionEditorTextfield extends React.Component {
     });
   }
 
+  renderError() {
+    let { compileError } = this.state;
+
+    if (!compileError) {
+      return null;
+    }
+
+    compileError = Array.isArray(compileError) ? compileError : [compileError];
+
+    return compileError.map(error => (
+      <div className="text-error mt1 mb1" style={{ whiteSpace: "pre-wrap" }}>
+        {error.message}
+      </div>
+    ));
+  }
+
+  renderHelpText() {
+    const { helpText } = this.state;
+
+    return (
+      helpText && (
+        <Popover
+          tetherOptions={{
+            attachment: "top left",
+            targetAttachment: "bottom left",
+          }}
+          style={{ width: this.props.width }}
+          isOpen
+        >
+          <p
+            className="p2 m0 text-monospace text-bold"
+            style={{ background: colors["bg-yellow"] }}
+          >
+            {helpText.structure}
+          </p>
+          <div className="p2 border-top">
+            <p className="mt0 text-bold">{helpText.description}</p>
+            <p className="text-code m0 text-body">{helpText.example}</p>
+          </div>
+          <div className="p2 border-top">
+            {helpText.args.map(({ name, description }) => (
+              <div>
+                <h4 className="text-medium">{name}</h4>
+                <p className="mt1 text-bold">{description}</p>
+              </div>
+            ))}
+            <a
+              className="link text-bold block my1"
+              target="_blank"
+              href={MetabaseSettings.docsUrl("users-guide/expressions")}
+            >
+              <Icon name="reference" size={12} className="mr1" />
+              {t`Learn more`}
+            </a>
+          </div>
+        </Popover>
+      )
+    );
+  }
+
   render() {
     const { placeholder } = this.props;
-    let { compileError } = this.state;
-    const { source, suggestions, helpText, syntaxTree } = this.state;
-
-    if (compileError && !compileError.length) {
-      compileError = t`unknown error`;
-    }
+    const { compileError, source, suggestions, syntaxTree } = this.state;
 
     const inputClassName = cx("input text-bold text-monospace", {
       "text-dark": source,
@@ -318,104 +345,12 @@ export default class ExpressionEditorTextfield extends React.Component {
           onClick={this.onInputClick}
           autoFocus
         />
-        {helpText && (
-          <Popover
-            tetherOptions={{
-              attachment: "top left",
-              targetAttachment: "bottom left",
-            }}
-            style={{ width: this.props.width }}
-            isOpen
-          >
-            <p
-              className="p2 m0 text-monospace text-bold"
-              style={{ background: colors["bg-yellow"] }}
-            >
-              {helpText.structure}
-            </p>
-            <div className="p2 border-top">
-              <p className="mt0 text-bold">{helpText.description}</p>
-              <p className="text-code m0 text-body">{helpText.example}</p>
-            </div>
-            <div className="p2 border-top">
-              {helpText.args.map(({ name, description }) => (
-                <div>
-                  <h4 className="text-medium">{name}</h4>
-                  <p className="mt1 text-bold">{description}</p>
-                </div>
-              ))}
-              <a
-                className="link text-bold block my1"
-                target="_blank"
-                href={MetabaseSettings.docsUrl("users-guide/expressions")}
-              >
-                <Icon name="reference" size={12} className="mr1" />
-                {t`Learn more`}
-              </a>
-            </div>
-          </Popover>
-        )}
-        {suggestions.length ? (
-          <Popover
-            className="not-rounded border-dark"
-            hasArrow={false}
-            tetherOptions={{
-              attachment: "top left",
-              targetAttachment: "bottom left",
-            }}
-            sizeToFit
-          >
-            <ul className="pb1" style={{ minWidth: 150, overflowY: "auto" }}>
-              {suggestions.map((suggestion, i) =>
-                // insert section title. assumes they're sorted by type
-                [
-                  (i === 0 || suggestion.type !== suggestions[i - 1].type) && (
-                    <li className="mx2 h6 text-uppercase text-bold text-medium py1 pt2">
-                      {SUGGESTION_SECTION_NAMES[suggestion.type] ||
-                        suggestion.type}
-                    </li>
-                  ),
-                  <li
-                    ref={r => {
-                      if (i === this.state.highlightedSuggestion) {
-                        this._selectedRow = r;
-                      }
-                    }}
-                    style={{ paddingTop: 5, paddingBottom: 5 }}
-                    className={cx(
-                      "px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit",
-                      {
-                        "text-white bg-brand":
-                          i === this.state.highlightedSuggestion,
-                      },
-                    )}
-                    onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
-                  >
-                    {suggestion.range ? (
-                      <span>
-                        {suggestion.name.slice(0, suggestion.range[0])}
-                        <span
-                          className={cx("text-brand text-bold hover-child", {
-                            "text-white bg-brand":
-                              i === this.state.highlightedSuggestion,
-                          })}
-                        >
-                          {suggestion.name.slice(
-                            suggestion.range[0],
-                            suggestion.range[1],
-                          )}
-                        </span>
-                        {suggestion.name.slice(suggestion.range[1])}
-                      </span>
-                    ) : (
-                      suggestion.name
-                    )}
-                  </li>,
-                ],
-              )}
-            </ul>
-          </Popover>
-        ) : null}
+        {this.renderError()}
+        {this.renderHelpText()}
+        <ExpressionEditorSuggestions
+          suggestions={suggestions}
+          onSuggestionClicked={this.onSuggestionClicked}
+        />
       </div>
     );
   }
