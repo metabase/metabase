@@ -40,7 +40,7 @@
 (defn- normalize-name ^String [db-or-table identifier]
   (let [s (str/replace (name identifier) "-" "_")]
     (case db-or-table
-      :db    (str "v2_" s)
+      :db    (str "v3_" s)
       :table s)))
 
 (def ^:private details
