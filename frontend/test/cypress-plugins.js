@@ -12,9 +12,6 @@
 // the project's config changing)
 const webpack = require("@cypress/webpack-preprocessor");
 
-const path = require("path");
-const fs = require("fs");
-
 module.exports = (on, config) => {
   // `on` is used to hook into various events Cypress emits
   // `config` is the resolved Cypress config

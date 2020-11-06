@@ -1,6 +1,5 @@
-import { restore, signInAsAdmin, openOrdersTable } from "__support__/cypress";
+import { restore, signInAsAdmin } from "__support__/cypress";
 
-const path = require("path");
 const xlsx = require("xlsx");
 
 describe("file download", () => {
@@ -32,7 +31,7 @@ describe("file download", () => {
           body: { query: xlsx_query_params },
           encoding: "binary",
         }).then(resp => {
-          var workbook = xlsx.read(resp.body, { type: "binary" });
+          const workbook = xlsx.read(resp.body, { type: "binary" });
 
           expect(workbook.SheetNames[0]).to.eq("Query result");
           expect(workbook.Sheets["Query result"]["A1"].v).to.eq("Count");
@@ -53,7 +52,7 @@ describe("file download", () => {
           body: { query: csv_query_params },
           encoding: "binary",
         }).then(resp => {
-          var workbook = xlsx.read(resp.body, { type: "binary" });
+          const workbook = xlsx.read(resp.body, { type: "binary" });
           expect(workbook.SheetNames[0]).to.eq("Sheet1");
           expect(workbook.Sheets["Sheet1"]["A1"].v).to.eq("Count");
           expect(workbook.Sheets["Sheet1"]["A2"].v).to.eq(18760);
