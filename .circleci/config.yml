@@ -313,11 +313,7 @@ jobs:
       - run:
           name: Save list of files that have changes relative to the parent branch
           command: >
-            parent_commit=`git log --decorate --simplify-by-decoration --oneline | grep -v "HEAD" | head -n 1`;
-            echo "parent commit: $parent_commit";
-            parent_branch=`echo "$parent_commit" | sed -r 's/^\w+\s\(origin\/([^,)]+).+$/\1/'`;
-            echo "parent branch: $parent_branch";
-            git diff --name-only "$parent_branch" > files_with_changes.txt
+            .circleci/save-files-with-changes.sh
       - run:
           name: Remove .git directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/.git

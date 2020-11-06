@@ -2,13 +2,10 @@
 
 set -euo pipefail
 
-echo "HERE!"
+parent_commit_info=`git log --oneline --first-parent --decorate=short --simplify-by-decoration --branches -n 10 | grep 'origin/' | head -n 1`
+echo "parent commit info: $parent_commit_info";
 
-git log
-parent_commit=`git log --decorate --simplify-by-decoration --oneline | grep -v "HEAD" | head -n 1`;
-echo "parent commit: $parent_commit";
-
-parent_branch=`echo "$parent_commit" | sed -r 's/^\w+\s\(origin\/([^,)]+).+$/\1/'`;
+parent_branch=`echo "$parent_commit_info" | sed -r 's/^\w+\s\(origin\/([^,)]+).+$/\1/'`;
 echo "parent branch: $parent_branch";
 
 git diff --name-only "$parent_branch"..HEAD > files_with_changes.txt
