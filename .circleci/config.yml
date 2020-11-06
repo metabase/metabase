@@ -658,6 +658,7 @@ jobs:
     executor: << parameters.e >>
     environment:
       CYPRESS_GROUP:  << parameters.cypress-group >>
+      DISPLAY: ""
     steps:
       - run-yarn-command:
           command-name: Run Cypress tests
