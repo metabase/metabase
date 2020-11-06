@@ -223,6 +223,7 @@ describe.skip("scenarios > admin > datamodel > metrics", () => {
       cy.findByText("Save changes")
         .should("not.be.disabled")
         .click();
+      cy.findByText("New metric");
 
       cy.log("**Refresh the page and assert**");
       cy.reload();
