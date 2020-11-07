@@ -23,10 +23,6 @@ export default class ExpressionEditorSuggestions extends React.Component {
     highlightedIndex: PropTypes.number.isRequired,
   };
 
-  componentWillReceiveProps(newProps) {
-    console.log("newProps:", newProps); // NOCOMMIT
-  }
-
   componentDidUpdate(prevProps, prevState) {
     if (
       (prevProps && prevProps.highlightedIndex) !== this.props.highlightedIndex
