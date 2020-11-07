@@ -73,7 +73,7 @@ describe("scenarios > question > new", () => {
       cy.findByText("604.96");
     });
 
-    it("should keep manually entered parenthesis intact (metabase#13306)", () => {
+    it.skip("should keep manually entered parenthesis intact (metabase#13306)", () => {
       const FORMULA =
         "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))";
 
