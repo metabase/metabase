@@ -133,20 +133,12 @@ export default class ExpressionEditorTextfield extends React.Component {
       const parserOptions = this._getParserOptions(newProps);
       const source = format(newProps.expression, parserOptions);
 
-      console.log("source:", source); // NOCOMMIT
-
       const { expression, compileError, syntaxTree } =
         source && source.length
-          ? this._processSource({
-              source,
-              ...this._getParserOptions(newProps),
-            })
-          : {
-              expression: [null, ""],
-              compileError: null,
-              syntaxTree: null,
-            };
-
+        && this._processSource({
+          source,
+          ...this._getParserOptions(newProps),
+        });
       this.setState({
         source,
         expression,
@@ -202,10 +194,6 @@ export default class ExpressionEditorTextfield extends React.Component {
       this.clearSuggestions();
       return;
     }
-
-    console.log("suggestions:", suggestions); // NOCOMMIT
-    console.log("highlightedSuggestionIndex:", highlightedSuggestionIndex); // NOCOMMIT
-    console.log("e.keyCode:", e.keyCode); // NOCOMMIT
 
     if (!suggestions.length) {
       if (
@@ -291,11 +279,17 @@ export default class ExpressionEditorTextfield extends React.Component {
       suggestions,
       helpText,
       syntaxTree,
-    } = this._processSource({
+    } = source ? this._processSource({
       source,
       targetOffset,
       ...this._getParserOptions(),
-    });
+    }) : {
+      expression: null,
+      compileError: null,
+      suggestions: [],
+      helpText: null,
+      syntaxTree: null
+    };
 
     const isValid = expression !== undefined;
     // don't show suggestions if
