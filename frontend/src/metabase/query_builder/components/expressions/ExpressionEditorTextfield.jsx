@@ -134,8 +134,9 @@ export default class ExpressionEditorTextfield extends React.Component {
       const source = format(newProps.expression, parserOptions);
 
       const { expression, compileError, syntaxTree } =
-        source && source.length
-        && this._processSource({
+        source &&
+        source.length &&
+        this._processSource({
           source,
           ...this._getParserOptions(newProps),
         });
@@ -211,13 +212,15 @@ export default class ExpressionEditorTextfield extends React.Component {
     } else if (e.keyCode === KEYCODE_UP) {
       this.setState({
         highlightedSuggestionIndex:
-          (highlightedSuggestionIndex + suggestions.length - 1) % suggestions.length,
+          (highlightedSuggestionIndex + suggestions.length - 1) %
+          suggestions.length,
       });
       e.preventDefault();
     } else if (e.keyCode === KEYCODE_DOWN) {
       this.setState({
         highlightedSuggestionIndex:
-          (highlightedSuggestionIndex + suggestions.length + 1) % suggestions.length,
+          (highlightedSuggestionIndex + suggestions.length + 1) %
+          suggestions.length,
       });
       e.preventDefault();
     }
@@ -279,17 +282,19 @@ export default class ExpressionEditorTextfield extends React.Component {
       suggestions,
       helpText,
       syntaxTree,
-    } = source ? this._processSource({
-      source,
-      targetOffset,
-      ...this._getParserOptions(),
-    }) : {
-      expression: null,
-      compileError: null,
-      suggestions: [],
-      helpText: null,
-      syntaxTree: null
-    };
+    } = source
+      ? this._processSource({
+          source,
+          targetOffset,
+          ...this._getParserOptions(),
+        })
+      : {
+          expression: null,
+          compileError: null,
+          suggestions: [],
+          helpText: null,
+          syntaxTree: null,
+        };
 
     const isValid = expression !== undefined;
     // don't show suggestions if

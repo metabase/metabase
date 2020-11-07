@@ -77,8 +77,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
                 className={cx(
                   "px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit",
                   {
-                    "text-white bg-brand":
-                      i === highlightedIndex,
+                    "text-white bg-brand": i === highlightedIndex,
                   },
                 )}
                 onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
@@ -88,8 +87,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
                     {suggestion.name.slice(0, suggestion.range[0])}
                     <span
                       className={cx("text-brand text-bold hover-child", {
-                        "text-white bg-brand":
-                          i === highlightedIndex,
+                        "text-white bg-brand": i === highlightedIndex,
                       })}
                     >
                       {suggestion.name.slice(
