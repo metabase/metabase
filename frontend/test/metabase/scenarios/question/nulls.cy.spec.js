@@ -37,7 +37,7 @@ describe("scenarios > question > null", () => {
     });
   });
 
-  it("(metabase#13626)", () => {
+  it("pie chart should handle `0`/`null` values (metabase#13626)", () => {
     // Preparation for the test: "Arrange and Act phase" - see repro steps in #13626
     withSampleDataset(({ ORDERS }) => {
       // 1. create a question
@@ -109,9 +109,12 @@ describe("scenarios > question > null", () => {
           cy.findByText("13626D");
 
           cy.log("**Reported failing in v0.37.0.2**");
-          // TODO: Once the issue is fixed, add a positive asssertion here
           cy.get(".DashCard").within(() => {
             cy.get(".LoadingSpinner").should("not.exist");
+            cy.findByText("13626")
+            cy.get("svg[class*=PieChart__Donut]")
+            cy.get("[class*=PieChart__Value]").contains("0")
+            cy.get("[class*=PieChart__Title]").contains(/total/i)
           });
         });
       });
