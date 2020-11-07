@@ -19,19 +19,17 @@ const SUGGESTION_SECTION_NAMES = {
 export default class ExpressionEditorSuggestions extends React.Component {
   static propTypes = {
     suggestions: PropTypes.array,
-    onSuggestionClicked: PropTypes.func, // signature is f(selectedSuggestion, acceptSuggestion)
+    onSuggestionMouseDown: PropTypes.func, // signature is f(index)
+    highlightedIndex: PropTypes.number.isRequired,
   };
 
   componentWillReceiveProps(newProps) {
-    this.setState({
-      highlightedSuggestion: 0,
-    });
+    console.log("newProps:", newProps); // NOCOMMIT
   }
 
   componentDidUpdate(prevProps, prevState) {
     if (
-      prevState &&
-      prevState.highlightedSuggestion !== this.state.highlightedSuggestion
+      (prevProps && prevProps.highlightedIndex) !== this.props.highlightedIndex
     ) {
       if (this._selectedRow && isObscured(this._selectedRow)) {
         this._selectedRow.scrollIntoView({ block: "nearest" });
@@ -43,23 +41,16 @@ export default class ExpressionEditorSuggestions extends React.Component {
   onSuggestionMouseDown(event, index) {
     event.preventDefault();
     event.stopPropagation();
-    this.setState({ highlightedSuggestion: index }, () => {
-      const suggestion = this.props.suggestions[
-        this.state.highlightedSuggestion
-      ];
-      const { onSuggestionClicked } = this.props;
-      if (onSuggestionClicked) {
-        onSuggestionClicked(suggestion, () => {
-          this.setState({ highlightedSuggestion: 0 });
-        });
-      }
-    });
+
+    this.props.onSuggestionMouseDown && this.props.onSuggestionMouseDown(index);
   }
 
   render() {
-    const { suggestions } = this.props;
+    const { suggestions, highlightedIndex } = this.props;
 
-    if (!suggestions.length) return null;
+    if (!suggestions.length) {
+      return null;
+    }
 
     return (
       <Popover
@@ -82,7 +73,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
               ),
               <li
                 ref={r => {
-                  if (i === this.state.highlightedSuggestion) {
+                  if (i === highlightedIndex) {
                     this._selectedRow = r;
                   }
                 }}
@@ -91,7 +82,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
                   "px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit",
                   {
                     "text-white bg-brand":
-                      i === this.state.highlightedSuggestion,
+                      i === highlightedIndex,
                   },
                 )}
                 onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
@@ -102,7 +93,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
                     <span
                       className={cx("text-brand text-bold hover-child", {
                         "text-white bg-brand":
-                          i === this.state.highlightedSuggestion,
+                          i === highlightedIndex,
                       })}
                     >
                       {suggestion.name.slice(

@@ -34,6 +34,63 @@ import { isExpression } from "metabase/lib/expressions";
 
 import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";
 
+const HelpText = ({ helpText, width }) =>
+  helpText ? (
+    <Popover
+      tetherOptions={{
+        attachment: "top left",
+        targetAttachment: "bottom left",
+      }}
+      style={{ width: width }}
+      isOpen
+    >
+      <p
+        className="p2 m0 text-monospace text-bold"
+        style={{ background: colors["bg-yellow"] }}
+      >
+        {helpText.structure}
+      </p>
+      <div className="p2 border-top">
+        <p className="mt0 text-bold">{helpText.description}</p>
+        <p className="text-code m0 text-body">{helpText.example}</p>
+      </div>
+      <div className="p2 border-top">
+        {helpText.args.map(({ name, description }) => (
+          <div>
+            <h4 className="text-medium">{name}</h4>
+            <p className="mt1 text-bold">{description}</p>
+          </div>
+        ))}
+        <a
+          className="link text-bold block my1"
+          target="_blank"
+          href={MetabaseSettings.docsUrl("users-guide/expressions")}
+        >
+          <Icon name="reference" size={12} className="mr1" />
+          {t`Learn more`}
+        </a>
+      </div>
+    </Popover>
+  ) : null;
+
+const Errors = ({ compileError }) => {
+  if (!compileError) {
+    return null;
+  }
+
+  compileError = Array.isArray(compileError) ? compileError : [compileError];
+
+  return (
+    <div>
+      {compileError.map(error => (
+        <div className="text-error mt1 mb1" style={{ whiteSpace: "pre-wrap" }}>
+          {error.message}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 @ExplicitSize()
 export default class ExpressionEditorTextfield extends React.Component {
   constructor() {
@@ -76,10 +133,19 @@ export default class ExpressionEditorTextfield extends React.Component {
       const parserOptions = this._getParserOptions(newProps);
       const source = format(newProps.expression, parserOptions);
 
-      const { expression, compileError, syntaxTree } = this._processSource({
-        source,
-        ...this._getParserOptions(newProps),
-      });
+      console.log("source:", source); // NOCOMMIT
+
+      const { expression, compileError, syntaxTree } =
+        source && source.length
+          ? this._processSource({
+              source,
+              ...this._getParserOptions(newProps),
+            })
+          : {
+              expression: [null, ""],
+              compileError: null,
+              syntaxTree: null,
+            };
 
       this.setState({
         source,
@@ -87,7 +153,7 @@ export default class ExpressionEditorTextfield extends React.Component {
         compileError,
         syntaxTree,
         suggestions: [],
-        highlightedSuggestion: 0,
+        highlightedSuggestionIndex: 0,
       });
     }
   }
@@ -99,8 +165,9 @@ export default class ExpressionEditorTextfield extends React.Component {
     );
   }
 
-  onSuggestionClicked = (suggestion, acceptSuggestion) => {
-    const { source } = this.state;
+  onSuggestionSelected = index => {
+    const { source, suggestions } = this.state;
+    const suggestion = suggestions && suggestions[index];
 
     if (suggestion) {
       let prefix = source.slice(0, suggestion.index);
@@ -120,12 +187,10 @@ export default class ExpressionEditorTextfield extends React.Component {
         this._setCaretPosition((prefix + suggestion.text).length, true),
       );
     }
-
-    acceptSuggestion();
   };
 
   onInputKeyDown = e => {
-    const { suggestions, highlightedSuggestion } = this.state;
+    const { suggestions, highlightedSuggestionIndex } = this.state;
 
     if (e.keyCode === KEYCODE_LEFT || e.keyCode === KEYCODE_RIGHT) {
       setTimeout(() => this._triggerAutosuggest());
@@ -138,6 +203,10 @@ export default class ExpressionEditorTextfield extends React.Component {
       return;
     }
 
+    console.log("suggestions:", suggestions); // NOCOMMIT
+    console.log("highlightedSuggestionIndex:", highlightedSuggestionIndex); // NOCOMMIT
+    console.log("e.keyCode:", e.keyCode); // NOCOMMIT
+
     if (!suggestions.length) {
       if (
         e.keyCode === KEYCODE_ENTER &&
@@ -149,18 +218,18 @@ export default class ExpressionEditorTextfield extends React.Component {
       return;
     }
     if (e.keyCode === KEYCODE_ENTER) {
-      this.onSuggestionClicked();
+      this.onSuggestionSelected(highlightedSuggestionIndex);
       e.preventDefault();
     } else if (e.keyCode === KEYCODE_UP) {
       this.setState({
-        highlightedSuggestion:
-          (highlightedSuggestion + suggestions.length - 1) % suggestions.length,
+        highlightedSuggestionIndex:
+          (highlightedSuggestionIndex + suggestions.length - 1) % suggestions.length,
       });
       e.preventDefault();
     } else if (e.keyCode === KEYCODE_DOWN) {
       this.setState({
-        highlightedSuggestion:
-          (highlightedSuggestion + suggestions.length + 1) % suggestions.length,
+        highlightedSuggestionIndex:
+          (highlightedSuggestionIndex + suggestions.length + 1) % suggestions.length,
       });
       e.preventDefault();
     }
@@ -169,7 +238,7 @@ export default class ExpressionEditorTextfield extends React.Component {
   clearSuggestions() {
     this.setState({
       suggestions: [],
-      highlightedSuggestion: 0,
+      highlightedSuggestionIndex: 0,
     });
   }
 
@@ -242,67 +311,8 @@ export default class ExpressionEditorTextfield extends React.Component {
       compileError,
       suggestions: showSuggestions ? suggestions : [],
       helpText,
+      highlightedSuggestionIndex: 0,
     });
-  }
-
-  renderError() {
-    let { compileError } = this.state;
-
-    if (!compileError) {
-      return null;
-    }
-
-    compileError = Array.isArray(compileError) ? compileError : [compileError];
-
-    return compileError.map(error => (
-      <div className="text-error mt1 mb1" style={{ whiteSpace: "pre-wrap" }}>
-        {error.message}
-      </div>
-    ));
-  }
-
-  renderHelpText() {
-    const { helpText } = this.state;
-
-    return (
-      helpText && (
-        <Popover
-          tetherOptions={{
-            attachment: "top left",
-            targetAttachment: "bottom left",
-          }}
-          style={{ width: this.props.width }}
-          isOpen
-        >
-          <p
-            className="p2 m0 text-monospace text-bold"
-            style={{ background: colors["bg-yellow"] }}
-          >
-            {helpText.structure}
-          </p>
-          <div className="p2 border-top">
-            <p className="mt0 text-bold">{helpText.description}</p>
-            <p className="text-code m0 text-body">{helpText.example}</p>
-          </div>
-          <div className="p2 border-top">
-            {helpText.args.map(({ name, description }) => (
-              <div>
-                <h4 className="text-medium">{name}</h4>
-                <p className="mt1 text-bold">{description}</p>
-              </div>
-            ))}
-            <a
-              className="link text-bold block my1"
-              target="_blank"
-              href={MetabaseSettings.docsUrl("users-guide/expressions")}
-            >
-              <Icon name="reference" size={12} className="mr1" />
-              {t`Learn more`}
-            </a>
-          </div>
-        </Popover>
-      )
-    );
   }
 
   render() {
@@ -345,11 +355,12 @@ export default class ExpressionEditorTextfield extends React.Component {
           onClick={this.onInputClick}
           autoFocus
         />
-        {this.renderError()}
-        {this.renderHelpText()}
+        <Errors compileError={compileError} />
+        <HelpText helpText={this.state.helpText} width={this.props.width} />
         <ExpressionEditorSuggestions
           suggestions={suggestions}
-          onSuggestionClicked={this.onSuggestionClicked}
+          onSuggestionMouseDown={this.onSuggestionSelected}
+          highlightedIndex={this.state.highlightedSuggestionIndex}
         />
       </div>
     );
