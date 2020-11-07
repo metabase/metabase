@@ -1,4 +1,4 @@
-import { pivot } from "metabase/lib/data_grid";
+import { pivot, multiLevelPivot } from "metabase/lib/data_grid";
 
 import { TYPE } from "metabase/lib/types";
 
@@ -82,7 +82,6 @@ describe("data_grid", () => {
     it("should not return null column names from null values", () => {
       const data = makeData([[null, null, 1]]);
       const pivotedData = pivot(data, 0, 1, 2);
-      console.log("pivotedData", pivotedData);
       expect(pivotedData.rows.length).toEqual(1);
       expect(pivotedData.cols.length).toEqual(2);
       expect(pivotedData.cols[0].name).toEqual(jasmine.any(String));
@@ -109,6 +108,50 @@ describe("data_grid", () => {
       expect(pivotedData.rows.map(row => [...row])).toEqual([
         ["a", 1, null, 3],
         ["b", 4, 5, 6],
+      ]);
+    });
+  });
+
+  describe("multiLevelPivot", () => {
+    const data = makeData([
+      ["a", "x", 1],
+      ["a", "y", 2],
+      ["a", "z", 3],
+      ["b", "x", 4],
+      ["b", "y", 5],
+      ["b", "z", 6],
+    ]);
+    it("should produce header rows with spans", () => {
+      const { headerRows } = multiLevelPivot(data, [0, 1], [], [2]);
+      expect(headerRows).toEqual([
+        [{ span: 3, value: "a" }, { span: 3, value: "b" }],
+        [
+          { span: 1, value: "x" },
+          { span: 1, value: "y" },
+          { span: 1, value: "z" },
+          { span: 1, value: "x" },
+          { span: 1, value: "y" },
+          { span: 1, value: "z" },
+        ],
+      ]);
+    });
+    it("should produce body rows with spans", () => {
+      const { bodyRows } = multiLevelPivot(data, [], [0, 1], [2]);
+      expect(bodyRows).toEqual([
+        [
+          { span: 3, value: "a" },
+          { span: 1, value: "x" },
+          { span: 1, value: [1] },
+        ],
+        [{ span: 1, value: "y" }, { span: 1, value: [2] }],
+        [{ span: 1, value: "z" }, { span: 1, value: [3] }],
+        [
+          { span: 3, value: "b" },
+          { span: 1, value: "x" },
+          { span: 1, value: [4] },
+        ],
+        [{ span: 1, value: "y" }, { span: 1, value: [5] }],
+        [{ span: 1, value: "z" }, { span: 1, value: [6] }],
       ]);
     });
   });

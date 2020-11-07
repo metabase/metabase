@@ -1,5 +1,144 @@
 import { formatValue } from "metabase/lib/formatting";
 
+export function multiLevelPivot(
+  data,
+  columnColumnIndexes,
+  rowColumnIndexes,
+  valueColumnIndexes,
+) {
+  const columnColumnValues = [];
+  const rowColumnValues = [];
+  const valueColumnValues = {};
+
+  for (const row of data.rows) {
+    updateValueObject(row, columnColumnIndexes, columnColumnValues);
+    updateValueObject(row, rowColumnIndexes, rowColumnValues);
+
+    const valueKey = getValuesKey(row, columnColumnIndexes, rowColumnIndexes);
+    valueColumnValues[valueKey] = valueColumnIndexes.map(index => row[index]);
+  }
+
+  const headerRows = new Array(columnColumnIndexes.length)
+    .fill(null)
+    .map(() => []);
+  const [headerFormatters, valueFormatters, rowHeaderFormatters] = [
+    columnColumnIndexes,
+    valueColumnIndexes,
+    rowColumnIndexes,
+  ].map(indexes =>
+    indexes.map(index => value =>
+      formatValue(value, { column: data.cols[index] }),
+    ),
+  );
+  addHeaderRows(headerRows, columnColumnValues, headerFormatters);
+
+  const bodyRows = [];
+  addBodyRows(bodyRows, {
+    rowColumnValues,
+    columnColumnValues,
+    valueColumnValues,
+    valueFormatters,
+    rowHeaderFormatters,
+  });
+
+  return {
+    headerRows,
+    bodyRows,
+  };
+}
+
+function addHeaderRows(rows, values, formatters, depth = 0) {
+  if (values.length === 0) {
+    return 1;
+  }
+  let totalSpan = 0;
+  for (const { value, children } of values) {
+    const span = addHeaderRows(rows, children, formatters, depth + 1);
+    totalSpan += span;
+    rows[depth].push({ value: formatters[depth](value), span });
+  }
+  return totalSpan;
+}
+
+function dfs(nodes, currentList = []) {
+  if (nodes.length === 0) {
+    return [currentList];
+  }
+
+  return nodes.flatMap(({ value, children }) =>
+    dfs(children, [...currentList, value]),
+  );
+}
+
+function addBodyRows(
+  rows,
+  {
+    rowColumnValues,
+    columnColumnValues,
+    valueColumnValues,
+    valueFormatters,
+    rowHeaderFormatters,
+  },
+  currentRow,
+  valueList = [],
+) {
+  if (rowColumnValues.length === 0 && valueList.length > 0) {
+    const valueKeys = dfs(columnColumnValues).map(l =>
+      JSON.stringify(l.concat(valueList)),
+    );
+    const values = valueKeys.map(valueKey => ({
+      value: valueColumnValues[valueKey],
+      span: 1,
+    }));
+    currentRow.push(...values);
+
+    return 1;
+  }
+  let totalSpan = 0;
+  rowColumnValues.forEach(({ value, children }, index) => {
+    let row = currentRow;
+    if (currentRow === undefined || index > 0) {
+      row = [];
+      rows.push(row);
+    }
+    const item = { value: rowHeaderFormatters[0](value) };
+    row.push(item);
+    const span = addBodyRows(
+      rows,
+      {
+        rowColumnValues: children,
+        columnColumnValues,
+        valueColumnValues,
+        valueFormatters,
+        rowHeaderFormatters: rowHeaderFormatters.slice(1),
+      },
+      row,
+      [...valueList, value],
+    );
+    item.span = span;
+    totalSpan += span;
+  });
+  return totalSpan;
+}
+
+function getValuesKey(row, columnColumnIndexes, rowColumnIndexes) {
+  return JSON.stringify(
+    columnColumnIndexes.concat(rowColumnIndexes).map(index => row[index]),
+  );
+}
+
+function updateValueObject(row, indexes, seenValues) {
+  let currentLevelSeenValues = seenValues;
+  for (const value of indexes.map(index => row[index])) {
+    let seenValue = currentLevelSeenValues.find(d => d.value === value);
+    if (seenValue === undefined) {
+      seenValue = { value, children: [] };
+      currentLevelSeenValues.push(seenValue);
+    }
+    currentLevelSeenValues = seenValue.children;
+  }
+}
+
 export function pivot(data, normalCol, pivotCol, cellCol) {
   const { pivotValues, normalValues } = distinctValuesSorted(
     data.rows,
@@ -57,7 +196,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
   };
 }
 
-export function distinctValuesSorted(rows, pivotColIdx, normalColIdx) {
+function distinctValuesSorted(rows, pivotColIdx, normalColIdx) {
   const normalSet = new Set();
   const pivotSet = new Set();
 
