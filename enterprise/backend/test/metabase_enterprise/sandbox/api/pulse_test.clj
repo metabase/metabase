@@ -24,7 +24,8 @@
                                                                                  :template_tags {:cat {:name "cat" :display_name "cat" :type "number" :required true}}}}}]
                         PermissionsGroup [{group-id :id} {:name "Restricted Venues"}]
                         PermissionsGroupMembership [_ {:group_id group-id
-                                                       :user_id  (mt/user->id :rasta)}]
+                                                       :user_id  (mt/user->id :rasta)
+                                                       :manually_added 1}]
                         GroupTableAccessPolicy [gtap {:group_id             group-id
                                                       :table_id             (mt/id :venues)
                                                       :card_id              card-id

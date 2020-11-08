@@ -122,7 +122,7 @@
     (group-memberships user)))
 
 ; manually-added groups should not be removed by syncing LDAP group memberships (scenario 2).
-; It's possible a group is assigned both manually and using LDAP sync. If later the LDAP sync changes and 
+; It's possible a group is assigned both manually and using LDAP sync. If later the LDAP sync changes and
 ; the group is no longer assigned to the user using LDAP sync, the manually added group assignment must not change
 (expect
   #{":metabase.integrations.common-test/group-1" ":metabase.integrations.common-test/group-2" "All Users"}

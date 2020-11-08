@@ -18,7 +18,8 @@
                         Table                      [table {:db_id (u/get-id db)}]
                         PermissionsGroup           [group]
                         PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta)
-                                                       :group_id (u/get-id group)}]]
+                                                       :group_id (u/get-id group)
+                                                       :manually_added 1}]]
           (mt/with-db db
             (perms/revoke-permissions! (perms-group/all-users) db)
             (perms/grant-permissions! group (perms/table-segmented-query-path table))
@@ -34,7 +35,8 @@
                         Table                      [table {:db_id (u/get-id db)}]
                         PermissionsGroup           [group]
                         PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta)
-                                                       :group_id (u/get-id group)}]
+                                                       :group_id (u/get-id group)
+                                                       :manually_added 1}]
                         Card                       [card {:name "Some Name"
                                                           :collection_id (u/get-id collection)}]]
           (mt/with-db db
