@@ -2,6 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import { Box, Flex } from "grid-styled";
 
+import Database from "metabase/entities/databases";
 import Task from "metabase/entities/tasks";
 
 import AdminHeader from "metabase/components/AdminHeader";
@@ -12,16 +13,23 @@ import Tooltip from "metabase/components/Tooltip";
 @Task.loadList({
   pageSize: 50,
 })
+@Database.loadList()
 class TasksApp extends React.Component {
   render() {
     const {
       tasks,
+      databases,
       page,
       pageSize,
       onNextPage,
       onPreviousPage,
       children,
     } = this.props;
+    const databaseByID = {};
+    // index databases by id for lookup
+    for (const db of databases) {
+      databaseByID[db.id] = db;
+    }
     return (
       <Box p={3}>
         <Flex align="center">
@@ -53,29 +61,39 @@ class TasksApp extends React.Component {
 
         <table className="ContentTable mt2">
           <thead>
-            <th>{t`Task`}</th>
-            <th>{t`DB ID`}</th>
-            <th>{t`Started at`}</th>
-            <th>{t`Ended at`}</th>
-            <th>{t`Duration (ms)`}</th>
-            <th>{t`Details`}</th>
+            <tr>
+              <th>{t`Task`}</th>
+              <th>{t`DB Name`}</th>
+              <th>{t`DB Engine`}</th>
+              <th>{t`Started at`}</th>
+              <th>{t`Ended at`}</th>
+              <th>{t`Duration (ms)`}</th>
+              <th>{t`Details`}</th>
+            </tr>
           </thead>
           <tbody>
-            {tasks.map(task => (
-              <tr key={task.id}>
-                <td className="text-bold">{task.task}</td>
-                <td>{task.db_id}</td>
-                <td>{task.started_at}</td>
-                <td>{task.ended_at}</td>
-                <td>{task.duration}</td>
-                <td>
-                  <Link
-                    className="link text-bold"
-                    to={`/admin/troubleshooting/tasks/${task.id}`}
-                  >{t`View`}</Link>
-                </td>
-              </tr>
-            ))}
+            {tasks.map(task => {
+              const db = task.db_id ? databaseByID[task.db_id] : null;
+              const name = db ? db.name : null;
+              const engine = db ? db.engine : null;
+              // only want unknown if there is a db on the task and we don't have info
+              return (
+                <tr key={task.id}>
+                  <td className="text-bold">{task.task}</td>
+                  <td>{task.db_id ? name || t`Unknown name` : null}</td>
+                  <td>{task.db_id ? engine || t`Unknown engine` : null}</td>
+                  <td>{task.started_at}</td>
+                  <td>{task.ended_at}</td>
+                  <td>{task.duration}</td>
+                  <td>
+                    <Link
+                      className="link text-bold"
+                      to={`/admin/troubleshooting/tasks/${task.id}`}
+                    >{t`View`}</Link>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {

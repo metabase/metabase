@@ -3,7 +3,7 @@ import {
   restore,
   modal,
   popover,
-  selectDashboardFilter,
+  withSampleDataset,
 } from "__support__/cypress";
 
 describe("scenarios > dashboard > dashboard drill", () => {
@@ -172,73 +172,93 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should pass multiple filters for numeric column on drill-through (metabase#13062)", () => {
-    // go to admin > data model > sample dataset > reviews
-    cy.visit("/admin/datamodel/database/1/table/4");
+    // Preparation for the test: "Arrange and Act phase" - see repro steps in #13062
+    // 1. set "Rating" Field type to: "Category"
+    withSampleDataset(({ REVIEWS }) => {
+      cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
+        special_type: "type/Category",
+      });
+      // 2. create a question based on Reviews
+      cy.request("POST", `/api/card`, {
+        name: "13062Q",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": 4,
+          },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {},
+      }).then(({ body: { id: questionId } }) => {
+        // 3. create a dashboard
+        cy.request("POST", "/api/dashboard", {
+          name: "13062D",
+        }).then(({ body: { id: dashboardId } }) => {
+          // add filter to the dashboard
+          cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+            parameters: [
+              {
+                id: "18024e69",
+                name: "Category",
+                slug: "category",
+                type: "category",
+              },
+            ],
+          });
 
-    // Set "Rating" Field type to: "Category" ("Score" is selected by default)
-    cy.findByText("Score").click();
-    // "Category" is not visible and any other method couldn't find it, including `Popover().contains("Category")`
-    cy.get(".ReactVirtualized__Grid")
-      .scrollTo("top")
-      .contains("Category")
-      .click();
-    // make sure the field updated before navigating away
-    cy.findByText("Category");
+          // add previously created question to the dashboard
+          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+            cardId: questionId,
+          }).then(({ body: { id: dashCardId } }) => {
+            // connect filter to that question
+            cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+              cards: [
+                {
+                  id: dashCardId,
+                  card_id: questionId,
+                  row: 0,
+                  col: 0,
+                  sizeX: 8,
+                  sizeY: 6,
+                  parameter_mappings: [
+                    {
+                      parameter_id: "18024e69",
+                      card_id: questionId,
+                      target: ["dimension", ["field-id", REVIEWS.RATING]],
+                    },
+                  ],
+                },
+              ],
+            });
+          });
 
-    // go straight to simple question > reviews
-    cy.visit("/question/new?database=1&table=4");
+          // NOTE: The actual "Assertion" phase begins here
+          cy.log("**Reported failing on Metabase 1.34.3 and 0.36.2**");
 
-    // save the question
-    cy.findByText("Save").click();
-    cy.get(".Modal").within(() => {
-      cy.findByText("Save").click();
+          cy.log("**The first case**");
+          // set filter values (ratings 5 and 4) directly through the URL
+          cy.visit(`/dashboard/${dashboardId}?category=5&category=4`);
+
+          // drill-through
+          cy.findByText("xavier").click();
+          cy.findByText("=").click();
+
+          cy.findByText("Reviewer is xavier");
+          cy.findByText("Rating is equal to 2 selections");
+          cy.contains("Reprehenderit non error"); // xavier's review
+
+          cy.log("**The second case**");
+          // go back to the dashboard
+          cy.visit(`/dashboard/${dashboardId}?category=5&category=4`);
+          cy.findByText("2 selections");
+
+          cy.findByText("13062Q").click(); // the card title
+          cy.findByText("Rating is equal to 2 selections");
+          cy.contains("Ad perspiciatis quis et consectetur."); // 5 star review
+        });
+      });
     });
-    // and add it to a new dashboard
-    cy.findByText("Yes please!").click();
-    cy.findByText("Create a new dashboard").click();
-    cy.findByLabelText("Name")
-      .click()
-      .type("13062");
-    cy.findByText("Create").click();
-
-    // make sure we switched to the dashboard in edit mode
-    cy.findByText("You're editing this dashboard.");
-
-    // add filter
-    cy.get(".Icon-filter").click();
-    cy.findByText("Other Categories").click();
-    // and link it to the card
-    selectDashboardFilter(cy.get(".DashCard"), "Rating");
-
-    // save the dashboard and exit editing mode
-    cy.findByText("Save").click();
-    cy.findByText("You're editing this dashboard.").should("not.exist");
-
-    // add values to the filter
-    cy.findByText("Category").click();
-    popover().within(() => {
-      cy.findByText("5").click();
-      cy.findByText("4").click();
-    });
-    cy.findByText("Add filter").click();
-
-    // drill-through
-    cy.findByText("xavier").click();
-    cy.findByText("=").click();
-
-    cy.log("**Reported failing on Metabase 1.34.3 and 0.36.2**");
-    cy.findByText("Reviewer is xavier");
-    cy.findByText("Rating is equal to 2 selections");
-    // wait for data to finish loading
-    cy.get(".LoadingSpinner").should("not.exist");
-
-    cy.log("**Test the second case reported in this issue**");
-    // go back to the dashboard
-    cy.visit("/dashboard/6?category=5&category=4");
-    cy.findByText("2 selections");
-
-    cy.findByText("Reviews").click(); // the card title
-    cy.findByText("Rating is equal to 2 selections");
   });
 });
 
