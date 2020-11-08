@@ -127,7 +127,8 @@
    This map's format is:
 
     {<user-id> [{:membership_id <id>
-                 :group_id      <id>}]}"
+                 :group_id      <id>
+                 :manually_added <int>}]}"
   []
   (api/check-superuser)
   (group-by :user_id (db/select [PermissionsGroupMembership [:id :membership_id] :group_id :user_id])))
@@ -140,7 +141,8 @@
   (api/check-superuser)
   (db/insert! PermissionsGroupMembership
     :group_id group_id
-    :user_id  user_id)
+    :user_id  user_id
+    :manually_added 1)
   ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
   ;; let the frontend add it ass appropriate
   (group/members {:id group_id}))

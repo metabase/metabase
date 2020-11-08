@@ -84,12 +84,14 @@
         (u/ignore-exceptions
           (db/insert! PermissionsGroupMembership
             :user_id  user-id
-            :group_id all-users-group-id))
+            :group_id all-users-group-id
+            :manually_added 0))
         (when superuser?
           (u/ignore-exceptions
             (db/insert! PermissionsGroupMembership
               :user_id  user-id
-              :group_id admin-group-id)))))))
+              :group_id admin-group-id
+              :manually_added 0)))))))
 
 ;; admin group has a single entry that lets it access to everything
 (defmigration ^{:author "camsaul", :added "0.20.0"} add-admin-group-root-entry

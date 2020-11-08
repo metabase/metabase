@@ -22,7 +22,7 @@
      (do-with-user-in-groups f user groups-or-ids)))
   ([f user [group-or-id & more]]
    (if group-or-id
-     (tt/with-temp PermissionsGroupMembership [_ {:group_id (u/get-id group-or-id), :user_id (u/get-id user)}]
+     (tt/with-temp PermissionsGroupMembership [_ {:group_id (u/get-id (group-or-id :group)), :user_id (u/get-id user), :manually_added (group-or-id :manually_added)}]
        (do-with-user-in-groups f user more))
      (f user))))
 
@@ -50,14 +50,14 @@
 (expect
   #{"All Users" ":metabase.integrations.common-test/group"}
   (with-user-in-groups [group {:name (str ::group)}
-                        user  [group]]
+                        user  [{:group group :manually_added 0}]]
     (integrations.common/sync-group-memberships! user #{group})
     (group-memberships user)))
 
 ;; the actual `PermissionsGroupMembership` object should not have been replaced
 (expect
   (with-user-in-groups [group {:name (str ::group)}
-                        user  [group]]
+                        user  [{:group group :manually_added 0}]]
     (let [membership-id          #(db/select-one-id PermissionsGroupMembership
                                     :group_id (u/get-id group)
                                     :user_id  (u/get-id user))
@@ -73,7 +73,7 @@
     "All Users"}
   (with-user-in-groups [group-1 {:name (str ::group-1)}
                         group-2 {:name (str ::group-2)}
-                        user    [group-1]]
+                        user    [{:group group-1 :manually_added 0}]]
     (integrations.common/sync-group-memberships! user #{group-1 group-2})
     (group-memberships user)))
 
@@ -82,7 +82,7 @@
   #{"All Users"}
   (with-user-in-groups [group-1 {:name (str ::group-1)}
                         group-2 {:name (str ::group-2)}
-                        user    [group-1]]
+                        user    [{:group group-1 :manually_added 0}]]
     (integrations.common/sync-group-memberships! user #{})
     (group-memberships user)))
 
@@ -91,7 +91,7 @@
   #{":metabase.integrations.common-test/group-2" "All Users"}
   (with-user-in-groups [group-1 {:name (str ::group-1)}
                         group-2 {:name (str ::group-2)}
-                        user    [group-1]]
+                        user    [{:group group-1 :manually_added 0}]]
     (integrations.common/sync-group-memberships! user #{group-2})
     (group-memberships user)))
 
@@ -100,7 +100,7 @@
 (expect
   #{"All Users" ":metabase.integrations.common-test/group"}
   (with-user-in-groups [group {:name (str ::group)}
-                        user    [group]]
+                        user    [{:group group :manually_added 0}]]
     (tu.log/suppress-output
       (integrations.common/sync-group-memberships! user [Integer/MAX_VALUE group]))
     (group-memberships user)))
@@ -110,4 +110,25 @@
   #{"All Users"}
   (with-user-in-groups [user]
     (integrations.common/sync-group-memberships! user [(group/admin)])
+    (group-memberships user)))
+
+; manually-added groups should not be removed by syncing LDAP group memberships (scenario 1).
+(expect
+  #{":metabase.integrations.common-test/group-1" ":metabase.integrations.common-test/group-2" "All Users"}
+  (with-user-in-groups [group-1 {:name (str ::group-1)}
+                        group-2 {:name (str ::group-2)}
+                        user    [{:group group-1 :manually_added 1}]]
+    (integrations.common/sync-group-memberships! user #{group-2})
+    (group-memberships user)))
+
+; manually-added groups should not be removed by syncing LDAP group memberships (scenario 2).
+; It's possible a group is assigned both manually and using LDAP sync. If later the LDAP sync changes and 
+; the group is no longer assigned to the user using LDAP sync, the manually added group assignment must not change
+(expect
+  #{":metabase.integrations.common-test/group-1" ":metabase.integrations.common-test/group-2" "All Users"}
+  (with-user-in-groups [group-1 {:name (str ::group-1)}
+                        group-2 {:name (str ::group-2)}
+                        user    [{:group group-1 :manually_added 1}
+                                 {:group group-1 :manually_added 0}]]
+    (integrations.common/sync-group-memberships! user #{group-2})
     (group-memberships user)))

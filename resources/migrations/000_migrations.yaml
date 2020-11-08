@@ -2988,10 +2988,15 @@ databaseChangeLog:
                     nullable: false
                     references: permissions_group(id)
                     foreignKeyName: fk_permissions_group_group_id
+              - column:
+                  name: manually_added
+                  type: int
+                  constraints:
+                    nullable: false
         - addUniqueConstraint:
             tableName: permissions_group_membership
-            columnNames: user_id, group_id
-            constraintName: unique_permissions_group_membership_user_id_group_id
+            columnNames: user_id, group_id, manually_added
+            constraintName: unique_permissions_group_membership_user_id_group_id_manually_added
         # for things like all users in a given group
         - createIndex:
             tableName: permissions_group_membership

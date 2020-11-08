@@ -117,7 +117,7 @@
 ;; adding user to Admin should set is_superuser -> true
 (expect
   (tt/with-temp User [{user-id :id}]
-    (db/insert! PermissionsGroupMembership, :user_id user-id, :group_id (:id (perm-group/admin)))
+    (db/insert! PermissionsGroupMembership, :user_id user-id, :group_id (:id (perm-group/admin)), :manually_added 1)
     (db/select-one-field :is_superuser User, :id user-id)))
 
 ;; removing user from Admin should set is_superuser -> false

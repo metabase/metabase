@@ -15,17 +15,18 @@
   [user-or-id new-groups-or-ids]
   (let [special-group-ids  #{(u/get-id (group/admin)) (u/get-id (group/all-users))}
         user-id            (u/get-id user-or-id)
-        ;; Get a set of Group IDs the user currently belongs to
+        ;; Get a set of Group IDs the user currently belongs to that are not manually added
         current-group-ids  (db/select-field :group_id PermissionsGroupMembership
                              :user_id  user-id
-                             :group_id [:not-in special-group-ids])
+                             :group_id [:not-in special-group-ids]
+                             :manually_added 0)
         new-group-ids      (set (map u/get-id new-groups-or-ids))
         ;; determine what's different between current groups and new groups
         [to-remove to-add] (data/diff current-group-ids new-group-ids)]
     ;; remove membership from any groups as needed
     (when (seq to-remove)
       (log/debugf "Removing user %s from group(s) %s" user-id to-remove)
-      (db/delete! PermissionsGroupMembership :group_id [:in to-remove], :user_id user-id))
+      (db/delete! PermissionsGroupMembership :group_id [:in to-remove], :user_id user-id, :manually_added 0))
     ;; add new memberships for any groups as needed
     (doseq [id    to-add
             :when (not (special-group-ids id))]
@@ -33,6 +34,6 @@
       ;; if adding membership fails for one reason or another (i.e. if the group doesn't exist) log the error add the
       ;; user to the other groups rather than failing entirely
       (try
-        (db/insert! PermissionsGroupMembership :group_id id, :user_id user-id)
+        (db/insert! PermissionsGroupMembership :group_id id, :user_id user-id, :manually_added 0)
         (catch Throwable e
           (log/error e (trs "Error adding User {0} to Group {1}" user-id id)))))))

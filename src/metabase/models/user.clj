@@ -63,12 +63,14 @@
       (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
       (db/insert! PermissionsGroupMembership
         :user_id  user-id
-        :group_id (:id (group/all-users))))
+        :group_id (:id (group/all-users))
+        :manually_added 0))
     (when superuser?
       (log/info (trs "Adding User {0} to Admin permissions group..." user-id))
       (db/insert! PermissionsGroupMembership
         :user_id  user-id
-        :group_id (:id (group/admin))))))
+        :group_id (:id (group/admin))
+        :manually_added 0))))
 
 (defn- pre-update [{:keys [email reset_token is_superuser id locale] :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
@@ -81,7 +83,8 @@
              (not membership-exists?))
         (db/insert! PermissionsGroupMembership
           :group_id (u/get-id (group/admin))
-          :user_id  id)
+          :user_id  id
+          :manually_added 0)
 
         ;; don't use `delete!` here because that does the opposite and tries to update this user
         ;; which leads to a stack overflow of calls between the two
@@ -261,7 +264,7 @@
         ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
         ;; do things like automatically set the `is_superuser` flag for a User
         (doseq [group-id to-add]
-          (db/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id})))
+          (db/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id, :manually_added 1})))
       true)))
 
 

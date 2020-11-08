@@ -36,7 +36,7 @@
   (testing (str "Adding a group with *no* permissions shouldn't suddenly break all the permissions sets (This was a "
                 "bug @tom found where a group with no permissions would cause the permissions set to contain `nil`).")
     (mt/with-temp* [PermissionsGroup           [{group-id :id}]
-                    PermissionsGroupMembership [_              {:group_id group-id, :user_id (mt/user->id :rasta)}]]
+                    PermissionsGroupMembership [_              {:group_id group-id, :user_id (mt/user->id :rasta), :manually_added 1}]]
       (is (= true
              (perms/is-permissions-set? (user/permissions-set (mt/user->id :rasta))))))))
 
@@ -71,7 +71,7 @@
     (mt/with-temp* [Database                   [{db-id :id}]
                     Table                      [table {:name "Round Table", :db_id db-id}]
                     PermissionsGroup           [{group-id :id}]
-                    PermissionsGroupMembership [_ {:group_id group-id, :user_id (mt/user->id :rasta)}]]
+                    PermissionsGroupMembership [_ {:group_id group-id, :user_id (mt/user->id :rasta), :manually_added 1}]]
       (perms/revoke-permissions! (group/all-users) db-id (:schema table) (:id table))
       (perms/grant-permissions! group-id (perms/table-read-path table))
       (is (set/subset?
@@ -228,7 +228,8 @@
         {:group_id (u/get-id group)
          :user_id  (if (keyword? member)
                      (mt/user->id member)
-                     (u/get-id member))}))
+                     (u/get-id member))
+         :manually_added 1}))
     (f group)))
 
 (defmacro ^:private with-groups [[group-binding group-properties members & more-groups] & body]

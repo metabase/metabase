@@ -29,7 +29,8 @@
 (defn do-with-group [group f]
   (tt/with-temp* [PermissionsGroup           [group group]
                   PermissionsGroupMembership [_     {:group_id (u/get-id group)
-                                                     :user_id  (users/user->id :rasta)}]]
+                                                     :user_id  (users/user->id :rasta)
+                                                     :manually_added 1}]]
     (f group)))
 
 (defmacro with-group
@@ -131,7 +132,8 @@
                                                          :dataset_query (make-query-fn (data/id))}]
                       PermissionsGroup           [group {:name "Restricted Venues"}]
                       PermissionsGroupMembership [_     {:group_id (u/get-id group)
-                                                         :user_id  (users/user->id :rasta)}]
+                                                         :user_id  (users/user->id :rasta)
+                                                         :manually_added 1}]
                       GroupTableAccessPolicy     [gtap  {:group_id             (u/get-id group)
                                                          :table_id             (data/id :venues)
                                                          :card_id              (u/get-id card)

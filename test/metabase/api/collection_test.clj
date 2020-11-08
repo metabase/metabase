@@ -469,7 +469,7 @@
         (testing "...but if they have read perms for the Root Collection they should get to see them"
           (with-some-children-of-collection nil
             (mt/with-temp* [PermissionsGroup           [group]
-                            PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
+                            PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group), :manually_added 1}]]
               (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
               (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
                       (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
@@ -655,7 +655,7 @@
       (mt/with-model-cleanup [Collection]
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp* [PermissionsGroup           [group]
-                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
+                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group), :manually_added 1}]]
             (perms/grant-collection-readwrite-permissions! group collection/root-collection)
             (is (= (merge
                     (mt/object-defaults Collection)

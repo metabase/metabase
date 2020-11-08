@@ -163,7 +163,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (with-search-items-in-root-collection "test"
         (mt/with-temp* [PermissionsGroup           [group]
-                        PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
+                        PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group), :manually_added 1}]]
           (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
           (is (= (remove (comp #{"collection"} :model) (default-search-results))
                  (search-request :rasta :q "test")))))))
@@ -173,7 +173,7 @@
       (with-search-items-in-collection {:keys [collection]} "test"
         (with-search-items-in-root-collection "test2"
           (mt/with-temp* [PermissionsGroup           [group]
-                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
+                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group), :manually_added 1}]]
             (perms/grant-collection-read-permissions! group (u/get-id collection))
             (is (= (sorted-results
                     (into
@@ -189,7 +189,7 @@
       (with-search-items-in-collection {:keys [collection]} "test"
         (with-search-items-in-root-collection "test2"
           (mt/with-temp* [PermissionsGroup           [group]
-                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
+                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group), :manually_added 1}]]
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
             (perms/grant-collection-read-permissions! group collection)
             (is (= (sorted-results
@@ -204,7 +204,7 @@
     (with-search-items-in-collection {coll-1 :collection} "test"
       (with-search-items-in-collection {coll-2 :collection} "test2"
         (mt/with-temp* [PermissionsGroup           [group]
-                        PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
+                        PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group), :manually_added 1}]]
           (perms/grant-collection-read-permissions! group (u/get-id coll-1))
           (perms/grant-collection-read-permissions! group (u/get-id coll-2))
           (is (= (sorted-results
@@ -219,7 +219,7 @@
       (with-search-items-in-collection {coll-1 :collection} "test"
         (with-search-items-in-collection {coll-2 :collection} "test2"
           (mt/with-temp* [PermissionsGroup           [group]
-                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
+                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group), :manually_added 1}]]
             (perms/grant-collection-read-permissions! group (u/get-id coll-1))
             (is (= (sorted-results
                     (into
@@ -356,7 +356,7 @@
     (mt/with-temp* [Database                   [{db-id :id}]
                     Table                      [table {:name "Round Table", :db_id db-id}]
                     PermissionsGroup           [{group-id :id}]
-                    PermissionsGroupMembership [_ {:group_id group-id, :user_id (mt/user->id :rasta)}]]
+                    PermissionsGroupMembership [_ {:group_id group-id, :user_id (mt/user->id :rasta), :manually_added 1}]]
       (perms/revoke-permissions! (group/all-users) db-id (:schema table) (:id table))
       (perms/grant-permissions! group-id (perms/table-read-path table))
       (do-test-users [user [:crowberto :rasta]]

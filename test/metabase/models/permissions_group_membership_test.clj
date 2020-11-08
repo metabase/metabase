@@ -16,7 +16,7 @@
 (expect
   true
   (tt/with-temp User [user]
-    (db/insert! PermissionsGroupMembership {:user_id (u/get-id user), :group_id (u/get-id (group/admin))})
+    (db/insert! PermissionsGroupMembership {:user_id (u/get-id user), :group_id (u/get-id (group/admin)), :manually_added 1})
     (db/select-one-field :is_superuser User :id (u/get-id user))))
 
 ;; when you delete a PermissionsGroupMembership for a User in the admin group, it should set their `is_superuser` flag
