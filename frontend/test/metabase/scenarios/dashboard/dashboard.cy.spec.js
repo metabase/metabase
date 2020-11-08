@@ -116,13 +116,21 @@ describe("scenarios > dashboard", () => {
           filter: [">", ["field-literal", "sum", "type/Float"], 100],
           query: {
             "source-table": 2,
-            aggregation: [["sum", ORDERS.TOTAL]],
+            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
             breakout: [
-              ["datetime-field", ORDERS.CREATED_AT, "day"],
-              ["fk->", ORDERS.PRODUCT_ID, PRODUCTS.ID],
-              ["fk->", ORDERS.PRODUCT_ID, PRODUCTS.CATEGORY],
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.ID],
+              ],
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.CATEGORY],
+              ],
             ],
-            filter: ["=", ORDERS.USER_ID, 1],
+            filter: ["=", ["field-id", ORDERS.USER_ID], 1],
           },
           type: "query",
         },
@@ -182,19 +190,26 @@ describe("scenarios > dashboard", () => {
       cy.get(".Icon-ellipsis").click();
       cy.findByText("Revision history").click();
 
-      cy.findByText("What");
-      cy.findByText("First revision.");
+      cy.get(".Modal").within(() => {
+        cy.get(".LoadingSpinner").should("not.exist");
+      });
+
+      cy.findAllByText("Bobby Tables");
+      cy.contains(/revert/i);
 
       cy.get(".Modal .Icon-close").click();
-      cy.findByText("First revision.").should("not.exist");
+      cy.findAllByText("Bobby Tables").should("not.exist");
     });
 
     it("should open with url", () => {
       cy.visit("/dashboard/1/history");
+      cy.get(".Modal").within(() => {
+        cy.get(".LoadingSpinner").should("not.exist");
+        cy.findByText("Revision history");
+      });
 
-      cy.findByText("Revision history");
-      cy.findByText("What");
-      cy.findByText("First revision.");
+      cy.findAllByText("Bobby Tables");
+      cy.contains(/revert/i);
     });
   });
 });

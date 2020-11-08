@@ -17,7 +17,7 @@
   (u/step "Generate draft changelog"
     (let [pre-release?                           (c/pre-release-version?)
           {bugs :bug, enhancements :enhancement} (group-by github/issue-type (github/milestone-issues))]
-      (stencil/render-file (u/assert-file-exists "release-template.md")
+      (stencil/render-file (u/assert-file-exists "release/draft_release/release-template.md")
                            {:enhancements enhancements
                             :bug-fixes    bugs
                             :docker-tag   (c/docker-tag)

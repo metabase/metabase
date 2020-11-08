@@ -222,6 +222,17 @@
       (testing "\nsame test but with sync triggered programatically rather than via the API"
         (tests analyze-table!)))))
 
+(deftest analyze-db!-return-value-test
+  (testing "Returns values"
+    (mt/with-temp* [Table [table (fake-table)]
+                    Field [field (fake-field table)]]
+      (let [results (analyze-table! table)]
+        (testing "has the steps performed"
+          (is (= ["fingerprint-fields" "classify-fields" "classify-tables"]
+                 (->> results :steps (map first)))))
+        (testing "has start and finish times"
+          (is (seq (select-keys results [:start-time :end-time]))))))))
+
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
     (mt/with-temp* [Table [table (fake-table)]

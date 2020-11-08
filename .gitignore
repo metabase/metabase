@@ -72,3 +72,4 @@ profiles.clj
 target/checksum.txt
 xcshareddata
 xcuserdata
+dev/src/dev/nocommit/

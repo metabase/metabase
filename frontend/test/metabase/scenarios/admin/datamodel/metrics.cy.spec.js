@@ -155,12 +155,10 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.contains("Result: 18703");
 
       // update name and description, set a revision note, and save the update
-      cy.get('[name="name"]')
-        .clear()
-        .type("orders >10");
-      cy.get('[name="description"]')
-        .clear()
-        .type("Count of orders with a total over $10.");
+      cy.get('[name="name"]').type("{selectall}orders >10");
+      cy.get('[name="description"]').type(
+        "{selectall}Count of orders with a total over $10.",
+      );
       cy.get('[name="revision_message"]').type("time for a change");
       cy.contains("Save changes").click();
 
@@ -186,54 +184,32 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
   describe("custom metrics", () => {
     it("should save the metric using custom expressions (metabase#13022)", () => {
-      cy.visit("/admin/datamodel/metrics");
-      cy.findByText("New metric").click();
-
-      cy.log("**Create new metric based on Custom Expression**");
-      cy.findByText("Select a table").click();
-      popover().within(() => {
-        cy.findByText("Sample Dataset");
-        cy.findByText("Orders").click();
-      });
-      // "Count" is selected by defauult
-      cy.get(".QueryOption")
-        .contains("Count")
-        .click();
-      // Override it with "Custom Expression"
-      popover().within(() => {
-        cy.findByText("Custom Expression").click();
-        cy.get("[contenteditable='true']")
-          .click()
-          .clear()
-          .type("Sum([Discount] * [Quantity])", { delay: 100 });
-        cy.findByPlaceholderText("Name (required)")
-          .click()
-          .type("CE", { delay: 100 });
-        cy.findByText("Done").click();
+      cy.request("POST", "/api/metric", {
+        name: "13022_Metric",
+        desription: "desc",
+        table_id: 2,
+        definition: {
+          "source-table": 2,
+          aggregation: [
+            [
+              "aggregation-options",
+              ["sum", ["*", ["field-id", 9], ["field-id", 10]]],
+              { "display-name": "CE" },
+            ],
+          ],
+        },
       });
 
-      const metricName = "Test CE Metric";
-      // Give it a name
-      cy.findByPlaceholderText("Something descriptive but not too long").type(
-        metricName,
+      cy.log(
+        "**Navigate to the metrics page and assert the metric was indeed saved**",
       );
-      // and description
-      cy.findByPlaceholderText(
-        "This is a good place to be more specific about less obvious metric rules",
-      ).type("Description");
-      // Save the custom metric
-      cy.findByText("Save changes")
-        .should("not.be.disabled")
-        .click();
-
-      cy.log("**Refresh the page and assert**");
-      cy.reload();
-      cy.location("pathname").should("eq", "/admin/datamodel/metrics");
+      cy.visit("/admin/datamodel/metrics");
       cy.findByText(
         'Unexpected input given to normalize. Expected type to be "object", found "string".',
       ).should("not.exist");
 
-      cy.findByText(metricName);
+      cy.findByText("13022_Metric"); // Name
+      cy.findByText("Orders, CE"); // Definition
     });
   });
 });

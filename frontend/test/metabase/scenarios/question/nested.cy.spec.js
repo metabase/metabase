@@ -1,6 +1,7 @@
 import { signInAsAdmin, withSampleDataset, restore } from "__support__/cypress";
 
-describe("scenarios > question > nested (metabase#12568)", () => {
+// [quarantine] flaky
+describe.skip("scenarios > question > nested (metabase#12568)", () => {
   before(() => {
     restore();
     signInAsAdmin();
@@ -14,7 +15,9 @@ describe("scenarios > question > nested (metabase#12568)", () => {
           query: {
             "source-table": 2,
             aggregation: [["count"]],
-            breakout: [["datetime-field", ORDERS.CREATED_AT, "week"]],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "week"],
+            ],
           },
           type: "query",
         },

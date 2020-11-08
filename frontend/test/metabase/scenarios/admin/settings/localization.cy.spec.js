@@ -23,8 +23,10 @@ describe("scenarios > admin > permissions", () => {
           query: {
             "source-table": 2,
             aggregation: [["count"]],
-            breakout: [["datetime-field", ORDERS.CREATED_AT, "week"]],
-            filter: ["<", ORDERS.CREATED_AT, "2016-06-01"],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "week"],
+            ],
+            filter: ["<", ["field-id", ORDERS.CREATED_AT], "2016-06-01"],
           },
           type: "query",
         },

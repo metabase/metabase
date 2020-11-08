@@ -4,9 +4,14 @@ set -e
 
 MB_EDITION=${MB_EDITION:=oss}
 
+if [ "$MB_EDITION" != ee ] && [ "$MB_EDITION" != oss ]; then
+    echo "MB_EDITION must be either 'ee' or 'oss'."
+    exit 1
+fi
+
 # Generate the resources/version.properties file
 version() {
-    VERSION_INFO=$(./bin/version $MB_EDITION)
+    VERSION_INFO=$(./bin/version)
     IFS=', ' read -a info <<< ${VERSION_INFO}
 
     echo "Tagging uberjar with version '$VERSION_INFO'..."
@@ -20,7 +25,12 @@ version() {
 
 frontend-deps() {
     echo "Running 'yarn' to download javascript dependencies..." &&
-    yarn
+    if [[ -z "${CI}" ]]; then
+        yarn
+    else
+        echo "CI run: enforce the lockfile"
+        yarn install --frozen-lockfile
+    fi
 }
 
 frontend() {
@@ -51,13 +61,8 @@ drivers() {
 
 uberjar() {
     lein clean
-    if [ "$MB_EDITION" = "ENTERPRISE" ]; then
-        echo "Running 'lein with-profile +ee uberjar'..."
-        lein with-profile +ee uberjar
-    else
-        echo "Running 'lein uberjar'..."
-        lein uberjar
-    fi
+    echo "Running 'lein with-profile +$MB_EDITION uberjar'..."
+    lein with-profile +$MB_EDITION uberjar
 }
 
 all() {

@@ -117,7 +117,7 @@ const config = (module.exports = {
       icepick: __dirname + "/node_modules/icepick/icepick.min",
       // conditionally load either the EE plugins file or a empty file in the CE code tree
       "ee-plugins":
-        process.env.MB_EDITION === "ENTERPRISE"
+        process.env.MB_EDITION === "ee"
           ? ENTERPRISE_SRC_PATH + "/plugins"
           : SRC_PATH + "/lib/noop",
     },
@@ -233,6 +233,21 @@ if (NODE_ENV === "hot") {
     contentBase: "frontend",
     headers: {
       "Access-Control-Allow-Origin": "*",
+    },
+    // tweak stats to make the output in the console more legible
+    // TODO - once we update webpack to v4+ we can just use `errors-warnings` preset
+    stats: {
+      assets: false,
+      cached: false,
+      cachedAssets: false,
+      chunks: false,
+      chunkModules: false,
+      chunkOrigins: false,
+      modules: false,
+      color: true,
+      hash: false,
+      warnings: true,
+      errorDetals: false,
     },
     // if webpack doesn't reload UI after code change in development
     // watchOptions: {

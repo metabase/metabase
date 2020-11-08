@@ -186,8 +186,8 @@
 (def ^{:arglists '([& exprs])} concat  "SQL `concat` function."  (partial hsql/call :concat))
 
 ;; Etc (Dev Stuff)
-(alter-meta! #'honeysql.core/format assoc :style/indent 1)
-(alter-meta! #'honeysql.core/call   assoc :style/indent 1)
+(alter-meta! #'honeysql.core/format assoc :style/indent :defn)
+(alter-meta! #'honeysql.core/call   assoc :style/indent :defn)
 
 (require 'honeysql.types)
 (extend-protocol PrettyPrintable

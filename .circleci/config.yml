@@ -321,15 +321,9 @@ jobs:
   yaml-linter:
     executor: node
     steps:
-      - attach-workspace
-      - run:
-          name: Install yamllint
-          command: npm install yaml-lint
-          no_output_timeout: 2m
-      - run:
-          name: Lint YAML files
-          command: ./node_modules/.bin/yamllint `find resources -name '*.yaml'`
-          no_output_timeout: 2m
+      - run-yarn-command:
+          command-name: Lint YAML files
+          command: lint-yaml `find resources -name '*.yaml'`
 
   verify-i18n-files:
     executor: node
@@ -664,6 +658,7 @@ jobs:
     executor: << parameters.e >>
     environment:
       CYPRESS_GROUP:  << parameters.cypress-group >>
+      DISPLAY: ""
     steps:
       - run-yarn-command:
           command-name: Run Cypress tests
@@ -676,6 +671,32 @@ jobs:
                 name: Generate version file
                 environment:
                   MB_EDITION: << parameters.edition >>
+                command: ./bin/build version
+      - store_artifacts:
+          path: /home/circleci/metabase/metabase/cypress
+      - store_test_results:
+          path: cypress/results
+
+  fe-tests-cypress-smoketest:
+    parameters:
+      e:
+        type: executor
+        default: clojure-and-node
+      cypress-group:
+        type: string
+    executor: << parameters.e >>
+    environment:
+      CYPRESS_GROUP:  << parameters.cypress-group >>
+    steps:
+      - run-yarn-command:
+          command-name: Run Cypress tests
+          command: run test-cypress-smoketest
+          before-steps:
+            - restore_cache:
+                keys:
+                  - uberjar-oss-{{ checksum "./backend-checksums.txt" }}
+            - run:
+                name: Generate version file
                 command: ./bin/build version
       - store_artifacts:
           path: /home/circleci/metabase/metabase/cypress
@@ -712,6 +733,7 @@ workflows:
       - yaml-linter:
           requires:
             - checkout
+            - fe-deps
 
       - verify-i18n-files:
           requires:
@@ -1020,3 +1042,34 @@ workflows:
           only-single-database: true
           test-files-location: frontend/test/metabase-db/postgres
           <<: *Matrix
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 9 * * *"
+          filters:
+            branches:
+              only:
+                - master
+                - /release-*/
+    jobs:
+      - checkout
+
+      - be-deps:
+          requires:
+            - checkout
+
+      - fe-deps:
+          requires:
+            - checkout
+
+      - build-uberjar:
+          requires:
+            - be-deps
+
+      - fe-tests-cypress-smoketest:
+          name: fe-tests-cypress-smoketest
+          requires:
+            - build-uberjar
+            - fe-deps
+          cypress-group: "default"

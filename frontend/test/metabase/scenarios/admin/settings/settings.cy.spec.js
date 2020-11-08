@@ -13,30 +13,33 @@ describe("scenarios > admin > settings", () => {
   it("should surface an error when validation for any field fails (metabase#4506)", () => {
     const BASE_URL = Cypress.config().baseUrl;
     const DOMAIN_AND_PORT = BASE_URL.replace("http://", "");
-    const ERR_MESSAGE = `Invalid site URL: "${BASE_URL}!"`;
 
     cy.server();
     cy.route("PUT", "/api/setting/site-url").as("url");
 
     cy.visit("/admin/settings/general");
 
-    // Needed to strip down protocol from the url to accomodate our UI (<select> PORT | <input> DOMAIN_AND_PORT)
+    // Needed to strip down the protocol from URL to accomodate our UI (<select> PORT | <input> DOMAIN_AND_PORT)
     cy.findByDisplayValue(DOMAIN_AND_PORT) // findByDisplayValue comes from @testing-library/cypress
       .click()
-      .type("!")
+      .type("foo", { delay: 100 })
       .blur();
 
     cy.wait("@url")
       .wait("@url") // cy.wait("@url.2") doesn't work for some reason
       .should(xhr => {
         expect(xhr.status).to.eq(500);
-        expect(xhr.response.body.cause).to.eq(ERR_MESSAGE);
+        // Switching to regex match for assertions - the test was flaky because of the "typing" issue
+        // i.e. it sometimes doesn't type the whole string "foo", but only "oo".
+        // We only care that the `cause` is starting with "Invalid site URL"
+        expect(xhr.response.body.cause).to.match(/^Invalid site URL/);
       });
 
     // NOTE: This test is not concerned with HOW we style the error message - only that there is one.
     //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
     cy.log("**Making sure we display an error message in UI**");
-    cy.get(".SaveStatus").contains(`Error: ${ERR_MESSAGE}`);
+    // Same reasoning for regex as above
+    cy.get(".SaveStatus").contains(/^Error: Invalid site URL/);
   });
 
   it("should render the proper auth options", () => {
@@ -79,9 +82,14 @@ describe("scenarios > admin > settings", () => {
         .parent()
         .find("input");
 
+    // extremely ugly hack because nothing else worked
+    // for some reason, Cypress failed to clear this field quite often disrupting our CI
     emailInput()
       .click()
       .clear()
+      .type("abc", { delay: 50 })
+      .clear()
+      .click()
       .type("other.email@metabase.com")
       .blur();
     cy.wait("@saveSettings");
@@ -91,12 +99,9 @@ describe("scenarios > admin > settings", () => {
     emailInput().should("have.value", "other.email@metabase.com");
 
     // reset the email
-    emailInput()
-      .click()
-      .clear()
-      .type("bob@metabase.com")
-      .blur();
-    cy.wait("@saveSettings");
+    cy.request("PUT", "/api/setting/admin-email", {
+      value: "bob@metabase.com",
+    });
   });
 
   it("should check for working https before enabling a redirect", () => {
