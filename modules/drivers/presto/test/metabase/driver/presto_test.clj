@@ -125,7 +125,8 @@
             ["Wurstküche"]
             ["Brite Spot Family Restaurant"]]
            (take 5 (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                     [(Field (mt/id :venues :name))]))))))
+                     [(Field (mt/id :venues :name))]
+                     (constantly conj)))))))
 
 
 ;;; APPLY-PAGE

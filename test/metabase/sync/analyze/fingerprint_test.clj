@@ -3,6 +3,7 @@
   (:require [clojure.test :refer :all]
             [metabase
              [db :as mdb]
+             [query-processor :as qp]
              [test :as mt]
              [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
@@ -120,7 +121,8 @@
 (defn- field-was-fingerprinted? {:style/indent 0} [fingerprint-versions field-properties]
   (let [fingerprinted? (atom false)]
     (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted fingerprint-versions
-                  metadata-queries/table-rows-sample                           (constantly [[1] [2] [3] [4] [5]])
+                  qp/process-query                                             (fn [_ {:keys [rff]}]
+                                                                                 (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
                   fingerprint/save-fingerprint!                                (fn [& _] (reset! fingerprinted? true))]
       (tt/with-temp* [Table [table]
                       Field [_ (assoc field-properties :table_id (u/get-id table))]]
@@ -205,7 +207,8 @@
                                 :fingerprint_version 1
                                 :last_analyzed       #t "2017-08-09T00:00:00"}]
       (with-redefs [i/latest-fingerprint-version       3
-                    metadata-queries/table-rows-sample (constantly [[1] [2] [3] [4] [5]])
+                    qp/process-query                   (fn [_ {:keys [rff]}]
+                                                         (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
                     fingerprinters/fingerprinter       (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
         (is (= {:no-data-fingerprints 0, :failed-fingerprints    0,
                 :updated-fingerprints 1, :fingerprints-attempted 1}
