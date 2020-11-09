@@ -239,7 +239,7 @@ exports[`CheckBox should render "Default - Off" correctly 1`] = `
   style={
     Object {
       "backgroundColor": "white",
-      "border": "2px solid #C7CFD4",
+      "border": "2px solid #B8BBC3",
       "borderRadius": 4,
       "height": 16,
       "width": 16,
@@ -420,6 +420,78 @@ exports[`CheckBox should render "Yellow" correctly 1`] = `
       d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
     />
   </svg>
+</div>
+`;
+
+exports[`ColorPicker should render "" correctly 1`] = `
+<div
+  className="inline-block"
+>
+  <a
+    className="no-decoration"
+    id={undefined}
+    onClick={[Function]}
+    style={undefined}
+  >
+    <div
+      className="bordered rounded flex align-center"
+      style={
+        Object {
+          "padding": 8,
+        }
+      }
+    >
+      <div
+        style={
+          Object {
+            "backgroundColor": undefined,
+            "borderRadius": 4,
+            "height": 32,
+            "width": 32,
+          }
+        }
+      />
+    </div>
+    <span
+      className="hide"
+    />
+  </a>
+</div>
+`;
+
+exports[`ColorPicker should render "with value" correctly 1`] = `
+<div
+  className="inline-block"
+>
+  <a
+    className="no-decoration"
+    id={undefined}
+    onClick={[Function]}
+    style={undefined}
+  >
+    <div
+      className="bordered rounded flex align-center"
+      style={
+        Object {
+          "padding": 8,
+        }
+      }
+    >
+      <div
+        style={
+          Object {
+            "backgroundColor": "#509ee3",
+            "borderRadius": 4,
+            "height": 32,
+            "width": 32,
+          }
+        }
+      />
+    </div>
+    <span
+      className="hide"
+    />
+  </a>
 </div>
 `;
 
@@ -1015,7 +1087,7 @@ exports[`Select should render "default" correctly 1`] = `
     >
       <span>
         Entity Key
-        
+
       </span>
     </span>
     <svg
@@ -1097,11 +1169,11 @@ exports[`Select should render "multiple" correctly 1`] = `
     >
       <span>
         Entity Key
-        , 
+        ,
       </span>
       <span>
         Category
-        
+
       </span>
     </span>
     <svg
@@ -1140,7 +1212,7 @@ exports[`Select should render "search" correctly 1`] = `
     >
       <span>
         Entity Key
-        
+
       </span>
     </span>
     <svg
@@ -1179,7 +1251,7 @@ exports[`Select should render "sections" correctly 1`] = `
     >
       <span>
         Entity Key
-        
+
       </span>
     </span>
     <svg
@@ -1337,7 +1409,7 @@ exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
     style={
       Object {
         "backgroundColor": "white",
-        "border": "2px solid #C7CFD4",
+        "border": "2px solid #B8BBC3",
         "borderRadius": 4,
         "height": 16,
         "width": 16,
@@ -1350,7 +1422,7 @@ exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
     style={
       Object {
         "backgroundColor": "white",
-        "border": "2px solid #C7CFD4",
+        "border": "2px solid #B8BBC3",
         "borderRadius": 4,
         "height": 16,
         "left": 4,
