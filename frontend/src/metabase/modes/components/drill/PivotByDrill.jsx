@@ -45,6 +45,7 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
     {
       name: "pivot-by-" + name.toLowerCase(),
       section: "breakout",
+      buttonType: "token",
       title: clicked ? (
         name
       ) : (

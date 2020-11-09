@@ -184,6 +184,16 @@ export default class ChartClickActions extends Component {
                     Summarize
                   </p>
                 )}
+                {SECTIONS[key].icon === "breakout" && (
+                  <p className="text-bold text-medium text-small block">
+                    Break out by…
+                  </p>
+                )}
+                {SECTIONS[key].icon === "bolt" && (
+                  <p className="text-bold text-medium text-small block">
+                    Automatic explorations
+                  </p>
+                )}
                 <div
                   key={key}
                   className={cx(
@@ -237,6 +247,8 @@ export const ChartClickAction = ({
     "px2 text-brand-hover justify-evenly": action.buttonType === "text",
     "p2 bordered border-brand rounded flex-full bg-brand-hover text-brand text-white-hover":
       action.buttonType === "horizontal",
+      "p1 rounded flex-full bg-brand-hover text-brand text-white-hover":
+        action.buttonType === "horizontal-no-outline",
     "bordered border-brand circular text-brand bg-brand-hover text-white-hover px2 py1 mr1":
       action.buttonType === "token",
     "px2 pt2 pb2 mr1 bordered border-brand text-brand text-white-hover rounded bg-brand-hover":

@@ -18,9 +18,9 @@ function getFiltersForColumn(column) {
   ) {
     return [
       { name: "<", operator: "<" },
+      { name: ">", operator: ">" },
       { name: "=", operator: "=" },
       { name: "≠", operator: "!=" },
-      { name: ">", operator: ">" },
     ];
   } else {
     return [{ name: "=", operator: "=" }, { name: "≠", operator: "!=" }];
@@ -52,6 +52,8 @@ export default function QuickFilterDrill({
       {
         name: "view-fks",
         section: "filter",
+        buttonType: "horizontal-no-outline",
+        icon: "filter",
         title: (
           <span>
             {jt`View this ${singularize(
@@ -68,6 +70,7 @@ export default function QuickFilterDrill({
   return operators.map(({ name, operator }) => ({
     name: operator,
     section: "filter",
+    buttonType: "token",
     title: <span className="h2">{name}</span>,
     question: () => question.filter(operator, column, value),
   }));
