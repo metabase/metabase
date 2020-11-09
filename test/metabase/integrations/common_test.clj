@@ -103,4 +103,10 @@
     (is (= #{"Administrators" "All Users"}
            (with-user-in-groups [user]
              (integrations.common/sync-group-memberships! user [(group/admin)])
+             (group-memberships user)))))
+
+  (testing "are administrators removed appropriately?"
+    (is (= #{"All Users"}
+           (with-user-in-groups [user [(group/admin)]]
+             (integrations.common/sync-group-memberships! user [])
              (group-memberships user))))))
