@@ -134,12 +134,12 @@ export default class ExpressionEditorTextfield extends React.Component {
       const source = format(newProps.expression, parserOptions);
 
       const { expression, compileError, syntaxTree } =
-        source &&
-        source.length &&
-        this._processSource({
-          source,
-          ...this._getParserOptions(newProps),
-        });
+        source && source.length
+          ? this._processSource({
+              source,
+              ...this._getParserOptions(newProps),
+            })
+          : { expression: null, compileError: null, syntaxTree: null };
       this.setState({
         source,
         expression,
