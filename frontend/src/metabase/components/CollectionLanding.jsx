@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
 import { t } from "ttag";
+import cx from "classnames";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -22,14 +23,23 @@ class CollectionLanding extends React.Component {
     const isRoot = collectionId === "root";
 
     return (
-      <Box className={this.props.fitClassNames}>
-        <Box px={"24px"} pt={"22px"} w={300}>
+      <Box className={cx(this.props.fitClassNames, "overflow-hidden")}>
+        <Box
+          pl={"40px"}
+          pt={"22px"}
+          w={340}
+          className="overflow-y-scroll relative"
+        >
+          <Box mt={"22px"} mb={"32px"}>
+            Hey there User
+          </Box>
           <Link
-            className="link block text-bold"
+            className="link flex align-center text-bold"
             to={Urls.collection("root")}
             mb={2}
           >
-            Our analytics
+            <Icon name="folder" mr={1} />
+            {t`Our analytics`}
           </Link>
           {/* TODO - re-integrate drag and drop from metabase/components/CollectionList */}
           <Collection.ListLoader>
@@ -44,13 +54,14 @@ class CollectionLanding extends React.Component {
           <Link
             mt={3}
             to={Urls.newCollection(collectionId)}
-            className="link block text-bold"
+            className="link flex align-center text-bold"
             data-metabase-event={`Collection Landing;Collection List; New Collection Click`}
           >
+            <Icon name="add" mr={1} />
             {t`New collection`}
           </Link>
         </Box>
-        <Box bg="white" flex={1} className="border-left">
+        <Box bg="white" flex={1} className="overflow-y-scroll border-left">
           <CollectionContent isRoot={isRoot} collectionId={collectionId} />
         </Box>
         {
@@ -78,18 +89,25 @@ class CollectionsList extends React.Component {
           <Box>
             <Flex align="center" className="relative">
               {c.children && (
-                <Icon
-                  className="absolute"
-                  name={open === c.id ? "chevrondown" : "chevronright"}
-                  onClick={() => this.setState({ open: c.id })}
+                <Flex
+                  className="absolute text-brand cursor-pointer bg-brand-light-hover"
+                  align="center"
+                  justifyContent="center"
                   style={{ left: -20 }}
-                />
+                >
+                  <Icon
+                    name={open === c.id ? "chevrondown" : "chevronright"}
+                    onClick={() => this.setState({ open: c.id })}
+                    size={10}
+                  />
+                </Flex>
               )}
               <Link
-                className="block link text-bold"
+                className="flex align-center link text-bold"
                 my={"8px"}
                 to={Urls.collection(c.id)}
               >
+                <Icon name="folder" mr={"4px"} style={{ opacity: 0.4 }} />
                 {c.name}
               </Link>
             </Flex>
