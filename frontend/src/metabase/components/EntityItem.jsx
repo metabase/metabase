@@ -83,6 +83,24 @@ const EntityItem = ({
       break;
   }
 
+  function getBackground(model) {
+    switch (model) {
+      case "dashboard":
+        return color("brand");
+      default:
+        return color("bg-medium");
+    }
+  }
+
+  function getForeground(model) {
+    switch (model) {
+      case "dashboard":
+        return color("white");
+      default:
+        return color("text-dark");
+    }
+  }
+
   return (
     <EntityItemWrapper
       {...spacing}
@@ -91,10 +109,11 @@ const EntityItem = ({
       })}
     >
       <IconWrapper
-        p={1}
+        p={"12px"}
         mr={2}
-        align="center"
-        justify="center"
+        bg={getBackground(item.model)}
+        color={getForeground(item.model)}
+        borderRadius={"99px"}
         onClick={
           selectable
             ? e => {
@@ -108,12 +127,12 @@ const EntityItem = ({
           <Swapper
             startSwapped={selected}
             defaultElement={
-              <Icon name={iconName} color={iconColor} size={18} />
+              <Icon name={iconName} color={"inherit"} size={18} />
             }
             swappedElement={<CheckBox checked={selected} size={18} />}
           />
         ) : (
-          <Icon name={iconName} color={iconColor} size={18} />
+          <Icon name={iconName} color={"inherit"} size={18} />
         )}
       </IconWrapper>
       <Box>
