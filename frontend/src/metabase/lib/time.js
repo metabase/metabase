@@ -1,7 +1,5 @@
 import moment from "moment-timezone";
 
-import { updateMomentStartOfWeek } from "./i18n.js";
-
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
   year: value =>
@@ -42,17 +40,9 @@ const NUMERIC_UNIT_FORMATS = {
       .startOf("quarter"),
 };
 
-let hasSetMomentStartOfWeek = false;
-
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
 export function parseTimestamp(value, unit = null, local = false) {
-  // make sure the moment start of week is set correctly the first time we parse something. updateMomentStartOfWeek()
-  // will return true if it was able to set it.
-  if (!hasSetMomentStartOfWeek) {
-    hasSetMomentStartOfWeek = updateMomentStartOfWeek();
-  }
-
   let m;
   if (moment.isMoment(value)) {
     m = value;
