@@ -51,14 +51,23 @@ function updateLocaleInfo() {
     return;
   }
 
-  const START_OF_WEEK_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-  const startOfWeekDayNumber = _.indexOf(START_OF_WEEK_DAYS, startOfWeekDayName) || 0;
+  const START_OF_WEEK_DAYS = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ];
+  const startOfWeekDayNumber =
+    _.indexOf(START_OF_WEEK_DAYS, startOfWeekDayName) || 0;
 
   moment.updateLocale(moment.locale(), {
     week: {
       // Moment.js dow range Sunday (0) - Saturday (6)
-      dow: startOfWeekDayNumber
-    }
+      dow: startOfWeekDayNumber,
+    },
   });
 }
 
