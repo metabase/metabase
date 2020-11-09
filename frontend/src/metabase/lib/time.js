@@ -1,4 +1,7 @@
+import _ from "underscore";
 import moment from "moment-timezone";
+
+import MetabaseSettings from "metabase/lib/settings";
 
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
@@ -16,7 +19,7 @@ const NUMERIC_UNIT_FORMATS = {
       .startOf("hour"),
   "day-of-week": value =>
     moment()
-      .day(value - 1)
+      .weekday(value - 1)
       .startOf("day"),
   "day-of-month": value =>
     moment("2016-01-01") // initial date must be in month with 31 days to format properly
@@ -40,9 +43,30 @@ const NUMERIC_UNIT_FORMATS = {
       .startOf("quarter"),
 };
 
+/// Update Moment locale information such as the first day of the week based on their values in the Metabase instance
+/// settings.
+function updateLocaleInfo() {
+  const startOfWeekDayName = MetabaseSettings.get("start-of-week");
+  if (!startOfWeekDayName) {
+    return;
+  }
+
+  const START_OF_WEEK_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const startOfWeekDayNumber = _.indexOf(START_OF_WEEK_DAYS, startOfWeekDayName) || 0;
+
+  moment.updateLocale(moment.locale(), {
+    week: {
+      // Moment.js dow range Sunday (0) - Saturday (6)
+      dow: startOfWeekDayNumber
+    }
+  });
+}
+
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
 export function parseTimestamp(value, unit = null, local = false) {
+  updateLocaleInfo();
+
   let m;
   if (moment.isMoment(value)) {
     m = value;

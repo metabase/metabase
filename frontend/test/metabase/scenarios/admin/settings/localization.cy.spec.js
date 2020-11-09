@@ -41,7 +41,7 @@ describe("scenarios > admin > permissions", () => {
     cy.get(".axis.x").contains("April 25, 2016");
   });
 
-  it.skip("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
+  it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
     withSampleDataset(({ ORDERS }) => {
       cy.request("POST", "/api/card", {
         name: "13604",
