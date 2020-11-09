@@ -280,6 +280,7 @@ export default class CollectionContent extends React.Component {
             </PinDropTarget>
           )}
           <Box className="relative" mt={1}>
+            <CollectionSectionHeading>{t`Everything else`}</CollectionSectionHeading>
             {unpinnedItems.length > 0 ? (
               <PinDropTarget pinIndex={null} margin={8}>
                 <Box
