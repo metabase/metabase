@@ -305,6 +305,7 @@ export default class CollectionContent extends React.Component {
                           <NormalItem
                             key={`${item.model}:${item.id}`}
                             item={item}
+                            onPin={() => item.setPinned(true)}
                             collection={collection}
                             selection={selection}
                             onToggleSelected={onToggleSelected}
@@ -435,12 +436,17 @@ export default class CollectionContent extends React.Component {
 
 const PinnedItem = ({ item, index, collection }) => (
   <Link
+    key={index}
     to={item.getUrl()}
     className="hover-parent hover--visibility"
     hover={{ color: color("brand") }}
     data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Click;${item.model}`}
   >
-    <NormalItem item={item} collection={collection} />
+    <NormalItem
+      item={item}
+      collection={collection}
+      onPin={() => item.setPinned(false)}
+    />
   </Link>
 );
 
@@ -564,6 +570,7 @@ export const NormalItem = ({
   onToggleSelected,
   onMove,
   onCopy,
+  onPin,
 }) => (
   <Link
     to={item.getUrl()}
@@ -583,11 +590,7 @@ export const NormalItem = ({
       onFavorite={
         item.setFavorited ? () => item.setFavorited(!item.favorite) : null
       }
-      onPin={
-        collection.can_write && item.setPinned
-          ? () => item.setPinned(true)
-          : null
-      }
+      onPin={collection.can_write && onPin && onPin}
       onMove={
         collection.can_write && item.setCollection ? () => onMove([item]) : null
       }

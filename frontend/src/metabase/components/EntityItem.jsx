@@ -42,7 +42,10 @@ const EntityItem = ({
 }) => {
   const actions = [
     onPin && {
-      title: t`Pin this item`,
+      title:
+        item.collection_position != null
+          ? t`Unpin this item`
+          : t`Pin this item`,
       icon: "pin",
       action: onPin,
       event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
