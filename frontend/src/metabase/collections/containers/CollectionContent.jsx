@@ -160,8 +160,8 @@ export default class CollectionContent extends React.Component {
     const collectionHasPins = pinned.length > 0;
 
     return (
-      <Box>
-        <Box px={[2, 4]}>
+      <Box pt={2}>
+        <Box w={"80%"} ml="auto" mr="auto">
           <Flex align="center" pt={2} pb={3}>
             <Flex align="center">
               <PageHeading className="text-wrap">{collection.name}</PageHeading>
@@ -439,25 +439,7 @@ const PinnedItem = ({ item, index, collection }) => (
     hover={{ color: color("brand") }}
     data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Click;${item.model}`}
   >
-    <Card hoverable p={3}>
-      <Icon name={item.getIcon()} color={item.getColor()} size={28} mb={2} />
-      <Flex align="center">
-        <h3>{item.getName()}</h3>
-        {collection.can_write && item.setPinned && (
-          <Box
-            ml="auto"
-            className="hover-child"
-            data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Unpin;${item.model}`}
-            onClick={ev => {
-              ev.preventDefault();
-              item.setPinned(false);
-            }}
-          >
-            <Icon name="pin" />
-          </Box>
-        )}
-      </Flex>
-    </Card>
+    <NormalItem item={item} collection={collection} />
   </Link>
 );
 

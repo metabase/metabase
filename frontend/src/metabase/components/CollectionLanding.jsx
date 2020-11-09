@@ -50,7 +50,7 @@ class CollectionLanding extends React.Component {
             {t`New collection`}
           </Link>
         </Box>
-        <Box bg="white" flex={1}>
+        <Box bg="white" flex={1} className="border-left">
           <CollectionContent isRoot={isRoot} collectionId={collectionId} />
         </Box>
         {
