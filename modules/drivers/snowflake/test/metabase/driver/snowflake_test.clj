@@ -1,9 +1,9 @@
 (ns metabase.driver.snowflake-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure
+  (:require [clojure
              [set :as set]
              [string :as str]
              [test :refer :all]]
+            [clojure.java.jdbc :as jdbc]
             [metabase
              [driver :as driver]
              [models :refer [Table]]
@@ -11,18 +11,14 @@
              [sync :as sync]
              [test :as mt]
              [util :as u]]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]]
-            [metabase.models
-             [database :refer [Database]]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.models.database :refer [Database]]
             [metabase.test.data
              [dataset-definitions :as dataset-defs]
              [sql :as sql.tx]]
             [metabase.test.data.sql.ddl :as ddl]
             [toucan.db :as db]))
 
-;;
 (deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
     (testing "Create DB DDL statements"
@@ -44,11 +40,11 @@
                "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"checkins\";"
                "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
                 \"user_id\" INTEGER, \"venue_id\" INTEGER, PRIMARY KEY (\"id\")) ;"
-               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"gory_id_categories_-1524018980\"
+               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"egory_id_categories_-740504465\"
                 FOREIGN KEY (\"category_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\");"
-               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_-230440067\"
+               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_1638713823\"
                 FOREIGN KEY (\"user_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\");"
-               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"kins_venue_id_venues_621212269\"
+               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ins_venue_id_venues_-833167948\"
                 FOREIGN KEY (\"venue_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
              (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition dataset-defs/test-data)
                                                                  (update :database-name #(str "v3_" %)))))))))
