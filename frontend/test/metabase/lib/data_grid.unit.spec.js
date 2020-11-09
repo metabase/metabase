@@ -141,17 +141,86 @@ describe("data_grid", () => {
         [
           { span: 3, value: "a" },
           { span: 1, value: "x" },
-          { span: 1, value: [1] },
+          { span: 1, value: 1 },
         ],
-        [{ span: 1, value: "y" }, { span: 1, value: [2] }],
-        [{ span: 1, value: "z" }, { span: 1, value: [3] }],
+        [{ span: 1, value: "y" }, { span: 1, value: 2 }],
+        [{ span: 1, value: "z" }, { span: 1, value: 3 }],
         [
           { span: 3, value: "b" },
           { span: 1, value: "x" },
-          { span: 1, value: [4] },
+          { span: 1, value: 4 },
         ],
-        [{ span: 1, value: "y" }, { span: 1, value: [5] }],
-        [{ span: 1, value: "z" }, { span: 1, value: [6] }],
+        [{ span: 1, value: "y" }, { span: 1, value: 5 }],
+        [{ span: 1, value: "z" }, { span: 1, value: 6 }],
+      ]);
+    });
+    it("should allow unspecified values", () => {
+      const data = makeData([
+        ["a", "x", 1],
+        ["a", "y", 2],
+        ["b", "x", 3],
+        // ["b", "y", ...], not present
+      ]);
+      const { headerRows, bodyRows } = multiLevelPivot(data, [0], [1], [2]);
+      expect(headerRows).toEqual([
+        [{ span: 1, value: "a" }, { span: 1, value: "b" }],
+      ]);
+      expect(bodyRows).toEqual([
+        [{ span: 1, value: "x" }, { span: 1, value: 1 }, { span: 1, value: 3 }],
+        [
+          { span: 1, value: "y" },
+          { span: 1, value: 2 },
+          { span: 1, value: null },
+        ],
+      ]);
+    });
+    it("should handle multiple value columns", () => {
+      const data = {
+        rows: [["a", "b", 1, 2]],
+        cols: [
+          { name: "D1", display_name: "Dimension 1", base_type: TYPE.Text },
+          { name: "D2", display_name: "Dimension 2", base_type: TYPE.Text },
+          { name: "M1", display_name: "Metric", base_type: TYPE.Integer },
+          { name: "M2", display_name: "Metric", base_type: TYPE.Integer },
+        ],
+      };
+
+      const { headerRows, bodyRows } = multiLevelPivot(data, [0], [1], [2, 3]);
+      expect(headerRows).toEqual([
+        [{ span: 2, value: "a" }],
+        [{ span: 1, value: "Metric" }, { span: 1, value: "Metric" }],
+      ]);
+      expect(bodyRows).toEqual([
+        [{ span: 1, value: "b" }, { span: 1, value: 1 }, { span: 1, value: 2 }],
+      ]);
+    });
+    it("should format values", () => {
+      const data = {
+        rows: [[1, "2020-01-01T00:00:00", 1000]],
+        cols: [
+          {
+            name: "D1",
+            display_name: "Dimension 1",
+            base_type: TYPE.Float,
+            binning_info: { bin_width: 10 },
+          },
+          { name: "D2", display_name: "Dimension 2", base_type: TYPE.DateTime },
+          {
+            name: "M1",
+            display_name: "Metric",
+            base_type: TYPE.Integer,
+            special_type: "type/Currency",
+          },
+        ],
+      };
+
+      const { headerRows, bodyRows } = multiLevelPivot(data, [0], [1], [2]);
+      expect(headerRows).toEqual([[{ span: 1, value: "1  –  11" }]]);
+      expect(bodyRows).toEqual([
+        [
+          { span: 1, value: "January 1, 2020, 12:00 AM" },
+          { span: 1, value: "1,000" },
+        ],
       ]);
     });
   });

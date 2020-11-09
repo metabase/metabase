@@ -8,16 +8,24 @@ export function multiLevelPivot(
   rowColumnIndexes,
   valueColumnIndexes,
 ) {
-  const columnColumnValues = [];
-  const rowColumnValues = [];
-  const valueColumnValues = {};
+  // we build a tree for each tuple of pivoted column/row values seen in the data
+  const columnColumnTree = [];
+  const rowColumnTree = [];
 
+  // this stores pivot table values keyed by all pivoted columns
+  const valuesByKey = {};
+
+  // loop over the rows to build trees of column/row header data
   for (const row of data.rows) {
-    updateValueObject(row, columnColumnIndexes, columnColumnValues);
-    updateValueObject(row, rowColumnIndexes, rowColumnValues);
+    // mutate the trees to add the tuple from the current row
+    updateValueObject(row, columnColumnIndexes, columnColumnTree);
+    updateValueObject(row, rowColumnIndexes, rowColumnTree);
 
-    const valueKey = getValuesKey(row, columnColumnIndexes, rowColumnIndexes);
-    valueColumnValues[valueKey] = valueColumnIndexes.map(index => row[index]);
+    // save the value columns keyed by the values in the column/row pivoted columns
+    const valueKey = JSON.stringify(
+      columnColumnIndexes.concat(rowColumnIndexes).map(index => row[index]),
+    );
+    valuesByKey[valueKey] = valueColumnIndexes.map(index => row[index]);
   }
 
   const [headerFormatters, valueFormatters, rowHeaderFormatters] = [
@@ -29,11 +37,17 @@ export function multiLevelPivot(
       formatValue(value, { column: data.cols[index] }),
     ),
   );
-  const headerRows = getHeaderRows(columnColumnValues, headerFormatters);
+  const headerRows = getHeaderRows(columnColumnTree, {
+    valueColumns: valueColumnIndexes.map(index => data.cols[index]),
+    formatters: headerFormatters,
+  });
 
-  const bodyRows = getBodyRows(rowColumnValues, {
-    columnColumnValues,
-    valueColumnValues,
+  const bodyRows = getBodyRows(rowColumnTree, {
+    columnValueLists: valueLists(columnColumnTree),
+    valuesByKey,
+    valueColumnCount: valueColumnIndexes.length,
+    rowHeaderFormatters,
+    valueFormatters,
   });
 
   return {
@@ -42,13 +56,20 @@ export function multiLevelPivot(
   };
 }
 
-function getHeaderRows(values, [currentFormatter, ...otherFormatters]) {
+function getHeaderRows(values, { valueColumns, formatters }) {
   if (values.length === 0) {
-    return [];
+    // if we have multiple value columns include their column names
+    return valueColumns.length > 1
+      ? [valueColumns.map(c => ({ value: c.display_name, span: 1 }))]
+      : [];
   }
+  const [currentFormatter, ...otherFormatters] = formatters;
   const rowLists = [];
   const currentRow = values.map(({ value, children }) => {
-    const rows = getHeaderRows(children, otherFormatters);
+    const rows = getHeaderRows(children, {
+      valueColumns,
+      formatters: otherFormatters,
+    });
     rowLists.push(rows);
     const span = rows.length === 0 ? 1 : sumSpan(rows[0]);
     return { value: currentFormatter(value), span };
@@ -57,30 +78,40 @@ function getHeaderRows(values, [currentFormatter, ...otherFormatters]) {
   return [currentRow, ...followingRows];
 }
 
-function dfs(nodes, currentList = []) {
-  if (nodes.length === 0) {
+function valueLists(tree, currentList = []) {
+  if (tree.length === 0) {
     return [currentList];
   }
 
-  return nodes.flatMap(({ value, children }) =>
-    dfs(children, [...currentList, value]),
+  return tree.flatMap(({ value, children }) =>
+    valueLists(children, [...currentList, value]),
   );
 }
 
-function getBodyRows(values, context, valueList = []) {
-  if (values.length === 0 && valueList.length > 0) {
-    const valueKeys = dfs(context.columnColumnValues).map(l =>
-      JSON.stringify(l.concat(valueList)),
-    );
-    const values = valueKeys.map(valueKey => ({
-      value: context.valueColumnValues[valueKey],
-      span: 1,
-    }));
-    return [values];
+function getBodyRows(tree, context, valueList = []) {
+  if (tree.length === 0 && valueList.length > 0) {
+    const rowValues = context.columnValueLists.flatMap(list => {
+      const valueKey = JSON.stringify(list.concat(valueList));
+      const values = context.valuesByKey[valueKey];
+      if (values === undefined) {
+        return new Array(context.valueColumnCount).fill({
+          value: null,
+          span: 1,
+        });
+      }
+      return values.map((value, index) => ({
+        value: context.valueFormatters[index](value),
+        span: 1,
+      }));
+    });
+    return [rowValues];
   }
-  return values.flatMap(({ value, children }, index) => {
+  return tree.flatMap(({ value, children }, index) => {
     const rows = getBodyRows(children, context, [...valueList, value]);
-    const item = { value, span: sumSpan(rows.map(row => row[0])) };
+    const item = {
+      value: context.rowHeaderFormatters[valueList.length](value),
+      span: sumSpan(rows.map(row => row[0])),
+    };
     const [first, ...rest] = rows;
     return [[item, ...first], ...rest];
   });
@@ -88,12 +119,6 @@ function getBodyRows(values, context, valueList = []) {
 
 function sumSpan(a) {
   return a.reduce((sum, { span }) => sum + span, 0);
-}
-
-function getValuesKey(row, columnColumnIndexes, rowColumnIndexes) {
-  return JSON.stringify(
-    columnColumnIndexes.concat(rowColumnIndexes).map(index => row[index]),
-  );
 }
 
 function updateValueObject(row, indexes, seenValues) {

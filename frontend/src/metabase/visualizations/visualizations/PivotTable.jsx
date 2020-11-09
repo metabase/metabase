@@ -24,7 +24,6 @@ export default class PivotTable extends Component {
   }
 
   static checkRenderable(foo) {
-    console.log("checkRenderable", foo);
     // todo: raise when we can't render
   }
 
@@ -70,14 +69,24 @@ export default class PivotTable extends Component {
       section: null,
       title: t`Fields to use for the table values`,
       widget: "fields",
-      getProps: ([{ data }], settings) => ({
-        options: data.cols.map(getOptionFromColumn),
-      }),
+      getProps: ([{ data }], settings) => {
+        if (!data) {
+          return {};
+        }
+        return {
+          options: data.cols.map(getOptionFromColumn),
+          addAnother: t`Add a column`,
+          columns: data.cols,
+        };
+      },
       getDefault: () => [null],
     },
   };
 
   componentDidMount() {
+    this.element.setAttribute("border", "1");
+  }
+  componentDidUpdate() {
     this.element.setAttribute("border", "1");
   }
 
@@ -104,7 +113,6 @@ export default class PivotTable extends Component {
     } catch (e) {
       console.warn(e);
     }
-    console.log({ pivoted });
     if (!pivoted) {
       return <div>no data - check for error</div>;
     }
