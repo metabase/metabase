@@ -22,7 +22,6 @@ import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
 import Button from "metabase/components/Button";
-import Card from "metabase/components/Card";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import EntityMenu from "metabase/components/EntityMenu";
 import EntityItem from "metabase/components/EntityItem";
@@ -227,44 +226,42 @@ export default class CollectionContent extends React.Component {
           </Flex>
           {collectionHasPins ? (
             <Box pt={2} pb={3}>
-              <CollectionSectionHeading>{t`Pins`}</CollectionSectionHeading>
+              <CollectionSectionHeading>{t`Pinned items`}</CollectionSectionHeading>
               <PinDropTarget
                 pinIndex={pinned[pinned.length - 1].collection_position + 1}
                 noDrop
                 marginLeft={8}
                 marginRight={8}
               >
-                <Grid>
-                  {pinned.map((item, index) => (
-                    <GridItem w={[1, 1 / 3]} className="relative" key={index}>
-                      <ItemDragSource item={item} collection={collection}>
-                        <PinnedItem
-                          key={`${item.model}:${item.id}`}
-                          index={index}
-                          item={item}
-                          collection={collection}
-                        />
-                        <PinPositionDropTarget
-                          pinIndex={item.collection_position}
-                          left
-                        />
-                        <PinPositionDropTarget
-                          pinIndex={item.collection_position + 1}
-                          right
-                        />
-                      </ItemDragSource>
-                    </GridItem>
-                  ))}
-                  {pinned.length % 2 === 1 ? (
-                    <GridItem w={1 / 4} className="relative">
-                      <PinPositionDropTarget
-                        pinIndex={
-                          pinned[pinned.length - 1].collection_position + 1
-                        }
+                {pinned.map((item, index) => (
+                  <Box w={[1]} className="relative" key={index}>
+                    <ItemDragSource item={item} collection={collection}>
+                      <PinnedItem
+                        key={`${item.model}:${item.id}`}
+                        index={index}
+                        item={item}
+                        collection={collection}
                       />
-                    </GridItem>
-                  ) : null}
-                </Grid>
+                      <PinPositionDropTarget
+                        pinIndex={item.collection_position}
+                        left
+                      />
+                      <PinPositionDropTarget
+                        pinIndex={item.collection_position + 1}
+                        right
+                      />
+                    </ItemDragSource>
+                  </Box>
+                ))}
+                {pinned.length % 2 === 1 ? (
+                  <Box w={1} className="relative">
+                    <PinPositionDropTarget
+                      pinIndex={
+                        pinned[pinned.length - 1].collection_position + 1
+                      }
+                    />
+                  </Box>
+                ) : null}
               </PinDropTarget>
             </Box>
           ) : (
