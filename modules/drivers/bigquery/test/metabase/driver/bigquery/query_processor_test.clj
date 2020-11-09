@@ -29,9 +29,9 @@
            (mt/rows
              (qp/process-query
               (mt/native-query
-                {:query (str "SELECT `v2_test_data.venues`.`id` "
-                             "FROM `v2_test_data.venues` "
-                             "ORDER BY `v2_test_data.venues`.`id` DESC "
+                {:query (str "SELECT `v3_test_data.venues`.`id` "
+                             "FROM `v3_test_data.venues` "
+                             "ORDER BY `v3_test_data.venues`.`id` DESC "
                              "LIMIT 2;")})))))
 
     (testing (str "make sure that BigQuery native queries maintain the column ordering specified in the SQL -- "
@@ -53,10 +53,10 @@
                :field_ref    [:field-literal "checkins_id" :type/Integer]}]
              (qp.test/cols
                (qp/process-query
-                {:native   {:query (str "SELECT `v2_test_data.checkins`.`venue_id` AS `venue_id`, "
-                                        "       `v2_test_data.checkins`.`user_id` AS `user_id`, "
-                                        "       `v2_test_data.checkins`.`id` AS `checkins_id` "
-                                        "FROM `v2_test_data.checkins` "
+                {:native   {:query (str "SELECT `v3_test_data.checkins`.`venue_id` AS `venue_id`, "
+                                        "       `v3_test_data.checkins`.`user_id` AS `user_id`, "
+                                        "       `v3_test_data.checkins`.`id` AS `checkins_id` "
+                                        "FROM `v3_test_data.checkins` "
                                         "LIMIT 2")}
                  :type     :native
                  :database (mt/id)})))))
@@ -106,11 +106,11 @@
                rows))))
 
     (testing "let's make sure we're generating correct HoneySQL + SQL for aggregations"
-      (is (= {:select   [[(hx/identifier :field "v2_test_data.venues" "price")
+      (is (= {:select   [[(hx/identifier :field "v3_test_data.venues" "price")
                           (hx/identifier :field-alias "price")]
-                         [(hsql/call :avg (hx/identifier :field "v2_test_data.venues" "category_id"))
+                         [(hsql/call :avg (hx/identifier :field "v3_test_data.venues" "category_id"))
                           (hx/identifier :field-alias "avg")]]
-              :from     [(hx/identifier :table "v2_test_data.venues")]
+              :from     [(hx/identifier :table "v3_test_data.venues")]
               :group-by [(hx/identifier :field-alias "price")]
               :order-by [[(hx/identifier :field-alias "avg") :asc]]}
              (mt/with-everything-store
@@ -121,9 +121,9 @@
                    :breakout    [$price]
                    :order-by    [[:asc [:aggregation 0]]]})))))
 
-      (is (= {:query      (str "SELECT `v2_test_data.venues`.`price` AS `price`,"
-                               " avg(`v2_test_data.venues`.`category_id`) AS `avg` "
-                               "FROM `v2_test_data.venues` "
+      (is (= {:query      (str "SELECT `v3_test_data.venues`.`price` AS `price`,"
+                               " avg(`v3_test_data.venues`.`category_id`) AS `avg` "
+                               "FROM `v3_test_data.venues` "
                                "GROUP BY `price` "
                                "ORDER BY `avg` ASC, `price` ASC")
               :params     nil
@@ -137,9 +137,9 @@
   (mt/test-driver :bigquery
     (is (= (str "SELECT `categories__via__category_id`.`name` AS `name`,"
                 " count(*) AS `count` "
-                "FROM `v2_test_data.venues` "
-                "LEFT JOIN `v2_test_data.categories` `categories__via__category_id`"
-                " ON `v2_test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
+                "FROM `v3_test_data.venues` "
+                "LEFT JOIN `v3_test_data.categories` `categories__via__category_id`"
+                " ON `v3_test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
                 "GROUP BY `name` "
                 "ORDER BY `name` ASC")
            ;; normally for test purposes BigQuery doesn't support foreign keys so override the function that checks
@@ -209,13 +209,13 @@
     (is (= (str
             "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
             "SELECT"
-            " `v2_test_data.venues`.`id` AS `id`,"
-            " `v2_test_data.venues`.`name` AS `name`,"
-            " `v2_test_data.venues`.`category_id` AS `category_id`,"
-            " `v2_test_data.venues`.`latitude` AS `latitude`,"
-            " `v2_test_data.venues`.`longitude` AS `longitude`,"
-            " `v2_test_data.venues`.`price` AS `price` "
-            "FROM `v2_test_data.venues` "
+            " `v3_test_data.venues`.`id` AS `id`,"
+            " `v3_test_data.venues`.`name` AS `name`,"
+            " `v3_test_data.venues`.`category_id` AS `category_id`,"
+            " `v3_test_data.venues`.`latitude` AS `latitude`,"
+            " `v3_test_data.venues`.`longitude` AS `longitude`,"
+            " `v3_test_data.venues`.`price` AS `price` "
+            "FROM `v3_test_data.venues` "
             "LIMIT 1")
            (query->native
             {:database (mt/id)
@@ -232,9 +232,9 @@
            (qp.test/rows
              (qp/process-query
               (mt/native-query
-                {:query  (str "SELECT `v2_test_data.venues`.`name` AS `name` "
-                              "FROM `v2_test_data.venues` "
-                              "WHERE `v2_test_data.venues`.`name` = ?")
+                {:query  (str "SELECT `v3_test_data.venues`.`name` AS `name` "
+                              "FROM `v3_test_data.venues` "
+                              "WHERE `v3_test_data.venues`.`name` = ?")
                  :params ["Red Medicine"]}))))
         (str "Do we properly unprepare, and can we execute, queries that still have parameters for one reason or "
              "another? (EE #277)"))))
@@ -403,7 +403,7 @@
                               (t/local-date "2019-11-12")]))))
       (mt/test-driver :bigquery
         (mt/with-everything-store
-          (let [expected ["WHERE `v2_test_data.checkins`.`date` BETWEEN ? AND ?"
+          (let [expected ["WHERE `v3_test_data.checkins`.`date` BETWEEN ? AND ?"
                           (t/local-date "2019-11-11")
                           (t/local-date "2019-11-12")]]
             (testing "Should be able to get temporal type from a FieldInstance"
@@ -419,7 +419,7 @@
                                     (t/local-date "2019-11-11")
                                     (t/local-date "2019-11-12")]))))
             (testing "Should be able to get temporal type from a wrapped field-id"
-              (is (= (cons "WHERE date_trunc(`v2_test_data.checkins`.`date`, day) BETWEEN ? AND ?"
+              (is (= (cons "WHERE date_trunc(`v3_test_data.checkins`.`date`, day) BETWEEN ? AND ?"
                            (rest expected))
                      (between->sql [:between
                                     [:datetime-field [:field-id (mt/id :checkins :date)] :day]
@@ -450,14 +450,14 @@
       (mt/with-temp-copy-of-db
         (try
           (bigquery.tx/execute!
-           (format "CREATE TABLE `v2_test_data.%s` ( ts TIMESTAMP, dt DATETIME )" table-name))
+           (format "CREATE TABLE `v3_test_data.%s` ( ts TIMESTAMP, dt DATETIME )" table-name))
           (bigquery.tx/execute!
-           (format "INSERT INTO `v2_test_data.%s` (ts, dt) VALUES (TIMESTAMP \"2020-01-01 00:00:00 UTC\", DATETIME \"2020-01-01 00:00:00\")"
+           (format "INSERT INTO `v3_test_data.%s` (ts, dt) VALUES (TIMESTAMP \"2020-01-01 00:00:00 UTC\", DATETIME \"2020-01-01 00:00:00\")"
                    table-name))
           (sync/sync-database! (mt/db))
           (f table-name)
           (finally
-            (bigquery.tx/execute! "DROP TABLE IF EXISTS `v2_test_data.%s`" table-name)))))))
+            (bigquery.tx/execute! "DROP TABLE IF EXISTS `v3_test_data.%s`" table-name)))))))
 
 (deftest filter-by-datetime-timestamp-test
   (mt/test-driver :bigquery
@@ -498,7 +498,7 @@
                        (qp/process-query
                          {:database   (mt/id)
                           :type       :native
-                          :native     {:query         "SELECT count(*) FROM `v2_attempted_murders.attempts` WHERE {{d}}"
+                          :native     {:query         "SELECT count(*) FROM `v3_attempted_murders.attempts` WHERE {{d}}"
                                        :template-tags {"d" {:name         "d"
                                                             :display-name "Date"
                                                             :type         :dimension
@@ -651,5 +651,5 @@
                (mt/formatted-rows [int]
                  (qp/process-query
                   (mt/native-query
-                    {:query  "SELECT count(*) AS `count` FROM `v2_test_data.venues` WHERE `v2_test_data.venues`.`name` = ?"
+                    {:query  "SELECT count(*) AS `count` FROM `v3_test_data.venues` WHERE `v3_test_data.venues`.`name` = ?"
                      :params ["x\\\\' OR 1 = 1 -- "]})))))))))
