@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { formatValue } from "metabase/lib/formatting";
 
 export function multiLevelPivot(
@@ -18,9 +20,6 @@ export function multiLevelPivot(
     valueColumnValues[valueKey] = valueColumnIndexes.map(index => row[index]);
   }
 
-  const headerRows = new Array(columnColumnIndexes.length)
-    .fill(null)
-    .map(() => []);
   const [headerFormatters, valueFormatters, rowHeaderFormatters] = [
     columnColumnIndexes,
     valueColumnIndexes,
@@ -30,15 +29,11 @@ export function multiLevelPivot(
       formatValue(value, { column: data.cols[index] }),
     ),
   );
-  addHeaderRows(headerRows, columnColumnValues, headerFormatters);
+  const headerRows = getHeaderRows(columnColumnValues, headerFormatters);
 
-  const bodyRows = [];
-  addBodyRows(bodyRows, {
-    rowColumnValues,
+  const bodyRows = getBodyRows(rowColumnValues, {
     columnColumnValues,
     valueColumnValues,
-    valueFormatters,
-    rowHeaderFormatters,
   });
 
   return {
@@ -47,17 +42,19 @@ export function multiLevelPivot(
   };
 }
 
-function addHeaderRows(rows, values, formatters, depth = 0) {
+function getHeaderRows(values, [currentFormatter, ...otherFormatters]) {
   if (values.length === 0) {
-    return 1;
+    return [];
   }
-  let totalSpan = 0;
-  for (const { value, children } of values) {
-    const span = addHeaderRows(rows, children, formatters, depth + 1);
-    totalSpan += span;
-    rows[depth].push({ value: formatters[depth](value), span });
-  }
-  return totalSpan;
+  const rowLists = [];
+  const currentRow = values.map(({ value, children }) => {
+    const rows = getHeaderRows(children, otherFormatters);
+    rowLists.push(rows);
+    const span = rows.length === 0 ? 1 : sumSpan(rows[0]);
+    return { value: currentFormatter(value), span };
+  });
+  const followingRows = _.zip(...rowLists).map(a => a.flat());
+  return [currentRow, ...followingRows];
 }
 
 function dfs(nodes, currentList = []) {
@@ -70,55 +67,27 @@ function dfs(nodes, currentList = []) {
   );
 }
 
-function addBodyRows(
-  rows,
-  {
-    rowColumnValues,
-    columnColumnValues,
-    valueColumnValues,
-    valueFormatters,
-    rowHeaderFormatters,
-  },
-  currentRow,
-  valueList = [],
-) {
-  if (rowColumnValues.length === 0 && valueList.length > 0) {
-    const valueKeys = dfs(columnColumnValues).map(l =>
+function getBodyRows(values, context, valueList = []) {
+  if (values.length === 0 && valueList.length > 0) {
+    const valueKeys = dfs(context.columnColumnValues).map(l =>
       JSON.stringify(l.concat(valueList)),
     );
     const values = valueKeys.map(valueKey => ({
-      value: valueColumnValues[valueKey],
+      value: context.valueColumnValues[valueKey],
       span: 1,
     }));
-    currentRow.push(...values);
-
-    return 1;
+    return [values];
   }
-  let totalSpan = 0;
-  rowColumnValues.forEach(({ value, children }, index) => {
-    let row = currentRow;
-    if (currentRow === undefined || index > 0) {
-      row = [];
-      rows.push(row);
-    }
-    const item = { value: rowHeaderFormatters[0](value) };
-    row.push(item);
-    const span = addBodyRows(
-      rows,
-      {
-        rowColumnValues: children,
-        columnColumnValues,
-        valueColumnValues,
-        valueFormatters,
-        rowHeaderFormatters: rowHeaderFormatters.slice(1),
-      },
-      row,
-      [...valueList, value],
-    );
-    item.span = span;
-    totalSpan += span;
+  return values.flatMap(({ value, children }, index) => {
+    const rows = getBodyRows(children, context, [...valueList, value]);
+    const item = { value, span: sumSpan(rows.map(row => row[0])) };
+    const [first, ...rest] = rows;
+    return [[item, ...first], ...rest];
   });
-  return totalSpan;
+}
+
+function sumSpan(a) {
+  return a.reduce((sum, { span }) => sum + span, 0);
 }
 
 function getValuesKey(row, columnColumnIndexes, rowColumnIndexes) {
