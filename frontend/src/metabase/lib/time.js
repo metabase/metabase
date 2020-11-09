@@ -35,6 +35,7 @@ function updateMomentStartOfWeek(startOfWeekDayName) {
   hasSetMomentStartOfWeek = true;
 }
 
+MetabaseSettings.on("user-locale", updateMomentStartOfWeek);
 MetabaseSettings.on("start-of-week", updateMomentStartOfWeek);
 
 const NUMERIC_UNIT_FORMATS = {
