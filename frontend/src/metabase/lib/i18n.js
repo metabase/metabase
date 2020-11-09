@@ -1,6 +1,8 @@
 import { addLocale, useLocale } from "ttag";
 import moment from "moment-timezone";
 
+import MetabaseSettings from "metabase/lib/settings";
+
 // note this won't refresh strings that are evaluated at load time
 export async function loadLocalization(locale) {
   // we need to be sure to set the initial localization before loading any files
@@ -23,6 +25,35 @@ export async function loadLocalization(locale) {
   setLocalization(translationsObject);
 }
 
+function updateMomentStartOfWeekForLocale(locale = MetabaseSettings.get("user-locale")) {
+  const startOfWeekDayName = MetabaseSettings.get("start-of-week");
+  if (!startOfWeekDayName) {
+    return;
+  }
+
+  const START_OF_WEEK_DAYS = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ];
+
+  let startOfWeekDayNumber = START_OF_WEEK_DAYS.indexOf(startOfWeekDayName);
+  if (startOfWeekDayNumber === -1) {
+    return;
+  }
+
+  moment.updateLocale(locale, {
+    week: {
+      // Moment.js dow range Sunday (0) - Saturday (6)
+      dow: startOfWeekDayNumber,
+    },
+  });
+}
+
 export function setLocalization(translationsObject) {
   const locale = translationsObject.headers.language;
 
@@ -33,7 +64,10 @@ export function setLocalization(translationsObject) {
   useLocale(locale);
 
   moment.locale(locale);
+  updateMomentStartOfWeekForLocale(locale);
 }
+
+MetabaseSettings.on("start-of-week", updateMomentStartOfWeekForLocale);
 
 // Format a fixed timestamp in local time to see if the current locale defaults
 // to using a 24 hour clock.
