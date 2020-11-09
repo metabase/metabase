@@ -477,7 +477,7 @@ const SelectionControls = ({
 
 const CollectionSectionHeading = ({ children }) => (
   <h5
-    className="text-uppercase"
+    className="text-uppercase mb2"
     style={{ color: color("text-medium"), fontWeight: 900 }}
   >
     {children}
