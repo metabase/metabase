@@ -330,7 +330,9 @@ export default class CollectionContent extends React.Component {
               </PinDropTarget>
             ) : (
               <Box>
-                <CollectionEmptyState />
+                {!collectionHasPins && !unpinnedItems.length > 0 && (
+                  <CollectionEmptyState />
+                )}
                 <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
                   {({ hovered }) => (
                     <div
