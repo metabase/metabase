@@ -101,13 +101,14 @@ class CollectionLanding extends React.Component {
                   />
                 </Box>
 
-                <Box>
-                  {currentUser.is_superuser && (
+                {currentUser.is_superuser && (
+                  <Box>
                     <CollectionsList
                       collections={getCollectionsForAdmin(list, currentUser.id)}
+                      initialIcon="group"
                     />
-                  )}
-                </Box>
+                  </Box>
+                )}
               </Box>
             )}
           </Collection.ListLoader>
