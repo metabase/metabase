@@ -28,9 +28,22 @@ const PageWrapper = styled(Box)`
   height: calc(100vh - 65px);
 `;
 
+function nonPersonalCollections(collectionList) {
+  return collectionList.filter(l => !l.personal_owner_id);
+}
+
+function currentUserPersonalCollections(collectionList, userId) {
+  return collectionList.filter(l => l.personal_owner_id === userId);
+}
+
+@connect(
+  ({ currentUser }) => ({ currentUser }),
+  null,
+)
 class CollectionLanding extends React.Component {
   render() {
     const {
+      currentUser,
       params: { collectionId },
     } = this.props;
     const isRoot = collectionId === "root";
@@ -48,12 +61,20 @@ class CollectionLanding extends React.Component {
             <Icon name="folder" mr={1} />
             {t`Our analytics`}
           </Link>
-          {/* TODO - re-integrate drag and drop from metabase/components/CollectionList */}
           <Collection.ListLoader>
             {({ list }) => (
-              <CollectionsList
-                collections={list.filter(l => !l.personal_owner_id)}
-              />
+              <Box>
+                <CollectionsList collections={nonPersonalCollections(list)} />
+
+                <Box mt={"32px"}>
+                  <CollectionsList
+                    collections={currentUserPersonalCollections(
+                      list,
+                      currentUser.id,
+                    )}
+                  />
+                </Box>
+              </Box>
             )}
           </Collection.ListLoader>
 
@@ -100,6 +121,7 @@ class CollectionsList extends React.Component {
     const { collections } = this.props;
     const { open } = this.state;
 
+    /* TODO - re-integrate drag and drop from metabase/components/CollectionList */
     return (
       <Box>
         {collections.map(c => (
