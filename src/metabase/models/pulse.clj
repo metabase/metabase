@@ -240,24 +240,18 @@
   ([{:keys [archived? dashboard_id]
      :or   {archived?    false
             dashboard_id nil}}]
-   (let [query (if dashboard_id
-                 {:select    [:p.*]
-                  :from      [[Pulse :p]]
-                  :join      [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
-                  :left-join [[DashboardCard :dc] [:= :pc.dashboard_card_id :dc.id]]
-                  :where     [:and
-                              [:= :p.alert_condition nil]
-                              [:= :p.archived archived?]
-                              [:= :dc.dashboard_id dashboard_id]]
-                  ;; :order-by  [[:%lower.name :asc]]
-                  }
-                 {:select [:p.*]
-                  :from   [[Pulse :p]]
-                  :where  [:and
-                           [:= :p.alert_condition nil]
-                           [:= :p.archived archived?]]
-                  ;;:order-by [[:%lower.name :asc]]
-                  })]
+   (let [base-query {:select    [:p.*]
+                     :modifiers [:distinct]
+                     :from      [[Pulse :p]]
+                     :where     [:and
+                                 [:= :p.alert_condition nil]
+                                 [:= :p.archived archived?]]
+                     ;; :order-by  [[:%lower.name :asc]]
+                     }
+         query      (merge-with conj base-query (when dashboard_id
+                                                  {:join      [[PulseCard :pc]     [:= :p.id :pc.pulse_id]]
+                                                   :left-join [[DashboardCard :dc] [:= :pc.dashboard_card_id :dc.id]]
+                                                   :where     [:= :dc.dashboard_id dashboard_id]}))]
      (for [pulse (query-as Pulse query)]
        (-> pulse
            hydrate-notification
