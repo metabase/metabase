@@ -15,7 +15,7 @@ const dashboard_name = "Test Dashboard";
 describe("scenarios > collection_defaults", () => {
   before(restore);
 
-  describe.only("for admins", () => {
+  describe("for admins", () => {
     beforeEach(signInAsAdmin);
 
     describe("a new collection", () => {
@@ -27,7 +27,7 @@ describe("scenarios > collection_defaults", () => {
         });
       });
 
-      it("it should be the parent collection", () => {
+      it("should be the parent collection", () => {
         // Check that it has no parent
         const length = 7;
         cy.request("GET", "/api/collection").then(response => {
@@ -37,7 +37,7 @@ describe("scenarios > collection_defaults", () => {
         });
       });
 
-      it("it should be visible within a root collection in a sidebar", () => {
+      it("should be visible within a root collection in a sidebar", () => {
         cy.visit("/collection/root");
         cy.findByText(collection_name);
       });
