@@ -11,9 +11,9 @@
 
 (defn sync-group-memberships!
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is only
-  in `new-groups-or-ids`. Ignores special groups like `admin` and `all-users`."
+  in `new-groups-or-ids`. Ignores special groups like `all-users`."
   [user-or-id new-groups-or-ids]
-  (let [special-group-ids  #{(u/get-id (group/admin)) (u/get-id (group/all-users))}
+  (let [special-group-ids  #{(u/get-id (group/all-users))}
         user-id            (u/get-id user-or-id)
         ;; Get a set of Group IDs the user currently belongs to
         current-group-ids  (db/select-field :group_id PermissionsGroupMembership
