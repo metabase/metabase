@@ -40,7 +40,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       name: "sort-ascending",
       section: "sort",
       buttonType: "sort",
-      title: t`Ascending`,
+      title: t`Asc`,
       icon: "expand_arrow",
       question: () => query.replaceSort(["asc", fieldRef]).question(),
     });
@@ -50,7 +50,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       name: "sort-descending",
       section: "sort",
       buttonType: "sort",
-      title: t`Descending`,
+      title: t`Desc`,
       icon: "expand_arrow",
       question: () => query.replaceSort(["desc", fieldRef]).question(),
     });

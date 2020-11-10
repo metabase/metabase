@@ -1,0 +1,15 @@
+.token {
+  padding: 4px 12px 4px 12px;
+  border-radius: 100px;
+  border: 1px solid color(var(--color-accent1) alpha(-65%));
+}
+.token:hover {
+  background-color: var(--color-accent1);
+}
+.sort {
+  padding: 4px 12px 4px 12px;
+  text-align: center;
+}
+.large-button {
+  padding: 12px;
+}

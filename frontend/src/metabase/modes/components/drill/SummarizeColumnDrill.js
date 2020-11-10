@@ -26,7 +26,7 @@ const AGGREGATIONS = {
   distinct: {
     section: "sum",
     buttonType: "token",
-    title: t`Distinct values`,
+    title: t`Distincts`,
   },
 };
 

@@ -7,6 +7,8 @@ import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 import { Link } from "react-router";
 
+import "./ChartClickActions.css";
+
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { performAction } from "metabase/visualizations/lib/action";
@@ -176,14 +178,9 @@ export default class ChartClickActions extends Component {
         {popover ? (
           popover
         ) : (
-          <div className="text-bold px2 pt1 pb2">
+          <div className="text-bold px2 py1">
             {sections.map(([key, actions]) => (
-              <div className="py1">
-                {SECTIONS[key].icon === "summarize" && (
-                  <p className="text-bold text-medium text-small block">
-                    Summarize
-                  </p>
-                )}
+              <div className={cx("py1", { pb1: SECTIONS[key].icon === "sum" })}>
                 {SECTIONS[key].icon === "breakout" && (
                   <p className="mt0 text-bold text-medium text-small block">
                     Break out by…
@@ -245,14 +242,14 @@ export const ChartClickAction = ({
 }) => {
   const className = cx("text-small cursor-pointer no-decoration", {
     "px2 text-brand-hover justify-evenly": action.buttonType === "text",
-    "px3 py1 mr1 rounded text-brand-hover bg-light justify-between": action.buttonType === "sort",
-    "p2 mr1 bg-purple-light rounded flex-full bg-purple-hover text-purple text-white-hover":
+    "sort mr1 flex-auto rounded text-white-hover bg-light bg-brand-hover justify-between":
+      action.buttonType === "sort",
+    "px2 py1 mr1 bg-purple-light rounded flex-full bg-purple-hover text-purple text-white-hover":
       action.buttonType === "horizontal",
-      "p1 rounded flex-full bg-brand-hover text-brand text-white-hover":
-        action.buttonType === "horizontal-no-outline",
-    "bordered border-brand-light circular text-brand bg-brand-hover text-white-hover px2 py1 mr1":
-      action.buttonType === "token",
-    "flex-auto px3 pt2 pb2 mr1 bg-brand-light text-brand text-white-hover rounded bg-brand-hover":
+    "p1 rounded flex-full bg-brand-hover text-brand text-white-hover":
+      action.buttonType === "horizontal-no-outline",
+    "token text-green text-white-hover mr1": action.buttonType === "token",
+    "large-button mr1 bg-green-light text-green text-white-hover rounded bg-green-hover":
       action.buttonType === "large",
   });
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
@@ -309,7 +306,7 @@ export const ChartClickAction = ({
               },
               { mb1: action.buttonType === "large" },
             )}
-            size={action.buttonType === "large" ? 20 : action.buttonType === "horizontal" ? 16 : 12}
+            size={action.buttonType === "large" ? 16 : 12}
             name={action.icon}
           />
         )}

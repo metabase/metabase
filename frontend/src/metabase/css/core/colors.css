@@ -219,8 +219,12 @@
   background-color: color(var(--color-accent7) alpha(-85%));
 }
 
-.bg-green {
+.bg-green,
+.bg-green-hover:hover {
   background-color: var(--color-accent1);
+}
+.bg-green-light {
+  background-color: color(var(--color-accent1) alpha(-90%));
 }
 .bg-green-saturated,
 .bg-green-saturated-hover:hover {
