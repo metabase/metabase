@@ -141,17 +141,17 @@ describe("data_grid", () => {
         [
           { span: 3, value: "a" },
           { span: 1, value: "x" },
-          { span: 1, value: 1 },
+          { span: 1, value: "1" },
         ],
-        [{ span: 1, value: "y" }, { span: 1, value: 2 }],
-        [{ span: 1, value: "z" }, { span: 1, value: 3 }],
+        [{ span: 1, value: "y" }, { span: 1, value: "2" }],
+        [{ span: 1, value: "z" }, { span: 1, value: "3" }],
         [
           { span: 3, value: "b" },
           { span: 1, value: "x" },
-          { span: 1, value: 4 },
+          { span: 1, value: "4" },
         ],
-        [{ span: 1, value: "y" }, { span: 1, value: 5 }],
-        [{ span: 1, value: "z" }, { span: 1, value: 6 }],
+        [{ span: 1, value: "y" }, { span: 1, value: "5" }],
+        [{ span: 1, value: "z" }, { span: 1, value: "6" }],
       ]);
     });
     it("should allow unspecified values", () => {
@@ -166,10 +166,14 @@ describe("data_grid", () => {
         [{ span: 1, value: "a" }, { span: 1, value: "b" }],
       ]);
       expect(bodyRows).toEqual([
-        [{ span: 1, value: "x" }, { span: 1, value: 1 }, { span: 1, value: 3 }],
+        [
+          { span: 1, value: "x" },
+          { span: 1, value: "1" },
+          { span: 1, value: "3" },
+        ],
         [
           { span: 1, value: "y" },
-          { span: 1, value: 2 },
+          { span: 1, value: "2" },
           { span: 1, value: null },
         ],
       ]);
@@ -191,7 +195,11 @@ describe("data_grid", () => {
         [{ span: 1, value: "Metric" }, { span: 1, value: "Metric" }],
       ]);
       expect(bodyRows).toEqual([
-        [{ span: 1, value: "b" }, { span: 1, value: 1 }, { span: 1, value: 2 }],
+        [
+          { span: 1, value: "b" },
+          { span: 1, value: "1" },
+          { span: 1, value: "2" },
+        ],
       ]);
     });
     it("should format values", () => {
