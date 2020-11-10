@@ -685,7 +685,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Yes").click();
     });
 
-    it("should add sub-collection and change its permissions as admin", () => {
+    it.skip("should add sub-collection and change its permissions as admin", () => {
       const subCollectionName = "test sub-collection";
 
       signOut();
@@ -740,7 +740,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("This collection is empty, like a blank canvas");
     });
 
-    it("should modify Collection permissions for top-level collections and sub-collections as admin", () => {
+    it.skip("should modify Collection permissions for top-level collections and sub-collections as admin", () => {
       signOut();
       signInAsAdmin();
       cy.visit("/admin/permissions/databases");
@@ -809,7 +809,7 @@ describe("smoketest > admin_setup", () => {
       cy.contains("A look at your Reviews table").should("not.exist");
     });
 
-    it("should be unable to change questions in Our analytics as no collection user", () => {
+    it.skip("should be unable to change questions in Our analytics as no collection user", () => {
       cy.findByText("Browse all items").click();
 
       cy.findByText("Everything");
@@ -849,7 +849,7 @@ describe("smoketest > admin_setup", () => {
       // cy.findByText("Quantity").should("not.exist");
     });
 
-    it("should add a sub collection as a user", () => {
+    it.skip("should add a sub collection as a user", () => {
       cy.visit("/collection/root");
 
       cy.wait(3000)
@@ -870,7 +870,7 @@ describe("smoketest > admin_setup", () => {
       cy.get(".Icon-all");
     });
 
-    it("should view collections I have access to, but not ones that I don't (even with URL) as user", () => {
+    it.skip("should view collections I have access to, but not ones that I don't (even with URL) as user", () => {
       // Check access as normal user
 
       cy.visit("/collection/root");
@@ -928,7 +928,7 @@ describe("smoketest > admin_setup", () => {
       );
     });
 
-    it("should be unable to access question with URL (if access not permitted)", () => {
+    it.skip("should be unable to access question with URL (if access not permitted)", () => {
       // This test will fail whenever the previous test fails
       signIn("nocollection");
 
