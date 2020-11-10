@@ -132,26 +132,26 @@ class CollectionsList extends React.Component {
                   className="absolute text-brand cursor-pointer"
                   align="center"
                   justifyContent="center"
-                  style={{ left: -20 }}
+                  style={{ left: -16 }}
                 >
                   <Icon
                     name={open === c.id ? "chevrondown" : "chevronright"}
                     onClick={() => this.setState({ open: c.id })}
-                    size={10}
+                    size={12}
                   />
                 </Flex>
               )}
               <Link
                 className="flex align-center link text-bold"
-                my={"8px"}
+                my={"10px"}
                 to={Urls.collection(c.id)}
               >
-                <Icon name="folder" mr={"4px"} style={{ opacity: 0.4 }} />
+                <Icon name="folder" mr={"6px"} style={{ opacity: 0.4 }} />
                 {c.name}
               </Link>
             </Flex>
             {c.children && open === c.id && (
-              <Box ml="8px">
+              <Box ml="12px">
                 <CollectionsList collections={c.children} />
               </Box>
             )}
