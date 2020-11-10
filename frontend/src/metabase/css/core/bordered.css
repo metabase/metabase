@@ -84,6 +84,9 @@
 :local(.border-brand) {
   border-color: var(--color-brand) !important;
 }
+.border-brand-light {
+  border-color: color(var(--color-brand) alpha(-80%)) !important;
+}
 
 .border-transparent {
   border-color: transparent;

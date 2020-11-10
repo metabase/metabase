@@ -176,7 +176,7 @@ export default class ChartClickActions extends Component {
         {popover ? (
           popover
         ) : (
-          <div className="text-bold px2 py1">
+          <div className="text-bold px2 pt1 pb2">
             {sections.map(([key, actions]) => (
               <div className="py1">
                 {SECTIONS[key].icon === "summarize" && (
@@ -185,7 +185,7 @@ export default class ChartClickActions extends Component {
                   </p>
                 )}
                 {SECTIONS[key].icon === "breakout" && (
-                  <p className="text-bold text-medium text-small block">
+                  <p className="mt0 text-bold text-medium text-small block">
                     Break out by…
                   </p>
                 )}
@@ -197,13 +197,13 @@ export default class ChartClickActions extends Component {
                 <div
                   key={key}
                   className={cx(
-                    "flex justify-center",
+                    "flex",
                     {
                       "border-top pt2 text-medium":
                         SECTIONS[key].icon === "pencil",
                     },
                     {
-                      "align-center":
+                      "align-center justify-center":
                         SECTIONS[key].icon === "pencil" ||
                         SECTIONS[key].icon === "sort",
                     },
@@ -245,13 +245,14 @@ export const ChartClickAction = ({
 }) => {
   const className = cx("text-small cursor-pointer no-decoration", {
     "px2 text-brand-hover justify-evenly": action.buttonType === "text",
-    "p2 bordered border-brand rounded flex-full bg-brand-hover text-brand text-white-hover":
+    "px3 py1 mr1 rounded text-brand-hover bg-light justify-between": action.buttonType === "sort",
+    "p2 mr1 bg-purple-light rounded flex-full bg-purple-hover text-purple text-white-hover":
       action.buttonType === "horizontal",
       "p1 rounded flex-full bg-brand-hover text-brand text-white-hover":
         action.buttonType === "horizontal-no-outline",
-    "bordered border-brand circular text-brand bg-brand-hover text-white-hover px2 py1 mr1":
+    "bordered border-brand-light circular text-brand bg-brand-hover text-white-hover px2 py1 mr1":
       action.buttonType === "token",
-    "px2 pt2 pb2 mr1 bordered border-brand text-brand text-white-hover rounded bg-brand-hover":
+    "flex-auto px3 pt2 pb2 mr1 bg-brand-light text-brand text-white-hover rounded bg-brand-hover":
       action.buttonType === "large",
   });
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
@@ -308,7 +309,7 @@ export const ChartClickAction = ({
               },
               { mb1: action.buttonType === "large" },
             )}
-            size={action.buttonType === "large" ? 20 : 12}
+            size={action.buttonType === "large" ? 20 : action.buttonType === "horizontal" ? 16 : 12}
             name={action.icon}
           />
         )}
