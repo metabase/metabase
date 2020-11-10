@@ -3,7 +3,7 @@ import { restore, signInAsAdmin } from "__support__/cypress";
 const xlsx = require("xlsx");
 
 // csv and Excel files have different sheet names, so define them here and we'll reuse it throughout
-let testCases = [
+const testCases = [
   { type: "csv", firstSheetName: "Sheet1" },
   { type: "xlsx", firstSheetName: "Query result" },
 ];
@@ -28,9 +28,9 @@ describe("file download", () => {
     // Programatically issue download requests for this query for both CSV and Excel
 
     cy.wrap(testCases).each(testCase => {
-      let downloadClassName = `.Icon-${testCase.type}`;
-      let endpoint = `/api/dataset/${testCase.type}`;
-      let sheetName = testCase.firstSheetName;
+      const downloadClassName = `.Icon-${testCase.type}`;
+      const endpoint = `/api/dataset/${testCase.type}`;
+      const sheetName = testCase.firstSheetName;
 
       cy.log(`downloading a ${testCase.type} file`);
 
@@ -47,7 +47,7 @@ describe("file download", () => {
             body: { query: download_query_params },
             encoding: "binary",
           }).then(resp => {
-            let workbook = xlsx.read(resp.body, { type: "binary" });
+            const workbook = xlsx.read(resp.body, { type: "binary" });
 
             expect(workbook.SheetNames[0]).to.eq(sheetName);
             expect(workbook.Sheets[sheetName]["A1"].v).to.eq("Count");
