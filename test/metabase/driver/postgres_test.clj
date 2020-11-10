@@ -531,3 +531,23 @@
              (mt/rows
                (mt/run-mbql-query venues
                  {:filter [:= $id "2"]})))))))
+
+(deftest dont-sync-tables-with-no-select-permissions-test
+  (testing "Make sure we only sync databases for which the current user has SELECT permissions"
+    (mt/test-driver :postgres
+      (drop-if-exists-and-create-db! "no-select-test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "no-select-test"})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (doseq [statement ["CREATE TABLE PUBLIC.table_with_perms (x INTEGER NOT NULL);"
+                           "CREATE TABLE PUBLIC.table_with_no_perms (y INTEGER NOT NULL);"
+                           "DROP USER IF EXISTS no_select_test_user;"
+                           "CREATE USER no_select_test_user WITH PASSWORD '123456';"
+                           "GRANT SELECT ON TABLE \"no-select-test\".PUBLIC.table_with_perms TO no_select_test_user;"]]
+          (jdbc/execute! spec [statement])))
+      (let [test-user-details (assoc (mt/dbdef->connection-details :postgres :db {:database-name "no-select-test"})
+                                     :user "no_select_test_user"
+                                     :password "123456")]
+        (mt/with-temp Database [database {:engine :postgres, :details test-user-details}]
+          (sync/sync-database! database)
+          (is (= #{"table_with_perms"}
+                 (db/select-field :name Table :db_id (:id database)))))))))
