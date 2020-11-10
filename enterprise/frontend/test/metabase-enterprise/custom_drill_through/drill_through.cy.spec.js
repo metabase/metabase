@@ -6,7 +6,8 @@ import {
   describeWithToken,
 } from "__support__/cypress";
 
-describeWithToken("drill through", () => {
+// Drill-through support has been replaced with custom dashboard destinations
+describe.skip("drill through", () => {
   before(restore);
 
   beforeEach(signInAsAdmin);
