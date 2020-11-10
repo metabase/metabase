@@ -214,7 +214,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText("View these Products").click();
     });
 
-    it("should result in a correct query result", () => {
+    // [quarantine] flaky
+    it.skip("should result in a correct query result", () => {
       cy.log("**Assert that the URL is correct**");
       cy.url().should("include", "/question#");
 
