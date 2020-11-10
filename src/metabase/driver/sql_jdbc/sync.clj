@@ -11,8 +11,10 @@
              [util :as u]]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import (java.sql Connection DatabaseMetaData ResultSetMetaData)))
+            [metabase.plugins.classloader :as classloader]
+            [metabase.util.honeysql-extensions :as hx]
+            [schema.core :as s])
+  (:import [java.sql Connection DatabaseMetaData ResultSetMetaData]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
@@ -110,27 +112,45 @@
   ;; Using our SQL compiler here to get portable LIMIT
   (sql.qp/format-honeysql driver
     (sql.qp/apply-top-level-clause driver :limit
-      {:select [:*]
-       :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]}
-      {:limit 1})))
+      {:select [(sql.qp/->honeysql driver true)]
+       :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]
+       :where  [:not= 1 1]}
+      {:limit 0})))
 
-(defmulti execute-query-for-sync
-  "Execute given SQL query. Used during parts of sync where we don't have metadata populated and
-  can't use our default query processing pipeline."
-  {:arglists '([driver db-or-id-or-spec query])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
+(defn- execute-select-probe-query
+  "Execute the simple SELECT query defined above. The main goal here is to check whether we're able to execute a SELECT
+  query against the Table in question -- we don't care about the results themselves -- so the query and the logic
+  around executing it should be as simple as possible. We need to highly optimize this logic because it's executed for
+  every Table on every sync."
+  [driver db-or-id-or-spec [sql & params]]
+  {:pre [(string? sql)]}
+  ;; avoid circular refs between this namespace and sql-jdbc.execute
+  (classloader/require 'metabase.driver.sql-jdbc.execute)
+  ;; fetch a Connection from the connection pool.
+  (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec))]
+    ;; try to set the Connection to `READ_UNCOMMITED` if possible, or whatever the next least-locking level is. Not
+    ;; sure how much of a difference that makes since we're not running this inside a transaction, but better safe
+    ;; than sorry
+    ((resolve 'metabase.driver.sql-jdbc.execute/set-best-transaction-level!) driver conn)
+    ;; `sql-jdbc.execute/prepared-statement` will set `TYPE_FORWARD_ONLY`/`CONCUR_READ_ONLY`/`FETCH_FORWARD` if
+    ;; possible, although I'm not sure if that will make a difference since we don't actually realize the ResultSet
+    (with-open [stmt ((resolve 'metabase.driver.sql-jdbc.execute/prepared-statement) driver conn sql params)]
+      ;; attempting to execute the SQL statement will throw an Exception if we don't have permissions; otherwise it
+      ;; will truthy wheter or not it returns a ResultSet, but we can ignore that since we have enough info to proceed
+      ;; at this point.
+      (.execute stmt))))
 
-(defmethod execute-query-for-sync :sql-jdbc
-  [_ db-or-id-or-spec query]
-  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec) query))
-
-(defn have-select-privilege?
-  "Check if we have select privilege for given table"
-  [driver db-or-id-or-spec {:keys [table_name table_schem] :as table}]
+(s/defn have-select-privilege?
+  "Check if we have SELECT privileges for given `table`. (`table` is in the shape it comes back as from the JDBC
+  metadata method)."
+  [driver db-or-id-or-spec {:keys [table_name table_schem] :as table} :- {:table_name                   s/Str
+                                                                          (s/optional-key :table_schem) (s/maybe s/Str)
+                                                                          s/Keyword                     s/Any}]
+  ;; Query completes = we have SELECT privileges
+  ;; Query throws some sort of no permissions exception = no SELECT privileges
   (when (u/ignore-exceptions
-          (execute-query-for-sync driver db-or-id-or-spec
-                                  (simple-select-probe driver table_schem table_name)))
+          (execute-select-probe-query driver db-or-id-or-spec
+                                      (simple-select-probe driver table_schem table_name)))
     table))
 
 (defn- all-schemas
