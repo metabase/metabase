@@ -22,7 +22,6 @@ import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
 import Button from "metabase/components/Button";
-import Card from "metabase/components/Card";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import EntityMenu from "metabase/components/EntityMenu";
 import EntityItem from "metabase/components/EntityItem";
@@ -160,8 +159,8 @@ export default class CollectionContent extends React.Component {
     const collectionHasPins = pinned.length > 0;
 
     return (
-      <Box>
-        <Box px={[2, 4]}>
+      <Box pt={2}>
+        <Box w={"80%"} ml="auto" mr="auto">
           <Flex align="center" pt={2} pb={3}>
             <Flex align="center">
               <PageHeading className="text-wrap">{collection.name}</PageHeading>
@@ -227,44 +226,42 @@ export default class CollectionContent extends React.Component {
           </Flex>
           {collectionHasPins ? (
             <Box pt={2} pb={3}>
-              <CollectionSectionHeading>{t`Pins`}</CollectionSectionHeading>
+              <CollectionSectionHeading>{t`Pinned items`}</CollectionSectionHeading>
               <PinDropTarget
                 pinIndex={pinned[pinned.length - 1].collection_position + 1}
                 noDrop
                 marginLeft={8}
                 marginRight={8}
               >
-                <Grid>
-                  {pinned.map((item, index) => (
-                    <GridItem w={[1, 1 / 3]} className="relative" key={index}>
-                      <ItemDragSource item={item} collection={collection}>
-                        <PinnedItem
-                          key={`${item.model}:${item.id}`}
-                          index={index}
-                          item={item}
-                          collection={collection}
-                        />
-                        <PinPositionDropTarget
-                          pinIndex={item.collection_position}
-                          left
-                        />
-                        <PinPositionDropTarget
-                          pinIndex={item.collection_position + 1}
-                          right
-                        />
-                      </ItemDragSource>
-                    </GridItem>
-                  ))}
-                  {pinned.length % 2 === 1 ? (
-                    <GridItem w={1 / 4} className="relative">
-                      <PinPositionDropTarget
-                        pinIndex={
-                          pinned[pinned.length - 1].collection_position + 1
-                        }
+                {pinned.map((item, index) => (
+                  <Box w={[1]} className="relative" key={index}>
+                    <ItemDragSource item={item} collection={collection}>
+                      <PinnedItem
+                        key={`${item.model}:${item.id}`}
+                        index={index}
+                        item={item}
+                        collection={collection}
                       />
-                    </GridItem>
-                  ) : null}
-                </Grid>
+                      <PinPositionDropTarget
+                        pinIndex={item.collection_position}
+                        left
+                      />
+                      <PinPositionDropTarget
+                        pinIndex={item.collection_position + 1}
+                        right
+                      />
+                    </ItemDragSource>
+                  </Box>
+                ))}
+                {pinned.length % 2 === 1 ? (
+                  <Box w={1} className="relative">
+                    <PinPositionDropTarget
+                      pinIndex={
+                        pinned[pinned.length - 1].collection_position + 1
+                      }
+                    />
+                  </Box>
+                ) : null}
               </PinDropTarget>
             </Box>
           ) : (
@@ -283,6 +280,10 @@ export default class CollectionContent extends React.Component {
             </PinDropTarget>
           )}
           <Box className="relative" mt={1}>
+            {// if there are pins and we also have items show a heading for this section
+            collectionHasPins && unpinnedItems.length > 0 && (
+              <CollectionSectionHeading>{t`Everything else`}</CollectionSectionHeading>
+            )}
             {unpinnedItems.length > 0 ? (
               <PinDropTarget pinIndex={null} margin={8}>
                 <Box
@@ -304,6 +305,7 @@ export default class CollectionContent extends React.Component {
                           <NormalItem
                             key={`${item.model}:${item.id}`}
                             item={item}
+                            onPin={() => item.setPinned(true)}
                             collection={collection}
                             selection={selection}
                             onToggleSelected={onToggleSelected}
@@ -328,7 +330,9 @@ export default class CollectionContent extends React.Component {
               </PinDropTarget>
             ) : (
               <Box>
-                <CollectionEmptyState />
+                {!collectionHasPins && !unpinnedItems.length > 0 && (
+                  <CollectionEmptyState />
+                )}
                 <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
                   {({ hovered }) => (
                     <div
@@ -434,30 +438,17 @@ export default class CollectionContent extends React.Component {
 
 const PinnedItem = ({ item, index, collection }) => (
   <Link
+    key={index}
     to={item.getUrl()}
     className="hover-parent hover--visibility"
     hover={{ color: color("brand") }}
     data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Click;${item.model}`}
   >
-    <Card hoverable p={3}>
-      <Icon name={item.getIcon()} color={item.getColor()} size={28} mb={2} />
-      <Flex align="center">
-        <h3>{item.getName()}</h3>
-        {collection.can_write && item.setPinned && (
-          <Box
-            ml="auto"
-            className="hover-child"
-            data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Unpin;${item.model}`}
-            onClick={ev => {
-              ev.preventDefault();
-              item.setPinned(false);
-            }}
-          >
-            <Icon name="pin" />
-          </Box>
-        )}
-      </Flex>
-    </Card>
+    <NormalItem
+      item={item}
+      collection={collection}
+      onPin={() => item.setPinned(false)}
+    />
   </Link>
 );
 
@@ -497,7 +488,7 @@ const SelectionControls = ({
 
 const CollectionSectionHeading = ({ children }) => (
   <h5
-    className="text-uppercase"
+    className="text-uppercase mb2"
     style={{ color: color("text-medium"), fontWeight: 900 }}
   >
     {children}
@@ -581,6 +572,7 @@ export const NormalItem = ({
   onToggleSelected,
   onMove,
   onCopy,
+  onPin,
 }) => (
   <Link
     to={item.getUrl()}
@@ -600,11 +592,7 @@ export const NormalItem = ({
       onFavorite={
         item.setFavorited ? () => item.setFavorited(!item.favorite) : null
       }
-      onPin={
-        collection.can_write && item.setPinned
-          ? () => item.setPinned(true)
-          : null
-      }
+      onPin={collection.can_write && onPin && onPin}
       onMove={
         collection.can_write && item.setCollection ? () => onMove([item]) : null
       }

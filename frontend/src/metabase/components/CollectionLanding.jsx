@@ -1,6 +1,8 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import { t } from "ttag";
+import { jt, t } from "ttag";
+import { connect } from "react-redux";
+import styled from "styled-components";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -8,12 +10,24 @@ import Collection from "metabase/entities/collections";
 
 import CollectionContent from "metabase/collections/containers/CollectionContent";
 
-import fitViewport from "metabase/hoc/FitViewPort";
-
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
+import Subhead from "metabase/components/type/Subhead";
 
-@fitViewport
+const CollectionSidebar = styled(Box)`
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  top: 65px;
+  overflow-x: hidden;
+  overflow-y: auto;
+`;
+
+const PageWrapper = styled(Box)`
+  overflow: hidden;
+  height: calc(100vh - 65px);
+`;
+
 class CollectionLanding extends React.Component {
   render() {
     const {
@@ -22,14 +36,17 @@ class CollectionLanding extends React.Component {
     const isRoot = collectionId === "root";
 
     return (
-      <Box className={this.props.fitClassNames}>
-        <Box px={"24px"} pt={"22px"} w={300}>
+      <PageWrapper>
+        <CollectionSidebar w={340} px={"44px"} pt={3}>
+          <Greeting />
           <Link
-            className="link block text-bold"
+            className="link flex align-center text-bold"
             to={Urls.collection("root")}
             mb={2}
+            mt={2}
           >
-            Our analytics
+            <Icon name="folder" mr={1} />
+            {t`Our analytics`}
           </Link>
           {/* TODO - re-integrate drag and drop from metabase/components/CollectionList */}
           <Collection.ListLoader>
@@ -44,23 +61,34 @@ class CollectionLanding extends React.Component {
           <Link
             mt={3}
             to={Urls.newCollection(collectionId)}
-            className="link block text-bold"
+            className="link flex align-center text-bold"
             data-metabase-event={`Collection Landing;Collection List; New Collection Click`}
           >
+            <Icon name="add" mr={1} />
             {t`New collection`}
           </Link>
-        </Box>
-        <Box bg="white" flex={1}>
+        </CollectionSidebar>
+        <Box bg="white" className="border-left full-height" ml={340}>
           <CollectionContent isRoot={isRoot} collectionId={collectionId} />
         </Box>
         {
           // Need to have this here so the child modals will show up
           this.props.children
         }
-      </Box>
+      </PageWrapper>
     );
   }
 }
+
+const Greeting = connect(state => ({
+  user: state.currentUser,
+}))(({ user }) => {
+  return (
+    <Box mb={3}>
+      <Subhead>{jt`Hello there, ${user.first_name}`}</Subhead>
+    </Box>
+  );
+});
 
 class CollectionsList extends React.Component {
   state = {
@@ -76,20 +104,27 @@ class CollectionsList extends React.Component {
       <Box>
         {collections.map(c => (
           <Box>
-            <Flex align="center" className="relative">
+            <Flex align="center" className="relative bg-brand-light-hover">
               {c.children && (
-                <Icon
-                  className="absolute"
-                  name={open === c.id ? "chevrondown" : "chevronright"}
-                  onClick={() => this.setState({ open: c.id })}
+                <Flex
+                  className="absolute text-brand cursor-pointer"
+                  align="center"
+                  justifyContent="center"
                   style={{ left: -20 }}
-                />
+                >
+                  <Icon
+                    name={open === c.id ? "chevrondown" : "chevronright"}
+                    onClick={() => this.setState({ open: c.id })}
+                    size={10}
+                  />
+                </Flex>
               )}
               <Link
-                className="block link text-bold"
+                className="flex align-center link text-bold"
                 my={"8px"}
                 to={Urls.collection(c.id)}
               >
+                <Icon name="folder" mr={"4px"} style={{ opacity: 0.4 }} />
                 {c.name}
               </Link>
             </Flex>
