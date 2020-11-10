@@ -37,7 +37,11 @@ describe("scenarios > question > null", () => {
     });
   });
 
-  it("pie chart should handle `0`/`null` values (metabase#13626)", () => {
+  // [quarantine]
+  //  - possible app corruption and new issue with rendering discovered
+  //  - see: https://github.com/metabase/metabase/pull/13721#issuecomment-724931075
+  //  - test was intermittently failing
+  it.skip("pie chart should handle `0`/`null` values (metabase#13626)", () => {
     // Preparation for the test: "Arrange and Act phase" - see repro steps in #13626
     withSampleDataset(({ ORDERS }) => {
       // 1. create a question
