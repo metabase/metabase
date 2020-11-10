@@ -171,7 +171,8 @@
     "webpack-notifier": "^1.8.0",
     "webpack-postcss-tools": "^1.1.2",
     "xhr-mock": "^2.4.1",
-    "yaml-lint": "^1.2.4"
+    "yaml-lint": "^1.2.4",
+    "xlsx": "^0.16.8"
   },
   "scripts": {
     "dev": "concurrently --kill-others -p name -n 'backend,frontend,docs' -c 'blue,green,yellow' 'lein run' 'yarn build-hot' 'yarn docs'",
