@@ -12,80 +12,65 @@ const sub_collection_name = "ZZ Sub-Collection";
 const pulse_name = "Test pulse";
 const dashboard_name = "Test Dashboard";
 
-function createPulse() {
-  cy.visit("/pulse/create");
-  cy.findByPlaceholderText("Important metrics").type(pulse_name);
-  cy.findByText("Select a question").click();
-  cy.findByText("Orders").click();
-  cy.findByPlaceholderText(
-    "Enter email addresses you'd like this data to go to",
-  )
-    .click()
-    .clear();
-  cy.contains("Bobby").click();
-  cy.findByText("To:").click();
-
-  cy.findByText("Robert Tableton").should("not.exist");
-  cy.findByText("Bobby Tables");
-  cy.findByText("Create pulse").click();
-}
-
 describe("scenarios > collection_defaults", () => {
-  before(() => {
-    restore();
-  });
+  before(restore);
 
-  describe("for admins", () => {
+  describe.only("for admins", () => {
     beforeEach(signInAsAdmin);
 
     describe("a new collection", () => {
       before(() => {
         signInAsAdmin();
-        cy.request("POST", "api/collection/", {
+        cy.request("POST", "/api/collection", {
           name: collection_name,
           color: "#ff9a9a",
-          personal_owner_id: 1,
         });
       });
 
-      it("should be the parent collection", () => {
+      it("it should be the parent collection", () => {
         // Check that it has no parent
         const length = 7;
-        cy.request("api/collection").then(response => {
+        cy.request("GET", "/api/collection").then(response => {
           expect(response.body).to.have.length(length);
           expect(response.body[length - 1].name).to.equal(collection_name);
           expect(response.body[length - 1].location).to.equal("/");
         });
       });
 
-      it("should see within parent in UI", () => {
+      it("it should be visible within a root collection in a sidebar", () => {
         cy.visit("/collection/root");
         cy.findByText(collection_name);
       });
+    });
 
-      it("should be a sub collection", () => {
-        // Make new sub collection
+    // TODO: once the changes are implemented, create a test where sub-collection is nested under admin's personal collection
+    describe("a new sub-collection", () => {
+      before(() => {
+        signInAsAdmin();
+        // Create a sub collection within previously added ("Z") collection
         cy.request("POST", "api/collection/", {
           name: sub_collection_name,
           color: "#ff9a9a",
-          personal_owner_id: 1,
-          parent_id: 1,
+          parent_id: 6,
         });
+      });
 
+      it("should be a sub collection", () => {
         // Check that it has a parent
         const length = 8;
         cy.request("api/collection").then(response => {
           expect(response.body).to.have.length(length);
           expect(response.body[length - 1].name).to.equal(sub_collection_name);
-          expect(response.body[length - 1].location).to.equal("/1/");
+          expect(response.body[length - 1].location).to.equal("/6/");
         });
       });
 
-      it("should see sub collection in UI", () => {
+      it("should be nested under parent on a parent's URL in a sidebar", () => {
         cy.visit("/collection/root");
         cy.findByText(sub_collection_name).should("not.exist");
 
-        cy.visit("/collection/1");
+        cy.visit("/collection/6/");
+        cy.get(".Icon-chevronright").click();
         cy.findByText(sub_collection_name);
       });
     });
@@ -158,3 +143,21 @@ describe("scenarios > collection_defaults", () => {
     });
   });
 });
+
+function createPulse() {
+  cy.visit("/pulse/create");
+  cy.findByPlaceholderText("Important metrics").type(pulse_name);
+  cy.findByText("Select a question").click();
+  cy.findByText("Orders").click();
+  cy.findByPlaceholderText(
+    "Enter email addresses you'd like this data to go to",
+  )
+    .click()
+    .clear();
+  cy.contains("Bobby").click();
+  cy.findByText("To:").click();
+
+  cy.findByText("Robert Tableton").should("not.exist");
+  cy.findByText("Bobby Tables");
+  cy.findByText("Create pulse").click();
+}
