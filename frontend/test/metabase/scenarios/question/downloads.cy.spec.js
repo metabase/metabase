@@ -8,7 +8,7 @@ const testCases = [
   { type: "xlsx", firstSheetName: "Query result" },
 ];
 
-describe("file download", () => {
+describe("scenarios > question > download", () => {
   before(restore);
   beforeEach(() => {
     signInAsAdmin();
