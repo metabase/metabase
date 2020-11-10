@@ -58,11 +58,10 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    // TODO: once the changes are implemented, create a test where sub-collection is nested under admin's personal collection
     describe("a new sub-collection", () => {
       before(() => {
         signInAsAdmin();
-        // Create a sub collection within previously added ("Z") collection
+        // Create a sub collection within previously added ("Z collection")
         cy.request("POST", "/api/collection", {
           name: sub_collection.name,
           color: "#ff9a9a",
@@ -73,13 +72,13 @@ describe("scenarios > collection_defaults", () => {
       });
 
       it("should be a sub collection", () => {
-        // Check that it has a parent
         const LENGTH = sub_collection.id + 1;
         cy.request("GET", "/api/collection").then(response => {
           expect(response.body).to.have.length(LENGTH);
           expect(response.body[sub_collection.id].name).to.equal(
             sub_collection.name,
           );
+          // Check that it has a parent (and that it is a "Z collection")
           expect(response.body[sub_collection.id].location).to.equal(
             `/${collection.id}/`,
           );
