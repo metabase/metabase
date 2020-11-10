@@ -7,8 +7,21 @@ import {
 // Ported from initial_collection.e2e.spec.js
 
 // Z because the api lists them alphabetically by name, so it makes it easier to check
-const collection_name = "Z Collection";
-const sub_collection_name = "ZZ Sub-Collection";
+const [admin, collection, sub_collection] = [
+  {
+    name: "Robert Tableton's Personal Collection",
+    id: 1,
+  },
+  {
+    name: "Z Collection",
+    id: null, // TBD from a response body
+  },
+  {
+    name: "ZZ Sub-Collection",
+    id: null, // TBD from a response body
+  },
+];
+
 const pulse_name = "Test pulse";
 const dashboard_name = "Test Dashboard";
 
@@ -22,24 +35,26 @@ describe("scenarios > collection_defaults", () => {
       before(() => {
         signInAsAdmin();
         cy.request("POST", "/api/collection", {
-          name: collection_name,
+          name: collection.name,
           color: "#ff9a9a",
+        }).then(({ body }) => {
+          collection.id = body.id;
         });
       });
 
       it("should be the parent collection", () => {
-        // Check that it has no parent
-        const length = 7;
+        const LENGTH = collection.id + 1;
         cy.request("GET", "/api/collection").then(response => {
-          expect(response.body).to.have.length(length);
-          expect(response.body[length - 1].name).to.equal(collection_name);
-          expect(response.body[length - 1].location).to.equal("/");
+          expect(response.body).to.have.length(LENGTH);
+          expect(response.body[collection.id].name).to.equal(collection.name);
+          // Check that it has no parent
+          expect(response.body[collection.id].location).to.equal("/");
         });
       });
 
       it("should be visible within a root collection in a sidebar", () => {
         cy.visit("/collection/root");
-        cy.findByText(collection_name);
+        cy.findByText(collection.name);
       });
     });
 
@@ -48,30 +63,46 @@ describe("scenarios > collection_defaults", () => {
       before(() => {
         signInAsAdmin();
         // Create a sub collection within previously added ("Z") collection
-        cy.request("POST", "api/collection/", {
-          name: sub_collection_name,
+        cy.request("POST", "/api/collection", {
+          name: sub_collection.name,
           color: "#ff9a9a",
-          parent_id: 6,
+          parent_id: collection.id,
+        }).then(({ body }) => {
+          sub_collection.id = body.id;
         });
       });
 
       it("should be a sub collection", () => {
         // Check that it has a parent
-        const length = 8;
-        cy.request("api/collection").then(response => {
-          expect(response.body).to.have.length(length);
-          expect(response.body[length - 1].name).to.equal(sub_collection_name);
-          expect(response.body[length - 1].location).to.equal("/6/");
+        const LENGTH = sub_collection.id + 1;
+        cy.request("GET", "/api/collection").then(response => {
+          expect(response.body).to.have.length(LENGTH);
+          expect(response.body[sub_collection.id].name).to.equal(
+            sub_collection.name,
+          );
+          expect(response.body[sub_collection.id].location).to.equal(
+            `/${collection.id}/`,
+          );
         });
       });
 
       it("should be nested under parent on a parent's URL in a sidebar", () => {
         cy.visit("/collection/root");
-        cy.findByText(sub_collection_name).should("not.exist");
+        cy.findByText(sub_collection.name).should("not.exist");
 
-        cy.visit("/collection/6/");
+        cy.visit(`/collection/${collection.id}`);
         cy.get(".Icon-chevronright").click();
-        cy.findByText(sub_collection_name);
+        cy.findByText(sub_collection.name);
+      });
+
+      it("should be moved under admin's personal collection", () => {
+        cy.request("PUT", `/api/collection/${sub_collection.id}`, {
+          parent_id: admin.id,
+        });
+
+        cy.visit(`/collection/${admin.id}`);
+        cy.get(".Icon-chevronright").click();
+        cy.findByText(sub_collection.name);
       });
     });
 
@@ -99,7 +130,7 @@ describe("scenarios > collection_defaults", () => {
     });
 
     describe("a new dashboard", () => {
-      it("should be the root collection", () => {
+      it("should be in the root collection", () => {
         // Make new dashboard and check collection name
         cy.request("POST", "/api/dashboard", { name: dashboard_name });
 
