@@ -125,7 +125,7 @@ describe("scenarios > question > download", () => {
   describe("for saved questions - metabase#10803", () => {
     it("should format the date properly", () => {
       cy.request("POST", "/api/card", {
-        name: "Data formats",
+        name: "10803",
         dataset_query: {
           type: "native",
           native: {
