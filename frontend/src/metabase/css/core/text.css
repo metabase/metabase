@@ -213,3 +213,7 @@
 .text-measure {
   max-width: 620px;
 }
+
+.text-transparent {
+  color: rgba(256, 0, 0, 0);
+}

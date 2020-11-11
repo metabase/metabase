@@ -23,7 +23,7 @@ import _ from "underscore";
 
 const SECTIONS = {
   records: {
-    icon: "table2",
+    icon: "table_spaced",
   },
   zoom: {
     icon: "zoom_in",
@@ -38,13 +38,13 @@ const SECTIONS = {
     icon: "breakout",
   },
   filter: {
-    icon: "funnel_outline",
+    icon: "filter",
   },
   summarize: {
-    icon: "summarize",
+    icon: "bar",
   },
   sum: {
-    icon: "sum",
+    icon: "number",
   },
   averages: {
     icon: "curve",
@@ -178,50 +178,28 @@ export default class ChartClickActions extends Component {
         {popover ? (
           popover
         ) : (
-          <div className="text-bold px2 py1">
+          <div className="text-bold pr1">
             {sections.map(([key, actions]) => (
-              <div className={cx("py1", { pb1: SECTIONS[key].icon === "sum" })}>
-                {SECTIONS[key].icon === "breakout" && (
-                  <p className="mt0 text-bold text-medium text-small block">
-                    Break out by…
-                  </p>
-                )}
-                {SECTIONS[key].icon === "bolt" && (
-                  <p className="text-bold text-medium text-small block">
-                    Automatic explorations
-                  </p>
-                )}
-                <div
-                  key={key}
-                  className={cx(
-                    "flex",
-                    {
-                      "border-top pt2 text-medium":
-                        SECTIONS[key].icon === "pencil",
-                    },
-                    {
-                      "align-center justify-center":
-                        SECTIONS[key].icon === "pencil" ||
-                        SECTIONS[key].icon === "sort",
-                    },
-                  )}
-                >
-                  {/*
-                <Icon
-                  name={(SECTIONS[key] && SECTIONS[key].icon) || "unknown"}
-                  className="mr1 pl2 text-medium"
-                  size={16}
-                />
-                */}
-                  {actions.map((action, index) => (
-                    <ChartClickAction
-                      index={index}
-                      action={action}
-                      isLastItem={index === actions.length - 1}
-                      handleClickAction={this.handleClickAction}
-                    />
-                  ))}
+              <div key={key} className="flex align-center">
+                <div className="mr2 bg-light" style={{ padding: "8px" }}>
+                  <Icon
+                    name={(SECTIONS[key] && SECTIONS[key].icon) || "unknown"}
+                    className={cx(
+                      "m1",
+                      { "text-transparent": SECTIONS[key].icon === "pencil" },
+                      { "text-brand": SECTIONS[key].icon !== "pencil" },
+                    )}
+                    size={16}
+                  />
                 </div>
+                {actions.map((action, index) => (
+                  <ChartClickAction
+                    index={index}
+                    action={action}
+                    isLastItem={index === actions.length - 1}
+                    handleClickAction={this.handleClickAction}
+                  />
+                ))}
               </div>
             ))}
           </div>
@@ -240,18 +218,16 @@ export const ChartClickAction = ({
   isLastItem: any,
   handleClickAction: any,
 }) => {
-  const className = cx("text-small cursor-pointer no-decoration", {
-    "px2 text-brand-hover justify-evenly": action.buttonType === "text",
-    "sort mr1 flex-auto rounded text-white-hover bg-light bg-brand-hover justify-between":
-      action.buttonType === "sort",
-    "px2 py1 mr1 bg-purple-light rounded flex-full bg-purple-hover text-purple text-white-hover":
-      action.buttonType === "horizontal",
-    "p1 rounded flex-full bg-brand-hover text-brand text-white-hover":
-      action.buttonType === "horizontal-no-outline",
-    "token text-green text-white-hover mr1": action.buttonType === "token",
-    "large-button mr1 bg-green-light text-green text-white-hover rounded bg-green-hover":
-      action.buttonType === "large",
-  });
+  const className = cx(
+    "mr1 circular text-small cursor-pointer",
+    {
+      "token text-white-hover text-brand no-decoration":
+        action.buttonType !== "text",
+    },
+    {
+      "text-medium text-brand-hover px1": action.buttonType === "text",
+    },
+  );
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
   // for now since on dashboards currently they need to go through
   // navigateToNewCardFromDashboard to merge in parameters.,
@@ -284,32 +260,11 @@ export const ChartClickAction = ({
   } else {
     return (
       <div
-        className={cx(
-          className,
-          {
-            "flex flex-column align-center": action.buttonType === "large",
-          },
-          {
-            "flex flex-row justify-left":
-              action.buttonType === "text" ||
-              action.buttonType === "horizontal",
-          },
-        )}
+        className={cx(className, {
+          "flex flex-column align-center": action.buttonType === "large",
+        })}
         onClick={() => handleClickAction(action)}
       >
-        {action.icon && (
-          <Icon
-            className={cx(
-              "flex",
-              {
-                mr1: action.buttonType !== "large",
-              },
-              { mb1: action.buttonType === "large" },
-            )}
-            size={action.buttonType === "large" ? 16 : 12}
-            name={action.icon}
-          />
-        )}
         {action.title}
       </div>
     );
