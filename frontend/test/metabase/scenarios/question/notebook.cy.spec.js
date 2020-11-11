@@ -439,6 +439,7 @@ describe("scenarios > question > notebook", () => {
             display: "table",
             visualization_settings: {},
           }).then(({ body: { id: joinedQuestionId } }) => {
+            // listen on the final card query which means the data for this question loaded
             cy.route("POST", `/api/card/${joinedQuestionId}/query`).as(
               "cardQuery",
             );
@@ -453,7 +454,7 @@ describe("scenarios > question > notebook", () => {
             cy.wait("@cardQuery").then(xhr => {
               expect(xhr.response.body.error).not.to.exist;
             });
-            // TODO: add positive UI assertion
+            cy.findAllByText("Gizmo");
           });
         });
       });
