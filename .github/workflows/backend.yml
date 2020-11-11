@@ -34,7 +34,19 @@ jobs:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}
     - run: lein with-profile +include-all-drivers,+cloverage,+junit,+oss deps
-    - run: lein with-profile +ci,+oss eastwood
+    - name: Run Eastwood
+      run: |
+        set -o pipefail
+        lein with-profile +ci,+oss eastwood | tee eastwood.log
+    - name: Convert linter output to annotation
+      run: ./bin/convert2annotations.js eastwood.log eastwood-annotations.json
+      if: always()
+    - name: Upload GitHub annotations
+      uses: yuzutech/annotations-action@v0.1.0
+      if: always()
+      with:
+        input: './eastwood-annotations.json'
+        repo-token: "${{ secrets.GITHUB_TOKEN }}"
 
   be-linter-docstring-checker:
     runs-on: ubuntu-20.04
