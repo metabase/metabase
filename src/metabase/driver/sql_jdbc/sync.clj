@@ -14,6 +14,7 @@
   column->special-type
   database-type->base-type
   excluded-schemas
+  fallback-metadata-query
   have-select-privilege?]
 
  [sync.describe-table

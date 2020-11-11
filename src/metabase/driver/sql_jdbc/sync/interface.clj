@@ -43,3 +43,14 @@
   {:arglists '([driver database-type column-name])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
+
+(defmulti fallback-metadata-query
+  "SELECT columns from a given table so we can get column metadata. By default doesn't return any rows. This can be
+  overriden because SQLite is silly and only returns column information for views if the query returns a non-zero
+  number of rows.
+
+    (fallback-metadata-query :postgres \"public\" \"my_table\")
+    ;; -> [\"SELECT * FROM public.my_table WHERE 1 <> 1 LIMIT 0\"]"
+  {:arglists '([driver schema table])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)

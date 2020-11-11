@@ -10,7 +10,9 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync
              [common :as common]
-             [interface :as i]])
+             [interface :as i]]
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
 
 (defmethod i/column->special-type :sql-jdbc [_ _ _] nil)
@@ -49,12 +51,22 @@
       (str "Invalid type: " special-type))
     special-type))
 
+(defmethod i/fallback-metadata-query :sql-jdbc
+  [driver schema table]
+  {:pre [(string? table)]}
+  ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
+  (let [honeysql {:select [:*]
+                  :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]
+                  :where  [:not= 1 1]}
+        honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
+    (sql.qp/format-honeysql driver honeysql)))
+
 (defn- fallback-fields-metadata-from-select-query
   "In some rare cases `:column_name` is blank (eg. SQLite's views with group by) fallback to sniffing the type from a
   SELECT * query."
   [driver ^Connection conn table-schema table-name]
   ;; some DBs (:sqlite) don't actually return the correct metadata for LIMIT 0 queries
-  (let [[sql & params] (common/simple-select-probe-query driver table-schema table-name {:select [:*], :limit 1})]
+  (let [[sql & params] (i/fallback-metadata-query driver table-schema table-name)]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-open [stmt (common/prepare-statement driver conn sql params)
@@ -97,10 +109,10 @@
       ;; 3. Filter out any duplicates between the two methods using `m/distinct-by`.
       (let [has-fields-without-type-info? (volatile! false)
             jdbc-metadata                 (eduction
-                                           (filter (fn [{:keys [database-type]}]
-                                                     (or (not (str/blank? database-type))
-                                                         (do (vreset! has-fields-without-type-info? true)
-                                                             false))))
+                                           (remove (fn [{:keys [database-type]}]
+                                                     (when (str/blank? database-type)
+                                                       (vreset! has-fields-without-type-info? true)
+                                                       true)))
                                            (jdbc-fields-metadata driver conn db-name-or-nil schema table-name))
             fallback-metadata             (reify clojure.lang.IReduceInit
                                             (reduce [_ rf init]

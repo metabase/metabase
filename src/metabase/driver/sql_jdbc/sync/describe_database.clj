@@ -2,15 +2,15 @@
   "SQL JDBC impl for `describe-database`."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]]
             [metabase.driver.sql-jdbc.sync
              [common :as common]
-             [interface :as i]])
+             [interface :as i]]
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
 
 (defmethod i/excluded-schemas :sql-jdbc [_] nil)
@@ -26,6 +26,21 @@
   [driver metadata]
   (eduction (remove (set (i/excluded-schemas driver)))
             (all-schemas metadata)))
+
+(defn simple-select-probe-query
+  "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata. Doesn't return
+  anything useful (only used to check whether we can execute a SELECT query)
+
+    (simple-select-probe-query :postgres \"public\" \"my_table\")
+    ;; -> [\"SELECT TRUE FROM public.my_table WHERE 1 <> 1 LIMIT 0\"]"
+  [driver schema table]
+  {:pre [(string? table)]}
+  ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
+  (let [honeysql {:select [(sql.qp/->honeysql driver true)]
+                  :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]
+                  :where  [:not= 1 1]}
+        honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
+    (sql.qp/format-honeysql driver honeysql)))
 
 (defn- execute-select-probe-query
   "Execute the simple SELECT query defined above. The main goal here is to check whether we're able to execute a SELECT
@@ -44,10 +59,12 @@
   [driver conn table-schema table-name]
   ;; Query completes = we have SELECT privileges
   ;; Query throws some sort of no permissions exception = no SELECT privileges
-  (u/ignore-exceptions
-    (execute-select-probe-query driver conn
-                                (common/simple-select-probe-query driver table-schema table-name))
-    true))
+  (let [sql-args (simple-select-probe-query driver table-schema table-name)]
+    (try
+      (execute-select-probe-query driver conn sql-args)
+      true
+      (catch Throwable _
+        false))))
 
 (defn- db-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given

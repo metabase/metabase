@@ -55,7 +55,11 @@
       (let [details (mt/dbdef->connection-details :sqlite :db {:database-name "views_test"})
             spec    (sql-jdbc.conn/connection-details->spec :sqlite details)]
         (mt/with-temp Database [{db-id :id :as database} {:engine :sqlite, :details (assoc details :dbname "views_test")}]
-          (doseq [statement ["create table if not exists src(id integer, time text);"
+          (doseq [statement ["drop view if exists v_groupby_test;"
+                             "drop table if exists groupby_test;"
+                             "drop view if exists v_src;"
+                             "drop table if exists src;"
+                             "create table if not exists src(id integer, time text);"
                              "create view if not exists v_src as select id, strftime('%s', time) as time from src;"
                              "insert into src values(1, '2020-03-01 12:20:35');"]]
             (jdbc/execute! spec [statement]))
@@ -72,7 +76,9 @@
                              :base_type :type/Text}]}]
                  (->> (hydrate (db/select Table :db_id db-id {:order-by [:name]}) :fields)
                       (map table-fingerprint))))
-          (doseq [statement ["CREATE TABLE IF NOT EXISTS groupby_test (
+          (doseq [statement ["drop view if exists v_groupby_test;"
+                             "drop table if exists groupby_test;"
+                             "CREATE TABLE IF NOT EXISTS groupby_test (
                              id INTEGER primary key unique,
                              symbol VARCHAR,
                              dt DATETIME,

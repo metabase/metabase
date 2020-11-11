@@ -25,7 +25,7 @@
             [metabase.util
              [date-2 :as u.date]
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]])
+             [i18n :refer [trs tru]]])
   (:import [java.sql ResultSet Types]
            [java.time OffsetDateTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
@@ -45,7 +45,6 @@
 (defmethod driver/db-start-of-week :snowflake
   [_]
   :sunday)
-
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account regionid], :as opts}]
@@ -248,14 +247,22 @@
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
     (qp.store/with-store
       (qp.store/fetch-and-store-database! (u/get-id database))
-      {:tables (set (for [table (jdbc/query
-                                 (sql-jdbc.conn/db->pooled-connection-spec database)
-                                 (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name))
-                          :when (and (not (contains? excluded-schemas (:schema_name table)))
-                                     (sql-jdbc.sync/have-select-privilege? driver database (:schema_name table) (:name table)))]
-                      {:name        (:name table)
-                       :schema      (:schema_name table)
-                       :description (not-empty (:comment table))}))})))
+      (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)
+            sql  (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)]
+        (with-open [conn (jdbc/get-connection spec)]
+          {:tables (into
+                    #{}
+                    (comp (filter (fn [{schema :schema_name, table-name :name}]
+                                    (and (not (contains? excluded-schemas schema))
+                                         (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
+                          (map (fn [{schema :schema_name, table-name :name, remark :comment}]
+                                 {:name        table-name
+                                  :schema      schema
+                                  :description (not-empty remark)})))
+                    (try
+                      (jdbc/reducible-query {:connection conn} sql)
+                      (catch Throwable e
+                        (throw (ex-info (trs "Error executing query") {:sql sql} e)))))})))))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]

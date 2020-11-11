@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [metabase
              [driver :as driver]
+             [query-processor :as qp]
              [sync :as sync]
              [test :as mt]]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -13,6 +14,15 @@
             [metabase.test.data.one-off-dbs :as one-off-dbs]
             [toucan.db :as db])
   (:import java.sql.ResultSet))
+
+(deftest simple-select-probe-query-test
+  (testing "simple-select-probe-query shouldn't actually return any rows"
+    (let [{:keys [name schema]} (Table (mt/id :venues))]
+      (is (= []
+             (mt/rows
+               (qp/process-query
+                (let [[sql] (describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
+                  (mt/native-query {:query sql})))))))))
 
 (defn- sql-jdbc-drivers-with-default-describe-database-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-database`. (As far as I know, this is
@@ -29,11 +39,17 @@
       ;; We have to mock this to make it work with all DBs
       (with-redefs [describe-database/all-schemas (constantly #{"PUBLIC"})]
         (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
-               (transduce
-                (map :name)
-                (completing conj sort)
-                []
-                (describe-database/fast-active-tables (or driver/*driver* :h2) conn))))))))
+               (->> (into [] (describe-database/fast-active-tables (or driver/*driver* :h2) conn))
+                    (map :name)
+                    sort)))))))
+
+(deftest post-filtered-active-tables-test
+  (let [spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+    (with-open [conn (jdbc/get-connection spec)]
+      (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
+             (->> (into [] (describe-database/post-filtered-active-tables :h2 conn))
+                  (map :name)
+                  sort))))))
 
 (deftest describe-database-test
   (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil}
