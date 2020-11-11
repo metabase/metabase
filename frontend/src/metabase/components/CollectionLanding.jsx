@@ -32,14 +32,40 @@ function nonPersonalCollections(collectionList) {
   return collectionList.filter(l => !l.personal_owner_id);
 }
 
-function currentUserPersonalCollections(collectionList, userId) {
-  return collectionList.filter(l => l.personal_owner_id === userId);
+// Replace the name for the current user's collection
+// @Question - should we just update the API to do this?
+function preparePersonalCollection(c) {
+  return {
+    ...c,
+    name: t`Your personal collection`,
+  };
 }
 
-@connect(
-  ({ currentUser }) => ({ currentUser }),
-  null,
-)
+// Create a fake collection and put other users collections in it
+function getCollectionsForAdmin(collectionList, userID) {
+  return [
+    {
+      // TODO - need to figure out how to handle the "Link" for this faux collection since by definition it has no content
+      name: t`Other users' personal collections`,
+      children: [
+        ...collectionList
+          .filter(l => l.personal_owner_id && l.personal_owner_id !== userID)
+          .map(l => ({
+            ...l,
+            name: l.name.substring(0, l.name.indexOf("'")),
+          })),
+      ],
+    },
+  ];
+}
+
+function currentUserPersonalCollections(collectionList, userID) {
+  return collectionList
+    .filter(l => l.personal_owner_id === userID)
+    .map(preparePersonalCollection);
+}
+
+@connect(({ currentUser }) => ({ currentUser }))
 class CollectionLanding extends React.Component {
   render() {
     const {
@@ -74,6 +100,15 @@ class CollectionLanding extends React.Component {
                     )}
                   />
                 </Box>
+
+                {currentUser.is_superuser && (
+                  <Box>
+                    <CollectionsList
+                      collections={getCollectionsForAdmin(list, currentUser.id)}
+                      initialIcon="group"
+                    />
+                  </Box>
+                )}
               </Box>
             )}
           </Collection.ListLoader>
@@ -124,39 +159,41 @@ class CollectionsList extends React.Component {
     /* TODO - re-integrate drag and drop from metabase/components/CollectionList */
     return (
       <Box>
-        {collections.map(c => (
-          <Box>
-            <Flex align="center" className="relative bg-brand-light-hover">
-              {c.children && (
-                <Flex
-                  className="absolute text-brand cursor-pointer"
-                  align="center"
-                  justifyContent="center"
-                  style={{ left: -20 }}
+        {collections.map(c => {
+          return (
+            <Box>
+              <Flex align="center" className="relative bg-brand-light-hover">
+                {c.children && (
+                  <Flex
+                    className="absolute text-brand cursor-pointer"
+                    align="center"
+                    justifyContent="center"
+                    style={{ left: -16 }}
+                  >
+                    <Icon
+                      name={open === c.id ? "chevrondown" : "chevronright"}
+                      onClick={() => this.setState({ open: c.id })}
+                      size={12}
+                    />
+                  </Flex>
+                )}
+                <Link
+                  className="flex align-center link text-bold"
+                  my={"10px"}
+                  to={Urls.collection(c.id)}
                 >
-                  <Icon
-                    name={open === c.id ? "chevrondown" : "chevronright"}
-                    onClick={() => this.setState({ open: c.id })}
-                    size={10}
-                  />
-                </Flex>
+                  <Icon name="folder" mr={"6px"} style={{ opacity: 0.4 }} />
+                  {c.name}
+                </Link>
+              </Flex>
+              {c.children && open === c.id && (
+                <Box ml="12px">
+                  <CollectionsList collections={c.children} />
+                </Box>
               )}
-              <Link
-                className="flex align-center link text-bold"
-                my={"8px"}
-                to={Urls.collection(c.id)}
-              >
-                <Icon name="folder" mr={"4px"} style={{ opacity: 0.4 }} />
-                {c.name}
-              </Link>
-            </Flex>
-            {c.children && open === c.id && (
-              <Box ml="8px">
-                <CollectionsList collections={c.children} />
-              </Box>
-            )}
-          </Box>
-        ))}
+            </Box>
+          );
+        })}
       </Box>
     );
   }
