@@ -202,6 +202,63 @@ describe("data_grid", () => {
         ],
       ]);
     });
+    it("should work with three levels of row grouping", () => {
+      // three was picked because there was a bug during development that showed up with at least three
+      const data = {
+        rows: [
+          ["a1", "b1", "c1", 1],
+          ["a1", "b1", "c2", 1],
+          ["a1", "b2", "c1", 1],
+          ["a1", "b2", "c2", 1],
+          ["a2", "b1", "c1", 1],
+          ["a2", "b1", "c2", 1],
+          ["a2", "b2", "c1", 1],
+          ["a2", "b2", "c2", 1],
+        ],
+        cols: [
+          { name: "D1", display_name: "Dimension 1", base_type: TYPE.Text },
+          { name: "D2", display_name: "Dimension 2", base_type: TYPE.Text },
+          { name: "D3", display_name: "Dimension 3", base_type: TYPE.Text },
+          { name: "M1", display_name: "Metric", base_type: TYPE.Integer },
+        ],
+      };
+
+      const { headerRows, bodyRows } = multiLevelPivot(
+        data,
+        [],
+        [0, 1, 2],
+        [3],
+      );
+      expect(headerRows).toEqual([]);
+      expect(bodyRows).toEqual([
+        [
+          { span: 4, value: "a1" },
+          { span: 2, value: "b1" },
+          { span: 1, value: "c1" },
+          { span: 1, value: "1" },
+        ],
+        [{ span: 1, value: "c2" }, { span: 1, value: "1" }],
+        [
+          { span: 2, value: "b2" },
+          { span: 1, value: "c1" },
+          { span: 1, value: "1" },
+        ],
+        [{ span: 1, value: "c2" }, { span: 1, value: "1" }],
+        [
+          { span: 4, value: "a2" },
+          { span: 2, value: "b1" },
+          { span: 1, value: "c1" },
+          { span: 1, value: "1" },
+        ],
+        [{ span: 1, value: "c2" }, { span: 1, value: "1" }],
+        [
+          { span: 2, value: "b2" },
+          { span: 1, value: "c1" },
+          { span: 1, value: "1" },
+        ],
+        [{ span: 1, value: "c2" }, { span: 1, value: "1" }],
+      ]);
+    });
     it("should format values", () => {
       const data = {
         rows: [[1, "2020-01-01T00:00:00", 1000]],

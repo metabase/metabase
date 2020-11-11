@@ -48,7 +48,7 @@ export default class PivotTable extends Component {
           columnFilter: isDimension,
           title: t`Fields to use for the table columns`,
         },
-        { name: "values", title: t`Fields to use for the table rows` },
+        { name: "values", title: t`Fields to use for the table values` },
       ],
       getProps: ([{ data }], settings) => ({
         columns: data.cols,
