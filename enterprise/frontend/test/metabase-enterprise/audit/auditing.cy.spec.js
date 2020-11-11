@@ -121,6 +121,9 @@ describeWithToken("audit > auditing", () => {
       cy.findByText("Active members and new members per day");
       cy.findByText("No results!");
 
+      // Wait for both of the charts to show up
+      cy.get(".dc-chart").should("have.length", 2);
+
       // For queries viewed, we have 2 users that haven't viewed anything
       cy.get(".LineAreaBarChart")
         .first()
