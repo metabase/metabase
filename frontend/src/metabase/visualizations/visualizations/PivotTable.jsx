@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { isDimension } from "metabase/lib/schema_metadata";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
@@ -33,53 +34,30 @@ export default class PivotTable extends Component {
 
   static settings = {
     ...columnSettings({ hidden: true }),
-    "pivot_table.table_rows": {
+    "pivot_table.column_split": {
       section: null,
-      title: t`Fields to use for the table rows`,
-      widget: "fields",
-      getProps: ([{ data }], settings) => {
-        if (!data) {
-          return {};
-        }
-        return {
-          options: data.cols.filter(isDimension).map(getOptionFromColumn),
-          addAnother: t`Add a column`,
-          columns: data.cols,
-        };
-      },
-      getDefault: () => [null],
-    },
-    "pivot_table.table_columns": {
-      section: null,
-      title: t`Fields to use for the table columns`,
-      widget: "fields",
-      getProps: ([{ data }], settings) => {
-        if (!data) {
-          return {};
-        }
-        return {
-          options: data.cols.filter(isDimension).map(getOptionFromColumn),
-          addAnother: t`Add a column`,
-          columns: data.cols,
-        };
-      },
-      getDefault: () => [null],
-    },
-    "pivot_table.table_values": {
-      section: null,
-      title: t`Fields to use for the table values`,
-      widget: "fields",
-      getProps: ([{ data }], settings) => {
-        if (!data) {
-          return {};
-        }
-        return {
-          options: data.cols.map(getOptionFromColumn),
-          addAnother: t`Add a column`,
-          columns: data.cols,
-        };
-      },
-      getDefault: () => [null],
+      widget: "fieldsPartition",
+      partitions: [
+        {
+          name: "rows",
+          columnFilter: isDimension,
+          title: t`Fields to use for the table rows`,
+        },
+        {
+          name: "columns",
+          columnFilter: isDimension,
+          title: t`Fields to use for the table columns`,
+        },
+        { name: "values", title: t`Fields to use for the table rows` },
+      ],
+      getProps: ([{ data }], settings) => ({
+        columns: data.cols,
+      }),
+      getDefault: ([{ data }]) => ({
+        rows: data.cols.filter(isDimension),
+        values: data.cols.filter(col => !isDimension(col)),
+        columns: [],
+      }),
     },
   };
 
@@ -92,16 +70,15 @@ export default class PivotTable extends Component {
 
   render() {
     const { settings, data } = this.props;
-    console.log({ settings, cols: data.cols });
-    const [rowIndexes, columnIndexes, valueIndexes] = [
-      "pivot_table.table_rows",
-      "pivot_table.table_columns",
-      "pivot_table.table_values",
-    ].map(settingName =>
-      settings[settingName]
-        .map(colOption =>
-          data.cols.findIndex(
-            col => getOptionFromColumn(col).value === colOption,
+    const {
+      rows: rowIndexes,
+      columns: columnIndexes,
+      values: valueIndexes,
+    } = _.mapObject(settings["pivot_table.column_split"], columns =>
+      columns
+        .map(column =>
+          data.cols.findIndex(col =>
+            _.isEqual(col.field_ref, column.field_ref),
           ),
         )
         .filter(index => index !== -1),
