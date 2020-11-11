@@ -84,8 +84,8 @@
   [driver ^Connection conn db-name-or-nil schema table-name]
   (common/reducible-results #(.getColumns (.getMetaData conn)
                                           db-name-or-nil
-                                          (driver/escape-entity-name-for-metadata driver schema)
-                                          (driver/escape-entity-name-for-metadata driver table-name)
+                                          (some->> schema (driver/escape-entity-name-for-metadata driver))
+                                          (some->> table-name (driver/escape-entity-name-for-metadata driver))
                                           nil)
                             (fn [^ResultSet rs]
                               #(merge

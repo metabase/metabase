@@ -36,7 +36,7 @@
   [driver schema table]
   {:pre [(string? table)]}
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
-  (let [honeysql {:select [(sql.qp/->honeysql driver true)]
+  (let [honeysql {:select [[(sql.qp/->honeysql driver true) :_]]
                   :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]
                   :where  [:not= 1 1]}
         honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
@@ -71,7 +71,7 @@
   schema. Returns a reducible sequence of results."
   [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   (common/reducible-results
-   #(.getTables metadata db-name-or-nil (driver/escape-entity-name-for-metadata driver schema-or-nil) "%"
+   #(.getTables metadata db-name-or-nil (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"
                 (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW" "EXTERNAL TABLE"]))
    (fn [^ResultSet rs]
      (fn []
@@ -91,9 +91,8 @@
   {:pre [(instance? Connection conn)]}
   (let [metadata (.getMetaData conn)]
     (eduction
-     (comp (map (fn [schema]
-                  (db-tables driver metadata schema db-name-or-nil)))
-           cat
+     (comp (mapcat (fn [schema]
+                     (db-tables driver metadata schema db-name-or-nil)))
            (filter (fn [{table-schema :schema, table-name :name}]
                      (i/have-select-privilege? driver conn table-schema table-name))))
      (syncable-schemas driver metadata))))
