@@ -252,20 +252,19 @@
                                  (sql-jdbc.conn/db->pooled-connection-spec database)
                                  (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name))
                           :when (and (not (contains? excluded-schemas (:schema_name table)))
-                                     (sql-jdbc.sync/have-select-privilege? driver database
-                                                                           {:table_name  (:name table)
-                                                                            :table_schem (:schema_name table)}))]
+                                     (sql-jdbc.sync/have-select-privilege? driver database (:schema_name table) (:name table)))]
                       {:name        (:name table)
                        :schema      (:schema_name table)
                        :description (not-empty (:comment table))}))})))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
-  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (->> (assoc (select-keys table [:name :schema])
-                :fields (sql-jdbc.sync/describe-table-fields metadata driver table (db-name database)))
-         ;; find PKs and mark them
-         (sql-jdbc.sync/add-table-pks metadata))))
+  (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (with-open [conn (jdbc/get-connection spec)]
+      (->> (assoc (select-keys table [:name :schema])
+                  :fields (sql-jdbc.sync/describe-table-fields driver conn table (db-name database)))
+           ;; find PKs and mark them
+           (sql-jdbc.sync/add-table-pks (.getMetaData conn))))))
 
 (defmethod driver/describe-table-fks :snowflake
   [driver database table]

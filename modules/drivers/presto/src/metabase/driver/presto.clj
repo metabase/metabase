@@ -234,8 +234,7 @@
 (defn- describe-schema [driver {{:keys [catalog user] :as details} :details :as db} {:keys [schema]}]
   (let [sql (str "SHOW TABLES FROM " (sql.u/quote-name driver :schema catalog schema))]
     (set (for [[table-name & _] (:rows (execute-query-for-sync :presto details sql))
-               :when (sql-jdbc.sync/have-select-privilege? driver details {:table_schem schema
-                                                                           :table_name  table-name})]
+               :when (sql-jdbc.sync/have-select-privilege? driver details schema table-name)]
            {:name   table-name
             :schema schema}))))
 

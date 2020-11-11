@@ -27,7 +27,7 @@
 (defn- loaded-fields
   "Actual Fields loaded into a Table. Returns set of field names."
   [{:keys [driver database actual-schema actual-table-name]}]
-  (->> (driver/describe-table driver database {:schema actual-schema, :name actual-table-name})
+  (->> (driver/describe-table driver database {:schema actual-schema, :name actual-table-name, :db_id (:id database)})
        :fields
        (map :name)
        set))
