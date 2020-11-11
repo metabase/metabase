@@ -135,11 +135,9 @@
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
   [^DatabaseMetaData metadata table]
-  (let [pks (reduce conj
-                    #{}
-                    (common/reducible-results #(.getPrimaryKeys metadata nil nil (:name table))
-                                              (fn [^ResultSet rs]
-                                                #(.getString rs "COLUMN_NAME"))))]
+  (let [pks (with-open [rs (.getPrimaryKeys metadata nil nil (:name table))]
+              (reduce conj #{} (common/reducible-result-set rs
+                                                            #(.getString rs "COLUMN_NAME"))))]
     (update table :fields (fn [fields]
                             (set (for [field fields]
                                    (if-not (contains? pks (:name field))
@@ -164,14 +162,17 @@
 
 (defn- describe-table-fks*
   [driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
-  (common/reducible-results
-   #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
-   (fn [^ResultSet rs]
-     (fn []
-       {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
-        :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                           :schema (.getString rs "PKTABLE_SCHEM")}
-        :dest-column-name (.getString rs "PKCOLUMN_NAME")}))))
+  (with-open [rs (.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)]
+    (reduce
+     conj
+     #{}
+     (common/reducible-result-set
+      rs
+      (fn []
+        {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
+         :dest-table       {:name   (.getString rs "PKTABLE_NAME")
+                            :schema (.getString rs "PKTABLE_SCHEM")}
+         :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
 
 (defn describe-table-fks
   "Default implementation of `driver/describe-table-fks` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

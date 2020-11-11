@@ -35,7 +35,10 @@
   (is (= #{{:fk-column-name   "CATEGORY_ID"
             :dest-table       {:name "CATEGORIES", :schema "PUBLIC"}
             :dest-column-name "ID"}}
-         (describe-table/describe-table-fks :h2 (mt/id) {:name "VENUES"}))))
+         (describe-table/describe-table-fks :h2 (mt/id) {:name "VENUES"})))
+  (is (= #{{:fk-column-name "USER_ID", :dest-table {:name "USERS", :schema "PUBLIC"}, :dest-column-name "ID"}
+           {:fk-column-name "VENUE_ID", :dest-table {:name "VENUES", :schema "PUBLIC"}, :dest-column-name "ID"}}
+         (describe-table/describe-table-fks :h2 (mt/id) {:name "CHECKINS"}))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
