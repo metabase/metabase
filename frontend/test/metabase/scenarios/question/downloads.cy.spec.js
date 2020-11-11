@@ -163,4 +163,38 @@ describe("scenarios > question > download", () => {
       });
     });
   });
+
+  it.skip("should respect the 'Report Timezone' setting (metabase#13677)", () => {
+    const SET_TIMEZONE = "Europe/Brussels";
+    cy.server();
+
+    cy.log(`**--- Setting the timezone to: ${SET_TIMEZONE} ---**`);
+    cy.request("PUT", "/api/setting/report-timezone", {
+      value: SET_TIMEZONE,
+    });
+
+    cy.request("POST", "/api/card", {
+      name: "13677",
+      dataset_query: {
+        type: "native",
+        native: {
+          query:
+            "SELECT current_date, date_trunc('day',current_date) AS day, date_trunc('week',current_date) AS week, date_trunc('month',current_date) AS month, date_trunc('quarter',current_date) AS quarter",
+          "template-tags": {},
+        },
+        database: 1,
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body }) => {
+      cy.route("POST", `/api/card/${body.id}/query`).as("cardQuery");
+      cy.visit(`/question/${body.id}`);
+
+      cy.log("**Reported failing on v0.37.2**");
+      cy.wait("@cardQuery").then(xhr => {
+        const RESULTING_TIMEZONE = xhr.response.body.data.results_timezone;
+        expect(RESULTING_TIMEZONE).to.eq(SET_TIMEZONE);
+      });
+    });
+  });
 });
