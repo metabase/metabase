@@ -188,6 +188,7 @@ describeWithToken("formatting > sandboxes", () => {
           cy.contains(".TableInteractive-headerCellData", "User ID")
             .invoke("index")
             .then(userIDIndex => {
+              cy.log("Wait index is what?" + userIDIndex);
               cy.get(".cellData")
                 .its("length")
                 .then(cellCountWithHeaders => {
