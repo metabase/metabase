@@ -187,7 +187,7 @@ describeWithToken("formatting > whitelabel", () => {
       cy.findByText("Price").click();
       cy.findByText("Done").click();
 
-      cy.get(`div[fill='#${main_color.hex};']`);
+      cy.get(`div[fill='#${colors.primary.hex};']`);
       cy.get(`rect[fill='#509EE3']`).should("not.exist");
     });
   });
