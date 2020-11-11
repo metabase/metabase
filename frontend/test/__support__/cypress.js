@@ -73,6 +73,11 @@ export function sidebar() {
   return cy.get(".scroll-y");
 }
 
+export function browse() {
+  // takes you to `/browse` (reflecting changes made in `0.38-collection-redesign)
+  return cy.get(".Nav .Icon-table_spaced");
+}
+
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(selection, filterName) {
   selection.contains("Select…").click();

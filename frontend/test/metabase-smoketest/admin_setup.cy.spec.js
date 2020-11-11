@@ -1,4 +1,5 @@
 import {
+  browse,
   popover,
   restore,
   setupLocalHostEmail,
@@ -395,7 +396,7 @@ describe("smoketest > admin_setup", () => {
 
       // Navigating to Test Table table
 
-      cy.get(".Nav .Icon-table_spaced").click();
+      browse().click();
       cy.findByText("Sample Dataset").click();
 
       cy.get(".Icon-info");
@@ -558,7 +559,7 @@ describe("smoketest > admin_setup", () => {
 
       // Check column names and visiblity
 
-      cy.get(".Nav .Icon-table_spaced").click();
+      browse().click();
       cy.findByText("Sample Dataset").click();
       cy.findByText("Test Table").click();
 

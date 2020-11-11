@@ -1,4 +1,4 @@
-import { restore, signIn, signOut, USERS } from "__support__/cypress";
+import { browse, restore, signIn, signOut, USERS } from "__support__/cypress";
 
 const sizes = [[1280, 800], [640, 360]];
 
@@ -49,7 +49,7 @@ describe("scenarios > auth > signin", () => {
     signIn();
     cy.visit("/");
     // Browse data moved to an icon
-    cy.get(".Icon-table_spaced").click();
+    browse().click();
     cy.contains("Sample Dataset").click();
     cy.contains("Orders").click();
     cy.contains("37.65");
