@@ -375,21 +375,29 @@ export default class PieChart extends Component {
       value = formatMetric(total);
     }
 
-    const getSliceClickObject = index => ({
-      value: slices[index].value,
-      column: cols[metricIndex],
-      data: rows[slices[index].rowIndex].map((value, index) => ({
-        value,
-        col: cols[index],
-      })),
-      dimensions: [
-        {
-          value: slices[index].key,
-          column: cols[dimensionIndex],
-        },
-      ],
-      settings,
-    });
+    const getSliceClickObject = index => {
+      const slice = slices[index];
+      const sliceRows = slice.rowIndex && rows[slice.rowIndex];
+      const data =
+        sliceRows &&
+        sliceRows.map((value, index) => ({
+          value,
+          col: cols[index],
+        }));
+
+      return {
+        value: slice.value,
+        column: cols[metricIndex],
+        data: data,
+        dimensions: [
+          {
+            value: slice.key,
+            column: cols[dimensionIndex],
+          },
+        ],
+        settings,
+      };
+    };
 
     const isClickable =
       onVisualizationClick && visualizationIsClickable(getSliceClickObject(0));
