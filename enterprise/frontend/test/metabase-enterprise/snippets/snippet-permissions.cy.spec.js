@@ -51,7 +51,8 @@ describeWithToken("scenarios > question > snippets", () => {
     });
   });
 
-  it("can create a snippet once the admin has granted access", () => {
+  // [quarantine] because the popover click action is very flaky.
+  it.skip("can create a snippet once the admin has granted access", () => {
     // See metabase-enterprise#543 for more details
     // This is kind of a UX issue where the admin has to:
     // - First create a snippet
@@ -80,13 +81,13 @@ describeWithToken("scenarios > question > snippets", () => {
         .first()
         .click();
     });
+    // The click action is very flaky, sometimes it doesn't click the right thing
     popover()
       .contains("Grant Edit access")
       .click();
     modal()
       .contains("Save")
       .click();
-
     // Now the user should be able to create a snippet
     signInAsNormalUser();
 
