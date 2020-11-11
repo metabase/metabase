@@ -75,53 +75,6 @@ describe("scenarios > question > download", () => {
     });
   });
 
-  describe("for unsaved questions - metabase#10803", () => {
-    it("should format the date properly", () => {
-      // Setup the query
-      cy.visit("/question/new");
-      cy.findByText("Native query").click();
-      cy.get(".ace_editor").type(
-        "SELECT PARSEDATETIME('2020-06-03', 'yyyy-MM-dd') AS \"birth_date\", PARSEDATETIME('2020-06-03 23:41:23', 'yyyy-MM-dd hh:mm:ss') AS \"created_at\"",
-      );
-      cy.get(".Icon-play")
-        .first()
-        .click();
-      cy.get(".Icon-download").click();
-
-      cy.wrap(testCases).each(testCase => {
-        cy.log(`downloading a ${testCase.type} file`);
-        const downloadClassName = `.Icon-${testCase.type}`;
-        const endpoint = `/api/dataset/${testCase.type}`;
-
-        cy.get(downloadClassName)
-          .parent()
-          .parent()
-          .get('input[name="query"]')
-          .invoke("val")
-          .then(download_query_params => {
-            cy.request({
-              url: endpoint,
-              method: "POST",
-              form: true,
-              body: { query: download_query_params },
-              encoding: "binary",
-            }).then(resp => {
-              const workbook = xlsx.read(resp.body, {
-                type: "binary",
-                raw: true,
-              });
-
-              testWorkbookDatetimes(
-                workbook,
-                testCase.type,
-                testCase.firstSheetName,
-              );
-            });
-          });
-      });
-    });
-  });
-
   describe("for saved questions - metabase#10803", () => {
     it("should format the date properly", () => {
       cy.request("POST", "/api/card", {
@@ -161,6 +114,52 @@ describe("scenarios > question > download", () => {
             );
           });
         });
+      });
+    });
+  });
+
+  describe("for unsaved questions - metabase#10803", () => {
+    it("should format the date properly", () => {
+      // Find existing question "10803"
+      cy.visit("/collection/root");
+      cy.findByText("10803").click();
+      cy.contains(/open editor/i).click();
+      cy.get(".ace_editor").type("{movetoend} "); // Adds a space at the end of the query to make it "dirty"
+      cy.get(".Icon-play")
+        .first()
+        .click();
+      cy.get(".Icon-download").click();
+
+      cy.wrap(testCases).each(testCase => {
+        cy.log(`downloading a ${testCase.type} file`);
+        const downloadClassName = `.Icon-${testCase.type}`;
+        const endpoint = `/api/dataset/${testCase.type}`;
+
+        cy.get(downloadClassName)
+          .parent()
+          .parent()
+          .get('input[name="query"]')
+          .invoke("val")
+          .then(download_query_params => {
+            cy.request({
+              url: endpoint,
+              method: "POST",
+              form: true,
+              body: { query: download_query_params },
+              encoding: "binary",
+            }).then(resp => {
+              const workbook = xlsx.read(resp.body, {
+                type: "binary",
+                raw: true,
+              });
+
+              testWorkbookDatetimes(
+                workbook,
+                testCase.type,
+                testCase.firstSheetName,
+              );
+            });
+          });
       });
     });
   });
