@@ -444,7 +444,7 @@ describe("scenarios > question > notebook", () => {
             );
 
             // Assert phase begins here
-            cy.visit(`question/${joinedQuestionId}`);
+            cy.visit(`/question/${joinedQuestionId}`);
             cy.findByText("13744_joined");
 
             cy.log("**Reported failing on v0.34.3 - v0.37.0.2**");
