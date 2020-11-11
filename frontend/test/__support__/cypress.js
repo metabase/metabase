@@ -36,6 +36,7 @@ export const USERS = {
 };
 
 export function signIn(user = "admin") {
+  cy.log(`**Logging in as ${user}**`);
   cy.request("POST", "/api/session", USERS[user]);
 }
 export function signOut() {
