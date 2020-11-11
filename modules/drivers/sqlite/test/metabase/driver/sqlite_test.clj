@@ -6,18 +6,13 @@
              [query-processor-test :as qp.test]
              [sync :as sync]
              [test :as mt]]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models
              [database :refer [Database]]
-             [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.query-processor-test :as qp.test]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
@@ -59,7 +54,7 @@
     (testing "Make sure we correctly infer complex types in views (#8630, #9276, #12191, #12547, #10681)"
       (let [details (mt/dbdef->connection-details :sqlite :db {:database-name "views_test"})
             spec    (sql-jdbc.conn/connection-details->spec :sqlite details)]
-        (mt/with-temp Database [{db-id :id :as database} {:engine :sqlite, :details (assoc details :dbname "viwes_test")}]
+        (mt/with-temp Database [{db-id :id :as database} {:engine :sqlite, :details (assoc details :dbname "views_test")}]
           (doseq [statement ["create table if not exists src(id integer, time text);"
                              "create view if not exists v_src as select id, strftime('%s', time) as time from src;"
                              "insert into src values(1, '2020-03-01 12:20:35');"]]
@@ -78,7 +73,7 @@
                  (->> (hydrate (db/select Table :db_id db-id {:order-by [:name]}) :fields)
                       (map table-fingerprint))))
           (doseq [statement ["CREATE TABLE IF NOT EXISTS groupby_test (
-                             id INTEGER	primary key unique,
+                             id INTEGER primary key unique,
                              symbol VARCHAR,
                              dt DATETIME,
                              value FLOAT);"

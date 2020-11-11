@@ -51,7 +51,8 @@
   "In some rare cases `:column_name` is blank (eg. SQLite's views with group by) fallback to sniffing the type from a
   SELECT * query."
   [driver ^Connection conn table-schema table-name]
-  (let [[sql & params] (common/simple-select-probe-query driver table-schema table-name {:select [:*]})]
+  ;; some DBs (:sqlite) don't actually return the correct metadata for LIMIT 0 queries
+  (let [[sql & params] (common/simple-select-probe-query driver table-schema table-name {:select [:*], :limit 1})]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-open [stmt (common/prepare-statement driver conn sql params)
