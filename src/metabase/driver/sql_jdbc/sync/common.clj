@@ -35,18 +35,6 @@
   (doto ^PreparedStatement (sql-jdbc.execute/prepared-statement driver conn sql params)
     (.setMaxRows 0)))
 
-(defn reducible-result-set
-  "Return an `IReduceInit` from a ResultSet `rs` by calling `(row-thunk)` repeatedly for each row in `rs`."
-  [^ResultSet rs row-thunk]
-  (reify clojure.lang.IReduceInit
-    (reduce [_ rf init]
-      (reduce
-       rf
-       init
-       (eduction (take-while some?)
-                 (repeatedly #(when (.next rs)
-                                (row-thunk))))))))
-
 (defn reducible-results
   "Creates an `IReduceInit` for a function that returns a `ResultSet`, and a function that is called once for each row.
   `rs-thunk` should return a `ResultSet`; `rs->row-thunk` has the signature
@@ -69,8 +57,8 @@
     (reduce [_ rf init]
       (with-open [^ResultSet rs (rs-thunk)]
         (reduce
-         rf
+         ((take-while some?) rf)
          init
-         (reducible-result-set
-          rs
-          (rs->row-thunk rs)))))))
+         (let [row-thunk (rs->row-thunk rs)]
+           (repeatedly #(when (.next rs)
+                          (row-thunk)))))))))

@@ -16,14 +16,16 @@
 (defmethod i/column->special-type :sql-jdbc [_ _ _] nil)
 
 (defn pattern-based-database-type->base-type
-  "Return a `database-type->base-type` function that matches types based on a sequence of pattern / base-type pairs."
+  "Return a `database-type->base-type` function that matches types based on a sequence of pattern / base-type pairs.
+  `pattern->type` is a map of regex pattern to MBQL type keyword."
   [pattern->type]
-  (fn [column-type]
+  (fn database-type->base-type [column-type]
     (let [column-type (name column-type)]
-      (loop [[[pattern base-type] & more] pattern->type]
-        (cond
-          (re-find pattern column-type) base-type
-          (seq more)                    (recur more))))))
+      (some
+       (fn [[pattern base-type]]
+         (when (re-find pattern column-type)
+           base-type))
+       pattern->type))))
 
 (defn get-catalogs
   "Returns a set of all of the catalogs found via `metadata`"
@@ -57,32 +59,29 @@
       (reduce [_ rf init]
         (with-open [stmt (common/prepare-statement driver conn sql params)
                     rs   (.executeQuery stmt)]
-          (reduce
-           rf
-           init
-           (let [metadata (.getMetaData rs)]
-             (eduction (map (fn [^Integer i]
-                              {:name          (.getColumnName metadata i)
-                               :database-type (.getColumnTypeName metadata i)}))
-                       (range 1 (inc (.getColumnCount metadata)))))))))))
+          (let [metadata (.getMetaData rs)]
+            (reduce
+             ((map (fn [^Integer i]
+                     {:name          (.getColumnName metadata i)
+                      :database-type (.getColumnTypeName metadata i)})) rf)
+             init
+             (range 1 (inc (.getColumnCount metadata))))))))))
 
-(defn- normal-fields-metadata
-  "Reducible fields metadata from DatabaseMetaData. Filters out any fields without type info, and sets volatile
-  `has-fields-without-type-info?` to true if any are encountered."
-  [^ResultSet rs has-fields-without-type-info?]
-  (eduction
-   (filter (fn [{:keys [database-type]}]
-             (or (not (str/blank? database-type))
-                 (do (vreset! has-fields-without-type-info? true)
-                     false))))
-   (common/reducible-result-set
-    rs
-    #(merge
-      {:name          (.getString rs "COLUMN_NAME")
-       :database-type (.getString rs "TYPE_NAME")}
-      (when-let [remarks (.getString rs "REMARKS")]
-        (when-not (str/blank? remarks)
-          {:field-comment remarks}))))))
+(defn- jdbc-fields-metadata
+  "Reducible metadata about the Fields belonging to a Table, fetching using JDBC DatabaseMetaData methods."
+  [driver ^Connection conn db-name-or-nil schema table-name]
+  (common/reducible-results #(.getColumns (.getMetaData conn)
+                                          db-name-or-nil
+                                          (driver/escape-entity-name-for-metadata driver schema)
+                                          (driver/escape-entity-name-for-metadata driver table-name)
+                                          nil)
+                            (fn [^ResultSet rs]
+                              #(merge
+                                {:name          (.getString rs "COLUMN_NAME")
+                                 :database-type (.getString rs "TYPE_NAME")}
+                                (when-let [remarks (.getString rs "REMARKS")]
+                                  (when-not (str/blank? remarks)
+                                    {:field-comment remarks}))))))
 
 (defn- fields-metadata
   "Returns reducible metadata for the Fields in a `table`."
@@ -90,55 +89,54 @@
   {:pre [(instance? Connection conn) (string? table-name)]}
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
-      (with-open [rs (.getColumns (.getMetaData conn)
-                                  db-name-or-nil
-                                  (driver/escape-entity-name-for-metadata driver schema)
-                                  (driver/escape-entity-name-for-metadata driver table-name)
-                                  nil)]
-        ;; 1. Return all the Fields that come back from DatabaseMetaData that include type info.
-        ;;
-        ;; 2. Iff there are some Fields that don't have type info, concatenate
-        ;;    `fallback-fields-metadata-from-select-query`, which fetches the same Fields using a different method.
-        ;;
-        ;; 3. Filter out any duplicates between the two methods using `m/distinct-by`.
-        (let [has-fields-without-type-info? (volatile! false)
-              normal-fields                 (normal-fields-metadata rs has-fields-without-type-info?)
-              fallback-fields               (reify clojure.lang.IReduceInit
-                                              (reduce [_ rf init]
-                                                (reduce
-                                                 rf
-                                                 init
-                                                 (when @has-fields-without-type-info?
-                                                   (fallback-fields-metadata-from-select-query driver conn schema table-name)))))]
-          (reduce
-           rf
-           init
-           (eduction
-            (comp cat (m/distinct-by :name))
-            [normal-fields fallback-fields])))))))
+      ;; 1. Return all the Fields that come back from DatabaseMetaData that include type info.
+      ;;
+      ;; 2. Iff there are some Fields that don't have type info, concatenate
+      ;;    `fallback-fields-metadata-from-select-query`, which fetches the same Fields using a different method.
+      ;;
+      ;; 3. Filter out any duplicates between the two methods using `m/distinct-by`.
+      (let [has-fields-without-type-info? (volatile! false)
+            jdbc-metadata                 (eduction
+                                           (filter (fn [{:keys [database-type]}]
+                                                     (or (not (str/blank? database-type))
+                                                         (do (vreset! has-fields-without-type-info? true)
+                                                             false))))
+                                           (jdbc-fields-metadata driver conn db-name-or-nil schema table-name))
+            fallback-metadata             (reify clojure.lang.IReduceInit
+                                            (reduce [_ rf init]
+                                              (reduce
+                                               rf
+                                               init
+                                               (when @has-fields-without-type-info?
+                                                 (fallback-fields-metadata-from-select-query driver conn schema table-name)))))]
+        ;; VERY IMPORTANT! DO NOT REWRITE THIS TO BE LAZY! IT ONLY WORKS BECAUSE AS NORMAL-FIELDS GETS REDUCED,
+        ;; HAS-FIELDS-WITHOUT-TYPE-INFO? WILL GET SET TO TRUE IF APPLICABLE AND THEN FALLBACK-FIELDS WILL RUN WHEN
+        ;; IT'S TIME TO START EVALUATING THAT.
+        (reduce
+         ((comp cat (m/distinct-by :name)) rf)
+         init
+         [jdbc-metadata fallback-metadata])))))
 
 (defn describe-table-fields
   "Returns a set of column metadata for `table` using JDBC Connection `conn`."
   [driver conn table & [db-name-or-nil]]
-  (transduce
-   (comp (m/indexed)
-         (map (fn [[i {:keys [database-type], column-name :name, :as col}]]
-                (merge
-                 (u/select-non-nil-keys col [:name :database-type :field-comment])
-                 {:base-type         (database-type->base-type-or-warn driver database-type)
-                  :database-position i}
-                 (when-let [special-type (calculated-special-type driver column-name database-type)]
-                   {:special-type special-type})))))
-   conj
+  (into
    #{}
+   (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
+                  (merge
+                   (u/select-non-nil-keys col [:name :database-type :field-comment])
+                   {:base-type         (database-type->base-type-or-warn driver database-type)
+                    :database-position i}
+                   (when-let [special-type (calculated-special-type driver column-name database-type)]
+                     {:special-type special-type}))))
    (fields-metadata driver conn table db-name-or-nil)))
 
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
   [^DatabaseMetaData metadata table]
-  (let [pks (with-open [rs (.getPrimaryKeys metadata nil nil (:name table))]
-              (reduce conj #{} (common/reducible-result-set rs
-                                                            #(.getString rs "COLUMN_NAME"))))]
+  (let [pks (into #{} (common/reducible-results #(.getPrimaryKeys metadata nil nil (:name table))
+                                                (fn [^ResultSet rs]
+                                                  #(.getString rs "COLUMN_NAME"))))]
     (update table :fields (fn [fields]
                             (set (for [field fields]
                                    (if-not (contains? pks (:name field))
@@ -163,17 +161,15 @@
 
 (defn- describe-table-fks*
   [driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
-  (with-open [rs (.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)]
-    (reduce
-     conj
-     #{}
-     (common/reducible-result-set
-      rs
-      (fn []
-        {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
-         :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                            :schema (.getString rs "PKTABLE_SCHEM")}
-         :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
+  (into
+   #{}
+   (common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
+                             (fn [^ResultSet rs]
+                               (fn []
+                                 {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
+                                  :dest-table       {:name   (.getString rs "PKTABLE_NAME")
+                                                     :schema (.getString rs "PKTABLE_SCHEM")}
+                                  :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
 
 (defn describe-table-fks
   "Default implementation of `driver/describe-table-fks` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

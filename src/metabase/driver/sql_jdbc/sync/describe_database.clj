@@ -105,7 +105,4 @@
              ;; is. Not sure how much of a difference that makes since we're not running this inside a transaction,
              ;; but better safe than sorry
              (sql-jdbc.execute/set-best-transaction-level! driver conn)
-             (reduce
-              conj
-              #{}
-              (i/active-tables driver conn)))})
+             (into #{} (i/active-tables driver conn)))})
