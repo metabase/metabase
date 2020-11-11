@@ -106,7 +106,7 @@ describe("scenarios > question > download", () => {
               body: { query: download_query_params },
               encoding: "binary",
             }).then(resp => {
-              let workbook = xlsx.read(resp.body, {
+              const workbook = xlsx.read(resp.body, {
                 type: "binary",
                 raw: true,
               });
@@ -149,7 +149,7 @@ describe("scenarios > question > download", () => {
             method: "POST",
             encoding: "binary",
           }).then(resp => {
-            let workbook = xlsx.read(resp.body, {
+            const workbook = xlsx.read(resp.body, {
               type: "binary",
               raw: true,
             });
