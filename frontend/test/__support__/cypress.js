@@ -36,15 +36,19 @@ export const USERS = {
 };
 
 export function signIn(user = "admin") {
+  cy.log(`**--- Logging in as ${user} ---**`);
   cy.request("POST", "/api/session", USERS[user]);
 }
+
 export function signOut() {
+  cy.log(`**--- Signing out ---**`);
   cy.clearCookie("metabase.SESSION");
 }
 
 export function signInAsAdmin() {
   signIn("admin");
 }
+
 export function signInAsNormalUser() {
   signIn("normal");
 }
@@ -52,7 +56,9 @@ export function signInAsNormalUser() {
 export function snapshot(name) {
   cy.request("POST", `/api/testing/snapshot/${name}`);
 }
+
 export function restore(name = "default") {
+  cy.log(`**--- Restore Data Set ---**`);
   cy.request("POST", `/api/testing/restore/${name}`);
 }
 
