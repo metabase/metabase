@@ -90,7 +90,7 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText(sub_collection.name).should("not.exist");
 
         cy.visit(`/collection/${collection.id}`);
-        cy.get(".Icon-chevronright").click();
+        openDropdownFor(collection.name);
         cy.findByText(sub_collection.name);
       });
 
@@ -100,7 +100,10 @@ describe("scenarios > collection_defaults", () => {
         });
 
         cy.visit(`/collection/${admin.id}`);
-        cy.get(".Icon-chevronright").click();
+        // this changed in 0.38
+        // It used to be "Robert Tableton's personal collection"
+        // but since we're logged in as admin, it's showing "Your personal collection"
+        openDropdownFor("Your personal collection");
         cy.findByText(sub_collection.name);
       });
     });
@@ -190,4 +193,12 @@ function createPulse() {
   cy.findByText("Robert Tableton").should("not.exist");
   cy.findByText("Bobby Tables");
   cy.findByText("Create pulse").click();
+}
+
+function openDropdownFor(collectionName) {
+  cy.findByText(collectionName)
+    .parent()
+    .find(".Icon-chevronright")
+    .eq(0) // there may be more nested icons, but we need the top level one
+    .click();
 }
