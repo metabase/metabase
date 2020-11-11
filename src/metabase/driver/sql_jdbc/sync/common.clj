@@ -2,7 +2,7 @@
   (:require [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util.honeysql-extensions :as hx])
-  (:import [java.sql Connection PreparedStatement]))
+  (:import [java.sql Connection PreparedStatement ResultSet]))
 
 (defn simple-select-probe-query
   "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata. By default doesn't return
@@ -34,3 +34,43 @@
   ;; possible, although I'm not sure if that will make a difference if we don't actually realize the ResultSet
   (doto ^PreparedStatement (sql-jdbc.execute/prepared-statement driver conn sql params)
     (.setMaxRows 0)))
+
+(defn reducible-result-set
+  "Return an `IReduceInit` from a ResultSet `rs` by calling `(row-thunk)` repeatedly for each row in `rs`."
+  [^ResultSet rs row-thunk]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (reduce
+       rf
+       init
+       (eduction (take-while some?)
+                 (repeatedly #(when (.next rs)
+                                (row-thunk))))))))
+
+(defn reducible-results
+  "Creates an `IReduceInit` for a function that returns a `ResultSet`, and a function that is called once for each row.
+  `rs-thunk` should return a `ResultSet`; `rs->row-thunk` has the signature
+
+    (rs->row-thunk rs)-> row-thunk
+
+  `rs->row-thunk` is called once with the ResultSet, and should return a thunk; the resulting thunk is called once for
+  each row. Example:
+
+    (reducible-results
+     ;; `rs-thunk` should return a `ResultSet`
+     #(.getSchemas metadata)
+     ;; `rs->row-thunk` is called once with the `ResultSet`, and returns a thunk
+     (fn [rs]
+       ;; the thunk is called once for each row to get results
+       (fn []
+         (.getString rs \"TABLE_SCHEM\"))))"
+  [rs-thunk rs->row-thunk]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (with-open [^ResultSet rs (rs-thunk)]
+        (reduce
+         rf
+         init
+         (reducible-result-set
+          rs
+          (rs->row-thunk rs)))))))

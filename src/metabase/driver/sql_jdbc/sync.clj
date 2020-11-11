@@ -21,7 +21,8 @@
   describe-table
   describe-table-fields
   describe-table-fks
-  get-catalogs]
+  get-catalogs
+  pattern-based-database-type->base-type]
 
  [sync.describe-database
   describe-database

@@ -17,14 +17,11 @@
 
 (defn- all-schemas [^DatabaseMetaData metadata]
   {:pre [(instance? DatabaseMetaData metadata)]}
-  (reify clojure.lang.IReduceInit
-    (reduce [_ rf init]
-      (with-open [rs (.getSchemas metadata)]
-        (transduce
-         (map :table_schem)
-         rf
-         init
-         (jdbc/reducible-result-set rs {}))))))
+  (common/reducible-results
+   #(.getSchemas metadata)
+   (fn [rs]
+     (fn []
+       (.getString rs "TABLE_SCHEM")))))
 
 (defn- syncable-schemas
   [driver metadata]
@@ -57,17 +54,16 @@
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
   schema. Returns a reducible sequence of results."
   [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
-  (reify
-    clojure.lang.IReduceInit
-    (reduce [_ rf init]
-      ;; tablePattern "%" = match all tables
-      (with-open [rs (.getTables metadata db-name-or-nil (driver/escape-entity-name-for-metadata driver schema-or-nil) "%"
-                                 (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW" "EXTERNAL TABLE"]))]
-        (reduce
-         rf
-         init
-         (eduction (map #(select-keys % [:table_name :remarks :table_schem]))
-                   (jdbc/reducible-result-set rs {})))))))
+  (common/reducible-results
+   #(.getTables metadata db-name-or-nil (driver/escape-entity-name-for-metadata driver schema-or-nil) "%"
+                (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW" "EXTERNAL TABLE"]))
+   (fn [rs]
+     (fn []
+       {:name        (.getString rs "TABLE_NAME")
+        :schema      (.getString rs "TABLE_SCHEM")
+        :description (when-let [remarks (.getString rs "REMARKS")]
+                       (when-not (str/blank? remarks)
+                         remarks))}))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -82,7 +78,7 @@
      (comp (map (fn [schema]
                   (db-tables driver metadata schema db-name-or-nil)))
            cat
-           (filter (fn [{table-schema :table_schem, table-name :table_name}]
+           (filter (fn [{table-schema :schema, table-name :name}]
                      (i/have-select-privilege? driver conn table-schema table-name))))
      (syncable-schemas driver metadata))))
 
@@ -97,7 +93,7 @@
   {:pre [(instance? Connection conn)]}
   (eduction
    (filter (let [excluded (i/excluded-schemas driver)]
-             (fn [{table-schema :table_schem, table-name :table_name}]
+             (fn [{table-schema :schema, table-name :name}]
                (and (not (contains? excluded table-schema))
                     (i/have-select-privilege? driver conn table-schema table-name)))))
    (db-tables driver (.getMetaData conn) nil db-name-or-nil)))
@@ -110,13 +106,7 @@
              ;; is. Not sure how much of a difference that makes since we're not running this inside a transaction,
              ;; but better safe than sorry
              (sql-jdbc.execute/set-best-transaction-level! driver conn)
-             (transduce
-              (map (fn [table]
-                     {:name        (:table_name table)
-                      :schema      (:table_schem table)
-                      :description (let [remarks (:remarks table)]
-                                     (when-not (str/blank? remarks)
-                                       remarks))}))
+             (reduce
               conj
               #{}
               (i/active-tables driver conn)))})

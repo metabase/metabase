@@ -30,7 +30,7 @@
       (with-redefs [describe-database/all-schemas (constantly #{"PUBLIC"})]
         (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
                (transduce
-                (map :table_name)
+                (map :name)
                 (completing conj sort)
                 []
                 (describe-database/fast-active-tables (or driver/*driver* :h2) conn))))))))

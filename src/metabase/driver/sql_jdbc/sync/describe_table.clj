@@ -53,14 +53,14 @@
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-open [stmt (common/prepare-statement driver conn sql params)
-                    rset (.executeQuery stmt)]
+                    rs   (.executeQuery stmt)]
           (reduce
            rf
            init
-           (let [metadata (.getMetaData rset)]
+           (let [metadata (.getMetaData rs)]
              (eduction (map (fn [^Integer i]
-                              {:type_name   (.getColumnTypeName metadata i)
-                               :column_name (.getColumnName metadata i)}))
+                              {:name          (.getColumnName metadata i)
+                               :database-type (.getColumnTypeName metadata i)}))
                        (range 1 (inc (.getColumnCount metadata)))))))))))
 
 (defn- fields-metadata
@@ -86,7 +86,12 @@
                                             (or (not (str/blank? type-name))
                                                 (do (vreset! missing-type-info? true)
                                                     false))))
-                                  (jdbc/reducible-result-set rs {}))
+                                  (common/reducible-result-set
+                                   rs
+                                   (fn []
+                                     {:name          (.getString rs "COLUMN_NAME")
+                                      :database-type (.getString rs "TYPE_NAME")
+                                      :remarks       (.getString rs "REMARKS")})))
               fallback-fields    (reify clojure.lang.IReduceInit
                                    (reduce [_ rf init]
                                      (reduce
@@ -98,7 +103,7 @@
            rf
            init
            (eduction
-            (comp cat (m/distinct-by :column_name))
+            (comp cat (m/distinct-by :name))
             [normal-fields fallback-fields])))))))
 
 (defn describe-table-fields
@@ -106,13 +111,10 @@
   [driver conn table & [db-name-or-nil]]
   (transduce
    (comp (m/indexed)
-         (map (fn [[i {database-type :type_name
-                       column-name   :column_name
-                       remarks       :remarks}]]
+         (map (fn [[i {:keys [database-type remarks], column-name :name, :as col}]]
                 (merge
-                 {:name              column-name
-                  :database-type     database-type
-                  :base-type         (database-type->base-type-or-warn driver database-type)
+                 (select-keys col [:name :database-type])
+                 {:base-type         (database-type->base-type-or-warn driver database-type)
                   :database-position i}
                  (when (not (str/blank? remarks))
                    {:field-comment remarks})
@@ -148,17 +150,24 @@
       (with-open [conn (jdbc/get-connection spec)]
         (describe-table* driver conn table)))))
 
+(defn- describe-table-fks* [driver conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
+  (with-open [rs (.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)]
+    (reduce
+     conj
+     #{}
+     (common/reducible-result-set
+      rs
+      (fn []
+        {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
+         :dest-table       {:name   (.getString rs "PKTABLE_NAME")
+                            :schema (.getString rs "PKTABLE_SCHEM")}
+         :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
+
 (defn describe-table-fks
   "Default implementation of `driver/describe-table-fks` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db-or-id-or-spec {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
-  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)]
-    (with-open [rs (.getImportedKeys metadata db-name-or-nil schema table-name)]
-      (transduce
-       (map (fn [result]
-              {:fk-column-name   (:fkcolumn_name result)
-               :dest-table       {:name   (:pktable_name result)
-                                  :schema (:pktable_schem result)}
-               :dest-column-name (:pkcolumn_name result)}))
-       conj
-       #{}
-       (jdbc/reducible-result-set rs {})))))
+  [driver db-or-id-or-spec-or-conn table & [db-name-or-nil]]
+  (if (instance? Connection db-or-id-or-spec-or-conn)
+    (describe-table-fks* driver db-or-id-or-spec-or-conn table db-name-or-nil)
+    (let [spec (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec-or-conn)]
+      (with-open [conn (jdbc/get-connection spec)]
+        (describe-table-fks* driver conn table db-name-or-nil)))))

@@ -11,23 +11,7 @@
   functions for more details on the differences.
 
   `metabase` is an instance of `DatabaseMetaData`."
-  {:arglists '([driver ^java.sql.Connection connection])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmulti excluded-schemas
-  "Return set of string names of schemas to skip syncing tables from."
-  {:arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmulti have-select-privilege?
-  "Check if we have SELECT privileges for given `table`."
-  {:arglists '([driver ^java.sql.Connection connection ^String table-schema ^String table-name])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmulti database-type->base-type
+  {:arglists '([driver ^java.sql.Connection connection(defmulti database-type->base-type
   "Given a native DB column type (as a keyword), return the corresponding `Field` `base-type`, which should derive from
   `:type/*`. You can use `pattern-based-database-type->base-type` in this namespace to implement this using regex
   patterns."
