@@ -256,20 +256,18 @@ describe("smoketest > admin_setup", () => {
 
     it("should check table and question names as user", () => {
       // Log out as admin and sign in as user
-
       signOut();
       signInAsNormalUser();
       cy.visit("/");
 
       // Check names
-
       cy.wait(3000).contains("A look at your People table");
       cy.contains("A look at your Orders table");
       cy.contains("A look at your Test Table table").should("not.exist");
 
       cy.findByText("Browse all items").click();
 
-      cy.findByText("Our analytics");
+      cy.get("h1").contains("Our analytics");
       cy.findByText("A look at your").should("not.exist");
 
       cy.get(".hover-parent")
@@ -284,7 +282,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Browse all items").click();
 
-      cy.findByText("All personal collections");
+      cy.findByText("Other users' personal collections");
       cy.findByText("A look at your").should("not.exist");
 
       cy.findByText("Orders, Count, Grouped by Created At (year)").click();
@@ -313,9 +311,9 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Data Model").click();
       cy.findByText("Orders").click();
       cy.get(".TableEditor-table-name")
-        .wait(500)
+        .click()
+        .type("abc", { delay: 100 })
         .clear()
-        .wait(500)
         .type("Test Table");
 
       cy.get("[value='This is a confirmed order for a product from a user.']")
@@ -397,7 +395,7 @@ describe("smoketest > admin_setup", () => {
 
       // Navigating to Test Table table
 
-      cy.findByText("Browse Data").click();
+      cy.get(".Nav .Icon-table_spaced").click();
       cy.findByText("Sample Dataset").click();
 
       cy.get(".Icon-info");
@@ -560,7 +558,7 @@ describe("smoketest > admin_setup", () => {
 
       // Check column names and visiblity
 
-      cy.findByText("Browse Data").click();
+      cy.get(".Nav .Icon-table_spaced").click();
       cy.findByText("Sample Dataset").click();
       cy.findByText("Test Table").click();
 
