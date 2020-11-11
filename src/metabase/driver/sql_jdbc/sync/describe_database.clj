@@ -11,7 +11,7 @@
             [metabase.driver.sql-jdbc.sync
              [common :as common]
              [interface :as i]])
-  (:import [java.sql Connection DatabaseMetaData]))
+  (:import [java.sql Connection DatabaseMetaData ResultSet]))
 
 (defmethod i/excluded-schemas :sql-jdbc [_] nil)
 
@@ -19,9 +19,8 @@
   {:pre [(instance? DatabaseMetaData metadata)]}
   (common/reducible-results
    #(.getSchemas metadata)
-   (fn [rs]
-     (fn []
-       (.getString rs "TABLE_SCHEM")))))
+   (fn [^ResultSet rs]
+     #(.getString rs "TABLE_SCHEM"))))
 
 (defn- syncable-schemas
   [driver metadata]
@@ -57,7 +56,7 @@
   (common/reducible-results
    #(.getTables metadata db-name-or-nil (driver/escape-entity-name-for-metadata driver schema-or-nil) "%"
                 (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW" "EXTERNAL TABLE"]))
-   (fn [rs]
+   (fn [^ResultSet rs]
      (fn []
        {:name        (.getString rs "TABLE_NAME")
         :schema      (.getString rs "TABLE_SCHEM")
