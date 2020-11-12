@@ -657,6 +657,7 @@ jobs:
       <<: *Params
     executor: << parameters.e >>
     environment:
+      MB_EDITION: << parameters.edition >>
       CYPRESS_GROUP:  << parameters.cypress-group >>
       DISPLAY: ""
     steps:
