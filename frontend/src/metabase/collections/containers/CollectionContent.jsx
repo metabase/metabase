@@ -198,9 +198,6 @@ export default class CollectionContent extends React.Component {
                     isRoot={isRoot}
                   />
                 )}
-              <Box ml={1}>
-                <CollectionBurgerMenu />
-              </Box>
               <Box>
                 <EntityMenu
                   tooltip={t`Create`}
@@ -520,19 +517,6 @@ const CollectionEditMenu = ({ isRoot, isAdmin, collectionId }) => {
   ) : null;
 };
 
-const CollectionBurgerMenu = () => (
-  <EntityMenu
-    items={[
-      {
-        title: t`View the archive`,
-        icon: "view_archive",
-        link: `/archive`,
-        event: `${ANALYTICS_CONTEXT};Burger Menu;View Archive Click`,
-      },
-    ]}
-    triggerIcon="burger"
-  />
-);
 @withToast
 class CollectionCopyEntityModal extends React.Component {
   render() {

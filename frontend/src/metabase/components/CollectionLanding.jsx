@@ -134,16 +134,12 @@ class CollectionLanding extends React.Component {
             )}
           </Collection.ListLoader>
 
-          <Link
-            ml={SIDEBAR_SPACER * 2}
-            mt={3}
-            to={Urls.newCollection(collectionId)}
-            className="link flex align-center text-bold"
-            data-metabase-event={`Collection Landing;Collection List; New Collection Click`}
-          >
-            <Icon name="add" mr={1} />
-            {t`New collection`}
-          </Link>
+          <Box className="fixed bottom left" pt={3} pb={2}>
+            <Link to={`/archive`} className="link flex align-center">
+              <Icon name="view_archive" />
+              {t`View archived items`}
+            </Link>
+          </Box>
         </CollectionSidebar>
         <Box bg="white" className="border-left full-height" ml={340}>
           <CollectionContent isRoot={isRoot} collectionId={collectionId} />
