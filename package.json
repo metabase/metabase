@@ -118,7 +118,7 @@
     "color-diff": "^1.1.0",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.7",
-    "cypress": "3.8.2",
+    "cypress": "^5.5.0",
     "documentation": "^4.0.0-rc.1",
     "enzyme": "^3.8.0",
     "enzyme-2": "npm:enzyme@2",
@@ -171,7 +171,8 @@
     "webpack-notifier": "^1.8.0",
     "webpack-postcss-tools": "^1.1.2",
     "xhr-mock": "^2.4.1",
-    "yaml-lint": "^1.2.4"
+    "yaml-lint": "^1.2.4",
+    "xlsx": "^0.16.8"
   },
   "scripts": {
     "dev": "concurrently --kill-others -p name -n 'backend,frontend,docs' -c 'blue,green,yellow' 'lein run' 'yarn build-hot' 'yarn docs'",
@@ -215,7 +216,7 @@
     ]
   },
   "resolutions": {
-    "cypress": "3.8.2",
+    "cypress": "5.5.0",
     "styled-components": "3.2.6",
     "styled-system": "2.2.5"
   }

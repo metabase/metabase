@@ -1,7 +1,6 @@
 import { signInAsAdmin, withSampleDataset, restore } from "__support__/cypress";
 
-// [quarantine] flaky
-describe.skip("scenarios > question > nested (metabase#12568)", () => {
+describe("scenarios > question > nested (metabase#12568)", () => {
   before(() => {
     restore();
     signInAsAdmin();
