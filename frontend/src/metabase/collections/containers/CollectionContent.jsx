@@ -216,6 +216,12 @@ export default class CollectionContent extends React.Component {
                       link: Urls.newPulse(),
                       event: `NavBar;New Pulse Click;`,
                     },
+                    {
+                      title: t`New collection`,
+                      icon: `folder`,
+                      link: Urls.newCollection(this.props.collectionId),
+                      event: `NavBar;New Dashboard Click;`,
+                    },
                   ]}
                 />
               </Box>
