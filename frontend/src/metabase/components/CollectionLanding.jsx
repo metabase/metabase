@@ -11,6 +11,9 @@ import Collection from "metabase/entities/collections";
 
 import CollectionContent from "metabase/collections/containers/CollectionContent";
 
+import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
+import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
+
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Subhead from "metabase/components/type/Subhead";
@@ -30,7 +33,9 @@ const PageWrapper = styled(Box)`
 `;
 
 function nonPersonalCollections(collectionList) {
-  return collectionList.filter(l => !l.personal_owner_id);
+  // return collections that aren't personal and aren't archived
+  // TODO - should this be an API thing?
+  return collectionList.filter(l => !l.personal_owner_id && !l.archived);
 }
 
 // Replace the name for the current user's collection
@@ -199,45 +204,58 @@ class CollectionsList extends React.Component {
       <Box>
         {collections.map(c => {
           return (
-            <Box>
-              <CollectionLink
-                to={Urls.collection(c.id)}
-                // TODO - need to make sure the types match here
-                selected={c.id == currentCollection}
-                depth={this.props.depth}
-                // when we click on a link, if there are children, expand to show sub collections
-                onClick={() => c.children && this.setState({ open: c.id })}
-              >
-                <Flex className="relative" align="center">
-                  {c.children && (
+            <Box key={c.id}>
+              <CollectionDropTarget collection={c}>
+                {({ highlighted, hovered }) => (
+                  <CollectionLink
+                    to={Urls.collection(c.id)}
+                    // TODO - need to make sure the types match here
+                    selected={c.id == currentCollection}
+                    depth={this.props.depth}
+                    // when we click on a link, if there are children, expand to show sub collections
+                    onClick={() => c.children && this.setState({ open: c.id })}
+                  >
                     <Flex
-                      className="absolute text-brand cursor-pointer"
-                      align="center"
-                      justifyContent="center"
-                      style={{ left: -16 }}
+                      className="relative"
+                      align={
+                        // if a colleciton name is somewhat long, align things at flex-start ("top") for a slightly better
+                        // visual
+                        c.name.length > 25 ? "flex-start" : "center"
+                      }
                     >
+                      {c.children && (
+                        <Flex
+                          className="absolute text-brand cursor-pointer"
+                          align="center"
+                          justifyContent="center"
+                          style={{ left: -16 }}
+                        >
+                          <Icon
+                            name={
+                              open === c.id ? "chevrondown" : "chevronright"
+                            }
+                            onClick={ev => {
+                              ev.preventDefault();
+                              this.setState({
+                                open: this.state.open ? null : c.id,
+                              });
+                            }}
+                            size={12}
+                          />
+                        </Flex>
+                      )}
                       <Icon
-                        name={open === c.id ? "chevrondown" : "chevronright"}
-                        onClick={ev => {
-                          ev.preventDefault();
-                          this.setState({
-                            open: this.state.open ? null : c.id,
-                          });
-                        }}
-                        size={12}
+                        name={initialIcon}
+                        mr={"6px"}
+                        style={{ opacity: 0.4 }}
                       />
+                      {c.name}
                     </Flex>
-                  )}
-                  <Icon
-                    name={initialIcon}
-                    mr={"6px"}
-                    style={{ opacity: 0.4 }}
-                  />
-                  {c.name}
-                </Flex>
-              </CollectionLink>
+                  </CollectionLink>
+                )}
+              </CollectionDropTarget>
               {c.children && open === c.id && (
-                <Box ml={-SIDEBAR_SPACER} pl={SIDEBAR_SPACER * 2}>
+                <Box ml={-SIDEBAR_SPACER} pl={SIDEBAR_SPACER + 10}>
                   <CollectionsList
                     collections={c.children}
                     currentCollection={currentCollection}
