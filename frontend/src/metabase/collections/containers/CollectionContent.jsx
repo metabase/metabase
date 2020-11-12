@@ -334,7 +334,7 @@ export default class CollectionContent extends React.Component {
             ) : (
               <Box>
                 {!collectionHasPins && !unpinnedItems.length > 0 && (
-                  <Box mt={4}>
+                  <Box mt={"120px"}>
                     <CollectionEmptyState />
                   </Box>
                 )}
