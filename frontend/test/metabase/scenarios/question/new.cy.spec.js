@@ -3,6 +3,7 @@ import {
   signInAsAdmin,
   popover,
   openOrdersTable,
+  withSampleDataset,
 } from "__support__/cypress";
 
 // test various entry points into the query builder
@@ -133,6 +134,38 @@ describe("scenarios > question > new", () => {
       });
       // this should be among the granular selection choices
       cy.findByText("Hour of day").click();
+    });
+
+    it.skip("trend visualization should work regardless of column order (metabase#13710)", () => {
+      cy.server();
+      withSampleDataset(({ ORDERS }) => {
+        cy.request("POST", "/api/card", {
+          name: "13710",
+          dataset_query: {
+            database: 1,
+            query: {
+              "source-table": 2,
+              breakout: [
+                ["field-id", ORDERS.QUANTITY],
+                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ],
+            },
+            type: "query",
+          },
+          display: "smartscalar",
+          visualization_settings: {},
+        }).then(({ body: { id: questionId } }) => {
+          cy.route("POST", `/api/card/${questionId}/query`).as("cardQuery");
+
+          cy.visit(`/question/${questionId}`);
+          cy.findByText("13710");
+
+          cy.wait("@cardQuery");
+          cy.log("**Reported failing on v0.35 - v0.37.0.2**");
+          cy.log("**Bug: showing blank visualization**");
+          cy.get(".ScalarValue").contains("33");
+        });
+      });
     });
   });
 });
