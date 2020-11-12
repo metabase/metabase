@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import styled from "styled-components";
 
 import * as Urls from "metabase/lib/urls";
+import { color as metabaseColor } from "metabase/lib/colors";
 
 import Collection from "metabase/entities/collections";
 
@@ -65,6 +66,35 @@ function currentUserPersonalCollections(collectionList, userID) {
     .map(preparePersonalCollection);
 }
 
+const SIDEBAR_SPACER = 14;
+
+const CollectionLink = styled(Link)`
+  position: relative;
+  padding-left: ${props =>
+    props.depth * (SIDEBAR_SPACER * 2) + SIDEBAR_SPACER}px;
+  padding-right: 8px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  display: flex;
+  margin-left: ${props => -props.depth * SIDEBAR_SPACER}px;
+  align-items: center;
+  font-weight: bold;
+  color: ${props => (props.selected ? "white" : metabaseColor("brand"))};
+  background-color: ${props =>
+    props.selected ? metabaseColor("brand") : "inherit"};
+  :hover {
+    background-color: ${props => !props.selected && metabaseColor("bg-medium")};
+  }
+  .Icon {
+    fill: ${props => props.selected && "white"};
+    opacity: ${props => props.selected && "0.8"};
+  }
+`;
+
+CollectionLink.defaultProps = {
+  depth: 1,
+};
+
 @connect(({ currentUser }) => ({ currentUser }))
 class CollectionLanding extends React.Component {
   render() {
@@ -76,21 +106,26 @@ class CollectionLanding extends React.Component {
 
     return (
       <PageWrapper>
-        <CollectionSidebar w={340} px={"44px"} pt={3}>
-          <Greeting />
-          <Link
-            className="link flex align-center text-bold"
+        <CollectionSidebar w={340} pt={3}>
+          <Box pl="24px">
+            <Greeting />
+          </Box>
+          <CollectionLink
             to={Urls.collection("root")}
+            selected={isRoot}
             mb={2}
             mt={2}
           >
             <Icon name="folder" mr={1} />
             {t`Our analytics`}
-          </Link>
+          </CollectionLink>
           <Collection.ListLoader>
             {({ list }) => (
               <Box>
-                <CollectionsList collections={nonPersonalCollections(list)} />
+                <CollectionsList
+                  collections={nonPersonalCollections(list)}
+                  currentCollection={collectionId}
+                />
 
                 <Box mt={"32px"}>
                   <CollectionsList
@@ -98,6 +133,8 @@ class CollectionLanding extends React.Component {
                       list,
                       currentUser.id,
                     )}
+                    initialIcon="person"
+                    currentCollection={collectionId}
                   />
                 </Box>
 
@@ -106,6 +143,7 @@ class CollectionLanding extends React.Component {
                     <CollectionsList
                       collections={getCollectionsForAdmin(list, currentUser.id)}
                       initialIcon="group"
+                      currentCollection={collectionId}
                     />
                   </Box>
                 )}
@@ -113,8 +151,8 @@ class CollectionLanding extends React.Component {
             )}
           </Collection.ListLoader>
 
-          {/* TODO - need to make sure the user can create collections here */}
           <Link
+            ml={SIDEBAR_SPACER * 2}
             mt={3}
             to={Urls.newCollection(collectionId)}
             className="link flex align-center text-bold"
@@ -153,7 +191,7 @@ class CollectionsList extends React.Component {
     open: null,
   };
   render() {
-    const { collections } = this.props;
+    const { collections, initialIcon, currentCollection } = this.props;
     const { open } = this.state;
 
     /* TODO - re-integrate drag and drop from metabase/components/CollectionList */
@@ -162,33 +200,49 @@ class CollectionsList extends React.Component {
         {collections.map(c => {
           return (
             <Box>
-              <Flex align="center" className="relative bg-brand-light-hover">
-                {c.children && (
-                  <Flex
-                    className="absolute text-brand cursor-pointer"
-                    align="center"
-                    justifyContent="center"
-                    style={{ left: -16 }}
-                  >
-                    <Icon
-                      name={open === c.id ? "chevrondown" : "chevronright"}
-                      onClick={() => this.setState({ open: c.id })}
-                      size={12}
-                    />
-                  </Flex>
-                )}
-                <Link
-                  className="flex align-center link text-bold"
-                  my={"10px"}
-                  to={Urls.collection(c.id)}
-                >
-                  <Icon name="folder" mr={"6px"} style={{ opacity: 0.4 }} />
+              <CollectionLink
+                to={Urls.collection(c.id)}
+                // TODO - need to make sure the types match here
+                selected={c.id == currentCollection}
+                depth={this.props.depth}
+                // when we click on a link, if there are children, expand to show sub collections
+                onClick={() => c.children && this.setState({ open: c.id })}
+              >
+                <Flex className="relative" align="center">
+                  {c.children && (
+                    <Flex
+                      className="absolute text-brand cursor-pointer"
+                      align="center"
+                      justifyContent="center"
+                      style={{ left: -16 }}
+                    >
+                      <Icon
+                        name={open === c.id ? "chevrondown" : "chevronright"}
+                        onClick={ev => {
+                          ev.preventDefault();
+                          this.setState({
+                            open: this.state.open ? null : c.id,
+                          });
+                        }}
+                        size={12}
+                      />
+                    </Flex>
+                  )}
+                  <Icon
+                    name={initialIcon}
+                    mr={"6px"}
+                    style={{ opacity: 0.4 }}
+                  />
                   {c.name}
-                </Link>
-              </Flex>
+                </Flex>
+              </CollectionLink>
               {c.children && open === c.id && (
-                <Box ml="12px">
-                  <CollectionsList collections={c.children} />
+                <Box ml={-SIDEBAR_SPACER} pl={SIDEBAR_SPACER * 2}>
+                  <CollectionsList
+                    collections={c.children}
+                    currentCollection={currentCollection}
+                    depth={this.props.depth + 1}
+                  />
                 </Box>
               )}
             </Box>
@@ -198,5 +252,10 @@ class CollectionsList extends React.Component {
     );
   }
 }
+
+CollectionsList.defaultProps = {
+  initialIcon: "folder",
+  depth: 1,
+};
 
 export default CollectionLanding;
