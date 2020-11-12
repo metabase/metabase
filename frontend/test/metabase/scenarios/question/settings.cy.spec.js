@@ -1,4 +1,9 @@
-import { signInAsAdmin, restore, openOrdersTable } from "__support__/cypress";
+import {
+  browse,
+  signInAsAdmin,
+  restore,
+  openOrdersTable,
+} from "__support__/cypress";
 
 describe("scenarios > question > settings", () => {
   before(restore);
@@ -74,7 +79,7 @@ describe("scenarios > question > settings", () => {
       cy.contains("Orders in a dashboard").click();
 
       // create a new question to see if the "add to a dashboard" modal is still there
-      cy.contains("Browse Data").click();
+      browse().click();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
 

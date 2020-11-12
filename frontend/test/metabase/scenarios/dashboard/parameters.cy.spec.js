@@ -46,12 +46,10 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   it("should search across multiple fields", () => {
-    // create a new dashboard
-    cy.visit("/");
-    cy.get(".Icon-add").click();
-    cy.contains("New dashboard").click();
-    cy.get(`[name="name"]`).type("my dash");
-    cy.contains("button", "Create").click();
+    cy.request("POST", "/api/dashboard", { name: "my dash" });
+
+    cy.visit("/collection/root");
+    cy.findByText("my dash").click();
 
     // add the same question twice
     cy.get(".Icon-pencil").click();
