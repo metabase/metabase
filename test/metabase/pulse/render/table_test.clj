@@ -64,6 +64,6 @@
                               [4 5 6]
                               [7 8 9]]}]
     (-> (color/make-color-selector query-results (:visualization_settings render.tu/test-card))
-        (#'table/render-table ["a" "b" "c"] (query-results->header+rows query-results))
+        (#'table/render-table 0 ["a" "b" "c"] (query-results->header+rows query-results))
         find-table-body
         cell-value->background-color)))
