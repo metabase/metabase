@@ -246,7 +246,7 @@ export const ChartClickAction = ({
       action.buttonType === "sort",
     "px2 py1 mr1 bg-purple-light rounded flex-full bg-purple-hover text-purple text-white-hover":
       action.buttonType === "horizontal",
-    "p1 rounded flex-full bg-brand-hover text-brand text-white-hover":
+    "p1 rounded flex flex-full bg-brand-hover text-brand text-white-hover":
       action.buttonType === "horizontal-no-outline",
     "token text-green text-white-hover mr1": action.buttonType === "token",
     "large-button mr1 bg-green-light text-green text-white-hover rounded bg-green-hover":
