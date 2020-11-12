@@ -55,7 +55,6 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
           )}`}
         </span>
       ),
-      icon: icon,
       // eslint-disable-next-line react/display-name
       popover: ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => (
         <BreakoutPopover

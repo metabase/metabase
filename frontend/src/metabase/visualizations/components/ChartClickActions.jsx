@@ -183,7 +183,7 @@ export default class ChartClickActions extends Component {
               <div className={cx("py1", { pb1: SECTIONS[key].icon === "sum" })}>
                 {SECTIONS[key].icon === "breakout" && (
                   <p className="mt0 text-bold text-medium text-small block">
-                    Break out by…
+                    Break out by a…
                   </p>
                 )}
                 {SECTIONS[key].icon === "bolt" && (
@@ -242,7 +242,7 @@ export const ChartClickAction = ({
 }) => {
   const className = cx("text-small cursor-pointer no-decoration", {
     "px2 text-brand-hover justify-evenly": action.buttonType === "text",
-    "sort mr1 flex-auto rounded text-white-hover bg-light bg-brand-hover justify-between":
+    "sort mr1 flex-auto rounded text-white-hover bg-light bg-brand-hover justify-evenly":
       action.buttonType === "sort",
     "px2 py1 mr1 bg-purple-light rounded flex-full bg-purple-hover text-purple text-white-hover":
       action.buttonType === "horizontal",
@@ -290,9 +290,10 @@ export const ChartClickAction = ({
             "flex flex-column align-center": action.buttonType === "large",
           },
           {
-            "flex flex-row justify-left":
+            "flex flex-row align-center":
               action.buttonType === "text" ||
-              action.buttonType === "horizontal",
+              action.buttonType === "horizontal" ||
+              action.buttonType === "sort",
           },
         )}
         onClick={() => handleClickAction(action)}
