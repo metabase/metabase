@@ -185,6 +185,7 @@ describe("scenarios > dashboard", () => {
   });
 
   it.skip("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
+    // 1. create a question based on repro steps in #13597
     withSampleDataset(({ PEOPLE }) => {
       cy.request("POST", "/api/card", {
         name: "13597",
