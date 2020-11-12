@@ -24,6 +24,8 @@ const CollectionSidebar = styled(Box)`
   top: 65px;
   overflow-x: hidden;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 `;
 
 const PageWrapper = styled(Box)`
@@ -93,7 +95,7 @@ class CollectionLanding extends React.Component {
     return (
       <PageWrapper>
         <CollectionSidebar w={340} pt={3}>
-          <Box pl="24px">
+          <Box pl="28px">
             <Greeting />
           </Box>
           <CollectionLink
@@ -107,7 +109,7 @@ class CollectionLanding extends React.Component {
           </CollectionLink>
           <Collection.ListLoader>
             {({ list }) => (
-              <Box>
+              <Box pb={4}>
                 <CollectionsList
                   collections={nonPersonalCollections(list)}
                   currentCollection={collectionId}
@@ -134,9 +136,9 @@ class CollectionLanding extends React.Component {
             )}
           </Collection.ListLoader>
 
-          <Box className="fixed bottom left" pt={3} pb={2}>
-            <Link to={`/archive`} className="link flex align-center">
-              <Icon name="view_archive" />
+          <Box className="mt-auto" pb={2} pl={SIDEBAR_SPACER * 2}>
+            <Link to={`/archive`} className="link flex align-center text-bold">
+              <Icon name="view_archive" mr={1} />
               {t`View archived items`}
             </Link>
           </Box>
