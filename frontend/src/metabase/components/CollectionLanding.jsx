@@ -12,7 +12,6 @@ import Collection from "metabase/entities/collections";
 import CollectionContent from "metabase/collections/containers/CollectionContent";
 
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
@@ -45,24 +44,6 @@ function preparePersonalCollection(c) {
     ...c,
     name: t`Your personal collection`,
   };
-}
-
-// Create a fake collection and put other users collections in it
-function getCollectionsForAdmin(collectionList, userID) {
-  return [
-    {
-      // TODO - need to figure out how to handle the "Link" for this faux collection since by definition it has no content
-      name: t`Other users' personal collections`,
-      children: [
-        ...collectionList
-          .filter(l => l.personal_owner_id && l.personal_owner_id !== userID)
-          .map(l => ({
-            ...l,
-            name: l.name.substring(0, l.name.indexOf("'")),
-          })),
-      ],
-    },
-  ];
 }
 
 function currentUserPersonalCollections(collectionList, userID) {
@@ -144,13 +125,10 @@ class CollectionLanding extends React.Component {
                 </Box>
 
                 {currentUser.is_superuser && (
-                  <Box>
-                    <CollectionsList
-                      collections={getCollectionsForAdmin(list, currentUser.id)}
-                      initialIcon="group"
-                      currentCollection={collectionId}
-                    />
-                  </Box>
+                  <CollectionLink to={Urls.collection("users")}>
+                    <Icon name="group" mr={1} />
+                    {t`Other users' personal collections`}
+                  </CollectionLink>
                 )}
               </Box>
             )}
@@ -210,7 +188,7 @@ class CollectionsList extends React.Component {
                   <CollectionLink
                     to={Urls.collection(c.id)}
                     // TODO - need to make sure the types match here
-                    selected={c.id == currentCollection}
+                    selected={String(c.id) === currentCollection}
                     depth={this.props.depth}
                     // when we click on a link, if there are children, expand to show sub collections
                     onClick={() => c.children && this.setState({ open: c.id })}
