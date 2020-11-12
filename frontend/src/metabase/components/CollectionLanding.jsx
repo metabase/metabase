@@ -141,7 +141,13 @@ class CollectionLanding extends React.Component {
             </Link>
           </Box>
         </CollectionSidebar>
-        <Box bg="white" className="border-left full-height" ml={340}>
+        <Box
+          bg="white"
+          className="border-left full-height"
+          style={{ overflowY: "auto" }}
+          ml={340}
+          pb={4}
+        >
           <CollectionContent isRoot={isRoot} collectionId={collectionId} />
         </Box>
         {
