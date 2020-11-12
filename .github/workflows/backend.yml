@@ -52,6 +52,10 @@ jobs:
     - name: Convert linter output to annotation
       run: ./bin/convert2annotations.js eastwood.log eastwood-annotations.json
       if: always()
+    - name: Debug annotation results
+      run: |
+        cat ./eastwood.log
+        cat ./eastwood-annotations.json
     - name: Upload GitHub annotations
       uses: yuzutech/annotations-action@v0.1.0
       if: always()
