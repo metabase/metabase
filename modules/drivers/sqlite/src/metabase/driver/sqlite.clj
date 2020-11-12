@@ -82,6 +82,14 @@
   [_ database-type]
   (database-type->base-type database-type))
 
+;; The normal SELECT * FROM table WHERE 1 <> 1 LIMIT 0 query doesn't return any information for SQLite views -- it
+;; seems to be the case that the query has to return at least one row
+(defmethod sql-jdbc.sync/fallback-metadata-query :sqlite
+  [driver schema table]
+  (sql.qp/format-honeysql driver {:select [:*]
+                                  :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]
+                                  :limit  1}))
+
 ;; register the SQLite concatnation operator `||` with HoneySQL as `sqlite-concat`
 ;; (hsql/format (hsql/call :sqlite-concat :a :b)) -> "(a || b)"
 (defmethod hformat/fn-handler "sqlite-concat"

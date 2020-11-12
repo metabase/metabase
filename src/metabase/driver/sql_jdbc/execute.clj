@@ -11,10 +11,9 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute.old-impl :as execute.old]
+            [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor
              [context :as context]
