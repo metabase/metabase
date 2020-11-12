@@ -38,7 +38,7 @@ export default function QuickFilterDrill({
   return [
     {
       name: "filter-column",
-      section: "filter",
+      section: "standalone_filter",
       title: t`Filter by this column`,
       buttonType: "horizontal",
       icon: "filter",

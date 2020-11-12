@@ -37,6 +37,9 @@ const SECTIONS = {
   breakout: {
     icon: "breakout",
   },
+  standalone_filter: {
+    icon: "filter",
+  },
   filter: {
     icon: "funnel_outline",
   },
@@ -180,17 +183,29 @@ export default class ChartClickActions extends Component {
         ) : (
           <div className="text-bold px2 py1">
             {sections.map(([key, actions]) => (
-              <div className={cx("py1", { pb1: SECTIONS[key].icon === "sum" })}>
+              <div
+                className={cx(
+                  "py1",
+                  { pb1: SECTIONS[key].icon === "sum" },
+                  { pb2: SECTIONS[key].icon === "bolt" },
+                )}
+              >
                 {SECTIONS[key].icon === "breakout" && (
-                  <p className="mt0 text-bold text-medium text-small block">
+                  <p className="mt0 text-bold text-light text-small block">
                     Break out by a…
                   </p>
                 )}
                 {SECTIONS[key].icon === "bolt" && (
-                  <p className="text-bold text-medium text-small block">
+                  <p className="mt0 text-bold text-light text-small block">
                     Automatic explorations
                   </p>
                 )}
+                {SECTIONS[key].icon === "funnel_outline" && (
+                  <p className="mt0 text-bold text-dark text-small block">
+                    Filter by this value
+                  </p>
+                )}
+
                 <div
                   key={key}
                   className={cx(
@@ -240,16 +255,22 @@ export const ChartClickAction = ({
   isLastItem: any,
   handleClickAction: any,
 }) => {
-  const className = cx("text-small cursor-pointer no-decoration", {
-    "px2 text-brand-hover justify-evenly": action.buttonType === "text",
-    "sort mr1 flex-auto rounded text-white-hover bg-light bg-brand-hover justify-evenly":
+  const className = cx("cursor-pointer no-decoration", {
+    "text-small px2 text-brand-hover justify-evenly":
+      action.buttonType === "text",
+    "text-small sort mr1 flex-auto rounded text-white-hover bg-light bg-brand-hover justify-evenly":
       action.buttonType === "sort",
-    "px2 py1 mr1 bg-purple-light rounded flex-full bg-purple-hover text-purple text-white-hover":
+    "text-small horizontal-popover px2 py1 mr1 bg-purple-light rounded flex-full text-purple text-white-hover":
       action.buttonType === "horizontal",
-    "p1 rounded flex flex-full bg-brand-hover text-brand text-white-hover":
+    "p1 rounded flex flex-full align-center bg-brand-hover text-brand text-white-hover":
       action.buttonType === "horizontal-no-outline",
-    "token text-green text-white-hover mr1": action.buttonType === "token",
-    "large-button mr1 bg-green-light text-green text-white-hover rounded bg-green-hover":
+    "text-small token token-green text-white-hover mr1":
+      action.buttonType === "token-green",
+    "text-small token token-blue text-white-hover mr1":
+      action.buttonType === "token",
+    "token token-filter text-white-hover mr1":
+      action.buttonType === "token-filter",
+    "text-small large-button mr1 bg-green-light text-green text-white-hover rounded bg-green-hover":
       action.buttonType === "large",
   });
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions

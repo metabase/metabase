@@ -15,17 +15,17 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 const AGGREGATIONS = {
   sum: {
     section: "sum",
-    buttonType: "token",
+    buttonType: "token-green",
     title: t`Sum`,
   },
   avg: {
     section: "sum",
-    buttonType: "token",
+    buttonType: "token-green",
     title: t`Avg`,
   },
   distinct: {
     section: "sum",
-    buttonType: "token",
+    buttonType: "token-green",
     title: t`Distincts`,
   },
 };

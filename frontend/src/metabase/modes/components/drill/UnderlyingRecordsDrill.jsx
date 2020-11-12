@@ -52,7 +52,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     {
       name: "underlying-records",
       section: "records",
-      buttonType: "horizontal",
+      buttonType: "horizontal-no-outline",
       icon: "table_spaced",
       title: ngettext(
         msgid`View this ${inflectedTableName}`,
