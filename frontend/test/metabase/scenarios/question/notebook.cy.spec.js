@@ -388,6 +388,77 @@ describe("scenarios > question > notebook", () => {
         );
       });
     });
+
+    it.skip("should join saved question with sorted metric (metabase#13744)", () => {
+      cy.server();
+      // create first question based on repro steps in #13744
+      withSampleDataset(({ PRODUCTS }) => {
+        cy.request("POST", "/api/card", {
+          name: "13744",
+          dataset_query: {
+            database: 1,
+            query: {
+              "source-table": 1,
+              aggregation: [["count"]],
+              breakout: [["field-id", PRODUCTS.CATEGORY]],
+              "order-by": [["asc", ["aggregation", 0]]],
+            },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        }).then(({ body: { id: questionId } }) => {
+          const ALIAS = `Question ${questionId}`;
+
+          // create new question and join it with a previous one
+          cy.request("POST", "/api/card", {
+            name: "13744_joined",
+            dataset_query: {
+              database: 1,
+              query: {
+                joins: [
+                  {
+                    alias: ALIAS,
+                    fields: "all",
+                    condition: [
+                      "=",
+                      ["field-id", PRODUCTS.CATEGORY],
+                      [
+                        "joined-field",
+                        ALIAS,
+                        ["field-literal", "CATEGORY", "type/Text"],
+                      ],
+                    ],
+                    "source-table": `card__${questionId}`,
+                  },
+                ],
+                "source-table": 1,
+              },
+              type: "query",
+            },
+            display: "table",
+            visualization_settings: {},
+          }).then(({ body: { id: joinedQuestionId } }) => {
+            // listen on the final card query which means the data for this question loaded
+            cy.route("POST", `/api/card/${joinedQuestionId}/query`).as(
+              "cardQuery",
+            );
+
+            // Assert phase begins here
+            cy.visit(`/question/${joinedQuestionId}`);
+            cy.findByText("13744_joined");
+
+            cy.log("**Reported failing on v0.34.3 - v0.37.0.2**");
+            cy.log("**Reported error log: 'No aggregation at index: 0'**");
+            // assert directly on XHR instead of relying on UI
+            cy.wait("@cardQuery").then(xhr => {
+              expect(xhr.response.body.error).not.to.exist;
+            });
+            cy.findAllByText("Gizmo");
+          });
+        });
+      });
+    });
   });
 
   describe("nested", () => {

@@ -658,6 +658,7 @@ jobs:
     executor: << parameters.e >>
     environment:
       CYPRESS_GROUP:  << parameters.cypress-group >>
+      DISPLAY: ""
     steps:
       - run-yarn-command:
           command-name: Run Cypress tests
@@ -685,7 +686,8 @@ jobs:
         type: string
     executor: << parameters.e >>
     environment:
-      CYPRESS_GROUP:  << parameters.cypress-group >>
+      CYPRESS_GROUP: << parameters.cypress-group >>
+      DISPLAY: ""
     steps:
       - run-yarn-command:
           command-name: Run Cypress tests
@@ -693,7 +695,7 @@ jobs:
           before-steps:
             - restore_cache:
                 keys:
-                  - uberjar-{{ checksum "./backend-checksums.txt" }}
+                  - uberjar-oss-{{ checksum "./backend-checksums.txt" }}
             - run:
                 name: Generate version file
                 command: ./bin/build version
@@ -1045,7 +1047,7 @@ workflows:
   nightly:
     triggers:
       - schedule:
-          cron: "0 * * * *"
+          cron: "0 9 * * *"
           filters:
             branches:
               only:
