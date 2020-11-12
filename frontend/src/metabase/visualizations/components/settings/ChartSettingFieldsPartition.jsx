@@ -4,6 +4,8 @@ import { t } from "ttag";
 import { DragSource, DropTarget } from "react-dnd";
 import _ from "underscore";
 
+import Grabber from "metabase/components/Grabber";
+
 const ChartSettingFieldsPartition = ({ value = {}, partitions, onChange }) => (
   <div>
     {partitions.map(({ name, title }, index) => (
@@ -67,6 +69,10 @@ class Partition extends React.Component {
 
       const { column, partitionName: oldPartition } = monitor.getItem();
       const { partitionName: newPartition } = monitor.getDropResult();
+      if (newPartition === oldPartition) {
+        // dropped in the starting partition
+        return;
+      }
 
       onChange({
         ...value,
@@ -89,11 +95,13 @@ class Column extends React.Component {
     const { column, connectDragSource, isDragging } = this.props;
     return connectDragSource(
       <div
-        className={cx("text-dark p1 bordered rounded dropshadow text-bold", {
-          disabled: isDragging,
-        })}
+        className={cx(
+          "text-dark p1 mb1 bordered rounded dropshadow text-bold flex justify-between",
+          { disabled: isDragging },
+        )}
       >
         {column.display_name}
+        <Grabber style={{ width: 10 }} />
       </div>,
     );
   }
