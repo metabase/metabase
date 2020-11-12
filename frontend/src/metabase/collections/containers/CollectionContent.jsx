@@ -287,7 +287,7 @@ export default class CollectionContent extends React.Component {
             collectionHasPins && unpinnedItems.length > 0 && (
               <CollectionSectionHeading>{t`Everything else`}</CollectionSectionHeading>
             )}
-            {unpinnedItems.length > 0 ? (
+            {unpinnedItems.length > 0 && (
               <PinDropTarget pinIndex={null} margin={8}>
                 <Box
                   style={{
@@ -331,26 +331,6 @@ export default class CollectionContent extends React.Component {
                   />
                 </Box>
               </PinDropTarget>
-            ) : (
-              <Box>
-                {!collectionHasPins && !unpinnedItems.length > 0 && (
-                  <Box mt={"120px"}>
-                    <CollectionEmptyState />
-                  </Box>
-                )}
-                <PinDropTarget pinIndex={null} hideUntilDrag margin={10}>
-                  {({ hovered }) => (
-                    <div
-                      className={cx(
-                        "m2 flex layout-centered",
-                        hovered ? "text-brand" : "text-light",
-                      )}
-                    >
-                      {t`Drag here to un-pin`}
-                    </div>
-                  )}
-                </PinDropTarget>
-              </Box>
             )}
           </Box>
           {unpinned.length === 0 && (
