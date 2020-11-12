@@ -204,7 +204,7 @@ export default class CollectionContent extends React.Component {
               <Box>
                 <EntityMenu
                   tooltip={t`Create`}
-                  className="hide sm-show mr1"
+                  className="hide sm-show mr1 text-brand"
                   triggerIcon="add"
                   items={[
                     {
