@@ -45,6 +45,36 @@ describe("scenarios > question > new", () => {
       cy.findByText("Convert this question to SQL").click();
       cy.url().should("include", "question#");
     });
+
+    it.skip("should correctly choose between 'Object Detail' and 'Table (metabase#13717)", () => {
+      withSampleDataset(({ ORDERS }) => {
+        // set ID to `No special type`
+        cy.request("PUT", `/api/field/${ORDERS.ID}`, {
+          special_type: null,
+        });
+        // set Quantity to `Entity Key`
+        cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+          special_type: "type/PK",
+        });
+      });
+
+      openOrdersTable();
+      // this url check is just to give some time for the render to finish
+      cy.url().should("include", "/question#");
+
+      cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Dataset)
+        .eq(1) // first table body cell
+        .should("contain", 2) // quantity for order ID#1
+        .click();
+
+      cy.log(
+        "**Reported at v0.34.3 - v0.37.0.2 / probably was always like this**",
+      );
+      cy.log(
+        "**It should display the table with all orders with the selected quantity.**",
+      );
+      cy.findByText("Fantastic Wool Shirt"); // order ID#3 with the same quantity
+    });
   });
 
   describe("ask a (custom) question", () => {
