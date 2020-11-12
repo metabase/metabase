@@ -33,10 +33,10 @@ const PageWrapper = styled(Box)`
   height: calc(100vh - 65px);
 `;
 
-function nonPersonalCollections(collectionList) {
+function nonPersonalCollection(collection) {
   // return collections that aren't personal and aren't archived
   // TODO - should this be an API thing?
-  return collectionList.filter(l => !l.personal_owner_id && !l.archived);
+  return !collection.personal_owner_id && !collection.archived;
 }
 
 // Replace the name for the current user's collection
@@ -111,7 +111,8 @@ class CollectionLanding extends React.Component {
             {({ list }) => (
               <Box pb={4}>
                 <CollectionsList
-                  collections={nonPersonalCollections(list)}
+                  collections={list}
+                  filter={nonPersonalCollection}
                   currentCollection={collectionId}
                 />
 
@@ -178,7 +179,8 @@ class CollectionsList extends React.Component {
     open: null,
   };
   render() {
-    const { collections, initialIcon, currentCollection } = this.props;
+    const { initialIcon, currentCollection, filter = () => true } = this.props;
+    const collections = this.props.collections.filter(filter);
     const { open } = this.state;
 
     /* TODO - re-integrate drag and drop from metabase/components/CollectionList */
@@ -240,6 +242,7 @@ class CollectionsList extends React.Component {
                 <Box ml={-SIDEBAR_SPACER} pl={SIDEBAR_SPACER + 10}>
                   <CollectionsList
                     collections={c.children}
+                    filter={filter}
                     currentCollection={currentCollection}
                     depth={this.props.depth + 1}
                   />
