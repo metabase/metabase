@@ -22,6 +22,7 @@ th {
 
   width: 100%;
 
+  font-family: "Helvetica Neue", "Helvetica", sans-serif;
   font-size: 0.76rem;
   line-height: 0.76rem;
   text-align: left;
@@ -31,27 +32,18 @@ th {
   border: 1px solid color(var(--color-border) alpha(-70%));
 }
 
-.Table tr,
-.Table th {
-  border-bottom: 1px solid color(var(--color-border));
+.Table tr {
+  border-bottom: 1px solid color(var(--color-border) alpha(-70%));
 }
 
-.Table tr:last-child {
-  border-bottom: none;
-}
-
-.Table.Table--striped tr:nth-child(even) {
+.Table tr:nth-child(even) {
   background-color: color(var(--color-bg-black) alpha(-98%));
 }
 
 .Table th,
 .Table td {
   padding: 1em;
-}
-
-/* bit of a hack to have a cell shrink to fit its content */
-.Table td.shrink {
-  width: 1%;
+  border: 1px solid color(var(--color-border) alpha(-70%));
 }
 
 .ComparisonTable {
