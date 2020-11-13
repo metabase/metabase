@@ -15,15 +15,24 @@
     (u/sh {:dir u/project-root-directory} "./bin/i18n/build-translation-resources")
     (u/announce "Translation resources built successfully.")))
 
+(defn- edition-from-env-var []
+  ;; MB_EDITION is either oss/ee, but the Clojure build scripts currently use :ce/:ee
+  (if-not (env/env :mb-edition)
+    :ce
+    (case (env/env :mb-edition)
+      "oss" :ce
+      "ee"  :ee)))
+
 (defn- build-frontend! []
   (u/step "Build frontend"
     (u/step "Run 'yarn' to download javascript dependencies"
       (u/sh {:dir u/project-root-directory} "yarn"))
     (u/step "Run 'webpack' with NODE_ENV=production to assemble and minify frontend assets"
       (u/sh {:dir u/project-root-directory
-             :env {"PATH"     (env/env :path)
-                   "HOME"     (env/env :user-home)
-                   "NODE_ENV" "production"}}
+             :env {"PATH"       (env/env :path)
+                   "HOME"       (env/env :user-home)
+                   "NODE_ENV"   "production"
+                   "MB_EDITION" (edition-from-env-var)}}
             "./node_modules/.bin/webpack" "--bail"))
     (u/announce "Frontend built successfully.")))
 
@@ -76,14 +85,6 @@
                                                      :valid-steps (keys all-steps)})))]]
        (step-fn {:version version, :edition edition}))
      (u/announce "All build steps finished."))))
-
-(defn- edition-from-env-var []
-  ;; MB_EDITION is either oss/ee, but the Clojure build scripts currently use :ce/:ee
-  (if-not (env/env :mb-edition)
-    :ce
-    (case (env/env :mb-edition)
-      "oss" :ce
-      "ee"  :ee)))
 
 (defn -main [& steps]
   (u/exit-when-finished-nonzero-on-exception
