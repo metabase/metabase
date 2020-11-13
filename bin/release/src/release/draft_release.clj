@@ -2,6 +2,7 @@
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.core.cache :as cache]
+            [clojure.java.io :as io]
             [metabuild-common.core :as u]
             [release.common :as c]
             [release.common
@@ -14,7 +15,9 @@
 (stencil.loader/set-cache (cache/ttl-cache-factory {} :ttl 0))
 
 (def ^:private release-template-filename
-  (u/assert-file-exists (u/filename c/root-directory "bin" "release" "src" "release" "draft_release" "release-template.md")))
+  "release/draft_release/release-template.md")
+
+(u/assert-file-exists (.getPath (io/resource release-template-filename)))
 
 (defn- generate-draft-changelog []
   (u/step "Generate draft changelog"
