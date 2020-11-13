@@ -92,6 +92,9 @@
       (= (c/edition) :ee)
       (u/announce "EE build -- not updating Metabase docs")
 
+      (not (c/latest-version?))
+      (u/announce "Not the latest version -- not updating Metabase docs")
+
       :else
       (do
         (update-website!*)

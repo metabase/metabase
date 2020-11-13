@@ -474,6 +474,17 @@ jobs:
             ./bin/test-load-and-dump.sh
           no_output_timeout: 5m
 
+  test-release-script:
+    executor: clojure-and-node
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - run:
+          name: Run release script tests
+          command: >
+            cd bin/release && clojure -M:test
+          no_output_timeout: 5m
+
 
 ########################################################################################################################
 #                                                       FRONTEND                                                       #
@@ -959,6 +970,10 @@ workflows:
           e: mysql-5-7
           db-type: mysql
           <<: *Matrix
+
+      - test-release-script:
+          requires:
+            - be-deps
 
       - fe-deps:
           requires:

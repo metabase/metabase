@@ -2,8 +2,8 @@
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.string :as str]
-            [release.common :as c]
-            [metabuild-common.core :as u]))
+            [metabuild-common.core :as u]
+            [release.common :as c]))
 
 (defn github-api-base []
   (str "https://api.github.com/repos/" (c/metabase-repo)))
@@ -12,12 +12,15 @@
   {"Content-Type"  "application/json"
    "Authorization" (format "token %s" (u/env-or-throw :github-token))})
 
+(defn- GET [endpoint]
+  (-> (http/get (str (github-api-base) endpoint) {:headers (github-api-request-headers)})
+      :body
+      (json/parse-string true)))
+
 (defn milestones
   "Fetch open GitHub milestones for the current repo."
   []
-  (-> (http/get (str (github-api-base) "/milestones") {:headers (github-api-request-headers)})
-      :body
-      (json/parse-string true)))
+  (GET "/milestones"))
 
 (defn matching-milestone
   "Return the GitHub milestone matching the version we're releasing, if any."
@@ -46,3 +49,6 @@
        labels)
     :bug
     :enhancement))
+
+(defn recent-tags []
+  (map :tag_name (GET "/releases")))

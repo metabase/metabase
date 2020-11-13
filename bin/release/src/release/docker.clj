@@ -22,8 +22,15 @@
 (defn push-docker-image! []
   (u/step "Push Docker image"
     (u/sh "docker" "push" (c/docker-tag))
-    (when-not (c/pre-release-version?)
-      (let [latest-tag (str (c/docker-image-name) ":latest")]
+    (let [latest-tag (str (c/docker-image-name) ":latest")]
+      (cond
+        (c/pre-release-version?)
+        (u/announce "Pre release version -- not pushing %s" latest-tag)
+
+        (not (c/latest-version?))
+        (u/announce "Version is not latest -- not pushing %s" latest-tag)
+
+        :else
         (u/step (format "Pushing tag %s" latest-tag)
           (u/sh "docker" "tag" (c/docker-tag) latest-tag)
           (u/sh "docker" "push" latest-tag)))))

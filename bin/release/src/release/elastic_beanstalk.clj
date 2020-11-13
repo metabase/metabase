@@ -23,7 +23,7 @@
 
 (def ^:private eb-extensions-source
   "Source location of the .ebextensions directory"
-  (u/assert-file-exists (u/filename c/root-directory "bin" "release" "release" "elastic_beanstalk" ".ebextensions")))
+  (u/assert-file-exists (u/filename c/root-directory "bin" "release" "src" "release" "elastic_beanstalk" ".ebextensions")))
 
 (def ^:private archive-temp-dir
   "Path where we'll put the contents of the ZIP file before we create it."
@@ -81,14 +81,17 @@
       (u/sh {:dir archive-temp-dir} "zip" "--recurse-paths" archive-path ".")
       (u/assert-file-exists archive-path))))
 
+(def ^:private launch-template-filename
+  (u/assert-file-exists (u/filename c/root-directory "bin" "release" "src" "release" "elastic_beanstalk" "launch-aws-eb.html.template")))
+
 (defn- create-html-file! []
   (u/step (format "Create launch-aws-eb.html for Docker image %s" (c/docker-tag))
-    (u/delete-file-if-exists! html-file-path)
-    (spit html-file-path
-          (stencil/render-file (u/assert-file-exists "release/elastic_beanstalk/launch-aws-eb.html.template")
-                               {:url (java.net.URLEncoder/encode (c/artifact-download-url "metabase-aws-eb.zip")
-                                                                 "UTF-8")}))
-    (u/assert-file-exists html-file-path)))
+          (u/delete-file-if-exists! html-file-path)
+          (spit html-file-path
+                (stencil/render-file launch-template-filename
+                                     {:url (java.net.URLEncoder/encode (c/artifact-download-url "metabase-aws-eb.zip")
+                                                                       "UTF-8")}))
+          (u/assert-file-exists html-file-path)))
 
 (defn- upload-artifacts! []
   (u/step "Upload Elastic Beanstalk artifacts"
