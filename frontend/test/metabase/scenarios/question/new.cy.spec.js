@@ -3,7 +3,6 @@ import {
   signInAsAdmin,
   popover,
   openOrdersTable,
-  sidebar,
 } from "__support__/cypress";
 
 // test various entry points into the query builder
