@@ -1,4 +1,9 @@
-import { signInAsAdmin, withSampleDataset, restore } from "__support__/cypress";
+import {
+  signInAsAdmin,
+  withSampleDataset,
+  restore,
+  popover,
+} from "__support__/cypress";
 
 describe("scenarios > question > nested (metabase#12568)", () => {
   before(() => {
@@ -187,5 +192,26 @@ describe("scenarios > question > nested", () => {
         cy.findAllByText("13");
       });
     });
+  });
+
+  it.skip("should display granularity for aggregated fields in nested questions (metabase#13764)", () => {
+    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    // add initial aggregation ("Average of Total by Order ID")
+    cy.findByText("Summarize").click();
+    cy.findByText("Average of ...").click();
+    cy.findByText("Total").click();
+    cy.findByText("Pick a column to group by").click();
+    cy.findByText("ID").click();
+    // add another aggregation ("Count by Average of Total")
+    cy.get(".Button")
+      .contains("Summarize")
+      .click();
+    cy.findByText("Count of rows").click();
+    cy.findByText("Pick a column to group by").click();
+    cy.log("**Reported failing on v0.34.3 - v0.37.0.2**");
+    popover()
+      .contains("Average of Total")
+      .closest(".List-item")
+      .contains("Auto binned");
   });
 });
