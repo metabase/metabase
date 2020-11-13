@@ -38,9 +38,9 @@ export default function QuickFilterDrill({
   return [
     {
       name: "filter-column",
-      section: "standalone_filter",
+      section: "summarize",
       title: t`Filter by this column`,
-      buttonType: "horizontal",
+      buttonType: "horizontal-no-outline",
       icon: "filter",
       // eslint-disable-next-line react/display-name
       popover: ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => (

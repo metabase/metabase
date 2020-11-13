@@ -34,6 +34,9 @@ const SECTIONS = {
   sort: {
     icon: "sort",
   },
+  formatting: {
+    icon: "pencil",
+  },
   breakout: {
     icon: "breakout",
   },
@@ -57,9 +60,6 @@ const SECTIONS = {
   },
   auto: {
     icon: "bolt",
-  },
-  formatting: {
-    icon: "pencil",
   },
 };
 // give them indexes so we can sort the sections by the above ordering (JS objects are ordered)
@@ -190,6 +190,11 @@ export default class ChartClickActions extends Component {
                   { pb2: SECTIONS[key].icon === "bolt" },
                 )}
               >
+                {SECTIONS[key].icon === "sum" && (
+                  <p className="mt0 text-bold text-light text-small block">
+                    Summarize
+                  </p>
+                )}
                 {SECTIONS[key].icon === "breakout" && (
                   <p className="mt0 text-bold text-light text-small block">
                     Break out by a…
@@ -211,14 +216,13 @@ export default class ChartClickActions extends Component {
                   className={cx(
                     "flex",
                     {
-                      "border-top pt2 text-medium":
-                        SECTIONS[key].icon === "pencil",
+                      "justify-end": SECTIONS[key].icon === "pencil",
                     },
                     {
                       "align-center justify-center":
-                        SECTIONS[key].icon === "pencil" ||
-                        SECTIONS[key].icon === "sort",
+                        SECTIONS[key].icon === "pencil",
                     },
+                    { "flex-column": SECTIONS[key].icon === "summarize" },
                   )}
                 >
                   {/*
@@ -256,22 +260,16 @@ export const ChartClickAction = ({
   handleClickAction: any,
 }) => {
   const className = cx("cursor-pointer no-decoration", {
-    "text-small px2 text-brand-hover justify-evenly":
-      action.buttonType === "text",
-    "text-small sort mr1 flex-auto rounded text-white-hover bg-light bg-brand-hover justify-evenly":
+    "text-small text-center sort token-blue mr1 bg-brand-hover":
       action.buttonType === "sort",
-    "text-small horizontal-popover px2 py1 mr1 bg-purple-light rounded flex-full text-purple text-white-hover":
-      action.buttonType === "horizontal",
-    "p1 rounded flex flex-full align-center bg-brand-hover text-brand text-white-hover":
+    "flex-align-right text-light text-brand-hover":
+      action.buttonType === "text",
+    "horizontal-button p1 rounded flex flex-auto align-center bg-brand-hover text-dark text-white-hover":
       action.buttonType === "horizontal-no-outline",
-    "text-small token token-green text-white-hover mr1":
-      action.buttonType === "token-green",
-    "text-small token token-blue text-white-hover mr1":
+    "text-small token token-blue text-white-hover bg-brand-hover mr1":
       action.buttonType === "token",
     "token token-filter text-white-hover mr1":
       action.buttonType === "token-filter",
-    "text-small large-button mr1 bg-green-light text-green text-white-hover rounded bg-green-hover":
-      action.buttonType === "large",
   });
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
   // for now since on dashboards currently they need to go through
@@ -305,34 +303,28 @@ export const ChartClickAction = ({
   } else {
     return (
       <div
-        className={cx(
-          className,
-          {
-            "flex flex-column align-center": action.buttonType === "large",
-          },
-          {
-            "flex flex-row align-center":
-              action.buttonType === "text" ||
-              action.buttonType === "horizontal" ||
-              action.buttonType === "sort",
-          },
-        )}
+        className={cx(className, {
+          "flex flex-row align-center":
+            action.buttonType === "text" ||
+            action.buttonType === "horizontal" ||
+            action.buttonType === "sort",
+        })}
         onClick={() => handleClickAction(action)}
       >
         {action.icon && (
           <Icon
             className={cx(
-              "flex",
+              "flex mr1",
               {
-                mr1: action.buttonType !== "large",
+                mr2: action.buttonType === "horizontal-no-outline",
               },
-              { mb1: action.buttonType === "large" },
+              { "text-brand text-white-hover": action.buttonType !== "text" },
             )}
-            size={action.buttonType === "large" ? 16 : 12}
+            size={action.buttonType === "text" ? 16 : 12}
             name={action.icon}
           />
         )}
-        {action.title}
+        {action.title && action.title}
       </div>
     );
   }

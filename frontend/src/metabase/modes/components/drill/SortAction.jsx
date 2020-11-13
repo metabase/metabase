@@ -3,7 +3,6 @@
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 
-import { t } from "ttag";
 import type {
   ClickAction,
   ClickActionProps,
@@ -40,8 +39,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       name: "sort-ascending",
       section: "sort",
       buttonType: "sort",
-      title: t`Asc`,
-      icon: "expand_arrow",
+      icon: "arrow_up",
       question: () => query.replaceSort(["asc", fieldRef]).question(),
     });
   }
@@ -50,8 +48,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       name: "sort-descending",
       section: "sort",
       buttonType: "sort",
-      title: t`Desc`,
-      icon: "expand_arrow",
+      icon: "arrow_down",
       question: () => query.replaceSort(["desc", fieldRef]).question(),
     });
   }

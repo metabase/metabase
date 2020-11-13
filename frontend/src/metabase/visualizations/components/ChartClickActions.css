@@ -6,16 +6,6 @@
   color: var(--color-brand);
   border: 1px solid color(var(--color-brand) alpha(-65%));
 }
-.token-blue:hover {
-  background-color: var(--color-brand);
-}
-.token-green {
-  color: var(--color-accent1);
-  border: 1px solid color(var(--color-accent1) alpha(-65%));
-}
-.token-green:hover {
-  background-color: var(--color-accent1);
-}
 .token-filter {
   padding: 1px 16px;
   border-radius: 100px;
@@ -26,8 +16,14 @@
   background-color: var(--color-accent7);
 }
 .sort {
-  padding: 4px 12px 4px 12px;
-  text-align: center;
+  padding: 4px 6px 4px 12px;
+  border-radius: 100px;
+}
+.sort:hover > svg {
+  color: white;
+}
+.horizontal-button:hover > svg {
+  color: white;
 }
 .large-button {
   padding: 12px;

@@ -33,7 +33,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     {
       name: "distribution",
       title: t`Distribution`,
-      buttonType: "large",
+      buttonType: "horizontal-no-outline",
       section: "summarize",
       icon: "bar",
       question: () => question.distribution(column),
