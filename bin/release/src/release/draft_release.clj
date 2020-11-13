@@ -28,11 +28,16 @@
                             :version      (c/version)
                             :checksum     (hash/sha-256-sum c/uberjar-path)}))))
 
+(defn- release-title []
+  (case (c/edition)
+    :ce (format "Metabase v%s" (c/version))
+    :ee (format "Metabase® Enterprise Edition™ v%s" (c/version))))
+
 (defn- upload-draft-changelog! [changelog]
   (u/step "Upload draft changelog (create draft release)"
     (let [body (json/generate-string {:tag_name         (format "v%s" (c/version))
                                       :target_commitish (c/branch)
-                                      :name             (format "Metabase v%s" (c/version))
+                                      :name             (release-title)
                                       :draft            true
                                       :prerelease       (c/pre-release-version?)
                                       :body             changelog})]
