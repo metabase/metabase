@@ -38,12 +38,13 @@
 (defn most-recent-tag []
   (shell-output-when-nonzero "git" "describe" "--abbrev=0" "--tags"))
 
-(defn most-recent-tag-parts []
-  (when-let [tag (most-recent-tag)]
-    (for [part  (str/split tag #"\.")
-          :let  [numeric-part (re-find #"\d+" part)]
-          :when (seq numeric-part)]
-      (Integer/parseInt numeric-part))))
+(defn- tag-parts [tag]
+  (when tag
+    (not-empty
+     (for [part  (str/split tag #"\.")
+           :let  [numeric-part (re-find #"\d+" part)]
+           :when (seq numeric-part)]
+       (Integer/parseInt numeric-part)))))
 
 (defn current-snapshot-version
   "Attempt to come up with a snapshot version for builds that aren't given explicit version info based on the most
@@ -54,15 +55,18 @@
   For builds from `master`, increment the minor version instead e.g.
 
     v0.37.1 -> v0.38.0-SNAPSHOT"
-  []
-  (if-let [tag-parts (most-recent-tag-parts)]
-    (let [[major minor patch] tag-parts
-          major               (or major 0)
-          [minor patch]       (if (= (git-branch) "master")
-                                [(inc (or minor 0)) 0]
-                                [(or minor 0) (inc (or patch 0))])]
-      (format "v%d.%d.%d-SNAPSHOT" major minor patch))
-    "UNKNOWN"))
+  ([]
+   (current-snapshot-version (git-branch) (most-recent-tag)))
+
+  ([branch tag]
+   (if-let [tag-parts (not-empty (tag-parts tag))]
+     (let [[major minor patch] tag-parts
+           major               (or major 0)
+           [minor patch]       (if (= branch "master")
+                                 [(inc (or minor 0)) 0]
+                                 [(or minor 0) (inc (or patch 0))])]
+       (format "v%d.%d.%d-SNAPSHOT" major minor patch))
+     "UNKNOWN")))
 
 (defn generate-version-info-file!
   "Generate version.properties file"

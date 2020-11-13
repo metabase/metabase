@@ -474,7 +474,7 @@ jobs:
             ./bin/test-load-and-dump.sh
           no_output_timeout: 5m
 
-  test-release-script:
+  test-build-scripts:
     executor: clojure-and-node
     steps:
       - attach-workspace
@@ -486,9 +486,14 @@ jobs:
             chmod +x linux-install-1.10.1.708.sh &&
             sudo ./linux-install-1.10.1.708.sh
       - run:
+          name: Run build script tests
+          command: >
+            cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
+          no_output_timeout: 5m
+      - run:
           name: Run release script tests
           command: >
-            cd bin/release && clojure -M:test
+            cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
           no_output_timeout: 5m
 
 
@@ -977,7 +982,7 @@ workflows:
           db-type: mysql
           <<: *Matrix
 
-      - test-release-script:
+      - test-build-scripts:
           requires:
             - be-deps
 
