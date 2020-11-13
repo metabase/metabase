@@ -3,10 +3,9 @@ import {
   restore,
   signInAsAdmin,
   openOrdersTable,
-  openProductsTable,
   popover,
   modal,
-  typeAndBlurUsingLabel,
+  withSampleDataset,
 } from "__support__/cypress";
 
 describe("scenarios > question > notebook", () => {
@@ -151,107 +150,82 @@ describe("scenarios > question > notebook", () => {
 
     it("should allow joins based on saved questions (metabase#13000)", () => {
       cy.server();
-      cy.route("POST", "/api/card/*/query").as("card");
 
-      cy.log("**Prepare Question 1**");
-      openOrdersTable();
+      withSampleDataset(({ ORDERS, PRODUCTS }) => {
+        cy.log("**-- Prepare Question 1 --**");
+        cy.request("POST", "/api/card", {
+          name: "Q1",
+          dataset_query: {
+            database: 1,
+            query: {
+              aggregation: ["sum", ["field-id", ORDERS.TOTAL]],
+              breakout: [["field-id", ORDERS.PRODUCT_ID]],
+              "source-table": 2,
+            },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        }).then(({ body: { id: Q1_ID } }) => {
+          cy.log("**-- Prepare Question 2 --**");
+          cy.request("POST", "/api/card", {
+            name: "Q2",
+            dataset_query: {
+              database: 1,
+              query: {
+                aggregation: ["sum", ["field-id", PRODUCTS.RATING]],
+                breakout: [["field-id", PRODUCTS.ID]],
+                "source-table": 1,
+              },
+              type: "query",
+            },
+            display: "table",
+            visualization_settings: {},
+          }).then(({ body: { id: Q2_ID } }) => {
+            cy.log(
+              "**-- Create Question 3 based on 2 previously saved questions --**",
+            );
+            cy.request("POST", "/api/card", {
+              name: "Q3",
+              dataset_query: {
+                database: 1,
+                query: {
+                  joins: [
+                    {
+                      alias: "13000",
+                      condition: [
+                        "=",
+                        ["field-literal", "PRODUCT_ID", "type/Integer"],
+                        [
+                          "joined-field",
+                          "13000",
+                          ["field-literal", "ID", "type/BigInteger"],
+                        ],
+                      ],
+                      fields: "all",
+                      "source-table": `card__${Q2_ID}`,
+                    },
+                  ],
+                  "source-table": `card__${Q1_ID}`,
+                },
+                type: "query",
+              },
+              display: "table",
+              visualization_settings: {},
+            }).then(({ body: { id: Q3_ID } }) => {
+              cy.route("POST", `/api/card/${Q3_ID}/query`).as("cardQuery");
+              cy.visit(`/question/${Q3_ID}`);
 
-      cy.findByText("Summarize").click();
-      cy.findByText("Count").click();
-      popover().within(() => {
-        cy.findByText("Sum of ...").click();
-        cy.findByText("Total").click();
+              cy.wait("@cardQuery");
+
+              cy.log("**Reported in v0.36.0**");
+              cy.get(".Icon-notebook").click();
+              cy.url().should("contain", "/notebook");
+              cy.findByText("Visualize").should("exist");
+            });
+          });
+        });
       });
-
-      cy.findByText("Group by")
-        .parent()
-        .contains("Product ID")
-        .click();
-
-      // Mid-point check - generated title should be:
-      cy.contains("Sum of Total by Product ID");
-
-      cy.findByText("Done").click();
-      cy.findByText("Save").click();
-      // Save as Q1
-      modal().within(() => {
-        typeAndBlurUsingLabel("Name", "Q1");
-        cy.findByText("Save").click();
-      });
-      cy.findByText("Not now").click();
-
-      cy.log("**Prepare Question 2**");
-      openProductsTable();
-
-      cy.findByText("Summarize").click();
-      cy.findByText("Count").click();
-
-      popover().within(() => {
-        cy.findByText("Sum of ...").click();
-        cy.findByText("Rating").click();
-      });
-
-      cy.findByText("Group by")
-        .parent()
-        .contains("ID")
-        .click();
-
-      // Mid-point check - generated title should be:
-      cy.contains("Sum of Rating by ID");
-
-      cy.findByText("Done").click();
-      cy.findByText("Save").click();
-      // Save as Q2
-      modal().within(() => {
-        typeAndBlurUsingLabel("Name", "Q2");
-        cy.findByText("Save").click();
-      });
-      cy.findByText("Not now").click();
-
-      cy.log("**Create Question 3 based on 2 previously saved questions**");
-
-      cy.findByText("Ask a question").click();
-      cy.findByText("Custom question").click();
-      // Choose Q1
-      popover().within(() => {
-        cy.findByText("Saved Questions").click();
-        cy.findByText("Q1").click();
-      });
-      // and join it
-      cy.get(".Icon-join_left_outer").click();
-      // with Q2
-      popover().within(() => {
-        cy.findByText("Sample Dataset").click();
-        cy.findByText("Saved Questions").click();
-        cy.findByText("Q2").click();
-      });
-      // on Product ID = ID
-      popover()
-        .contains("Product ID")
-        .click();
-      popover()
-        .contains("ID")
-        .click();
-      // Save as Q3
-      cy.findByText("Save").click();
-      cy.get(".Modal").within(() => {
-        typeAndBlurUsingLabel("Name", "Q3");
-        cy.findByText("Save").click();
-      });
-      cy.findByText("Not now").click();
-
-      cy.log("**Assert that the Q3 is in 'Our analytics'**");
-
-      cy.visit("/");
-      cy.findByText("Browse all items").click();
-
-      cy.contains("Q3").click({ force: true });
-      cy.wait("@card");
-
-      cy.log("**The point where bug originated in v0.36.0**");
-      cy.get(".Icon-notebook").click();
-      cy.url().should("contain", "/notebook");
-      cy.findByText("Visualize").should("exist");
     });
 
     it("should show correct column title with foreign keys (metabase#11452)", () => {
