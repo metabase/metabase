@@ -23,18 +23,22 @@
       "oss" :ce
       "ee"  :ee)))
 
-(defn- build-frontend! []
-  (u/step "Build frontend"
-    (u/step "Run 'yarn' to download javascript dependencies"
-      (u/sh {:dir u/project-root-directory} "yarn"))
-    (u/step "Run 'webpack' with NODE_ENV=production to assemble and minify frontend assets"
-      (u/sh {:dir u/project-root-directory
-             :env {"PATH"       (env/env :path)
-                   "HOME"       (env/env :user-home)
-                   "NODE_ENV"   "production"
-                   "MB_EDITION" (name (edition-from-env-var))}}
-            "./node_modules/.bin/webpack" "--bail"))
-    (u/announce "Frontend built successfully.")))
+(defn- build-frontend! [edition]
+  {:pre [(#{:ce :ee} edition)]}
+  (let [mb-edition (case edition
+                     :ee "ee"
+                     :ce "oss")]
+    (u/step (format "Build frontend with MB_EDITION=%s" mb-edition)
+      (u/step "Run 'yarn' to download javascript dependencies"
+        (u/sh {:dir u/project-root-directory} "yarn"))
+      (u/step "Run 'webpack' with NODE_ENV=production to assemble and minify frontend assets"
+        (u/sh {:dir u/project-root-directory
+               :env {"PATH"       (env/env :path)
+                     "HOME"       (env/env :user-home)
+                     "NODE_ENV"   "production"
+                     "MB_EDITION" mb-edition}}
+              "./node_modules/.bin/webpack" "--bail"))
+      (u/announce "Frontend built successfully."))))
 
 (def uberjar-filename (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
 
@@ -45,7 +49,7 @@
                   :ee "ee"
                   :ce "oss")]
     (u/delete-file-if-exists! uberjar-filename)
-    (u/step "Build uberjar"
+    (u/step (format "Build uberjar with profile %s" profile)
       (u/sh {:dir u/project-root-directory} "lein" "clean")
       (u/sh {:dir u/project-root-directory} "lein" "with-profile" (str \+ profile) "uberjar")
       (u/assert-file-exists uberjar-filename)
@@ -57,8 +61,8 @@
                    (version-info/generate-version-info-file! version))
    :translations (fn [_]
                    (build-translation-resources!))
-   :frontend     (fn [_]
-                   (build-frontend!))
+   :frontend     (fn [{:keys [edition]}]
+                   (build-frontend! edition))
    :drivers      (fn [_]
                    (build-drivers/build-drivers!))
    :uberjar      (fn [{:keys [edition]}]
