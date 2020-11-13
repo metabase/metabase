@@ -32,7 +32,7 @@
              :env {"PATH"       (env/env :path)
                    "HOME"       (env/env :user-home)
                    "NODE_ENV"   "production"
-                   "MB_EDITION" (edition-from-env-var)}}
+                   "MB_EDITION" (name (edition-from-env-var))}}
             "./node_modules/.bin/webpack" "--bail"))
     (u/announce "Frontend built successfully.")))
 
