@@ -167,7 +167,9 @@ export default class GroupMappingsWidget extends React.Component {
                   onClick={this._showAddRow}
                 >{t`Create a mapping`}</Button>
                 <p className="text-measure">
-                  {t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server.`}
+                  {t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the
+                                    directory server. Membership to the Admin group can be granted through mappings, but will not be automatically removed as a
+                                    failsafe measure.`}
                 </p>
                 <AdminContentTable
                   columnTitles={[this.props.groupHeading, t`Groups`, ""]}
