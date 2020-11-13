@@ -19,7 +19,8 @@
 (defn- validate-uberjar []
   (u/step "Validate uberjar(s) on downloads.metabase.com"
     (doseq [url   [(c/artifact-download-url "metabase.jar")
-                   (when (= (c/edition) :ee)
+                   (when (and (= (c/edition) :ee)
+                              (c/latest-version?))
                      (c/artifact-download-url "latest" "metabase.jar"))]
             :when url]
       (u/step (format "Validate %s" url)
@@ -38,7 +39,18 @@
   (u/step "Upload uberjar and validate"
     (u/step (format "Upload uberjar to %s" (c/artifact-download-url "metabase.jar"))
       (upload/upload-artifact! c/uberjar-path "metabase.jar"))
-    (when (= (c/edition) :ee)
-      (u/step (format "Upload uberjar to %s" (c/artifact-download-url "latest" "metabase.jar"))
-        (upload/upload-artifact! c/uberjar-path "latest" "metabase.jar")))
+    (let [latest-download-url (c/artifact-download-url "latest" "metabase.jar")]
+      (cond
+        (not= (c/edition) :ee)
+        (u/announce "Not EE build -- not uploading %s" latest-download-url)
+
+        (c/pre-release-version?)
+        (u/announce "Pre release version -- not uploading %s" latest-download-url)
+
+        (not (c/latest-version?))
+        (u/announce "Not latest version -- not uploading %s" latest-download-url)
+
+        :else
+        (u/step (format "Upload uberjar to %s" latest-download-url)
+          (upload/upload-artifact! c/uberjar-path "latest" "metabase.jar"))))
     (validate-uberjar)))

@@ -26,6 +26,9 @@
       (= (c/edition) :ee)
       (u/announce "EE build -- not updating Herkou buildpack")
 
+      (not (c/latest-version?))
+      (u/announce "Not the latest version -- not updating Heroku buildpack")
+
       :else
       (do
         (u/step (format "Clone Herkou Buildpack repo %s to %s" heroku-repo dir)

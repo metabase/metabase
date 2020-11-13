@@ -13,11 +13,14 @@
 ;; Disable caching of our template files for easier REPL debugging, we're only rendering them once anyways
 (stencil.loader/set-cache (cache/ttl-cache-factory {} :ttl 0))
 
+(def ^:private release-template-filename
+  (u/assert-file-exists (u/filename c/root-directory "bin" "release" "src" "release" "draft_release" "release-template.md")))
+
 (defn- generate-draft-changelog []
   (u/step "Generate draft changelog"
     (let [pre-release?                           (c/pre-release-version?)
           {bugs :bug, enhancements :enhancement} (group-by github/issue-type (github/milestone-issues))]
-      (stencil/render-file (u/assert-file-exists "release/draft_release/release-template.md")
+      (stencil/render-file release-template-filename
                            {:enhancements enhancements
                             :bug-fixes    bugs
                             :docker-tag   (c/docker-tag)

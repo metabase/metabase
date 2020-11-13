@@ -474,6 +474,38 @@ jobs:
             ./bin/test-load-and-dump.sh
           no_output_timeout: 5m
 
+  test-build-scripts:
+    executor: clojure-and-node
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - run:
+          name: Install Clojure CLI
+          command: >
+            curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
+            chmod +x linux-install-1.10.1.708.sh &&
+            sudo ./linux-install-1.10.1.708.sh
+      - run:
+          name: Run metabuild-common build script tests
+          command: >
+            cd /home/circleci/metabase/metabase/bin/common && clojure -M:test
+          no_output_timeout: 5m
+      - run:
+          name: Run build-drivers build script tests
+          command: >
+            cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
+          no_output_timeout: 5m
+      - run:
+          name: Run build-mb build script tests
+          command: >
+            cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
+          no_output_timeout: 5m
+      - run:
+          name: Run release script tests
+          command: >
+            cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
+          no_output_timeout: 5m
+
 
 ########################################################################################################################
 #                                                       FRONTEND                                                       #
@@ -959,6 +991,10 @@ workflows:
           e: mysql-5-7
           db-type: mysql
           <<: *Matrix
+
+      - test-build-scripts:
+          requires:
+            - be-deps
 
       - fe-deps:
           requires:

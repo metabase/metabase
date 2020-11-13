@@ -33,7 +33,7 @@
 (defn- generate-version-info! []
   (u/step "Generate version-info.json"
     (u/step (format "Generate %s" tmp-version-info-filename)
-      (u/delete-file! tmp-version-info-filename)
+      (u/delete-file-if-exists! tmp-version-info-filename)
       (let [{:keys [latest], :as info} (current-version-info)]
         (spit tmp-version-info-filename (-> info
                                             ;; move the current `:latest` to the beginning of `:older`
@@ -79,6 +79,9 @@
 
       (= (c/edition) :ee)
       (u/announce "Enterprise Edition release, not updating version-info.json")
+
+      (not (c/latest-version?))
+      (u/announce "Not the latest version, not updating version-info.json")
 
       :else
       (update-version-info!*))))

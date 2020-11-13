@@ -137,3 +137,48 @@
 
   ([s3-bucket version filename]
    (format "s3://%s%s" s3-bucket (s3-artifact-path version filename))))
+
+(defn version-greater-than
+  "Is version string `x` greater than version `y`?"
+  [x y]
+  {:pre [(string? x) (string? y)]}
+  (letfn [(parts [s]
+            (for [part (-> s (str/replace #"^v" "") (str/split  #"\."))]
+              (Integer/parseUnsignedInt part)))]
+    (loop [[x & x-more] (parts x) [y & y-more] (parts y)]
+      (cond
+        ((fnil > 0 0) x y) true
+        ((fnil < 0 0) x y) false
+        ((fnil = 0 0) x y) (if (or (seq x-more) (seq y-more))
+                             (recur x-more y-more)
+                             false)))))
+
+(defn- recent-tags-from-github
+  "Recent tags for the current edition from GitHub."
+  []
+  (->> ((requiring-resolve 'release.common.github/recent-tags))
+       (filter (case (edition)
+                 :ee (partial re-matches #"v1(?:\.\d+){2,}$")
+                 :ce (partial re-matches #"v0(?:\.\d+){2,}$")))))
+
+(defn- most-recent-tag
+  "Given a set of release `tags`, return the most recent one."
+  [tags]
+  (->> tags
+       (sort-by identity (fn [x y]
+                           (cond
+                             (version-greater-than x y) -1
+                             (version-greater-than y x) 1
+                             :else                      0)))
+       first))
+
+(def ^{:arglists '([])} latest-version?
+  "Is the version we're building going to be the new latest version for this edition?"
+  (memoize
+   (fn []
+     (u/step (format "Check whether %s will be the latest version" (version))
+       (let [latest-gh-tag (most-recent-tag (recent-tags-from-github))]
+         (u/announce "Latest %s version from GitHub is %s" (edition) latest-gh-tag)
+         (let [latest? (version-greater-than (version) latest-gh-tag)]
+           (u/announce "%s %s be the new latest %s version." (version) (if latest? "will" "will NOT") (edition))
+           latest?))))))
