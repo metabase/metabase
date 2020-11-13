@@ -191,4 +191,53 @@ describe("scenarios > question > filter", () => {
       cy.findAllByText("Fantastic Wool Shirt").should("not.exist");
     });
   });
+
+  it.skip("should filter using Custom Expression from aggregated results (metabase#12839)", () => {
+    const CE_NAME = "Last Year";
+
+    withSampleDataset(({ PRODUCTS }) => {
+      cy.request("POST", "/api/card", {
+        name: "12839",
+        dataset_query: {
+          database: 1,
+          query: {
+            filter: [">", ["field-literal", CE_NAME, "type/Float"], 0],
+            "source-query": {
+              aggregation: [
+                ["avg", ["field-id", PRODUCTS.PRICE]],
+                [
+                  "aggregation-options",
+                  [
+                    "count-where",
+                    [
+                      "time-interval",
+                      ["field-id", PRODUCTS.CREATED_AT],
+                      -1,
+                      "year",
+                    ],
+                  ],
+                  { "display-name": CE_NAME },
+                ],
+              ],
+              breakout: [["field-id", PRODUCTS.CATEGORY]],
+              "source-table": 1,
+            },
+          },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {},
+      }).then(({ body: { id: questionId } }) => {
+        cy.server();
+        cy.route("POST", `/api/card/${questionId}/query`).as("cardQuery");
+
+        cy.visit(`/question/${questionId}`);
+        cy.wait("@cardQuery");
+
+        cy.log("**Reported failing on v0.35.4**");
+        cy.log(`Error message: **Column 'source.${CE_NAME}' not found;**`);
+        cy.findAllByText("Gizmo");
+      });
+    });
+  });
 });
