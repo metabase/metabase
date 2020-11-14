@@ -3,13 +3,25 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isDimension } from "metabase/lib/schema_metadata";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { multiLevelPivot } from "metabase/lib/data_grid";
 // import { formatColumn } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
+const partitions = [
+  {
+    name: "rows",
+    columnFilter: isDimension,
+    title: t`Fields to use for the table rows`,
+  },
+  {
+    name: "columns",
+    columnFilter: isDimension,
+    title: t`Fields to use for the table columns`,
+  },
+  { name: "values", title: t`Fields to use for the table values` },
+];
 export default class PivotTable extends Component {
   props: VisualizationProps;
   static uiName = t`Pivot Table`;
@@ -37,27 +49,20 @@ export default class PivotTable extends Component {
     "pivot_table.column_split": {
       section: null,
       widget: "fieldsPartition",
-      partitions: [
-        {
-          name: "rows",
-          columnFilter: isDimension,
-          title: t`Fields to use for the table rows`,
-        },
-        {
-          name: "columns",
-          columnFilter: isDimension,
-          title: t`Fields to use for the table columns`,
-        },
-        { name: "values", title: t`Fields to use for the table values` },
-      ],
-      getProps: ([{ data }], settings) => ({
-        columns: data.cols,
-      }),
-      getDefault: ([{ data }]) => ({
-        rows: data.cols.filter(isDimension),
-        values: data.cols.filter(col => !isDimension(col)),
-        columns: [],
-      }),
+      getProps: ([{ data }], settings) => ({ partitions }),
+      getValue: ([{ data }], settings = {}) => {
+        const columns = data.cols;
+        const storedValue = settings["pivot_table.column_split"];
+        if (storedValue == null) {
+          return {
+            rows: columns.filter(isDimension),
+            values: columns.filter(col => !isDimension(col)),
+            columns: [],
+          };
+        }
+
+        return updateValueWithCurrentColumns(storedValue, columns);
+      },
     },
   };
 
@@ -127,4 +132,31 @@ export default class PivotTable extends Component {
       </div>
     );
   }
+}
+
+function updateValueWithCurrentColumns(storedValue, columns) {
+  const currentQueryFieldRefs = columns.map(c => JSON.stringify(c.field_ref));
+  const currentSettingFieldRefs = Object.values(storedValue).flatMap(columns =>
+    columns.map(c => JSON.stringify(c.field_ref)),
+  );
+  const toAdd = _.difference(currentQueryFieldRefs, currentSettingFieldRefs);
+  const toRemove = _.difference(currentSettingFieldRefs, currentQueryFieldRefs);
+
+  // remove toRemove
+  const value = _.mapObject(storedValue, columns =>
+    columns.filter(col => !toRemove.includes(JSON.stringify(col.field_ref))),
+  );
+  // add toAdd to first partitions where it matches the filter
+  for (const fieldRef of toAdd) {
+    for (const { filter, name } of partitions) {
+      const column = columns.find(
+        c => JSON.stringify(c.field_ref) === fieldRef,
+      );
+      if (filter == null || filter(column)) {
+        value[name] = [...value[name], column];
+        break;
+      }
+    }
+  }
+  return value;
 }
