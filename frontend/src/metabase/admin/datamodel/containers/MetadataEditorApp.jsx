@@ -77,7 +77,7 @@ export default class MetadataEditor extends Component {
   render() {
     const { databaseId, tableId } = this.props;
     return (
-      <div className="p3">
+      <div className="p4">
         <MetadataHeader
           ref="header"
           databaseId={databaseId}

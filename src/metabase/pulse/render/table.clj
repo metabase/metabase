@@ -85,7 +85,7 @@
                                      :max-height       :10px
                                      :height           :10px
                                      :border-radius    :2px
-                                     :width            (str bar-width "%")})}
+                                     :width            (str (max bar-width 0) "%")})}
           "&#160;"]])])])
 
 (defn render-table

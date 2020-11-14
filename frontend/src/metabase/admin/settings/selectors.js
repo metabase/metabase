@@ -234,6 +234,21 @@ const SECTIONS = updateSectionsWithPlugins({
         },
       },
       {
+        key: "start-of-week",
+        display_name: t`First day of the week`,
+        type: "select",
+        options: [
+          { value: "sunday", name: t`Sunday` },
+          { value: "monday", name: t`Monday` },
+          { value: "tuesday", name: t`Tuesday` },
+          { value: "wednesday", name: t`Wednesday` },
+          { value: "thursday", name: t`Thursday` },
+          { value: "friday", name: t`Friday` },
+          { value: "saturday", name: t`Saturday` },
+        ],
+        defaultValue: "sunday",
+      },
+      {
         display_name: t`Localization options`,
         description: "",
         key: "custom-formatting",

@@ -59,7 +59,12 @@ export default class ColumnsList extends Component {
     return positionById;
   }
 
+  handleSortStart = () => {
+    document.body.classList.add("grabbing");
+  };
+
   handleSortEnd = async ({ oldIndex, newIndex }) => {
+    document.body.classList.remove("grabbing");
     if (oldIndex === newIndex) {
       return;
     }
@@ -108,6 +113,7 @@ export default class ColumnsList extends Component {
           </div>
         </div>
         <SortableColumns
+          onSortStart={this.handleSortStart}
           onSortEnd={this.handleSortEnd}
           helperClass="ColumnSortHelper"
           useDragHandle={true}

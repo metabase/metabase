@@ -22,6 +22,7 @@ export type Parameter = {
   field_ids?: FieldId[],
   hasOnlyFieldTargets?: boolean, // true if the parameter is only connected to fields/dimensions rather than variables
   target?: ParameterTarget,
+  filteringParameters?: ParameterId[],
 };
 
 export type VariableTarget = ["template-tag", string];

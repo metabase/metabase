@@ -161,7 +161,8 @@
     {:base_type    :type/Float
      :special_type :type/Number}))
 
-(s/defn ^:private col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
+(s/defn col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
+  "Return column metadata for a field clause such as `:field-id` or `:field-literal`."
   [{:keys [source-metadata expressions], :as inner-query} :- su/Map, clause :- mbql.s/Field]
   ;; for various things that can wrap Field clauses recurse on the wrapped Field but include a little bit of info
   ;; about the clause doing the wrapping

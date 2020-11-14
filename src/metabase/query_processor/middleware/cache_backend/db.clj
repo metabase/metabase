@@ -47,8 +47,6 @@
         (.close stmt)
         (throw e)))))
 
-
-
 (defn- cached-results [query-hash max-age-seconds respond]
   (with-open [conn (.getConnection (datasource))
               stmt (prepare-statement conn query-hash max-age-seconds)

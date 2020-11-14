@@ -44,6 +44,8 @@
 
 ;;; ------------------------------------------------- add-type-info --------------------------------------------------
 
+;; TODO -- parsing the temporal string literals should be moved into `auto-parse-filter-values`, it's really a
+;; separate transformation from just wrapping the value
 (defmulti ^:private add-type-info
   "Wraps value literals in `:value` clauses that includes base type info about the Field they're being compared against
   for easy driver QP implementation. Temporal literals (e.g., ISO-8601 strings) get wrapped in `:time` or
@@ -102,23 +104,33 @@
 
 (def ^:private raw-value? (complement mbql.u/mbql-clause?))
 
+(defn- wrap-value-literals-in-mbql [mbql]
+  (mbql.u/replace mbql
+    [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
+    [clause field (add-type-info x (type-info field))]
+
+    [:between field (min-val :guard raw-value?) (max-val :guard raw-value?)]
+    [:between
+     field
+     (add-type-info min-val (type-info field))
+     (add-type-info max-val (type-info field))]
+
+    [(clause :guard #{:starts-with :ends-with :contains}) field (s :guard string?) & more]
+    (let [s (add-type-info s (type-info field), :parse-datetime-strings? false)]
+      (into [clause field s] more))))
+
+(defn unwrap-value-literal
+  "Extract value literal from `:value` form or returns form as is if not a `:value` form."
+  [maybe-value-form]
+  (mbql.u/match-one maybe-value-form
+    [:value x & _] x
+    _              &match))
+
 (defn ^:private wrap-value-literals-in-mbql-query
   [{:keys [source-query], :as inner-query} options]
   (let [inner-query (cond-> inner-query
                       source-query (update :source-query wrap-value-literals-in-mbql-query options))]
-    (mbql.u/replace inner-query
-      [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
-      [clause field (add-type-info x (type-info field))]
-
-      [:between field (min-val :guard raw-value?) (max-val :guard raw-value?)]
-      [:between
-       field
-       (add-type-info min-val (type-info field))
-       (add-type-info max-val (type-info field))]
-
-      [(clause :guard #{:starts-with :ends-with :contains}) field (s :guard string?) & more]
-      (let [s (add-type-info s (type-info field), :parse-datetime-strings? false)]
-        (into [clause field s] more)))))
+    (wrap-value-literals-in-mbql inner-query)))
 
 (defn- wrap-value-literals*
   [{query-type :type, :as query}]

@@ -126,7 +126,7 @@
   [{:keys [joins], :as inner-query} :- UnresolvedMBQLQuery]
   (let [join-fields (when (should-add-join-fields? inner-query)
                       (joins->fields joins))
-        inner-query(update inner-query :joins remove-joins-fields)]
+        inner-query (update inner-query :joins remove-joins-fields)]
     (cond-> inner-query
       (seq join-fields) (update :fields (comp vec distinct concat) join-fields))))
 

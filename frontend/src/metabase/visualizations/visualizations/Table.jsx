@@ -10,7 +10,6 @@ import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
-import { PLUGIN_TABLE_COLUMN_SETTINGS } from "metabase/plugins";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 import {
@@ -237,6 +236,7 @@ export default class Table extends Component {
         widget: "input",
         getDefault: column => formatColumn(column),
       },
+      click_behavior: {},
     };
     if (isNumber(column)) {
       settings["show_mini_bar"] = {
@@ -285,10 +285,6 @@ export default class Table extends Component {
           settings["view_as"] !== "link" &&
           settings["view_as"] !== "email_link",
       };
-    }
-
-    for (const getSettings of PLUGIN_TABLE_COLUMN_SETTINGS) {
-      Object.assign(settings, getSettings(column));
     }
 
     return settings;

@@ -3,7 +3,7 @@
 import _ from "underscore";
 import d3 from "d3";
 import dc from "dc";
-import moment from "moment";
+import moment from "moment-timezone";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
@@ -148,12 +148,17 @@ export function applyChartTimeseriesXAxis(
         tickFormatUnit = "month";
         tickInterval = { interval: "month", count: 1, timezone };
       }
+      const domainStart = xDomain[0];
+      const startOfWeek = domainStart.clone().startOf("week");
+      const shiftDays = domainStart.diff(startOfWeek, "days");
+      tickInterval = { ...tickInterval, shiftDays };
     }
 
     chart.xAxis().tickFormat(tickFormat);
 
     // Compute a sane interval to display based on the data granularity, domain, and chart width
     tickInterval = {
+      ...tickInterval,
       ...computeTimeseriesTicksInterval(
         xDomain,
         tickInterval,

@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import CardRenderer from "./CardRenderer";
 import LegendHeader from "./LegendHeader";
-import { TitleLegendHeader } from "./TitleLegendHeader";
+import TitleLegendHeader from "./TitleLegendHeader";
 
 import "./LineAreaBarChart.css";
 

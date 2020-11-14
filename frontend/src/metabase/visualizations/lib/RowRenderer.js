@@ -61,6 +61,18 @@ export default function rowRenderer(
   initChart(chart, element);
 
   chart.on("renderlet.tooltips", chart => {
+    const getData = d => [
+      {
+        key: getFriendlyName(cols[0]),
+        value: formattedDimensionMap.get(d.key),
+        col: cols[0],
+      },
+      {
+        key: getFriendlyName(cols[1]),
+        value: d.value,
+        col: cols[1],
+      },
+    ];
     if (onHoverChange) {
       chart
         .selectAll(".row rect")
@@ -70,14 +82,7 @@ export default function rowRenderer(
               // for single series bar charts, fade the series and highlght the hovered element with CSS
               index: -1,
               event: d3.event,
-              data: [
-                {
-                  key: getFriendlyName(cols[0]),
-                  value: formattedDimensionMap.get(d.key),
-                  col: cols[0],
-                },
-                { key: getFriendlyName(cols[1]), value: d.value, col: cols[1] },
-              ],
+              data: getData(d),
             });
         })
         .on("mouseleave", () => {
@@ -96,6 +101,7 @@ export default function rowRenderer(
               column: cols[0],
             },
           ],
+          data: getData(d),
           element: this,
           settings,
         });

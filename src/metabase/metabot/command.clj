@@ -116,10 +116,13 @@
                   (metabot-visible-collection-ids))]})))
 
 (defmethod command :list [& _]
-  (let [cards (list-cards)]
-    (str (deferred-tru "Here''s your {0} most recent cards:" (count cards))
-         "\n"
-         (format-cards-list cards))))
+  (let [cards (list-cards)
+        card-count (count cards)]
+    (if (zero? card-count)
+      (tru "You don''t have any cards yet.")
+      (str (deferred-tru "Here are your {0} most recent cards:" card-count)
+           "\n"
+           (format-cards-list cards)))))
 
 
 ;;; ------------------------------------------------------ show ------------------------------------------------------
@@ -163,12 +166,12 @@
      (when-not card-id
        (throw (Exception. (tru "Card {0} not found." card-id-or-name))))
      (with-metabot-permissions
-       (read-check Card card-id))
-     (metabot.slack/async
-       (let [attachments (pulse/create-and-upload-slack-attachments!
-                          (pulse/create-slack-attachment-data
-                           [(pulse/execute-card {} card-id, :context :metabot)]))]
-         (metabot.slack/post-chat-message! nil attachments)))
+       (read-check Card card-id)
+       (metabot.slack/async
+         (let [attachments (pulse/create-and-upload-slack-attachments!
+                            (pulse/create-slack-attachment-data
+                             [(pulse/execute-card {} card-id, :context :metabot)]))]
+           (metabot.slack/post-chat-message! nil attachments))))
      (tru "Ok, just a second...")))
 
   ;; If the card name comes without spaces, e.g. (show 'my 'wacky 'card) turn it into a string an recur: (show "my

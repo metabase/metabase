@@ -1,5 +1,6 @@
 (ns metabase.api.field
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.core.memoize :as memoize]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase
              [query-processor :as qp]
@@ -11,6 +12,8 @@
              [dimension :refer [Dimension]]
              [field :as field :refer [Field]]
              [field-values :as field-values :refer [FieldValues]]
+             [interface :as mi]
+             [permissions :as perms]
              [table :refer [Table]]]
             [metabase.util
              [i18n :refer [trs]]
@@ -32,12 +35,36 @@
   "Schema for a valid `Field` visibility type."
   (apply s/enum (map name field/visibility-types)))
 
+(defn- has-segmented-query-permissions?
+  "Does the Current User have segmented query permissions for `table`?"
+  [table]
+  (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+    (perms/table-segmented-query-path table)))
+
+(defn- throw-if-no-read-or-segmented-perms
+  "Validates that the user either has full read permissions for `field` or segmented permissions on the table
+  associated with `field`. Throws an exception that will return a 403 if not."
+  [field]
+  (when-not (or (mi/can-read? field)
+                (has-segmented-query-permissions? (field/table field)))
+    (api/throw-403)))
 
 (api/defendpoint GET "/:id"
   "Get `Field` with ID."
   [id]
-  (-> (api/read-check Field id)
-      (hydrate [:table :db] :has_field_values :dimensions :name_field)))
+  (let [field (-> (api/check-404 (Field id))
+                  (hydrate [:table :db] :has_field_values :dimensions :name_field))]
+    ;; Normal read perms = normal access.
+    ;;
+    ;; There's also aspecial case where we allow you to fetch a Field even if you don't have full read permissions for
+    ;; it: if you have segmented query access to the Table it belongs to. In this case, we'll still let you fetch the
+    ;; Field, since this is required to power features like Dashboard filters, but we'll treat this Field a little
+    ;; differently in other endpoints such as the FieldValues fetching endpoint.
+    ;;
+    ;; Check for permissions and throw 403 if we don't have them...
+    (throw-if-no-read-or-segmented-perms field)
+    ;; ...but if we do, return the Field <3
+    field))
 
 (defn- clear-dimension-on-fk-change! [{{dimension-id :id dimension-type :type} :dimensions :as field}]
   (when (and dimension-id (= :external dimension-type))
@@ -168,11 +195,41 @@
         (dissoc :human_readable_values :created_at :updated_at :id))
     {:values [], :field_id (:id field)}))
 
+(def ^:private ^{:arglist '([user-id last-updated field])} fetch-sandboxed-field-values*
+  (memoize/ttl
+   (fn [_ _ field]
+     {:values   (map vector (field-values/distinct-values field))
+      :field_id (u/get-id field)})
+   ;; Expire entires older than 30 days so we don't have entries for users and/or fields that
+   ;; no longer exists hanging around.
+   ;; (`clojure.core.cache/TTLCacheQ` (which `memoize` uses underneath) evicts all stale entries on
+   ;; every cache miss)
+   :ttl/threshold (* 1000 60 60 24 30)))
+
+(defn- fetch-sandboxed-field-values
+  [field]
+  (fetch-sandboxed-field-values*
+   api/*current-user-id*
+   (db/select-one-field :updated_at FieldValues :field_id (u/get-id field))
+   field))
+
 (api/defendpoint GET "/:id/values"
   "If a Field's value of `has_field_values` is `list`, return a list of all the distinct values of the Field, and (if
   defined by a User) a map of human-readable remapped values."
   [id]
-  (field->values (api/read-check Field id)))
+  (let [field (api/check-404 (Field id))]
+    (cond
+      ;; if you have normal read permissions, return normal results
+      (mi/can-read? field)
+      (field->values (api/read-check field))
+
+      ;; otherwise if you have Segmented query perms (but not normal read perms) we'll do an ad-hoc query to fetch the
+      ;; results, filtered by your GTAP
+      (has-segmented-query-permissions? (field/table field))
+      (fetch-sandboxed-field-values field)
+
+      :else
+      (api/throw-403))))
 
 ;; match things like GET /field-literal%2Ccreated_at%2Ctype%2FDatetime/values
 ;; (this is how things like [field-literal,created_at,type/Datetime] look when URL-encoded)
@@ -214,7 +271,7 @@
   "Update the fields values and human-readable values for a `Field` whose special type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
   [id :as {{value-pairs :values} :body}]
-  {value-pairs [[(s/one s/Num "value") (s/optional su/NonBlankString "human readable value")]]}
+  {value-pairs [[(s/one s/Any "value") (s/optional su/NonBlankString "human readable value")]]}
   (let [field (api/write-check Field id)]
     (api/check (field-values/field-should-have-field-values? field)
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
@@ -318,9 +375,12 @@
   [id search-id value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
-  (let [field        (api/read-check Field id)
-        search-field (api/read-check Field search-id)]
+  (let [field        (api/check-404 (Field id))
+        search-field (api/check-404 (Field search-id))]
+    (throw-if-no-read-or-segmented-perms field)
+    (throw-if-no-read-or-segmented-perms search-field)
     (search-values field search-field value (when limit (Integer/parseInt limit)))))
+
 
 (defn remapped-value
   "Search for one specific remapping where the value of `field` exactly matches `value`. Returns a pair like

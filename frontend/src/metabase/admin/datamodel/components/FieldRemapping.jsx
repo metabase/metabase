@@ -66,7 +66,9 @@ export default class FieldRemapping extends React.Component {
     // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
     const hasMappableNumeralValues =
       field.remapping.size > 0 &&
-      [...field.remapping.keys()].every(key => typeof key === "number");
+      [...field.remapping.keys()].every(
+        key => typeof key === "number" || key === null,
+      );
 
     return [
       MAP_OPTIONS.original,
@@ -353,6 +355,8 @@ export class ValueRemappings extends React.Component {
         const mappedString =
           mappedOrUndefined !== undefined
             ? mappedOrUndefined.toString()
+            : original === null
+            ? "null"
             : original.toString();
 
         return [original, mappedString];

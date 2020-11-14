@@ -2,8 +2,13 @@
   "projectId": "a394u1",
   "testFiles": "**/*.cy.spec.js",
   "pluginsFile": "frontend/test/cypress-plugins.js",
-  "integrationFolder": "frontend/test/metabase",
+  "integrationFolder": ".",
   "supportFile": "frontend/test/__support__/cypress.js",
+  "videoUploadOnPasses": false,
   "viewportHeight": 800,
-  "viewportWidth": 1280
+  "viewportWidth": 1280,
+  "retries": {
+    "runMode": 2,
+    "openMode": 0
+  }
 }

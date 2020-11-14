@@ -45,13 +45,15 @@
    {:account   (tx/db-test-env-var-or-throw :snowflake :account)
     :user      (tx/db-test-env-var-or-throw :snowflake :user)
     :password  (tx/db-test-env-var-or-throw :snowflake :password)
-    :warehouse (tx/db-test-env-var-or-throw :snowflake :warehouse)
+    ;; this lowercasing this value is part of testing the fix for
+    ;; https://github.com/metabase/metabase/issues/9511
+    :warehouse (u/lower-case-en (tx/db-test-env-var-or-throw :snowflake :warehouse))
     ;; SESSION parameters
     :timezone "UTC"}
    ;; Snowflake JDBC driver ignores this, but we do use it in the `query-db-name` function in
    ;; `metabase.driver.snowflake`
    (when (= context :db)
-     {:db (qualified-db-name database-name)})))
+     {:db (qualified-db-name (u/lower-case-en database-name))})))
 
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
 (defmethod sql.tx/qualified-name-components :snowflake
@@ -74,7 +76,7 @@
     (jdbc/with-db-metadata [metadata db-spec]
       ;; for whatever dumb reason the Snowflake JDBC driver always returns these as uppercase despite us making them
       ;; all lower-case
-      (set (map str/lower-case (sql-jdbc.sync/get-catalogs metadata))))))
+      (set (map u/lower-case-en (sql-jdbc.sync/get-catalogs metadata))))))
 
 (let [datasets (atom nil)]
   (defn- existing-datasets []

@@ -3,8 +3,19 @@
   (:require [clojure.test :refer :all]
             [clojure.tools.macro :as tools.macro]
             [flatland.ordered.map :refer [ordered-map]]
-            [metabase.util :as u])
-  (:import java.util.Locale))
+            [metabase
+             [test :as mt]
+             [util :as u]]))
+
+(deftest decolorize-test
+  (is (= "[31mmessage[0m"
+         (u/colorize 'red "message")))
+  (is (= "message"
+         (u/decolorize "[31mmessage[0m")))
+  (is (= "message"
+         (u/decolorize (u/colorize 'red "message"))))
+  (is (= nil
+         (u/decolorize nil))))
 
 (defn- are+-message [expr arglist args]
   (pr-str
@@ -67,6 +78,19 @@
     "http://"                                                                                false
     ;; nil .getAuthority needs to be handled or NullPointerException
     "http:/"                                                                                 false))
+
+(deftest state?-test
+  (are+ [s expected] (= expected
+                        (u/state? s))
+    "louisiana"      true
+    "north carolina" true
+    "WASHINGTON"     true
+    "CA"             true
+    "NY"             true
+    "random"         false
+    nil              false
+    3                false
+    (Object.)        false))
 
 (deftest qualified-name-test
   (are+ [k expected] (= expected
@@ -143,32 +167,21 @@
     {}                                         [:c]              {}))
 
 (deftest base64-string?-test
-  (are+ [s expected] (= expected
+  (are+ [s expected]    (= expected
                         (u/base64-string? s))
-    "ABc"           true
-    "ABc/+asdasd==" true
-    100             false
-    "<<>>"          false
-    "{\"a\": 10}"   false))
-
-(deftest occurances-of-substring-test
-  (testing "should return nil if one or both strings are nil or empty"
-    (are+ [s substr expected] (= expected
-                                 (u/occurances-of-substring s substr))
-      nil                                                                                 nil      nil
-      nil                                                                                 ""       nil
-      ""                                                                                  nil      nil
-      ""                                                                                  ""       nil
-      "ABC"                                                                               ""       nil
-      ""                                                                                  "  ABC"  nil
-      ;; non-empty strings
-      "ABC"                                                                               "A"      1
-      "ABA"                                                                               "A"      2
-      "AAA"                                                                               "A"      3
-      "ABC"                                                                               "{{id}}" 0
-      "WHERE ID = {{id}}"                                                                 "{{id}}" 1
-      "WHERE ID = {{id}} OR USER_ID = {{id}}"                                             "{{id}}" 2
-      "WHERE ID = {{id}} OR USER_ID = {{id}} OR TOUCAN_ID = {{id}} OR BIRD_ID = {{bird}}" "{{id}}" 3)))
+    "ABc="         true
+    "ABc/+asdasd=" true
+    100            false
+    "<<>>"         false
+    "{\"a\": 10}"  false
+    ;; must be at least 2 characters...
+    "/"            false
+    ;; and end with padding if needed
+    "QQ"           false
+    "QQ="          false
+    "QQ=="         true
+    ;; padding has to go at the end
+    "==QQ"         false))
 
 (deftest select-keys-test
   (testing "select-non-nil-keys"
@@ -226,14 +239,14 @@
     nil nil))
 
 (deftest lower-case-en-test
-  (let [original-locale (Locale/getDefault)]
-    (try
-      (Locale/setDefault (Locale/forLanguageTag "tr"))
-      ;; `(str/lower-case "ID")` returns "ıd" in the Turkish locale
-      (is (= "id"
-             (u/lower-case-en "ID")))
-      (finally
-        (Locale/setDefault original-locale)))))
+  (mt/with-locale "tr"
+    (is (= "id"
+           (u/lower-case-en "ID")))))
+
+(deftest upper-case-en-test
+  (mt/with-locale "tr"
+    (is (= "ID"
+           (u/upper-case-en "id")))))
 
 (deftest parse-currency-test
   (are+ [s expected] (= expected

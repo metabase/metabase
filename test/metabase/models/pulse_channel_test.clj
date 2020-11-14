@@ -152,6 +152,25 @@
 (deftest create-pulse-channel!-test
   (mt/with-temp Pulse [{:keys [id]}]
     (mt/with-model-cleanup [Pulse]
+      (testing "disabled"
+        (is (= {:enabled        false
+                :channel_type   :email
+                :schedule_type  :daily
+                :schedule_hour  18
+                :schedule_day   nil
+                :schedule_frame nil
+                :recipients     [(user-details :crowberto)
+                                 {:email "foo@bar.com"}
+                                 (user-details :rasta)]}
+               (create-channel-then-select!
+                {:pulse_id      id
+                 :enabled       false
+                 :channel_type  :email
+                 :schedule_type :daily
+                 :schedule_hour 18
+                 :recipients    [{:email "foo@bar.com"}
+                                 {:id (mt/user->id :rasta)}
+                                 {:id (mt/user->id :crowberto)}]}))))
       (testing "email"
         (is (= {:enabled        true
                 :channel_type   :email

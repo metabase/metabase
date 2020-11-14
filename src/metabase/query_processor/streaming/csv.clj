@@ -11,6 +11,7 @@
 (defmethod i/stream-options :csv
   [_]
   {:content-type              "text/csv"
+   :status                    200
    :headers                   {"Content-Disposition" (format "attachment; filename=\"query_result_%s.csv\""
                                                              (u.date/format (t/zoned-date-time)))}
    :write-keepalive-newlines? false})

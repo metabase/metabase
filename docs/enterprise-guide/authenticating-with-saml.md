@@ -19,8 +19,6 @@ At the top, **make sure to click the toggle to enable SAML authentication**, oth
 
 The form itself is broken up into three parts: information about Metabase that you'll have to input into your identity provider (IdP); information about your IdP that you'll need to tell Metabase about; and some optional settings at the bottom.
 
-**Note:** If you change any of the settings of an existing SAML active setup, then you will need to restart Metabase for them to take effect.
-
 ### Setting up SAML with your IdP
 
 So, first you'll need to make sure things are configured correctly with your IdP. Each provider handles SAML setup differently, so here are some documentation links that may help:
@@ -70,7 +68,7 @@ contain attributes for each user's first name, last name, and email. The asserti
         </saml2:Attribute>
         <saml2:Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri">
             <saml2:AttributeValue xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="xs:string">
-              cam@metabse.com
+              cam@metabase.com
             </saml2:AttributeValue>
         </saml2:Attribute>
     </saml2:AttributeStatement>
@@ -100,7 +98,6 @@ That should be all the info you'll need to get from Metabase while setting up SA
 Your SAML provider may ask for an "ACS URL". This the URL that your SAML provider will redirect your users to after they authenticate. The ACS URL for Metabase is the base URL of where you are hosting Metabase plus "/auth/sso". For example, if you are hosting your Metabase at "https://metabase.mycompany.com" then the ACS URL would be "https://metabase.mycompany.com/auth/sso".
 
 #### Settings for signing SSO requests (optional)
-
 These are additional settings you can fill in to sign SSO requests to
 ensure they don’t get tampered with.
 
@@ -114,7 +111,21 @@ Metabase will now need to know some things about your IdP. Here's a breakdown of
 | -------- | ------------------------------------ |
 | Auth0    | Identity Provider Login URL          |
 | Okta     | Identity Provider Single-Sign On URL |
+| OneLogin | SAML 2.0 Endpoint (HTTP)             |
+
+**SAML Identity Provider Issuer** This is a unique identifier for the IdP. You might also see it referred to as
+"Entity ID" or "Issuer". Assertions from the IdP will contain this information, and Metabase will verify that it
+matches the value you set. Metabase does not require you to set this value, but it makes your SAML configuration more
+secure, so we recommend that you set it.
+
+Your IdP may label it a little differently. Here are some of the names we've found:
+
+| Provider | Name                                 |
+| -------- | ------------------------------------ |
+| Auth0    | Identity Provider Login URL          |
+| Okta     | Identity Provider Issuer             |
 | OneLogin | Issuer URL                           |
+
 
 **SAML Identity Provider Certificate:** This is an encoded certificate that Metabase will use when connecting to the IdP URI. This will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important! Your IdP might have you download this certificate as a file, which you'll then need to open up in a text editor in order to copy the contents to then paste into the box in Metabase. Again, different providers may have slightly different labels for this:
 

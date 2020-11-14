@@ -1,5 +1,7 @@
 import "@testing-library/cypress/add-commands";
 
+export const version = require("../../../version.json");
+
 export const USERS = {
   admin: {
     first_name: "Bobby",
@@ -34,15 +36,19 @@ export const USERS = {
 };
 
 export function signIn(user = "admin") {
+  cy.log(`**--- Logging in as ${user} ---**`);
   cy.request("POST", "/api/session", USERS[user]);
 }
+
 export function signOut() {
+  cy.log(`**--- Signing out ---**`);
   cy.clearCookie("metabase.SESSION");
 }
 
 export function signInAsAdmin() {
   signIn("admin");
 }
+
 export function signInAsNormalUser() {
   signIn("normal");
 }
@@ -50,7 +56,9 @@ export function signInAsNormalUser() {
 export function snapshot(name) {
   cy.request("POST", `/api/testing/snapshot/${name}`);
 }
+
 export function restore(name = "default") {
+  cy.log(`**--- Restore Data Set ---**`);
   cy.request("POST", `/api/testing/restore/${name}`);
 }
 
@@ -59,7 +67,7 @@ export function popover() {
   return cy.get(".PopoverContainer.PopoverContainer--open");
 }
 export function modal() {
-  return cy.get(".ModalContainer");
+  return cy.get(".ModalContainer .ModalContent");
 }
 export function nav() {
   return cy.get("nav");
@@ -72,6 +80,12 @@ export function sidebar() {
 }
 
 // Metabase utility functions for commonly-used patterns
+export function selectDashboardFilter(selection, filterName) {
+  selection.contains("Select…").click();
+  popover()
+    .contains(filterName)
+    .click({ force: true });
+}
 
 export function openOrdersTable() {
   cy.visit("/question/new?database=1&table=2");
@@ -89,7 +103,7 @@ export function setupLocalHostEmail() {
   // Leaves password and username blank
   cy.findByPlaceholderText("metabase@yourcompany.com").type("test@local.host");
 
-  // *** Unnecessary click (Issue #12692)
+  // *** Unnecessary click (metabase#12692)
   cy.findByPlaceholderText("smtp.yourservice.com").click();
 
   cy.findByText("Save changes").click();
@@ -107,25 +121,87 @@ export function typeAndBlurUsingLabel(label, value) {
     .blur();
 }
 
+// Unfortunately, cypress `.type()` is currently broken and requires an ugly "hack"
+// it is documented here: https://github.com/cypress-io/cypress/issues/5480
+// `_typeUsingGet()` and `_typeUsingPlacehodler()` are temporary solution
+// please refrain from using them, unless absolutely neccessary!
+export function _typeUsingGet(selector, value, delay = 100) {
+  cy.get(selector)
+    .click()
+    .type(value, { delay })
+    .clear()
+    .click()
+    .type(value, { delay });
+}
+
+export function _typeUsingPlaceholder(selector, value, delay = 100) {
+  cy.findByPlaceholderText(selector)
+    .click()
+    .type(value, { delay })
+    .clear()
+    .click()
+    .type(value, { delay });
+}
+
 Cypress.on("uncaught:exception", (err, runnable) => false);
 
-export function withSampleDataset(f) {
-  cy.request("GET", "/api/database/1/metadata").then(({ body }) => {
-    const SAMPLE_DATASET = {};
+export function withDatabase(databaseId, f) {
+  cy.request("GET", `/api/database/${databaseId}/metadata`).then(({ body }) => {
+    const database = {};
     for (const table of body.tables) {
       const fields = {};
       for (const field of table.fields) {
         fields[field.name] = field.id;
       }
-      SAMPLE_DATASET[table.name] = fields;
-      SAMPLE_DATASET[table.name + "_ID"] = table.id;
+      database[table.name] = fields;
+      database[table.name + "_ID"] = table.id;
     }
-    f(SAMPLE_DATASET);
+    f(database);
   });
+}
+
+export function withSampleDataset(f) {
+  return withDatabase(1, f);
 }
 
 export function visitAlias(alias) {
   cy.get(alias).then(url => {
     cy.visit(url);
   });
+}
+
+export function createNativeQuestion(name, query) {
+  return cy.request("POST", "/api/card", {
+    name,
+    dataset_query: {
+      type: "native",
+      native: { query },
+      database: 1,
+    },
+    display: "table",
+    visualization_settings: {},
+  });
+}
+
+export const describeWithToken = Cypress.env("HAS_ENTERPRISE_TOKEN")
+  ? describe
+  : describe.skip;
+
+// TODO: does this really need to be a global helper function?
+export function createBasicAlert({ firstAlert, includeNormal } = {}) {
+  cy.get(".Icon-bell").click();
+  if (firstAlert) {
+    cy.findByText("Set up an alert").click();
+  }
+  cy.findByText("Let's set up your alert");
+  if (includeNormal) {
+    cy.findByText("Email alerts to:")
+      .parent()
+      .children()
+      .last()
+      .click();
+    cy.findByText("Robert Tableton").click();
+  }
+  cy.findByText("Done").click();
+  cy.findByText("Let's set up your alert").should("not.exist");
 }

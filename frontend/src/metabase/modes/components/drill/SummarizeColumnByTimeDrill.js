@@ -50,6 +50,6 @@ export default ({
               ? [aggregator.short, fieldRefForColumn(column)]
               : [aggregator.short],
           )
-          .pivot([dateDimension.defaultDimension().mbql()]),
+          .pivot([dateDimension.defaultBreakout()]),
     }));
 };

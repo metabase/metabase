@@ -69,7 +69,15 @@ const init = async () => {
   let commandLineConfig = `baseUrl=${server.host}`;
   if (testFiles) {
     commandLineConfig = `${commandLineConfig},integrationFolder=${testFilesLocation}`;
+  } else {
+    // if we're not running specific tests, avoid including db and smoketests
+    commandLineConfig = `${commandLineConfig},ignoreTestFiles=**/metabase-{smoketest,db}/**`;
   }
+
+  // These env vars provide the token to the backend.
+  // If they're not present, we skip some tests that depend on a valid token.
+  const hasEnterpriseToken =
+    process.env["ENTERPRISE_TOKEN"] && process.env["MB_EDITION"] === "ee";
 
   const cypressProcess = spawn(
     "yarn",
@@ -92,6 +100,7 @@ const init = async () => {
             process.env["CYPRESS_GROUP"],
           ]
         : []),
+      ...(hasEnterpriseToken ? ["--env", "HAS_ENTERPRISE_TOKEN=true"] : []),
     ],
     { stdio: "inherit" },
   );

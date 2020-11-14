@@ -76,6 +76,11 @@ declare module "underscore" {
     iteratee: string | ((val: T, index: number) => any),
   ): { [key: string]: T[] };
 
+  declare function indexBy<T>(
+    a: Array<T>,
+    iteratee: string | ((val: T, index: number) => any),
+  ): { [key: string]: T };
+
   declare function min<T>(a: Array<T> | { [key: any]: T }): T;
   declare function max<T>(a: Array<T> | { [key: any]: T }): T;
 

@@ -1,9 +1,6 @@
 import React from "react";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import GroupSelect from "metabase/admin/people/components/GroupSelect";
-import GroupSummary from "metabase/admin/people/components/GroupSummary";
-import SelectButton from "metabase/components/SelectButton";
 import Toggle from "metabase/components/Toggle";
 
 import Group from "metabase/entities/groups";
@@ -26,8 +23,6 @@ const FormGroupsWidget = ({ field: { value, onChange }, groups }) => {
   }
 
   const selection = new Set(value);
-  // NOTE: for legacy selectedGroups prop on GroupSummary and GroupSelect. Prefer using a Set
-  const selectedGroups = _.object(value.map(id => [id, true]));
 
   function onGroupChange(group, selected) {
     const newSelection = new Set(selection);
@@ -50,20 +45,11 @@ const FormGroupsWidget = ({ field: { value, onChange }, groups }) => {
   );
 
   return hasNonAdminEditableGroups ? (
-    <PopoverWithTrigger
-      sizeToFit
-      triggerElement={
-        <SelectButton>
-          <GroupSummary groups={groups} selectedGroups={selectedGroups} />
-        </SelectButton>
-      }
-    >
-      <GroupSelect
-        groups={visibleGroups}
-        selectedGroups={selectedGroups}
-        onGroupChange={onGroupChange}
-      />
-    </PopoverWithTrigger>
+    <GroupSelect
+      groups={visibleGroups}
+      selectedGroupIds={value}
+      onGroupChange={onGroupChange}
+    />
   ) : hadAdminGroup ? (
     <div className="flex align-center">
       <Toggle

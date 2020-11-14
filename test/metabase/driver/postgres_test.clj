@@ -165,13 +165,18 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "fdw_test"})]
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
                        [(str "CREATE EXTENSION IF NOT EXISTS postgres_fdw;
-                            CREATE SERVER foreign_server
+                              CREATE SERVER foreign_server
                                 FOREIGN DATA WRAPPER postgres_fdw
                                 OPTIONS (host '" (:host details) "', port '" (:port details) "', dbname 'fdw_test');
-                            CREATE TABLE public.local_table (data text);
-                            CREATE FOREIGN TABLE foreign_table (data text)
+                              CREATE TABLE public.local_table (data text);
+                              CREATE FOREIGN TABLE foreign_table (data text)
                                 SERVER foreign_server
-                                OPTIONS (schema_name 'public', table_name 'local_table');")])
+                                OPTIONS (schema_name 'public', table_name 'local_table');
+
+                              CREATE USER MAPPING FOR " (:user details) "
+                                SERVER foreign_server
+                                OPTIONS (user '" (:user details) "');
+                              GRANT ALL ON public.local_table to PUBLIC;")])
         (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
           (is (= {:tables (set (map default-table-result ["foreign_table" "local_table"]))}
                  (driver/describe-database :postgres database))))))))
@@ -192,7 +197,8 @@
             ;; populate the DB and create a view
             (exec! ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
                     "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Kanye Nest');"
-                    "CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"])
+                    "CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"
+                    "GRANT ALL ON angry_birds to PUBLIC;"])
             ;; now sync the DB
             (sync!)
             ;; drop the view
@@ -200,7 +206,8 @@
             ;; sync again
             (sync!)
             ;; recreate the view
-            (exec! ["CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"])
+            (exec! ["CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"
+                    "GRANT ALL ON angry_birds to PUBLIC;"])
             ;; sync one last time
             (sync!)
             ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!
@@ -370,7 +377,8 @@
   (create-enums-db!)
   (mt/with-temp Database [database {:engine :postgres, :details (enums-test-db-details)}]
     (sync-metadata/sync-db-metadata! database)
-    (f database)))
+    (f database)
+    (#'sql-jdbc.conn/set-pool! (u/id database) nil)))
 
 (deftest enums-test
   (mt/test-driver :postgres
@@ -481,6 +489,7 @@
                                 :type   {:type/Text {:percent-json   0.0
                                                      :percent-url    0.0
                                                      :percent-email  0.0
+                                                     :percent-state  0.0
                                                      :average-length 12.0}}}}
                  (db/select-field->field :name :fingerprint Field
                    :table_id (db/select-one-id Table :db_id (u/get-id database))))))))))
@@ -514,3 +523,11 @@
                    :field_ref    [:field-literal "sleep" :type/Text]
                    :name         "sleep"}]
                  (mt/cols results))))))))
+
+(deftest id-field-parameter-test
+  (mt/test-driver :postgres
+    (testing "We should be able to filter a PK column with a String value -- should get parsed automatically (#13263)"
+      (is (= [[2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
+             (mt/rows
+               (mt/run-mbql-query venues
+                 {:filter [:= $id "2"]})))))))

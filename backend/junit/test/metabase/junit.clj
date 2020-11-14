@@ -3,8 +3,24 @@
   (:require [clojure
              [pprint :as pp]
              [string :as str]]
+            [medley.core :as m]
+            [metabase.util :as u]
             [pjstadig.print :as p]
-            [test-report-junit-xml.core :as junit-xml]))
+            [test-report-junit-xml.core :as junit-xml]
+            [test_report_junit_xml.shaded.clojure.data.xml :as xml]))
+
+(defn- escape-unprintable-characters
+  [s]
+  (str/join (for [c s]
+              (if (and (Character/isISOControl c)
+                       (not (Character/isWhitespace c)))
+                (format "&#%d;" (int c))
+                c))))
+
+(defn- decolorize-and-escape
+  "Remove ANSI color escape sequences, then encode things as character entities as needed"
+  [s]
+  (-> s u/decolorize escape-unprintable-characters))
 
 (defn- event-description [{:keys [file line context message]}]
   (str
@@ -14,31 +30,33 @@
    (when message
      (str "\n" message))))
 
+(defn- print-expected [expected actual]
+  (p/rprint "expected: ")
+  (pp/pprint expected)
+  (p/rprint "  actual: ")
+  (pp/pprint actual)
+  (p/clear))
+
 (defn- result-output [{:keys [expected actual diffs message], :as event}]
-  (with-out-str
-    (println (event-description event))
-    ;; this code is adapted from `pjstadig.util`
-    (p/with-pretty-writer
-      (fn []
-        (let [print-expected (fn [actual]
-                               (p/rprint "expected: ")
-                               (pp/pprint expected)
-                               (p/rprint "  actual: ")
-                               (pp/pprint actual)
-                               (p/clear))]
-          (if (seq diffs)
-            (doseq [[actual [a b]] diffs]
-              (print-expected actual)
-              (p/rprint "    diff:")
-              (if a
-                (do (p/rprint " - ")
-                    (pp/pprint a)
-                    (p/rprint "          + "))
-                (p/rprint " + "))
-              (when b
-                (pp/pprint b))
-              (p/clear))
-            (print-expected actual)))))))
+  (let [s (with-out-str
+            (println (event-description event))
+            ;; this code is adapted from `pjstadig.util`
+            (p/with-pretty-writer
+              (fn []
+                (if (seq diffs)
+                  (doseq [[actual [a b]] diffs]
+                    (print-expected expected actual)
+                    (p/rprint "    diff:")
+                    (if a
+                      (do (p/rprint " - ")
+                          (pp/pprint a)
+                          (p/rprint "          + "))
+                      (p/rprint " + "))
+                    (when b
+                      (pp/pprint b))
+                    (p/clear))
+                  (print-expected expected actual)))))]
+    (decolorize-and-escape s)))
 
 (defmulti format-result
   {:arglists '([event])}
@@ -46,9 +64,11 @@
 
 (defmethod format-result :default
   [event]
-  (#'junit-xml/format-result event))
+  (-> (#'junit-xml/format-result event)
+      (m/update-existing-in [:attrs :message] decolorize-and-escape)
+      (m/update-existing :content (comp xml/cdata decolorize-and-escape))))
 
 (defmethod format-result :fail
   [event]
   {:tag     :failure
-   :content (result-output event)})
+   :content (xml/cdata (result-output event))})

@@ -2,7 +2,7 @@
 
 exports[`Button should render "" correctly 1`] = `
 <button
-  className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+  className="Button sc-bdVaJa bDWFJH flex-no-shrink"
 >
   <div
     className="flex layout-centered"
@@ -36,16 +36,18 @@ exports[`Button should render "primary" correctly 1`] = `
 
 exports[`Button should render "with an icon" correctly 1`] = `
 <button
-  className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+  className="Button sc-bdVaJa bDWFJH flex-no-shrink"
 >
   <div
     className="flex layout-centered"
     style={null}
   >
     <svg
+      aria-label="star icon"
       className="Icon Icon-star Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={14}
+      role="img"
       viewBox="0 0 32 32"
       width={14}
     >
@@ -70,7 +72,7 @@ exports[`ButtonBar should render "default" correctly 1`] = `
     className="mr-auto sc-htpNat cZLspC"
   >
     <button
-      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink"
     >
       <div
         className="flex layout-centered"
@@ -98,7 +100,7 @@ exports[`ButtonBar should render "left and right" correctly 1`] = `
     className="mr-auto sc-htpNat cZLspC"
   >
     <button
-      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink"
     >
       <div
         className="flex layout-centered"
@@ -116,7 +118,7 @@ exports[`ButtonBar should render "left and right" correctly 1`] = `
     className="ml-auto sc-htpNat cISmVk"
   >
     <button
-      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink"
     >
       <div
         className="flex layout-centered"
@@ -141,7 +143,7 @@ exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
     className="flex-full flex-basis-none sc-htpNat cZLspC"
   >
     <button
-      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink"
     >
       <div
         className="flex layout-centered"
@@ -159,7 +161,7 @@ exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
     className="sc-htpNat jncdfk"
   >
     <button
-      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink"
     >
       <div
         className="flex layout-centered"
@@ -177,7 +179,7 @@ exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
     className="flex-full flex-basis-none sc-htpNat cISmVk"
   >
     <button
-      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink"
     >
       <div
         className="flex layout-centered"
@@ -232,12 +234,13 @@ exports[`Card should render "normal" correctly 1`] = `
 
 exports[`CheckBox should render "Default - Off" correctly 1`] = `
 <div
-  className="flex align-center justify-center rounded cursor-pointer"
+  className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
   style={
     Object {
       "backgroundColor": "white",
       "border": "2px solid #C7CFD4",
+      "borderRadius": 4,
       "height": 16,
       "width": 16,
     }
@@ -247,21 +250,24 @@ exports[`CheckBox should render "Default - Off" correctly 1`] = `
 
 exports[`CheckBox should render "Green" correctly 1`] = `
 <div
-  className="flex align-center justify-center rounded cursor-pointer"
+  className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
   style={
     Object {
       "backgroundColor": "#88BF4D",
       "border": "2px solid #88BF4D",
+      "borderRadius": 4,
       "height": 16,
       "width": 16,
     }
   }
 >
   <svg
+    aria-label="check icon"
     className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -279,21 +285,24 @@ exports[`CheckBox should render "Green" correctly 1`] = `
 
 exports[`CheckBox should render "On - Default blue" correctly 1`] = `
 <div
-  className="flex align-center justify-center rounded cursor-pointer"
+  className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
   style={
     Object {
       "backgroundColor": "#509EE3",
       "border": "2px solid #509EE3",
+      "borderRadius": 4,
       "height": 16,
       "width": 16,
     }
   }
 >
   <svg
+    aria-label="check icon"
     className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -311,21 +320,24 @@ exports[`CheckBox should render "On - Default blue" correctly 1`] = `
 
 exports[`CheckBox should render "Purple" correctly 1`] = `
 <div
-  className="flex align-center justify-center rounded cursor-pointer"
+  className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
   style={
     Object {
       "backgroundColor": "#A989C5",
       "border": "2px solid #A989C5",
+      "borderRadius": 4,
       "height": 16,
       "width": 16,
     }
   }
 >
   <svg
+    aria-label="check icon"
     className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -343,21 +355,24 @@ exports[`CheckBox should render "Purple" correctly 1`] = `
 
 exports[`CheckBox should render "Red" correctly 1`] = `
 <div
-  className="flex align-center justify-center rounded cursor-pointer"
+  className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
   style={
     Object {
       "backgroundColor": "#EF8C8C",
       "border": "2px solid #EF8C8C",
+      "borderRadius": 4,
       "height": 16,
       "width": 16,
     }
   }
 >
   <svg
+    aria-label="check icon"
     className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -375,21 +390,24 @@ exports[`CheckBox should render "Red" correctly 1`] = `
 
 exports[`CheckBox should render "Yellow" correctly 1`] = `
 <div
-  className="flex align-center justify-center rounded cursor-pointer"
+  className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
   style={
     Object {
       "backgroundColor": "#F9D45C",
       "border": "2px solid #F9D45C",
+      "borderRadius": 4,
       "height": 16,
       "width": 16,
     }
   }
 >
   <svg
+    aria-label="check icon"
     className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
     fill="currentcolor"
     height={12}
+    role="img"
     style={
       Object {
         "color": "white",
@@ -420,9 +438,11 @@ exports[`EntityMenu should render "Edit menu" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
+          aria-label="pencil icon"
           className="Icon Icon-pencil Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           height={18}
+          role="img"
           viewBox="0 0 32 32"
           width={18}
         >
@@ -454,9 +474,11 @@ exports[`EntityMenu should render "More menu" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
+          aria-label="burger icon"
           className="Icon Icon-burger Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           height={18}
+          role="img"
           viewBox="0 0 32 32"
           width={18}
         >
@@ -488,9 +510,11 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
+          aria-label="pencil icon"
           className="Icon Icon-pencil Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           height={18}
+          role="img"
           viewBox="0 0 32 32"
           width={18}
         >
@@ -511,10 +535,12 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
+          aria-label="share icon"
           className="Icon Icon-share Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           fillRule="evenodd"
           height={18}
+          role="img"
           viewBox="0 0 32 41"
           width={18}
         >
@@ -535,9 +561,11 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
+          aria-label="burger icon"
           className="Icon Icon-burger Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           height={18}
+          role="img"
           viewBox="0 0 32 32"
           width={18}
         >
@@ -569,10 +597,12 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
         onClick={[Function]}
       >
         <svg
+          aria-label="share icon"
           className="Icon Icon-share Icon-sc-1x67v3y-1 bcaYRA"
           fill="currentcolor"
           fillRule="evenodd"
           height={18}
+          role="img"
           viewBox="0 0 32 41"
           width={18}
         >
@@ -598,10 +628,12 @@ exports[`ModalContent should render "default" correctly 1`] = `
     id={undefined}
   >
     <svg
+      aria-label="close icon"
       className="Icon Icon-close text-light text-medium-hover cursor-pointer absolute z2 m2 p2 top right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={16}
       onClick={[Function]}
+      role="img"
       viewBox="0 0 32 32"
       width={16}
     >
@@ -698,11 +730,12 @@ exports[`Position should render "Relative" correctly 1`] = `
 
 exports[`ProgressBar should render "Animated" correctly 1`] = `
 <div
-  className="ProgressBar__ProgressWrapper-sc-11v0v62-0 jstHKb"
+  className="ProgressBar__ProgressWrapper-sc-11v0v62-0 gNslgH"
   color="#509EE3"
 >
   <div
-    className="ProgressBar__Progress-sc-11v0v62-1 dhIpua"
+    className="ProgressBar__Progress-sc-11v0v62-1 gzZAJq"
+    color="#509EE3"
     width={35}
   />
 </div>
@@ -710,11 +743,12 @@ exports[`ProgressBar should render "Animated" correctly 1`] = `
 
 exports[`ProgressBar should render "Default" correctly 1`] = `
 <div
-  className="ProgressBar__ProgressWrapper-sc-11v0v62-0 jstHKb"
+  className="ProgressBar__ProgressWrapper-sc-11v0v62-0 gNslgH"
   color="#509EE3"
 >
   <div
-    className="ProgressBar__Progress-sc-11v0v62-1 kTuUwV"
+    className="ProgressBar__Progress-sc-11v0v62-1 cmFRuU"
+    color="#509EE3"
     width={75}
   />
 </div>
@@ -975,7 +1009,7 @@ exports[`Select should render "default" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -987,9 +1021,11 @@ exports[`Select should render "default" correctly 1`] = `
       </span>
     </span>
     <svg
+      aria-label="chevrondown icon"
       className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1012,7 +1048,7 @@ exports[`Select should render "kitchen_sink" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1028,9 +1064,11 @@ exports[`Select should render "kitchen_sink" correctly 1`] = `
       </span>
     </span>
     <svg
+      aria-label="chevrondown icon"
       className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1053,7 +1091,7 @@ exports[`Select should render "multiple" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1069,9 +1107,11 @@ exports[`Select should render "multiple" correctly 1`] = `
       </span>
     </span>
     <svg
+      aria-label="chevrondown icon"
       className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1094,7 +1134,7 @@ exports[`Select should render "search" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1106,9 +1146,11 @@ exports[`Select should render "search" correctly 1`] = `
       </span>
     </span>
     <svg
+      aria-label="chevrondown icon"
       className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1131,7 +1173,7 @@ exports[`Select should render "sections" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="full-width AdminSelect flex align-center"
+    className="flex-full AdminSelect flex align-center"
     style={undefined}
   >
     <span
@@ -1143,9 +1185,11 @@ exports[`Select should render "sections" correctly 1`] = `
       </span>
     </span>
     <svg
+      aria-label="chevrondown icon"
       className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       viewBox="0 0 32 32"
       width={12}
     >
@@ -1170,21 +1214,24 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
   }
 >
   <div
-    className="flex align-center justify-center rounded cursor-pointer"
+    className="flex align-center justify-center cursor-pointer"
     onClick={[Function]}
     style={
       Object {
         "backgroundColor": "#A989C5",
         "border": "2px solid #A989C5",
+        "borderRadius": 4,
         "height": 16,
         "width": 16,
       }
     }
   >
     <svg
+      aria-label="check icon"
       className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       style={
         Object {
           "color": "white",
@@ -1199,12 +1246,13 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
     </svg>
   </div>
   <div
-    className="absolute flex align-center justify-center rounded cursor-pointer"
+    className="absolute flex align-center justify-center cursor-pointer"
     onClick={[Function]}
     style={
       Object {
         "backgroundColor": "#A989C5",
         "border": "2px solid #A989C5",
+        "borderRadius": 4,
         "height": 16,
         "left": 4,
         "top": -4,
@@ -1226,21 +1274,24 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
   }
 >
   <div
-    className="flex align-center justify-center rounded cursor-pointer"
+    className="flex align-center justify-center cursor-pointer"
     onClick={[Function]}
     style={
       Object {
         "backgroundColor": "#509EE3",
         "border": "2px solid #509EE3",
+        "borderRadius": 4,
         "height": 16,
         "width": 16,
       }
     }
   >
     <svg
+      aria-label="check icon"
       className="Icon Icon-check Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
       height={12}
+      role="img"
       style={
         Object {
           "color": "white",
@@ -1255,12 +1306,13 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
     </svg>
   </div>
   <div
-    className="absolute flex align-center justify-center rounded cursor-pointer"
+    className="absolute flex align-center justify-center cursor-pointer"
     onClick={[Function]}
     style={
       Object {
         "backgroundColor": "#509EE3",
         "border": "2px solid #509EE3",
+        "borderRadius": 4,
         "height": 16,
         "left": 4,
         "top": -4,
@@ -1282,24 +1334,26 @@ exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
   }
 >
   <div
-    className="flex align-center justify-center rounded cursor-pointer"
+    className="flex align-center justify-center cursor-pointer"
     onClick={[Function]}
     style={
       Object {
         "backgroundColor": "white",
         "border": "2px solid #C7CFD4",
+        "borderRadius": 4,
         "height": 16,
         "width": 16,
       }
     }
   />
   <div
-    className="absolute flex align-center justify-center rounded cursor-pointer"
+    className="absolute flex align-center justify-center cursor-pointer"
     onClick={[Function]}
     style={
       Object {
         "backgroundColor": "white",
         "border": "2px solid #C7CFD4",
+        "borderRadius": 4,
         "height": 16,
         "left": 4,
         "top": -4,
@@ -1532,5 +1586,13 @@ exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
       </div>
     </li>
   </ul>
+</div>
+`;
+
+exports[`UserAvatar should render "" correctly 1`] = `
+<div
+  className="UserAvatar-sc-1vvsbyl-1 dGmEol UserAvatar__Avatar-sc-1vvsbyl-0 bmsXls sc-htpNat hnUQrH"
+>
+  ?
 </div>
 `;

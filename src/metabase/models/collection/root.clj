@@ -2,6 +2,7 @@
   (:require [metabase.models
              [interface :as i]
              [permissions :as perms]]
+            [metabase.public-settings.metastore :as settings.metastore]
             [metabase.util :as u]
             [potemkin.types :as p.types]
             [toucan.models :as models]))
@@ -16,6 +17,16 @@
 
 (p.types/defrecord+ RootCollection [])
 
+(defn- has-perms? [collection read-or-write]
+  {:pre [(map? collection)]}
+  ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
+  (if (and (= (u/qualified-name (:namespace collection)) "snippets")
+           (not (settings.metastore/enable-enhancements?)))
+    #{}
+    #{((case read-or-write
+         :read  perms/collection-read-path
+         :write perms/collection-readwrite-path) collection)}))
+
 (u/strict-extend RootCollection
   models/IModel
   (merge
@@ -25,10 +36,7 @@
   i/IObjectPermissions
   (merge
    i/IObjectPermissionsDefaults
-   {:perms-objects-set (fn [this read-or-write]
-                         #{((case read-or-write
-                              :read  perms/collection-read-path
-                              :write perms/collection-readwrite-path) this)})
+   {:perms-objects-set has-perms?
     :can-read?         (partial i/current-user-has-full-permissions? :read)
     :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
@@ -39,4 +47,5 @@
 (defn is-root-collection?
   "Is `x` the special placeholder object representing the Root Collection?"
   [x]
+  ;; TODO -- not sure this makes sense because other places we check whether `::is-root?` is present or not.
   (instance? RootCollection x))

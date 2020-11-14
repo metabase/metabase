@@ -38,6 +38,7 @@ import {
   getIsResultDirty,
   getMode,
   getModalSnippet,
+  getSnippetCollectionId,
   getQuery,
   getQuestion,
   getOriginalQuestion,
@@ -146,6 +147,7 @@ const mapStateToProps = (state, props) => {
     nativeEditorCursorOffset: getNativeEditorCursorOffset(state),
     nativeEditorSelectedText: getNativeEditorSelectedText(state),
     modalSnippet: getModalSnippet(state),
+    snippetCollectionId: getSnippetCollectionId(state),
   };
 };
 

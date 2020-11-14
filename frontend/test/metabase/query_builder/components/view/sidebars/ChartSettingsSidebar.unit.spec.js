@@ -1,6 +1,5 @@
 import React from "react";
-import "@testing-library/jest-dom/extend-expect";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render, fireEvent } from "@testing-library/react";
 
 import { SAMPLE_DATASET } from "__support__/sample_dataset_fixture";
 
@@ -11,7 +10,6 @@ describe("ChartSettingsSidebar", () => {
     rows: [[1]],
     cols: [{ base_type: "type/Integer", name: "foo", display_name: "foo" }],
   };
-  afterEach(cleanup);
 
   it("should hide title and section picker when viewing column settings", () => {
     const { container, getByText, queryByText } = render(

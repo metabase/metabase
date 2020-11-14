@@ -8,7 +8,7 @@ describe("scenarios > dashboard > nested cards", () => {
     createDashboardWithNestedCard(dashId => {
       cy.visit(`/dashboard/${dashId}`);
       cy.get(".Icon-pencil").click();
-      cy.get(".Icon-funnel_add").click();
+      cy.get(".Icon-filter").click();
       popover()
         .contains("Time")
         .click();

@@ -48,6 +48,7 @@ import {
   getIsRunning,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
+  getSnippetCollectionId,
 } from "./selectors";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
@@ -350,12 +351,17 @@ export const initializeQB = (location, params) => {
         } else if (card.original_card_id) {
           // deserialized card contains the card id, so just populate originalCard
           originalCard = await loadCard(card.original_card_id);
-          // if the cards are equal then show the original
-          if (cardIsEquivalent(card, originalCard)) {
+          if (
+            cardIsEquivalent(card, originalCard, { checkParameters: false }) &&
+            !cardIsEquivalent(card, originalCard, { checkParameters: true })
+          ) {
+            // if the cards are equal except for parameters, copy over the id to undirty the card
+            card.id = originalCard.id;
+          } else if (cardIsEquivalent(card, originalCard)) {
+            // if the cards are equal then show the original
             card = Utils.copy(originalCard);
           }
         }
-
         // if this card has any snippet tags we might need to fetch snippets pending permissions
         if (
           Object.values(
@@ -471,9 +477,9 @@ export const initializeQB = (location, params) => {
     }
 
     let question = card && new Question(card, getMetadata(getState()));
-    if (params.cardId) {
+    if (question && question.isSaved()) {
       // loading a saved question prevents auto-viz selection
-      question = question && question.lockDisplay();
+      question = question.lockDisplay();
     }
 
     if (question && question.isNative() && snippetFetch) {
@@ -482,6 +488,12 @@ export const initializeQB = (location, params) => {
       question = question.setQuery(
         question.query().updateQueryTextWithNewSnippetNames(snippets),
       );
+    }
+
+    for (const [paramId, value] of Object.entries(
+      (card && card.parameterValues) || {},
+    )) {
+      dispatch(setParameterValue(paramId, value));
     }
 
     card = question && question.card();
@@ -569,9 +581,15 @@ export const setNativeEditorSelectedRange = createAction(
 export const SET_MODAL_SNIPPET = "metabase/qb/SET_MODAL_SNIPPET";
 export const setModalSnippet = createAction(SET_MODAL_SNIPPET);
 
+export const SET_SNIPPET_COLLECTION_ID =
+  "metabase/qb/SET_SNIPPET_COLLECTION_ID";
+export const setSnippetCollectionId = createAction(SET_SNIPPET_COLLECTION_ID);
+
 export const openSnippetModalWithSelectedText = () => (dispatch, getState) => {
-  const content = getNativeEditorSelectedText(getState());
-  dispatch(setModalSnippet({ content }));
+  const state = getState();
+  const content = getNativeEditorSelectedText(state);
+  const collection_id = getSnippetCollectionId(state);
+  dispatch(setModalSnippet({ content, collection_id }));
 };
 
 export const closeSnippetModal = () => (dispatch, getState) => {
@@ -970,7 +988,7 @@ export const runQuestionQuery = ({
     const originalQuestion: ?Question = getOriginalQuestion(getState());
 
     const cardIsDirty = originalQuestion
-      ? question.isDirtyComparedTo(originalQuestion)
+      ? question.isDirtyComparedToWithoutParameters(originalQuestion)
       : true;
 
     if (shouldUpdateUrl) {

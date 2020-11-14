@@ -53,7 +53,7 @@ export const BackendResource = createSharedResource("BackendResource", {
           "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
           "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
           "-Duser.timezone=US/Pacific",
-          `-Dlog4j.configuration=file:${__dirname}/log4j.properties`,
+          `-Dlog4j.configurationFile=file:${__dirname}/log4j2.xml`,
           "-jar",
           "target/uberjar/metabase.jar",
         ],
@@ -64,6 +64,10 @@ export const BackendResource = createSharedResource("BackendResource", {
             MB_JETTY_HOST: "0.0.0.0",
             MB_JETTY_PORT: server.port,
             MB_ENABLE_TEST_ENDPOINTS: "true",
+            MB_PREMIUM_EMBEDDING_TOKEN:
+              (process.env["MB_EDITION"] === "ee" &&
+                process.env["ENTERPRISE_TOKEN"]) ||
+              undefined,
           },
           stdio:
             process.env["DISABLE_LOGGING"] ||

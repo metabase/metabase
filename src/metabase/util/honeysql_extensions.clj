@@ -175,19 +175,19 @@
 (defn ->boolean                  "CAST `x` to a `boolean` datatype"          [x] (cast :boolean x))
 
 ;;; Random SQL fns. Not all DBs support all these!
-(def ^{:arglists '([& exprs])} floor   "SQL `floor` function."  (partial hsql/call :floor))
-(def ^{:arglists '([& exprs])} hour    "SQL `hour` function."   (partial hsql/call :hour))
-(def ^{:arglists '([& exprs])} minute  "SQL `minute` function." (partial hsql/call :minute))
-(def ^{:arglists '([& exprs])} day     "SQL `day` function."    (partial hsql/call :day))
-(def ^{:arglists '([& exprs])} week    "SQL `week` function."   (partial hsql/call :week))
-(def ^{:arglists '([& exprs])} month   "SQL `month` function."  (partial hsql/call :month))
-(def ^{:arglists '([& exprs])} quarter "SQL `quarter` function."(partial hsql/call :quarter))
-(def ^{:arglists '([& exprs])} year    "SQL `year` function."   (partial hsql/call :year))
-(def ^{:arglists '([& exprs])} concat  "SQL `concat` function." (partial hsql/call :concat))
+(def ^{:arglists '([& exprs])} floor   "SQL `floor` function."   (partial hsql/call :floor))
+(def ^{:arglists '([& exprs])} hour    "SQL `hour` function."    (partial hsql/call :hour))
+(def ^{:arglists '([& exprs])} minute  "SQL `minute` function."  (partial hsql/call :minute))
+(def ^{:arglists '([& exprs])} day     "SQL `day` function."     (partial hsql/call :day))
+(def ^{:arglists '([& exprs])} week    "SQL `week` function."    (partial hsql/call :week))
+(def ^{:arglists '([& exprs])} month   "SQL `month` function."   (partial hsql/call :month))
+(def ^{:arglists '([& exprs])} quarter "SQL `quarter` function." (partial hsql/call :quarter))
+(def ^{:arglists '([& exprs])} year    "SQL `year` function."    (partial hsql/call :year))
+(def ^{:arglists '([& exprs])} concat  "SQL `concat` function."  (partial hsql/call :concat))
 
 ;; Etc (Dev Stuff)
-(alter-meta! #'honeysql.core/format assoc :style/indent 1)
-(alter-meta! #'honeysql.core/call   assoc :style/indent 1)
+(alter-meta! #'honeysql.core/format assoc :style/indent :defn)
+(alter-meta! #'honeysql.core/call   assoc :style/indent :defn)
 
 (require 'honeysql.types)
 (extend-protocol PrettyPrintable

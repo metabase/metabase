@@ -151,3 +151,5 @@ After following the configuration steps above, to build and release the app you 
    cd OSX
    clojure -m macos-release
    ```
+   
+   **Important Note** Do not let your computer lock the screen while running the script — if the screen is locked, macOS will not allow the script to access your Apple Developer credentials from the Keychain (needed for notarization) and the script will fail.

@@ -23,10 +23,10 @@
   (merge
    (select-keys (mt/db) [:id :timezone])
    (dissoc (mt/object-defaults Database) :details)
-   {:engine   "h2"
-    :name     "test-data"
-    :features (mapv u/qualified-name (driver.u/features :h2))
-    :timezone "UTC"}))
+   {:engine        "h2"
+    :name          "test-data"
+    :features      (mapv u/qualified-name (driver.u/features :h2))
+    :timezone      "UTC"}))
 
 (deftest get-field-test
   (testing "GET /api/field/:id"
@@ -192,18 +192,18 @@
   (testing "POST /api/field/:id/values"
     (testing "Existing field values can be updated (with their human readable values)"
       (mt/with-temp* [Field [{field-id :id} list-field]
-                      FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id}]]
+                      FieldValues [{field-value-id :id} {:values (conj (range 1 5) nil), :field_id field-id}]]
         (testing "fetch initial values"
-          (is (= {:values [[1] [2] [3] [4]], :field_id true}
+          (is (= {:values [[nil] [1] [2] [3] [4]], :field_id true}
                  (mt/boolean-ids-and-timestamps
                   ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id))))))
         (testing "update values"
           (is (= {:status "success"}
                  (mt/boolean-ids-and-timestamps
                   ((mt/user->client :crowberto) :post 200 (format "field/%d/values" field-id)
-                   {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))))
+                   {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))))
         (testing "fetch updated values"
-          (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
+          (is (= {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
                  (mt/boolean-ids-and-timestamps
                   ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id))))))))))
 
@@ -245,7 +245,8 @@
                    (mt/boolean-ids-and-timestamps ((mt/user->client :crowberto) :get 200 (format "field/%d/values" field-id))))))[]))
 
       (testing "should be able to unset just the human-readable values"
-        (mt/with-temp FieldValues [{field-value-id :id} {:values                (range 1 5), :field_id field-id
+        (mt/with-temp FieldValues [{field-value-id :id} {:values                (range 1 5)
+                                                         :field_id              field-id
                                                          :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
           (testing "before updating values"
             (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}

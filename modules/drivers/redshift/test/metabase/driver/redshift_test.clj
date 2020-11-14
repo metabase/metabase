@@ -131,3 +131,19 @@
                                                         [:asc $salesid]]
                                              :filter   [:= [:field-id (mt/id :extsales :buyerid)] 11498]}))
                          [:data :cols])))))))
+
+(deftest parameters-test
+  (testing "Native query parameters should work with filters."
+    (is (= [[693 "2015-12-29T00:00:00Z" 10 90]]
+           (mt/rows
+             (qp/process-query
+              {:database   (mt/id)
+               :type       :native
+               :native     {:query         "select * from checkins where {{date}} order by date desc limit 1;"
+                            :template-tags {"date" {:name         "date"
+                                                    :display-name "date"
+                                                    :type         :dimension
+                                                    :dimension    [:field-id (mt/id :checkins :date)]}}}
+               :parameters [{:type :date/all-options
+                             :target [:dimension [:template-tag "date"]]
+                             :value "past30years"}]}))))))

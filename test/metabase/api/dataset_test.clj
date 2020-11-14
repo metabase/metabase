@@ -21,13 +21,17 @@
              [permissions-group :as group]
              [query-execution :refer [QueryExecution]]]
             [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
              [users :as test-users]]
-            [metabase.test.util :as tu]
             [schema.core :as s]
             [toucan.db :as db])
   (:import com.fasterxml.jackson.core.JsonGenerator))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- format-response [m]
   (when-not (map? m)
@@ -48,10 +52,12 @@
        :else
        [k v]))))
 
-(defn- most-recent-query-execution [] (db/select-one QueryExecution {:order-by [[:id :desc]]}))
+(defn- most-recent-query-execution []
+  (db/select-one QueryExecution {:order-by [[:started_at :desc]]}))
 
 (def ^:private query-defaults
-  {:middleware {:add-default-userland-constraints? true}})
+  {:middleware {:add-default-userland-constraints? true
+                :js-int-to-string? true}})
 
 (deftest basic-query-test
   (testing "POST /api/dataset"
@@ -183,7 +189,7 @@
           ["3" "2014-09-15" "8" "56"]
           ["4" "2014-03-11" "5" "4"]
           ["5" "2013-05-05" "3" "49"]]
-         (let [result ((mt/user->client :rasta) :post 202 "dataset/csv" :query
+         (let [result ((mt/user->client :rasta) :post 200 "dataset/csv" :query
                        (json/generate-string (mt/mbql-query checkins)))]
            (take 5 (parse-and-sort-csv result))))))
 
@@ -195,7 +201,7 @@
             "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
             "X-Accel-Buffering"   "no"}
            (-> (http-client/client-full-response (test-users/username->token :rasta)
-                                                 :post 202 "dataset/csv"
+                                                 :post 200 "dataset/csv"
                                                  :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
                :headers
                (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
@@ -204,7 +210,7 @@
 
 (deftest check-an-empty-date-column
   (mt/dataset defs/test-data-with-null-date-checkins
-    (let [result ((mt/user->client :rasta) :post 202 "dataset/csv" :query
+    (let [result ((mt/user->client :rasta) :post 200 "dataset/csv" :query
                   (json/generate-string (mt/mbql-query checkins)))]
       (is (= [["1" "2014-04-07" "" "5" "12"]
               ["2" "2014-09-18" "" "1" "31"]
@@ -216,7 +222,7 @@
 (deftest sqlite-datetime-test
   (mt/test-driver :sqlite
     (testing "SQLite doesn't return proper date objects but strings, they just pass through the qp untouched"
-      (let [result ((mt/user->client :rasta) :post 202 "dataset/csv" :query
+      (let [result ((mt/user->client :rasta) :post 200 "dataset/csv" :query
                     (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
         (is (= [["1" "2014-04-07" "5" "12"]
                 ["2" "2014-09-18" "1" "31"]
@@ -226,7 +232,7 @@
                (parse-and-sort-csv result)))))))
 
 (deftest datetime-fields-are-untouched-when-exported
-  (let [result ((mt/user->client :rasta) :post 202 "dataset/csv" :query
+  (let [result ((mt/user->client :rasta) :post 200 "dataset/csv" :query
                 (json/generate-string (mt/mbql-query users {:order-by [[:asc $id]], :limit 5})))]
     (is (= [["1" "Plato Yeshua"        "2014-04-01T08:30:00"]
             ["2" "Felipinho Asklepios" "2014-12-05T15:15:00"]
@@ -239,7 +245,7 @@
   (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                             :type     :native
                                             :native   {:query "SELECT * FROM USERS;"}}}]
-    (let [result ((mt/user->client :rasta) :post 202 "dataset/csv"
+    (let [result ((mt/user->client :rasta) :post 200 "dataset/csv"
                   :query (json/generate-string
                           {:database mbql.s/saved-questions-virtual-database-id
                            :type     :query
@@ -256,7 +262,7 @@
 ;; from one that had it -- see #9831)
 (deftest formatted-results-ignore-query-constraints
   (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-    (let [result ((mt/user->client :rasta) :post 202 "dataset/csv"
+    (let [result ((mt/user->client :rasta) :post 200 "dataset/csv"
                   :query (json/generate-string
                           {:database   (mt/id)
                            :type       :query

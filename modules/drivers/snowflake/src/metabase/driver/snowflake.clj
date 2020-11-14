@@ -28,16 +28,31 @@
              [i18n :refer [tru]]])
   (:import [java.sql ResultSet Types]
            [java.time OffsetDateTime ZonedDateTime]
-           metabase.util.honeysql_extensions.Identifier
-           net.snowflake.client.jdbc.SnowflakeSQLException))
+           metabase.util.honeysql_extensions.Identifier))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/humanize-connection-error-message :snowflake
+  [_ message]
+  (log/spy :error (type message))
+  (condp re-matches message
+    #"(?s).*Object does not exist.*$"
+    (driver.common/connection-error-messages :database-name-incorrect)
+
+    #"(?s).*" ; default - the Snowflake errors have a \n in them
+    message))
+
+(defmethod driver/db-start-of-week :snowflake
+  [_]
+  :sunday)
+
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account regionid], :as opts}]
   (let [host (if regionid
                (str account "." regionid)
-               account)]
+               account)
+        upcase-not-nil (fn [s] (when s (u/upper-case-en s)))]
     ;; it appears to be the case that their JDBC driver ignores `db` -- see my bug report at
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
     (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
@@ -58,6 +73,9 @@
                    ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead of
                    ;; `db`. If we run across `dbname`, correct our behavior
                    (set/rename-keys {:dbname :db})
+                   ;; see https://github.com/metabase/metabase/issues/9511
+                   (update :warehouse upcase-not-nil)
+                   (update :schema upcase-not-nil)
                    (dissoc :host :port :timezone)))
         (sql-jdbc.common/handle-additional-options opts))))
 
@@ -83,6 +101,7 @@
     :CHARACTER                  :type/Text
     :STRING                     :type/Text
     :TEXT                       :type/Text
+    :GEOGRAPHY                  :type/SerializedJSON
     :BINARY                     :type/*
     :VARBINARY                  :type/*
     :BOOLEAN                    :type/Boolean
@@ -121,17 +140,21 @@
 (defmethod sql.qp/date [:snowflake :hour]            [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:snowflake :hour-of-day]     [_ _ expr] (extract :hour expr))
 (defmethod sql.qp/date [:snowflake :day]             [_ _ expr] (date-trunc :day expr))
-(defmethod sql.qp/date [:snowflake :day-of-week]     [_ _ expr] (extract :dayofweek expr))
 (defmethod sql.qp/date [:snowflake :day-of-month]    [_ _ expr] (extract :day expr))
 (defmethod sql.qp/date [:snowflake :day-of-year]     [_ _ expr] (extract :dayofyear expr))
-(defmethod sql.qp/date [:snowflake :week]            [_ _ expr] (date-trunc :week expr))
-(defmethod sql.qp/date [:snowflake :week-of-year]    [_ _ expr] (extract :week expr))
 (defmethod sql.qp/date [:snowflake :month]           [_ _ expr] (date-trunc :month expr))
 (defmethod sql.qp/date [:snowflake :month-of-year]   [_ _ expr] (extract :month expr))
 (defmethod sql.qp/date [:snowflake :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:snowflake :quarter-of-year] [_ _ expr] (extract :quarter expr))
 (defmethod sql.qp/date [:snowflake :year]            [_ _ expr] (date-trunc :year expr))
 
+(defmethod sql.qp/date [:snowflake :week]
+  [_ _ expr]
+  (sql.qp/adjust-start-of-week :snowflake (partial date-trunc :week) expr))
+
+(defmethod sql.qp/date [:snowflake :day-of-week]
+  [_ _ expr]
+  (sql.qp/adjust-day-of-week :snowflake (extract :dayofweek expr)))
 
 (defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
   [driver [_ arg pattern]]
@@ -223,13 +246,18 @@
   ;; returns nothing
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
-    {:tables (set (for [table (jdbc/query
-                               (sql-jdbc.conn/db->pooled-connection-spec database)
-                               (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name))
-                        :when (not (contains? excluded-schemas (:schema_name table)))]
-                    {:name        (:name table)
-                     :schema      (:schema_name table)
-                     :description (not-empty (:comment table))}))}))
+    (qp.store/with-store
+      (qp.store/fetch-and-store-database! (u/get-id database))
+      {:tables (set (for [table (jdbc/query
+                                 (sql-jdbc.conn/db->pooled-connection-spec database)
+                                 (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name))
+                          :when (and (not (contains? excluded-schemas (:schema_name table)))
+                                     (sql-jdbc.sync/have-select-privilege? driver database
+                                                                           {:table_name  (:name table)
+                                                                            :table_schem (:schema_name table)}))]
+                      {:name        (:name table)
+                       :schema      (:schema_name table)
+                       :description (not-empty (:comment table))}))})))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
@@ -273,12 +301,8 @@
   (and ((get-method driver/can-connect? :sql-jdbc) driver details)
        (let [spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)
              sql  (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
-         (try
-           (jdbc/query spec sql)
-           true
-           (catch SnowflakeSQLException e
-             (log/error e (tru "Snowflake Database does not exist."))
-             false)))))
+         (jdbc/query spec sql)
+         true)))
 
 (defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
   [_ t]
