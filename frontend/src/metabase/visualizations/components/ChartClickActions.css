@@ -1,13 +1,14 @@
 .token {
-  padding: 4px 12px 4px 12px;
+  padding: 5px 14px 5px 14px;
   border-radius: 100px;
+  line-height: 16px;
 }
 .token-blue {
   color: var(--color-brand);
   border: 1px solid color(var(--color-brand) alpha(-65%));
 }
 .token-filter {
-  padding: 1px 16px;
+  padding: 2px 16px;
   border-radius: 100px;
   color: var(--color-accent7);
   border: 1px solid color(var(--color-accent7) alpha(-50%));
@@ -22,6 +23,9 @@
 .sort:hover > svg {
   color: white;
 }
+.horizontal-button {
+  border-radius: 4px;
+}
 .horizontal-button:hover > svg {
   color: white;
 }
@@ -30,4 +34,7 @@
 }
 .horizontal-popover:hover {
   background-color: var(--color-accent7);
+}
+.formatting-button {
+  color: color(#b8bbc3 alpha(-50%));
 }

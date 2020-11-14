@@ -36,7 +36,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       name: "object-detail",
       section: "details",
       title: t`View details`,
-      buttonType: "horizontal-no-outline",
+      buttonType: "horizontal-no-outline-tight",
       icon: "document",
       default: true,
       question: () =>

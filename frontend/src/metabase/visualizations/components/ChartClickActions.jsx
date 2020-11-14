@@ -181,27 +181,27 @@ export default class ChartClickActions extends Component {
         {popover ? (
           popover
         ) : (
-          <div className="text-bold px2 py1">
+          <div className="text-bold px2 pt2 pb1">
             {sections.map(([key, actions]) => (
               <div
                 className={cx(
-                  "py1",
+                  "pb1",
                   { pb1: SECTIONS[key].icon === "sum" },
                   { pb2: SECTIONS[key].icon === "bolt" },
                 )}
               >
                 {SECTIONS[key].icon === "sum" && (
-                  <p className="mt0 text-bold text-light text-small block">
+                  <p className="mt0 text-bold text-medium text-small block">
                     Summarize
                   </p>
                 )}
                 {SECTIONS[key].icon === "breakout" && (
-                  <p className="mt0 text-bold text-light text-small block">
+                  <p className="mt0 text-bold text-medium text-small block">
                     Break out by a…
                   </p>
                 )}
                 {SECTIONS[key].icon === "bolt" && (
-                  <p className="mt0 text-bold text-light text-small block">
+                  <p className="mt0 text-bold text-medium text-small block">
                     Automatic explorations
                   </p>
                 )}
@@ -222,7 +222,8 @@ export default class ChartClickActions extends Component {
                       "align-center justify-center":
                         SECTIONS[key].icon === "pencil",
                     },
-                    { "flex-column": SECTIONS[key].icon === "summarize" },
+                    { "flex-column my1": SECTIONS[key].icon === "summarize" },
+                    { mb2: SECTIONS[key].icon === "breakout" },
                   )}
                 >
                   {/*
@@ -262,13 +263,14 @@ export const ChartClickAction = ({
   const className = cx("cursor-pointer no-decoration", {
     "text-small text-center sort token-blue mr1 bg-brand-hover":
       action.buttonType === "sort",
-    "flex-align-right text-light text-brand-hover":
+    "formatting-button flex-align-right text-brand-hover":
       action.buttonType === "text",
-    "horizontal-button p1 rounded flex flex-auto align-center bg-brand-hover text-dark text-white-hover":
-      action.buttonType === "horizontal-no-outline",
+    "horizontal-button p1 flex flex-auto align-center bg-brand-hover text-dark text-white-hover":
+      action.buttonType === "horizontal-no-outline" ||
+      action.buttonType === "horizontal-no-outline-tight",
     "text-small token token-blue text-white-hover bg-brand-hover mr1":
       action.buttonType === "token",
-    "token token-filter text-white-hover mr1":
+    "token token-filter text-small text-white-hover mr1":
       action.buttonType === "token-filter",
   });
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
@@ -303,24 +305,31 @@ export const ChartClickAction = ({
   } else {
     return (
       <div
-        className={cx(className, {
-          "flex flex-row align-center":
-            action.buttonType === "text" ||
-            action.buttonType === "horizontal" ||
-            action.buttonType === "sort",
-        })}
+        className={cx(
+          className,
+          {
+            "flex flex-row align-center":
+              action.buttonType === "text" || action.buttonType === "sort",
+          },
+          {
+            mb1: action.buttonType === "horizontal-no-outline",
+          },
+        )}
         onClick={() => handleClickAction(action)}
       >
         {action.icon && (
           <Icon
-            className={cx(
-              "flex mr1",
-              {
-                mr2: action.buttonType === "horizontal-no-outline",
-              },
-              { "text-brand text-white-hover": action.buttonType !== "text" },
-            )}
-            size={action.buttonType === "text" ? 16 : 12}
+            className={cx("flex mr1", {
+              "text-brand text-white-hover": action.buttonType !== "text",
+            })}
+            size={
+              action.buttonType === "text"
+                ? 16
+                : action.buttonType === "horizontal-no-outline" ||
+                  action.buttonType === "horizontal-no-outline-tight"
+                ? 14
+                : 12
+            }
             name={action.icon}
           />
         )}
