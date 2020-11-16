@@ -13,7 +13,7 @@ import Link from "metabase/components/Link";
 
 import Greeting from "metabase/collections/containers/Greeting";
 
-import CollectionsList from "metabase/collections/components/CollectionList";
+import CollectionsList from "metabase/collections/components/CollectionsList";
 import CollectionLink from "metabase/collections/components/CollectionLink";
 
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
