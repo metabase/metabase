@@ -204,20 +204,11 @@ describe("scenarios > question > filter", () => {
             filter: [">", ["field-literal", CE_NAME, "type/Float"], 0],
             "source-query": {
               aggregation: [
-                ["avg", ["field-id", PRODUCTS.PRICE]],
                 [
                   "aggregation-options",
-                  [
-                    "count-where",
-                    [
-                      "time-interval",
-                      ["field-id", PRODUCTS.CREATED_AT],
-                      -1,
-                      "year",
-                    ],
-                  ],
-                  { "display-name": CE_NAME },
-                ],
+                  ["+", 1, 1],
+                  { "display-name": CE_NAME }
+                ]
               ],
               breakout: [["field-id", PRODUCTS.CATEGORY]],
               "source-table": 1,
