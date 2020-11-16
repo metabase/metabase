@@ -9,6 +9,9 @@ import LimitPopover from "metabase/query_builder/components/LimitPopover";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+// The hard limit we place on results in the backend
+const HARD_CAP = 2000;
+
 const QuestionRowCount = ({
   question,
   result,
@@ -23,16 +26,24 @@ const QuestionRowCount = ({
 
   const query = question.query();
 
+  const cappedMessage = t`Showing first ${HARD_CAP} rows`;
+
+  // Shown based on a query that has been altered
   const limitMessage =
     query instanceof StructuredQuery
       ? query.limit() == null
-        ? t`Show all rows`
+        ? cappedMessage
+        : query.limit() >= HARD_CAP
+        ? cappedMessage
         : t`Show ${formatRowCount(query.limit())}`
       : null;
 
+  // Shown based on a query that has been run
   const resultMessage =
     result.data.rows_truncated != null
       ? t`Showing first ${formatRowCount(result.row_count)}`
+      : result.row_count === HARD_CAP
+      ? cappedMessage
       : t`Showing ${formatRowCount(result.row_count)}`;
 
   const message = isResultDirty ? limitMessage : resultMessage;

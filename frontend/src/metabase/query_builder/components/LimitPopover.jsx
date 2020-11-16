@@ -35,7 +35,7 @@ const LimitPopover = ({ limit, onChangeLimit, onClose, className }) => (
       vertical
       value={limit == null ? "maximum" : "custom"}
       options={[
-        { name: t`Show maximum`, value: "maximum" },
+        { name: t`Show maximum (first 2,000)`, value: "maximum" },
         {
           name: (
             <CustomRowLimit
