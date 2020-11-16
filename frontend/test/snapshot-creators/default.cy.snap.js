@@ -112,21 +112,23 @@ describe("snapshots", () => {
     });
   }
 
-  async function createCollections() {
-    async function postCollection(name, parent_id) {
-      return await cy.request("POST", "/api/collection", {
+  function createCollections() {
+    function postCollection(name, parent_id, callback) {
+      cy.request("POST", "/api/collection", {
         name,
         color: "#509ee3",
         description: `Collection ${name}`,
         parent_id,
-      });
+      }).then(({ body }) => callback && callback(body));
     }
-    const firstCollection = await postCollection("First collection");
-    const secondCollection = await postCollection(
-      "Second collection",
-      firstCollection.id,
+    postCollection("First collection", undefined, firstCollection =>
+      postCollection(
+        "Second collection",
+        firstCollection.id,
+        secondCollection =>
+          postCollection("Third collection", secondCollection.id),
+      ),
     );
-    await postCollection("Third collection", secondCollection.id);
   }
 
   function createQuestionAndDashboard({ ORDERS, ORDERS_ID }) {
