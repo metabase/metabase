@@ -61,7 +61,7 @@ export default class ProfileLink extends Component {
         link: "/activity",
         event: `Navbar;Profile Dropdown;Activity ${tag}`,
       },
-      {
+      /*{
         title: t`Help`,
         icon: null,
         link: MetabaseSettings.docsUrl(),
@@ -73,7 +73,7 @@ export default class ProfileLink extends Component {
         icon: null,
         action: () => this.openModal("about"),
         event: `Navbar;Profile Dropdown;About ${tag}`,
-      },
+      },*/
       {
         title: t`Sign out`,
         icon: null,
