@@ -193,7 +193,7 @@ describe("scenarios > question > filter", () => {
   });
 
   it.skip("should filter using Custom Expression from aggregated results (metabase#12839)", () => {
-    const CE_NAME = "Last Year";
+    const CE_NAME = "Simple Math";
 
     withSampleDataset(({ PRODUCTS }) => {
       cy.request("POST", "/api/card", {
@@ -207,8 +207,8 @@ describe("scenarios > question > filter", () => {
                 [
                   "aggregation-options",
                   ["+", 1, 1],
-                  { "display-name": CE_NAME }
-                ]
+                  { "display-name": CE_NAME },
+                ],
               ],
               breakout: [["field-id", PRODUCTS.CATEGORY]],
               "source-table": 1,
