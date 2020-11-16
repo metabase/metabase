@@ -151,83 +151,8 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should allow joins based on saved questions (metabase#13000)", () => {
-      cy.server();
-
-      withSampleDataset(({ ORDERS, PRODUCTS }) => {
-        cy.log("**-- Prepare Question 1 --**");
-        cy.request("POST", "/api/card", {
-          name: "Q1",
-          dataset_query: {
-            database: 1,
-            query: {
-              aggregation: ["sum", ["field-id", ORDERS.TOTAL]],
-              breakout: [["field-id", ORDERS.PRODUCT_ID]],
-              "source-table": 2,
-            },
-            type: "query",
-          },
-          display: "table",
-          visualization_settings: {},
-        }).then(({ body: { id: Q1_ID } }) => {
-          cy.log("**-- Prepare Question 2 --**");
-          cy.request("POST", "/api/card", {
-            name: "Q2",
-            dataset_query: {
-              database: 1,
-              query: {
-                aggregation: ["sum", ["field-id", PRODUCTS.RATING]],
-                breakout: [["field-id", PRODUCTS.ID]],
-                "source-table": 1,
-              },
-              type: "query",
-            },
-            display: "table",
-            visualization_settings: {},
-          }).then(({ body: { id: Q2_ID } }) => {
-            cy.log(
-              "**-- Create Question 3 based on 2 previously saved questions --**",
-            );
-            cy.request("POST", "/api/card", {
-              name: "Q3",
-              dataset_query: {
-                database: 1,
-                query: {
-                  joins: [
-                    {
-                      alias: "13000",
-                      condition: [
-                        "=",
-                        ["field-literal", "PRODUCT_ID", "type/Integer"],
-                        [
-                          "joined-field",
-                          "13000",
-                          ["field-literal", "ID", "type/BigInteger"],
-                        ],
-                      ],
-                      fields: "all",
-                      "source-table": `card__${Q2_ID}`,
-                    },
-                  ],
-                  "source-table": `card__${Q1_ID}`,
-                },
-                type: "query",
-              },
-              display: "table",
-              visualization_settings: {},
-            }).then(({ body: { id: Q3_ID } }) => {
-              cy.route("POST", `/api/card/${Q3_ID}/query`).as("cardQuery");
-              cy.visit(`/question/${Q3_ID}`);
-
-              cy.wait("@cardQuery");
-
-              cy.log("**Reported in v0.36.0**");
-              cy.get(".Icon-notebook").click();
-              cy.url().should("contain", "/notebook");
-              cy.findByText("Visualize").should("exist");
-            });
-          });
-        });
-      });
+      // pass down a joined question alias
+      joinTwoSavedQuestions("13000");
     });
 
     it("should show correct column title with foreign keys (metabase#11452)", () => {
@@ -370,3 +295,84 @@ describe("scenarios > question > notebook", () => {
     });
   });
 });
+
+// Extracted repro steps for #13000
+function joinTwoSavedQuestions(ALIAS = "Joined Question") {
+  cy.server();
+
+  withSampleDataset(({ ORDERS, PRODUCTS }) => {
+    cy.log("**-- Prepare Question 1 --**");
+    cy.request("POST", "/api/card", {
+      name: "Q1",
+      dataset_query: {
+        database: 1,
+        query: {
+          aggregation: ["sum", ["field-id", ORDERS.TOTAL]],
+          breakout: [["field-id", ORDERS.PRODUCT_ID]],
+          "source-table": 2,
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: Q1_ID } }) => {
+      cy.log("**-- Prepare Question 2 --**");
+      cy.request("POST", "/api/card", {
+        name: "Q2",
+        dataset_query: {
+          database: 1,
+          query: {
+            aggregation: ["sum", ["field-id", PRODUCTS.RATING]],
+            breakout: [["field-id", PRODUCTS.ID]],
+            "source-table": 1,
+          },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {},
+      }).then(({ body: { id: Q2_ID } }) => {
+        cy.log(
+          "**-- Create Question 3 based on 2 previously saved questions --**",
+        );
+        cy.request("POST", "/api/card", {
+          name: "Q3",
+          dataset_query: {
+            database: 1,
+            query: {
+              joins: [
+                {
+                  alias: ALIAS,
+                  condition: [
+                    "=",
+                    ["field-literal", "PRODUCT_ID", "type/Integer"],
+                    [
+                      "joined-field",
+                      ALIAS,
+                      ["field-literal", "ID", "type/BigInteger"],
+                    ],
+                  ],
+                  fields: "all",
+                  "source-table": `card__${Q2_ID}`,
+                },
+              ],
+              "source-table": `card__${Q1_ID}`,
+            },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        }).then(({ body: { id: Q3_ID } }) => {
+          cy.route("POST", `/api/card/${Q3_ID}/query`).as("cardQuery");
+          cy.visit(`/question/${Q3_ID}`);
+
+          cy.wait("@cardQuery");
+
+          cy.log("**Reported in v0.36.0**");
+          cy.get(".Icon-notebook").click();
+          cy.url().should("contain", "/notebook");
+          cy.findByText("Visualize").should("exist");
+        });
+      });
+    });
+  });
+}
