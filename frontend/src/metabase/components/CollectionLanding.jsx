@@ -6,11 +6,7 @@ import CollectionSidebar from "metabase/collections/containers/CollectionSidebar
 
 import { PageWrapper } from "metabase/collections/components/Layout";
 
-const CollectionLanding = () => {
-  const {
-    params: { collectionId },
-  } = this.props;
-
+const CollectionLanding = ({ params: { collectionId }, children }) => {
   const isRoot = collectionId === "root";
 
   return (
@@ -30,7 +26,7 @@ const CollectionLanding = () => {
       </Box>
       {
         // Need to have this here so the child modals will show up
-        this.props.children
+        children
       }
     </PageWrapper>
   );

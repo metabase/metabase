@@ -96,3 +96,5 @@ CollectionsList.defaultProps = {
   initialIcon: "folder",
   depth: 1,
 };
+
+export default CollectionsList;

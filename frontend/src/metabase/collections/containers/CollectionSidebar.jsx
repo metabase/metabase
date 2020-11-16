@@ -22,7 +22,7 @@ import {
   currentUserPersonalCollections,
 } from "metabase/collections/utils";
 
-const getCurrentUser = ({ currentUser }) => currentUser;
+const getCurrentUser = ({ currentUser }) => ({ currentUser });
 
 // TODO - what's different about this from another sidebar component?
 const Sidebar = styled(Box)`
