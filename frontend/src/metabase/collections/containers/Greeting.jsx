@@ -1,9 +1,9 @@
-import React from "react"
-import { connect } from "react-redux"
-import { Box } from "grid-styled"
-import { jt } from "ttag"
+import React from "react";
+import { connect } from "react-redux";
+import { Box } from "grid-styled";
+import { jt } from "ttag";
 
-import Subhead from "metabase/components/type/Subhead"
+import Subhead from "metabase/components/type/Subhead";
 
 const Greeting = connect(state => ({
   user: state.currentUser,
@@ -15,4 +15,4 @@ const Greeting = connect(state => ({
   );
 });
 
-export default Greeting
+export default Greeting;

@@ -1,4 +1,4 @@
-import { t } from "ttag"
+import { t } from "ttag";
 
 // return collections that aren't personal and aren't archived
 export function nonPersonalCollection(collection) {

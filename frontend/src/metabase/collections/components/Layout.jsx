@@ -1,5 +1,5 @@
-import { Box } from "grid-styled"
-import styled from "styled-components"
+import { Box } from "grid-styled";
+import styled from "styled-components";
 
 export const PageWrapper = styled(Box)`
   overflow: hidden;

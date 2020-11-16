@@ -1,8 +1,8 @@
-import styled from "styled-components"
-import Link from "metabase/components/Link"
-import { color } from "metabase/lib/colors"
+import styled from "styled-components";
+import Link from "metabase/components/Link";
+import { color } from "metabase/lib/colors";
 
-import { SIDEBAR_SPACER } from "../constants"
+import { SIDEBAR_SPACER } from "../constants";
 
 const CollectionLink = styled(Link)`
   position: relative;
@@ -16,8 +16,7 @@ const CollectionLink = styled(Link)`
   align-items: center;
   font-weight: bold;
   color: ${props => (props.selected ? "white" : color("brand"))};
-  background-color: ${props =>
-    props.selected ? color("brand") : "inherit"};
+  background-color: ${props => (props.selected ? color("brand") : "inherit")};
   :hover {
     background-color: ${props => !props.selected && color("bg-medium")};
   }
@@ -31,4 +30,4 @@ CollectionLink.defaultProps = {
   depth: 1,
 };
 
-export default CollectionLink
+export default CollectionLink;

@@ -1,13 +1,13 @@
-import React from "react"
-import { Box, Flex } from "grid-styled"
+import React from "react";
+import { Box, Flex } from "grid-styled";
 
-import * as Urls from "metabase/lib/urls"
+import * as Urls from "metabase/lib/urls";
 
-import Icon from "metabase/components/Icon"
+import Icon from "metabase/components/Icon";
 
-import CollectionLink from "metabase/collections/components/CollectionLink"
+import CollectionLink from "metabase/collections/components/CollectionLink";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-import { SIDEBAR_SPACER } from "metabase/collections/constants"
+import { SIDEBAR_SPACER } from "metabase/collections/constants";
 
 class CollectionsList extends React.Component {
   state = {
