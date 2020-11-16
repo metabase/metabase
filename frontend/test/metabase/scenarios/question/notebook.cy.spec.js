@@ -9,8 +9,10 @@ import {
 } from "__support__/cypress";
 
 describe("scenarios > question > notebook", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it.skip("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
     openOrdersTable();
