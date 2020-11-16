@@ -244,20 +244,14 @@ function getDimensionsAndGroupsForWaterfallChart(props, originalDatas, warn) {
   */
 
   const values = datas[0].map(d => d[1]);
-  const deltas = values.reduce(
-    (result, v) => {
-      result.deltas.push(v - result.last);
-      result.last = v;
-      return result;
-    },
-    { last: values[0], deltas: [] },
-  ).deltas;
-  const positives = deltas.map(v => (v > 0 ? v : 0));
-  positives[0] = values[0];
-  const negatives = deltas.map(v => (v < 0 ? -v : 0));
+  const positives = values.map(v => (v > 0 ? v : 0));
+  const negatives = values.map(v => (v < 0 ? -v : 0));
   const beams = [0];
-  for (let i = 1; i < deltas.length; ++i) {
-    beams[i] = positives[i] > 0 ? values[i - 1] : values[i - 1] - negatives[i];
+  for (let i = 1; i < values.length; ++i) {
+    beams[i] =
+      positives[i - 1] > 0
+        ? beams[i - 1] + positives[i - 1] - negatives[i]
+        : beams[i - 1];
   }
   for (let k = 0; k < values.length; ++k) {
     datas[0][k][1] = beams[k];
