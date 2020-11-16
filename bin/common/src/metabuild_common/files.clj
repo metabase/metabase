@@ -111,3 +111,12 @@
       (throw (ex-info (format "Can't find project root directory: no parent directory of %s has a project.clj file"
                               (env/env :user-dir))
                       {:dir (env/env :user-dir)})))))
+
+(defn download-file!
+  "Download a file from `url` to `dest-path` using `wget`."
+  [url dest-path]
+  {:pre [(string? url) (string? dest-path) (str/starts-with? url "http")]}
+  (steps/step (format "Download %s -> %s" url dest-path)
+    (delete-file-if-exists! dest-path)
+    (sh/sh {:quiet? true} "wget" "--quiet" "--no-cache" "--output-document" dest-path url)
+    (assert-file-exists dest-path)))

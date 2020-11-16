@@ -27,8 +27,7 @@
         (common.http/check-url-exists url)
         (u/step (format "Check hash of %s" url)
           (let [temp-location "/tmp/metabase.jar"]
-            (u/delete-file-if-exists! temp-location)
-            (u/sh {:quiet? true} "wget" "--quiet" "--no-cache" "--output-document" temp-location url)
+            (u/download-file! url temp-location)
             (let [uberjar-hash (hash/sha-256-sum c/uberjar-path)
                   url-hash     (hash/sha-256-sum temp-location)]
               (u/announce "Hash of local metabase.jar is %s" uberjar-hash)

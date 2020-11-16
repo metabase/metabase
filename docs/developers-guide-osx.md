@@ -123,10 +123,11 @@ The following steps are prereqs for *releasing* the Mac App:
         -p <secret_password>
         ```
 
-1)  Install Clojure CLI
+1) Install Clojure CLI. See [the instructions on
+clojure.org](https://www.clojure.org/guides/getting_started) for more details.
 
     ```bash
-    brew install clojure
+    brew install clojure/tools/clojure
     ```
 
 </details>
@@ -138,12 +139,6 @@ After following the configuration steps above, to build and release the app you 
 1. Make sure release is *published* on GitHub and release notes are ready. The script copies these for the update release notes.
 
 1. Make sure you're on the appropriate release branch locally. The script reads the version number from the most recent tag
-
-1. Copy latest uberjar to the Mac App build directory
-
-   ```bash
-   cp path/to/metabase.jar OSX/Resources/metabase.jar
-   ```
 
 1. Bundle entire app, and upload to s3
 

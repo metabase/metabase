@@ -5,6 +5,7 @@
              [build :as build]
              [codesign :as codesign]
              [create-dmg :as create-dmg]
+             [download-jar :as download-jar]
              [notarize :as notarize]
              [sparkle-artifacts :as sparkle-artifacts]
              [upload :as upload]]
@@ -12,6 +13,7 @@
 
 (def ^:private steps*
   (ordered-map/ordered-map
+   :download-jar               download-jar/download-jar!
    :build                      build/build!
    :codesign                   codesign/codesign!
    :generate-sparkle-artifacts sparkle-artifacts/generate-sparkle-artifacts!

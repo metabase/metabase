@@ -7,6 +7,8 @@
 
 (comment u/keep-me)
 
+(set! *warn-on-reflection* true)
+
 (p/import-vars
  [u
   announce

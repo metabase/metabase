@@ -1,4 +1,4 @@
-{:paths ["./"]
+{:paths ["src"]
 
  :deps
  {common/common           {:local/root "../bin/common"}
