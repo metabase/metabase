@@ -2,54 +2,65 @@ import React from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import { DragSource, DropTarget } from "react-dnd";
-import _ from "underscore";
+// import { findDOMNode } from "react-dom";
 
 import Grabber from "metabase/components/Grabber";
 
-const ChartSettingFieldsPartition = ({ value = {}, partitions, onChange }) => {
-  return (
-    <div>
-      {partitions.map(({ name, title }, index) => (
-        <div className={cx("py2", { "border-top": index > 0 })}>
-          <h4 className="mb2">{title}</h4>
-          <Partition
-            partitionName={name}
-            columns={value[name]}
-            value={value}
-            onChange={onChange}
-          />
-        </div>
-      ))}
-    </div>
-  );
-};
+class ChartSettingFieldsPartition extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { displayedValue: null };
+  }
 
-@DropTarget(
-  "columns",
-  {
-    canDrop: (props, monitor) => true,
-    drop: ({ partitionName }, monitor, component) => {
-      if (monitor.didDrop()) {
-        return;
-      }
-      return { partitionName };
-    },
-  },
-  (connect, monitor) => ({ connectDropTarget: connect.dropTarget() }),
-)
+  updateDisplayedValue = displayedValue => this.setState({ displayedValue });
+  commitDisplayedValue = () => {
+    const { displayedValue } = this.state;
+    if (displayedValue != null) {
+      this.props.onChange(displayedValue);
+      this.setState({ displayedValue: null });
+    }
+  };
+
+  render() {
+    const value = this.state.displayedValue || this.props.value || {};
+    return (
+      <div>
+        {this.props.partitions.map(({ name, title }, index) => (
+          <div className={cx("py2", { "border-top": index > 0 })}>
+            <h4 className="mb2">{title}</h4>
+            <Partition
+              partitionName={name}
+              columns={value[name]}
+              value={value}
+              updateDisplayedValue={this.updateDisplayedValue}
+              commitDisplayedValue={this.commitDisplayedValue}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+}
+
 class Partition extends React.Component {
   render() {
     const {
       columns = [],
       partitionName,
-      connectDropTarget,
+      // connectDropTarget,
+      updateDisplayedValue,
+      commitDisplayedValue,
       value,
-      onChange,
     } = this.props;
-    return connectDropTarget(
+    // return connectDropTarget(
+    return (
       <div>
         {columns.length === 0 ? (
-          <div>{t`Drag fields here`}</div>
+          <EmptyPartition
+            value={value}
+            partitionName={partitionName}
+            updateDisplayedValue={updateDisplayedValue}
+          />
         ) : (
           columns.map((col, index) => (
             <Column
@@ -57,12 +68,41 @@ class Partition extends React.Component {
               column={col}
               index={index}
               value={value}
-              onChange={onChange}
+              updateDisplayedValue={updateDisplayedValue}
+              commitDisplayedValue={commitDisplayedValue}
             />
           ))
         )}
-      </div>,
+      </div>
     );
+  }
+}
+
+@DropTarget(
+  "columns",
+  {
+    canDrop: (props, monitor) => true,
+    hover: (props, monitor, component) => {
+      const item = monitor.getItem();
+      const { index: dragIndex, partitionName: itemPartition } = item;
+      const { value, partitionName, updateDisplayedValue } = props;
+      updateDisplayedValue({
+        ...value,
+        [itemPartition]: [
+          ...value[itemPartition].slice(0, dragIndex),
+          ...value[itemPartition].slice(dragIndex + 1),
+        ],
+        [partitionName]: [value[itemPartition][dragIndex]],
+      });
+      item.index = 0;
+      item.partitionName = partitionName;
+    },
+  },
+  (connect, monitor) => ({ connectDropTarget: connect.dropTarget() }),
+)
+class EmptyPartition extends React.Component {
+  render() {
+    return this.props.connectDropTarget(<div>{t`Drag fields here`}</div>);
   }
 }
 
@@ -81,21 +121,30 @@ function swap(a, i1, i2) {
       const item = monitor.getItem();
       const { index: dragIndex, partitionName: itemPartition } = item;
       const hoverIndex = props.index;
-
-      if (dragIndex === hoverIndex) {
+      const { value, partitionName, updateDisplayedValue } = props;
+      if (dragIndex === hoverIndex && props.partitionName === itemPartition) {
         return;
-      }
-
-      if (props.partitionName === itemPartition) {
-        props.onChange({
-          ...props.value,
-          [itemPartition]: swap(
-            props.value[itemPartition],
-            dragIndex,
-            hoverIndex,
-          ),
+      } else if (partitionName === itemPartition) {
+        updateDisplayedValue({
+          ...value,
+          [itemPartition]: swap(value[itemPartition], dragIndex, hoverIndex),
         });
         item.index = hoverIndex;
+      } else {
+        updateDisplayedValue({
+          ...value,
+          [itemPartition]: [
+            ...value[itemPartition].slice(0, dragIndex),
+            ...value[itemPartition].slice(dragIndex + 1),
+          ],
+          [partitionName]: [
+            ...value[partitionName].slice(0, hoverIndex),
+            value[itemPartition][dragIndex],
+            ...value[partitionName].slice(hoverIndex),
+          ],
+        });
+        item.index = hoverIndex;
+        item.partitionName = partitionName;
       }
     },
     drop: ({ index, column, partitionName }, monitor, component) => ({
@@ -114,46 +163,12 @@ function swap(a, i1, i2) {
       partitionName,
       index,
     }),
-    endDrag: ({ value, onChange }, monitor, component) => {
+    endDrag: (props, monitor, component) => {
       if (!monitor.didDrop()) {
         return;
       }
 
-      const {
-        column: targetColumn,
-        partitionName: newPartition,
-      } = monitor.getDropResult();
-
-      const { column, partitionName: oldPartition } = monitor.getItem();
-
-      if (targetColumn && _.isEqual(column.field_ref, targetColumn.field_ref)) {
-        return;
-      }
-
-      value = {
-        ...value,
-        // remove column from old partition
-        [oldPartition]: value[oldPartition].filter(
-          col => !_.isEqual(col.field_ref, column.field_ref),
-        ),
-      };
-
-      const targetIndex =
-        targetColumn == null
-          ? value[newPartition].length
-          : value[newPartition].findIndex(col =>
-              _.isEqual(col.field_ref, targetColumn.field_ref),
-            );
-
-      onChange({
-        ...value,
-        // add it to the new one
-        [newPartition]: [
-          ...value[newPartition].slice(0, targetIndex),
-          column,
-          ...value[newPartition].slice(targetIndex),
-        ],
-      });
+      props.commitDisplayedValue();
     },
   },
   (connect, monitor) => ({
