@@ -52,7 +52,7 @@ describe("MetricForm", () => {
     getByText("12.3k");
   });
 
-  it.only("should render null", () => {
+  it("should render null", () => {
     const { getByText } = render(
       <Scalar
         isDashboard // displays title
