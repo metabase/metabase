@@ -36,9 +36,7 @@
 (defn- validate-json-docker-tag []
   (u/step (format "Check that Dockerrun.aws.json Docker tag is %s" (c/docker-tag))
     (u/step "Download archive"
-      (u/delete-file-if-exists! archive-path)
-      (u/sh {:quiet? true} "wget" "--quiet" "--no-cache" "--output-document" archive-path
-            (c/artifact-download-url "metabase-aws-eb.zip")))
+      (u/download-file! (c/artifact-download-url "metabase-aws-eb.zip") archive-path))
     (u/step "Unzip archive"
       (u/delete-file-if-exists! archive-temp-dir)
       (u/sh "unzip" (u/assert-file-exists archive-path) "-d" archive-temp-dir))

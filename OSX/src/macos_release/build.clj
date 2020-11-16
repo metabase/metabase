@@ -1,6 +1,7 @@
 (ns macos-release.build
   (:require [clojure.string :as str]
-            [macos-release.common :as c]))
+            [macos-release.common :as c]
+            [metabuild-common.core :as u]))
 
 (def ^String info-plist-file
   (c/assert-file-exists (str c/macos-source-dir "/Metabase/Metabase-Info.plist")))
@@ -44,11 +45,11 @@
 (defn- clean! []
   (c/step "Clean XCode build artifacts"
     (xcode-build "-project" xcode-project-file "clean")
-    (c/delete-file! c/artifacts-directory)))
+    (u/delete-file-if-exists! c/artifacts-directory)))
 
 (defn- build-xcarchive! []
   (let [filename (c/artifact "Metabase.xcarchive")]
-    (c/delete-file! filename)
+    (u/delete-file-if-exists! filename)
     (c/step (format "Build %s" filename)
       (xcode-build "-project"       xcode-project-file
                    "-scheme"        "Metabase"
@@ -59,7 +60,7 @@
 
 (defn- build-app! []
   (let [filename (c/artifact "Metabase.app")]
-    (c/delete-file! filename)
+    (u/delete-file-if-exists! filename)
     (c/step (format "Create %s" filename)
       (xcode-build "-exportArchive"
                    "-exportOptionsPlist" export-options-plist-file
