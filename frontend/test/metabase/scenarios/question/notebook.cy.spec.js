@@ -155,6 +155,39 @@ describe("scenarios > question > notebook", () => {
       joinTwoSavedQuestions("13000");
     });
 
+    // NOTE: - This repro is really tightly coupled to the `joinTwoSavedQuestions()` function.
+    //       - Be extremely careful when changing any of the steps within that function.
+    //       - The alternative approach would have been to write one longer repro instead of two separate ones.
+    it.skip("joined questions should create custom column (metabase#13649)", () => {
+      // pass down a joined question alias
+      joinTwoSavedQuestions("13649");
+
+      // add a custom column on top of the steps from the #13000 repro which was simply asserting
+      // that a question could be made by joining two previously saved questions
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']").type(
+          // reference joined question by previously set alias
+          "[13649 → Sum of Rating] / [Sum of Rating]",
+        );
+        cy.findByPlaceholderText("Something nice and descriptive")
+          .click()
+          .type("Sum Divide");
+
+        cy.findAllByRole("button")
+          .contains("Done")
+          .should("not.be.disabled")
+          .click();
+      });
+      cy.route("POST", "/api/dataset").as("visualization");
+      cy.findByText("Visualize").click();
+
+      cy.wait("@visualization").then(xhr => {
+        expect(xhr.response.body.error).to.not.exist;
+      });
+      cy.findByText("Sum Divide");
+    });
+
     it("should show correct column title with foreign keys (metabase#11452)", () => {
       // (Orders join Reviews on Product ID)
       openOrdersTable();
