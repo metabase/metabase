@@ -717,6 +717,7 @@ jobs:
 
 
   check-licenses:
+    executor: node
     steps:
       - attach-workspace
       - restore-be-deps-cache
