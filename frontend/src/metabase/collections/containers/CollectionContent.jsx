@@ -250,6 +250,18 @@ export default class CollectionContent extends React.Component {
                         index={index}
                         item={item}
                         collection={collection}
+                        onMove={selectedItems =>
+                          this.setState({
+                            selectedItems,
+                            selectedAction: "move",
+                          })
+                        }
+                        onCopy={selectedItems =>
+                          this.setState({
+                            selectedItems,
+                            selectedAction: "copy",
+                          })
+                        }
                       />
                       <PinPositionDropTarget
                         pinIndex={item.collection_position}
@@ -432,7 +444,7 @@ export default class CollectionContent extends React.Component {
   }
 }
 
-const PinnedItem = ({ item, index, collection }) => (
+const PinnedItem = ({ item, index, collection, onCopy, onMove }) => (
   <Link
     key={index}
     to={item.getUrl()}
@@ -444,6 +456,9 @@ const PinnedItem = ({ item, index, collection }) => (
       item={item}
       collection={collection}
       onPin={() => item.setPinned(false)}
+      onMove={onMove}
+      onCopy={onCopy}
+      pinned
     />
   </Link>
 );
