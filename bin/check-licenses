@@ -25,6 +25,7 @@ const LICENSE_ALLOWLIST = new Set(
     "Apache v2",
     "Apache*",
     "Apache-2.0",
+    "Apache 2.0 License",
     "Artistic-2.0",
     "BSD 3-Clause License",
     "BSD License",
@@ -47,6 +48,7 @@ const LICENSE_ALLOWLIST = new Set(
     "CDDL/GPLv2+CE", // this means CDDL or GPLv2 w/ classpath exception
     "COMMON DEVELOPMENT AND DISTRIBUTION LICENSE (CDDL) Version 1.0",
     "Common Development and Distribution License (CDDL) v1.0",
+    "Common Public License Version 1.0",
     "Common Public License Version",
     "Eclipse Public License - v 1.0",
     "Eclipse Public License 1.0",
@@ -63,6 +65,7 @@ const LICENSE_ALLOWLIST = new Set(
     "MIT",
     "MIT*",
     "(MIT AND BSD-3-Clause)",
+    "(MIT AND Zlib)",
     "MPL 2.0",
     "New BSD License", // same as 3-clause
     "Public Domain",
@@ -74,7 +77,8 @@ const LICENSE_ALLOWLIST = new Set(
 );
 
 const PACKAGE_ALLOWLIST = new Set([
-  "amalloy/ring-gzip-middleware@0.1.3", // MIT
+  "com.amazon.redshift/redshift-jdbc42-no-awssdk@1.2.45.1069", // Apache 2.0?
+  "amalloy/ring-gzip-middleware@0.1.4", // MIT https://github.com/clj-commons/ring-gzip-middleware/blob/master/LICENSE
   "caniuse-db@1.0.30000789", // CC-BY-4.0: https://github.com/Fyrd/caniuse
   "colorize@0.1.1", // Eclipse Public License: https://github.com/ibdknox/colorize
   "com.google.re2j/re2j@1.1", // Go License https://github.com/google/re2j/blob/master/LICENSE
