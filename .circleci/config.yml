@@ -718,12 +718,9 @@ jobs:
 
   check-licenses:
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - restore_cache:
-          <<: *restore-fe-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
+      - restore-fe-deps-cache
       - run:
           name: Check licenses
           command: ./bin/check-licenses
