@@ -108,24 +108,57 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    describe.skip("sidebar behavior", () => {
+    describe("sidebar behavior", () => {
+      beforeEach(() => {
+        restore();
+        signInAsAdmin();
+      });
+
       it("should allow a user to expand a collection without navigating to it", () => {
         cy.visit("/collection/root");
         // 1. click on the chevron to expand the sub collection
-        cy.click(".Icon-chevronright");
+        openDropdownFor("First collection");
         // 2. I should see the nested collection name
-        cy.findByText("First level");
+        cy.findByText("First collection");
+        cy.findByText("Second collection");
         // 3. The url should still be /collection/root to test that we haven't navigated away
+        cy.location("pathname").should("eq", "/collection/root");
         //
       });
 
       describe("deeply nested collection navigation", () => {
-        // TODO - create three more collections by posting to the API to test deep nesting.
-        // e.x. Third Level -> Fourth Level -> Fifth level with a long name
-        /*
-        1. Expand out via the chevrons so that all collections are showing
-        2. Ensure we can see the entire "Fifth level with a long name" collection text
-        */
+        it("should correctly display deep nested collections", () => {
+          cy.request("GET", "/api/collection").then(xhr => {
+            // "Third collection" is the last nested collection in the snapshot (data set)
+            // we need its ID to continue nesting below it
+            const THIRD_COLLECTION_ID = xhr.body.length - 1;
+
+            // sanity check and early alarm if the initial data set changes in the future
+            expect(xhr.body[THIRD_COLLECTION_ID].name).to.eq(
+              "Third collection",
+            );
+
+            cy.log("**-- Create two more nested collections --**");
+            [
+              "Fourth collection",
+              "Fifth collection with a very long name",
+            ].forEach((collection, index) => {
+              cy.request("POST", "/api/collection", {
+                name: collection,
+                parent_id: THIRD_COLLECTION_ID + index,
+                color: "#509ee3",
+              });
+            });
+          });
+          cy.visit("/collection/root");
+          // 1. Expand out via the chevrons so that all collections are showing
+          openDropdownFor("First collection");
+          openDropdownFor("Second collection");
+          openDropdownFor("Third collection");
+          openDropdownFor("Fourth collection");
+          // 2. Ensure we can see the entire "Fifth level with a long name" collection text
+          cy.findByText("Fifth collection with a very long name");
+        });
       });
     });
 
