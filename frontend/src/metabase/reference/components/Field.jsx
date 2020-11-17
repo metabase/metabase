@@ -117,7 +117,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         <div className={F.fieldOther} />
       </div>
       {field.description && (
-        <div className={cx(S.itemSubtitle, { mt1: isEditing })}>
+        <div className={cx(S.itemSubtitle, "mb2", { mt1: isEditing })}>
           {field.description}
         </div>
       )}
