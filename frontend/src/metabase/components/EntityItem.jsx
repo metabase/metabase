@@ -91,7 +91,7 @@ const EntityItem = ({
       case "dashboard":
         return color("brand");
       default:
-        return color("bg-medium");
+        return color("brand-light");
     }
   }
 
@@ -100,7 +100,7 @@ const EntityItem = ({
       case "dashboard":
         return color("white");
       default:
-        return color("text-dark");
+        return color("brand");
     }
   }
 
