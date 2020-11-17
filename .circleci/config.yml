@@ -721,10 +721,7 @@ jobs:
       - attach-workspace
       - restore-be-deps-cache
       - restore-fe-deps-cache
-      - run:
-          name: Check licenses
-          command: ./bin/check-licenses
-          no_output_timeout: 5m
+      - run: ./bin/check-licenses
 
 ########################################################################################################################
 #                                                      WORKFLOWS                                                       #
