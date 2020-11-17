@@ -505,7 +505,7 @@ class SharingSidebar extends React.Component {
       return (
         <Sidebar>
           <div className="p4 flex justify-between align-center">
-            <h3>{t`Subscriptions`}</h3>
+            <h3>{t`Schedules`}</h3>
 
             <Tooltip tooltip={t`Set up a new schedule`}>
               <Icon
@@ -513,6 +513,14 @@ class SharingSidebar extends React.Component {
                 className="text-brand bg-light-hover rounded p1 cursor-pointer"
                 size={20}
                 onClick={() => this.createSubscription()}
+              />
+            </Tooltip>
+            <Tooltip tooltip={t`Close`}>
+              <Icon
+                name="close"
+                className="text-brand bg-light-hover rounded p1 cursor-pointer"
+                size={20}
+                onClick={onCancel}
               />
             </Tooltip>
           </div>

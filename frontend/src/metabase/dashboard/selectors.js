@@ -37,6 +37,7 @@ export type MappingsByParameter = {
 
 export const getDashboardId = state => state.dashboard.dashboardId;
 export const getIsEditing = state => !!state.dashboard.isEditing;
+export const getIsSharing = state => !!state.dashboard.isSharing;
 export const getDashboardBeforeEditing = state => state.dashboard.isEditing;
 export const getClickBehaviorSidebarDashcard = state => {
   const { clickBehaviorSidebarDashcardId, dashcards } = state.dashboard;
