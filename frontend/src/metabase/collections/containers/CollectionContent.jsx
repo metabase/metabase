@@ -161,7 +161,13 @@ export default class CollectionContent extends React.Component {
     return (
       <Box pt={2}>
         <Box w={"80%"} ml="auto" mr="auto">
-          <Flex align="center" py={3}>
+          <Flex
+            align="center"
+            py={3}
+            className={cx({
+              "border-bottom": !collectionHasPins && unpinnedItems.length > 0,
+            })}
+          >
             <Flex align="center">
               <PageHeading className="text-wrap">{collection.name}</PageHeading>
               {collection.description && (
