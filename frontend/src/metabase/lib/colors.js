@@ -31,7 +31,7 @@ const colors = {
   warning: "#F9CF48",
   "text-dark": "#4C5773",
   "text-medium": "#74838f",
-  "text-light": "#B8BBC3",
+  "text-light": "#C7CFD4",
   "text-white": "#FFFFFF",
   "bg-black": "#2E353B",
   "bg-dark": "#93A1AB",
