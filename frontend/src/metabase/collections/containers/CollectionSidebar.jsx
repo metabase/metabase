@@ -36,16 +36,20 @@ const Sidebar = styled(Box)`
   flex-direction: column;
 `;
 
+@Collection.loadList({
+  /* pass "tree" here so that the collection entity knows to use the /tree endpoint and send children in the response
+          we should eventually refactor code elsewhere in the app to use this by default instead of determining the relationships clientside, but this works in the interim
+          */
+  query: () => ({ tree: true }),
+})
 class CollectionSidebar extends React.Component {
   state = {
     openCollections: [],
   };
   onOpen = id => {
-    console.log("onOpen");
     this.setState({ openCollections: this.state.openCollections.concat(id) });
   };
   onClose = id => {
-    console.log("onClose");
     this.setState({
       openCollections: this.state.openCollections.filter(c => {
         return c !== id;
@@ -56,7 +60,7 @@ class CollectionSidebar extends React.Component {
     // TODO - set the collections open here
   }
   render() {
-    const { currentUser, isRoot, collectionId } = this.props;
+    const { currentUser, isRoot, collectionId, list } = this.props;
     return (
       <Sidebar w={340} pt={3}>
         <Box pl="28px">
@@ -71,46 +75,32 @@ class CollectionSidebar extends React.Component {
           <Icon name="folder" mr={1} />
           {t`Our analytics`}
         </CollectionLink>
-        <Collection.ListLoader
-          query={{
-            /* pass "tree" here so that the collection entity knows to use the /tree endpoint and send children in the response
-          we should eventually refactor code elsewhere in the app to use this by default instead of determining the relationships clientside, but this works in the interim
-          */
-            tree: true,
-          }}
-        >
-          {({ list }) => (
-            <Box pb={4}>
-              <CollectionsList
-                openCollections={this.state.openCollections}
-                onClose={this.onClose}
-                onOpen={this.onOpen}
-                collections={list}
-                filter={nonPersonalCollection}
-                currentCollection={collectionId}
-              />
+        <Box pb={4}>
+          <CollectionsList
+            openCollections={this.state.openCollections}
+            onClose={this.onClose}
+            onOpen={this.onOpen}
+            collections={list}
+            filter={nonPersonalCollection}
+            currentCollection={collectionId}
+          />
 
-              <Box mt={"32px"}>
-                <CollectionsList
-                  openCollections={this.state.openCollections}
-                  collections={currentUserPersonalCollections(
-                    list,
-                    currentUser.id,
-                  )}
-                  initialIcon="person"
-                  currentCollection={collectionId}
-                />
-              </Box>
+          <Box mt={"32px"}>
+            <CollectionsList
+              openCollections={this.state.openCollections}
+              collections={currentUserPersonalCollections(list, currentUser.id)}
+              initialIcon="person"
+              currentCollection={collectionId}
+            />
+          </Box>
 
-              {currentUser.is_superuser && (
-                <CollectionLink to={Urls.collection("users")}>
-                  <Icon name="group" mr={1} />
-                  {t`Other users' personal collections`}
-                </CollectionLink>
-              )}
-            </Box>
+          {currentUser.is_superuser && (
+            <CollectionLink to={Urls.collection("users")}>
+              <Icon name="group" mr={1} />
+              {t`Other users' personal collections`}
+            </CollectionLink>
           )}
-        </Collection.ListLoader>
+        </Box>
 
         <Box className="mt-auto" pb={2} pl={SIDEBAR_SPACER * 2}>
           <Link to={`/archive`} className="link flex align-center text-bold">
