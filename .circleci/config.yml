@@ -716,6 +716,14 @@ jobs:
       - run: ./bin/deploy-webhook $DEPLOY_WEBHOOK
 
 
+  check-licenses:
+    executor: node
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - restore-fe-deps-cache
+      - run: ./bin/check-licenses
+
 ########################################################################################################################
 #                                                      WORKFLOWS                                                       #
 ########################################################################################################################
@@ -992,7 +1000,10 @@ workflows:
           requires:
             - be-deps
           <<: *Matrix
-
+      - check-licenses:
+          requires:
+            - be-deps
+            - fe-deps
       - fe-tests-cypress:
           name: fe-tests-cypress-1-<< matrix.edition >>
           requires:
