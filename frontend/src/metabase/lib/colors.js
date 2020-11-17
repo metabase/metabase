@@ -29,7 +29,7 @@ const colors = {
   success: "#84BB4C",
   error: "#ED6E6E",
   warning: "#F9CF48",
-  "text-dark": "#4C5773",
+  "text-dark": "#2e353b",
   "text-medium": "#74838f",
   "text-light": "#C7CFD4",
   "text-white": "#FFFFFF",
