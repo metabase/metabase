@@ -3,6 +3,7 @@ import {
   signInAsAdmin,
   setupLocalHostEmail,
   signInAsNormalUser,
+  modal,
 } from "__support__/cypress";
 // Ported from initial_collection.e2e.spec.js
 
@@ -162,26 +163,51 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    describe.skip("managing items", () => {
+    describe("managing items", () => {
       it("should let a user move a collection item via modal", () => {
         cy.visit("/collection/root");
-        /*
-        1. Click on the ... menu
-        2. Select "move this" from the popover
-        3. Select a collection that has child collections and hit the right chevron to navigate there
-        4. Hit done
-        5. I should have been navigated to that collection
-        */
+
+        // 1. Click on the ... menu
+        openEllipsisMenuFor("Orders");
+
+        // 2. Select "move this" from the popover
+        cy.findByText("Move this item").click();
+        modal().within(() => {
+          cy.findByText(`Move "Orders"?`);
+          // 3. Select a collection that has child collections and hit the right chevron to navigate there
+          cy.findByText("First collection")
+            .next() // right chevron icon
+            .click();
+          cy.findByText("Second collection").click();
+          // 4. Move that item
+          cy.findByText("Move").click();
+        });
+        // Assert that the item no longer exists in "Our collection"...
+        cy.findByText("Orders").should("not.exist");
+
+        openDropdownFor("First collection");
+        // ...and that it is indeed moved inside "Second collection"
+        cy.findByText("Second collection").click();
+        cy.findByText("Orders");
       });
 
       it("should allow a user to pin an item", () => {
-        /*
-        Starting from a scenario with no pins
+        cy.visit("/collection/root");
+        // Assert that we're starting from a scenario with no pins
+        cy.findByText("Pinned items").should("not.exist");
 
-        1. Click on the ... menu
-        2. Select "pin this" from the popover
-        3. Should see "pinned items" and the item should be in that section
-        */
+        // 1. Click on the ... menu
+        openEllipsisMenuFor("Orders in a dashboard");
+
+        // 2. Select "pin this" from the popover
+        cy.findByText("Pin this item").click();
+
+        // 3. Should see "pinned items" and the item should be in that section
+        cy.findByText("Pinned items")
+          .parent()
+          .contains("Orders in a dashboard");
+        // 4. Consequently, "Everything else" should now also be visible
+        cy.findByText("Everything else");
       });
     });
 
@@ -278,4 +304,11 @@ function openDropdownFor(collectionName) {
     .find(".Icon-chevronright")
     .eq(0) // there may be more nested icons, but we need the top level one
     .click();
+}
+
+function openEllipsisMenuFor(item) {
+  cy.findByText(item)
+    .closest("a")
+    .find(".Icon-ellipsis")
+    .click({ force: true });
 }
