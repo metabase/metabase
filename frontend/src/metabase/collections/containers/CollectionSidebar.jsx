@@ -50,7 +50,14 @@ const CollectionSidebar = ({ currentUser, isRoot, collectionId }) => (
       <Icon name="folder" mr={1} />
       {t`Our analytics`}
     </CollectionLink>
-    <Collection.ListLoader>
+    <Collection.ListLoader
+      query={{
+        /* pass "tree" here so that the collection entity knows to use the /tree endpoint and send children in the response
+          we should eventually refactor code elsewhere in the app to use this by default instead of determining the relationships clientside, but this works in the interim
+          */
+        tree: true,
+      }}
+    >
       {({ list }) => (
         <Box pb={4}>
           <CollectionsList
