@@ -717,7 +717,6 @@ jobs:
 
 
   check-licenses:
-    <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
