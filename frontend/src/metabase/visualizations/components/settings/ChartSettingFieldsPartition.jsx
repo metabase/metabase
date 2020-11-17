@@ -2,7 +2,6 @@ import React from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import { DragSource, DropTarget } from "react-dnd";
-// import { findDOMNode } from "react-dom";
 
 import Grabber from "metabase/components/Grabber";
 
@@ -25,10 +24,11 @@ class ChartSettingFieldsPartition extends React.Component {
     const value = this.state.displayedValue || this.props.value || {};
     return (
       <div>
-        {this.props.partitions.map(({ name, title }, index) => (
+        {this.props.partitions.map(({ name, title, columnFilter }, index) => (
           <div className={cx("py2", { "border-top": index > 0 })}>
             <h4 className="mb2">{title}</h4>
             <Partition
+              columnFilter={columnFilter}
               partitionName={name}
               columns={value[name]}
               value={value}
@@ -47,16 +47,16 @@ class Partition extends React.Component {
     const {
       columns = [],
       partitionName,
-      // connectDropTarget,
+      columnFilter,
       updateDisplayedValue,
       commitDisplayedValue,
       value,
     } = this.props;
-    // return connectDropTarget(
     return (
       <div>
         {columns.length === 0 ? (
           <EmptyPartition
+            columnFilter={columnFilter}
             value={value}
             partitionName={partitionName}
             updateDisplayedValue={updateDisplayedValue}
@@ -67,6 +67,7 @@ class Partition extends React.Component {
               partitionName={partitionName}
               column={col}
               index={index}
+              columnFilter={columnFilter}
               value={value}
               updateDisplayedValue={updateDisplayedValue}
               commitDisplayedValue={commitDisplayedValue}
@@ -81,9 +82,11 @@ class Partition extends React.Component {
 @DropTarget(
   "columns",
   {
-    canDrop: (props, monitor) => true,
     hover: (props, monitor, component) => {
       const item = monitor.getItem();
+      if (props.columnFilter && props.columnFilter(item.column) === false) {
+        return;
+      }
       const { index: dragIndex, partitionName: itemPartition } = item;
       const { value, partitionName, updateDisplayedValue } = props;
       updateDisplayedValue({
@@ -106,31 +109,25 @@ class EmptyPartition extends React.Component {
   }
 }
 
-function swap(a, i1, i2) {
-  const aDupe = [...a];
-  aDupe[i1] = a[i2];
-  aDupe[i2] = a[i1];
-  return aDupe;
-}
-
 @DropTarget(
   "columns",
   {
-    canDrop: (props, monitor) => true,
     hover: (props, monitor, component) => {
       const item = monitor.getItem();
+      if (props.columnFilter && props.columnFilter(item.column) === false) {
+        return;
+      }
       const { index: dragIndex, partitionName: itemPartition } = item;
       const hoverIndex = props.index;
       const { value, partitionName, updateDisplayedValue } = props;
-      if (dragIndex === hoverIndex && props.partitionName === itemPartition) {
-        return;
-      } else if (partitionName === itemPartition) {
-        updateDisplayedValue({
-          ...value,
-          [itemPartition]: swap(value[itemPartition], dragIndex, hoverIndex),
-        });
+      if (partitionName === itemPartition && dragIndex !== hoverIndex) {
+        const columns = value[itemPartition];
+        const columnsDup = [...columns];
+        columnsDup[dragIndex] = columns[hoverIndex];
+        columnsDup[hoverIndex] = columns[dragIndex];
+        updateDisplayedValue({ ...value, [itemPartition]: columnsDup });
         item.index = hoverIndex;
-      } else {
+      } else if (partitionName !== itemPartition && dragIndex !== hoverIndex) {
         updateDisplayedValue({
           ...value,
           [itemPartition]: [
@@ -164,10 +161,6 @@ function swap(a, i1, i2) {
       index,
     }),
     endDrag: (props, monitor, component) => {
-      if (!monitor.didDrop()) {
-        return;
-      }
-
       props.commitDisplayedValue();
     },
   },
