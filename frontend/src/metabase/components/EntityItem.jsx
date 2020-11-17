@@ -10,7 +10,7 @@ import CheckBox from "metabase/components/CheckBox";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 
 const EntityItemWrapper = Flex.extend`
   border-bottom: 1px solid ${color("bg-medium")};
@@ -39,6 +39,7 @@ const EntityItem = ({
   item,
   buttons,
   extraInfo,
+  pinned,
 }) => {
   const actions = [
     onPin && {
@@ -86,22 +87,22 @@ const EntityItem = ({
       break;
   }
 
+  function getPinnedBackground(model) {
+    return model === "dashboard"
+      ? color("accent4")
+      : lighten(color("accent4"), 0.28);
+  }
+
+  function getPinnedForeground(model) {
+    return model === "dashboard" ? color("white") : color("accent4");
+  }
+
   function getBackground(model) {
-    switch (model) {
-      case "dashboard":
-        return color("brand");
-      default:
-        return color("brand-light");
-    }
+    return model === "dashboard" ? color("brand") : color("brand-light");
   }
 
   function getForeground(model) {
-    switch (model) {
-      case "dashboard":
-        return color("white");
-      default:
-        return color("brand");
-    }
+    return model === "dashboard" ? color("white") : color("brand");
   }
 
   return (
@@ -114,8 +115,12 @@ const EntityItem = ({
       <IconWrapper
         p={"12px"}
         mr={2}
-        bg={getBackground(item.model)}
-        color={getForeground(item.model)}
+        bg={
+          pinned ? getPinnedBackground(item.model) : getBackground(item.model)
+        }
+        color={
+          pinned ? getPinnedForeground(item.model) : getForeground(item.model)
+        }
         borderRadius={"99px"}
         onClick={
           selectable

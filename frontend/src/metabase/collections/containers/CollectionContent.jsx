@@ -571,6 +571,7 @@ export const NormalItem = ({
   onMove,
   onCopy,
   onPin,
+  pinned,
 }) => (
   <Link
     to={item.getUrl()}
@@ -604,6 +605,7 @@ export const NormalItem = ({
       onToggleSelected={() => {
         onToggleSelected(item);
       }}
+      pinned={pinned}
     />
   </Link>
 );
