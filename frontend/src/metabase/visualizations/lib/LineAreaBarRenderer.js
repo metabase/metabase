@@ -224,6 +224,64 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
   return { dimension, groups };
 }
 
+// ASSERT(datas.length === 1)
+// ASSERT(datas[0].length > 0)
+function getDimensionsAndGroupsForWaterfallChart(props, originalDatas, warn) {
+  const datas = originalDatas.slice();
+  datas.push(datas[0].map(k => k.slice())); // negatives
+  datas.push(datas[0].map(k => k.slice())); // positives
+
+  /*
+  A waterfall chart is essentially a stacked bar chart.
+  It consists of the following (from the topmost):
+  - the "green bar", when the current value is greater than the previous one
+  - the "red bar", when the current value is smaller than the previous one
+  - the "invisible beam" supporting either the positive or negative bar
+
+  Note the green and red bars are mutually exclusive (i.e. if one has
+  a positive value, the other is zero). This is done so we need not have
+  conditional fill color.
+  */
+
+  const values = datas[0].map(d => d[1]);
+  const positives = values.map(v => (v > 0 ? v : 0));
+  const negatives = values.map(v => (v < 0 ? -v : 0));
+  const beams = [0];
+  for (let i = 1; i < values.length; ++i) {
+    beams[i] =
+      positives[i - 1] > 0
+        ? beams[i - 1] + positives[i - 1] - negatives[i]
+        : beams[i - 1];
+  }
+  for (let k = 0; k < values.length; ++k) {
+    datas[0][k][1] = beams[k];
+    datas[1][k][1] = negatives[k];
+    datas[2][k][1] = positives[k];
+  }
+
+  // The subsequent steps are exactly like any other stacked bar chart
+
+  const dataset = crossfilter();
+  datas.map((data, i) => {
+    const xyz = data.map(d => ({
+      [0]: d[0],
+      [i + 1]: d[1],
+    }));
+    dataset.add(xyz);
+  });
+
+  const dimension = dataset.dimension(d => d[0]);
+  const groups = [
+    datas.map((_, seriesIndex) =>
+      reduceGroup(dimension.group(), seriesIndex + 1, () =>
+        warn(unaggregatedDataWarning(props.series[seriesIndex].data.cols[0])),
+      ),
+    ),
+  ];
+
+  return { dimension, groups };
+}
+
 function getDimensionsAndGroupsForOther({ series }, datas, warn) {
   const dataset = crossfilter();
   datas.map(data => dataset.add(data));
@@ -271,7 +329,9 @@ export function getDimensionsAndGroupsAndUpdateSeriesDisplayNames(
   const { settings, chartType } = props;
 
   const { groups, dimension } =
-    chartType === "scatter"
+    chartType === "waterfall"
+      ? getDimensionsAndGroupsForWaterfallChart(props, datas, warn)
+      : chartType === "scatter"
       ? getDimensionsAndGroupsForScatterChart(datas)
       : isStacked(settings, datas)
       ? getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
@@ -411,6 +471,7 @@ function getDcjsChart(cardType, parent) {
     case "area":
       return lineAddons(dc.lineChart(parent));
     case "bar":
+    case "waterfall":
       return dc.barChart(parent);
     case "scatter":
       return dc.bubbleChart(parent);
@@ -448,6 +509,22 @@ function applyChartLineBarSettings(
       .centerBar(
         forceCenterBar || settings["graph.x_axis.scale"] !== "ordinal",
       );
+  }
+
+  // FIXME scoped the chart-body
+  // FIXME should this be done in PostRender.js?
+  if (chartType === "waterfall") {
+    chart.on("pretransition", function(chart) {
+      chart
+        .selectAll("svg g g.chart-body g.stack._0 rect.bar")
+        .style("fill", "transparent");
+      chart
+        .selectAll("svg g g.chart-body g.stack._1 rect.bar")
+        .style("fill", "red");
+      chart
+        .selectAll("svg g g.chart-body g.stack._2 rect.bar")
+        .style("fill", "green");
+    });
   }
 }
 
@@ -785,7 +862,7 @@ function doHistogramBarStuff(parent) {
 /************************************************************ PUTTING IT ALL TOGETHER ************************************************************/
 
 type LineAreaBarProps = VisualizationProps & {
-  chartType: "line" | "area" | "bar" | "scatter",
+  chartType: "line" | "area" | "bar" | "waterfall" | "scatter",
   isScalarSeries: boolean,
   maxSeries: number,
 };
@@ -875,10 +952,9 @@ export default function lineAreaBar(
 
   // HACK: compositeChart + ordinal X axis shenanigans. See https://github.com/dc-js/dc.js/issues/678 and https://github.com/dc-js/dc.js/issues/662
   if (!isHistogram(props.settings)) {
-    const hasBar = _.any(
-      series,
-      single => getSeriesDisplay(settings, single) === "bar",
-    );
+    const hasBar =
+      _.any(series, single => getSeriesDisplay(settings, single) === "bar") ||
+      props.chartType === "waterfall";
     parent._rangeBandPadding(hasBar ? BAR_PADDING_RATIO : 1);
   }
 
@@ -926,6 +1002,8 @@ export const areaRenderer = (element, props) =>
   lineAreaBar(element, { ...props, chartType: "area" });
 export const barRenderer = (element, props) =>
   lineAreaBar(element, { ...props, chartType: "bar" });
+export const waterfallRenderer = (element, props) =>
+  lineAreaBar(element, { ...props, chartType: "waterfall" });
 export const comboRenderer = (element, props) =>
   lineAreaBar(element, { ...props, chartType: "combo" });
 export const scatterRenderer = (element, props) =>
