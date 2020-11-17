@@ -183,7 +183,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Visualize").click();
 
       cy.wait("@visualization").then(xhr => {
-        expect(xhr.response.body.error).to.not.exist;
+        expect(xhr.response.body.error).not.to.exist;
       });
       cy.findByText("Sum Divide");
     });
