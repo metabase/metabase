@@ -29,12 +29,6 @@
 .horizontal-button:hover > svg {
   color: white;
 }
-.large-button {
-  padding: 12px;
-}
-.horizontal-popover:hover {
-  background-color: var(--color-accent7);
-}
 .formatting-button {
   color: color(#b8bbc3 alpha(-50%));
 }

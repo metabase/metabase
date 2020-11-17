@@ -37,7 +37,7 @@ export default ({
     )
     .map(aggregator => ({
       name: "summarize-by-time",
-      buttonType: "horizontal-no-outline",
+      buttonType: "horizontal",
       section: "summarize",
       icon: "line",
       title: (

@@ -21,6 +21,9 @@ import type {
 import cx from "classnames";
 import _ from "underscore";
 
+// These icons used to be displayed for each row section of actions.
+// We're now just using them as a way to select different sections of actions to style them uniquely.
+// They're not all used, but I've kept them here in case we need these hooks in the future.
 const SECTIONS = {
   records: {
     icon: "table2",
@@ -35,7 +38,7 @@ const SECTIONS = {
     icon: "sort",
   },
   formatting: {
-    icon: "pencil",
+    icon: "gear",
   },
   breakout: {
     icon: "breakout",
@@ -46,6 +49,8 @@ const SECTIONS = {
   filter: {
     icon: "funnel_outline",
   },
+  // There is no such icon as "summarize." This is used to ID and select the actions that we,
+  // want to make larger, like Distribution, Sum over Time, etc.
   summarize: {
     icon: "summarize",
   },
@@ -184,29 +189,21 @@ export default class ChartClickActions extends Component {
           <div className="text-bold px2 pt2 pb1">
             {sections.map(([key, actions]) => (
               <div
-                className={cx(
-                  "pb1",
-                  { pb1: SECTIONS[key].icon === "sum" },
-                  { pb2: SECTIONS[key].icon === "bolt" },
-                )}
+                className={cx("pb1", { pb2: SECTIONS[key].icon === "bolt" })}
               >
                 {SECTIONS[key].icon === "sum" && (
-                  <p className="mt0 text-bold text-medium text-small block">
-                    Summarize
-                  </p>
+                  <p className="mt0 text-medium text-small">Summarize</p>
                 )}
                 {SECTIONS[key].icon === "breakout" && (
-                  <p className="mt0 text-bold text-medium text-small block">
-                    Break out by a…
-                  </p>
+                  <p className="mt0 text-medium text-small">Break out by a…</p>
                 )}
                 {SECTIONS[key].icon === "bolt" && (
-                  <p className="mt0 text-bold text-medium text-small block">
+                  <p className="mt2 text-medium text-small">
                     Automatic explorations
                   </p>
                 )}
                 {SECTIONS[key].icon === "funnel_outline" && (
-                  <p className="mt0 text-bold text-dark text-small block">
+                  <p className="mt0 text-dark text-small">
                     Filter by this value
                   </p>
                 )}
@@ -216,23 +213,15 @@ export default class ChartClickActions extends Component {
                   className={cx(
                     "flex",
                     {
-                      "justify-end": SECTIONS[key].icon === "pencil",
+                      "justify-end": SECTIONS[key].icon === "gear",
                     },
                     {
                       "align-center justify-center":
-                        SECTIONS[key].icon === "pencil",
+                        SECTIONS[key].icon === "gear",
                     },
                     { "flex-column my1": SECTIONS[key].icon === "summarize" },
-                    { mb2: SECTIONS[key].icon === "breakout" },
                   )}
                 >
-                  {/*
-                <Icon
-                  name={(SECTIONS[key] && SECTIONS[key].icon) || "unknown"}
-                  className="mr1 pl2 text-medium"
-                  size={16}
-                />
-                */}
                   {actions.map((action, index) => (
                     <ChartClickAction
                       index={index}
@@ -260,14 +249,16 @@ export const ChartClickAction = ({
   isLastItem: any,
   handleClickAction: any,
 }) => {
+  // This is where all the different action button styles get applied.
+  // Some of them have bespoke classes defined in ChartClickActions.css,
+  // like for cases when we needed to really dial in the spacing.
   const className = cx("cursor-pointer no-decoration", {
-    "text-small text-center sort token-blue mr1 bg-brand-hover":
+    "text-center sort token-blue mr1 bg-brand-hover":
       action.buttonType === "sort",
     "formatting-button flex-align-right text-brand-hover":
-      action.buttonType === "text",
+      action.buttonType === "formatting",
     "horizontal-button p1 flex flex-auto align-center bg-brand-hover text-dark text-white-hover":
-      action.buttonType === "horizontal-no-outline" ||
-      action.buttonType === "horizontal-no-outline-tight",
+      action.buttonType === "horizontal",
     "text-small token token-blue text-white-hover bg-brand-hover mr1":
       action.buttonType === "token",
     "token token-filter text-small text-white-hover mr1":
@@ -309,10 +300,11 @@ export const ChartClickAction = ({
           className,
           {
             "flex flex-row align-center":
-              action.buttonType === "text" || action.buttonType === "sort",
+              action.buttonType === "formatting" ||
+              action.buttonType === "sort",
           },
           {
-            mb1: action.buttonType === "horizontal-no-outline",
+            mb1: action.buttonType === "horizontal",
           },
         )}
         onClick={() => handleClickAction(action)}
@@ -320,13 +312,12 @@ export const ChartClickAction = ({
         {action.icon && (
           <Icon
             className={cx("flex mr1", {
-              "text-brand text-white-hover": action.buttonType !== "text",
+              "text-brand text-white-hover": action.buttonType !== "formatting",
             })}
             size={
-              action.buttonType === "text"
+              action.buttonType === "formatting"
                 ? 16
-                : action.buttonType === "horizontal-no-outline" ||
-                  action.buttonType === "horizontal-no-outline-tight"
+                : action.buttonType === "horizontal"
                 ? 14
                 : 12
             }

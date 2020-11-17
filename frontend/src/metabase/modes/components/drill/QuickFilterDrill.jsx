@@ -52,7 +52,7 @@ export default function QuickFilterDrill({
       {
         name: "view-fks",
         section: "standalone_filter",
-        buttonType: "horizontal-no-outline-tight",
+        buttonType: "horizontal",
         icon: "filter",
         title: (
           <span>
