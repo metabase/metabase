@@ -130,8 +130,7 @@ describe("scenarios > collection_defaults", () => {
     });
 
     describe.skip("managing items", () => {
-      // Note - this behavior is broken right now, so let's skip until it's working
-      it.skip("should let a user move a collection item via modal", () => {
+      it("should let a user move a collection item via modal", () => {
         cy.visit("/collection/root");
         /*
         1. Click on the ... menu
