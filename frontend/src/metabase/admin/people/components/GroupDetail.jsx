@@ -10,20 +10,22 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 
+import { color } from "metabase/lib/colors";
+
 import { PermissionsApi } from "metabase/services";
-import { t } from "c-3po";
-import Icon from "metabase/components/Icon.jsx";
-import Popover from "metabase/components/Popover.jsx";
-import UserAvatar from "metabase/components/UserAvatar.jsx";
-import AdminEmptyText from "metabase/components/AdminEmptyText.jsx";
-import Alert from "metabase/components/Alert.jsx";
+import { t } from "ttag";
+import Icon from "metabase/components/Icon";
+import Popover from "metabase/components/Popover";
+import UserAvatar from "metabase/components/UserAvatar";
+import AdminEmptyText from "metabase/components/AdminEmptyText";
+import Alert from "metabase/components/Alert";
 
-import AdminContentTable from "metabase/components/AdminContentTable.jsx";
-import AdminPaneLayout from "metabase/components/AdminPaneLayout.jsx";
+import AdminContentTable from "metabase/components/AdminContentTable";
+import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 
-import Typeahead from "metabase/hoc/Typeahead.jsx";
+import Typeahead from "metabase/hoc/Typeahead";
 
-import AddRow from "./AddRow.jsx";
+import AddRow from "./AddRow";
 
 const GroupDescription = ({ group }) =>
   isDefaultGroup(group) ? (
@@ -59,7 +61,7 @@ const AddMemberAutocompleteSuggestion = ({
     className={cx("px2 py1 cursor-pointer", { "bg-brand": selected })}
     onClick={onClick}
   >
-    <span className="inline-block text-white mr2">
+    <span className="inline-block mr2">
       <UserAvatar background={color} user={user} />
     </span>
     <span className={cx("h3", { "text-white": selected })}>
@@ -68,7 +70,13 @@ const AddMemberAutocompleteSuggestion = ({
   </div>
 );
 
-const COLORS = ["bg-error", "bg-purple", "bg-brand", "bg-gold", "bg-green"];
+const COLORS = [
+  color("brand"),
+  color("accent1"),
+  color("accent2"),
+  color("accent3"),
+  color("accent4"),
+];
 
 const AddMemberTypeahead = Typeahead({
   optionFilter: (text, user) =>
@@ -157,6 +165,7 @@ const UserRow = ({ user, showRemoveButton, onRemoveUserClicked }) => (
 const MembersTable = ({
   group,
   members,
+  currentUser: { id: currentUserId } = {},
   users,
   showAddUser,
   text,
@@ -169,8 +178,9 @@ const MembersTable = ({
   onRemoveUserFromSelection,
 }) => {
   // you can't remove people from Default and you can't remove the last user from Admin
-  const showRemoveMemeberButton =
-    !isDefaultGroup(group) && (!isAdminGroup(group) || members.length > 1);
+  const isCurrentUser = ({ user_id }) => user_id === currentUserId;
+  const showRemoveMemeberButton = user =>
+    !isDefaultGroup(group) && !(isAdminGroup(group) && isCurrentUser(user));
 
   return (
     <div>
@@ -192,7 +202,7 @@ const MembersTable = ({
             <UserRow
               key={index}
               user={user}
-              showRemoveButton={showRemoveMemeberButton}
+              showRemoveButton={showRemoveMemeberButton(user)}
               onRemoveUserClicked={onRemoveUserClicked}
             />
           ))}
@@ -249,7 +259,7 @@ export default class GroupDetail extends Component {
     try {
       await Promise.all(
         this.state.selectedUsers.map(async user => {
-          let members = await PermissionsApi.createMembership({
+          const members = await PermissionsApi.createMembership({
             group_id: this.props.group.id,
             user_id: user.id,
           });
@@ -305,14 +315,14 @@ export default class GroupDetail extends Component {
   render() {
     // users = array of all users for purposes of adding new users to group
     // [group.]members = array of users currently in the group
-    let { group, users } = this.props;
+    let { currentUser, group, users } = this.props;
     const { text, selectedUsers, addUserVisible, alertMessage } = this.state;
     const members = this.getMembers();
 
     group = group || {};
     users = users || {};
 
-    let usedUsers = {};
+    const usedUsers = {};
     for (const user of members) {
       usedUsers[user.user_id] = true;
     }
@@ -334,6 +344,7 @@ export default class GroupDetail extends Component {
       >
         <GroupDescription group={group} />
         <MembersTable
+          currentUser={currentUser}
           group={group}
           members={members}
           users={filteredUsers}

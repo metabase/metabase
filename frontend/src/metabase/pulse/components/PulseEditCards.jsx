@@ -1,16 +1,17 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
-import PulseCardPreview from "./PulseCardPreview.jsx";
+import PulseCardPreview from "./PulseCardPreview";
 
 import QuestionSelect from "metabase/containers/QuestionSelect";
 
+// import Query from "metabase/lib/query";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 const SOFT_LIMIT = 10;
 const HARD_LIMIT = 25;
@@ -22,7 +23,7 @@ function isAutoAttached(cardPreview) {
     cardPreview &&
     cardPreview.pulse_card_type === "table" &&
     (cardPreview.row_count > TABLE_MAX_ROWS ||
-      cardPreview.col_cound > TABLE_MAX_COLS)
+      cardPreview.col_count > TABLE_MAX_COLS)
   );
 }
 
@@ -43,7 +44,7 @@ export default class PulseEditCards extends Component {
   static defaultProps = {};
 
   setCard(index, card) {
-    let { pulse } = this.props;
+    const { pulse } = this.props;
     this.props.setPulse({
       ...pulse,
       cards: [
@@ -68,7 +69,7 @@ export default class PulseEditCards extends Component {
   }
 
   removeCard(index) {
-    let { pulse } = this.props;
+    const { pulse } = this.props;
     this.props.setPulse({
       ...pulse,
       cards: [...pulse.cards.slice(0, index), ...pulse.cards.slice(index + 1)],
@@ -79,7 +80,7 @@ export default class PulseEditCards extends Component {
 
   getNotices(card, cardPreview, index) {
     const showSoftLimitWarning = index === SOFT_LIMIT;
-    let notices = [];
+    const notices = [];
     const hasAttachment =
       isAutoAttached(cardPreview) ||
       (this.props.attachmentsEnabled &&
@@ -124,8 +125,8 @@ export default class PulseEditCards extends Component {
   }
 
   renderCardNotices(card, index) {
-    let cardPreview = card && this.props.cardPreviews[card.id];
-    let notices = this.getNotices(card, cardPreview, index);
+    const cardPreview = card && this.props.cardPreviews[card.id];
+    const notices = this.getNotices(card, cardPreview, index);
     if (notices.length > 0) {
       return (
         <div className="absolute" style={{ width: 400, marginLeft: 420 }}>
@@ -148,9 +149,9 @@ export default class PulseEditCards extends Component {
   }
 
   render() {
-    let { pulse, cardPreviews } = this.props;
+    const { pulse, cardPreviews } = this.props;
 
-    let pulseCards = pulse ? pulse.cards.slice() : [];
+    const pulseCards = pulse ? pulse.cards.slice() : [];
     if (pulseCards.length < HARD_LIMIT) {
       pulseCards.push(null);
     }
@@ -169,7 +170,7 @@ export default class PulseEditCards extends Component {
                   className="my4 ml3"
                   style={{
                     width: 375,
-                    borderTop: `1px dashed ${colors["border"]}`,
+                    borderTop: `1px dashed ${color("border")}`,
                   }}
                 />
               )}

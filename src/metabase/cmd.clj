@@ -15,15 +15,19 @@
 
   You can see what commands are available by running the command `help`. This command uses the docstrings and arglists
   associated with each command's entrypoint function to generate descriptions for each command."
+  (:refer-clojure :exclude [load])
   (:require [clojure.string :as str]
+            [medley.core :as m]
             [metabase
              [config :as config]
              [db :as mdb]
              [util :as u]]
-            [metabase.util.date :as du]))
+            [metabase.plugins.classloader :as classloader]
+            [metabase.query-processor.util :as qp.util]
+            [metabase.util.i18n :refer [trs]]))
 
 (defn ^:command migrate
-  "Run database migrations. Valid options for DIRECTION are `up`, `force`, `down-one`, `print`, or `release-locks`."
+  "Run database migrations. Valid options for `direction` are `up`, `force`, `down-one`, `print`, or `release-locks`."
   [direction]
   (mdb/migrate! (keyword direction)))
 
@@ -32,28 +36,40 @@
   ([]
    (load-from-h2 nil))
   ([h2-connection-string]
-   (require 'metabase.cmd.load-from-h2)
+   (classloader/require 'metabase.cmd.load-from-h2)
    (binding [mdb/*disable-data-migrations* true]
      ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string))))
+
+(defn ^:command dump-to-h2
+  "Transfer data from existing database to newly created H2 DB with specified filename.
+
+  Target H2 file is deleted before dump, unless the --keep-existing flag is given."
+  [h2-filename & opts]
+  (classloader/require 'metabase.cmd.dump-to-h2)
+  (binding [mdb/*disable-data-migrations* true]
+    (let [options        {:keep-existing? (boolean (some #{"--keep-existing"} opts))}
+          return-code    ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename options)]
+      (when (pos-int? return-code)
+        (System/exit return-code)))))
 
 (defn ^:command profile
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
   []
   ;; override env var that would normally make Jetty block forever
-  (require 'environ.core)
-  (intern 'environ.core 'env (assoc @(resolve 'environ.core/env) :mb-jetty-join "false"))
-  (du/profile "start-normally" ((resolve 'metabase.core/start-normally))))
+  (classloader/require 'environ.core 'metabase.core)
+  (alter-var-root #'environ.core/env assoc :mb-jetty-join "false")
+  (u/profile "start-normally" ((resolve 'metabase.core/start-normally))))
 
 (defn ^:command reset-password
-  "Reset the password for a user with EMAIL-ADDRESS."
+  "Reset the password for a user with `email-address`."
   [email-address]
-  (require 'metabase.cmd.reset-password)
+  (classloader/require 'metabase.cmd.reset-password)
   ((resolve 'metabase.cmd.reset-password/reset-password!) email-address))
 
 (defn ^:command refresh-integration-test-db-metadata
   "Re-sync the frontend integration test DB's metadata for the Sample Dataset."
   []
-  (require 'metabase.cmd.refresh-integration-test-db-metadata)
+  (classloader/require 'metabase.cmd.refresh-integration-test-db-metadata)
   ((resolve 'metabase.cmd.refresh-integration-test-db-metadata/refresh-integration-test-db-metadata)))
 
 (defn ^:command help
@@ -89,37 +105,49 @@
   "Generate a markdown file containing documentation for all API endpoints. This is written to a file called
   `docs/api-documentation.md`."
   []
-  (require 'metabase.cmd.endpoint-dox)
+  (classloader/require 'metabase.cmd.endpoint-dox)
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
 (defn ^:command driver-methods
   "Print a list of all multimethods a available for a driver to implement. A useful reference when implementing a new
   driver."
   []
-  (require 'metabase.cmd.driver-methods)
+  (classloader/require 'metabase.cmd.driver-methods)
   ((resolve 'metabase.cmd.driver-methods/print-available-multimethods)))
 
-(defn ^:command check-i18n
-  "Run normally, but with fake translations in place for all user-facing backend strings. Useful for checking what
-  things need to be wrapped with i18n forms."
-  []
-  (println "Swapping out implementation of puppetlabs.i18n.core/fmt...")
-  (require 'puppetlabs.i18n.core)
-  (let [orig-fn @(resolve 'puppetlabs.i18n.core/fmt)]
-    (intern 'puppetlabs.i18n.core 'fmt (comp str/reverse orig-fn)))
-  (println "Ok.")
-  (println "Reloading all Metabase namespaces...")
-  (let [namespaces-to-reload (for [ns-symb @u/metabase-namespace-symbols
-                                   :when (and (not (#{'metabase.cmd 'metabase.core} ns-symb))
-                                              (u/ignore-exceptions
-                                                ;; try to resolve namespace. If it's not loaded yet, this will throw
-                                                ;; an Exception, so we can skip reloading it
-                                                (the-ns ns-symb)))]
-                               ns-symb)]
-    (apply require (conj (vec namespaces-to-reload) :reload)))
-  (println "Ok.")
-  (println "Starting normally with swapped i18n strings...")
-  ((resolve 'metabase.core/start-normally)))
+(defn- cmd-args->map
+  [args]
+  (into {}
+        (for [[k v] (partition 2 args)]
+          [(qp.util/normalize-token (subs k 2)) v])))
+
+(defn- resolve-enterprise-command [symb]
+  (try
+    (classloader/require (symbol (namespace symb)))
+    (resolve symb)
+    (catch Throwable e
+      (throw (ex-info (trs "The ''{0}'' command is only available in Metabase Enterprise Edition." (name symb))
+                      {:command symb}
+                      e)))))
+
+(defn ^:command load
+  "Load serialized metabase instance as created by `dump` command from directory `path`.
+
+   `mode` can be one of `:update` (default) or `:skip`."
+  ([path] (load path :update))
+
+  ([path & args]
+   (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/load)]
+     (cmd path (->> args
+                    cmd-args->map
+                    (m/map-vals qp.util/normalize-token))))))
+
+(defn ^:command dump
+  "Serialized metabase instance into directory `path`."
+  [path & args]
+  (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/dump)
+        {:keys [user]} (cmd-args->map args)]
+    (cmd path user)))
 
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------

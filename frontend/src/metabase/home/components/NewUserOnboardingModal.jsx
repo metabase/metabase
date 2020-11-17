@@ -2,9 +2,9 @@
 import React, { Component } from "react";
 import StepIndicators from "metabase/components/StepIndicators";
 import RetinaImage from "react-retina-image";
-import { t } from "c-3po";
+import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 type Props = {
   onClose: () => void,
@@ -57,7 +57,7 @@ export default class NewUserOnboardingModal extends Component {
   };
 
   nextStep = () => {
-    const stepCount = MetabaseSettings.get("has_sample_dataset") ? 3 : 2;
+    const stepCount = MetabaseSettings.get("has-sample-dataset?") ? 3 : 2;
     const nextStep = this.state.step + 1;
 
     if (nextStep <= stepCount) {
@@ -107,8 +107,8 @@ const OnboardingImages = ({ currentStep }, { currentStep: object }) => (
   <div
     style={{
       position: "relative",
-      backgroundColor: colors["bg-medium"],
-      borderBottom: `1px solid ${colors["border"]}`,
+      backgroundColor: color("bg-medium"),
+      borderBottom: `1px solid ${color("border")}`,
       height: 254,
       paddingTop: "3em",
       paddingBottom: "3em",

@@ -51,7 +51,7 @@
 }
 
 .EditHeader.EditHeader--admin:after {
-  background-color: var(--color-bg-dark);
+  background-color: var(--color-accent7);
 }
 
 .EditHeader-title {

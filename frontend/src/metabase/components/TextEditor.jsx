@@ -38,7 +38,11 @@ export default class TextEditor extends Component {
   }
 
   _update() {
-    let element = ReactDOM.findDOMNode(this);
+    const element = ReactDOM.findDOMNode(this);
+
+    if (this._editor == null) {
+      return; // _editor is undefined when ace isn't loaded in tests
+    }
 
     this._updateValue();
 
@@ -74,7 +78,12 @@ export default class TextEditor extends Component {
   };
 
   componentDidMount() {
-    let element = ReactDOM.findDOMNode(this);
+    if (typeof ace === "undefined" || !ace || !ace.edit) {
+      // fail gracefully-ish if ace isn't available, e.x. in integration tests
+      return;
+    }
+
+    const element = ReactDOM.findDOMNode(this);
     this._editor = ace.edit(element);
 
     window.editor = this._editor;

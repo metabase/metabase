@@ -1,17 +1,19 @@
 /* eslint "react/prop-types": "warn" */
 
 import React, { Component } from "react";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
+import cx from "classnames";
 
 import ErrorMessage from "metabase/components/ErrorMessage";
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
+import Visualization from "metabase/visualizations/components/Visualization";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import { DatasetQuery } from "metabase/meta/types/Card";
+import { DatasetQuery } from "metabase-types/types/Card";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
 
 type Props = {
+  className?: string,
   question: Question,
   isObjectDetail: boolean,
   result: any,
@@ -20,6 +22,10 @@ type Props = {
   lastRunDatasetQuery: DatasetQuery,
   navigateToNewCardInsideQB: any => void,
   rawSeries: any,
+
+  onOpenChartSettings: () => void,
+  onUpdateWarnings: () => void,
+  onUpdateVisualizationSettings: (settings: any) => void,
 };
 
 export default class VisualizationResult extends Component {
@@ -43,7 +49,7 @@ export default class VisualizationResult extends Component {
       navigateToNewCardInsideQB,
       result,
       rawSeries,
-      ...props
+      className,
     } = this.props;
     const { showCreateAlertModal } = this.state;
 
@@ -53,28 +59,27 @@ export default class VisualizationResult extends Component {
 
       // successful query but there were 0 rows returned with the result
       return (
-        <div className="flex flex-full">
+        <div className={cx(className, "flex")}>
           <ErrorMessage
             type="noRows"
             title="No results!"
             message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}
             action={
               <div>
-                {supportsRowsPresentAlert &&
-                  !isDirty && (
-                    <p>
-                      {jt`You can also ${(
-                        <a className="link" onClick={this.showCreateAlertModal}>
-                          {t`get an alert`}
-                        </a>
-                      )} when there are some results.`}
-                    </p>
-                  )}
+                {supportsRowsPresentAlert && !isDirty && (
+                  <p>
+                    {jt`You can also ${(
+                      <a className="link" onClick={this.showCreateAlertModal}>
+                        {t`get an alert`}
+                      </a>
+                    )} when there are some results.`}
+                  </p>
+                )}
                 <button
                   className="Button"
                   onClick={() => window.history.back()}
                 >
-                  {t`Back to last run`}
+                  {t`Back to previous results`}
                 </button>
               </div>
             }
@@ -92,12 +97,17 @@ export default class VisualizationResult extends Component {
     } else {
       return (
         <Visualization
+          className={className}
           rawSeries={rawSeries}
           onChangeCardAndRun={navigateToNewCardInsideQB}
           isEditing={true}
-          card={question.card()}
-          // Table:
-          {...props}
+          showTitle={false}
+          metadata={question.metadata()}
+          onOpenChartSettings={this.props.onOpenChartSettings}
+          onUpdateWarnings={this.props.onUpdateWarnings}
+          onUpdateVisualizationSettings={
+            this.props.onUpdateVisualizationSettings
+          }
         />
       );
     }

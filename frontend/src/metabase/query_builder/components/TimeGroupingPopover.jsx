@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
 const BUCKETINGS = [
@@ -62,7 +62,6 @@ export default class TimeGroupingPopover extends Component {
     this.props.onFieldChange([
       "datetime-field",
       this.props.field[1],
-      "as",
       bucketing,
     ]);
   }

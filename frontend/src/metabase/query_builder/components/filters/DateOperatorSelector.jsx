@@ -3,6 +3,7 @@
 import React, { Component } from "react";
 
 import _ from "underscore";
+import cx from "classnames";
 
 import Select, { Option } from "metabase/components/Select";
 
@@ -13,16 +14,18 @@ type Props = {
   operators: Operator[],
   onOperatorChange: (o: Operator) => void,
   hideTimeSelectors?: boolean,
+
+  className?: string,
 };
 
 export default class DateOperatorSelector extends Component {
   props: Props;
 
   render() {
-    const { operator, operators, onOperatorChange } = this.props;
+    const { className, operator, operators, onOperatorChange } = this.props;
 
     return (
-      <div className="mx2 mb2 relative z3" style={{ minWidth: 100 }}>
+      <div className={cx(className, "relative z3")} style={{ minWidth: 100 }}>
         <Select
           value={_.findWhere(operators, { name: operator })}
           onChange={e => onOperatorChange(e.target.value)}

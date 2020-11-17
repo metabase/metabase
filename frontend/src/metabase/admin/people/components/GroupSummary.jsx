@@ -1,15 +1,15 @@
 import React from "react";
 
-import _ from "underscore";
-import { t, ngettext, msgid } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 
-const GroupSummary = ({ groups, selectedGroups }) => {
-  let adminGroup = _.find(groups, isAdminGroup);
-  let otherGroups = groups.filter(
-    g => selectedGroups[g.id] && !isAdminGroup(g) && !isDefaultGroup(g),
+const GroupSummary = ({ groups, selectedGroupIds }) => {
+  const adminGroup = groups.find(isAdminGroup);
+  const otherGroups = groups.filter(
+    g =>
+      selectedGroupIds.includes(g.id) && !isAdminGroup(g) && !isDefaultGroup(g),
   );
-  if (selectedGroups[adminGroup.id]) {
+  if (adminGroup && selectedGroupIds.includes(adminGroup.id)) {
     return (
       <span>
         <span className="text-purple">{t`Admin`}</span>

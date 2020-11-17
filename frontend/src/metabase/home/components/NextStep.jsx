@@ -1,10 +1,10 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import { SetupApi } from "metabase/services";
 
-import SidebarSection from "./SidebarSection.jsx";
+import SidebarSection from "./SidebarSection";
 
 export default class NextStep extends Component {
   constructor(props, context) {
@@ -16,8 +16,8 @@ export default class NextStep extends Component {
 
   async componentWillMount() {
     const sections = await SetupApi.admin_checklist(null, { noEvent: true });
-    for (let section of sections) {
-      for (let task of section.tasks) {
+    for (const section of sections) {
+      for (const task of section.tasks) {
         if (task.is_next_step) {
           this.setState({ next: task });
           break;

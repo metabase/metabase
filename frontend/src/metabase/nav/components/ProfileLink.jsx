@@ -2,14 +2,14 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 import { capitalize } from "metabase/lib/formatting";
+import { color, darken } from "metabase/lib/colors";
 
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import Modal from "metabase/components/Modal";
-import Logs from "metabase/components/Logs";
 
 import LogoIcon from "metabase/components/LogoIcon";
 import EntityMenu from "metabase/components/EntityMenu";
@@ -55,20 +55,16 @@ export default class ProfileLink extends Component {
           }`,
         },
       ]),
-      ...(admin && [
-        {
-          title: t`Logs`,
-          icon: null,
-          action: () => this.openModal("logs"),
-          event: `Navbar;Profile Dropdown;Debugging ${tag}`,
-        },
-      ]),
+      {
+        title: t`Activity`,
+        icon: null,
+        link: "/activity",
+        event: `Navbar;Profile Dropdown;Activity ${tag}`,
+      },
       {
         title: t`Help`,
         icon: null,
-        // HACK - for some reason if you use // react router treats the link
-        // as a non local route
-        link: `//metabase.com/docs/${tag}`,
+        link: MetabaseSettings.docsUrl(),
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
@@ -90,22 +86,31 @@ export default class ProfileLink extends Component {
   render() {
     const { modalOpen } = this.state;
     const { tag, date, ...versionExtra } = MetabaseSettings.get("version");
+    // don't show trademark if application name is whitelabeled
+    const showTrademark = t`Metabase` === "Metabase";
     return (
       <Box>
         <EntityMenu
           tooltip={t`Settings`}
           items={this.generateOptionsForUser()}
           triggerIcon="gear"
+          triggerProps={{
+            hover: {
+              backgroundColor: darken(color("brand")),
+              color: "white",
+            },
+          }}
         />
         {modalOpen === "about" ? (
           <Modal small onClose={this.closeModal}>
             <div className="px4 pt4 pb2 text-centered relative">
               <div className="text-brand pb2">
-                <LogoIcon width={48} height={48} />
+                <LogoIcon height={48} />
               </div>
-              <h2 style={{ fontSize: "1.75em" }} className="text-dark">
-                {t`Thanks for using`} Metabase!
-              </h2>
+              <h2
+                style={{ fontSize: "1.75em" }}
+                className="text-dark"
+              >{t`Thanks for using Metabase!`}</h2>
               <div className="pt2">
                 <h3 className="text-dark mb1">
                   {t`You're on version`} {tag}
@@ -124,20 +129,18 @@ export default class ProfileLink extends Component {
                 )}
               </div>
             </div>
-            <div
-              style={{ borderWidth: "2px" }}
-              className="p2 h5 text-centered text-medium border-top"
-            >
-              <span className="block">
-                <span className="text-bold">Metabase</span>{" "}
-                {t`is a Trademark of`} Metabase, Inc
-              </span>
-              <span>{t`and is built with care in San Francisco, CA`}</span>
-            </div>
-          </Modal>
-        ) : modalOpen === "logs" ? (
-          <Modal wide onClose={this.closeModal}>
-            <Logs onClose={this.closeModal} />
+            {showTrademark && (
+              <div
+                style={{ borderWidth: "2px" }}
+                className="p2 h5 text-centered text-medium border-top"
+              >
+                <span className="block">
+                  <span className="text-bold">Metabase</span>{" "}
+                  {t`is a Trademark of`} Metabase, Inc
+                </span>
+                <span>{t`and is built with care in San Francisco, CA`}</span>
+              </div>
+            )}
           </Modal>
         ) : null}
       </Box>

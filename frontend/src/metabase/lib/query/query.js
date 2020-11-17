@@ -11,21 +11,25 @@ import type {
   LimitClause,
   OrderBy,
   OrderByClause,
+  JoinClause,
+  Join,
   ExpressionClause,
   ExpressionName,
   Expression,
+  Field,
   FieldsClause,
-} from "metabase/meta/types/Query";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+} from "metabase-types/types/Query";
 
 import * as A from "./aggregation";
 import * as B from "./breakout";
 import * as F from "./filter";
+import * as J from "./join";
 import * as L from "./limit";
 import * as O from "./order_by";
 import * as E from "./expression";
+import * as FIELD from "./field";
+import * as FIELD_REF from "./field_ref";
 
-import Query from "metabase/lib/query";
 import _ from "underscore";
 
 // AGGREGATION
@@ -66,9 +70,6 @@ export const removeBreakout = (query: SQ, index: number) =>
 export const clearBreakouts = (query: SQ) =>
   setBreakoutClause(query, B.clearBreakouts(query.breakout));
 
-export const getBreakoutFields = (query: SQ, tableMetadata: TableMetadata) =>
-  B.getBreakoutFields(query.breakout, tableMetadata);
-
 // FILTER
 
 export const getFilters = (query: SQ) => F.getFilters(query.filter);
@@ -83,6 +84,18 @@ export const clearFilters = (query: SQ) =>
 
 export const canAddFilter = (query: SQ) => F.canAddFilter(query.filter);
 
+// JOIN
+
+export const getJoins = (query: SQ) => J.getJoins(query.joins);
+export const addJoin = (query: SQ, join: Join) =>
+  setJoinClause(query, J.addJoin(query.joins, join));
+export const updateJoin = (query: SQ, index: number, join: Join) =>
+  setJoinClause(query, J.updateJoin(query.joins, index, join));
+export const removeJoin = (query: SQ, index: number) =>
+  setJoinClause(query, J.removeJoin(query.joins, index));
+export const clearJoins = (query: SQ) =>
+  setJoinClause(query, J.clearJoins(query.joins));
+
 // ORDER_BY
 
 export const getOrderBys = (query: SQ) => O.getOrderBys(query["order-by"]);
@@ -96,7 +109,15 @@ export const clearOrderBy = (query: SQ) =>
   setOrderByClause(query, O.clearOrderBy(query["order-by"]));
 
 // FIELD
-export const clearFields = (query: SQ) => setFieldsClause(query, null);
+export const getFields = (query: SQ) => FIELD.getFields(query.fields);
+export const addField = (query: SQ, field: Field) =>
+  setFieldsClause(query, FIELD.addField(query.fields, field));
+export const updateField = (query: SQ, index: number, field: Field) =>
+  setFieldsClause(query, FIELD.updateField(query.fields, index, field));
+export const removeField = (query: SQ, index: number) =>
+  setFieldsClause(query, FIELD.removeField(query.fields, index));
+export const clearFields = (query: SQ) =>
+  setFieldsClause(query, FIELD.clearFields(query.fields));
 
 // LIMIT
 
@@ -133,7 +154,7 @@ export const updateExpression = (
   );
 export const removeExpression = (query: SQ, name: ExpressionName) =>
   setExpressionClause(query, E.removeExpression(query.expressions, name));
-export const clearExpression = (query: SQ) =>
+export const clearExpressions = (query: SQ) =>
   setExpressionClause(query, E.clearExpressions(query.expressions));
 
 // we can enforce various constraints in these functions:
@@ -142,8 +163,8 @@ function setAggregationClause(
   query: SQ,
   aggregationClause: ?AggregationClause,
 ): SQ {
-  let wasBareRows = A.isBareRows(query.aggregation);
-  let isBareRows = A.isBareRows(aggregationClause);
+  const wasBareRows = A.isBareRows(query.aggregation);
+  const isBareRows = A.isBareRows(aggregationClause);
   // when switching to or from bare rows clear out any sorting and fields clauses
   if (isBareRows !== wasBareRows) {
     query = clearFields(query);
@@ -156,9 +177,12 @@ function setAggregationClause(
   return setClause("aggregation", query, aggregationClause);
 }
 function setBreakoutClause(query: SQ, breakoutClause: ?BreakoutClause): SQ {
-  let breakoutIds = B.getBreakouts(breakoutClause).filter(id => id != null);
+  // NOTE: this doesn't handle complex cases
+  const breakoutIds = B.getBreakouts(breakoutClause)
+    .map(b => FIELD_REF.getFieldTargetId(b))
+    .filter(id => id != null);
   for (const [index, sort] of getOrderBys(query).entries()) {
-    let sortId = Query.getFieldTargetId(sort[1]);
+    const sortId = FIELD_REF.getFieldTargetId(sort[1]);
     if (sortId != null && !_.contains(breakoutIds, sortId)) {
       query = removeOrderBy(query, index);
     }
@@ -169,6 +193,9 @@ function setBreakoutClause(query: SQ, breakoutClause: ?BreakoutClause): SQ {
 }
 function setFilterClause(query: SQ, filterClause: ?FilterClause): SQ {
   return setClause("filter", query, filterClause);
+}
+function setJoinClause(query: SQ, joinClause: ?JoinClause): SQ {
+  return setClause("joins", query, joinClause);
 }
 function setOrderByClause(query: SQ, orderByClause: ?OrderByClause): SQ {
   return setClause("order-by", query, orderByClause);
@@ -196,7 +223,8 @@ type FilterClauseName =
   | "order-by"
   | "limit"
   | "expressions"
-  | "fields";
+  | "fields"
+  | "joins";
 
 function setClause(clauseName: FilterClauseName, query: SQ, clause: ?any): SQ {
   query = { ...query };

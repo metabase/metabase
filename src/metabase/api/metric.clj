@@ -1,38 +1,68 @@
 (ns metabase.api.metric
   "/api/metric endpoints."
   (:require [clojure.data :as data]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase.api.common :as api]
+            [metabase
+             [events :as events]
+             [related :as related]
+             [util :as u]]
+            [metabase.api
+             [common :as api]
+             [query-description :as qd]]
+            [metabase.mbql.normalize :as normalize]
             [metabase.models
              [interface :as mi]
              [metric :as metric :refer [Metric]]
              [revision :as revision]
              [table :refer [Table]]]
-            [metabase.related :as related]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [trs]]
+             [schema :as su]]
+            [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
 
 (api/defendpoint POST "/"
   "Create a new `Metric`."
-  [:as {{:keys [name description table_id definition]} :body}]
-  {name       su/NonBlankString
-   table_id   su/IntGreaterThanZero
-   definition su/Map}
-  (api/check-superuser)
-  (api/write-check Table table_id)
-  (api/check-500 (metric/create-metric! table_id name description api/*current-user-id* definition)))
+  [:as {{:keys [name description table_id definition], :as body} :body}]
+  {name        su/NonBlankString
+   table_id    su/IntGreaterThanZero
+   definition  su/Map
+   description (s/maybe s/Str)}
+  ;; TODO - why can't set the other properties like `show_in_getting_started` when you create a Metric?
+  (api/create-check Metric body)
+  (let [metric (api/check-500
+                (db/insert! Metric
+                  :table_id    table_id
+                  :creator_id  api/*current-user-id*
+                  :name        name
+                  :description description
+                  :definition  definition))]
+    (-> (events/publish-event! :metric-create metric)
+        (hydrate :creator))))
 
+(s/defn ^:private hydrated-metric [id :- su/IntGreaterThanZero]
+  (-> (api/read-check (Metric id))
+      (hydrate :creator)))
+
+(defn- add-query-descriptions
+  [metrics] {:pre [(coll? metrics)]}
+  (when (some? metrics)
+    (for [metric metrics]
+      (let [table (Table (:table_id metric))]
+        (assoc metric
+               :query_description
+               (qd/generate-query-description table (:definition metric)))))))
 
 (api/defendpoint GET "/:id"
   "Fetch `Metric` with ID."
   [id]
-  (api/check-superuser)
-  (api/read-check (metric/retrieve-metric id)))
+  (first (add-query-descriptions [(hydrated-metric id)])))
 
 (defn- add-db-ids
-  "Add `:database_id` fields to METRICS by looking them up from their `:table_id`."
+  "Add `:database_id` fields to `metrics` by looking them up from their `:table_id`."
   [metrics]
   (when (seq metrics)
     (let [table-id->db-id (db/select-id->field :db_id Table, :id [:in (set (map :table_id metrics))])]
@@ -42,25 +72,48 @@
 (api/defendpoint GET "/"
   "Fetch *all* `Metrics`."
   [id]
-  (as-> (db/select Metric, :archived false, {:order-by [:%lower.name]}) <>
-    (hydrate <> :creator)
-    (add-db-ids <>)
-    (filter mi/can-read? <>)))
+  (as-> (db/select Metric, :archived false, {:order-by [:%lower.name]}) metrics
+    (hydrate metrics :creator)
+    (add-db-ids metrics)
+    (filter mi/can-read? metrics)
+    (add-query-descriptions metrics)))
 
+(defn- write-check-and-update-metric!
+  "Check whether current user has write permissions, then update Metric with values in `body`. Publishes appropriate
+  event and returns updated/hydrated Metric."
+  [id {:keys [revision_message archived], :as body}]
+  (let [existing   (api/write-check Metric id)
+        clean-body (u/select-keys-when body
+                     :present #{:description :caveats :how_is_this_calculated :points_of_interest}
+                     :non-nil #{:archived :definition :name :show_in_getting_started})
+        new-def    (->> clean-body :definition (normalize/normalize-fragment []))
+        new-body   (merge
+                     (dissoc clean-body :revision_message)
+                     (when new-def {:definition new-def}))
+        changes    (when-not (= new-body existing)
+                     new-body)
+        archive?   (:archived changes)]
+    (when changes
+      (db/update! Metric id changes))
+    (u/prog1 (hydrated-metric id)
+      (events/publish-event! (if archive? :metric-delete :metric-update)
+        (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
 
 (api/defendpoint PUT "/:id"
   "Update a `Metric` with ID."
-  [id :as {{:keys [definition name revision_message], :as body} :body}]
-  {name             su/NonBlankString
-   revision_message su/NonBlankString
-   definition       su/Map}
-  (api/check-superuser)
-  (api/write-check Metric id)
-  (metric/update-metric!
-   (assoc (select-keys body #{:caveats :definition :description :how_is_this_calculated :name :points_of_interest
-                              :revision_message :show_in_getting_started})
-     :id id)
-   api/*current-user-id*))
+  [id :as {{:keys [name definition revision_message archived caveats description how_is_this_calculated
+                   points_of_interest show_in_getting_started]
+            :as   body} :body}]
+  {name                    (s/maybe su/NonBlankString)
+   definition              (s/maybe su/Map)
+   revision_message        su/NonBlankString
+   archived                (s/maybe s/Bool)
+   caveats                 (s/maybe s/Str)
+   description             (s/maybe s/Str)
+   how_is_this_calculated  (s/maybe s/Str)
+   points_of_interest      (s/maybe s/Str)
+   show_in_getting_started (s/maybe s/Bool)}
+  (write-check-and-update-metric! id body))
 
 (api/defendpoint PUT "/:id/important_fields"
   "Update the important `Fields` for a `Metric` with ID.
@@ -84,20 +137,19 @@
 
 
 (api/defendpoint DELETE "/:id"
-  "Delete a `Metric`."
+  "Archive a Metric. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [id revision_message]
   {revision_message su/NonBlankString}
-  (api/check-superuser)
-  (api/write-check Metric id)
-  (metric/delete-metric! id api/*current-user-id* revision_message)
-  {:success true}) ; TODO - why doesn't this return a 204 'No Content'?
+  (log/warn
+   (trs "DELETE /api/metric/:id is deprecated. Instead, change its `archived` value via PUT /api/metric/:id."))
+  (write-check-and-update-metric! id {:archived true, :revision_message revision_message})
+  api/generic-204-no-content)
 
 
 (api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for `Metric` with ID."
   [id]
-  (api/check-superuser)
-  (api/write-check Metric id)
+  (api/read-check Metric id)
   (revision/revisions+details Metric id))
 
 
@@ -105,7 +157,6 @@
   "Revert a `Metric` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
   {revision_id su/IntGreaterThanZero}
-  (api/check-superuser)
   (api/write-check Metric id)
   (revision/revert!
     :entity      Metric
@@ -117,5 +168,6 @@
   "Return related entities."
   [id]
   (-> id Metric api/read-check related/related))
+
 
 (api/define-routes)

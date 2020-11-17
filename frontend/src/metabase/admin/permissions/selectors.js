@@ -7,14 +7,15 @@ import { push } from "react-router-redux";
 import TogglePropagateAction from "./containers/TogglePropagateAction";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import colors, { alpha } from "metabase/lib/colors";
+import { color, alpha } from "metabase/lib/colors";
 
-import { t } from "c-3po";
 import {
-  isDefaultGroup,
-  isAdminGroup,
-  isMetaBotGroup,
-} from "metabase/lib/groups";
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
+} from "metabase/plugins";
+
+import { t } from "ttag";
 
 import _ from "underscore";
 import { getIn, assocIn } from "icepick";
@@ -31,13 +32,24 @@ import {
   diffPermissions,
   inferAndUpdateEntityPermissions,
 } from "metabase/lib/permissions";
+import {
+  isDefaultGroup,
+  isAdminGroup,
+  isMetaBotGroup,
+  canEditPermissions,
+} from "metabase/lib/groups";
+
+import Group from "metabase/entities/groups";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { SchemaName } from "metabase/meta/types/Table";
-import type { Group, GroupsPermissions } from "metabase/meta/types/Permissions";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { SchemaName } from "metabase-types/types/Table";
+import type {
+  Group as GroupType,
+  GroupsPermissions,
+} from "metabase-types/types/Permissions";
 
 const getPermissions = state => state.admin.permissions.permissions;
 const getOriginalPermissions = state =>
@@ -66,17 +78,18 @@ function getTooltipForGroup(group) {
 }
 
 export const getGroups = createSelector(
-  state => state.admin.permissions.groups,
+  [Group.selectors.getList],
   groups => {
-    let orderedGroups = groups ? [...groups] : [];
-    for (let groupFilter of SPECIAL_GROUP_FILTERS) {
-      let index = _.findIndex(orderedGroups, groupFilter);
+    const orderedGroups = groups ? [...groups] : [];
+    for (const groupFilter of SPECIAL_GROUP_FILTERS) {
+      const index = _.findIndex(orderedGroups, groupFilter);
       if (index >= 0) {
         orderedGroups.unshift(...orderedGroups.splice(index, 1));
       }
     }
     return orderedGroups.map(group => ({
       ...group,
+      editable: canEditPermissions(group),
       tooltip: getTooltipForGroup(group),
     }));
   },
@@ -109,19 +122,13 @@ function getPermissionWarning(
   if (!defaultGroup || groupId === defaultGroup.id) {
     return null;
   }
-  let perm = value || getter(permissions, groupId, entityId);
-  let defaultPerm = getter(permissions, defaultGroup.id, entityId);
+  const perm = value || getter(permissions, groupId, entityId);
+  const defaultPerm = getter(permissions, defaultGroup.id, entityId);
   if (perm === "controlled" && defaultPerm === "controlled") {
-    return t`The "${
-      defaultGroup.name
-    }" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
+    return t`The "${defaultGroup.name}" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
   }
   if (hasGreaterPermissions(defaultPerm, perm)) {
-    return t`The "${
-      defaultGroup.name
-    }" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${
-      defaultGroup.name
-    }" group's access to this item.`;
+    return t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
   }
   return null;
 }
@@ -135,7 +142,7 @@ function getPermissionWarningModal(
   entityId,
   value,
 ) {
-  let permissionWarning = getPermissionWarning(
+  const permissionWarning = getPermissionWarning(
     entityType,
     getter,
     defaultGroup,
@@ -201,7 +208,7 @@ function getRevokingAccessToAllTablesWarningModal(
     // allTableEntityIds contains tables from all schemas
     const allTableEntityIds = database.tables.map(table => ({
       databaseId: table.db_id,
-      schemaName: table.schema || "",
+      schemaName: table.schema_name || "",
       tableId: table.id,
     }));
 
@@ -227,18 +234,18 @@ const BG_ALPHA = 0.15;
 
 const OPTION_GREEN = {
   icon: "check",
-  iconColor: colors["success"],
-  bgColor: alpha(colors["success"], BG_ALPHA),
+  iconColor: color("success"),
+  bgColor: alpha(color("success"), BG_ALPHA),
 };
 const OPTION_YELLOW = {
   icon: "eye",
-  iconColor: colors["warning"],
-  bgColor: alpha(colors["warning"], BG_ALPHA),
+  iconColor: color("warning"),
+  bgColor: alpha(color("warning"), BG_ALPHA),
 };
 const OPTION_RED = {
   icon: "close",
-  iconColor: colors["error"],
-  bgColor: alpha(colors["error"], BG_ALPHA),
+  iconColor: color("error"),
+  bgColor: alpha(color("error"), BG_ALPHA),
 };
 
 const OPTION_ALL = {
@@ -253,7 +260,7 @@ const OPTION_CONTROLLED = {
   value: "controlled",
   title: t`Limit access`,
   tooltip: t`Limited access`,
-  icon: "permissionsLimited",
+  icon: "permissions_limited",
 };
 
 const OPTION_NONE = {
@@ -285,6 +292,24 @@ const OPTION_COLLECTION_READ = {
   tooltip: t`Can view items in this collection`,
 };
 
+const OPTION_SNIPPET_COLLECTION_WRITE = {
+  ...OPTION_COLLECTION_WRITE,
+  title: t`Grant Edit access`,
+  tooltip: t`Can modify snippets in this folder`,
+};
+
+const OPTION_SNIPPET_COLLECTION_READ = {
+  ...OPTION_COLLECTION_READ,
+  title: t`Grant View access`,
+  tooltip: t`Can insert and use snippets in this folder, but can't edit the SQL they contain`,
+};
+
+const OPTION_SNIPPET_COLLECTION_NONE = {
+  ...OPTION_NONE,
+  title: t`Revoke access`,
+  tooltip: t`Can't view or insert snippets in this folder`,
+};
+
 export const getTablesPermissionsGrid = createSelector(
   getMetadata,
   getGroups,
@@ -293,18 +318,18 @@ export const getTablesPermissionsGrid = createSelector(
   getSchemaName,
   (
     metadata: Metadata,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
     databaseId: DatabaseId,
     schemaName: SchemaName,
   ) => {
-    const database = metadata.databases[databaseId];
+    const database = metadata.database(databaseId);
 
     if (!groups || !permissions || !database) {
       return null;
     }
 
-    const tables = database.tablesInSchema(schemaName || null);
+    const tables = database.schema(schemaName).tables;
     const defaultGroup = _.find(groups, isDefaultGroup);
 
     return {
@@ -326,14 +351,29 @@ export const getTablesPermissionsGrid = createSelector(
         fields: {
           header: t`Data Access`,
           options(groupId, entityId) {
-            return [OPTION_ALL, OPTION_NONE];
+            return [
+              OPTION_ALL,
+              ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
+              OPTION_NONE,
+            ];
+          },
+          actions(groupId, entityId) {
+            const value = getFieldsPermission(permissions, groupId, entityId);
+            const getActions =
+              PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS[value] || [];
+            return getActions.map(getAction => getAction(groupId, entityId));
+          },
+          postAction(groupId, entityId, value) {
+            const getPostAction =
+              PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[value];
+            return getPostAction && getPostAction(groupId, entityId);
           },
           getter(groupId, entityId) {
             return getFieldsPermission(permissions, groupId, entityId);
           },
           updater(groupId, entityId, value) {
             MetabaseAnalytics.trackEvent("Permissions", "fields", value);
-            let updatedPermissions = updateFieldsPermission(
+            const updatedPermissions = updateFieldsPermission(
               permissions,
               groupId,
               entityId,
@@ -400,11 +440,11 @@ export const getSchemasPermissionsGrid = createSelector(
   getDatabaseId,
   (
     metadata: Metadata,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
     databaseId: DatabaseId,
   ) => {
-    const database = metadata.databases[databaseId];
+    const database = metadata.database(databaseId);
 
     if (!groups || !permissions || !database) {
       return null;
@@ -429,7 +469,7 @@ export const getSchemasPermissionsGrid = createSelector(
           },
           updater(groupId, entityId, value) {
             MetabaseAnalytics.trackEvent("Permissions", "tables", value);
-            let updatedPermissions = updateTablesPermission(
+            const updatedPermissions = updateTablesPermission(
               permissions,
               groupId,
               entityId,
@@ -495,20 +535,36 @@ export const getSchemasPermissionsGrid = createSelector(
   },
 );
 
+export function getDatabaseTablesOrSchemasPath(database) {
+  const schemas = database ? database.schemaNames() : [];
+
+  return (
+    "/admin/permissions/databases/" +
+    // schema-less db
+    (schemas.length === 1 && schemas[0] === null
+      ? `${database.id}/tables`
+      : // single schema, auto-select it
+      schemas.length === 1
+      ? `${database.id}/schemas/${schemas[0]}/tables`
+      : // zero or multiple schemas so list them out
+        `${database.id}/schemas`)
+  );
+}
+
 export const getDatabasesPermissionsGrid = createSelector(
   getMetadata,
   getGroups,
   getPermissions,
   (
     metadata: Metadata,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
   ) => {
     if (!groups || !permissions || !metadata) {
       return null;
     }
 
-    const databases = Object.values(metadata.databases);
+    const databases = metadata.databasesList({ savedQuestions: false });
     const defaultGroup = _.find(groups, isDefaultGroup);
 
     return {
@@ -536,26 +592,8 @@ export const getDatabasesPermissionsGrid = createSelector(
           },
           postAction(groupId, { databaseId }, value) {
             if (value === "controlled") {
-              let database = metadata.databases[databaseId];
-              let schemas = database ? database.schemaNames() : [];
-              if (
-                schemas.length === 0 ||
-                (schemas.length === 1 && schemas[0] === "")
-              ) {
-                return push(
-                  `/admin/permissions/databases/${databaseId}/tables`,
-                );
-              } else if (schemas.length === 1) {
-                return push(
-                  `/admin/permissions/databases/${databaseId}/schemas/${
-                    schemas[0]
-                  }/tables`,
-                );
-              } else {
-                return push(
-                  `/admin/permissions/databases/${databaseId}/schemas`,
-                );
-              }
+              const database = metadata.database(databaseId);
+              return push(getDatabaseTablesOrSchemasPath(database));
             }
           },
           confirm(groupId, entityId, value) {
@@ -633,29 +671,29 @@ export const getDatabasesPermissionsGrid = createSelector(
         },
       },
       entities: databases.map(database => {
-        let schemas = database.schemaNames();
+        const schemas = database.schemaNames();
         return {
           id: {
             databaseId: database.id,
           },
           name: database.name,
           link:
-            schemas.length === 0 || (schemas.length === 1 && schemas[0] === "")
+            schemas.length === 0 || (schemas.length === 1 && schemas[0] == null)
               ? {
                   name: t`View tables`,
                   url: `/admin/permissions/databases/${database.id}/tables`,
                 }
               : schemas.length === 1
-                ? {
-                    name: t`View tables`,
-                    url: `/admin/permissions/databases/${database.id}/schemas/${
-                      schemas[0]
-                    }/tables`,
-                  }
-                : {
-                    name: t`View schemas`,
-                    url: `/admin/permissions/databases/${database.id}/schemas`,
-                  },
+              ? {
+                  name: t`View tables`,
+                  url: `/admin/permissions/databases/${database.id}/schemas/${
+                    schemas[0]
+                  }/tables`,
+                }
+              : {
+                  name: t`View schemas`,
+                  url: `/admin/permissions/databases/${database.id}/schemas`,
+                },
         };
       }),
     };
@@ -663,6 +701,7 @@ export const getDatabasesPermissionsGrid = createSelector(
 );
 
 import Collections from "metabase/entities/collections";
+import SnippetCollections from "metabase/entities/snippet-collections";
 
 const getCollectionId = (state, props) => props && props.collectionId;
 
@@ -671,9 +710,17 @@ const getSingleCollectionPermissionsMode = (state, props) =>
 
 const permissionsCollectionFilter = collection => !collection.is_personal;
 
+const getNamespace = (state, props) => props.namespace;
+
+const getExpandedCollectionsById = (state, props) =>
+  (props.namespace === "snippets"
+    ? SnippetCollections
+    : Collections
+  ).selectors.getExpandedCollectionsById(state, props);
+
 const getCollections = createSelector(
   [
-    Collections.selectors.getExpandedCollectionsById,
+    getExpandedCollectionsById,
     getCollectionId,
     getSingleCollectionPermissionsMode,
   ],
@@ -706,11 +753,13 @@ export const getCollectionsPermissionsGrid = createSelector(
   getGroups,
   getPermissions,
   getPropagatePermissions,
+  getNamespace,
   (
     collections,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
     propagatePermissions: boolean,
+    namespace: string,
   ) => {
     if (!groups || groups.length === 0 || !permissions || !collections) {
       return null;
@@ -744,18 +793,28 @@ export const getCollectionsPermissionsGrid = createSelector(
         access: {
           header: t`Collection Access`,
           options(groupId, entityId) {
-            return [
-              OPTION_COLLECTION_WRITE,
-              OPTION_COLLECTION_READ,
-              OPTION_NONE,
-            ];
+            return namespace === "snippets"
+              ? [
+                  OPTION_SNIPPET_COLLECTION_WRITE,
+                  OPTION_SNIPPET_COLLECTION_READ,
+                  OPTION_SNIPPET_COLLECTION_NONE,
+                ]
+              : [OPTION_COLLECTION_WRITE, OPTION_COLLECTION_READ, OPTION_NONE];
           },
           actions(groupId, { collectionId }) {
             const collection = _.findWhere(collections, {
               id: collectionId,
             });
             if (collection && collection.children.length > 0) {
-              return [TogglePropagateAction];
+              return [
+                () =>
+                  TogglePropagateAction({
+                    message:
+                      namespace === "snippets"
+                        ? t`Also change sub-folders`
+                        : t`Also change sub-collections`,
+                  }),
+              ];
             } else {
               return [];
             }
@@ -853,7 +912,7 @@ function getDecendentCollections(collection) {
 }
 
 function getPermissionsSet(collections, permissions, groupId) {
-  let perms = collections.map(collection =>
+  const perms = collections.map(collection =>
     getCollectionPermission(permissions, groupId, {
       collectionId: collection.id,
     }),
@@ -868,7 +927,7 @@ export const getDiff = createSelector(
   getOriginalPermissions,
   (
     metadata: Metadata,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
     originalPermissions: GroupsPermissions,
   ) => diffPermissions(permissions, originalPermissions, groups, metadata),

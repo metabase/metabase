@@ -10,16 +10,17 @@ So, you've [gotten Metabase up and running](../operations-guide/start.md) and [c
 
 ### The home page
 
-![The home page](./images/metabase-homepage.png)
+![The home page](../images/EmptyHomepage.png)
 
 Fresh out of the box, Metabase will show you a few things on the home page:
-* Some [automatic explorations](14-x-rays.md) of your tables that you can look at and save as a dashboard if you like any of them.
-* An area where things you or your teammates create will show up, along with a link to see all the dashboards, questions, and pulses you have.
-* A list of the databases you've connected to Metabase.
+
+- Some [automatic explorations](14-x-rays.md) of your tables that you can look at and save as a dashboard if you like any of them. (Administrators can permanently hide this section by clicking the `X` that appears on hover.)
+- An area where things you or your teammates create will show up, along with a link to see all the dashboards, questions, and pulses you have.
+- A list of the databases you've connected to Metabase. (As with x-rays, administrators can permanently hide this section by clicking the `X` that appears on hover. You can always click on "Browse Data" from the main nav bar to see your databases and tables.)
 
 ![Our data](./images/our-data.png)
 
-Once you've created some [dashboards](07-dashboards.md), any of them that you pin will show up on the homepage for all of your teammates, so that when they log in to Metabase they'll know right where to go.
+Once you've created some [dashboards](07-dashboards.md), any of them that you pin in the main "Our analytics" collection will show up on the homepage for all of your teammates, so that when they log in to Metabase they'll know right where to go.
 
 ### Browse your data
 
@@ -33,7 +34,7 @@ As you and your team create dashboards and collections, they'll start to show up
 
 ### Ask a question or write a query
 
-Click the `Ask a question button` in the top-right of Metabase to start a new custom exploration of one of your tables, or to write a new SQL or native query if you want to really dig in.
+Click the `Ask a question` button in the top-right of Metabase to start a new simple exploration of one of your tables, ask a more detailed custom question using the notebook editor, or write a new SQL query if you want to really dig in.
 
 ### Make a new dashboard or pulse
 
@@ -47,7 +48,7 @@ To make a dashboard or pulse, click the plus (+) icon in the top-right of the ma
 
 ![Search results](./images/search-results.png)
 
-The search bar that's always present at the top of the screen lets you search through your dashboards, collections, saved questions, and pulses in an instant. Just type part of the title of the thing you're looking for and hit enter.
+The search bar that's always present at the top of the screen lets you search through your tables, dashboards, collections, saved questions, metrics, segments, and pulses in an instant. Just type part of the title of the thing you're looking for and hit enter. You can activate the search bar from anywhere by pressing the `/` key.
 
 ## A primer on databases
 

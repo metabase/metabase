@@ -1,0 +1,30 @@
+[["bird" [{:field-name "name"
+           :base-type  :type/Text}
+          {:field-name "flock_id"
+           :base-type  :type/Integer}]
+  [["Russell Crow"     4]   ; 1
+   ["Big Red"          5]   ; 2
+   ["Camellia Crow"    nil] ; 3
+   ["Peter Pelican"    2]   ; 4
+   ["Geoff Goose"      nil] ; 5
+   ["Greg Goose"       1]   ; 6
+   ["Callie Crow"      4]   ; 7
+   ["Patricia Pelican" nil] ; 8
+   ["Gerald Goose"     1]   ; 9
+   ["Pamela Pelican"   nil] ; 10
+   ["Oswald Owl"       nil] ; 11
+   ["Chicken Little"   5]   ; 12
+   ["Paul Pelican"     2]   ; 13
+   ["McNugget"         5]   ; 14
+   ["Orville Owl"      3]   ; 15
+   ["Carson Crow"      4]   ; 16
+   ["Olita Owl"        nil] ; 17
+   ["Oliver Owl"       3]]] ; 18
+ ["flock" [{:field-name    "name"
+            :base-type :type/Text}]
+  [["Green Street Gaggle"]      ; 1
+   ["SoMa Squadron"]            ; 2
+   ["Portrero Hill Parliament"] ; 3
+   ["Mission Street Murder"]    ; 4
+   ["Bayview Brood"]            ; 5
+   ["Fillmore Flock"]]]]        ; 6

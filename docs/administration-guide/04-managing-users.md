@@ -24,7 +24,9 @@ To reactivate a deactivated user, click on the Deactivated tab at the top of the
 You can edit a user’s name and email address by clicking the three dots icon and choosing **Edit Details**. Note: be careful when changing a user’s email address, because *this will change the address they’ll use to log in to Metabase*.
 
 ### Resetting a user’s password
-A user can always reset their password using the forgot password link on the login screen, but if you want to do this for them, just click the three dots icon and choose Reset Password. If you haven’t configured your email settings yet, you’ll be given a temporary password that you’ll have to share with that user. Otherwise, they’ll receive a password reset email.
+If you've already [configured your email settings](02-setting-up-email.md), a user can reset their password using the forgot password link on the login screen. If you have not yet configured your email settings, they will see a message telling them to ask an admin to reset their password for them. 
+
+To reset a password for a user, just click the three dots icon and choose Reset Password. If you haven’t [configured your email settings](02-setting-up-email.md) yet, you’ll be given a temporary password that you’ll have to share with that user. Otherwise, they’ll receive a password reset email.
 
 ### Changing a user’s role
 Right now, the only special role a user can have is Admin. The only difference is that Admins can access the Admin Panel and make changes there, and can set [permissions on collections](06-collections.md).

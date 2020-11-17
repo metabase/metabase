@@ -1,0 +1,90 @@
+#!/usr/bin/env node
+
+// USAGE:
+//
+// POEDITOR_API_TOKEN=TOKEN ./bin/i18n/import-po-from-poeditor [LANG...]
+//
+// If no arguments are provided it updates existing locales in ./locales
+
+const fs = require("fs");
+const fsp = fs.promises;
+const https = require("https");
+const fetch = require("isomorphic-fetch");
+const url = require("url");
+
+const POEDITOR_API_TOKEN = process.env["POEDITOR_API_TOKEN"];
+const POEDITOR_PROJECT_ID = "200535"; // Metabae POEditor project
+
+const aliases = {
+  "pt-br": "pt", // default to brazilian portuguese
+  "zh-Hans": "zh", // default to simplified chinese
+};
+
+async function main(args) {
+  const wanted = new Set(args.length > 0 ? args : await getExistingLanguages());
+  const other = [];
+
+  // list available languages
+  const { result: { languages } } = await poeditor("languages/list");
+  for (const language of languages) {
+    const code = (aliases[language.code] || language.code)
+      // use "zh-TW" rather than "zh-tw"
+      .replace(/-.*$/, s => s.toUpperCase());
+
+    if (wanted.has(code)) {
+      wanted.delete(code);
+      console.log(`Downloading: ${code}  (${language.percentage}%)`);
+      // start an export
+      const { result: { url } } = await poeditor("projects/export", {
+        language: language.code,
+        type: "po",
+      });
+      // download the exported file
+      https.get(url, res =>
+        res.pipe(fs.createWriteStream(`./locales/${code}.po`)),
+      );
+    } else {
+      other.push(language);
+    }
+  }
+  // log others with large percentage complete
+  for (const language of other
+    .filter(l => l.percentage > 50)
+    .sort((a, b) => b.percentage - a.percentage)) {
+    console.log(`Other:       ${language.code} (${language.percentage}%)`);
+  }
+  // log languages that are wanted but missing in POEditor
+  for (const code of wanted) {
+    console.log(`Missing:     ${code}`);
+  }
+  if (wanted.size > 0) {
+    throw new Error("Some wanted language not found");
+  }
+}
+
+// simple API client for poeditor
+function poeditor(command, params = {}) {
+  const uri = url.format({
+    protocol: "https",
+    hostname: "api.poeditor.com",
+    pathname: `/v2/${command}`,
+  });
+  const query = {
+    api_token: POEDITOR_API_TOKEN,
+    id: POEDITOR_PROJECT_ID,
+    ...params,
+  };
+  return fetch(uri, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: url.format({ query }).replace(/^\?/, ""),
+  }).then(res => res.json());
+}
+
+async function getExistingLanguages() {
+  return (await fsp.readdir("./locales"))
+    .filter(f => /\.po$/.test(f))
+    .map(f => f.replace(/\.po$/, ""));
+}
+
+main(process.argv.slice(2)).then(null, console.warn);

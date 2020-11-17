@@ -1,53 +1,91 @@
 :root {
-  --form-padding: 1em;
-  --form-input-placeholder-color: var(--color-text-light);
-
-  --form-input-size: 1rem;
-  --form-input-size-medium: 1.25rem;
-  --form-input-size-large: 1.571rem;
-
-  --form-label-color: var(--color-text-medium);
-  --form-offset: 2.4rem;
+  --form-field-border-color: color(var(--color-border) blackness(+10%));
 }
-
-.Form-new {
-  padding-top: 2rem;
+::-webkit-input-placeholder {
+  color: var(--color-text-light);
 }
-
-/* TODO: combine this and the scoped version */
-.Form-label {
-  display: block;
-  color: var(--color-text-medium);
-  font-size: 1.2rem;
+:-moz-placeholder {
+  color: var(--color-text-light);
+}
+:-ms-input-placeholder {
+  color: var(--color-text-light);
 }
 
 .Form-field {
-  position: relative;
+  margin-bottom: 1.5em;
   color: var(--color-text-medium);
-  margin-bottom: 1.5rem;
-}
-
-/* TODO: remove this scoping once we've converted non admin forms */
-/* form labels inherit the color of the parent, allowing for easy error changes */
-.Form-field .Form-label {
-  display: block;
-  font-size: 0.85em;
-  font-weight: 700;
-  color: currentColor;
 }
 
 .Form-field.Form--fieldError {
   color: var(--color-error);
 }
 
+.Form-label {
+  display: block;
+  font-weight: 900;
+  font-size: 0.88em;
+  color: inherit;
+  margin-bottom: 0.5em;
+}
+
 .Form-input {
-  padding-top: 0.6rem;
-  padding-bottom: 0.6rem;
   font-family: var(--default-font-family);
-  line-height: 1;
-  border: none;
-  background-color: transparent;
-  transition: color 0.3s linear;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--color-text-dark);
+  background-color: var(--color-bg-white);
+  padding: 0.75em;
+}
+
+.Form-input,
+.Form-input-border {
+  border: 1px solid var(--form-field-border-color);
+  border-radius: 4px;
+  outline: none;
+}
+
+.Form-file-input::-webkit-file-upload-button {
+  visibility: hidden;
+  padding-right: 32px;
+  padding-top: 8px;
+}
+.Form-file-input--has-value {
+  color: var(--color-text-dark);
+  font-weight: bold;
+}
+.Form-file-input::before {
+  background: transparent;
+  border: 1px solid color(var(--color-border) blackness(+ 5%));
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: var(--color-text-dark);
+  content: "Select a file";
+  cursor: pointer;
+  display: inline-block;
+  font-family: "Lato", sans-serif;
+  font-size: 14px;
+  font-weight: bold;
+  outline: none;
+  padding: 0.5rem 0.75rem;
+  white-space: nowrap;
+  -webkit-user-select: none;
+}
+.Form-file-input:hover::before {
+  transition: all 0.5s ease;
+  border-color: var(--color-brand);
+}
+.Form-file-input:active {
+  outline: none;
+}
+.Form-file-input:focus {
+  outline: none;
+}
+.Form-file-input:active::before {
+  background: transparent;
+}
+
+.Form-field.Form--fieldError .Form-input {
+  border-color: var(--color-error);
 }
 
 .Form-message {
@@ -60,75 +98,10 @@
   transition: opacity 500ms linear;
 }
 
-/* form-input font sizes */
-.Form-input {
-  font-size: var(--form-input-size);
-}
-
-@media screen and (--breakpoint-min-md) {
-  .Form-input {
-    font-size: var(--form-input-size-medium);
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  .Form-input {
-    font-size: var(--form-input-size-large);
-  }
-}
-
-.Form-input:focus {
-  outline: none;
-}
-
-.Form-offset {
-  padding-left: var(--form-offset);
-}
-
-.Form-charm {
-  position: absolute;
-  display: block;
-  bottom: 0;
-  left: 0;
-  width: 0.15em;
-  height: 3em;
-  background-color: var(--color-bg-medium);
-  box-sizing: border-box;
-  opacity: 0;
-  transition: background-color 0.3s linear;
-  transition: opacity 0.3s linear;
-}
-
-.Form-field.Form--fieldError .Form-charm {
-  background-color: var(--color-error);
-  opacity: 1;
-}
-
-.Form-input:focus + .Form-charm {
-  background-color: var(--color-brand);
-  opacity: 1;
-}
-
-.Form-field:hover .Form-input {
-  color: var(--color-text-light);
-  background: color(var(--color-bg-black) alpha(-98%));
-}
-
-/* ewww */
-.Form-field:hover .Form-input.ng-dirty {
-  color: var(--color-text-dark);
-  background-color: var(--color-bg-white);
-}
-
-.Form-field:hover .Form-charm {
-  opacity: 1;
-}
-
-.Form-field:hover .Form-input:focus {
-  transition: color 0.3s linear;
-  color: var(--color-text-dark);
-  background-color: transparent;
-  transition: background 0.3s linear;
+.Form-input:focus:not(.no-focus),
+.Form-field:hover .Form-input:not(.no-focus) {
+  border-color: var(--color-brand);
+  transition: border 300ms ease-in-out;
 }
 
 .Form-radio {
@@ -153,82 +126,11 @@
   background-color: var(--color-brand);
 }
 
-/* TODO: replace instances of Form-group with Form-field */
-.Form-group {
-  padding: var(--form-padding);
-  transition: opacity 0.3s linear;
+.Form-field .AdminSelect {
+  border-color: var(--form-field-border-color);
 }
 
-.Form-groupDisabled {
-  opacity: 0.2;
-  pointer-events: none;
-  transition: opacity 0.3s linear;
-}
-
-.Form-actions {
-  padding-left: var(--form-offset);
-  padding-bottom: var(--form-offset);
-  display: flex;
-  align-items: center;
-}
-
-.FormTitleSeparator {
-  position: relative;
-  border-bottom: 1px solid var(--color-border);
-}
-
-::-webkit-input-placeholder {
-  /* WebKit browsers */
-  color: var(--color-text-light);
-}
-:-moz-placeholder {
-  /* Mozilla Firefox 4 to 18 */
-  color: var(--color-text-light);
-  opacity: 1;
-}
-::-moz-placeholder {
-  /* Mozilla Firefox 19+ */
-  color: var(--color-text-light);
-  opacity: 1;
-}
-:-ms-input-placeholder {
-  /* Internet Explorer 10+ */
-  color: var(--color-text-light);
-}
-
-.NewForm .Form-label {
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-medium);
-  margin-bottom: 0.5em;
-}
-
-.NewForm .Form-input {
-  font-size: 16px;
-  color: var(--color-text-dark);
-  padding: 0.5em;
-  background-color: var(--color-bg-white);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-}
-.NewForm .Form-input:focus {
+.Form-field .AdminSelect:hover {
   border-color: var(--color-brand);
-  box-shadow: none;
-  outline: 0;
-}
-
-.NewForm .Form-header {
-  padding: var(--padding-4);
-}
-
-.NewForm .Form-inputs {
-  padding-left: var(--padding-4);
-  padding-right: var(--padding-4);
-}
-
-.NewForm .Form-actions {
-  padding-bottom: 1.2rem;
-  padding-top: 1.2rem;
-  padding-left: var(--padding-4);
-  padding-right: var(--padding-4);
+  transition: border 300ms ease-in-out;
 }

@@ -4,13 +4,28 @@
   (:require [clojure.tools.logging :as log]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]])
+            [metabase.util.i18n :refer [trs]]
+            [potemkin.types :as p.types]
+            [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql Driver DriverManager]))
 
 ;;; -------------------------------------------------- Proxy Driver --------------------------------------------------
 
+(p.types/defprotocol+ ^:private ProxyDriver
+  (wrapped-driver [this]
+    "Get the JDBC driver wrapped by a Metabase JDBC proxy driver."))
+
 (defn- proxy-driver ^Driver [^Driver driver]
-  (reify Driver
+  (reify
+    PrettyPrintable
+    (pretty [_]
+      (list 'proxy-driver driver))
+
+    ProxyDriver
+    (wrapped-driver [_]
+      driver)
+
+    Driver
     (acceptsURL [_ url]
       (.acceptsURL driver url))
     (connect [_ url info]

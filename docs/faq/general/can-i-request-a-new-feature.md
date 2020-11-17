@@ -1,0 +1,3 @@
+# Can I request a new feature?
+
+Absolutely! New features can be added as issues in our [Github repo](https://github.com/metabase/metabase/issues). Before filing, take a minute to search and see if your feature has already been requested. If it has, it’s better to leave a thumbs up reaction on the existing issue than to file a new one. We use the thumbs up to measure how interested our community is in new features, so it’s better to have all of the thumbs ups captured on one issue.

@@ -3,7 +3,7 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [trs tru]]
+             [i18n :refer [deferred-tru trs tru]]
              [schema :as su]]
             [postal
              [core :as postal]
@@ -11,19 +11,35 @@
             [schema.core :as s])
   (:import javax.mail.Session))
 
-;;; CONFIG
-;; TODO - smtp-port should be switched to type :integer
+;; https://github.com/metabase/metabase/issues/11879#issuecomment-713816386
+(when-not *compile-files*
+  (System/setProperty "mail.mime.splitlongparameters" "false"))
 
-(defsetting email-from-address  (tru "Email address you want to use as the sender of Metabase.") :default "notifications@metabase.com")
-(defsetting email-smtp-host     (tru "The address of the SMTP server that handles your emails."))
-(defsetting email-smtp-username (tru "SMTP username."))
-(defsetting email-smtp-password (tru "SMTP password."))
-(defsetting email-smtp-port     (tru "The port your SMTP server uses for outgoing emails."))
+;;; CONFIG
+
+(defsetting email-from-address
+  (deferred-tru "Email address you want to use as the sender of Metabase.")
+  :default "notifications@metabase.com")
+
+(defsetting email-smtp-host
+  (deferred-tru "The address of the SMTP server that handles your emails."))
+
+(defsetting email-smtp-username
+  (deferred-tru "SMTP username."))
+
+(defsetting email-smtp-password
+  (deferred-tru "SMTP password.")
+  :sensitive? true)
+
+;; TODO - smtp-port should be switched to type :integer
+(defsetting email-smtp-port
+  (deferred-tru "The port your SMTP server uses for outgoing emails."))
+
 (defsetting email-smtp-security
-  (tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
-  :default (tru "none")
+  (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
+  :default (deferred-tru "none")
   :setter  (fn [new-value]
-             (when-not (nil? new-value)
+             (when (some? new-value)
                (assert (contains? #{"tls" "ssl" "none" "starttls"} new-value)))
              (setting/set-string! :email-smtp-security new-value)))
 
@@ -34,18 +50,22 @@
    Provided so you can swap this out with an \"inbox\" for test purposes."
   postal/send-message)
 
-(defn email-configured?
-  "Predicate function which returns `true` if we have a viable email configuration for the app, `false` otherwise."
-  []
-  (boolean (email-smtp-host)))
+(defsetting email-configured?
+  "Check if email is enabled and that the mandatory settings are configured."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     #(boolean (email-smtp-host)))
 
 (defn- add-ssl-settings [m ssl-setting]
-  (merge m (case (keyword ssl-setting)
-             :tls {:tls true}
-             :ssl {:ssl true}
-             :starttls {:starttls.enable true
-                        :starttls.required true}
-             {})))
+  (merge
+   m
+   (case (keyword ssl-setting)
+     :tls      {:tls true}
+     :ssl      {:ssl true}
+     :starttls {:starttls.enable   true
+                :starttls.required true}
+     {})))
 
 (defn- smtp-settings []
   (-> {:host (email-smtp-host)
@@ -68,12 +88,12 @@
         "other types should have a String message.")))
 
 (s/defn send-message-or-throw!
-  "Send an email to one or more RECIPIENTS. Upon success, this returns the MESSAGE that was just sent. This function
+  "Send an email to one or more `recipients`. Upon success, this returns the `message` that was just sent. This function
   does not catch and swallow thrown exceptions, it will bubble up."
   {:style/indent 0}
   [{:keys [subject recipients message-type message]} :- EmailMessage]
   (when-not (email-smtp-host)
-    (let [^String msg (str (tru "SMTP host is not set."))]
+    (let [^String msg (tru "SMTP host is not set.")]
       (throw (Exception. msg))))
   ;; Now send the email
   (send-email! (smtp-settings)
@@ -87,8 +107,8 @@
                                :content message}])}))
 
 (defn send-message!
-  "Send an email to one or more RECIPIENTS.
-  RECIPIENTS is a sequence of email addresses; MESSAGE-TYPE must be either `:text` or `:html` or `:attachments`.
+  "Send an email to one or more `recipients`.
+  `recipients` is a sequence of email addresses; `message-type` must be either `:text` or `:html` or `:attachments`.
 
      (email/send-message!
        :subject      \"[Metabase] Password Reset Request\"
@@ -96,7 +116,7 @@
        :message-type :text
        :message      \"How are you today?\")
 
-  Upon success, this returns the MESSAGE that was just sent. This function will catch and log any exception,
+  Upon success, this returns the `message` that was just sent. This function will catch and log any exception,
   returning a map with a description of the error"
   {:style/indent 0}
   [& {:keys [subject recipients message-type message] :as msg-args}]
@@ -104,7 +124,7 @@
     (send-message-or-throw! msg-args)
     (catch Throwable e
       (log/warn e (trs "Failed to send email"))
-      {:error   :ERROR
+      {:error   :ERROR ; Huh?
        :message (.getMessage e)})))
 
 (defn- run-smtp-test

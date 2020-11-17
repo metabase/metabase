@@ -1,34 +1,35 @@
 (ns metabase.integrations.ldap
-  (:require [clj-ldap.client :as ldap]
-            [clojure
-             [set :as set]
-             [string :as str]]
+  (:require [cheshire.core :as json]
+            [clj-ldap.client :as ldap]
+            [clojure.tools.logging :as log]
+            [metabase.integrations.ldap
+             [default-implementation :as default-impl]
+             [interface :as i]]
             [metabase.models
-             [permissions-group :as group :refer [PermissionsGroup]]
              [setting :as setting :refer [defsetting]]
-             [user :as user :refer [User]]]
+             [user :refer [User]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db])
-  (:import [com.unboundid.ldap.sdk LDAPConnectionPool LDAPException]))
-
-(def ^:private filter-placeholder
-  "{login}")
+            [metabase.util
+             [i18n :refer [deferred-tru tru]]
+             [schema :as su]]
+            [schema.core :as s])
+  (:import [com.unboundid.ldap.sdk DN LDAPConnectionPool LDAPException]))
 
 (defsetting ldap-enabled
-  (tru "Enable LDAP authentication.")
+  (deferred-tru "Enable LDAP authentication.")
   :type    :boolean
   :default false)
 
 (defsetting ldap-host
-  (tru "Server hostname."))
+  (deferred-tru "Server hostname."))
 
 (defsetting ldap-port
-  (tru "Server port, usually 389 or 636 if SSL is used.")
+  (deferred-tru "Server port, usually 389 or 636 if SSL is used.")
   :default "389")
 
 (defsetting ldap-security
-  (tru "Use SSL, TLS or plain text.")
+  (deferred-tru "Use SSL, TLS or plain text.")
   :default "none"
   :setter  (fn [new-value]
              (when-not (nil? new-value)
@@ -36,53 +37,83 @@
              (setting/set-string! :ldap-security new-value)))
 
 (defsetting ldap-bind-dn
-  (tru "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."))
+  (deferred-tru "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."))
 
 (defsetting ldap-password
-  (tru "The password to bind with for the lookup user."))
+  (deferred-tru "The password to bind with for the lookup user.")
+  :sensitive? true)
 
 (defsetting ldap-user-base
-  (tru "Search base for users. (Will be searched recursively)"))
+  (deferred-tru "Search base for users. (Will be searched recursively)"))
 
 (defsetting ldap-user-filter
-  (tru "User lookup filter, the placeholder '{login}' will be replaced by the user supplied login.")
+  (deferred-tru "User lookup filter, the placeholder '{login}' will be replaced by the user supplied login.")
   :default "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))")
 
 (defsetting ldap-attribute-email
-  (tru "Attribute to use for the user's email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
-  :default "mail")
+  (deferred-tru "Attribute to use for the user's email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
+  :default "mail"
+  :getter (fn [] (u/lower-case-en (setting/get-string :ldap-attribute-email))))
 
 (defsetting ldap-attribute-firstname
-  (tru "Attribute to use for the user''s first name. (usually ''givenName'')")
-  :default "givenName")
+  (deferred-tru "Attribute to use for the user''s first name. (usually ''givenName'')")
+  :default "givenName"
+  :getter (fn [] (u/lower-case-en (setting/get-string :ldap-attribute-firstname))))
 
 (defsetting ldap-attribute-lastname
-  (tru "Attribute to use for the user''s last name. (usually ''sn'')")
-  :default "sn")
+  (deferred-tru "Attribute to use for the user''s last name. (usually ''sn'')")
+  :default "sn"
+  :getter (fn [] (u/lower-case-en (setting/get-string :ldap-attribute-lastname))))
 
 (defsetting ldap-group-sync
-  (tru "Enable group membership synchronization with LDAP.")
+  (deferred-tru "Enable group membership synchronization with LDAP.")
   :type    :boolean
   :default false)
 
 (defsetting ldap-group-base
-  (tru "Search base for groups, not required if your LDAP directory provides a ''memberOf'' overlay. (Will be searched recursively)"))
+  (deferred-tru "Search base for groups, not required if your LDAP directory provides a ''memberOf'' overlay. (Will be searched recursively)"))
 
 (defsetting ldap-group-mappings
-  ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP groups and values are lists of MB groups IDs
-  (tru "JSON containing LDAP to Metabase group mappings.")
+  ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of
+  ;; MB groups IDs
+  (deferred-tru "JSON containing LDAP to Metabase group mappings.")
   :type    :json
-  :default {})
+  :default {}
+  :getter  (fn []
+             (json/parse-string (setting/get-string :ldap-group-mappings) #(DN. (str %))))
+  :setter  (fn [new-value]
+             (doseq [k (keys new-value)]
+               (when-not (DN/isValidDN (name k))
+                 (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
+             (setting/set-json! :ldap-group-mappings new-value)))
 
-(defn ldap-configured?
+(defsetting ldap-sync-user-attributes
+  (deferred-tru "Should we sync user attributes when someone logs in via LDAP?")
+  :type :boolean
+  :default true)
+
+;; TODO - maybe we want to add a csv setting type?
+(defsetting ldap-sync-user-attributes-blacklist
+  (deferred-tru "Comma-separated list of user attributes to skip syncing for LDAP users.")
+  :default "userPassword,dn,distinguishedName"
+  :type    :csv)
+
+(defsetting ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."
-  []
-  (boolean (and (ldap-enabled)
-                (ldap-host)
-                (ldap-user-base))))
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (boolean (and (ldap-enabled)
+                                   (ldap-host)
+                                   (ldap-user-base)))))
 
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]
-  {:host      (str host ":" port)
+  ;; Connecting via IPv6 requires us to use this form for :host, otherwise
+  ;; clj-ldap will find the first : and treat it as an IPv4 and port number
+  {:host      {:address host
+               :port    (if (string? port)
+                          (Integer/parseInt port)
+                          port)}
    :bind-dn   bind-dn
    :password  password
    :ssl?      (= security "ssl")
@@ -95,43 +126,22 @@
                           :password  (ldap-password)
                           :security  (ldap-security)}))
 
-(defn- escape-value
-  "Escapes a value for use in an LDAP filter expression."
-  [value]
-  (str/replace value #"(?:^\s|\s$|[,\\\#\+<>;\"=\*\(\)\\0])" (comp (partial format "\\%02X") int first)))
-
 (defn- get-connection
   "Connects to LDAP with the currently set settings and returns the connection."
   ^LDAPConnectionPool []
   (ldap/connect (settings->ldap-options)))
 
-(defn- with-connection
-  "Applies `f` with a connection and `args`"
-  [f & args]
+(defn- do-with-ldap-connection
+  "Impl for `with-ldap-connection` macro."
+  [f]
   (with-open [conn (get-connection)]
-    (apply f conn args)))
+    (f conn)))
 
-(defn- ldap-groups->mb-group-ids
-  "Will translate a set of DNs to a set of MB group IDs using the configured mappings."
-  [ldap-groups]
-  (-> (ldap-group-mappings)
-      (select-keys (map keyword ldap-groups))
-      vals
-      flatten
-      set))
-
-(defn- get-user-groups
-  "Retrieve groups for a supplied DN."
-  ([dn]
-    (with-connection get-user-groups dn))
-  ([conn dn]
-    (when (ldap-group-base)
-      (let [results (ldap/search conn (ldap-group-base) {:scope      :sub
-                                                         :filter     (str "member=" (escape-value dn))
-                                                         :attributes [:dn :distinguishedName]})]
-        (filter some?
-          (for [result results]
-            (or (:dn result) (:distinguishedName result))))))))
+(defmacro ^:private with-ldap-connection
+  "Execute `body` with `connection-binding` bound to a LDAP connection."
+  [[connection-binding] & body]
+  `(do-with-ldap-connection (fn [~(vary-meta connection-binding assoc :tag `LDAPConnectionPool)]
+                              ~@body)))
 
 (def ^:private user-base-error  {:status :ERROR, :message "User search base does not exist or is unreadable"})
 (def ^:private group-base-error {:status :ERROR, :message "Group search base does not exist or is unreadable"})
@@ -139,14 +149,15 @@
 (defn test-ldap-connection
   "Test the connection to an LDAP server to determine if we can find the search base.
 
-   Takes in a dictionary of properties such as:
-       {:host       \"localhost\"
-        :port       389
-        :bind-dn    \"cn=Directory Manager\"
-        :password   \"password\"
-        :security   \"none\"
-        :user-base  \"ou=Birds,dc=metabase,dc=com\"
-        :group-base \"ou=Groups,dc=metabase,dc=com\"}"
+  Takes in a dictionary of properties such as:
+
+    {:host       \"localhost\"
+     :port       389
+     :bind-dn    \"cn=Directory Manager\"
+     :password   \"password\"
+     :security   \"none\"
+     :user-base  \"ou=Birds,dc=metabase,dc=com\"
+     :group-base \"ou=Groups,dc=metabase,dc=com\"}"
   [{:keys [user-base group-base], :as details}]
   (try
     (with-open [^LDAPConnectionPool conn (ldap/connect (details->ldap-options details))]
@@ -168,59 +179,49 @@
     (catch Exception e
       {:status :ERROR, :message (.getMessage e)})))
 
-(defn find-user
-  "Gets user information for the supplied username."
-  ([username]
-    (with-connection find-user username))
-  ([conn username]
-    (let [fname-attr (keyword (ldap-attribute-firstname))
-          lname-attr (keyword (ldap-attribute-lastname))
-          email-attr (keyword (ldap-attribute-email))]
-      (when-let [[result] (ldap/search conn (ldap-user-base) {:scope      :sub
-                                                              :filter     (str/replace (ldap-user-filter) filter-placeholder (escape-value username))
-                                                              :attributes [:dn :distinguishedName fname-attr lname-attr email-attr :memberOf]
-                                                              :size-limit 1})]
-        (let [dn    (or (:dn result) (:distinguishedName result))
-              fname (get result fname-attr)
-              lname (get result lname-attr)
-              email (get result email-attr)]
-          ;; Make sure we got everything as these are all required for new accounts
-          (when-not (or (empty? dn) (empty? fname) (empty? lname) (empty? email))
-            ;; ActiveDirectory (and others?) will supply a `memberOf` overlay attribute for groups
-            ;; Otherwise we have to make the inverse query to get them
-            (let [groups (when (ldap-group-sync)
-                           (or (:memberOf result) (get-user-groups dn) []))]
-              {:dn         dn
-               :first-name fname
-               :last-name  lname
-               :email      email
-               :groups     groups})))))))
-
 (defn verify-password
   "Verifies if the supplied password is valid for the `user-info` (from `find-user`) or DN."
   ([user-info password]
-    (with-connection verify-password user-info password))
-  ([conn user-info password]
-    (if (string? user-info)
-      (ldap/bind? conn user-info password)
-      (ldap/bind? conn (:dn user-info) password))))
+   (with-ldap-connection [conn]
+     (verify-password conn user-info password)))
 
-(defn fetch-or-create-user!
+  ([conn user-info password]
+   (let [dn (if (string? user-info) user-info (:dn user-info))]
+     (ldap/bind? conn dn password))))
+
+;; we want the EE implementation namespace to be loaded immediately if present so the extra Settings that it defines
+;; are available elsewhere (e.g. so they'll show up in the API endpoints that list Settings)
+(def ^:private impl
+  ;; if EE impl is present, use it. It implements the strategy pattern and will forward method invocations to the
+  ;; default OSS impl if we don't have a valid EE token. Thus the actual EE versions of the methods won't get used
+  ;; unless EE code is present *and* we have a valid EE token.
+  (u/prog1 (or (u/ignore-exceptions
+                 (classloader/require 'metabase-enterprise.enhancements.integrations.ldap)
+                 (some-> (resolve 'metabase-enterprise.enhancements.integrations.ldap/ee-strategy-impl) var-get))
+               default-impl/impl)
+    (log/debugf "LDAP integration set to %s" <>)))
+
+(s/defn ^:private ldap-settings :- i/LDAPSettings
+  []
+  {:first-name-attribute (ldap-attribute-firstname)
+   :last-name-attribute  (ldap-attribute-lastname)
+   :email-attribute      (ldap-attribute-email)
+   :sync-groups?         (ldap-group-sync)
+   :group-base           (ldap-group-base)
+   :group-mappings       (ldap-group-mappings)
+   :user-base            (ldap-user-base)
+   :user-filter          (ldap-user-filter)})
+
+(s/defn find-user :- (s/maybe i/UserInfo)
+  "Get user information for the supplied username."
+  ([username :- su/NonBlankString]
+   (with-ldap-connection [conn]
+     (find-user conn username)))
+
+  ([ldap-connection :- LDAPConnectionPool, username :- su/NonBlankString]
+   (i/find-user impl ldap-connection username (ldap-settings))))
+
+(s/defn fetch-or-create-user! :- (class User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
-  [{:keys [first-name last-name email groups]} password]
-  (let [user (or (db/select-one [User :id :last_login] :email email)
-                 (user/create-new-ldap-auth-user! {:first_name first-name
-                                                   :last_name  last-name
-                                                   :email      email}))]
-    (u/prog1 user
-      (when (ldap-group-sync)
-        (let [special-ids #{(:id (group/admin)) (:id (group/all-users))}
-              current-ids (set (map :group_id (db/select ['PermissionsGroupMembership :group_id] :user_id (:id user))))
-              ldap-ids    (when-let [ids (seq (ldap-groups->mb-group-ids groups))]
-                            (set (map :id (db/select [PermissionsGroup :id] :id [:in ids]))))
-              to-remove   (set/difference current-ids ldap-ids special-ids)
-              to-add      (set/difference ldap-ids current-ids)]
-          (when (seq to-remove)
-            (db/delete! 'PermissionsGroupMembership :group_id [:in to-remove], :user_id (:id user)))
-          (doseq [id to-add]
-            (db/insert! 'PermissionsGroupMembership :group_id id, :user_id (:id user))))))))
+  [user-info :- i/UserInfo]
+  (i/fetch-or-create-user! impl user-info (ldap-settings)))

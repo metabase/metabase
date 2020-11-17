@@ -8,7 +8,7 @@ import Link from "metabase/components/Link";
 import Text from "metabase/components/Text";
 
 type EmptyStateProps = {
-  message: React$Element<any>,
+  message?: React$Element<any>,
   title?: string,
   action?: string,
   link?: string,
@@ -19,7 +19,9 @@ type EmptyStateProps = {
 // Don't break existing empty states
 // TODO - remove these and update empty states with proper usage of illustrationElement
 const LegacyIcon = props =>
-  props.icon ? <Icon name={props.icon} size={40} /> : null;
+  props.icon ? (
+    <Icon name={props.icon} className="text-light" size={40} />
+  ) : null;
 const LegacyImage = props =>
   props.image ? (
     <img
@@ -56,18 +58,16 @@ const EmptyState = ({
       */}
     <Flex mt={2}>
       <Flex align="center" ml="auto" mr="auto">
-        {action &&
-          link && (
-            <Link to={link} target={link.startsWith("http") ? "_blank" : ""}>
-              <Button primary>{action}</Button>
-            </Link>
-          )}
-        {action &&
-          onActionClick && (
-            <Button onClick={onActionClick} primary>
-              {action}
-            </Button>
-          )}
+        {action && link && (
+          <Link to={link} target={link.startsWith("http") ? "_blank" : ""}>
+            <Button primary>{action}</Button>
+          </Link>
+        )}
+        {action && onActionClick && (
+          <Button onClick={onActionClick} primary>
+            {action}
+          </Button>
+        )}
       </Flex>
     </Flex>
   </Box>

@@ -1,22 +1,27 @@
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
+import { t } from "ttag";
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
   ERROR_MESSAGE_PERMISSION,
-} from "metabase/visualizations/components/Visualization.jsx";
+} from "metabase/visualizations/components/Visualization";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
+import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
 
-import DashCardParameterMapper from "./DashCardParameterMapper.jsx";
+import { isVirtualDashCard } from "metabase/dashboard/dashboard";
+import DashCardParameterMapper from "./DashCardParameterMapper";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -32,9 +37,19 @@ const HEADER_ACTION_STYLE = {
   padding: 4,
 };
 
+// This is done to add the `getExtraDataForClick` prop.
+// We need that to pass relevant data along with the clicked object.
+const WrappedVisualization = WithVizSettingsData(
+  connect(
+    null,
+    dispatch => ({ dispatch }),
+  )(Visualization),
+);
+
 export default class DashCard extends Component {
   static propTypes = {
     dashcard: PropTypes.object.isRequired,
+    gridItemWidth: PropTypes.number.isRequired,
     dashcardData: PropTypes.object.isRequired,
     slowCards: PropTypes.object.isRequired,
     parameterValues: PropTypes.object.isRequired,
@@ -48,7 +63,10 @@ export default class DashCard extends Component {
 
     // HACK: way to scroll to a newly added card
     if (dashcard.justAdded) {
-      ReactDOM.findDOMNode(this).scrollIntoView();
+      const element = ReactDOM.findDOMNode(this);
+      if (element && element.scrollIntoView) {
+        element.scrollIntoView({ block: "nearest" });
+      }
       markNewCardSeen(dashcard.id);
     }
   }
@@ -63,6 +81,7 @@ export default class DashCard extends Component {
       dashcardData,
       slowCards,
       isEditing,
+      clickBehaviorSidebarDashcard,
       isEditingParameter,
       isFullscreen,
       onAddSeries,
@@ -71,6 +90,7 @@ export default class DashCard extends Component {
       metadata,
       dashboard,
       parameterValues,
+      mode,
     } = this.props;
 
     const mainCard = {
@@ -137,7 +157,7 @@ export default class DashCard extends Component {
             : null
         }
       >
-        <Visualization
+        <WrappedVisualization
           className="flex-full"
           classNameWidgets={isEmbed && "text-light text-medium-hover"}
           error={errorMessage}
@@ -148,6 +168,9 @@ export default class DashCard extends Component {
           showTitle
           isFullscreen={isFullscreen}
           isDashboard
+          dispatch={this.props.dispatch}
+          dashboard={dashboard}
+          parameterValuesBySlug={params}
           isEditing={isEditing}
           gridSize={
             this.props.isMobile
@@ -155,13 +178,18 @@ export default class DashCard extends Component {
               : { width: dashcard.sizeX, height: dashcard.sizeY }
           }
           actionButtons={
-            isEditing && !isEditingParameter ? (
+            isEditing ? (
               <DashCardActionButtons
                 series={series}
+                hasError={!!errorMessage}
+                isVirtualDashCard={isVirtualDashCard(dashcard)}
                 onRemove={onRemove}
                 onAddSeries={onAddSeries}
                 onReplaceAllVisualizationSettings={
                   this.props.onReplaceAllVisualizationSettings
+                }
+                showClickBehaviorSidebar={() =>
+                  this.props.showClickBehaviorSidebar(dashcard.id)
                 }
               />
             ) : isEmbed ? (
@@ -182,11 +210,27 @@ export default class DashCard extends Component {
             this.props.onUpdateVisualizationSettings
           }
           replacementContent={
-            isEditingParameter && (
+            (clickBehaviorSidebarDashcard != null || isEditingParameter) &&
+            isVirtualDashCard(dashcard) ? (
+              <div className="flex full-height align-center justify-center">
+                <h4 className="text-medium">{t`Text card`}</h4>
+              </div>
+            ) : isEditingParameter ? (
               <DashCardParameterMapper dashcard={dashcard} />
-            )
+            ) : clickBehaviorSidebarDashcard != null ? (
+              <ClickBehaviorSidebarOverlay
+                dashcard={dashcard}
+                dashcardWidth={this.props.gridItemWidth}
+                dashboard={dashboard}
+                showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
+                isShowingThisClickBehaviorSidebar={
+                  clickBehaviorSidebarDashcard.id === dashcard.id
+                }
+              />
+            ) : null
           }
           metadata={metadata}
+          mode={mode}
           onChangeCardAndRun={
             navigateToNewCardFromDashboard
               ? ({ nextCard, previousCard }) => {
@@ -199,6 +243,7 @@ export default class DashCard extends Component {
                 }
               : null
           }
+          onChangeLocation={this.props.onChangeLocation}
         />
       </div>
     );
@@ -207,38 +252,78 @@ export default class DashCard extends Component {
 
 const DashCardActionButtons = ({
   series,
+  isVirtualDashCard,
+  hasError,
   onRemove,
   onAddSeries,
   onReplaceAllVisualizationSettings,
-}) => (
-  <span
-    className="DashCard-actions flex align-center"
-    style={{ lineHeight: 1 }}
-  >
-    {getVisualizationRaw(series).CardVisualization.supportsSeries && (
-      <AddSeriesButton series={series} onAddSeries={onAddSeries} />
-    )}
-    {onReplaceAllVisualizationSettings &&
-      !getVisualizationRaw(series).CardVisualization.disableSettingsConfig && (
+  showClickBehaviorSidebar,
+}) => {
+  const buttons = [];
+  if (!hasError) {
+    if (
+      onReplaceAllVisualizationSettings &&
+      !getVisualizationRaw(series).visualization.disableSettingsConfig
+    ) {
+      buttons.push(
         <ChartSettingsButton
           series={series}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
-        />
-      )}
-    <RemoveButton onRemove={onRemove} />
-  </span>
-);
+        />,
+      );
+    }
+    if (!isVirtualDashCard) {
+      buttons.push(
+        <Tooltip tooltip={t`Click behavior`}>
+          <a
+            className="text-light text-medium-hover drag-disabled mr1"
+            data-metabase-event="Dashboard;Open Click Behavior Sidebar"
+            onClick={showClickBehaviorSidebar}
+            style={HEADER_ACTION_STYLE}
+          >
+            <Icon name="click" />
+          </a>
+        </Tooltip>,
+      );
+    }
+
+    if (getVisualizationRaw(series).visualization.supportsSeries) {
+      buttons.push(
+        <AddSeriesButton series={series} onAddSeries={onAddSeries} />,
+      );
+    }
+  }
+
+  return (
+    <span
+      className="DashCard-actions flex align-center"
+      style={{ lineHeight: 1 }}
+    >
+      {buttons}
+      <Tooltip tooltip={t`Remove`}>
+        <RemoveButton className="ml1" onRemove={onRemove} />
+      </Tooltip>
+    </span>
+  );
+};
 
 const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
   <ModalWithTrigger
     wide
     tall
     triggerElement={
-      <Icon name="gear" size={HEADER_ICON_SIZE} style={HEADER_ACTION_STYLE} />
+      <Tooltip tooltip={t`Visualization options`}>
+        <Icon
+          name="palette"
+          size={HEADER_ICON_SIZE}
+          style={HEADER_ACTION_STYLE}
+        />
+      </Tooltip>
     }
-    triggerClasses="text-light text-medium-hover cursor-pointer flex align-center flex-no-shrink mr1"
+    triggerClasses="text-light text-medium-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
   >
-    <ChartSettings
+    <ChartSettingsWithState
+      className="spread"
       series={series}
       onChange={onReplaceAllVisualizationSettings}
       isDashboard
@@ -248,7 +333,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
 
 const RemoveButton = ({ onRemove }) => (
   <a
-    className="text-light text-medium-hover "
+    className="text-light text-medium-hover drag-disabled"
     data-metabase-event="Dashboard;Remove Card Modal"
     onClick={onRemove}
     style={HEADER_ACTION_STYLE}
@@ -260,32 +345,72 @@ const RemoveButton = ({ onRemove }) => (
 const AddSeriesButton = ({ series, onAddSeries }) => (
   <a
     data-metabase-event={"Dashboard;Edit Series Modal;open"}
-    className="text-light text-medium-hover cursor-pointer h3 flex-no-shrink relative mr1"
+    className="text-light text-medium-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
     onClick={onAddSeries}
     style={HEADER_ACTION_STYLE}
   >
-    <span className="flex align-center">
-      <span className="flex">
-        <Icon
-          className="absolute"
-          name="add"
-          style={{ top: 0, left: 0 }}
-          size={HEADER_ICON_SIZE / 2}
-        />
-        <Icon name={getSeriesIconName(series)} size={HEADER_ICON_SIZE} />
+    <Tooltip tooltip={series.length > 1 ? t`Edit series` : t`Add series`}>
+      <span className="flex align-center">
+        <span className="flex">
+          <Icon
+            className="absolute"
+            name="add"
+            style={{ top: 0, left: 1 }}
+            size={HEADER_ICON_SIZE / 2}
+          />
+          <Icon name={getSeriesIconName(series)} size={HEADER_ICON_SIZE - 2} />
+        </span>
       </span>
-      <span className="flex-no-shrink text-bold">
-        &nbsp;{series.length > 1 ? t`Edit` : t`Add`}
-      </span>
-    </span>
+    </Tooltip>
   </a>
 );
 
 function getSeriesIconName(series) {
   try {
-    let display = series[0].card.display;
+    const display = series[0].card.display;
     return visualizations.get(display === "scalar" ? "bar" : display).iconName;
   } catch (e) {
     return "bar";
   }
 }
+
+const MIN_WIDTH_FOR_ON_CLICK_LABEL = 330;
+
+const ClickBehaviorSidebarOverlay = ({
+  dashcard,
+  dashcardWidth,
+  dashboard,
+  showClickBehaviorSidebar,
+  isShowingThisClickBehaviorSidebar,
+}) => {
+  return (
+    <div className="flex align-center justify-center full-height">
+      <div
+        className={cx("text-bold flex py1 px2 mb2 rounded cursor-pointer", {
+          "bg-brand text-white": isShowingThisClickBehaviorSidebar,
+          "bg-light text-medium": !isShowingThisClickBehaviorSidebar,
+        })}
+        onClick={() =>
+          showClickBehaviorSidebar(
+            isShowingThisClickBehaviorSidebar ? null : dashcard.id,
+          )
+        }
+      >
+        <Icon
+          name="click"
+          className={cx("mr1", {
+            "text-light": !isShowingThisClickBehaviorSidebar,
+          })}
+        />
+        {dashcardWidth > MIN_WIDTH_FOR_ON_CLICK_LABEL && (
+          <div className="mr2">{t`On click`}</div>
+        )}
+        <div
+          className={cx({ "text-brand": !isShowingThisClickBehaviorSidebar })}
+        >
+          {getClickBehaviorDescription(dashcard)}
+        </div>
+      </div>
+    </div>
+  );
+};

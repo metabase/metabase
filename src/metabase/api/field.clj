@@ -1,5 +1,7 @@
 (ns metabase.api.field
-  (:require [compojure.core :refer [DELETE GET POST PUT]]
+  (:require [clojure.core.memoize :as memoize]
+            [clojure.tools.logging :as log]
+            [compojure.core :refer [DELETE GET POST PUT]]
             [metabase
              [query-processor :as qp]
              [related :as related]
@@ -10,8 +12,12 @@
              [dimension :refer [Dimension]]
              [field :as field :refer [Field]]
              [field-values :as field-values :refer [FieldValues]]
+             [interface :as mi]
+             [permissions :as perms]
              [table :refer [Table]]]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [trs]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -29,12 +35,36 @@
   "Schema for a valid `Field` visibility type."
   (apply s/enum (map name field/visibility-types)))
 
+(defn- has-segmented-query-permissions?
+  "Does the Current User have segmented query permissions for `table`?"
+  [table]
+  (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+    (perms/table-segmented-query-path table)))
+
+(defn- throw-if-no-read-or-segmented-perms
+  "Validates that the user either has full read permissions for `field` or segmented permissions on the table
+  associated with `field`. Throws an exception that will return a 403 if not."
+  [field]
+  (when-not (or (mi/can-read? field)
+                (has-segmented-query-permissions? (field/table field)))
+    (api/throw-403)))
 
 (api/defendpoint GET "/:id"
   "Get `Field` with ID."
   [id]
-  (-> (api/read-check Field id)
-      (hydrate [:table :db] :has_field_values :dimensions :name_field)))
+  (let [field (-> (api/check-404 (Field id))
+                  (hydrate [:table :db] :has_field_values :dimensions :name_field))]
+    ;; Normal read perms = normal access.
+    ;;
+    ;; There's also aspecial case where we allow you to fetch a Field even if you don't have full read permissions for
+    ;; it: if you have segmented query access to the Table it belongs to. In this case, we'll still let you fetch the
+    ;; Field, since this is required to power features like Dashboard filters, but we'll treat this Field a little
+    ;; differently in other endpoints such as the FieldValues fetching endpoint.
+    ;;
+    ;; Check for permissions and throw 403 if we don't have them...
+    (throw-if-no-read-or-segmented-perms field)
+    ;; ...but if we do, return the Field <3
+    field))
 
 (defn- clear-dimension-on-fk-change! [{{dimension-id :id dimension-type :type} :dimensions :as field}]
   (when (and dimension-id (= :external dimension-type))
@@ -165,11 +195,41 @@
         (dissoc :human_readable_values :created_at :updated_at :id))
     {:values [], :field_id (:id field)}))
 
+(def ^:private ^{:arglist '([user-id last-updated field])} fetch-sandboxed-field-values*
+  (memoize/ttl
+   (fn [_ _ field]
+     {:values   (map vector (field-values/distinct-values field))
+      :field_id (u/get-id field)})
+   ;; Expire entires older than 30 days so we don't have entries for users and/or fields that
+   ;; no longer exists hanging around.
+   ;; (`clojure.core.cache/TTLCacheQ` (which `memoize` uses underneath) evicts all stale entries on
+   ;; every cache miss)
+   :ttl/threshold (* 1000 60 60 24 30)))
+
+(defn- fetch-sandboxed-field-values
+  [field]
+  (fetch-sandboxed-field-values*
+   api/*current-user-id*
+   (db/select-one-field :updated_at FieldValues :field_id (u/get-id field))
+   field))
+
 (api/defendpoint GET "/:id/values"
   "If a Field's value of `has_field_values` is `list`, return a list of all the distinct values of the Field, and (if
   defined by a User) a map of human-readable remapped values."
   [id]
-  (field->values (api/read-check Field id)))
+  (let [field (api/check-404 (Field id))]
+    (cond
+      ;; if you have normal read permissions, return normal results
+      (mi/can-read? field)
+      (field->values (api/read-check field))
+
+      ;; otherwise if you have Segmented query perms (but not normal read perms) we'll do an ad-hoc query to fetch the
+      ;; results, filtered by your GTAP
+      (has-segmented-query-permissions? (field/table field))
+      (fetch-sandboxed-field-values field)
+
+      :else
+      (api/throw-403))))
 
 ;; match things like GET /field-literal%2Ccreated_at%2Ctype%2FDatetime/values
 ;; (this is how things like [field-literal,created_at,type/Datetime] look when URL-encoded)
@@ -211,7 +271,7 @@
   "Update the fields values and human-readable values for a `Field` whose special type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
   [id :as {{value-pairs :values} :body}]
-  {value-pairs [[(s/one s/Num "value") (s/optional su/NonBlankString "human readable value")]]}
+  {value-pairs [[(s/one s/Any "value") (s/optional su/NonBlankString "human readable value")]]}
   (let [field (api/write-check Field id)]
     (api/check (field-values/field-should-have-field-values? field)
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
@@ -292,17 +352,22 @@
              (36 \"Margot Farrell\")
              (48 \"Maryam Douglas\"))"
   [field search-field value & [limit]]
-  (let [field   (follow-fks field)
-        results (qp/process-query (search-values-query field search-field value limit))
-        rows    (get-in results [:data :rows])]
-    ;; if the two Fields are different, we'll get results like [[v1 v2] [v1 v2]]. That is the expected format and we can
-    ;; return them as-is
-    (if-not (= (u/get-id field) (u/get-id search-field))
-      rows
-      ;; However if the Fields are both the same results will be in the format [[v1] [v1]] so we need to double the
-      ;; value to get the format the frontend expects
-      (for [[result] rows]
-        [result result]))))
+  (try
+    (let [field   (follow-fks field)
+          results (qp/process-query (search-values-query field search-field value limit))
+          rows    (get-in results [:data :rows])]
+      ;; if the two Fields are different, we'll get results like [[v1 v2] [v1 v2]]. That is the expected format and we can
+      ;; return them as-is
+      (if-not (= (u/get-id field) (u/get-id search-field))
+        rows
+        ;; However if the Fields are both the same results will be in the format [[v1] [v1]] so we need to double the
+        ;; value to get the format the frontend expects
+        (for [[result] rows]
+          [result result])))
+    ;; this Exception is usually one that can be ignored which is why I gave it log level debug
+    (catch Throwable e
+      (log/debug e (trs "Error searching field values"))
+      nil)))
 
 (api/defendpoint GET "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
@@ -310,8 +375,10 @@
   [id search-id value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
-  (let [field        (api/read-check Field id)
-        search-field (api/read-check Field search-id)]
+  (let [field        (api/check-404 (Field id))
+        search-field (api/check-404 (Field search-id))]
+    (throw-if-no-read-or-segmented-perms field)
+    (throw-if-no-read-or-segmented-perms search-field)
     (search-values field search-field value (when limit (Integer/parseInt limit)))))
 
 
@@ -327,17 +394,22 @@
       (remapped-value <PEOPLE.ID Field> <PEOPLE.NAME Field> 20)
       ;; -> [20 \"Peter Watsica\"]"
   [field remapped-field value]
-  (let [field   (follow-fks field)
-        results (qp/process-query
-                  {:database (db-id field)
-                   :type     :query
-                   :query    {:source-table (table-id field)
-                              :filter       [:= [:field-id (u/get-id field)] value]
-                              :fields       [[:field-id (u/get-id field)]
-                                             [:field-id (u/get-id remapped-field)]]
-                              :limit        1}})]
-    ;; return first row if it exists
-    (first (get-in results [:data :rows]))))
+  (try
+    (let [field   (follow-fks field)
+          results (qp/process-query
+                   {:database (db-id field)
+                    :type     :query
+                    :query    {:source-table (table-id field)
+                               :filter       [:= [:field-id (u/get-id field)] value]
+                               :fields       [[:field-id (u/get-id field)]
+                                              [:field-id (u/get-id remapped-field)]]
+                               :limit        1}})]
+      ;; return first row if it exists
+      (first (get-in results [:data :rows])))
+    ;; as with fn above this error can usually be safely ignored which is why log level is log/debug
+    (catch Throwable e
+      (log/debug e (trs "Error searching for remapping"))
+      nil)))
 
 (defn parse-query-param-value-for-field
   "Parse a `value` passed as a URL query param in a way appropriate for the `field` it belongs to. E.g. for text Fields

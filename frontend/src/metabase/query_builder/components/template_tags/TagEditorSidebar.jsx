@@ -1,20 +1,24 @@
 /* @flow weak */
 
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
-import Icon from "metabase/components/Icon.jsx";
-import TagEditorParam from "./TagEditorParam.jsx";
-import TagEditorHelp from "./TagEditorHelp.jsx";
-import MetabaseAnalytics from "metabase/lib/analytics";
-import { t } from "c-3po";
+
+import { t } from "ttag";
 import cx from "classnames";
 
+import TagEditorParam from "./TagEditorParam";
+import CardTagEditor from "./CardTagEditor";
+import TagEditorHelp from "./TagEditorHelp";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
+
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import type { DatasetQuery } from "metabase/meta/types/Card";
-import type { TableId } from "metabase/meta/types/Table";
-import type { Database } from "metabase/meta/types/Database";
-import type { TemplateTag } from "metabase/meta/types/Query";
-import type { Field as FieldObject } from "metabase/meta/types/Field";
+import type { DatasetQuery } from "metabase-types/types/Card";
+import type { TableId } from "metabase-types/types/Table";
+import type { Database } from "metabase-types/types/Database";
+import type { TemplateTag } from "metabase-types/types/Query";
+import type { Field as FieldObject } from "metabase-types/types/Field";
 
 type Props = {
   query: NativeQuery,
@@ -32,7 +36,7 @@ type State = {
   section: "help" | "settings",
 };
 
-export default class TagEditorSidebar extends Component {
+export default class TagEditorSidebar extends React.Component {
   props: Props;
   state: State = {
     section: "settings",
@@ -66,9 +70,9 @@ export default class TagEditorSidebar extends Component {
       updateTemplateTag,
       onClose,
     } = this.props;
-    const tags = query.templateTags();
-    const databaseId = query.datasetQuery().database;
-    const database = databases.find(db => db.id === databaseId);
+    // The tag editor sidebar excludes snippets since they have a separate sidebar.
+    const tags = query.templateTagsWithoutSnippets();
+    const database = query.database();
 
     let section;
     if (tags.length === 0) {
@@ -78,27 +82,18 @@ export default class TagEditorSidebar extends Component {
     }
 
     return (
-      <div className="DataReference-container p3 full-height scroll-y">
-        <div className="DataReference-header flex align-center mb2">
-          <h2 className="text-default">{t`Variables`}</h2>
-          <a
-            className="flex-align-right text-default text-brand-hover no-decoration"
-            onClick={() => onClose()}
-          >
-            <Icon name="close" size={18} />
-          </a>
-        </div>
-        <div className="DataReference-content">
-          <div className="Button-group Button-group--brand text-uppercase mb2">
+      <SidebarContent title={t`Variables`} onClose={onClose}>
+        <div>
+          <div className="mx3 text-centered Button-group Button-group--brand text-uppercase mb2 flex flex-full">
             <a
-              className={cx("Button Button--small", {
+              className={cx("Button flex-full Button--small", {
                 "Button--active": section === "settings",
                 disabled: tags.length === 0,
               })}
               onClick={() => this.setSection("settings")}
             >{t`Settings`}</a>
             <a
-              className={cx("Button Button--small", {
+              className={cx("Button flex-full Button--small", {
                 "Button--active": section === "help",
               })}
               onClick={() => this.setSection("help")}
@@ -111,15 +106,19 @@ export default class TagEditorSidebar extends Component {
               databaseFields={databaseFields}
               database={database}
               databases={databases}
+              query={query}
+              setDatasetQuery={setDatasetQuery}
             />
           ) : (
             <TagEditorHelp
+              database={database}
               sampleDatasetId={sampleDatasetId}
               setDatasetQuery={setDatasetQuery}
+              switchToSettings={() => this.setSection("settings")}
             />
           )}
         </div>
-      </div>
+      </SidebarContent>
     );
   }
 }
@@ -130,17 +129,27 @@ const SettingsPane = ({
   databaseFields,
   database,
   databases,
+  query,
+  setDatasetQuery,
 }) => (
   <div>
     {tags.map(tag => (
       <div key={tags.name}>
-        <TagEditorParam
-          tag={tag}
-          onUpdate={onUpdate}
-          databaseFields={databaseFields}
-          database={database}
-          databases={databases}
-        />
+        {tag.type === "card" ? (
+          <CardTagEditor
+            query={query}
+            setDatasetQuery={setDatasetQuery}
+            tag={tag}
+          />
+        ) : (
+          <TagEditorParam
+            tag={tag}
+            onUpdate={onUpdate}
+            databaseFields={databaseFields}
+            database={database}
+            databases={databases}
+          />
+        )}
       </div>
     ))}
   </div>
@@ -149,5 +158,7 @@ const SettingsPane = ({
 SettingsPane.propTypes = {
   tags: PropTypes.object.isRequired,
   onUpdate: PropTypes.func.isRequired,
+  setDatasetQuery: PropTypes.func.isRequired,
+  query: NativeQuery,
   databaseFields: PropTypes.array,
 };

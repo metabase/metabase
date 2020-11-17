@@ -4,15 +4,16 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import { push } from "react-router-redux";
-import { t } from "c-3po";
-import List from "metabase/components/List.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader.jsx";
-import Detail from "metabase/reference/components/Detail.jsx";
-import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";
-import Formula from "metabase/reference/components/Formula.jsx";
-import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail.jsx";
+import { t } from "ttag";
+import List from "metabase/components/List";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
+import EditHeader from "metabase/reference/components/EditHeader";
+import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
+import Detail from "metabase/reference/components/Detail";
+import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy";
+import Formula from "metabase/reference/components/Formula";
+import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail";
 
 import { getQuestionUrl } from "../utils";
 
@@ -75,7 +76,10 @@ const validate = (values, props) =>
     ? { revision_message: t`Please enter a revision message` }
     : {};
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "details",
   fields: [
@@ -195,50 +199,50 @@ export default class MetricDetail extends Component {
           error={loadingError}
         >
           {() => (
-            <div className="wrapper wrapper--trim">
-              <List>
-                <li className="relative">
-                  <Detail
-                    id="description"
-                    name={t`Description`}
-                    description={entity.description}
-                    placeholder={t`No description yet`}
-                    isEditing={isEditing}
-                    field={description}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="points_of_interest"
-                    name={t`Why this Metric is interesting`}
-                    description={entity.points_of_interest}
-                    placeholder={t`Nothing interesting yet`}
-                    isEditing={isEditing}
-                    field={points_of_interest}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="caveats"
-                    name={t`Things to be aware of about this Metric`}
-                    description={entity.caveats}
-                    placeholder={t`Nothing to be aware of yet`}
-                    isEditing={isEditing}
-                    field={caveats}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="how_is_this_calculated"
-                    name={t`How this Metric is calculated`}
-                    description={entity.how_is_this_calculated}
-                    placeholder={t`Nothing on how it's calculated yet`}
-                    isEditing={isEditing}
-                    field={how_is_this_calculated}
-                  />
-                </li>
-                {table &&
-                  !isEditing && (
+            <div className="wrapper">
+              <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
+                <List>
+                  <li className="relative">
+                    <Detail
+                      id="description"
+                      name={t`Description`}
+                      description={entity.description}
+                      placeholder={t`No description yet`}
+                      isEditing={isEditing}
+                      field={description}
+                    />
+                  </li>
+                  <li className="relative">
+                    <Detail
+                      id="points_of_interest"
+                      name={t`Why this metric is interesting`}
+                      description={entity.points_of_interest}
+                      placeholder={t`Nothing interesting yet`}
+                      isEditing={isEditing}
+                      field={points_of_interest}
+                    />
+                  </li>
+                  <li className="relative">
+                    <Detail
+                      id="caveats"
+                      name={t`Things to be aware of about this metric`}
+                      description={entity.caveats}
+                      placeholder={t`Nothing to be aware of yet`}
+                      isEditing={isEditing}
+                      field={caveats}
+                    />
+                  </li>
+                  <li className="relative">
+                    <Detail
+                      id="how_is_this_calculated"
+                      name={t`How this metric is calculated`}
+                      description={entity.how_is_this_calculated}
+                      placeholder={t`Nothing on how it's calculated yet`}
+                      isEditing={isEditing}
+                      field={how_is_this_calculated}
+                    />
+                  </li>
+                  {table && !isEditing && (
                     <li className="relative">
                       <Formula
                         type="metric"
@@ -249,55 +253,56 @@ export default class MetricDetail extends Component {
                       />
                     </li>
                   )}
-                <li className="relative">
-                  <MetricImportantFieldsDetail
-                    fields={
-                      guide &&
-                      guide.metric_important_fields[entity.id] &&
-                      Object.values(guide.metric_important_fields[entity.id])
-                        .map(fieldId => metadataFields[fieldId])
-                        .reduce(
-                          (map, field) => ({ ...map, [field.id]: field }),
-                          {},
-                        )
-                    }
-                    table={table}
-                    allFields={metadataFields}
-                    metric={entity}
-                    onChangeLocation={onChangeLocation}
-                    isEditing={isEditing}
-                    formField={important_fields}
-                  />
-                </li>
-                {!isEditing && (
                   <li className="relative">
-                    <FieldsToGroupBy
-                      fields={table.fields
-                        .filter(
-                          fieldId =>
-                            !guide ||
-                            !guide.metric_important_fields[entity.id] ||
-                            !guide.metric_important_fields[entity.id].includes(
-                              fieldId,
-                            ),
-                        )
-                        .map(fieldId => metadataFields[fieldId])
-                        .reduce(
-                          (map, field) => ({ ...map, [field.id]: field }),
-                          {},
-                        )}
-                      databaseId={table && table.db_id}
-                      metric={entity}
-                      title={
-                        guide && guide.metric_important_fields[entity.id]
-                          ? t`Other fields you can group this metric by`
-                          : t`Fields you can group this metric by`
+                    <MetricImportantFieldsDetail
+                      fields={
+                        guide &&
+                        guide.metric_important_fields[entity.id] &&
+                        Object.values(guide.metric_important_fields[entity.id])
+                          .map(fieldId => metadataFields[fieldId])
+                          .reduce(
+                            (map, field) => ({ ...map, [field.id]: field }),
+                            {},
+                          )
                       }
+                      table={table}
+                      allFields={metadataFields}
+                      metric={entity}
                       onChangeLocation={onChangeLocation}
+                      isEditing={isEditing}
+                      formField={important_fields}
                     />
                   </li>
-                )}
-              </List>
+                  {!isEditing && (
+                    <li className="relative mt4">
+                      <FieldsToGroupBy
+                        fields={table.fields
+                          .filter(
+                            fieldId =>
+                              !guide ||
+                              !guide.metric_important_fields[entity.id] ||
+                              !guide.metric_important_fields[
+                                entity.id
+                              ].includes(fieldId),
+                          )
+                          .map(fieldId => metadataFields[fieldId])
+                          .reduce(
+                            (map, field) => ({ ...map, [field.id]: field }),
+                            {},
+                          )}
+                        databaseId={table && table.db_id}
+                        metric={entity}
+                        title={
+                          guide && guide.metric_important_fields[entity.id]
+                            ? t`Other fields you can group this metric by`
+                            : t`Fields you can group this metric by`
+                        }
+                        onChangeLocation={onChangeLocation}
+                      />
+                    </li>
+                  )}
+                </List>
+              </div>
             </div>
           )}
         </LoadingAndErrorWrapper>

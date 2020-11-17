@@ -1,6 +1,6 @@
 import React from "react";
-import { t } from "c-3po";
-import Modal from "metabase/components/Modal.jsx";
+import { t } from "ttag";
+import Modal from "metabase/components/Modal";
 
 const Alert = ({ message, onClose }) => (
   <Modal small isOpen={!!message}>

@@ -1,9 +1,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import ModalContent from "metabase/components/ModalContent.jsx";
-import CheckBox from "metabase/components/CheckBox.jsx";
-import { t } from "c-3po";
+import ModalContent from "metabase/components/ModalContent";
+import CheckBox from "metabase/components/CheckBox";
+import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
@@ -34,7 +34,7 @@ export default class DeleteModalWithConfirm extends Component {
   render() {
     const { title, objectType, confirmItems, buttonText } = this.props;
     const { checked } = this.state;
-    let confirmed = confirmItems.reduce(
+    const confirmed = confirmItems.reduce(
       (acc, item, index) => acc && checked[index],
       true,
     );

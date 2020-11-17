@@ -2,26 +2,26 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
-export default class LogoIcon extends Component {
-  static defaultProps = {
-    size: 32,
-  };
+import { PLUGIN_LOGO_ICON_COMPONENTS } from "metabase/plugins";
 
+class DefaultLogoIcon extends Component {
+  static defaultProps = {
+    height: 32,
+  };
   static propTypes = {
-    size: PropTypes.number,
     width: PropTypes.number,
     height: PropTypes.number,
     dark: PropTypes.bool,
   };
 
   render() {
-    let { dark, height, width, size } = this.props;
+    const { dark, height, width } = this.props;
     return (
       <svg
         className={cx("Icon", { "text-brand": !dark }, { "text-white": dark })}
         viewBox="0 0 66 85"
-        width={width || size}
-        height={height || size}
+        width={width}
+        height={height}
         fill="currentcolor"
       >
         <path
@@ -32,4 +32,9 @@ export default class LogoIcon extends Component {
       </svg>
     );
   }
+}
+
+export default function LogoIcon(props) {
+  const [Component = DefaultLogoIcon] = PLUGIN_LOGO_ICON_COMPONENTS;
+  return <Component {...props} />;
 }

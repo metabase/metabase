@@ -100,7 +100,8 @@ var payload = {
   resource: { ${resourceType}: ${resourceId} },
   params: ${JSON.stringify(params, null, 2)
     .split("\n")
-    .join("\n  ")}
+    .join("\n  ")},
+  exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration
 };
 var token = jwt.sign(payload, METABASE_SECRET_KEY);
 
@@ -130,10 +131,14 @@ payload = {
   :params => {
     ${Object.entries(params)
       .map(
-        ([key, value]) => JSON.stringify(key) + " => " + JSON.stringify(value),
+        ([key, value]) =>
+          JSON.stringify(key) +
+          " => " +
+          (value === null ? "nil" : JSON.stringify(value)),
       )
       .join(",\n    ")}
-  }
+  },
+  :exp => Time.now.to_i + (60 * 10) # 10 minute expiration
 }
 token = JWT.encode payload, METABASE_SECRET_KEY
 
@@ -154,6 +159,7 @@ const python = ({
   `# You'll need to install PyJWT via pip 'pip install PyJWT' or your project packages file
 
 import jwt
+import time
 
 METABASE_SITE_URL = ${JSON.stringify(siteUrl)}
 METABASE_SECRET_KEY = ${JSON.stringify(secretKey)}
@@ -164,7 +170,8 @@ payload = {
     ${Object.entries(params)
       .map(([key, value]) => JSON.stringify(key) + ": " + JSON.stringify(value))
       .join(",\n    ")}
-  }
+  },
+  "exp": round(time.time()) + (60 * 10) # 10 minute expiration
 }
 token = jwt.encode(payload, METABASE_SECRET_KEY, algorithm="HS256")
 
@@ -191,7 +198,8 @@ const clojure = ({
   {:resource {:${resourceType} ${resourceId}}
    :params   {${Object.entries(params)
      .map(([key, value]) => JSON.stringify(key) + " " + JSON.stringify(value))
-     .join(",\n              ")}}})
+     .join(",\n              ")}}
+   :exp      (+ (int (/ (System/currentTimeMillis) 1000)) (* 60 10))}) ; 10 minute expiration
 
 (def token (jwt/sign payload metabase-secret-key))
 

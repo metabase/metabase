@@ -1,12 +1,11 @@
 title: "A look at your [[this]]"
-transient_title: "Here's a quick look at your [[this]]"
-description: An overview of your [[this]] and how it's distributed across time, place, and categories.
+transient_title: "Here''s a quick look at your [[this]]"
+description: An overview of your [[this]] and how it''s distributed across time, place, and categories.
 metrics:
   - Count: ["count"]
   - CountDistinctFKs: [distinct, [dimension, FK]]
   - Sum: [sum, [dimension, GenericNumber]]
-  - Avg:
-      metric: [avg, [dimension, GenericNumber]]
+  - Avg: [avg, [dimension, GenericNumber]]
 dimensions:
   - Country:
       field_type: GenericTable.Country
@@ -24,9 +23,6 @@ dimensions:
       field_type: GenericTable.Category
       score: 75
       max_cardinality: 10
-  - GenericCategoryLarge:
-      field_type: GenericTable.Category
-      score: 70
   - Singleton:
       field_type: GenericTable.Category
       max_cardinality: 1
@@ -143,22 +139,10 @@ cards:
       title: "[[this.short-name]] per [[GenericCategoryMedium]]"
       dimensions: GenericCategoryMedium
       metrics: Count
-      visualization: row
+      visualization: smart-row
       score: 80
       height: 8
       group: General
-      order_by:
-        - Count: descending
-  - CountByCategoryLarge:
-      title: "[[this.short-name]] per [[GenericCategoryLarge]]"
-      dimensions: GenericCategoryLarge
-      metrics: Count
-      visualization: table
-      height: 8
-      score: 70
-      group: General
-      order_by:
-        - Count: descending
 # Geographical
   - CountByCountry:
       title: "[[this.short-name]] per country"
@@ -378,7 +362,7 @@ cards:
       metrics: Count
       score: 60
       group: ByTime
-      x_label: Created At by day of the week
+      x_label: "[[CreateTimestamp]] by day of the week"
   - DayOfWeekCreateDate:
       title: Weekdays when [[this.short-name]] were added
       visualization: bar
@@ -388,7 +372,7 @@ cards:
       metrics: Count
       score: 60
       group: ByTime
-      x_label: Created At by day of the week
+      x_label: "[[CreateDate]] by day of the week"
   - HourOfDayCreateDate:
       title: Hours when [[this.short-name]] were added
       visualization: bar
@@ -398,7 +382,7 @@ cards:
       metrics: Count
       score: 50
       group: ByTime
-      x_label: Created At by hour of the day
+      x_label: "[[CreateTimestamp]] by hour of the day"
   - HourOfDayCreateDate:
       title: Hours when [[this.short-name]] were added
       visualization: bar
@@ -408,7 +392,7 @@ cards:
       metrics: Count
       score: 50
       group: ByTime
-      x_label: Created At by hour of the day
+      x_label: "[[CreateTime]] by hour of the day"
   - DayOfMonthCreateDate:
       title: Days when [[this.short-name]] were added
       visualization: bar
@@ -418,7 +402,7 @@ cards:
       metrics: Count
       score: 40
       group: ByTime
-      x_label: Created At by day of the month
+      x_label: "[[CreateTimestamp]] by day of the month"
   - DayOfMonthCreateDate:
       title: Days when [[this.short-name]] were added
       visualization: bar
@@ -428,7 +412,7 @@ cards:
       metrics: Count
       score: 40
       group: ByTime
-      x_label: Created At by day of the month
+      x_label: "[[CreateDate]] by day of the month"
   - MonthOfYearCreateDate:
       title: Months when [[this.short-name]] were added
       visualization: bar
@@ -438,7 +422,7 @@ cards:
       metrics: Count
       score: 40
       group: ByTime
-      x_label: Created At by month of the year
+      x_label: "[[CreateTimestamp]] by month of the year"
   - MonthOfYearCreateDate:
       title: Months when [[this.short-name]] were added
       visualization: bar
@@ -448,7 +432,7 @@ cards:
       metrics: Count
       score: 40
       group: ByTime
-      x_label: Created At by month of the year
+      x_label: "[[CreateDate]] by month of the year"
   - QuerterOfYearCreateDate:
       title: Quarters when [[this.short-name]] were added
       visualization: bar
@@ -458,7 +442,7 @@ cards:
       metrics: Count
       score: 40
       group: ByTime
-      x_label: Created At by quarter of the year
+      x_label: "[[CreateTimestamp]] by quarter of the year"
   - QuerterOfYearCreateDate:
       title: Quarters when [[this.short-name]] were added
       visualization: bar
@@ -468,7 +452,7 @@ cards:
       metrics: Count
       score: 40
       group: ByTime
-      x_label: Created At by quarter of the year
+      x_label: "[[CreateDate]] by quarter of the year"
   - DayOfWeekJoinDate:
       title: Weekdays when [[this.short-name]] joined
       visualization: bar

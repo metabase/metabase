@@ -56,7 +56,7 @@ export const saveEditingPulse = createThunkAction(
   SAVE_EDITING_PULSE,
   function() {
     return async function(dispatch, getState) {
-      let editingPulse = getEditingPulse(getState());
+      const editingPulse = getEditingPulse(getState());
       if (editingPulse.id != null) {
         return Pulses.HACK_getObjectFromAction(
           await dispatch(Pulses.actions.update(editingPulse)),

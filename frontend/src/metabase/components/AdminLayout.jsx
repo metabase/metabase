@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 
-import AdminHeader from "./AdminHeader.jsx";
+import AdminHeader from "./AdminHeader";
 
 export default class AdminLayout extends Component {
   setSaving = () => {

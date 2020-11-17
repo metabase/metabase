@@ -5,8 +5,8 @@ import moment from "moment";
 
 export const lineAddons = _chart => {
   _chart.fadeDeselectedArea = function() {
-    let dots = _chart.chartBodyG().selectAll(".dot");
-    let extent = _chart.brush().extent();
+    const dots = _chart.chartBodyG().selectAll(".dot");
+    const extent = _chart.brush().extent();
 
     if (_chart.isOrdinal()) {
       if (_chart.hasFilter()) {
@@ -22,8 +22,8 @@ export const lineAddons = _chart => {
       }
     } else {
       if (!_chart.brushIsEmpty(extent)) {
-        let start = extent[0];
-        let end = extent[1];
+        const start = extent[0];
+        const end = extent[1];
         const isSelected = d => {
           if (moment.isDate(start)) {
             return !(moment(d.x).isBefore(start) || moment(d.x).isAfter(end));

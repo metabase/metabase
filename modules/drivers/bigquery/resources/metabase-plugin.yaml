@@ -1,6 +1,6 @@
 info:
   name: Metabase BigQuery Driver
-  version: 1.0.0-SNAPSHOT-1.27.0
+  version: 1.0.0-SNAPSHOT-1.30.9
   description: Allows Metabase to connect to Google BigQuery databases.
 dependencies:
   - plugin: Metabase Google Drivers Shared Dependencies
@@ -11,31 +11,8 @@ driver:
   parent:
     - google
     - sql
-  connection-properties:
-    - name: project-id
-      display-name: Project ID
-      placeholder: praxis-beacon-120871
-      required: true
-    - name: dataset-id
-      display-name: Dataset ID
-      placeholder: toucanSightings
-      required: true
-    - name: client-id
-      display-name: Client ID
-      placeholder: 1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com
-      required: true
-    - name: client-secret
-      display-name: Client Secret
-      placeholder: dJNi4utWgMzyIFo2JbnsK6Np
-      required: true
-    - name: auth-code
-      display-name: Auth Code
-      placeholder: 4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek
-      required: true
-    - name: use-jvm-timezone
-      display-name: Use JVM Time Zone
-      default: false
-      type: boolean
 init:
+  - step: load-namespace
+    namespace: metabase.driver.google
   - step: load-namespace
     namespace: metabase.driver.bigquery

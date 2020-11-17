@@ -1,12 +1,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import FieldList from "./FieldList.jsx";
-import FieldName from "./FieldName.jsx";
-import Popover from "metabase/components/Popover.jsx";
+import Popover from "metabase/components/Popover";
 
-import _ from "underscore";
-import cx from "classnames";
+import Clearable from "./Clearable";
+import BreakoutPopover from "./BreakoutPopover";
+
+// NOTE: lots of duplication between AggregationWidget and BreakoutWidget
 
 export default class BreakoutWidget extends Component {
   constructor(props, context) {
@@ -15,89 +15,75 @@ export default class BreakoutWidget extends Component {
     this.state = {
       isOpen: props.isInitiallyOpen || false,
     };
-
-    _.bindAll(this, "open", "close", "setBreakout");
   }
 
   static propTypes = {
-    addButton: PropTypes.object,
-    field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
-    fieldOptions: PropTypes.object.isRequired,
-    customFieldOptions: PropTypes.object,
-    setField: PropTypes.func.isRequired,
+    breakout: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
+    onChangeBreakout: PropTypes.func.isRequired,
+    query: PropTypes.object.isRequired,
+    breakoutOptions: PropTypes.object,
     isInitiallyOpen: PropTypes.bool,
-    tableMetadata: PropTypes.object.isRequired,
     enableSubDimensions: PropTypes.bool,
+    children: PropTypes.object,
   };
 
   static defaultProps = {
     enableSubDimensions: true,
   };
 
-  setBreakout(value) {
-    this.props.setField(value);
-    this.close();
-  }
+  handleChangeBreakout = value => {
+    this.props.onChangeBreakout(value);
+    this.handleClose();
+  };
 
-  open() {
+  handleOpen = () => {
     this.setState({ isOpen: true });
-  }
+  };
 
-  close() {
+  handleClose = () => {
     this.setState({ isOpen: false });
-  }
-
-  renderPopover() {
-    if (this.state.isOpen) {
-      return (
-        <Popover
-          id="BreakoutPopover"
-          ref="popover"
-          className="FieldPopover"
-          onClose={this.close}
-        >
-          <FieldList
-            className={"text-green"}
-            tableMetadata={this.props.tableMetadata}
-            field={this.props.field}
-            fieldOptions={this.props.fieldOptions}
-            customFieldOptions={this.props.customFieldOptions}
-            onFieldChange={this.setBreakout}
-            enableSubDimensions={this.props.enableSubDimensions}
-          />
-        </Popover>
-      );
-    }
-  }
+  };
 
   render() {
-    // if we have a field then render FieldName, otherwise display our + option if enabled
-    const { addButton, field, fieldOptions } = this.props;
+    const {
+      breakout,
+      query,
+      enableSubDimensions,
+      className,
+      children,
+    } = this.props;
 
-    if (field) {
+    const breakoutOptions =
+      this.props.breakoutOptions || query.breakoutOptions();
+
+    const popover = this.state.isOpen && (
+      <Popover id="BreakoutPopover" onClose={this.handleClose}>
+        <BreakoutPopover
+          query={query}
+          breakout={breakout}
+          breakoutOptions={breakoutOptions}
+          onChangeBreakout={this.handleChangeBreakout}
+          enableSubDimensions={enableSubDimensions}
+        />
+      </Popover>
+    );
+
+    const trigger = breakout ? (
+      <Clearable onClear={() => this.handleChangeBreakout(null)}>
+        <span className={className}>{breakout.displayName()}</span>
+      </Clearable>
+    ) : breakoutOptions && breakoutOptions.count > 0 ? (
+      children
+    ) : null;
+
+    if (trigger) {
       return (
-        <div className="flex align-center">
-          <FieldName
-            className={cx(this.props.className, "QueryOption")}
-            tableMetadata={this.props.tableMetadata}
-            field={field}
-            fieldOptions={this.props.fieldOptions}
-            customFieldOptions={this.props.customFieldOptions}
-            onRemove={() => this.setBreakout(null)}
-            onClick={this.open}
-          />
-          {this.renderPopover()}
-        </div>
-      );
-    } else if (addButton && fieldOptions && fieldOptions.count > 0) {
-      return (
-        <div id="BreakoutWidget" onClick={this.open}>
-          {addButton}
-          {this.renderPopover()}
+        <div onClick={this.handleOpen}>
+          {trigger}
+          {popover}
         </div>
       );
     } else {
-      // this needs to be here to prevent React error (#2304)
       return null;
     }
   }

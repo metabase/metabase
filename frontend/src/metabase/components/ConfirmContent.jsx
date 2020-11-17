@@ -1,7 +1,7 @@
 import React from "react";
 
-import ModalContent from "metabase/components/ModalContent.jsx";
-import { t } from "c-3po";
+import ModalContent from "metabase/components/ModalContent";
+import { t } from "ttag";
 
 import Button from "metabase/components/Button";
 
@@ -29,7 +29,7 @@ const ConfirmContent = ({
 
     <p className="mb4">{message}</p>
 
-    <div className="ml-auto mb4">
+    <div className="ml-auto">
       <Button
         onClick={() => {
           onCancel();

@@ -8,10 +8,11 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import EmbedFrame from "../components/EmbedFrame";
+import title from "metabase/hoc/Title";
 
-import type { Card } from "metabase/meta/types/Card";
-import type { Dataset } from "metabase/meta/types/Dataset";
-import type { ParameterValues } from "metabase/meta/types/Parameter";
+import type { Card } from "metabase-types/types/Card";
+import type { Dataset } from "metabase-types/types/Dataset";
+import type { ParameterValues } from "metabase-types/types/Parameter";
 
 import { getParametersBySlug } from "metabase/meta/Parameter";
 import {
@@ -29,6 +30,9 @@ import {
 
 import { setErrorPage } from "metabase/redux/app";
 import { addParamValues, addFields } from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
+
+import PublicMode from "metabase/modes/components/modes/PublicMode";
 
 import { updateIn } from "icepick";
 
@@ -48,13 +52,21 @@ type State = {
   parameterValues: ParameterValues,
 };
 
+const mapStateToProps = state => ({
+  metadata: getMetadata(state),
+});
+
 const mapDispatchToProps = {
   setErrorPage,
   addParamValues,
   addFields,
 };
 
-@connect(null, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
+@title(({ card }) => card && card.name)
 @ExplicitSize()
 export default class PublicQuestion extends Component {
   props: Props;
@@ -100,8 +112,8 @@ export default class PublicQuestion extends Component {
         this.props.addFields(card.param_fields);
       }
 
-      let parameterValues: ParameterValues = {};
-      for (let parameter of getParameters(card)) {
+      const parameterValues: ParameterValues = {};
+      for (const parameter of getParameters(card)) {
         parameterValues[String(parameter.id)] = query[parameter.slug];
       }
 
@@ -126,7 +138,10 @@ export default class PublicQuestion extends Component {
 
   // $FlowFixMe: setState expects return type void
   run = async (): void => {
-    const { setErrorPage, params: { uuid, token } } = this.props;
+    const {
+      setErrorPage,
+      params: { uuid, token },
+    } = this.props;
     const { card, parameterValues } = this.state;
 
     if (!card) {
@@ -136,6 +151,8 @@ export default class PublicQuestion extends Component {
     const parameters = getParameters(card);
 
     try {
+      this.setState({ result: null });
+
       let newResult;
       if (token) {
         // embeds apply parameter values server-side
@@ -162,7 +179,9 @@ export default class PublicQuestion extends Component {
   };
 
   render() {
-    const { params: { uuid, token } } = this.props;
+    const {
+      params: { uuid, token },
+    } = this.props;
     const { card, result, parameterValues } = this.state;
 
     const actionButtons = result && (
@@ -174,20 +193,28 @@ export default class PublicQuestion extends Component {
       />
     );
 
+    const parameters = card && getParametersWithExtras(card);
+
     return (
       <EmbedFrame
         name={card && card.name}
         description={card && card.description}
-        parameters={card && getParametersWithExtras(card)}
+        parameters={parameters}
         actionButtons={actionButtons}
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
       >
-        <LoadingAndErrorWrapper loading={!result} className="flex flex-full">
+        <LoadingAndErrorWrapper
+          className="flex-full"
+          loading={!result}
+          error={typeof result === "string" ? result : null}
+          noWrapper
+        >
           {() => (
             <Visualization
+              error={result && result.error}
               rawSeries={[{ card: card, data: result && result.data }]}
-              className="full flex-full"
+              className="full flex-full z1"
               onUpdateVisualizationSettings={settings =>
                 this.setState({
                   // $FlowFixMe
@@ -201,6 +228,10 @@ export default class PublicQuestion extends Component {
               gridUnit={12}
               showTitle={false}
               isDashboard
+              mode={PublicMode}
+              // $FlowFixMe: metadata provided by @connect
+              metadata={this.props.metadata}
+              onChangeCardAndRun={() => {}}
             />
           )}
         </LoadingAndErrorWrapper>

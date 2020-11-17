@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import fitViewport from "metabase/hoc/FitViewPort";
 
-import Setup from "../components/Setup.jsx";
+import Setup from "../components/Setup";
 
 import { setupSelectors } from "../selectors";
 import {
@@ -12,6 +12,7 @@ import {
   setActiveStep,
   validateDatabase,
   setDatabaseDetails,
+  setLanguageDetails,
   setAllowTracking,
   submitSetup,
 } from "../actions";
@@ -19,16 +20,20 @@ import {
 const mapStateToProps = setupSelectors;
 
 const mapDispatchToProps = {
+  setLanguageDetails,
   setUserDetails,
+  setDatabaseDetails,
   validatePassword,
   setActiveStep,
   validateDatabase,
-  setDatabaseDetails,
   setAllowTracking,
   submitSetup,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @fitViewport
 export default class SetupApp extends Component {
   render() {

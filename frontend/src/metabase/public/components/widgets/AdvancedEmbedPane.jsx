@@ -5,12 +5,12 @@ import React from "react";
 import ToggleLarge from "metabase/components/ToggleLarge";
 import Button from "metabase/components/Button";
 import ActionButton from "metabase/components/ActionButton";
-import { t } from "c-3po";
+import { t } from "ttag";
 import AdvancedSettingsPane from "./AdvancedSettingsPane";
 import PreviewPane from "./PreviewPane";
 import EmbedCodePane from "./EmbedCodePane";
 
-import type { Parameter, ParameterId } from "metabase/meta/types/Parameter";
+import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
 import type { Pane, EmbedType, DisplayOptions } from "./EmbedModalContent";
 import type {
   EmbeddableResource,

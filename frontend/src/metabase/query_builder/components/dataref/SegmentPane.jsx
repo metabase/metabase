@@ -2,17 +2,17 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import DetailPane from "./DetailPane.jsx";
-import QueryButton from "metabase/components/QueryButton.jsx";
-import UseForButton from "./UseForButton.jsx";
-import QueryDefinition from "./QueryDefinition.jsx";
+import DetailPane from "./DetailPane";
+import QueryButton from "metabase/components/QueryButton";
+import UseForButton from "./UseForButton";
+import QueryDefinition from "../QueryDefinition";
 
 import { createCard } from "metabase/lib/card";
-import Query, { createQuery } from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 
 import _ from "underscore";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -25,7 +25,10 @@ const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),
 });
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class SegmentPane extends Component {
   constructor(props, context) {
     super(props, context);
@@ -60,11 +63,11 @@ export default class SegmentPane extends Component {
 
     if (query instanceof StructuredQuery) {
       // Add an aggregation so both aggregation and filter popovers aren't visible
-      if (!Query.hasValidAggregation(query.datasetQuery().query)) {
+      if (!Q_DEPRECATED.hasValidAggregation(query.datasetQuery().query)) {
         query = query.clearAggregations();
       }
 
-      query = query.addFilter(["segment", this.props.segment.id]);
+      query = query.filter(["segment", this.props.segment.id]);
 
       this.props.updateQuestion(query.question());
       this.props.runQuestionQuery();
@@ -73,11 +76,15 @@ export default class SegmentPane extends Component {
 
   newCard() {
     const { segment, metadata } = this.props;
-    const table = metadata && metadata.tables[segment.table_id];
+    const table = metadata && metadata.table(segment.table_id);
 
     if (table) {
-      let card = createCard();
-      card.dataset_query = createQuery("query", table.db_id, table.id);
+      const card = createCard();
+      card.dataset_query = Q_DEPRECATED.createQuery(
+        "query",
+        table.db_id,
+        table.id,
+      );
       return card;
     } else {
       throw new Error(
@@ -86,27 +93,27 @@ export default class SegmentPane extends Component {
     }
   }
   setQueryFilteredBy() {
-    let card = this.newCard();
+    const card = this.newCard();
     card.dataset_query.query.aggregation = ["rows"];
     card.dataset_query.query.filter = ["segment", this.props.segment.id];
     this.props.setCardAndRun(card);
   }
 
   setQueryCountFilteredBy() {
-    let card = this.newCard();
+    const card = this.newCard();
     card.dataset_query.query.aggregation = ["count"];
     card.dataset_query.query.filter = ["segment", this.props.segment.id];
     this.props.setCardAndRun(card);
   }
 
   render() {
-    let { segment, metadata, question } = this.props;
+    const { segment, question } = this.props;
     const query = question.query();
 
-    let segmentName = segment.name;
+    const segmentName = segment.name;
 
-    let useForCurrentQuestion = [];
-    let usefulQuestions = [];
+    const useForCurrentQuestion = [];
+    const usefulQuestions = [];
 
     if (
       query instanceof StructuredQuery &&
@@ -143,15 +150,10 @@ export default class SegmentPane extends Component {
         useForCurrentQuestion={useForCurrentQuestion}
         usefulQuestions={usefulQuestions}
         extra={
-          metadata && (
-            <div>
-              <p className="text-bold">{t`Segment Definition`}</p>
-              <QueryDefinition
-                object={segment}
-                tableMetadata={metadata.tables[segment.table_id]}
-              />
-            </div>
-          )
+          <div>
+            <p className="text-bold">{t`Segment Definition`}</p>
+            <QueryDefinition object={segment} />
+          </div>
         }
       />
     );

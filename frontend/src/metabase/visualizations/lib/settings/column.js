@@ -1,6 +1,6 @@
 /* @flow */
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import moment from "moment";
 import _ from "underscore";
 
@@ -26,7 +26,6 @@ import {
   numberFormatterForOptions,
 } from "metabase/lib/formatting";
 import {
-  DEFAULT_DATE_STYLE,
   getDateFormatFromStyle,
   hasDay,
   hasHour,
@@ -36,10 +35,10 @@ import currency from "metabase/lib/currency";
 
 import type { Settings, SettingDef } from "../settings";
 import type { DateStyle, TimeStyle } from "metabase/lib/formatting/date";
-import type { DatetimeUnit } from "metabase/meta/types/Query";
-import type { Column } from "metabase/meta/types/Dataset";
-import type { Series } from "metabase/meta/types/Visualization";
-import type { VisualizationSettings } from "metabase/meta/types/Card";
+import type { DatetimeUnit } from "metabase-types/types/Query";
+import type { Column } from "metabase-types/types/Dataset";
+import type { Series } from "metabase-types/types/Visualization";
+import type { VisualizationSettings } from "metabase-types/types/Card";
 
 type ColumnSettings = Settings;
 
@@ -58,7 +57,7 @@ type ColumnSettingDef = SettingDef & {
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   ...def
-}: ColumnSettingDef) {
+}: ColumnSettingDef = {}) {
   return nestedSettings("column_settings", {
     section: t`Formatting`,
     objectName: "column",
@@ -76,12 +75,12 @@ import MetabaseSettings from "metabase/lib/settings";
 import { isa } from "metabase/lib/types";
 
 export function getGlobalSettingsForColumn(column: Column) {
-  let settings = {};
+  const settings = {};
 
   const customFormatting = MetabaseSettings.get("custom-formatting");
   // NOTE: the order of these doesn't matter as long as there's no overlap between settings
   for (const [type, globalSettings] of Object.entries(customFormatting || {})) {
-    if (isa(column.special_type, type)) {
+    if (isa(column.special_type || column.base_type, type)) {
       // $FlowFixMe
       Object.assign(settings, globalSettings);
     }
@@ -108,6 +107,13 @@ function getDateStyleOptionsForUnit(
   abbreviate?: boolean = false,
   separator?: string,
 ) {
+  // hour-of-day shouldn't have any date style. It's handled as a time instead.
+  // Other date parts are handled as dates, but hour-of-day needs to use the
+  // time settings for 12/24 hour clock.
+  if (unit === "hour-of-day") {
+    return [];
+  }
+
   const options = [
     dateStyleOption("MMMM D, YYYY", unit, null, abbreviate, separator),
     dateStyleOption("D MMMM, YYYY", unit, null, abbreviate, separator),
@@ -177,7 +183,12 @@ export const DATE_COLUMN_SETTINGS = {
   date_style: {
     title: t`Date style`,
     widget: "select",
-    default: DEFAULT_DATE_STYLE,
+    getDefault: ({ unit }: Column) => {
+      // Grab the first option's value. If there were no options (for
+      // hour-of-day probably), use an empty format string instead.
+      const [{ value = "" } = {}] = getDateStyleOptionsForUnit(unit);
+      return value;
+    },
     isValid: ({ unit }: Column, settings: ColumnSettings) => {
       const options = getDateStyleOptionsForUnit(unit);
       return !!_.findWhere(options, { value: settings["date_style"] });
@@ -256,8 +267,11 @@ export const DATE_COLUMN_SETTINGS = {
     default: "h:mm A",
     getProps: (column: Column, settings: ColumnSettings) => ({
       options: [
-        timeStyleOption("h:mm A", "12-hour clock"),
-        timeStyleOption("k:mm", "24-hour clock"),
+        timeStyleOption("h:mm A", t`12-hour clock`),
+        ...(column.unit === "hour-of-day"
+          ? [timeStyleOption("h A", "12-hour clock without minutes")]
+          : []),
+        timeStyleOption("k:mm", t`24-hour clock`),
       ],
     }),
     getHidden: (column: Column, settings: ColumnSettings) =>
@@ -294,6 +308,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     // hide this for currency
     getHidden: (column: Column, settings: ColumnSettings) =>
       isCurrency(column) && settings["number_style"] === "currency",
+    readDependencies: ["currency"],
   },
   currency: {
     title: t`Unit of currency`,
@@ -312,8 +327,8 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
     default: "USD",
     getHidden: (column: Column, settings: ColumnSettings) =>
-      settings["number_style"] !== "currency",
-    readDependencies: ["number_style"],
+      // NOTE: ideally we'd hide this if number_style != "currency" but that would result in a circular dependency
+      !isCurrency(column),
   },
   currency_style: {
     title: t`Currency label style`,
@@ -322,9 +337,18 @@ export const NUMBER_COLUMN_SETTINGS = {
       const c = settings["currency"] || "USD";
       return {
         options: [
-          { name: `Symbol (${getCurrency(c, "symbol")})`, value: "symbol" },
-          { name: `Code (${getCurrency(c, "code")})`, value: "code" },
-          { name: `Name (${getCurrency(c, "name")})`, value: "name" },
+          {
+            name: t`Symbol` + ` ` + `(${getCurrency(c, "symbol")})`,
+            value: "symbol",
+          },
+          {
+            name: t`Code` + ` ` + `(${getCurrency(c, "code")})`,
+            value: "code",
+          },
+          {
+            name: t`Name` + ` ` + `(${getCurrency(c, "name")})`,
+            value: "name",
+          },
         ],
       };
     },
@@ -338,8 +362,8 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "radio",
     props: {
       options: [
-        { name: "In the column heading", value: true },
-        { name: "In every table cell", value: false },
+        { name: t`In the column heading`, value: true },
+        { name: t`In every table cell`, value: false },
       ],
     },
     default: true,
@@ -441,11 +465,11 @@ const COMMON_COLUMN_SETTINGS = {
 };
 
 export function getSettingDefintionsForColumn(series: Series, column: Column) {
-  const { CardVisualization } = getVisualizationRaw(series);
+  const { visualization } = getVisualizationRaw(series);
   const extraColumnSettings =
-    typeof CardVisualization.columnSettings === "function"
-      ? CardVisualization.columnSettings(column)
-      : CardVisualization.columnSettings || {};
+    typeof visualization.columnSettings === "function"
+      ? visualization.columnSettings(column)
+      : visualization.columnSettings || {};
 
   if (isDate(column)) {
     return {

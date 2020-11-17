@@ -2,13 +2,13 @@
   "Create and save models that make up automagic dashboards."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.filters :as filters]
             [metabase.models
              [card :as card]
              [collection :as collection]]
             [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
@@ -98,7 +98,7 @@
 (defn- visualization-settings
   [{:keys [metrics x_label y_label series_labels visualization dimensions] :as card}]
   (let [[display visualization-settings] visualization]
-    {:display display
+    {:display                display
      :visualization_settings (-> visualization-settings
                                  (assoc :graph.series_labels (map :name metrics)
                                         :graph.metrics       (map :op metrics)
@@ -113,14 +113,13 @@
 
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard {:keys [title description dataset_query width height]
-              :as card} [x y]]
+  [dashboard {:keys [title description dataset_query width height id] :as card} [x y]]
   (let [card (-> {:creator_id    api/*current-user-id*
                   :dataset_query dataset_query
                   :description   description
                   :name          title
                   :collection_id nil
-                  :id            (gensym)}
+                  :id            (or id (gensym))}
                  (merge (visualization-settings card))
                  card/populate-query-fields)]
     (update dashboard :ordered_cards conj {:col                    y
@@ -212,7 +211,7 @@
   [dashboard grid group cards]
   (let [start-row (bottom-row grid)
         start-row (cond-> start-row
-                    group            (+ group-heading-height))]
+                    group (+ group-heading-height))]
     (reduce (fn [[dashboard grid] card]
               (let [xy (card-position grid start-row card)]
                 [(if (text-card? card)
@@ -260,11 +259,11 @@
                          (= n :all)   (count cards)
                          (keyword? n) (Integer/parseInt (name n))
                          :else        n)
-         dashboard     {:name              title
-                        :transient_name    (or transient_title title)
-                        :description       description
-                        :creator_id        api/*current-user-id*
-                        :parameters        []}
+         dashboard     {:name           title
+                        :transient_name (or transient_title title)
+                        :description    description
+                        :creator_id     api/*current-user-id*
+                        :parameters     []}
          cards         (shown-cards n cards)
          [dashboard _] (->> cards
                             (partition-by :group)
@@ -275,10 +274,10 @@
                                      ;; Height doesn't need to be precise, just some
                                      ;; safe upper bound.
                                      (make-grid grid-width (* n grid-width))]))]
-     (log/info (trs "Adding {0} cards to dashboard {1}:\n{2}"
-                    (count cards)
-                    title
-                    (str/join "; " (map :title cards))))
+     (log/debug (trs "Adding {0} cards to dashboard {1}:\n{2}"
+                     (count cards)
+                     title
+                     (str/join "; " (map :title cards))))
      (cond-> dashboard
        (not-empty filters) (filters/add-filters filters max-filters)))))
 
@@ -324,8 +323,8 @@
                                                      (update :row + offset (if skip-titles?
                                                                              0
                                                                              group-heading-height))
-                                                     (u/update-in-when [:visualization_settings :text]
-                                                                       downsize-titles)
+                                                     (m/update-existing-in [:visualization_settings :text]
+                                                                           downsize-titles)
                                                      (assoc :parameter_mappings
                                                        (when-let [card-id (:card_id %)]
                                                          (for [mapping parameter-mappings]

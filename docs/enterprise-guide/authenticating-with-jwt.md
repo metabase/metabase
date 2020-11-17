@@ -24,7 +24,22 @@ These are additional settings you can fill in to pass user attributes to Metabas
 
 **Last Name attribute:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
 
+#### Group Schema
+
+You can use your JWT to assign Metabase users to custom groups by following these steps:
+
+1. Add this to your JWT: `groups: ["group_name"]`
+2. In the Admin Panel in Metabase, go to the Authentication tab of the Settings section and click the Configure button on JWT. On this screen, turn on the toggle under "SYNCHRONIZE GROUP MEMBERSHIPS".
+3. Next, click Edit Mappings. In this modal, type in the name of one of your groups as defined in the JWT, then click Add. In the row that appears, click the dropdown to pick the Metabase group that this should map to. Repeat this for each of the groups you want to map.
+
+### Disabling Password Log-in
+
+Once you have configured your JWT authentication, you can choose to disable the option for users to log in via username and password. To do this, return to the main Authentication settings page and scroll to the bottom. A toggle will now be visible allowing you to make this change.
+
+![Password disable](images/password-disable.png)
+
+
 ---
 
-## That's it!
-Still need help? Feel free to reach out to us at the support email address you were provided.
+## Next: Creating data sandboxes for your user groups
+Data sandboxes automatically filter specific tables for your users based on who they are. We'll show you [how to set these up](data-sandboxes.md) next.

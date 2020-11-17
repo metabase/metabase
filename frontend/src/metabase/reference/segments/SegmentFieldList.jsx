@@ -3,18 +3,18 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
-import { t } from "c-3po";
+import { t } from "ttag";
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
 import F from "metabase/reference/components/Field.css";
 
-import Field from "metabase/reference/components/Field.jsx";
-import List from "metabase/components/List.jsx";
-import EmptyState from "metabase/components/EmptyState.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import Field from "metabase/reference/components/Field";
+import List from "metabase/components/List";
+import EmptyState from "metabase/components/EmptyState";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader.jsx";
+import EditHeader from "metabase/reference/components/EditHeader";
+import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 
 import cx from "classnames";
 
@@ -63,7 +63,10 @@ const validate = (values, props) => {
   return {};
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "fields",
   validate,
@@ -143,41 +146,41 @@ export default class SegmentFieldList extends Component {
         >
           {() =>
             Object.keys(entities).length > 0 ? (
-              <div className="wrapper wrapper--trim">
-                <div className={S.item}>
-                  <div className={R.columnHeader}>
-                    <div className={cx(S.itemTitle, F.fieldNameTitle)}>
-                      {t`Field name`}
-                    </div>
-                    <div className={cx(S.itemTitle, F.fieldType)}>
-                      {t`Field type`}
-                    </div>
-                    <div className={cx(S.itemTitle, F.fieldDataType)}>
-                      {t`Data type`}
+              <div className="wrapper">
+                <div className="pl4 pb2 mb4 bg-white rounded bordered">
+                  <div className={S.item}>
+                    <div className={R.columnHeader}>
+                      <div className={cx(S.itemTitle, F.fieldNameTitle)}>
+                        {t`Field name`}
+                      </div>
+                      <div className={cx(S.itemTitle, F.fieldType)}>
+                        {t`Field type`}
+                      </div>
+                      <div className={cx(S.itemTitle, F.fieldDataType)}>
+                        {t`Data type`}
+                      </div>
                     </div>
                   </div>
+                  <List>
+                    {Object.values(entities).map(
+                      entity =>
+                        entity &&
+                        entity.id &&
+                        entity.name && (
+                          <li className="relative" key={entity.id}>
+                            <Field
+                              field={entity}
+                              foreignKeys={foreignKeys}
+                              url={`/reference/segments/${segment.id}/fields/${entity.id}`}
+                              icon={getIconForField(entity)}
+                              isEditing={isEditing}
+                              formField={fields[entity.id]}
+                            />
+                          </li>
+                        ),
+                    )}
+                  </List>
                 </div>
-                <List>
-                  {Object.values(entities).map(
-                    entity =>
-                      entity &&
-                      entity.id &&
-                      entity.name && (
-                        <li className="relative" key={entity.id}>
-                          <Field
-                            field={entity}
-                            foreignKeys={foreignKeys}
-                            url={`/reference/segments/${segment.id}/fields/${
-                              entity.id
-                            }`}
-                            icon={getIconForField(entity)}
-                            isEditing={isEditing}
-                            formField={fields[entity.id]}
-                          />
-                        </li>
-                      ),
-                  )}
-                </List>
               </div>
             ) : (
               <div className={S.empty}>

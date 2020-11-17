@@ -1,8 +1,8 @@
 /* flow */
 import React, { Component } from "react";
 import CopyButton from "metabase/components/CopyButton";
-import { t } from "c-3po";
-import colors from "metabase/lib/colors";
+import { t } from "ttag";
+import { color } from "metabase/lib/colors";
 
 type State = {
   visible: boolean,
@@ -16,7 +16,7 @@ const styles = {
   input: {
     fontSize: "1.2rem",
     letterSpacing: "2",
-    color: colors["text-dark"],
+    color: color("text-dark"),
     outline: "none",
   },
 };

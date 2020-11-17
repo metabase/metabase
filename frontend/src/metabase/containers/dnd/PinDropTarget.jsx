@@ -15,7 +15,7 @@ const PinDropTarget = DropTarget(
       const { item } = monitor.getItem();
       // NOTE: not necessary to check collection permission here since we
       // enforce it when beginning to drag and item within the same collection
-      return props.pinIndex != item.collection_position;
+      return props.pinIndex !== item.collection_position;
     },
   },
   (connect, monitor) => ({

@@ -7,6 +7,10 @@
   color: var(--color-text-dark);
 }
 
+.List-section-header:hover .Icon {
+  color: inherit;
+}
+
 .List-item .Icon {
   color: var(--color-text-light);
 }
@@ -31,37 +35,50 @@
 
 .List-section-title {
   word-wrap: break-word;
-  max-width: 230px;
 }
 
+/* LIST ITEM */
 .List-item {
   display: flex;
   border-radius: 4px;
   margin-top: 2px;
   margin-bottom: 2px;
 }
-
-.List-item--disabled .List-item-title {
-  color: var(--color-text-medium);
-}
-
 .List-item:not(.List-item--disabled):hover,
-.List-item--selected {
+.List-item--selected:not(.List-item--disabled) {
   background-color: currentColor;
   border-color: color(var(--color-accent2) alpha(-80%));
   /*color: white;*/
 }
 
+/* LIST ITEM TITLE */
 .List-item-title {
   color: var(--color-text-dark);
 }
-
+.List-item--disabled .List-item-title {
+  color: var(--color-text-medium);
+}
 .List-item:not(.List-item--disabled):hover .List-item-title,
-.List-item--selected .List-item-title {
+.List-item--selected:not(.List-item--disabled) .List-item-title {
   color: white;
 }
 
+/* LIST ITEM DESCRIPTION */
+.List-item-description {
+  margin-top: 0.25em;
+  margin-bottom: 0;
+  color: var(--color-text-medium);
+}
+.List-item--disabled .List-item-description {
+  color: var(--color-text-dark);
+}
+.List-item:not(.List-item--disabled):hover .List-item-description,
+.List-item--selected:not(.List-item--disabled) .List-item-description {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* LIST ITEM ICON */
 .List-item:not(.List-item--disabled):hover .Icon,
-.List-item--selected .Icon {
+.List-item--selected:not(.List-item--disabled) .Icon {
   color: white !important;
 }

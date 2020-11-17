@@ -5,6 +5,7 @@
              [hash :as hash]]
             [cheshire.core :as json]
             [clojure.string :as str]
+            [metabase.driver :as driver]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -23,15 +24,30 @@
        (not page)
        (nil? aggregations)))
 
-(defn query->remark
-  "Generate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being
-  executed. See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386)
-  for more information."
-  ^String [{{:keys [executed-by query-hash query-type], :as info} :info}]
-  (str "Metabase" (when info
+(defn default-query->remark
+  "Generates the default query remark. Exists as a separate function so that overrides of the query->remark multimethod
+   can access the default value."
+  [{{:keys [executed-by query-hash], :as info} :info, query-type :type}]
+  (str "Metabase" (when executed-by
                     (assert (instance? (Class/forName "[B") query-hash))
                     (format ":: userID: %s queryType: %s queryHash: %s"
-                            executed-by query-type (codecs/bytes->hex query-hash)))))
+                            executed-by
+                            (case (keyword query-type)
+                              :query  "MBQL"
+                              :native "native")
+                            (codecs/bytes->hex query-hash)))))
+
+(defmulti query->remark
+  "Generate an appropriate remark `^String` to be prepended to a query to give DBAs additional information about the query
+  being executed. See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386)
+  for more information."
+  {:arglists '(^String [driver data])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod query->remark :default
+  [_ params]
+  (default-query->remark params))
 
 
 ;;; ------------------------------------------------- Normalization --------------------------------------------------
@@ -63,7 +79,7 @@
 ;;; ---------------------------------------------------- Hashing -----------------------------------------------------
 
 (defn- select-keys-for-hashing
-  "Return QUERY with only the keys relevant to hashing kept.
+  "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
   producing different hashes.)"
   [query]
@@ -74,8 +90,8 @@
       (empty? constraints) (dissoc :constraints)
       (empty? parameters)  (dissoc :parameters))))
 
-(defn query-hash
-  "Return a 256-bit SHA3 hash of QUERY as a key for the cache. (This is returned as a byte array.)"
+(s/defn ^bytes query-hash :- (Class/forName "[B")
+  "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
   [query]
   (hash/sha3-256 (json/generate-string (select-keys-for-hashing query))))
 

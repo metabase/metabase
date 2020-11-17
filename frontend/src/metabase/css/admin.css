@@ -47,12 +47,6 @@
   color: var(--color-text-white);
 }
 
-.Actions {
-  background-color: color(var(--color-bg-light) alpha(-54%));
-  border: 1px solid var(--color-border);
-  padding: 2em;
-}
-
 .Actions-group {
   margin-bottom: 2em;
 }
@@ -178,6 +172,7 @@
   color: var(--color-text-light);
   font-weight: 700;
   font-size: smaller;
+  padding-right: 15px; /* set so that table visibility icons align */
 }
 
 .AdminInput {
@@ -196,10 +191,14 @@
   display: inline-block;
   padding: 0.6em;
   border: 1px solid var(--color-border);
+  background-color: var(--color-bg-white);
   border-radius: var(--default-border-radius);
-  font-size: 14px;
   font-weight: 700;
-  min-width: 90px;
+  min-width: 104px;
+}
+
+.AdminSelect:hover {
+  border-color: color(var(--color-border) blackness(+10%));
 }
 
 .AdminSelectBorderless {
@@ -217,6 +216,18 @@
 }
 .AdminSelect--borderless .AdminSelect-chevron {
   margin-left: 0;
+}
+
+.AdminSelect-chevron {
+  opacity: 0.75;
+}
+
+.AdminSelect:hover .AdminSelect-chevron {
+  opacity: 1;
+}
+
+.MetadataTable {
+  min-width: 800px;
 }
 
 .MetadataTable-title {
@@ -290,8 +301,6 @@
 .AdminTable {
   border-collapse: collapse;
   border-spacing: 0;
-
-  white-space: nowrap;
   text-align: left;
 }
 
@@ -316,4 +325,17 @@
 
 .AdminLink:hover {
   opacity: 1;
+}
+
+.ColumnSortHelper {
+  box-shadow: 0 7px 20px var(--color-shadow);
+}
+
+#formField-details-port .Form-input,
+#formField-details-tunnel-port .Form-input {
+  max-width: 200px !important;
+}
+
+#formField-details-password .Form-input {
+  margin-bottom: 2em;
 }

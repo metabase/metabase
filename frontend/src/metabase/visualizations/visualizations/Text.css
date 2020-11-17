@@ -7,6 +7,7 @@
   flex-direction: column;
   justify-content: center;
   padding: 1em 0 1em 1.5em;
+  height: 100%;
 }
 :local .Text.dashboard-is-editing {
   padding: 2.8em 1.3em var(--text-card-padding) 1.3em;
@@ -26,6 +27,7 @@
   box-shadow: 0 1px 7px var(--color-shadow);
 }
 :local .Text .text-card-markdown {
+  height: 100%;
   overflow: auto;
   pointer-events: all;
 }
@@ -66,24 +68,19 @@
 :local .text-card-markdown ul {
   font-size: 16px;
   margin: 0.5em 0 0.5em 0;
-  padding: 0 1.5em 0 1em;
+  padding: 0 1.5em;
   list-style-type: disc;
 }
 :local .text-card-markdown ol {
   font-size: 16px;
   margin: 0.5em 0 0.5em 0;
-  padding: 0 1.5em 0 1em;
+  padding: 0 1.5em;
   list-style-type: decimal;
 }
 
 :local .text-card-markdown li {
-  list-style-position: inside;
+  list-style-position: outside;
   padding: 0.25em 0 0 0;
-}
-:local .text-card-markdown ol li::before {
-  content: "";
-  width: 7px;
-  display: inline-block;
 }
 
 :local .text-card-markdown a {

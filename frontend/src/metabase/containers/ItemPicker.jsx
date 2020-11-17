@@ -2,30 +2,38 @@ import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
+import { t } from "ttag";
 import { Flex, Box } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import { connect } from "react-redux";
+
+// NOTE: replacing these with Collections.ListLoader etc currently fails due to circular dependency
 import EntityListLoader, {
   entityListLoader,
 } from "metabase/entities/containers/EntityListLoader";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Collections from "metabase/entities/collections";
 
-const COLLECTION_ICON_COLOR = colors["text-light"];
+const COLLECTION_ICON_COLOR = color("text-light");
 
 const isRoot = collection => collection.id === "root" || collection.id == null;
 
 @entityListLoader({
-  entityType: "collections",
+  entityType: (state, props) => {
+    return props.entity ? props.entity.name : "collections";
+  },
   loadingAndErrorWrapper: false,
 })
 @connect((state, props) => ({
-  collectionsById: Collections.selectors.getExpandedCollectionsById(state),
+  collectionsById: (
+    props.entity || Collections
+  ).selectors.getExpandedCollectionsById(state),
+  getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
 }))
 export default class ItemPicker extends React.Component {
   constructor(props) {
@@ -43,6 +51,7 @@ export default class ItemPicker extends React.Component {
     // number = non-root collection id
     value: PropTypes.number,
     types: PropTypes.array,
+    showSearch: PropTypes.boolean,
   };
 
   // returns a list of "crumbs" starting with the "root" collection
@@ -67,7 +76,15 @@ export default class ItemPicker extends React.Component {
   }
 
   render() {
-    const { value, onChange, collectionsById, style, className } = this.props;
+    const {
+      value,
+      onChange,
+      collectionsById,
+      getCollectionIcon,
+      style,
+      className,
+      showSearch = true,
+    } = this.props;
     const { parentId, searchMode, searchString } = this.state;
 
     const models = new Set(this.props.models);
@@ -109,7 +126,7 @@ export default class ItemPicker extends React.Component {
               <input
                 type="search"
                 className="input rounded flex-full"
-                placeholder="Search"
+                placeholder={t`Search`}
                 autoFocus
                 onKeyPress={e => {
                   if (e.key === "Enter") {
@@ -128,11 +145,13 @@ export default class ItemPicker extends React.Component {
           ) : (
             <Box pb={1} mb={2} className="border-bottom flex align-center">
               <Breadcrumbs crumbs={crumbs} />
-              <Icon
-                name="search"
-                className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
-                onClick={() => this.setState({ searchMode: true })}
-              />
+              {showSearch && (
+                <Icon
+                  name="search"
+                  className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
+                  onClick={() => this.setState({ searchMode: true })}
+                />
+              )}
             </Box>
           )}
           <Box className="scroll-y">
@@ -155,7 +174,7 @@ export default class ItemPicker extends React.Component {
                       item={collection}
                       name={collection.name}
                       color={COLLECTION_ICON_COLOR}
-                      icon="all"
+                      icon={getCollectionIcon(collection)}
                       selected={canSelect && isSelected(collection)}
                       canSelect={canSelect}
                       hasChildren={hasChildren}
@@ -183,27 +202,29 @@ export default class ItemPicker extends React.Component {
                 }}
                 wrapped
               >
-                {({ list }) =>
-                  list
-                    .filter(
-                      item =>
-                        // remove collections unless we're searching
-                        (item.model !== "collection" || !!searchString) &&
-                        // only include desired models (TODO: ideally the endpoint would handle this)
-                        models.has(item.model),
-                    )
-                    .map(item => (
-                      <Item
-                        item={item}
-                        name={item.getName()}
-                        color={item.getColor()}
-                        icon={item.getIcon()}
-                        selected={isSelected(item)}
-                        canSelect
-                        onChange={onChange}
-                      />
-                    ))
-                }
+                {({ list }) => (
+                  <div>
+                    {list
+                      .filter(
+                        item =>
+                          // remove collections unless we're searching
+                          (item.model !== "collection" || !!searchString) &&
+                          // only include desired models (TODO: ideally the endpoint would handle this)
+                          models.has(item.model),
+                      )
+                      .map(item => (
+                        <Item
+                          item={item}
+                          name={item.getName()}
+                          color={item.getColor()}
+                          icon={item.getIcon()}
+                          selected={isSelected(item)}
+                          canSelect
+                          onChange={onChange}
+                        />
+                      ))}
+                  </div>
+                )}
               </EntityListLoader>
             )}
           </Box>
@@ -230,7 +251,9 @@ const Item = ({
     onClick={
       canSelect
         ? () => onChange(item)
-        : hasChildren ? () => onChangeParentId(item.id) : null
+        : hasChildren
+        ? () => onChangeParentId(item.id)
+        : null
     }
     className={cx("rounded", {
       "bg-brand text-white": selected,

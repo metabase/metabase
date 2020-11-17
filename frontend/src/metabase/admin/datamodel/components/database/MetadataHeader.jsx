@@ -1,14 +1,17 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
-import { t } from "c-3po";
-import SaveStatus from "metabase/components/SaveStatus.jsx";
-import Toggle from "metabase/components/Toggle.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import { t } from "ttag";
+
+import Databases from "metabase/entities/databases";
+
+import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
+import SaveStatus from "metabase/components/SaveStatus";
+import Toggle from "metabase/components/Toggle";
+import Icon from "metabase/components/Icon";
 
 @withRouter
+@Databases.loadList()
 export default class MetadataHeader extends Component {
   static propTypes = {
     databaseId: PropTypes.number,
@@ -17,6 +20,21 @@ export default class MetadataHeader extends Component {
     isShowingSchema: PropTypes.bool.isRequired,
     toggleShowSchema: PropTypes.func.isRequired,
   };
+
+  setDatabaseIdIfUnset() {
+    const { databaseId, databases = [], selectDatabase } = this.props;
+    if (databaseId === undefined && databases.length > 0) {
+      selectDatabase(databases[0], true);
+    }
+  }
+
+  componentDidUpdate() {
+    this.setDatabaseIdIfUnset();
+  }
+
+  componentWillMount() {
+    this.setDatabaseIdIfUnset();
+  }
 
   setSaving() {
     this.refs.status.setSaving.apply(this, arguments);
@@ -30,39 +48,6 @@ export default class MetadataHeader extends Component {
     this.refs.status.setSaveError.apply(this, arguments);
   }
 
-  renderDbSelector() {
-    let database = this.props.databases.filter(
-      db => db.id === this.props.databaseId,
-    )[0];
-    if (database) {
-      let columns = [
-        {
-          selectedItem: database,
-          items: this.props.databases,
-          itemTitleFn: db => db.name,
-          itemSelectFn: db => {
-            this.props.selectDatabase(db);
-            this.refs.databasePopover.toggle();
-          },
-        },
-      ];
-      let triggerElement = (
-        <span className="text-bold cursor-pointer text-default">
-          {database.name}
-          <Icon className="ml1" name="chevrondown" size={8} />
-        </span>
-      );
-      return (
-        <PopoverWithTrigger
-          ref="databasePopover"
-          triggerElement={triggerElement}
-        >
-          <ColumnarSelector columns={columns} />
-        </PopoverWithTrigger>
-      );
-    }
-  }
-
   // Show a gear to access Table settings page if we're currently looking at a Table. Otherwise show nothing.
   // TODO - it would be nicer just to disable the gear so the page doesn't jump around once you select a Table.
   renderTableSettingsButton() {
@@ -74,7 +59,7 @@ export default class MetadataHeader extends Component {
     return (
       <span className="ml4 mr3">
         <Link to={`${this.props.location.pathname}/settings`}>
-          <Icon name="gear" />
+          <Icon name="gear" className="text-brand-hover" />
         </Link>
       </span>
     );
@@ -82,14 +67,21 @@ export default class MetadataHeader extends Component {
 
   render() {
     return (
-      <div className="MetadataEditor-header flex align-center flex-no-shrink">
-        <div className="MetadataEditor-headerSection py2 h2">
-          <span className="text-medium">{t`Current database:`}</span>{" "}
-          {this.renderDbSelector()}
+      <div className="MetadataEditor-header flex align-center flex-no-shrink pb2">
+        <Icon
+          className="flex align-center flex-no-shrink text-medium"
+          name="database"
+        />
+        <div className="MetadataEditor-headerSection h2">
+          <DatabaseDataSelector
+            selectedDatabaseId={this.props.databaseId}
+            setDatabaseFn={id => this.props.selectDatabase({ id })}
+            style={{ padding: 0, paddingLeft: 8 }}
+          />
         </div>
         <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
           <SaveStatus ref="status" />
-          <span className="mr1">{t`Show original schema`}</span>
+          <div className="mr1 text-medium">{t`Show original schema`}</div>
           <Toggle
             value={this.props.isShowingSchema}
             onChange={this.props.toggleShowSchema}

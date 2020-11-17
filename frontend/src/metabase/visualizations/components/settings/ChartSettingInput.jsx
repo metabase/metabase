@@ -1,11 +1,13 @@
 import React from "react";
 
+import InputBlurChange from "metabase/components/InputBlurChange";
+
 const ChartSettingInput = ({ value, onChange, ...props }) => (
-  <input
+  <InputBlurChange
     {...props}
     className="input block full"
     value={value}
-    onChange={e => onChange(e.target.value)}
+    onBlurChange={e => onChange(e.target.value)}
   />
 );
 

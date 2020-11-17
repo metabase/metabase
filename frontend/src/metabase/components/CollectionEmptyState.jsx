@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import RetinaImage from "react-retina-image";
 import { withRouter } from "react-router";
 

@@ -9,6 +9,11 @@ driver:
   connection-properties:
     - host
     - dbname
+    - name: conn-uri
+      type: string
+      display-name: Paste your connection string
+      placeholder: 'mongodb://[username:password@]host1[:port1][,...hostN[:portN]][/[defaultauthdb][?options]]'
+      required: true
     - merge:
         - port
         - default: 27017
@@ -24,7 +29,15 @@ driver:
     - merge:
         - additional-options
         - display-name: Additional Mongo connection string options
-          placeholder: 'readPreference=nearest&replicaSet=test'
+          placeholder: 'retryWrites=true&w=majority&authSource=admin&readPreference=nearest&replicaSet=test'
+    - name: use-srv
+      type: boolean
+      default: false
+    - merge:
+        - ssl
+    - name: ssl-cert
+      type: string
+      display-name: Server SSL certificate chain
   connection-properties-include-tunnel-config: true
 init:
   - step: load-namespace

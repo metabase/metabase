@@ -1,6 +1,6 @@
 :root {
   --select-arrow-bg-color: var(--color-bg-medium);
-  --select-border-color: var(--color-border);
+  --select-border-color: color(var(--color-border) blackness(+5%));
   --select-bg-color: var(--color-bg-white);
   --select-text-color: var(--color-text-medium);
 
@@ -96,5 +96,10 @@
 }
 
 .Select select:focus {
+  outline: none;
+}
+
+/* fix the outline that appears when interacting with metabase/components/Select */
+.MB-Select:focus {
   outline: none;
 }

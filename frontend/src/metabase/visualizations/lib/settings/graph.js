@@ -3,17 +3,12 @@ import {
   isMetric,
   isNumeric,
   isAny,
-  isDate,
 } from "metabase/lib/schema_metadata";
-import { t } from "c-3po";
+import { t } from "ttag";
 import {
   columnsAreValid,
   getFriendlyName,
-  getChartTypeFromData,
-  getColumnCardinality,
-  DIMENSION_DIMENSION_METRIC,
-  DIMENSION_METRIC,
-  DIMENSION_METRIC_METRIC,
+  getDefaultDimensionsAndMetrics,
 } from "metabase/visualizations/lib/utils";
 
 import { seriesSetting } from "metabase/visualizations/lib/settings/series";
@@ -42,9 +37,13 @@ export function getDefaultColumns(series) {
   }
 }
 
-function getDefaultScatterColumns([{ data: { cols, rows } }]) {
-  let dimensions = cols.filter(isDimension);
-  let metrics = cols.filter(isMetric);
+function getDefaultScatterColumns([
+  {
+    data: { cols, rows },
+  },
+]) {
+  const dimensions = cols.filter(isDimension);
+  const metrics = cols.filter(isMetric);
   if (dimensions.length === 2 && metrics.length < 2) {
     return {
       dimensions: [dimensions[0].name],
@@ -60,43 +59,20 @@ function getDefaultScatterColumns([{ data: { cols, rows } }]) {
   }
 }
 
-function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
-  let type = getChartTypeFromData(cols, rows, false);
-  if (type === DIMENSION_DIMENSION_METRIC) {
-    let dimensions = [cols[0], cols[1]];
-    if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
-      // if the series dimension is a date but the axis dimension is not then swap them
-      dimensions.reverse();
-    } else if (
-      getColumnCardinality(cols, rows, 1) > getColumnCardinality(cols, rows, 0)
-    ) {
-      // if the series dimension is higher cardinality than the axis dimension then swap them
-      dimensions.reverse();
-    }
-    return {
-      dimensions: dimensions.map(col => col.name),
-      metrics: [cols[2].name],
-    };
-  } else if (type === DIMENSION_METRIC) {
-    return {
-      dimensions: [cols[0].name],
-      metrics: [cols[1].name],
-    };
-  } else if (type === DIMENSION_METRIC_METRIC) {
-    return {
-      dimensions: [cols[0].name],
-      metrics: cols.slice(1).map(col => col.name),
-    };
-  }
-  return {
-    dimensions: [null],
-    metrics: [null],
-  };
+function getDefaultLineAreaBarColumns(series) {
+  return getDefaultDimensionsAndMetrics(series);
 }
 
 export const GRAPH_DATA_SETTINGS = {
   ...columnSettings({
-    getColumns: ([{ data: { cols } }], settings) => cols,
+    getColumns: (
+      [
+        {
+          data: { cols },
+        },
+      ],
+      settings,
+    ) => cols,
     hidden: true,
   }),
   "graph._dimension_filter": {
@@ -113,16 +89,19 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     title: t`X-axis`,
     widget: "fields",
-    isValid: ([{ card, data }], vizSettings) =>
-      columnsAreValid(
-        card.visualization_settings["graph.dimensions"],
-        data,
-        vizSettings["graph._dimension_filter"],
-      ) &&
-      columnsAreValid(
-        card.visualization_settings["graph.metrics"],
-        data,
-        vizSettings["graph._metric_filter"],
+    isValid: (series, vizSettings) =>
+      series.some(
+        ({ card, data }) =>
+          columnsAreValid(
+            card.visualization_settings["graph.dimensions"],
+            data,
+            vizSettings["graph._dimension_filter"],
+          ) &&
+          columnsAreValid(
+            card.visualization_settings["graph.metrics"],
+            data,
+            vizSettings["graph._metric_filter"],
+          ),
       ),
     getDefault: (series, vizSettings) => getDefaultColumns(series).dimensions,
     persistDefault: true,
@@ -152,16 +131,19 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     title: t`Y-axis`,
     widget: "fields",
-    isValid: ([{ card, data }], vizSettings) =>
-      columnsAreValid(
-        card.visualization_settings["graph.dimensions"],
-        data,
-        vizSettings["graph._dimension_filter"],
-      ) &&
-      columnsAreValid(
-        card.visualization_settings["graph.metrics"],
-        data,
-        vizSettings["graph._metric_filter"],
+    isValid: (series, vizSettings) =>
+      series.some(
+        ({ card, data }) =>
+          columnsAreValid(
+            card.visualization_settings["graph.dimensions"],
+            data,
+            vizSettings["graph._dimension_filter"],
+          ) &&
+          columnsAreValid(
+            card.visualization_settings["graph.metrics"],
+            data,
+            vizSettings["graph._metric_filter"],
+          ),
       ),
     getDefault: (series, vizSettings) => getDefaultColumns(series).metrics,
     persistDefault: true,
@@ -194,11 +176,13 @@ export const GRAPH_BUBBLE_SETTINGS = {
     section: t`Data`,
     title: t`Bubble size`,
     widget: "field",
-    isValid: ([{ card, data }], vizSettings) =>
-      columnsAreValid(
-        [card.visualization_settings["scatter.bubble"]],
-        data,
-        isNumeric,
+    isValid: (series, vizSettings) =>
+      series.some(({ card, data }) =>
+        columnsAreValid(
+          [card.visualization_settings["scatter.bubble"]],
+          data,
+          isNumeric,
+        ),
       ),
     getDefault: series => getDefaultColumns(series).bubble,
     getProps: ([{ card, data }], vizSettings, onChange) => {
@@ -258,9 +242,6 @@ export const STACKABLE_SETTINGS = {
         ? "stacked"
         : null,
     getHidden: (series, settings) => {
-      if (series.length < 2) {
-        return true;
-      }
       const displays = series.map(single => settings.series(single).display);
       return !_.any(displays, display => STACKABLE_DISPLAY_TYPES.has(display));
     },
@@ -297,7 +278,7 @@ export const STACKABLE_SETTINGS = {
 export const GRAPH_GOAL_SETTINGS = {
   "graph.show_goal": {
     section: t`Display`,
-    title: t`Show goal`,
+    title: t`Goal line`,
     widget: "toggle",
     default: false,
   },
@@ -319,7 +300,7 @@ export const GRAPH_GOAL_SETTINGS = {
   },
   "graph.show_trendline": {
     section: t`Display`,
-    title: t`Show trend line`,
+    title: t`Trend line`,
     widget: "toggle",
     default: false,
     getHidden: (series, vizSettings) => {
@@ -327,6 +308,50 @@ export const GRAPH_GOAL_SETTINGS = {
       return !insights || insights.length === 0;
     },
     useRawSeries: true,
+  },
+};
+
+export const GRAPH_DISPLAY_VALUES_SETTINGS = {
+  "graph.show_values": {
+    section: t`Display`,
+    title: t`Show values on data points`,
+    widget: "toggle",
+    getHidden: (series, vizSettings) =>
+      vizSettings["stackable.stack_type"] === "normalized",
+    default: false,
+  },
+  "graph.label_value_frequency": {
+    section: t`Display`,
+    title: t`Values to show`,
+    widget: "radio",
+    getHidden: (series, vizSettings) =>
+      vizSettings["graph.show_values"] !== true ||
+      vizSettings["stackable.stack_type"] === "normalized",
+    props: {
+      options: [
+        { name: t`As many as can fit nicely`, value: "fit" },
+        { name: t`All`, value: "all" },
+      ],
+    },
+    default: "fit",
+    readDependencies: ["graph.show_values"],
+  },
+  "graph.label_value_formatting": {
+    section: t`Display`,
+    title: t`Value formatting`,
+    widget: "radio",
+    getHidden: (series, vizSettings) =>
+      vizSettings["graph.show_values"] !== true ||
+      vizSettings["stackable.stack_type"] === "normalized",
+    props: {
+      options: [
+        { name: t`Auto`, value: "auto" },
+        { name: t`Compact`, value: "compact" },
+        { name: t`Full`, value: "full" },
+      ],
+    },
+    default: "auto",
+    readDependencies: ["graph.show_values"],
   },
 };
 
@@ -359,7 +384,14 @@ export const GRAPH_AXIS_SETTINGS = {
       ),
   },
   "graph.x_axis._is_histogram": {
-    getDefault: ([{ data: { cols } }], vizSettings) =>
+    getDefault: (
+      [
+        {
+          data: { cols },
+        },
+      ],
+      vizSettings,
+    ) =>
       // matches binned numeric columns
       cols[0].binning_info != null ||
       // matches certain date extracts like day-of-week, etc
@@ -380,8 +412,10 @@ export const GRAPH_AXIS_SETTINGS = {
       vizSettings["graph.x_axis._is_histogram"]
         ? "histogram"
         : vizSettings["graph.x_axis._is_timeseries"]
-          ? "timeseries"
-          : vizSettings["graph.x_axis._is_numeric"] ? "linear" : "ordinal",
+        ? "timeseries"
+        : vizSettings["graph.x_axis._is_numeric"]
+        ? "linear"
+        : "ordinal",
     getProps: (series, vizSettings) => {
       const options = [];
       if (vizSettings["graph.x_axis._is_timeseries"]) {
@@ -517,9 +551,24 @@ export const GRAPH_AXIS_SETTINGS = {
     widget: "input",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false,
-    getDefault: (series, vizSettings) =>
-      series.length === 1 ? vizSettings.series(series[0]).title : null,
-    readDependencies: ["series"],
+    getDefault: (series, vizSettings) => {
+      if (series.length === 1) {
+        return vizSettings.series(series[0]).title;
+      }
+      // If there are multiple series, we check if the metric names match.
+      // If they do, we use that as the default y axis label.
+      const [metric] = vizSettings["graph.metrics"];
+      const metricNames = Array.from(
+        new Set(
+          series.map(({ data: { cols } }) => {
+            const metricCol = cols.find(c => c.name === metric);
+            return metricCol && metricCol.display_name;
+          }),
+        ),
+      );
+      return metricNames.length === 1 ? metricNames[0] : null;
+    },
+    readDependencies: ["series", "graph.metrics"],
   },
   // DEPRECATED" replaced with "label" series setting
   "graph.series_labels": {},

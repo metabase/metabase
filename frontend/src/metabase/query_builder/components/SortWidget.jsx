@@ -1,23 +1,14 @@
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon.jsx";
-import FieldWidget from "./FieldWidget.jsx";
-import SelectionModule from "./SelectionModule.jsx";
+import Icon from "metabase/components/Icon";
+import FieldWidget from "./FieldWidget";
+import SelectionModule from "./SelectionModule";
 
-import _ from "underscore";
-
-export default class SortWidget extends Component {
-  constructor(props, context) {
-    super(props, context);
-
-    _.bindAll(this, "setDirection", "setField");
-  }
-
+export default class SortWidget extends React.Component {
   static propTypes = {
     sort: PropTypes.array.isRequired,
     fieldOptions: PropTypes.object.isRequired,
-    customFieldOptions: PropTypes.object,
     tableName: PropTypes.string,
     updateOrderBy: PropTypes.func.isRequired,
     removeOrderBy: PropTypes.func.isRequired,
@@ -42,24 +33,24 @@ export default class SortWidget extends Component {
     }
   }
 
-  setField(value) {
+  handleChangeField = value => {
     if (this.state.field !== value) {
       this.props.updateOrderBy([this.state.direction, value]);
       // Optimistically set field state so componentWillUnmount logic works correctly
       this.setState({ field: value });
     }
-  }
+  };
 
-  setDirection(value) {
+  handleChangeDirection = value => {
     if (this.state.direction !== value) {
       this.props.updateOrderBy([value, this.state.field]);
       // Optimistically set direction state so componentWillUnmount logic works correctly
       this.setState({ direction: value });
     }
-  }
+  };
 
   render() {
-    let directionOptions = [
+    const directionOptions = [
       { key: "ascending", val: "asc" },
       { key: "descending", val: "desc" },
     ];
@@ -67,13 +58,11 @@ export default class SortWidget extends Component {
     return (
       <div className="flex align-center">
         <FieldWidget
-          query={this.props.query}
           className="Filter-section Filter-section-sort-field SelectionModule"
-          tableMetadata={this.props.tableMetadata}
           field={this.state.field}
+          onChangeField={this.handleChangeField}
           fieldOptions={this.props.fieldOptions}
-          customFieldOptions={this.props.customFieldOptions}
-          setField={this.setField}
+          query={this.props.query}
           isInitiallyOpen={this.state.field === null}
           enableSubDimensions={false}
           useOriginalDimension={true}
@@ -87,7 +76,7 @@ export default class SortWidget extends Component {
           selectedValue={this.state.direction}
           selectedKey="val"
           isInitiallyOpen={false}
-          action={this.setDirection}
+          action={this.handleChangeField}
         />
 
         <a onClick={this.props.removeOrderBy}>

@@ -5,7 +5,7 @@ Note that currently the Mac Application is not setup for shared use, so some Met
 
 ### Installing the Mac Application
 
-Start off by downloading the [Metabase Mac Application](http://www.metabase.com/start/mac.html) if you haven't done so already.
+Start off by downloading the [Metabase Mac Application](https://metabase.com/start/mac.html) if you haven't done so already.
 Once the download is complete go ahead and double click the file to open it up. You should see something like this:
 
 ![macinstaller](images/MacInstaller.png)

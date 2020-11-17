@@ -1,10 +1,15 @@
 (ns metabase.query-processor.middleware.binning-test
-  (:require [expectations :refer [expect]]
-            [metabase.models.field :as field :refer [Field]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
+            [metabase
+             [test :as mt]
+             [util :as u]]
+            [metabase.models
+             [card :refer [Card]]
+             [field :as field :refer [Field]]]
             [metabase.query-processor.middleware.binning :as binning]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
-            [metabase.util :as u]
             [toucan.util.test :as tt]))
 
 (expect
@@ -103,17 +108,20 @@
                                        :num-bins  8}))
 
 ;; Try an end-to-end test of the middleware
-(tt/expect-with-temp [Field [field (field/map->FieldInstance
-                                    {:database_type "DOUBLE"
-                                     :table_id      (data/id :checkins)
-                                     :special_type  :type/Income
-                                     :name          "TOTAL"
-                                     :display_name  "Total"
-                                     :fingerprint   {:global {:distinct-count 10000}
-                                                     :type   {:type/Number {:min 12.061602936923117
-                                                                            :max 238.32732001721533
-                                                                            :avg 82.96014815230829}}}
-                                     :base_type     :type/Float})]]
+(defn- test-field []
+  (field/map->FieldInstance
+   {:database_type "DOUBLE"
+    :table_id      (data/id :checkins)
+    :special_type  :type/Income
+    :name          "TOTAL"
+    :display_name  "Total"
+    :fingerprint   {:global {:distinct-count 10000}
+                    :type   {:type/Number {:min 12.061602936923117
+                                           :max 238.32732001721533
+                                           :avg 82.96014815230829}}}
+    :base_type     :type/Float}))
+
+(tt/expect-with-temp [Field [field (test-field)]]
   {:query    {:source-table (data/id :checkins)
               :breakout     [[:binning-strategy
                               [:field-id (u/get-id field)]
@@ -123,8 +131,45 @@
    :type     :query
    :database (data/id)}
   (qp.test-util/with-everything-store
-    ((binning/update-binning-strategy identity)
-     {:query    {:source-table (data/id :checkins)
-                 :breakout     [[:binning-strategy [:field-id (u/get-id field)] :default]]}
-      :type     :query
-      :database (data/id)})))
+    (:pre
+     (mt/test-qp-middleware
+      binning/update-binning-strategy
+      {:query    {:source-table (data/id :checkins)
+                  :breakout     [[:binning-strategy [:field-id (u/get-id field)] :default]]}
+       :type     :query
+       :database (data/id)}))))
+
+;; make sure `update-binning-strategy` works recursively on nested queries
+(tt/expect-with-temp [Field [field (test-field)]]
+  {:query    {:source-query
+              {:source-table (data/id :checkins)
+               :breakout     [[:binning-strategy
+                               [:field-id (u/get-id field)]
+                               :num-bins
+                               nil
+                               {:min-value 0.0, :max-value 240.0, :num-bins 8, :bin-width 30}]]}}
+   :type     :query
+   :database (data/id)}
+  (qp.test-util/with-everything-store
+    (:pre
+     (mt/test-qp-middleware
+      binning/update-binning-strategy
+      {:query    {:source-query
+                  {:source-table (data/id :checkins)
+                   :breakout     [[:binning-strategy [:field-id (u/get-id field)] :default]]}}
+       :type     :query
+       :database (data/id)}))))
+
+(deftest bining-nested-questions-test
+  (mt/with-temp Card [{card-id :id} {:dataset_query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (mt/id :venues)}}}]
+    (is (= [[1 22]
+            [2 59]
+            [3 13]
+            [4 6]]
+         (->> (mt/run-mbql-query nil
+                {:source-table (str "card__" card-id)
+                 :breakout     [[:binning-strategy [:field-literal "PRICE" :type/Float] :default]]
+                 :aggregation  [[:count]]})
+              (mt/formatted-rows [int int]))))))

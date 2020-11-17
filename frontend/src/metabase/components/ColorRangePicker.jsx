@@ -85,11 +85,9 @@ export const ColorRangePreview = ({
   const scale = getColorScale([0, sections - 1], colors, quantile);
   return (
     <div className={cx(className, "flex")} {...props}>
-      {d3
-        .range(0, sections)
-        .map(value => (
-          <div className="flex-full" style={{ background: scale(value) }} />
-        ))}
+      {d3.range(0, sections).map(value => (
+        <div className="flex-full" style={{ background: scale(value) }} />
+      ))}
     </div>
   );
 };

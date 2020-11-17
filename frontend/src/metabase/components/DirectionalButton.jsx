@@ -1,18 +1,18 @@
 import React from "react";
 import Icon from "metabase/components/Icon";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
-const DirectionalButton = ({ direction = "back", onClick }) => (
+const DirectionalButton = ({ direction = "left", onClick }) => (
   <div
     className="shadowed cursor-pointer text-brand-hover text-medium flex align-center circle p2 bg-white transition-background transition-color"
     onClick={onClick}
     style={{
-      border: `1px solid ${colors["border"]}`,
-      boxShadow: `0 2px 4px 0 ${colors["shadow"]}`,
+      border: `1px solid ${color("border")}`,
+      boxShadow: `0 2px 4px 0 ${color("shadow")}`,
     }}
   >
-    <Icon name={`${direction}Arrow`} />
+    <Icon name={`arrow_${direction}`} />
   </div>
 );
 

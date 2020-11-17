@@ -19,6 +19,8 @@ consult Vertica's documentation to find the correct version of the JDBC driver f
 Metabase will automatically make the Vertica driver available if it finds the Vertica JDBC driver JAR in the Metabase plugins directory when it starts up.
 All you need to do is create the directory, move the JAR you just downloaded into it, and restart Metabase.
 
+#### When running from a JAR
+
 By default, the plugins directory is called `plugins`, and lives in the same directory as the Metabase JAR.
 
 For example, if you're running Metabase from a directory called `/app/`, you should move the Vertica JDBC driver JAR to `/app/plugins/`:
@@ -29,6 +31,8 @@ For example, if you're running Metabase from a directory called `/app/`, you sho
 /app/plugins/vertica-jdbc-8.0.0-0.jar
 ```
 
+#### When running the Mac App
+
 If you're running Metabase from the Mac App, the plugins directory defaults to `~/Library/Application Support/Metabase/Plugins/`:
 
 ```bash
@@ -37,3 +41,7 @@ If you're running Metabase from the Mac App, the plugins directory defaults to `
 ```
 
 If you are running the Docker image or you want to use another directory for plugins, you should then specify a custom plugins directory by setting the environment variable `MB_PLUGINS_DIR`.
+
+#### When running from Docker
+
+The process for adding plugins when running via Docker is similar, but you'll need to mount the `plugins` directory. Refer to instructions [here](../../operations-guide/running-metabase-on-docker.html#adding-external-dependencies-or-plugins) for more details.

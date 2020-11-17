@@ -1,12 +1,14 @@
 /* @flow */
 
 import { op, args, noNullValues, add, update, remove, clear } from "./util";
+import { isValidField } from "./field_ref";
+import { STANDARD_FILTERS } from "metabase/lib/expressions";
 
 import type {
   FilterClause,
   Filter,
   FilterOptions,
-} from "metabase/meta/types/Query";
+} from "metabase-types/types/Query";
 
 // returns canonical list of Filters
 export function getFilters(filter: ?FilterClause): Filter[] {
@@ -63,27 +65,39 @@ export function canAddFilter(filter: ?FilterClause): boolean {
   return true;
 }
 
-export function isSegmentFilter(filter: FilterClause): boolean {
+// FILTER TYPES
+
+export function isStandard(filter: FilterClause): boolean {
+  return (
+    Array.isArray(filter) &&
+    (STANDARD_FILTERS.has(filter[0]) || filter[0] === null) &&
+    (filter[1] === undefined || isValidField(filter[1]))
+  );
+}
+
+export function isSegment(filter: FilterClause): boolean {
   return Array.isArray(filter) && filter[0] === "segment";
 }
 
-export function isCompoundFilter(filter: FilterClause): boolean {
-  return Array.isArray(filter) && (filter[0] === "and" || filter[0] === "or");
+export function isCustom(filter: FilterClause): boolean {
+  return !isStandard(filter) && !isSegment(filter);
 }
 
 export function isFieldFilter(filter: FilterClause): boolean {
-  return !isSegmentFilter(filter) && !isCompoundFilter(filter);
+  return !isSegment(filter) && isValidField(filter[1]);
 }
+
+// FILTER OPTIONS
 
 // TODO: is it safe to assume if the last item is an object then it's options?
 export function hasFilterOptions(filter: Filter): boolean {
   const o = filter[filter.length - 1];
-  return !!o && typeof o == "object" && o.constructor == Object;
+  return !!o && typeof o == "object" && o.constructor === Object;
 }
 
 export function getFilterOptions(filter: Filter): FilterOptions {
   // NOTE: just make a new "any" variable since getting flow to type checking this is a nightmare
-  let _filter: any = filter;
+  const _filter: any = filter;
   if (hasFilterOptions(filter)) {
     return _filter[_filter.length - 1];
   } else {

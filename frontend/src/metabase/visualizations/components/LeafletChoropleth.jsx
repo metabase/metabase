@@ -1,8 +1,8 @@
 import React from "react";
 
-import { normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
-import CardRenderer from "./CardRenderer.jsx";
+import CardRenderer from "./CardRenderer";
 
 // import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -14,9 +14,10 @@ const LeafletChoropleth = ({
   series,
   geoJson,
   minimalBounds = computeMinimalBounds(geoJson.features),
-  getColor = () => normal.blue,
+  getColor = () => color("brand"),
   onHoverFeature = () => {},
   onClickFeature = () => {},
+  onRenderError,
 }) => (
   <CardRenderer
     series={series}
@@ -40,10 +41,6 @@ const LeafletChoropleth = ({
         boxZoom: false,
         keyboard: false,
       });
-
-      // L.tileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      //     attribution: 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
-      // }).addTo(map);
 
       const style = feature => ({
         fillColor: getColor(feature),
@@ -104,6 +101,7 @@ const LeafletChoropleth = ({
         map.remove();
       };
     }}
+    onRenderError={onRenderError}
   />
 );
 

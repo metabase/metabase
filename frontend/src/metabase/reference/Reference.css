@@ -1,7 +1,7 @@
 :root {
   --title-color: var(--color-text-medium);
   --subtitle-color: var(--color-text-medium);
-  --icon-width: calc(48px + 1rem);
+  --icon-width: 60px;
 }
 
 :local(.guideEmpty) {
@@ -20,7 +20,6 @@
 
 :local(.columnHeader) {
   composes: flex flex-full from "style";
-  margin-left: var(--icon-width);
   padding-top: 20px;
   padding-bottom: 20px;
 }
@@ -37,7 +36,16 @@
 }
 
 :local(.tableActualName) {
-  color: var(--subtitle-color);
+  font-family: "Lucida Console", Monaco, monospace;
+  font-size: 13px;
+  line-height: 1.4em;
+  letter-spacing: 1px;
+  white-space: pre-wrap;
+  color: var(--color-text-medium);
+  background-color: var(--color-bg-light);
+  border: 1px solid var(--color-text-light);
+  border-radius: 4px;
+  padding: 0.2em 0.4em;
 }
 
 :local(.guideLeftPadded) {

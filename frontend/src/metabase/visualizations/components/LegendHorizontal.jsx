@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./Legend.css";
 
-import LegendItem from "./LegendItem.jsx";
+import LegendItem from "./LegendItem";
 
 import cx from "classnames";
 

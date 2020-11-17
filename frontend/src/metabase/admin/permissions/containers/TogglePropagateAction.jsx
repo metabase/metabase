@@ -2,8 +2,6 @@ import React from "react";
 
 import { connect } from "react-redux";
 
-import { t } from "c-3po";
-
 import { getPropagatePermissions } from "../selectors";
 import { setPropagatePermissions } from "../permissions";
 
@@ -16,17 +14,18 @@ const mapDispatchToProps = {
   setPropagatePermissions,
 };
 
-const TogglePropagateAction = connect(mapStateToProps, mapDispatchToProps)(
-  ({ propagate, setPropagatePermissions }) => (
-    <div
-      className="flex align-center bg-medium px2 py1 cursor-pointer"
-      onClick={() => setPropagatePermissions(!propagate)}
-    >
-      <span className="mr2 text-small">{t`Also change sub-collections`}</span>
-      <Toggle small value={propagate} />
-    </div>
-  ),
-);
+const TogglePropagateAction = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(({ propagate, setPropagatePermissions, message }) => (
+  <div
+    className="flex align-center bg-medium px2 py1 cursor-pointer"
+    onClick={() => setPropagatePermissions(!propagate)}
+  >
+    <span className="mr2 text-small">{message}</span>
+    <Toggle small value={propagate} />
+  </div>
+));
 
 // eslint-disable-next-line react/display-name
-export default () => <TogglePropagateAction />;
+export default props => <TogglePropagateAction {...props} />;

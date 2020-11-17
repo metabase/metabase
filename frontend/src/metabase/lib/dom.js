@@ -26,45 +26,34 @@ export const IFRAMED_IN_SELF = (function() {
   }
 })();
 
+// check if we have access to localStorage to avoid handling "access denied"
+// exceptions
+export const HAS_LOCAL_STORAGE = (function() {
+  try {
+    window.localStorage; // This will trigger an exception if access is denied.
+    return true;
+  } catch (e) {
+    console.warn("localStorage not available:", e);
+    return false;
+  }
+})();
+
 export function isObscured(element, offset) {
   if (!document.elementFromPoint) {
     return false;
   }
+  const box = element.getBoundingClientRect();
   // default to the center of the element
   offset = offset || {
-    top: Math.round(element.offsetHeight / 2),
-    left: Math.round(element.offsetWidth / 2),
+    top: Math.round(box.height / 2),
+    left: Math.round(box.width / 2),
   };
-  let position = findPosition(element, true);
-  let elem = document.elementFromPoint(
-    position.left + offset.left,
-    position.top + offset.top,
-  );
+  const position = {
+    left: box.x + offset.left,
+    top: box.y + offset.top,
+  };
+  const elem = document.elementFromPoint(position.left, position.top);
   return !element.contains(elem);
-}
-
-// get the position of an element on the page
-export function findPosition(element, excludeScroll = false) {
-  let offset = { top: 0, left: 0 };
-  let scroll = { top: 0, left: 0 };
-  let offsetParent = element;
-  while (offsetParent) {
-    // we need to check every element for scrollTop/scrollLeft
-    scroll.left += element.scrollLeft || 0;
-    scroll.top += element.scrollTop || 0;
-    // but only the original element and offsetParents for offsetTop/offsetLeft
-    if (offsetParent === element) {
-      offset.left += element.offsetLeft;
-      offset.top += element.offsetTop;
-      offsetParent = element.offsetParent;
-    }
-    element = element.parentNode;
-  }
-  if (excludeScroll) {
-    offset.left -= scroll.left;
-    offset.top -= scroll.top;
-  }
-  return offset;
 }
 
 // based on http://stackoverflow.com/a/38039019/113
@@ -144,7 +133,7 @@ export function setSelectionPosition(element, [start, end]) {
 }
 
 export function saveSelection(element) {
-  let range = getSelectionPosition(element);
+  const range = getSelectionPosition(element);
   return () => setSelectionPosition(element, range);
 }
 
@@ -157,12 +146,12 @@ export function setCaretPosition(element, position) {
 }
 
 export function saveCaretPosition(element) {
-  let position = getCaretPosition(element);
+  const position = getCaretPosition(element);
   return () => setCaretPosition(element, position);
 }
 
 function getTextNodeAtPosition(root, index) {
-  let treeWalker = document.createTreeWalker(
+  const treeWalker = document.createTreeWalker(
     root,
     NodeFilter.SHOW_TEXT,
     elem => {
@@ -173,7 +162,7 @@ function getTextNodeAtPosition(root, index) {
       return NodeFilter.FILTER_ACCEPT;
     },
   );
-  let c = treeWalker.nextNode();
+  const c = treeWalker.nextNode();
   return {
     node: c ? c : root,
     position: c ? index : 0,
@@ -181,9 +170,9 @@ function getTextNodeAtPosition(root, index) {
 }
 
 // https://davidwalsh.name/add-rules-stylesheets
-let STYLE_SHEET = (function() {
+const STYLE_SHEET = (function() {
   // Create the <style> tag
-  let style = document.createElement("style");
+  const style = document.createElement("style");
 
   // WebKit hack :(
   style.appendChild(document.createTextNode("/* dynamic stylesheet */"));
@@ -196,9 +185,14 @@ let STYLE_SHEET = (function() {
 
 export function addCSSRule(selector, rules, index = 0) {
   if ("insertRule" in STYLE_SHEET) {
-    STYLE_SHEET.insertRule(selector + "{" + rules + "}", index);
+    const ruleIndex = STYLE_SHEET.insertRule(
+      selector + "{" + rules + "}",
+      index,
+    );
+    return STYLE_SHEET.cssRules[ruleIndex];
   } else if ("addRule" in STYLE_SHEET) {
-    STYLE_SHEET.addRule(selector, rules, index);
+    const ruleIndex = STYLE_SHEET.addRule(selector, rules, index);
+    return STYLE_SHEET.rules[ruleIndex];
   }
 }
 
@@ -207,16 +201,16 @@ export function constrainToScreen(element, direction, padding) {
     return false;
   }
   if (direction === "bottom") {
-    let screenBottom = window.innerHeight + getScrollY();
-    let overflowY = element.getBoundingClientRect().bottom - screenBottom;
+    const screenBottom = window.innerHeight + getScrollY();
+    const overflowY = element.getBoundingClientRect().bottom - screenBottom;
     if (overflowY + padding > 0) {
       element.style.maxHeight =
         element.getBoundingClientRect().height - overflowY - padding + "px";
       return true;
     }
   } else if (direction === "top") {
-    let screenTop = getScrollY();
-    let overflowY = screenTop - element.getBoundingClientRect().top;
+    const screenTop = getScrollY();
+    const overflowY = screenTop - element.getBoundingClientRect().top;
     if (overflowY + padding > 0) {
       element.style.maxHeight =
         element.getBoundingClientRect().height - overflowY - padding + "px";
@@ -315,12 +309,50 @@ export function shouldOpenInBlankWindow(
     (event && event.metaKey != null ? event.metaKey : metaKey)
   ) {
     return true;
-  } else if (blankOnDifferentOrigin) {
-    const a = document.createElement("a");
-    a.href = url;
-    return a.origin !== window.location.origin;
+  } else if (blankOnDifferentOrigin && !isSameOrigin(url)) {
+    return true;
   }
   return false;
+}
+
+const a = document.createElement("a"); // reuse the same tag for performance
+export function isSameOrigin(url) {
+  a.href = url;
+  return a.origin === window.location.origin;
+}
+
+export function getUrlTarget(url) {
+  if (IFRAMED) {
+    return isSameOrigin(url) ? "_self" : "_top";
+  } else {
+    // if not iframed then _top and _self are equivalent so don't bother checking origin
+    return "_top";
+  }
+}
+
+export function removeAllChildren(element) {
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+}
+
+export function parseDataUri(url) {
+  const match =
+    url && url.match(/^data:(?:([^;]+)(?:;([^;]+))?)?(;base64)?,(.*)$/);
+  if (match) {
+    let [, mimeType, charset, base64, data] = match;
+    if (charset === "base64" && !base64) {
+      base64 = charset;
+      charset = undefined;
+    }
+    return {
+      mimeType,
+      charset,
+      data: base64 ? atob(data) : data,
+      base64: base64 ? data : btoa(data),
+    };
+  }
+  return null;
 }
 
 /**
@@ -331,4 +363,49 @@ export function clipPathReference(id: string): string {
   // https://stackoverflow.com/questions/18259032/using-base-tag-on-a-page-that-contains-svg-marker-elements-fails-to-render-marke
   const url = window.location.href.replace(/#.*$/, "") + "#" + id;
   return `url(${url})`;
+}
+
+export function initializeIframeResizer(readyCallback = () => {}) {
+  if (!IFRAMED) {
+    return;
+  }
+
+  // Make iFrameResizer avaliable so that embed users can
+  // have their embeds autosize to their content
+  if (window.iFrameResizer) {
+    console.error("iFrameResizer resizer already defined.");
+    readyCallback();
+  } else {
+    window.iFrameResizer = {
+      autoResize: true,
+      heightCalculationMethod: "bodyScroll",
+      readyCallback: readyCallback,
+    };
+
+    // FIXME: Crimes
+    // This is needed so the FE test framework which runs in node
+    // without the avaliability of require.ensure skips over this part
+    // which is for external purposes only.
+    //
+    // Ideally that should happen in the test config, but it doesn't
+    // seem to want to play nice when messing with require
+    if (typeof require.ensure !== "function") {
+      // $FlowFixMe: flow doesn't seem to like returning false here
+      return false;
+    }
+
+    // Make iframe-resizer avaliable to the embed
+    // We only care about contentWindow so require that minified file
+
+    require.ensure([], require => {
+      require("iframe-resizer/js/iframeResizer.contentWindow.js");
+    });
+  }
+}
+
+export function isEventOverElement(event, element) {
+  const { clientX: x, clientY: y } = event;
+  const { top, bottom, left, right } = element.getBoundingClientRect();
+
+  return y >= top && y <= bottom && x >= left && x <= right;
 }

@@ -7,11 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		D105B2241BB378C100A5D850 /* INAppStoreWindowSwizzling.c in Sources */ = {isa = PBXBuildFile; fileRef = D105B1F21BB378C100A5D850 /* INAppStoreWindowSwizzling.c */; };
-		D105B2251BB378C100A5D850 /* INWindowBackgroundView+CoreUIRendering.m in Sources */ = {isa = PBXBuildFile; fileRef = D105B1F51BB378C100A5D850 /* INWindowBackgroundView+CoreUIRendering.m */; };
-		D105B2261BB378C100A5D850 /* NSDocument+INAppStoreWindowFixes.m in Sources */ = {isa = PBXBuildFile; fileRef = D105B1F71BB378C100A5D850 /* NSDocument+INAppStoreWindowFixes.m */; };
-		D105B2271BB378C100A5D850 /* INAppStoreWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = D105B1F91BB378C100A5D850 /* INAppStoreWindow.m */; };
-		D105B2281BB378C100A5D850 /* INWindowButton.m in Sources */ = {isa = PBXBuildFile; fileRef = D105B1FC1BB378C100A5D850 /* INWindowButton.m */; };
 		D105B23C1BB5BE4A00A5D850 /* back_icon@1x.png in Resources */ = {isa = PBXBuildFile; fileRef = D105B2331BB5BE4A00A5D850 /* back_icon@1x.png */; };
 		D105B23D1BB5BE4A00A5D850 /* back_icon@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = D105B2341BB5BE4A00A5D850 /* back_icon@2x.png */; };
 		D105B23E1BB5BE4A00A5D850 /* forward_icon@1x.png in Resources */ = {isa = PBXBuildFile; fileRef = D105B2351BB5BE4A00A5D850 /* forward_icon@1x.png */; };
@@ -21,7 +16,7 @@
 		D105B2431BB5BE4A00A5D850 /* refresh_icon@1x.png in Resources */ = {isa = PBXBuildFile; fileRef = D105B23A1BB5BE4A00A5D850 /* refresh_icon@1x.png */; };
 		D105B2441BB5BE4A00A5D850 /* refresh_icon@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = D105B23B1BB5BE4A00A5D850 /* refresh_icon@2x.png */; };
 		D121FD651BC5B2AF002101B0 /* Sparkle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D121FD641BC5B2AF002101B0 /* Sparkle.framework */; };
-		D121FD671BC5B375002101B0 /* Sparkle.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = D121FD641BC5B2AF002101B0 /* Sparkle.framework */; };
+		D121FD671BC5B375002101B0 /* Sparkle.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = D121FD641BC5B2AF002101B0 /* Sparkle.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		D121FD691BC5B4E7002101B0 /* dsa_pub.pem in Resources */ = {isa = PBXBuildFile; fileRef = D121FD681BC5B4E7002101B0 /* dsa_pub.pem */; };
 		D162C4A81BC87D2B009F678F /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = D162C49A1BC87D2B009F678F /* AppDelegate.m */; };
 		D162C4A91BC87D2B009F678F /* MetabaseTask.m in Sources */ = {isa = PBXBuildFile; fileRef = D162C49C1BC87D2B009F678F /* MetabaseTask.m */; };
@@ -75,17 +70,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		D105B1F21BB378C100A5D850 /* INAppStoreWindowSwizzling.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = INAppStoreWindowSwizzling.c; sourceTree = "<group>"; };
-		D105B1F31BB378C100A5D850 /* INAppStoreWindowSwizzling.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = INAppStoreWindowSwizzling.h; sourceTree = "<group>"; };
-		D105B1F41BB378C100A5D850 /* INWindowBackgroundView+CoreUIRendering.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "INWindowBackgroundView+CoreUIRendering.h"; sourceTree = "<group>"; };
-		D105B1F51BB378C100A5D850 /* INWindowBackgroundView+CoreUIRendering.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "INWindowBackgroundView+CoreUIRendering.m"; sourceTree = "<group>"; };
-		D105B1F61BB378C100A5D850 /* NSDocument+INAppStoreWindowFixes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSDocument+INAppStoreWindowFixes.h"; sourceTree = "<group>"; };
-		D105B1F71BB378C100A5D850 /* NSDocument+INAppStoreWindowFixes.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSDocument+INAppStoreWindowFixes.m"; sourceTree = "<group>"; };
-		D105B1F81BB378C100A5D850 /* INAppStoreWindow.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = INAppStoreWindow.h; sourceTree = "<group>"; };
-		D105B1F91BB378C100A5D850 /* INAppStoreWindow.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = INAppStoreWindow.m; sourceTree = "<group>"; };
-		D105B1FA1BB378C100A5D850 /* INAppStoreWindowCompatibility.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = INAppStoreWindowCompatibility.h; sourceTree = "<group>"; };
-		D105B1FB1BB378C100A5D850 /* INWindowButton.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = INWindowButton.h; sourceTree = "<group>"; };
-		D105B1FC1BB378C100A5D850 /* INWindowButton.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = INWindowButton.m; sourceTree = "<group>"; };
+		329A3BAF23C54C6700D0949B /* Metabase.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Metabase.entitlements; sourceTree = "<group>"; };
 		D105B2331BB5BE4A00A5D850 /* back_icon@1x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "back_icon@1x.png"; sourceTree = "<group>"; };
 		D105B2341BB5BE4A00A5D850 /* back_icon@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "back_icon@2x.png"; sourceTree = "<group>"; };
 		D105B2351BB5BE4A00A5D850 /* forward_icon@1x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "forward_icon@1x.png"; sourceTree = "<group>"; };
@@ -166,43 +151,8 @@
 			isa = PBXGroup;
 			children = (
 				D121FD631BC5B2AF002101B0 /* Sparkle-1.11.0 */,
-				D105B1BE1BB378C100A5D850 /* INAppStoreWindow */,
 			);
 			path = Vendor;
-			sourceTree = "<group>";
-		};
-		D105B1BE1BB378C100A5D850 /* INAppStoreWindow */ = {
-			isa = PBXGroup;
-			children = (
-				D105B1F01BB378C100A5D850 /* INAppStoreWindow */,
-			);
-			path = INAppStoreWindow;
-			sourceTree = "<group>";
-		};
-		D105B1F01BB378C100A5D850 /* INAppStoreWindow */ = {
-			isa = PBXGroup;
-			children = (
-				D105B1F11BB378C100A5D850 /* Extensions */,
-				D105B1F81BB378C100A5D850 /* INAppStoreWindow.h */,
-				D105B1F91BB378C100A5D850 /* INAppStoreWindow.m */,
-				D105B1FA1BB378C100A5D850 /* INAppStoreWindowCompatibility.h */,
-				D105B1FB1BB378C100A5D850 /* INWindowButton.h */,
-				D105B1FC1BB378C100A5D850 /* INWindowButton.m */,
-			);
-			path = INAppStoreWindow;
-			sourceTree = "<group>";
-		};
-		D105B1F11BB378C100A5D850 /* Extensions */ = {
-			isa = PBXGroup;
-			children = (
-				D105B1F21BB378C100A5D850 /* INAppStoreWindowSwizzling.c */,
-				D105B1F31BB378C100A5D850 /* INAppStoreWindowSwizzling.h */,
-				D105B1F41BB378C100A5D850 /* INWindowBackgroundView+CoreUIRendering.h */,
-				D105B1F51BB378C100A5D850 /* INWindowBackgroundView+CoreUIRendering.m */,
-				D105B1F61BB378C100A5D850 /* NSDocument+INAppStoreWindowFixes.h */,
-				D105B1F71BB378C100A5D850 /* NSDocument+INAppStoreWindowFixes.m */,
-			);
-			path = Extensions;
 			sourceTree = "<group>";
 		};
 		D105B2321BB5BE4A00A5D850 /* Images */ = {
@@ -312,6 +262,7 @@
 		D18853C41BB0CEC600D89803 /* Metabase */ = {
 			isa = PBXGroup;
 			children = (
+				329A3BAF23C54C6700D0949B /* Metabase.entitlements */,
 				D162C4981BC87D2B009F678F /* Backend */,
 				D162C4A11BC87D2B009F678F /* UI */,
 				D18853C51BB0CEC600D89803 /* Supporting Files */,
@@ -388,7 +339,7 @@
 		D18853B31BB0CEC600D89803 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0510;
+				LastUpgradeCheck = 1120;
 				ORGANIZATIONNAME = Metabase;
 				TargetAttributes = {
 					D18853BA1BB0CEC600D89803 = {
@@ -401,7 +352,7 @@
 			};
 			buildConfigurationList = D18853B61BB0CEC600D89803 /* Build configuration list for PBXProject "Metabase" */;
 			compatibilityVersion = "Xcode 3.2";
-			developmentRegion = English;
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
@@ -480,14 +431,9 @@
 			files = (
 				D162C4AB1BC87D2B009F678F /* TaskHealthChecker.m in Sources */,
 				D1CB9FE81BCEDE9A009A61FB /* LoadingView.m in Sources */,
-				D105B2261BB378C100A5D850 /* NSDocument+INAppStoreWindowFixes.m in Sources */,
 				D162C4AA1BC87D2B009F678F /* SettingsManager.m in Sources */,
-				D105B2251BB378C100A5D850 /* INWindowBackgroundView+CoreUIRendering.m in Sources */,
-				D105B2241BB378C100A5D850 /* INAppStoreWindowSwizzling.c in Sources */,
 				D18853CB1BB0CEC600D89803 /* main.m in Sources */,
 				D162C4AF1BC87D2B009F678F /* MainViewController.m in Sources */,
-				D105B2281BB378C100A5D850 /* INWindowButton.m in Sources */,
-				D105B2271BB378C100A5D850 /* INAppStoreWindow.m in Sources */,
 				D1BDAC6D1C0565640075D3AC /* JavaTask.m in Sources */,
 				D1BDAC721C05695B0075D3AC /* ResetPasswordTask.m in Sources */,
 				D162C4A91BC87D2B009F678F /* MetabaseTask.m in Sources */,
@@ -537,23 +483,37 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
@@ -578,24 +538,37 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
@@ -614,7 +587,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Metabase/Metabase.entitlements;
+				CODE_SIGN_IDENTITY = "-";
 				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Vendor/Sparkle-1.11.0",
@@ -622,6 +598,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Metabase/Metabase-Prefix.pch";
 				INFOPLIST_FILE = "Metabase/Metabase-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.metabase.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
 			};
@@ -631,8 +608,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Metabase/Metabase.entitlements;
+				CODE_SIGN_IDENTITY = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Vendor/Sparkle-1.11.0",
@@ -641,6 +621,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Metabase/Metabase-Prefix.pch";
 				INFOPLIST_FILE = "Metabase/Metabase-Info.plist";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.metabase.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
 			};

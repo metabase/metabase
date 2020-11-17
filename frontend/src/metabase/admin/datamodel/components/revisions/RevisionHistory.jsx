@@ -1,22 +1,24 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Revision from "./Revision.jsx";
-import { t } from "c-3po";
-import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import Revision from "./Revision";
+import { t } from "ttag";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Tables from "metabase/entities/tables";
 
 import { assignUserColors } from "metabase/lib/formatting";
 
+@Tables.load({ id: (state, { object: { table_id } }) => table_id })
 export default class RevisionHistory extends Component {
   static propTypes = {
     object: PropTypes.object,
     revisions: PropTypes.array,
-    tableMetadata: PropTypes.object,
+    table: PropTypes.object,
   };
 
   render() {
-    const { object, revisions, tableMetadata, user } = this.props;
+    const { object, objectType, revisions, table, user } = this.props;
 
     let userColorAssignments = {};
     if (revisions) {
@@ -33,13 +35,9 @@ export default class RevisionHistory extends Component {
             <Breadcrumbs
               className="py4"
               crumbs={[
-                [
-                  t`Datamodel`,
-                  "/admin/datamodel/database/" +
-                    tableMetadata.db_id +
-                    "/table/" +
-                    tableMetadata.id,
-                ],
+                objectType === "segment"
+                  ? [t`Segments`, `/admin/datamodel/segments?table=${table.id}`]
+                  : [t`Metrics`, `/admin/datamodel/metrics?table=${table.id}`],
                 [this.props.objectType + t` History`],
               ]}
             />
@@ -51,9 +49,9 @@ export default class RevisionHistory extends Component {
                 {revisions.map(revision => (
                   <Revision
                     revision={revision}
-                    objectName={name}
+                    objectName={object.name}
                     currentUser={user}
-                    tableMetadata={tableMetadata}
+                    tableMetadata={table}
                     userColor={userColorAssignments[revision.user.id]}
                   />
                 ))}

@@ -1,7 +1,10 @@
 /* @flow */
 
 import { createEntity, undo } from "metabase/lib/entities";
-import colors from "metabase/lib/colors";
+
+import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
+
 import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
 
@@ -11,12 +14,15 @@ import {
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 
 const Collections = createEntity({
   name: "collections",
   path: "/api/collection",
   schema: CollectionSchema,
+
+  displayNameOne: t`collection`,
+  displayNameMany: t`collections`,
 
   objectActions: {
     setArchived: ({ id }, archived, opts) =>
@@ -32,6 +38,16 @@ const Collections = createEntity({
         { parent_id: canonicalCollectionId(collection && collection.id) },
         undo(opts, "collection", "moved"),
       ),
+
+    // NOTE: DELETE not currently implemented
+    // $FlowFixMe: no official way to disable builtin actions yet
+    delete: null,
+  },
+
+  objectSelectors: {
+    getName: collection => collection && collection.name,
+    getUrl: collection => Urls.collection(collection.id),
+    getIcon: collection => "all",
   },
 
   selectors: {
@@ -67,40 +83,32 @@ const Collections = createEntity({
     ),
   },
 
-  objectSelectors: {
-    getName: collection => collection && collection.name,
-    getUrl: collection =>
-      collection &&
-      (collection.id === "root" ? `/` : `/collection/${collection.id}`),
-    getIcon: collection => "all",
-  },
-
   form: {
     fields: (
       values = {
-        color: colors.brand,
+        color: color("brand"),
       },
     ) => [
       {
         name: "name",
         title: t`Name`,
-        placeholder: "My new fantastic collection",
+        placeholder: t`My new fantastic collection`,
         validate: name =>
           (!name && t`Name is required`) ||
-          (name.length > 100 && t`Name must be 100 characters or less`),
+          (name && name.length > 100 && t`Name must be 100 characters or less`),
       },
       {
         name: "description",
         title: t`Description`,
         type: "text",
-        placeholder: "It's optional but oh, so helpful",
+        placeholder: t`It's optional but oh, so helpful`,
         normalize: description => description || null, // expected to be nil or non-empty string
       },
       {
         name: "color",
         title: t`Color`,
         type: "hidden",
-        initial: () => colors.brand,
+        initial: () => color("brand"),
         validate: color => !color && t`Color is required`,
       },
       {
@@ -111,7 +119,7 @@ const Collections = createEntity({
     ],
   },
 
-  getAnalyticsMetadata(action, object, getState) {
+  getAnalyticsMetadata([object], { action }, getState) {
     const type = object && getCollectionType(object.parent_id, getState());
     return type && `collection=${type}`;
   },
@@ -132,8 +140,10 @@ export const getCollectionType = (collectionId: string, state: {}) =>
   collectionId === null || collectionId === "root"
     ? "root"
     : collectionId === getUserPersonalCollectionId(state)
-      ? "personal"
-      : collectionId !== undefined ? "other" : null;
+    ? "personal"
+    : collectionId !== undefined
+    ? "other"
+    : null;
 
 export const ROOT_COLLECTION = {
   id: "root",
@@ -185,7 +195,7 @@ type ExpandedCollection = {
 // given list of collections with { id, name, location } returns a map of ids to
 // expanded collection objects like { id, name, location, path, children }
 // including a root collection
-function getExpandedCollectionsById(
+export function getExpandedCollectionsById(
   collections: Collection[],
   userPersonalCollectionId: ?CollectionId,
 ): { [key: PseudoCollectionId]: ExpandedCollection } {
@@ -197,8 +207,8 @@ function getExpandedCollectionsById(
         c.id === "root"
           ? []
           : c.location != null
-            ? ["root", ...c.location.split("/").filter(l => l)]
-            : null,
+          ? ["root", ...c.location.split("/").filter(l => l)]
+          : null,
       parent: null,
       children: [],
       is_personal: c.personal_owner_id != null,

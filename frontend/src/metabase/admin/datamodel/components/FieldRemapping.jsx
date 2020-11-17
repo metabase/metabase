@@ -1,8 +1,9 @@
 import React from "react";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
+import { Flex } from "grid-styled";
 
 import SelectButton from "metabase/components/SelectButton";
 import Select from "metabase/components/Select";
@@ -65,7 +66,9 @@ export default class FieldRemapping extends React.Component {
     // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
     const hasMappableNumeralValues =
       field.remapping.size > 0 &&
-      [...field.remapping.keys()].every(key => typeof key === "number");
+      [...field.remapping.keys()].every(
+        key => typeof key === "number" || key === null,
+      );
 
     return [
       MAP_OPTIONS.original,
@@ -98,7 +101,7 @@ export default class FieldRemapping extends React.Component {
     });
   };
 
-  onSetMappingType = async mappingType => {
+  handleChangeMappingType = async ({ target: { value: mappingType } }) => {
     const {
       table,
       field,
@@ -115,7 +118,7 @@ export default class FieldRemapping extends React.Component {
         "Change Remapping Type",
         "No Remapping",
       );
-      await deleteFieldDimension(field.id);
+      await deleteFieldDimension({ id: field.id });
       this.setState({ hasChanged: false });
     } else if (mappingType.type === "foreign") {
       // Try to find a entity name field from target table and choose it as remapping target field if it exists
@@ -127,11 +130,14 @@ export default class FieldRemapping extends React.Component {
           "Change Remapping Type",
           "Foreign Key",
         );
-        await updateFieldDimension(field.id, {
-          type: "external",
-          name: field.display_name,
-          human_readable_field_id: entityNameFieldId,
-        });
+        await updateFieldDimension(
+          { id: field.id },
+          {
+            type: "external",
+            name: field.display_name,
+            human_readable_field_id: entityNameFieldId,
+          },
+        );
       } else {
         // Enter a special state where we are choosing an initial value for FK target
         this.setState({
@@ -145,11 +151,14 @@ export default class FieldRemapping extends React.Component {
         "Change Remapping Type",
         "Custom Remappings",
       );
-      await updateFieldDimension(field.id, {
-        type: "internal",
-        name: field.display_name,
-        human_readable_field_id: null,
-      });
+      await updateFieldDimension(
+        { id: field.id },
+        {
+          type: "internal",
+          name: field.display_name,
+          human_readable_field_id: null,
+        },
+      );
       this.setState({ hasChanged: true });
     } else {
       throw new Error(t`Unrecognized mapping type`);
@@ -157,7 +166,7 @@ export default class FieldRemapping extends React.Component {
 
     // TODO Atte Keinänen 7/11/17: It's a pretty heavy approach to reload the whole table after a single field
     // has been updated; would be nicer to just fetch a single field. MetabaseApi.field_get seems to exist for that
-    await fetchTableMetadata(table.id, true);
+    await fetchTableMetadata({ id: table.id }, { reload: true });
   };
 
   onForeignKeyFieldChange = async foreignKeyClause => {
@@ -174,13 +183,16 @@ export default class FieldRemapping extends React.Component {
     const dimension = Dimension.parseMBQL(foreignKeyClause);
     if (dimension && dimension instanceof FKDimension) {
       MetabaseAnalytics.trackEvent("Data Model", "Update FK Remapping Target");
-      await updateFieldDimension(field.id, {
-        type: "external",
-        name: field.display_name,
-        human_readable_field_id: dimension.destination().field().id,
-      });
+      await updateFieldDimension(
+        { id: field.id },
+        {
+          type: "external",
+          name: field.display_name,
+          human_readable_field_id: dimension.destination().field().id,
+        },
+      );
 
-      await fetchTableMetadata(table.id, true);
+      await fetchTableMetadata({ id: table.id }, { reload: true });
 
       this.refs.fkPopover.close();
     } else {
@@ -190,7 +202,7 @@ export default class FieldRemapping extends React.Component {
 
   onUpdateRemappings = remappings => {
     const { field, updateFieldValues } = this.props;
-    return updateFieldValues(field.id, Array.from(remappings));
+    return updateFieldValues({ id: field.id }, Array.from(remappings));
   };
 
   // TODO Atte Keinänen 7/11/17: Should we have stricter criteria for valid remapping targets?
@@ -245,51 +257,55 @@ export default class FieldRemapping extends React.Component {
 
     return (
       <div>
-        <Select
-          value={mappingType}
-          onChange={this.onSetMappingType}
-          options={this.getAvailableMappingTypes()}
-        />
-        {mappingType === MAP_OPTIONS.foreign && [
-          <SelectSeparator key="foreignKeySeparator" />,
-          <PopoverWithTrigger
-            ref="fkPopover"
-            triggerElement={
-              <SelectButton
-                hasValue={hasFKMappingValue}
-                className={cx("flex inline-block no-decoration", {
-                  "border-error": dismissedInitialFkTargetPopover,
-                  "border-dark": !dismissedInitialFkTargetPopover,
-                })}
-              >
-                {fkMappingField ? (
-                  fkMappingField.display_name
-                ) : (
-                  <span className="text-medium">{t`Choose a field`}</span>
-                )}
-              </SelectButton>
-            }
-            isInitiallyOpen={isChoosingInitialFkTarget}
-            onClose={this.onFkPopoverDismiss}
-          >
-            <FieldList
-              className="text-purple"
-              field={fkMappingField}
-              fieldOptions={{
-                count: 0,
-                dimensions: [],
-                fks: this.getForeignKeys(),
-              }}
-              tableMetadata={table}
-              onFieldChange={this.onForeignKeyFieldChange}
-              hideSectionHeader
-            />
-          </PopoverWithTrigger>,
-          dismissedInitialFkTargetPopover && (
-            <div className="text-error my2">{t`Please select a column to use for display.`}</div>
-          ),
-          hasChanged && hasFKMappingValue && <RemappingNamingTip />,
-        ]}
+        <Flex align="center">
+          <Select
+            value={mappingType}
+            onChange={this.handleChangeMappingType}
+            options={this.getAvailableMappingTypes()}
+            optionValueFn={o => o}
+            className="inline-block"
+          />
+          {mappingType === MAP_OPTIONS.foreign && [
+            <SelectSeparator classname="flex" key="foreignKeySeparator" />,
+            <PopoverWithTrigger
+              ref="fkPopover"
+              triggerElement={
+                <SelectButton
+                  hasValue={hasFKMappingValue}
+                  className={cx("flex inline-block no-decoration", {
+                    "border-error": dismissedInitialFkTargetPopover,
+                    "border-dark": !dismissedInitialFkTargetPopover,
+                  })}
+                >
+                  {fkMappingField ? (
+                    fkMappingField.display_name
+                  ) : (
+                    <span className="text-medium">{t`Choose a field`}</span>
+                  )}
+                </SelectButton>
+              }
+              isInitiallyOpen={isChoosingInitialFkTarget}
+              onClose={this.onFkPopoverDismiss}
+            >
+              <FieldList
+                className="text-purple"
+                field={fkMappingField}
+                fieldOptions={{
+                  count: 0,
+                  dimensions: [],
+                  fks: this.getForeignKeys(),
+                }}
+                table={table}
+                onFieldChange={this.onForeignKeyFieldChange}
+                hideSingleSectionTitle
+              />
+            </PopoverWithTrigger>,
+            dismissedInitialFkTargetPopover && (
+              <div className="text-error ml2">{t`Please select a column to use for display.`}</div>
+            ),
+          ]}
+        </Flex>
+        {hasChanged && hasFKMappingValue && <RemappingNamingTip />}
         {mappingType === MAP_OPTIONS.custom && (
           <div className="mt3">
             {hasChanged && <RemappingNamingTip />}
@@ -314,9 +330,18 @@ export class ValueRemappings extends React.Component {
     this._updateEditingRemappings(this.props.remappings);
   }
 
-  componentWillReceiveProps(nextProps) {
-    if (nextProps.remappings !== this.props.remappings) {
-      this._updateEditingRemappings(nextProps.remappings);
+  componentDidUpdate(prevProps) {
+    const { remappings } = this.props;
+    if (
+      !// check if the Maps are different
+      (
+        prevProps.remappings &&
+        remappings &&
+        prevProps.remappings.size === remappings.size &&
+        [...remappings].every(([k, v]) => prevProps.remappings.get(k) === v)
+      )
+    ) {
+      this._updateEditingRemappings(remappings);
     }
   }
 
@@ -330,6 +355,8 @@ export class ValueRemappings extends React.Component {
         const mappedString =
           mappedOrUndefined !== undefined
             ? mappedOrUndefined.toString()
+            : original === null
+            ? "null"
             : original.toString();
 
         return [original, mappedString];

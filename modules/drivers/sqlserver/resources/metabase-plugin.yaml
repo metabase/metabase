@@ -1,6 +1,6 @@
 info:
   name: Metabase SQL Server Driver
-  version: 1.0.0-SNAPSHOT-7.0.0-jre8
+  version: 1.0.0-SNAPSHOT-7.4.1-jre8
   description: Allows Metabase to connect to SQL Server databases.
 driver:
   name: sqlserver
@@ -11,7 +11,7 @@ driver:
     - host
     - merge:
         - port
-        - placeholder: 1433
+        - description: Leave empty to use Dynamic Ports, or input specific port. Standard port is 1433.
     - merge:
         - dbname
         - name: db

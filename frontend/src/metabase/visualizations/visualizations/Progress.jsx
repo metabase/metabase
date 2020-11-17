@@ -2,12 +2,12 @@
 
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
-import Icon from "metabase/components/Icon.jsx";
-import IconBorder from "metabase/components/IconBorder.jsx";
-import { normal } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
+import IconBorder from "metabase/components/IconBorder";
+import { color } from "metabase/lib/colors";
 
 import _ from "underscore";
 
@@ -19,7 +19,7 @@ import cx from "classnames";
 const BORDER_RADIUS = 5;
 const MAX_BAR_HEIGHT = 65;
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 export default class Progress extends Component {
   props: VisualizationProps;
@@ -34,7 +34,11 @@ export default class Progress extends Component {
     return rows.length === 1 && cols.length === 1;
   }
 
-  static checkRenderable([{ data: { cols, rows } }]) {
+  static checkRenderable([
+    {
+      data: { cols, rows },
+    },
+  ]) {
     if (!isNumeric(cols[0])) {
       throw new Error(t`Progress visualization requires a number.`);
     }
@@ -42,7 +46,14 @@ export default class Progress extends Component {
 
   static settings = {
     ...columnSettings({
-      getColumns: ([{ data: { cols } }], settings) => [
+      getColumns: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => [
         _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
       ],
     }),
@@ -56,7 +67,7 @@ export default class Progress extends Component {
       section: t`Display`,
       title: t`Color`,
       widget: "color",
-      default: normal.green,
+      default: color("accent1"),
     },
   };
 
@@ -114,7 +125,11 @@ export default class Progress extends Component {
 
   render() {
     const {
-      series: [{ data: { rows, cols } }],
+      series: [
+        {
+          data: { rows, cols },
+        },
+      ],
       settings,
       onVisualizationClick,
       visualizationIsClickable,

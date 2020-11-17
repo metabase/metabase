@@ -1,5 +1,6 @@
 :root {
   --selection-color: var(--color-text-light);
+  --filter-color: var(--color-accent7);
 }
 
 #react_qb_viz {
@@ -23,7 +24,7 @@
 .QueryHeader-section {
   padding-right: 1em;
   margin-right: 1em;
-  border-right: 1px solid color(var(--color-accent2) alpha(-80%));
+  border-right: 1px solid color(var(--filter-color) alpha(-80%));
 }
 
 .QueryHeader-section:last-child {
@@ -88,7 +89,7 @@
 }
 
 .Query-filter.selected {
-  border-color: var(--color-accent2);
+  border-color: var(--filter-color);
 }
 
 .Filter-section {
@@ -217,7 +218,18 @@
 }
 
 .Loading {
-  background-color: color(var(--color-bg-white) alpha(-18%));
+  background-color: color(var(--color-bg-white) alpha(-28%));
+  transition: opacity 0.5s;
+}
+.Loading.Loading--hidden {
+  background-color: transparent;
+}
+.Dirty {
+  background-color: color(var(--color-bg-white) alpha(-28%));
+  transition: opacity 0.5s;
+}
+.Dirty.Loading--hidden {
+  background-color: transparent;
 }
 
 /* query errors */
@@ -244,25 +256,25 @@
 .QueryError-image--noRows {
   width: 120px;
   height: 120px;
-  background-image: url("../app/assets/img/no_results.svg");
+  background-image: url("~assets/img/no_results.svg");
 }
 
 .QueryError-image--queryError {
   width: 120px;
   height: 120px;
-  background-image: url("../app/assets/img/no_understand.svg");
+  background-image: url("~assets/img/no_understand.svg");
 }
 
 .QueryError-image--serverError {
   width: 120px;
   height: 148px;
-  background-image: url("../app/assets/img/blown_up.svg");
+  background-image: url("~assets/img/blown_up.svg");
 }
 
 .QueryError-image--timeout {
   width: 120px;
   height: 120px;
-  background-image: url("../app/assets/img/stopwatch.svg");
+  background-image: url("~assets/img/stopwatch.svg");
 }
 
 .QueryError-message {
@@ -407,19 +419,19 @@
 
 .Filter-section-field,
 .Filter-section-operator {
-  color: var(--color-accent2);
+  color: var(--filter-color);
 }
 
 .Filter-section-field .QueryOption {
-  color: var(--color-accent2);
+  color: var(--filter-color);
 }
 .Filter-section-operator .QueryOption {
-  color: var(--color-accent2);
+  color: var(--filter-color);
 }
 .Filter-section-value .QueryOption {
   color: white;
-  background-color: var(--color-accent2);
-  border: 1px solid var(--color-accent2);
+  background-color: var(--filter-color);
+  border: 1px solid var(--filter-color);
   border-radius: 6px;
   padding: 0.5em;
   padding-top: 0.3em;
@@ -439,10 +451,10 @@
 
 .FilterPopover .ColumnarSelector-row--selected,
 .FilterPopover .PopoverHeader-item.selected {
-  color: var(--color-accent2) !important;
+  color: var(--filter-color) !important;
 }
 .FilterPopover .ColumnarSelector-row:hover {
-  background-color: var(--color-accent2) !important;
+  background-color: var(--filter-color) !important;
 }
 
 /* VIEW SECTION */
@@ -475,6 +487,24 @@
 
 .NativeQueryEditor .GuiBuilder-data {
   border-right: none;
+}
+
+.NativeQueryEditorDragHandleWrapper {
+  position: absolute;
+  height: 8px;
+  width: 100%;
+  bottom: -4px;
+  cursor: row-resize;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.NativeQueryEditorDragHandle {
+  background: color(var(--color-border) blackness(+ 3%));
+  width: 100px;
+  height: 5px;
+  border-radius: 4px;
 }
 
 /* VISUALIZATION SETTINGS */
@@ -512,21 +542,12 @@
 }
 
 .RunButton {
-  z-index: 1;
   opacity: 1;
-  box-shadow: 0 1px 2px var(--color-shadow);
-  transition: transform 0.5s, opacity 0.5s;
-  position: relative;
-}
-
-@media screen and (--breakpoint-min-sm) {
-  .RunButton {
-    min-width: 8em;
-  }
+  transition: transform 0.25s, opacity 0.25s;
 }
 
 .RunButton.RunButton--hidden {
-  transform: translateY(-65px);
+  transform: translateY(-20px);
   opacity: 0;
 }
 
@@ -536,19 +557,20 @@
   z-index: -1;
   position: absolute;
   top: 0;
-  right: 0;
+  right: -300;
   width: 300px;
   height: 100%;
   background-color: var(--color-bg-light);
+  border-left: 1px solid var(--color-border);
   overflow: hidden;
+  opacity: 0;
 }
 
 .SideDrawer--show {
   z-index: 0;
-}
-
-.DataReference-container {
-  width: 300px;
+  right: 0;
+  opacity: 1;
+  transition: all 0.5s;
 }
 
 .DataReference h1 {
@@ -559,31 +581,6 @@
   padding-right: 0.6em;
 }
 
-/* object detail */
-.ObjectDetail {
-  width: 100%;
-  margin: 0 auto;
-  margin-bottom: 2rem;
-  border: 1px solid var(--color-border);
-}
-
-@media screen and (--breakpoint-min-xl) {
-  /* prevent the object detail from getting too wide on large screens */
-  .ObjectDetail {
-    max-width: 1140px;
-  }
-}
-
-.ObjectDetail-headingGroup {
-  border-bottom: 1px solid var(--color-border);
-}
-
-.ObjectDetail-infoMain {
-  border-right: 1px solid var(--color-border);
-  margin-left: 2.4rem;
-  font-size: 1rem;
-}
-
 .ObjectJSON {
   max-height: 200px;
   overflow: scroll;
@@ -591,20 +588,16 @@
   background-color: var(--color-bg-light);
   border: 1px solid var(--color-border);
   border-radius: 2px;
+  white-space: pre-wrap;
 }
 
 .PopoverBody.AddToDashboard {
   min-width: 25em;
 }
 
-.FieldList-grouping-trigger {
-  display: flex;
-  visibility: hidden;
-}
-
 .List-item--segment .Icon,
 .List-item--segment .List-item-title {
-  color: var(--color-accent2);
+  color: var(--filter-color);
 }
 
 .List-item--customfield .Icon,
@@ -612,11 +605,16 @@
   color: var(--color-brand);
 }
 
+.FieldList-grouping-trigger {
+  display: flex;
+  visibility: hidden;
+  border-left: 2px solid color(var(--filter-color) alpha(-90%));
+  color: color(var(--color-text-white) alpha(-50%));
+}
+
 .List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
 .List-item--selected .FieldList-grouping-trigger {
   visibility: visible;
-  border-left: 2px solid color(var(--color-accent2) alpha(-90%));
-  color: color(var(--color-text-white) alpha(-50%));
 }
 
 .QuestionTooltipTarget {
@@ -649,8 +647,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--color-accent2);
-  border: 1px solid var(--color-accent2);
+  background-color: var(--filter-color);
+  border: 1px solid var(--filter-color);
   transition: opacity 0.3s ease-out;
 }
 
@@ -659,7 +657,7 @@
 }
 
 /* need to do this ugliness to override the locally scoped font size from Scalar.css */
-#react_qb_viz .ScalarValue {
+.QueryBuilder .ScalarValue {
   font-size: 5em;
 }
 

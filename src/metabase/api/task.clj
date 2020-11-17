@@ -3,6 +3,7 @@
   (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
             [metabase.models.task-history :as task-history :refer [TaskHistory]]
+            [metabase.task :as task]
             [metabase.util
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]
@@ -12,13 +13,13 @@
 (defn- check-valid-limit [limit offset]
   (when (and offset (not limit))
     (throw
-     (ui18n/ex-info (tru "When including an offset, a limit must also be included.")
+     (ex-info (tru "When including an offset, a limit must also be included.")
        {:status-code 400}))))
 
 (defn- check-valid-offset [limit offset]
   (when (and limit (not offset))
     (throw
-     (ui18n/ex-info (tru "When including a limit, an offset must also be included.")
+     (ex-info (tru "When including a limit, an offset must also be included.")
        {:status-code 400}))))
 
 (api/defendpoint GET "/"
@@ -40,5 +41,12 @@
   "Get `TaskHistory` entry with ID."
   [id]
   (api/read-check TaskHistory id))
+
+(api/defendpoint GET "/info"
+  "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
+  []
+  (api/check-superuser)
+  (task/scheduler-info))
+
 
 (api/define-routes)

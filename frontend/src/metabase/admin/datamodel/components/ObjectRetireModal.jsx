@@ -1,9 +1,9 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
-import ActionButton from "metabase/components/ActionButton.jsx";
-import ModalContent from "metabase/components/ModalContent.jsx";
-import { t } from "c-3po";
+import ActionButton from "metabase/components/ActionButton";
+import ModalContent from "metabase/components/ModalContent";
+import { t } from "ttag";
 import cx from "classnames";
 
 export default class ObjectRetireModal extends Component {
@@ -15,11 +15,10 @@ export default class ObjectRetireModal extends Component {
   }
 
   async handleSubmit() {
-    const { object, objectType } = this.props;
-    let payload = {
+    const payload = {
+      id: this.props.object.id,
       revision_message: ReactDOM.findDOMNode(this.refs.revision_message).value,
     };
-    payload[objectType + "Id"] = object.id;
 
     await this.props.onRetire(payload);
     this.props.onClose();

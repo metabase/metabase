@@ -3,8 +3,10 @@
   page tasks."
   (:require [compojure.core :refer [GET POST]]
             [crypto.random :as crypto-random]
+            [metabase
+             [logger :as logger]
+             [troubleshooting :as troubleshooting]]
             [metabase.api.common :as api]
-            [metabase.logger :as logger]
             [metabase.util
              [schema :as su]
              [stats :as stats]]))
@@ -19,7 +21,7 @@
   "Logs."
   []
   (api/check-superuser)
-  (logger/get-messages))
+  (logger/messages))
 
 (api/defendpoint GET "/stats"
   "Anonymous usage stats. Endpoint for testing, and eventually exposing this to instance admins to let them see
@@ -34,5 +36,11 @@
   []
   {:token (crypto-random/hex 32)})
 
+(api/defendpoint GET "/bug_report_details"
+  "Returns version and system information relevant to filing a bug report against Metabase."
+  []
+  (api/check-superuser)
+  {:system-info   (troubleshooting/system-info)
+   :metabase-info (troubleshooting/metabase-info)})
 
 (api/define-routes)

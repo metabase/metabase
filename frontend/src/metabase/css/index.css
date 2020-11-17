@@ -10,6 +10,7 @@
 @import "./components/modal.css";
 @import "./components/select.css";
 @import "./components/table.css";
+@import "./components/grabber.css";
 
 @import "./containers/entity_search.css";
 
@@ -21,4 +22,3 @@
 @import "./pulse.css";
 @import "./query_builder.css";
 @import "./setup.css";
-@import "./tutorial.css";

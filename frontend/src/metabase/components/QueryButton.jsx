@@ -6,20 +6,17 @@ import cx from "classnames";
 
 import S from "./QueryButton.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 const QueryButton = ({ className, text, icon, iconClass, onClick, link }) => (
   <div className={className}>
-    <Link className={S.queryButton} onClick={onClick} to={link}>
-      <Icon
-        className={iconClass}
-        size={20}
-        {...(typeof icon === "string" ? { name: icon } : icon)}
-      />
-      <span className={cx(S.queryButtonText, "text-brand-hover")}>{text}</span>
-      <span className={S.queryButtonCircle}>
-        <Icon size={8} name="chevronright" />
-      </span>
+    <Link
+      className={cx(S.queryButton, "bg-light-hover px1 rounded")}
+      onClick={onClick}
+      to={link}
+    >
+      <Icon name={icon} />
+      <span className={S.queryButtonText}>{text}</span>
     </Link>
   </div>
 );

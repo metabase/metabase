@@ -8,12 +8,40 @@ export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
 
 export const DatabaseSchema = new schema.Entity("databases");
-export const TableSchema = new schema.Entity("tables");
+export const SchemaSchema = new schema.Entity("schemas");
+export const TableSchema = new schema.Entity(
+  "tables",
+  {},
+  {
+    // convert "schema" returned by API as a string value to an object that can be normalized
+    processStrategy({ ...table }) {
+      // special case for "Saved Question" tables
+      const databaseId = typeof table.id === "string" ? -1337 : table.db_id;
+      if (typeof table.schema === "string" || table.schema === null) {
+        table.schema_name = table.schema;
+        table.schema = {
+          id: generateSchemaId(databaseId, table.schema_name),
+          name: table.schema_name,
+          database: { id: databaseId },
+        };
+      }
+      return table;
+    },
+  },
+);
 export const FieldSchema = new schema.Entity("fields");
 export const SegmentSchema = new schema.Entity("segments");
 export const MetricSchema = new schema.Entity("metrics");
+export const SnippetSchema = new schema.Entity("snippets");
+export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
 
 DatabaseSchema.define({
+  tables: [TableSchema],
+  schemas: [SchemaSchema],
+});
+
+SchemaSchema.define({
+  database: DatabaseSchema,
   tables: [TableSchema],
 });
 
@@ -22,6 +50,7 @@ TableSchema.define({
   fields: [FieldSchema],
   segments: [SegmentSchema],
   metrics: [MetricSchema],
+  schema: SchemaSchema,
 });
 
 FieldSchema.define({
@@ -55,6 +84,8 @@ export const ENTITIES_SCHEMA_MAP = {
   collections: CollectionSchema,
   segments: SegmentSchema,
   metrics: MetricSchema,
+  snippets: SnippetSchema,
+  snippetCollections: SnippetCollectionSchema,
 };
 
 export const ObjectUnionSchema = new schema.Union(
@@ -65,3 +96,7 @@ export const ObjectUnionSchema = new schema.Union(
 CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
+
+export const parseSchemaId = id => String(id || "").split(":");
+export const generateSchemaId = (dbId, schemaName) =>
+  `${dbId}:${schemaName || ""}`;

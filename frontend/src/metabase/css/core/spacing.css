@@ -374,6 +374,19 @@
   margin-left: -var(--margin-4);
 }
 
+.mbn1 {
+  margin-bottom: -var(--margin-1);
+}
+.mbn2 {
+  margin-bottom: -var(--margin-2);
+}
+.mbn3 {
+  margin-bottom: -var(--margin-3);
+}
+.mbn4 {
+  margin-bottom: -var(--margin-4);
+}
+
 /* responsive spacing */
 
 @media screen and (--breakpoint-min-sm) {

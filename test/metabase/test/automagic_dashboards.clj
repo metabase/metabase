@@ -1,28 +1,17 @@
 (ns metabase.test.automagic-dashboards
   "Helper functions and macros for writing tests for automagic dashboards."
-  (:require [metabase.api.common :as api]
+  (:require [metabase
+             [models :refer [Card Collection Dashboard DashboardCard]]
+             [test :as mt]]
             [metabase.mbql
              [normalize :as normalize]
              [schema :as mbql.s]]
-            [metabase.models.user :as user]
-            [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]
             [schema.core :as s]))
-
-(defmacro with-rasta
-  "Execute body with rasta as the current user."
-  [& body]
-  `(binding [api/*current-user-id*              (test-users/user->id :rasta)
-             api/*current-user-permissions-set* (-> :rasta
-                                                    test-users/user->id
-                                                    user/permissions-set
-                                                    atom)]
-     ~@body))
 
 (defmacro with-dashboard-cleanup
   "Execute body and cleanup all dashboard elements created."
   [& body]
-  `(tu/with-model-cleanup ['~'Card '~'Dashboard '~'Collection '~'DashboardCard]
+  `(mt/with-model-cleanup [Card Dashboard Collection DashboardCard]
      ~@body))
 
 (defn- collect-urls
@@ -38,8 +27,8 @@
   (->> dashboard
        collect-urls
        (every? (fn [url]
-                 ((test-users/user->client :rasta) :get 200 (format "automagic-dashboards/%s"
-                                                                    (subs url 16)))))))
+                 (mt/user-http-request :rasta :get 200 (format "automagic-dashboards/%s"
+                                                               (subs url 16)))))))
 
 (defn- valid-card? [{query :dataset_query}]
   (nil? (s/check mbql.s/Query (normalize/normalize query))))

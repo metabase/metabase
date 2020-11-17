@@ -1,6 +1,6 @@
 /* @flow */
 
-import { t, ngettext, msgid } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
 // NOTE: extending Error with Babel requires babel-plugin-transform-builtin-extend
 
 type ChartSettingsInitial = { section?: ?string, widget?: ?any };

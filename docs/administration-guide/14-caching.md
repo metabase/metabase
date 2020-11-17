@@ -22,5 +22,5 @@ Lastly, you can set the maximum size of each question's cache in kilobytes, to p
 
 ---
 
-## Next: editing metadata
-Taking just a few minutes to edit and add info to your database’s metadata can greatly enhance your experience with Metabase. Let’s learn how to [edit your metadata](03-metadata-editing.md).
+## Next: map customization
+If you need to use a map tile server other than the one Metabase provides, you can find more information [on the next page](20-custom-maps.md).

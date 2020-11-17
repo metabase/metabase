@@ -1,38 +1,42 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
+import cx from "classnames";
+import { getIn } from "icepick";
+import { connect } from "react-redux";
+import { createSelector } from "reselect";
 
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import CheckBox from "metabase/components/CheckBox.jsx";
+import Visualization from "metabase/visualizations/components/Visualization";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
+import CheckBox from "metabase/components/CheckBox";
+
 import MetabaseAnalytics from "metabase/lib/analytics";
-import Query from "metabase/lib/query";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
+
+import Questions from "metabase/entities/questions";
+import { getMetadata } from "metabase/selectors/metadata";
+import { loadMetadataForQueries } from "metabase/redux/metadata";
+
+import Question from "metabase-lib/lib/Question";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 
-import _ from "underscore";
-import cx from "classnames";
-import { getIn } from "icepick";
+const getQuestions = createSelector(
+  [getMetadata, (state, ownProps) => ownProps.questions],
+  (metadata, questions) =>
+    questions && questions.map(card => new Question(card, metadata)),
+);
 
-function getQueryColumns(card, databases) {
-  let dbId = card.dataset_query.database;
-  if (card.dataset_query.type !== "query") {
-    return null;
-  }
-  let query = card.dataset_query.query;
-  let table =
-    databases &&
-    databases[dbId] &&
-    databases[dbId].tables_lookup[query["source-table"]];
-  if (!table) {
-    return null;
-  }
-  return Query.getQueryColumns(table, query);
-}
-
+// TODO: rework this so we don't have to load all cards up front
+@Questions.loadList({ query: { f: "all" } })
+@connect(
+  (state, ownProps) => ({
+    questions: getQuestions(state, ownProps),
+  }),
+  { loadMetadataForQueries },
+)
 export default class AddSeriesModal extends Component {
   constructor(props, context) {
     super(props, context);
@@ -41,24 +45,14 @@ export default class AddSeriesModal extends Component {
       searchValue: "",
       error: null,
       series: props.dashcard.series || [],
-      badCards: {},
+      badQuestions: {},
     };
-
-    _.bindAll(
-      this,
-      "onSearchChange",
-      "onSearchFocus",
-      "onDone",
-      "filteredCards",
-      "onRemoveSeries",
-    );
   }
 
   static propTypes = {
     dashcard: PropTypes.object.isRequired,
-    cards: PropTypes.array,
+    questions: PropTypes.array,
     dashcardData: PropTypes.object.isRequired,
-    fetchCards: PropTypes.func.isRequired,
     fetchCardData: PropTypes.func.isRequired,
     fetchDatabaseMetadata: PropTypes.func.isRequired,
     setDashCardAttributes: PropTypes.func.isRequired,
@@ -66,33 +60,30 @@ export default class AddSeriesModal extends Component {
   };
   static defaultProps = {};
 
-  async componentDidMount() {
+  async componentWillMount() {
+    const { questions, loadMetadataForQueries } = this.props;
     try {
-      await this.props.fetchCards();
-      await Promise.all(
-        _.uniq(this.props.cards.map(c => c.database_id)).map(db_id =>
-          this.props.fetchDatabaseMetadata(db_id),
-        ),
-      );
+      await loadMetadataForQueries(questions.map(question => question.query()));
     } catch (error) {
-      console.error(error);
+      console.error("AddSeriesModal loadMetadataForQueries", error);
       this.setState({ error });
     }
   }
 
-  onSearchFocus() {
+  handleSearchFocus = () => {
     MetabaseAnalytics.trackEvent("Dashboard", "Edit Series Modal", "search");
-  }
+  };
 
-  onSearchChange(e) {
+  handleSearchChange = e => {
     this.setState({ searchValue: e.target.value.toLowerCase() });
-  }
+  };
 
-  async onCardChange(card, e) {
+  async handleQuestionSelectedChange(question, selected) {
     const { dashcard, dashcardData } = this.props;
-    let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
+    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
+    const card = question.card();
     try {
-      if (e.target.checked) {
+      if (selected) {
         if (getIn(dashcardData, [dashcard.id, card.id]) === undefined) {
           this.setState({ state: "loading" });
           await this.props.fetchCardData(card, dashcard, {
@@ -100,16 +91,16 @@ export default class AddSeriesModal extends Component {
             clear: true,
           });
         }
-        let sourceDataset = getIn(this.props.dashcardData, [
+        const sourceDataset = getIn(this.props.dashcardData, [
           dashcard.id,
           dashcard.card.id,
         ]);
-        let seriesDataset = getIn(this.props.dashcardData, [
+        const seriesDataset = getIn(this.props.dashcardData, [
           dashcard.id,
           card.id,
         ]);
         if (
-          CardVisualization.seriesAreCompatible(
+          visualization.seriesAreCompatible(
             { card: dashcard.card, data: sourceDataset.data },
             { card: card, data: seriesDataset.data },
           )
@@ -127,7 +118,7 @@ export default class AddSeriesModal extends Component {
         } else {
           this.setState({
             state: "incompatible",
-            badCards: { ...this.state.badCards, [card.id]: true },
+            badQuestions: { ...this.state.badQuestions, [card.id]: true },
           });
           setTimeout(() => this.setState({ state: null }), 2000);
 
@@ -145,31 +136,31 @@ export default class AddSeriesModal extends Component {
         MetabaseAnalytics.trackEvent("Dashboard", "Remove Series");
       }
     } catch (e) {
-      console.error("onCardChange", e);
+      console.error("AddSeriesModal handleQuestionChange", e);
       this.setState({
         state: "incompatible",
-        badCards: { ...this.state.badCards, [card.id]: true },
+        badQuestions: { ...this.state.badQuestions, [card.id]: true },
       });
       setTimeout(() => this.setState({ state: null }), 2000);
     }
   }
 
-  onRemoveSeries(card) {
+  handleRemoveSeries(card) {
     this.setState({ series: this.state.series.filter(c => c.id !== card.id) });
     MetabaseAnalytics.trackEvent("Dashboard", "Remove Series");
   }
 
-  onDone() {
+  handleDone = () => {
     this.props.setDashCardAttributes({
       id: this.props.dashcard.id,
       attributes: { series: this.state.series },
     });
     this.props.onClose();
     MetabaseAnalytics.trackEvent("Dashboard", "Edit Series Modal", "done");
-  }
+  };
 
-  filteredCards() {
-    const { cards, dashcard, databases, dashcardData } = this.props;
+  filteredQuestions = () => {
+    const { questions, dashcard, dashcardData } = this.props;
     const { searchValue } = this.state;
 
     const initialSeries = {
@@ -177,26 +168,32 @@ export default class AddSeriesModal extends Component {
       data: getIn(dashcardData, [dashcard.id, dashcard.card.id, "data"]),
     };
 
-    let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
+    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
 
-    return cards.filter(card => {
+    return questions.filter(question => {
       try {
         // filter out the card itself
-        if (card.id === dashcard.card.id) {
+        if (question.id() === dashcard.card.id) {
           return false;
         }
-        if (card.dataset_query.type === "query") {
+        if (question.isStructured()) {
           if (
-            !CardVisualization.seriesAreCompatible(initialSeries, {
-              card: card,
-              data: { cols: getQueryColumns(card, databases), rows: [] },
+            !visualization.seriesAreCompatible(initialSeries, {
+              card: question.card(),
+              data: { cols: question.query().columns(), rows: [] },
             })
           ) {
             return false;
           }
         }
         // search
-        if (searchValue && card.name.toLowerCase().indexOf(searchValue) < 0) {
+        if (
+          searchValue &&
+          question
+            .displayName()
+            .toLowerCase()
+            .indexOf(searchValue) < 0
+        ) {
           return false;
         }
         return true;
@@ -205,24 +202,25 @@ export default class AddSeriesModal extends Component {
         return false;
       }
     });
-  }
+  };
 
   render() {
-    const { dashcard, dashcardData, cards } = this.props;
+    const { dashcard, dashcardData, questions } = this.props;
+    const { badQuestions } = this.state;
 
     let error = this.state.error;
 
-    let filteredCards;
-    if (!error && cards) {
-      filteredCards = this.filteredCards();
-      if (filteredCards.length === 0) {
+    let filteredQuestions;
+    if (!error && questions) {
+      filteredQuestions = this.filteredQuestions();
+      if (filteredQuestions.length === 0) {
         error = new Error("Whoops, no compatible questions match your search.");
       }
       // SQL cards at the bottom
-      filteredCards.sort((a, b) => {
-        if (a.dataset_query.type !== "query") {
+      filteredQuestions.sort((a, b) => {
+        if (!a.isNative()) {
           return 1;
-        } else if (b.dataset_query.type !== "query") {
+        } else if (!b.isNative()) {
           return -1;
         } else {
           return 0;
@@ -230,14 +228,12 @@ export default class AddSeriesModal extends Component {
       });
     }
 
-    let badCards = this.state.badCards;
-
-    let enabledCards = {};
-    for (let c of this.state.series) {
-      enabledCards[c.id] = true;
+    const enabledQuestions = {};
+    for (const card of this.state.series) {
+      enabledQuestions[card.id] = true;
     }
 
-    let series = [dashcard.card]
+    const series = [dashcard.card]
       .concat(this.state.series)
       .map(card => ({
         card: card,
@@ -258,12 +254,12 @@ export default class AddSeriesModal extends Component {
               showTitle
               isDashboard
               isMultiseries
-              onRemoveSeries={this.onRemoveSeries}
+              onRemoveSeries={this.handleRemoveSeries}
             />
             {this.state.state && (
               <div
                 className="spred flex layout-centered"
-                style={{ backgroundColor: colors["bg-white"] }}
+                style={{ backgroundColor: color("bg-white") }}
               >
                 {this.state.state === "loading" ? (
                   <div className="h3 rounded bordered p3 bg-white shadowed">
@@ -278,7 +274,10 @@ export default class AddSeriesModal extends Component {
             )}
           </div>
           <div className="flex-no-shrink pl4 pb4 pt1">
-            <button className="Button Button--primary" onClick={this.onDone}>
+            <button
+              className="Button Button--primary"
+              onClick={this.handleDone}
+            >
               {t`Done`}
             </button>
             <button
@@ -291,16 +290,16 @@ export default class AddSeriesModal extends Component {
           </div>
         </div>
         <div
-          className="border-left flex flex-column"
+          className="border-left flex flex-column scroll-y"
           style={{
             width: 370,
-            backgroundColor: colors["bg-light"],
-            borderColor: colors["border"],
+            backgroundColor: color("bg-light"),
+            borderColor: color("border"),
           }}
         >
           <div
             className="flex-no-shrink border-bottom flex flex-row align-center"
-            style={{ borderColor: colors["border"] }}
+            style={{ borderColor: color("border") }}
           >
             <Icon className="ml2" name="search" size={16} />
             <input
@@ -308,33 +307,38 @@ export default class AddSeriesModal extends Component {
               style={{ border: "none", backgroundColor: "transparent" }}
               type="search"
               placeholder={t`Search for a question`}
-              onFocus={this.onSearchFocus}
-              onChange={this.onSearchChange}
+              onFocus={this.handleSearchFocus}
+              onChange={this.handleSearchChange}
             />
           </div>
           <LoadingAndErrorWrapper
             className="flex flex-full"
-            loading={!filteredCards}
+            loading={!filteredQuestions}
             error={error}
             noBackground
           >
             {() => (
-              <ul className="flex-full scroll-y scroll-show pr1">
-                {filteredCards.map(card => (
+              <ul className="pr1">
+                {filteredQuestions.map(question => (
                   <li
-                    key={card.id}
+                    key={question.id()}
                     className={cx("my1 pl2 py1 flex align-center", {
-                      disabled: badCards[card.id],
+                      disabled: badQuestions[question.id()],
                     })}
                   >
                     <span className="px1 flex-no-shrink">
                       <CheckBox
-                        checked={enabledCards[card.id]}
-                        onChange={this.onCardChange.bind(this, card)}
+                        checked={enabledQuestions[question.id()]}
+                        onChange={e =>
+                          this.handleQuestionSelectedChange(
+                            question,
+                            e.target.checked,
+                          )
+                        }
                       />
                     </span>
-                    <span className="px1">{card.name}</span>
-                    {card.dataset_query.type !== "query" && (
+                    <span className="px1">{question.displayName()}</span>
+                    {!question.isStructured() && (
                       <Tooltip
                         tooltip={t`We're not sure if this question is compatible`}
                       >

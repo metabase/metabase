@@ -4,7 +4,7 @@ import React, { Component } from "react";
 
 import ExternalLink from "metabase/components/ExternalLink";
 import CodeSample from "./CodeSample";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import {
   getPublicEmbedOptions,
   getSignedEmbedOptions,
@@ -99,7 +99,7 @@ export default class EmbedCodePane extends Component {
 
         <div className="text-centered my2">
           <h4>{jt`More ${(
-            <ExternalLink href="https://github.com/metabase/embedding_reference_apps">
+            <ExternalLink href="https://github.com/metabase/embedding-reference-apps">
               {t`examples on GitHub`}
             </ExternalLink>
           )}`}</h4>

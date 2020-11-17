@@ -4,7 +4,7 @@ import { open } from "metabase/lib/dom";
 
 import _ from "underscore";
 
-import type { ClickAction } from "metabase/meta/types/Visualization";
+import type { ClickAction } from "metabase-types/types/Visualization";
 
 type PerformActionProps = {
   dispatch: Function,
@@ -15,28 +15,29 @@ export function performAction(
   action: ClickAction,
   { dispatch, onChangeCardAndRun }: PerformActionProps,
 ) {
+  let didPerform = false;
   if (action.action) {
     const reduxAction = action.action();
     if (reduxAction) {
       dispatch(reduxAction);
-      return true;
+      didPerform = true;
     }
   }
   if (action.url) {
     const url = action.url();
     if (url) {
       open(url);
-      return true;
+      didPerform = true;
     }
   }
   if (action.question) {
     const question = action.question();
     if (question) {
       onChangeCardAndRun({ nextCard: question.card() });
-      return true;
+      didPerform = true;
     }
   }
-  return false;
+  return didPerform;
 }
 
 export function performDefaultAction(

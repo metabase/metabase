@@ -41,7 +41,6 @@
         (init! plugin-info)))
     :ok))
 
-
 (defn- initialized? [{plugin-name :name}]
   (@initialized-plugin-names plugin-name))
 

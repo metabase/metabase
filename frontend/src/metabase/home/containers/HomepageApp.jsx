@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { push } from "react-router-redux";
 
 import Greeting from "metabase/lib/greeting";
@@ -31,7 +31,10 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class HomepageApp extends Component {
   static propTypes = {
     onChangeLocation: PropTypes.func.isRequired,

@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import { t, msgid, ngettext } from "c-3po";
+import { t, msgid, ngettext } from "ttag";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import _ from "underscore";
@@ -9,11 +9,14 @@ import { dissoc } from "icepick";
 
 import withToast from "metabase/hoc/Toast";
 
+import Collection from "metabase/entities/collections";
+import Search from "metabase/entities/search";
+
 import listSelect from "metabase/hoc/ListSelect";
 import BulkActionBar from "metabase/components/BulkActionBar";
 
 import * as Urls from "metabase/lib/urls";
-import colors, { normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import Button from "metabase/components/Button";
 import Card from "metabase/components/Card";
@@ -28,12 +31,11 @@ import VirtualizedList from "metabase/components/VirtualizedList";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import ItemTypeFilterBar from "metabase/components/ItemTypeFilterBar";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
-
+import PageHeading from "metabase/components/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 import { entityTypeForObject } from "metabase/schema";
 
 import CollectionList from "metabase/components/CollectionList";
@@ -93,11 +95,8 @@ const EMPTY_STATES = {
   card: <QuestionEmptyState />,
 };
 
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
-
-@entityListLoader({
-  entityType: "search",
-  entityQuery: (state, props) => ({ collection: props.collectionId }),
+@Search.loadList({
+  query: (state, props) => ({ collection: props.collectionId }),
   wrapped: true,
 })
 @connect((state, props) => {
@@ -153,7 +152,7 @@ class DefaultLanding extends React.Component {
       await Promise.all(
         this.state.selectedItems.map(item => item.setCollection(collection)),
       );
-      this.setState({ selectedItems: null, selectedAction: null });
+      this.handleCloseModal();
     } finally {
       this.handleBulkActionSuccess();
     }
@@ -164,6 +163,10 @@ class DefaultLanding extends React.Component {
     // Fixes an issue where things were staying selected when moving between
     // different collection pages
     this.props.onSelectNone();
+  };
+
+  handleCloseModal = () => {
+    this.setState({ selectedItems: null, selectedAction: null });
   };
 
   render() {
@@ -214,7 +217,7 @@ class DefaultLanding extends React.Component {
             pt={2}
             pb={3}
             px={4}
-            bg={pinned.length ? colors["bg-medium"] : null}
+            bg={pinned.length ? color("bg-medium") : null}
           >
             <Box>
               <Box mb={1}>
@@ -233,15 +236,17 @@ class DefaultLanding extends React.Component {
                 />
               </Box>
               <Flex align="center">
-                <h1 style={{ fontWeight: 900 }}>{collection.name}</h1>
+                <PageHeading className="text-wrap">
+                  {collection.name}
+                </PageHeading>
                 {collection.description && (
                   <Tooltip tooltip={collection.description}>
                     <Icon
                       name="info"
                       ml={1}
                       mt="4px"
-                      color={colors["bg-dark"]}
-                      hover={{ color: colors["brand"] }}
+                      color={color("bg-dark")}
+                      hover={{ color: color("brand") }}
                     />
                   </Tooltip>
                 )}
@@ -249,20 +254,17 @@ class DefaultLanding extends React.Component {
             </Box>
 
             <Flex ml="auto">
-              {isAdmin &&
-                !collection.personal_owner_id && (
-                  <Tooltip
-                    tooltip={t`Edit the permissions for this collection`}
+              {isAdmin && !collection.personal_owner_id && (
+                <Tooltip tooltip={t`Edit the permissions for this collection`}>
+                  <Link
+                    to={Urls.collectionPermissions(this.props.collectionId)}
                   >
-                    <Link
-                      to={Urls.collectionPermissions(this.props.collectionId)}
-                    >
-                      <IconWrapper>
-                        <Icon name="lock" />
-                      </IconWrapper>
-                    </Link>
-                  </Tooltip>
-                )}
+                    <IconWrapper>
+                      <Icon name="lock" />
+                    </IconWrapper>
+                  </Link>
+                </Tooltip>
+              )}
               {collection &&
                 collection.can_write &&
                 !collection.personal_owner_id && (
@@ -280,7 +282,7 @@ class DefaultLanding extends React.Component {
           <Box>
             <Box>
               {collectionHasPins ? (
-                <Box px={PAGE_PADDING} pt={2} pb={3} bg={colors["bg-medium"]}>
+                <Box px={PAGE_PADDING} pt={2} pb={3} bg={color("bg-medium")}>
                   <CollectionSectionHeading>{t`Pins`}</CollectionSectionHeading>
                   <PinDropTarget
                     pinIndex={pinned[pinned.length - 1].collection_position + 1}
@@ -445,9 +447,7 @@ class DefaultLanding extends React.Component {
                         justify="center"
                         py={2}
                         m={2}
-                        color={
-                          hovered ? colors["brand"] : colors["text-medium"]
-                        }
+                        color={hovered ? color("brand") : color("text-medium")}
                       >
                         {t`Drag here to un-pin`}
                       </Flex>
@@ -497,37 +497,31 @@ class DefaultLanding extends React.Component {
             </BulkActionBar>
           </Box>
         </Box>
-        {!_.isEmpty(selectedItems) &&
-          selectedAction == "copy" && (
-            <Modal>
-              <CollectionCopyEntityModal
-                entityObject={selectedItems[0]}
-                onClose={() =>
-                  this.setState({ selectedItems: null, selectedAction: null })
-                }
-                onSaved={newEntityObject => {
-                  this.setState({ selectedItems: null, selectedAction: null });
-                  this.handleBulkActionSuccess();
-                }}
-              />
-            </Modal>
-          )}
-        {!_.isEmpty(selectedItems) &&
-          selectedAction == "move" && (
-            <Modal>
-              <CollectionMoveModal
-                title={
-                  selectedItems.length > 1
-                    ? t`Move ${selectedItems.length} items?`
-                    : t`Move "${selectedItems[0].getName()}"?`
-                }
-                onClose={() =>
-                  this.setState({ selectedItems: null, selectedAction: null })
-                }
-                onMove={this.handleBulkMove}
-              />
-            </Modal>
-          )}
+        {!_.isEmpty(selectedItems) && selectedAction === "copy" && (
+          <Modal onClose={this.handleCloseModal}>
+            <CollectionCopyEntityModal
+              entityObject={selectedItems[0]}
+              onClose={this.handleCloseModal}
+              onSaved={newEntityObject => {
+                this.handleCloseModal();
+                this.handleBulkActionSuccess();
+              }}
+            />
+          </Modal>
+        )}
+        {!_.isEmpty(selectedItems) && selectedAction === "move" && (
+          <Modal onClose={this.handleCloseModal}>
+            <CollectionMoveModal
+              title={
+                selectedItems.length > 1
+                  ? t`Move ${selectedItems.length} items?`
+                  : t`Move "${selectedItems[0].getName()}"?`
+              }
+              onClose={this.handleCloseModal}
+              onMove={this.handleBulkMove}
+            />
+          </Modal>
+        )}
         <ItemsDragLayer selected={selected} />
       </Box>
     );
@@ -586,29 +580,26 @@ const PinnedItem = ({ item, index, collection }) => (
   <Link
     to={item.getUrl()}
     className="hover-parent hover--visibility"
-    hover={{ color: normal.blue }}
+    hover={{ color: color("brand") }}
     data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Click;${item.model}`}
   >
     <Card hoverable p={3}>
       <Icon name={item.getIcon()} color={item.getColor()} size={28} mb={2} />
       <Flex align="center">
         <h3>{item.getName()}</h3>
-        {collection.can_write &&
-          item.setPinned && (
-            <Box
-              ml="auto"
-              className="hover-child"
-              data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Unpin;${
-                item.model
-              }`}
-              onClick={ev => {
-                ev.preventDefault();
-                item.setPinned(false);
-              }}
-            >
-              <Icon name="pin" />
-            </Box>
-          )}
+        {collection.can_write && item.setPinned && (
+          <Box
+            ml="auto"
+            className="hover-child"
+            data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Unpin;${item.model}`}
+            onClick={ev => {
+              ev.preventDefault();
+              item.setPinned(false);
+            }}
+          >
+            <Icon name="pin" />
+          </Box>
+        )}
       </Flex>
     </Card>
   </Link>
@@ -648,14 +639,16 @@ const SelectionControls = ({
     <StackedCheckBox checked indeterminate onChange={onSelectAll} size={size} />
   );
 
-@entityObjectLoader({
-  entityType: "collections",
-  entityId: (state, props) => props.params.collectionId,
+@Collection.load({
+  id: (state, props) => props.params.collectionId,
   reload: true,
 })
 class CollectionLanding extends React.Component {
   render() {
-    const { object: currentCollection, params: { collectionId } } = this.props;
+    const {
+      object: currentCollection,
+      params: { collectionId },
+    } = this.props;
     const isRoot = collectionId === "root";
 
     const ancestors =
@@ -681,7 +674,7 @@ class CollectionLanding extends React.Component {
 const CollectionSectionHeading = ({ children }) => (
   <h5
     className="text-uppercase"
-    style={{ color: colors["text-medium"], fontWeight: 900 }}
+    style={{ color: color("text-medium"), fontWeight: 900 }}
   >
     {children}
   </h5>
@@ -692,7 +685,7 @@ const CollectionEditMenu = ({ isRoot, isAdmin, collectionId }) => {
   if (!isRoot) {
     items.push({
       title: t`Edit this collection`,
-      icon: "editdocument",
+      icon: "edit_document",
       link: `/collection/${collectionId}/edit`,
       event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Collection Click`,
     });
@@ -700,7 +693,7 @@ const CollectionEditMenu = ({ isRoot, isAdmin, collectionId }) => {
   if (!isRoot) {
     items.push({
       title: t`Archive this collection`,
-      icon: "viewArchive",
+      icon: "view_archive",
       link: `/collection/${collectionId}/archive`,
       event: `${ANALYTICS_CONTEXT};Edit Menu;Archive Collection`,
     });
@@ -715,7 +708,7 @@ const CollectionBurgerMenu = () => (
     items={[
       {
         title: t`View the archive`,
-        icon: "viewArchive",
+        icon: "view_archive",
         link: `/archive`,
         event: `${ANALYTICS_CONTEXT};Burger Menu;View Archive Click`,
       },

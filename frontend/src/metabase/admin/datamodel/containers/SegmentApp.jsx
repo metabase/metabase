@@ -3,73 +3,68 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import Segments from "metabase/entities/segments";
 
-import SegmentForm from "./SegmentForm.jsx";
-
-import { segmentEditSelectors } from "../selectors";
-import * as actions from "../datamodel";
-import { clearRequestState } from "metabase/redux/requests";
-import { getMetadata } from "metabase/selectors/metadata";
-import { fetchTableMetadata } from "metabase/redux/metadata";
+import { updatePreviewSummary } from "../datamodel";
+import { getPreviewSummary } from "../selectors";
+import SegmentForm from "../components/SegmentForm";
 
 const mapDispatchToProps = {
-  ...actions,
-  fetchTableMetadata,
-  clearRequestState,
+  updatePreviewSummary,
+  createSegment: Segments.actions.create,
+  updateSegment: Segments.actions.update,
   onChangeLocation: push,
 };
 
 const mapStateToProps = (state, props) => ({
-  ...segmentEditSelectors(state, props),
-  metadata: getMetadata(state, props),
+  previewSummary: getPreviewSummary(state),
 });
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class SegmentApp extends Component {
-  async componentWillMount() {
-    const { params, location } = this.props;
-
-    let tableId;
-    if (params.id) {
-      const segmentId = parseInt(params.id);
-      const { payload: segment } = await this.props.getSegment({ segmentId });
-      tableId = segment.table_id;
-    } else if (location.query.table) {
-      tableId = parseInt(location.query.table);
-    }
-
-    if (tableId != null) {
-      // TODO Atte Keinänen 6/8/17: Use only global metadata (`fetchTableMetadata`)
-      this.props.loadTableMetadata(tableId);
-      this.props.fetchTableMetadata(tableId);
-    }
-  }
-
-  async onSubmit(segment, f) {
-    let { tableMetadata } = this.props;
-    if (segment.id != null) {
-      await this.props.updateSegment(segment);
-      this.props.clearRequestState({ statePath: ["entities", "segments"] });
-      MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
-    } else {
-      await this.props.createSegment(segment);
-      this.props.clearRequestState({ statePath: ["entities", "segments"] });
-      MetabaseAnalytics.trackEvent("Data Model", "Segment Created");
-    }
-
-    this.props.onChangeLocation(
-      "/admin/datamodel/database/" +
-        tableMetadata.db_id +
-        "/table/" +
-        tableMetadata.id,
-    );
-  }
+@Segments.load({ id: (state, props) => parseInt(props.params.id) })
+class UpdateSegmentForm extends Component {
+  onSubmit = async segment => {
+    await this.props.updateSegment(segment);
+    MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
+    this.props.onChangeLocation(`/admin/datamodel/segments`);
+  };
 
   render() {
+    const { segment, ...props } = this.props;
     return (
-      <div>
-        <SegmentForm {...this.props} onSubmit={this.onSubmit.bind(this)} />
-      </div>
+      <SegmentForm
+        {...props}
+        segment={segment.getPlainObject()}
+        onSubmit={this.onSubmit}
+      />
+    );
+  }
+}
+
+class CreateSegmentForm extends Component {
+  onSubmit = async segment => {
+    await this.props.createSegment({
+      ...segment,
+      table_id: segment.definition["source-table"],
+    });
+    MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
+    this.props.onChangeLocation(`/admin/datamodel/segments`);
+  };
+
+  render() {
+    return <SegmentForm {...this.props} onSubmit={this.onSubmit} />;
+  }
+}
+
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
+export default class SegmentApp extends Component {
+  render() {
+    return this.props.params.id ? (
+      <UpdateSegmentForm {...this.props} />
+    ) : (
+      <CreateSegmentForm {...this.props} />
     );
   }
 }

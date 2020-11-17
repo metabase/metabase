@@ -1,12 +1,12 @@
 import React from "react";
 import { Flex } from "grid-styled";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { withRouter } from "react-router";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 export const FILTERS = [
   {
@@ -22,7 +22,7 @@ export const FILTERS = [
   {
     name: t`Questions`,
     filter: "card",
-    icon: "beaker",
+    icon: "bar",
   },
   {
     name: t`Pulses`,
@@ -42,7 +42,7 @@ const ItemTypeFilterBar = props => {
           isActive = true;
         }
 
-        const color = isActive ? colors.brand : "inherit";
+        const linkColor = isActive ? color("brand") : "inherit";
 
         return (
           <Link
@@ -50,8 +50,8 @@ const ItemTypeFilterBar = props => {
               pathname: location.pathname,
               query: { ...location.query, type: f.filter },
             }}
-            color={color}
-            hover={{ color: colors.brand }}
+            color={linkColor}
+            hover={{ color: color("brand") }}
             className="flex-full flex align-center justify-center sm-block text-brand-hover text-medium"
             mr={[0, 2]}
             key={f.filter}
@@ -59,7 +59,7 @@ const ItemTypeFilterBar = props => {
             data-metabase-event={`${analyticsContext};Item Filter;${f.name}`}
             style={{
               borderBottom: `2px solid ${
-                isActive ? colors.brand : "transparent"
+                isActive ? color("brand") : "transparent"
               }`,
             }}
           >
@@ -67,7 +67,7 @@ const ItemTypeFilterBar = props => {
             <h5
               className="text-uppercase hide sm-show"
               style={{
-                color: isActive ? colors.brand : "inherit",
+                color: isActive ? color("brand") : "inherit",
                 fontWeight: 900,
               }}
             >

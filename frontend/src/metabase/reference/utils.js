@@ -35,10 +35,10 @@ export const databaseToForeignKeys = database =>
         .map(({ table, field }) => ({
           id: field.id,
           name:
-            table.schema && table.schema !== "public"
-              ? `${titleize(humanize(table.schema))}.${table.display_name} → ${
-                  field.display_name
-                }`
+            table.schema_name && table.schema_name !== "public"
+              ? `${titleize(humanize(table.schema_name))}.${
+                  table.display_name
+                } → ${field.display_name}`
               : `${table.display_name} → ${field.display_name}`,
           description: field.description,
         }))
@@ -70,17 +70,16 @@ export const getQuestion = ({
   // consider taking a look at Ramda as a possible underscore alternative?
   // http://ramdajs.com/0.21.0/index.html
   const question = chain(newQuestion)
-    .updateIn(
-      ["dataset_query", "query", "aggregation"],
-      aggregation => (getCount ? ["count"] : aggregation),
+    .updateIn(["dataset_query", "query", "aggregation"], aggregation =>
+      getCount ? [["count"]] : aggregation,
     )
     .updateIn(["display"], display => visualization || display)
     .updateIn(["dataset_query", "query", "breakout"], oldBreakout => {
-      if (fieldId && metadata && metadata.fields[fieldId]) {
-        return [metadata.fields[fieldId].getDefaultBreakout()];
+      if (fieldId && metadata && metadata.field(fieldId)) {
+        return [metadata.field(fieldId).getDefaultBreakout()];
       }
       if (fieldId) {
-        return [fieldId];
+        return [["field-id", fieldId]];
       }
       return oldBreakout;
     })
@@ -90,7 +89,7 @@ export const getQuestion = ({
     return assocIn(
       question,
       ["dataset_query", "query", "aggregation"],
-      ["metric", metricId],
+      [["metric", metricId]],
     );
   }
 
@@ -98,7 +97,7 @@ export const getQuestion = ({
     return assocIn(
       question,
       ["dataset_query", "query", "filter"],
-      ["and", ["segment", segmentId]],
+      ["segment", segmentId],
     );
   }
 

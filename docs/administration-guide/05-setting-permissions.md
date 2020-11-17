@@ -8,7 +8,7 @@ Metabase uses a group-based approach to set permissions and restrictions on your
 
 A user can be a member of multiple groups, and if one of the groups they’re in has access to a particular database or table, but another group they’re a member of does not, then they **will** have access to that database.
 
-In addition to setting permissions on your databases and tables, you can also [set access permissions on the collections](06-collections.md) where your dashboards, questions, and pulses are saved. Collection permissions are not set from the Admin section; set them by clicking on the edit/pencil icon in the top-right of the screen when viewing a collection.
+In addition to setting permissions on your databases and tables, you can also [set access permissions on the collections](06-collections.md) where your dashboards, questions, and pulses are saved. Collection permissions can be set and edited from the collection itself, or the Admin Panel.
 
 ### Groups
 
@@ -22,10 +22,11 @@ You’ll notice that you already have two default groups: Administrators and All
 
 You’ll also see that you’re a member of the **Administrators** group — that’s why you were able to go to the Admin Panel in the first place. So, to make someone an admin of Metabase you just need to add them to this group. Metabase admins can log into the Admin Panel and make changes there, and they always have unrestricted access to all data that you have in your Metabase instance. So be careful who you add to the Administrator group!
 
-The **All Users** group is another special one. Every Metabase user is always a  member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](10-single-sign-on.md) enabled, new users who join that way will be automatically added to the All Users group.
+The **All Users** group is another special one. Every Metabase user is always a member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](10-single-sign-on.md) enabled, new users who join that way will be automatically added to the All Users group.
 
 #### An important note on the All Users group
-As we mentioned above, a user is given the *most permissive* setting she has for a given database/schema/table across *all* groups she is in. Because of that, it is important that your All Users group should never have *greater* access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. This goes for both data access as well as [collection permission](06-collections.md) settings.
+
+As we mentioned above, a user is given the _most permissive_ setting she has for a given database/schema/table across _all_ groups she is in. Because of that, it is important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. This goes for both data access as well as [collection permission](06-collections.md) settings.
 
 If you’ve set up the [Slack integration](09-setting-up-slack.md) and enabled [Metabot](../users-guide/11-metabot.md), you’ll also see a special **Metabot** group, which will allow you to restrict which questions your users will be able to access in Slack via Metabot.
 
@@ -55,9 +56,8 @@ At the database level, there are two different kinds of access you can set: data
 
 #### SQL (or native query) access
 
-- **Write (and read) SQL queries:** can write new SQL/native queries using the SQL editor, and can view any SQL-based saved questions. This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
-- **Read SQL queries**: can view saved SQL-based questions, but can’t edit them or create new ones. This access level requires the group to additionally have at least Limited data access for the database in question.
-- **No SQL query access**: won’t see any SQL-based saved questions in the list of questions or on dashboards.
+- **Write raw queries:** can write new SQL/native queries using the SQL editor. This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
+- **No access**: can't write or edit SQL/native queries using the SQL editor. Users with this level of access will still be able to view questions created from SQL/native queries.
 
 If you select `Limit access` for one of your databases, your view will change to show the contents of that database. If the database utilizes namespaces or schemas, you’ll see a list of all the schemas in the database, and the level of data access each group has for them. Similarly, if you select `Limit access` on one of your schemas, you’ll drill down a level and see all the tables within it. From these views, you can navigate back by using the breadcrumb links in the top-left, and you can always drill down into a database or schema using the link under its name in the left column.
 
@@ -74,12 +74,14 @@ Lastly, data access levels for tables are almost exactly the same as well:
 - **Unrestricted access:** can ask questions about this table and see saved questions and dashboard cards using this table.
 - **No access:** can’t ask questions about this table or see saved questions or dashboard cards using this table.
 
-*Note: you’ll notice that tables don’t have the option for limited access. In the future, column-level permissions will be added to Metabase, and setting limited access on a table will allow you to choose which columns the group should have access to.*
+_Note: you’ll notice that tables don’t have the option for limited access. If need to set column-level or row-level data permissions, check out the [data sandboxing](https://www.metabase.com/docs/latest/enterprise-guide/data-sandboxes.html) feature of the [Enterprise Edition](https://www.metabase.com/enterprise/)._
 
 ### A note about Pulses
+
 Pulses act a bit differently with regard to permissions. When a user creates a new Pulse, they will only have the option to include saved questions that they have permission to view. Note, however, that they are not prevented from emailing that Pulse to anyone, or posting that Pulse to a Slack channel (if you have Slack integration set up), regardless of the recipients’ permissions. Unlike dashboards, where individual cards are blocked based on a user’s permissions, a Pulse will always render all of its cards.
 
 ---
 
-## Next: custom segments and metrics
+## Next: collections
+
 Metabase lets you create and set permissions on collections of dashboards and questions. [Learn how](06-collections.md).

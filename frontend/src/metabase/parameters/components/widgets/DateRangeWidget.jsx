@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Calendar from "metabase/components/Calendar.jsx";
+import Calendar from "metabase/components/Calendar";
 import moment from "moment";
 
 const SEPARATOR = "~"; // URL-safe
@@ -44,20 +44,18 @@ export default class DateRangeWidget extends Component {
   render() {
     const { start, end } = this.state;
     return (
-      <div className="p1">
-        <Calendar
-          initial={start ? moment(start) : null}
-          selected={start ? moment(start) : null}
-          selectedEnd={end ? moment(end) : null}
-          onChange={(start, end) => {
-            if (end == null) {
-              this.setState({ start, end });
-            } else {
-              this.props.setValue(serializeDateRangeValue({ start, end }));
-            }
-          }}
-        />
-      </div>
+      <Calendar
+        initial={start ? moment(start) : null}
+        selected={start ? moment(start) : null}
+        selectedEnd={end ? moment(end) : null}
+        onChange={(start, end) => {
+          if (end == null) {
+            this.setState({ start, end });
+          } else {
+            this.props.setValue(serializeDateRangeValue({ start, end }));
+          }
+        }}
+      />
     );
   }
 }

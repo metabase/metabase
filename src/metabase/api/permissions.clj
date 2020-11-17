@@ -4,7 +4,9 @@
             [metabase
              [metabot :as metabot]
              [util :as u]]
-            [metabase.api.common :as api]
+            [metabase.api
+             [common :as api]
+             [permission-graph :as pg]]
             [metabase.models
              [permissions :as perms]
              [permissions-group :as group :refer [PermissionsGroup]]
@@ -18,44 +20,6 @@
 ;;; |                                          PERMISSIONS GRAPH ENDPOINTS                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; ------------------------------------------------- DeJSONifaction -------------------------------------------------
-
-(defn- ->int [id] (Integer/parseInt (name id)))
-
-(defn- dejsonify-table-perms [table-perms]
-  (if-not (map? table-perms)
-    (keyword table-perms)
-    (into {} (for [[k v] table-perms]
-               [(keyword k) (keyword v)]))))
-
-(defn- dejsonify-tables [tables]
-  (if (string? tables)
-    (keyword tables)
-    (into {} (for [[table-id perms] tables]
-               {(->int table-id) (dejsonify-table-perms perms)}))))
-
-(defn- dejsonify-schemas [schemas]
-  (if (string? schemas)
-    (keyword schemas)
-    (into {} (for [[schema tables] schemas]
-               {(name schema) (dejsonify-tables tables)}))))
-
-(defn- dejsonify-dbs [dbs]
-  (into {} (for [[db-id {:keys [native schemas]}] dbs]
-             {(->int db-id) {:native  (keyword native)
-                             :schemas (dejsonify-schemas schemas)}})))
-
-(defn- dejsonify-groups [groups]
-  (into {} (for [[group-id dbs] groups]
-             {(->int group-id) (dejsonify-dbs dbs)})))
-
-(defn- dejsonify-graph
-  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
-  parsing object keys as integers."
-  [graph]
-  (update graph :groups dejsonify-groups))
-
-
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
 (api/defendpoint GET "/graph"
@@ -63,7 +27,6 @@
   []
   (api/check-superuser)
   (perms/graph))
-
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
@@ -77,7 +40,7 @@
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
-  (perms/update-graph! (dejsonify-graph body))
+  (perms/update-graph! (pg/converted-json->graph ::pg/data-permissions-graph body))
   (perms/graph))
 
 
@@ -89,13 +52,15 @@
   "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
   groups.)"
   []
-  (into {} (for [{:keys [group_id members]} (db/query
-                                             {:select    [[:pgm.group_id :group_id] [:%count.pgm.id :members]]
-                                              :from      [[:permissions_group_membership :pgm]]
-                                              :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
-                                              :where     [:= :user.is_active true]
-                                              :group-by  [:pgm.group_id]})]
-             {group_id members})))
+  (let [results (db/query
+                  {:select    [[:pgm.group_id :group_id] [:%count.pgm.id :members]]
+                   :from      [[:permissions_group_membership :pgm]]
+                   :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
+                   :where     [:= :user.is_active true]
+                   :group-by  [:pgm.group_id]})]
+    (zipmap
+      (map :group_id results)
+      (map :members results))))
 
 (defn- ordered-groups
   "Return a sequence of ordered `PermissionsGroups`, including the `MetaBot` group only if MetaBot is enabled."
@@ -106,14 +71,20 @@
                  [:not= :id (u/get-id (group/metabot))])
      :order-by [:%lower.name]}))
 
+(defn add-member-counts
+  "Efficiently add `:member_count` to PermissionGroups."
+  {:batched-hydrate :member_count}
+  [groups]
+  (let [group-id->num-members (group-id->num-members)]
+    (for [group groups]
+      (assoc group :member_count (get group-id->num-members (u/get-id group) 0)))))
+
 (api/defendpoint GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group."
   []
   (api/check-superuser)
-  (let [group-id->members (group-id->num-members)]
-    (for [group (ordered-groups)]
-      (assoc group :members (or (group-id->members (u/get-id group))
-                                0)))))
+  (-> (ordered-groups)
+      (hydrate :member_count)))
 
 (api/defendpoint GET "/group/:id"
   "Fetch the details for a certain permissions group."

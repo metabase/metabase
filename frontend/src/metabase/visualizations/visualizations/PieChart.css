@@ -16,6 +16,7 @@
 
 :local .Donut {
   flex: 1;
+  height: 100%;
 }
 
 :local .Detail {

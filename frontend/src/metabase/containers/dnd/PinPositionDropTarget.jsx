@@ -12,7 +12,7 @@ const PIN_DROP_TARGET_INDICATOR_WIDTH = 3;
     drop(props, monitor, component) {
       const { item } = monitor.getItem();
       // no need to move to the same position
-      if (item.collection_position == props.pinIndex) {
+      if (item.collection_position === props.pinIndex) {
         return;
       }
       // no already pinned, so add it at the dropped position

@@ -1,10 +1,10 @@
 **This guide will teach you:**
 
-* [How to compile your own copy of Metabase](#build-metabase)
-* [How to set up a development environment](#development-environment)
-* [How to run the Metabase Server](#development-server-quick-start)
-* [How to contribute back to the Metabase project](#contributing)
-* [How to add support in Metabase for other languages](#internationalization)
+- [How to compile your own copy of Metabase](#build-metabase)
+- [How to set up a development environment](#development-environment)
+- [How to run the Metabase Server](#development-server-quick-start)
+- [How to contribute back to the Metabase project](#contributing)
+- [How to add support in Metabase for other languages](#internationalization)
 
 # Contributing
 
@@ -24,10 +24,15 @@ If you have problems with your development environment, make sure that you are n
 
 These are the set of tools which are required in order to complete any build of the Metabase code. Follow the links to download and install them on your own before continuing.
 
-1. [Oracle JDK 8 (http://www.oracle.com/technetwork/java/javase/downloads/index.html)](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
-2. [Node.js (http://nodejs.org/)](http://nodejs.org/)
-3. [Yarn package manager for Node.js](https://yarnpkg.com/)
-4. [Leiningen (http://leiningen.org/)](http://leiningen.org/)
+1. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - latest LTS version of JDK - more about [Java versions](./operations-guide/java-versions.md)
+2. [Node.js (http://nodejs.org/)](http://nodejs.org/) - latest LTS release
+3. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x
+4. [Leiningen (http://leiningen.org/)](http://leiningen.org/) - latest release
+
+On a most recent stable Ubuntu/Debian, the above tools can be installed by using:
+```
+sudo apt install openjdk-11-jdk nodejs yarnpkg leiningen
+```
 
 If you are developing on Windows, make sure to use Ubuntu on Windows and follow instructions for Ubuntu/Linux instead of installing ordinary Windows versions.
 
@@ -69,32 +74,32 @@ $ yarn
 
 Run your backend development server with
 
-    lein ring server
+    lein run
 
 Start the frontend build process with
 
-    yarn run build-hot
+    yarn build-hot
 
 ## Frontend development
 
 We use these technologies for our FE build process to allow us to use modules, es6 syntax, and css variables.
 
-* webpack
-* babel
-* cssnext
+- webpack
+- babel
+- cssnext
 
-Frontend tasks are executed using `yarn run`. All available tasks can be found in `package.json` under _scripts_.
+Frontend tasks are executed using `yarn`. All available tasks can be found in `package.json` under _scripts_.
 
 To build the frontend client without watching for changes, you can use:
 
 ```sh
-$ yarn run build
+$ yarn build
 ```
 
 If you're working on the frontend directly, you'll most likely want to reload changes on save, and in the case of React components, do so while maintaining state. To start a build with hot reloading, use:
 
 ```sh
-$ yarn run build-hot
+$ yarn build-hot
 ```
 
 Note that at this time if you change CSS variables, those changes will only be picked up when a build is restarted.
@@ -102,112 +107,36 @@ Note that at this time if you change CSS variables, those changes will only be p
 There is also an option to reload changes on save without hot reloading if you prefer that.
 
 ```sh
-$ yarn run build-watch
+$ yarn build-watch
 ```
+
+Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `webpack.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged webpack.config.js`
 
 ### Frontend testing
 
 All frontend tests are located in `frontend/test` directory. Run all frontend tests with
 
 ```
-yarn run test
+yarn test
 ```
 
-which will first build the backend JAR and then run integration, unit and Karma browser tests in sequence.
+which will run unit, integration and Cypress end-to-end tests in sequence.
 
-### Jest integration tests
+### Cypress end-to-end tests
 
-Integration tests simulate realistic sequences of user interactions. They render a complete DOM tree using [Enzyme](http://airbnb.io/enzyme/docs/api/index.html) and use temporary backend instances for executing API calls.
+End-to-end tests simulate realistic sequences of user interactions. Read more about how we approach end-to-end testing with Cypress in our [wiki page](https://github.com/metabase/metabase/wiki/E2E-Tests-with-Cypress).
 
-Integration tests use an enforced file naming convention `<test-suite-name>.integ.js` to separate them from unit tests.
-
-Useful commands:
-
-```bash
-lein run refresh-integration-test-db-metadata # Scan the sample dataset and re-run sync/classification/field values caching
-yarn run test-integrated-watch # Watches for file changes and runs the tests that have changed
-yarn run test-integrated-watch TestFileName # Watches the files in paths that match the given (regex) string
-```
-
-The way integration tests are written is a little unconventional so here is an example that hopefully helps in getting up to speed:
-
-```
-import {
-    useSharedAdminLogin,
-    createTestStore,
-} from "__support__/integrated_tests";
-import {
-    click
-} from "__support__/enzyme_utils"
-
-import { mount } from "enzyme"
-
-import { FETCH_DATABASES } from "metabase/redux/metadata";
-import { INITIALIZE_QB } from "metabase/query_builder/actions";
-import RunButton from "metabase/query_builder/components/RunButton";
-
-describe("Query builder", () => {
-    beforeAll(async () => {
-        // Usually you want to test stuff where user is already logged in
-        // so it is convenient to login before any test case.
-        useSharedAdminLogin()
-    })
-
-    it("should let you run a new query", async () => {
-        // Create a superpowered Redux store.
-        // Remember `await` here!
-        const store = await createTestStore()
-
-        // Go to a desired path in the app. This is safest to do before mounting the app.
-        store.pushPath('/question')
-
-        // Get React container for the whole app and mount it using Enzyme
-        const app = mount(store.getAppContainer())
-
-        // Usually you want to wait until the page has completely loaded, and our way to do that is to
-        // wait until the completion of specified Redux actions. `waitForActions` is also useful for verifying that
-        // specific operations are properly executed after user interactions.
-        // Remember `await` here!
-        await store.waitForActions([FETCH_DATABASES, INITIALIZE_QB])
-
-        // You can use `enzymeWrapper.debug()` to see what is the state of DOM tree at the moment
-        console.log(app.debug())
-
-        // You can use `testStore.debug()` method to see which Redux actions have been dispatched so far.
-        // Note that as opposed to Enzyme's debugging method, you don't need to wrap the call to `console.log()`.
-        store.debug();
-
-        // For simulating user interactions like clicks and input events you should use methods defined
-        // in `enzyme_utils.js` as they abstract away some React/Redux complexities.
-        click(app.find(RunButton))
-
-        // Note: In pretty rare cases where rendering the whole app is problematic or slow, you can just render a single
-        // React container instead with `testStore.connectContainer(container)`. In that case you are not able
-        // to click links that lead to other router paths.
-    });
-})
-```
-
-You can also skim through [`__support__/integrated_tests.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/integrated_tests.js) and [`__support__/enzyme_utils.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/enzyme_utils.js) to see all available methods.
+Cypress end-to-end tests use an enforced file naming convention `<test-suite-name>.cy.spec.js` to separate them from unit tests.
 
 ### Jest unit tests
 
 Unit tests are focused around isolated parts of business logic.
 
-Unit tests use an enforced file naming convention `<test-suite-name>.unit.js` to separate them from integration tests.
+Unit tests use an enforced file naming convention `<test-suite-name>.unit.spec.js` to separate them from end-to-end and integration tests.
 
 ```
-yarn run test-unit # Run all tests at once
-yarn run test-unit-watch # Watch for file changes
-```
-
-### Karma browser tests
-
-If you need to test code which uses browser APIs that are only available in real browsers, you can add a Karma test to `frontend/test/legacy-karma` directory.
-
-```
-yarn run test-karma # Run all tests once
-yarn run test-karma-watch # Watch for file changes
+yarn test-unit # Run all tests at once
+yarn test-unit-watch # Watch for file changes
 ```
 
 ## Backend development
@@ -217,12 +146,6 @@ Leiningen and your REPL are the main development tools for the backend. There ar
 And of course your Jetty development server is available via
 
     lein run
-
-To automatically load backend namespaces when files are changed, you can instead run with
-
-    lein ring server
-
-`lein ring server` takes significantly longer to launch than `lein run`, so if you aren't working on backend code we'd recommend sticking to launching with `lein run`.
 
 ### Building drivers
 
@@ -247,18 +170,15 @@ do this instead if you already have a Metabase uberjar (just make sure `plugins`
 
 ### Including driver source paths for development or other Leiningen tasks
 
-For REPL-based development or when running other Leiningen tasks you can add the `include-all-drivers` profile to merge the drivers' dependencies and source paths into the Metabase
+For development when running various Leiningen tasks you can add the `include-all-drivers` profile to merge the drivers' dependencies and source paths into the Metabase
 project:
 
 ```
-# Find out-of-date dependencies for the core Metabase project and all drivers
-# (Assuming you have the lein-ancient plugin in your ~/.lein/profiles.clj)
-lein with-profiles +include-all-drivers ancient
+# Install dependencies
+lein with-profiles +include-all-drivers deps
 ```
 
-When developing with Emacs and CIDER sending the universal prefix argument to `cider-jack-in` (i.e. running it with `C-u M-x cider-jack-in`) will prompt you for the command it should use
-to start the NREPL process; you can add `with-profiles +include-all-drivers` to that command to include driver source paths, which will let you work on the core Metabase project and all of
-the subprojects from a single REPL. :sunglasses:
+This profile is added by default when running `lein repl`, tests, and linters.
 
 #### Unit Tests / Linting
 
@@ -296,12 +216,6 @@ You'll probably want to tell Emacs to store customizations in a different file. 
 
 ## Documentation
 
-#### Instant Cheatsheet
-
-Start up an instant cheatsheet for the project + dependencies by running
-
-    lein instant-cheatsheet
-
 ## Internationalization
 
 We are an application with lots of users all over the world. To help them use Metabase in their own language, we mark all of our strings as i18n.
@@ -310,14 +224,14 @@ We are an application with lots of users all over the world. To help them use Me
 
 If you need to add new strings (try to be judicious about adding copy) do the following:
 
-1. Tag strings in the frontend using `t` and `jt` ES6 template literals (see more details in https://c-3po.js.org/):
+1. Tag strings in the frontend using `t` and `jt` ES6 template literals (see more details in https://ttag.js.org/):
 
 ```javascript
 const someString = t`Hello ${name}!`;
 const someJSX = <div>{jt`Hello ${name}`}</div>;
 ```
 
-and in the backend using `trs` and related macros (see more details in https://github.com/puppetlabs/clj-i18n):
+and in the backend using `trs` (to use the site language) or `tru` (to use the current User's language):
 
 ```clojure
 (trs "Hello {0}!" name)
@@ -325,10 +239,10 @@ and in the backend using `trs` and related macros (see more details in https://g
 
 ### Translation errors or missing strings
 
-If you see incorrect or missing strings for your langauge, please visit our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) and submit your fixes there.
+If you see incorrect or missing strings for your language, please visit our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) and submit your fixes there.
 
 ## License
 
-Copyright © 2017 Metabase, Inc
+Copyright © 2020 Metabase, Inc.
 
 Distributed under the terms of the GNU Affero General Public License (AGPL) except as otherwise noted. See individual files for details.

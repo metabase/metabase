@@ -4,41 +4,20 @@ import _ from "underscore";
 
 const componentStack = [];
 
-let SEPARATOR = " · ";
-let HIERARCHICAL = true;
-let BASE_NAME = null;
-
-export const setSeparator = separator => (SEPARATOR = separator);
-export const setHierarchical = hierarchical => (HIERARCHICAL = hierarchical);
-export const setBaseName = baseName => (BASE_NAME = baseName);
+const SEPARATOR = " · ";
 
 const updateDocumentTitle = _.debounce(() => {
-  if (HIERARCHICAL) {
-    document.title = componentStack
-      .map(component => component._documentTitle)
-      .filter(title => title)
-      .reverse()
-      .join(SEPARATOR);
-  } else {
-    // update with the top-most title
-    for (let i = componentStack.length - 1; i >= 0; i--) {
-      let title = componentStack[i]._documentTitle;
-      if (title) {
-        if (BASE_NAME) {
-          title += SEPARATOR + BASE_NAME;
-        }
-        if (document.title !== title) {
-          document.title = title;
-        }
-        break;
-      }
-    }
-  }
+  document.title = componentStack
+    .map(component => component._documentTitle)
+    .filter(title => title)
+    .reverse()
+    .join(SEPARATOR);
 });
 
 const title = documentTitleOrGetter => ComposedComponent =>
   class extends React.Component {
-    static displayName = "Title[" +
+    static displayName =
+      "Title[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 
@@ -63,7 +42,19 @@ const title = documentTitleOrGetter => ComposedComponent =>
       if (typeof documentTitleOrGetter === "string") {
         this._documentTitle = documentTitleOrGetter;
       } else if (typeof documentTitleOrGetter === "function") {
-        this._documentTitle = documentTitleOrGetter(this.props);
+        const result = documentTitleOrGetter(this.props);
+        if (result == null) {
+          // title functions might return null before data is loaded
+          this._documentTitle = "";
+        } else if (result instanceof String || typeof result === "string") {
+          this._documentTitle = result;
+        } else if (typeof result === "object") {
+          // The getter can return an object with a `refresh` promise along with
+          // the title. When that promise resolves, we call
+          // `documentTitleOrGetter` again.
+          this._documentTitle = result.title;
+          result.refresh.then(() => this._updateDocumentTitle());
+        }
       }
       updateDocumentTitle();
     }

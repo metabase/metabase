@@ -2,11 +2,13 @@
 
 import React from "react";
 
+import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
+
 import { Route } from "metabase/hoc/Title";
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
 import { UserAuthWrapper } from "redux-auth-wrapper";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import { loadCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
@@ -17,11 +19,11 @@ import HomepageApp from "metabase/home/containers/HomepageApp";
 
 // auth containers
 import AuthApp from "metabase/auth/AuthApp";
-import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
-import LoginApp from "metabase/auth/containers/LoginApp.jsx";
-import LogoutApp from "metabase/auth/containers/LogoutApp.jsx";
-import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
-import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
+import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
+import LoginApp from "metabase/auth/containers/LoginApp";
+import LogoutApp from "metabase/auth/containers/LogoutApp";
+import PasswordResetApp from "metabase/auth/containers/PasswordResetApp";
+import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount";
 
 /* Dashboards */
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
@@ -34,66 +36,61 @@ import {
   TableBrowser,
 } from "metabase/components/BrowseApp";
 
-import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
+import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 
-import CollectionEdit from "metabase/collections/containers/CollectionEdit.jsx";
-import CollectionCreate from "metabase/collections/containers/CollectionCreate.jsx";
+import CollectionEdit from "metabase/collections/containers/CollectionEdit";
+import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/containers/CollectionPermissionsModal";
 import UserCollectionList from "metabase/containers/UserCollectionList";
 
-import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
-import PulseMoveModal from "metabase/pulse/components/PulseMoveModal";
-import SetupApp from "metabase/setup/containers/SetupApp.jsx";
-import PostSetupApp from "metabase/setup/containers/PostSetupApp.jsx";
-import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
-import EntityPage from "metabase/components/EntityPage.jsx";
+import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
+import SetupApp from "metabase/setup/containers/SetupApp";
+import PostSetupApp from "metabase/setup/containers/PostSetupApp";
+import UserSettingsApp from "metabase/user/containers/UserSettingsApp";
 // new question
-import {
-  NewQuestionStart,
-  NewQuestionMetricSearch,
-} from "metabase/new_query/router_wrappers";
+import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import { NotFound, Unauthorized } from "metabase/containers/ErrorPages";
 
-// Reference Guide
-import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer.jsx";
 // Reference Metrics
-import MetricListContainer from "metabase/reference/metrics/MetricListContainer.jsx";
-import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer.jsx";
-import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer.jsx";
-import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer.jsx";
+import MetricListContainer from "metabase/reference/metrics/MetricListContainer";
+import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer";
+import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer";
+import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer";
 // Reference Segments
-import SegmentListContainer from "metabase/reference/segments/SegmentListContainer.jsx";
-import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer.jsx";
-import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer.jsx";
-import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer.jsx";
-import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer.jsx";
-import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer.jsx";
+import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
+import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
+import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
+import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
+import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
+import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
 // Reference Databases
-import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer.jsx";
-import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer.jsx";
-import TableListContainer from "metabase/reference/databases/TableListContainer.jsx";
-import TableDetailContainer from "metabase/reference/databases/TableDetailContainer.jsx";
-import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer.jsx";
-import FieldListContainer from "metabase/reference/databases/FieldListContainer.jsx";
-import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer.jsx";
+import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
+import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
+import TableListContainer from "metabase/reference/databases/TableListContainer";
+import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
+import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
+import FieldListContainer from "metabase/reference/databases/FieldListContainer";
+import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
 
 import getAdminRoutes from "metabase/admin/routes";
 
-import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
-import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
-import { DashboardHistoryModal } from "metabase/dashboard/components/DashboardHistoryModal";
+import PublicQuestion from "metabase/public/containers/PublicQuestion";
+import PublicDashboard from "metabase/public/containers/PublicDashboard";
+import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
+import DashboardHistoryModal from "metabase/dashboard/components/DashboardHistoryModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
+import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import CollectionLanding from "metabase/components/CollectionLanding";
 import Overworld from "metabase/containers/Overworld";
 
-import ArchiveApp from "metabase/home/containers/ArchiveApp.jsx";
+import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
 
 const MetabaseIsSetup = UserAuthWrapper({
@@ -109,16 +106,7 @@ const UserIsAuthenticated = UserAuthWrapper({
   failureRedirectPath: "/auth/login",
   authSelector: state => state.currentUser,
   wrapperDisplayName: "UserIsAuthenticated",
-  redirectAction: location =>
-    // HACK: workaround for redux-auth-wrapper not including hash
-    // https://github.com/mjrussell/redux-auth-wrapper/issues/121
-    routerActions.replace({
-      ...location,
-      query: {
-        ...location.query,
-        redirect: location.query.redirect + (window.location.hash || ""),
-      },
-    }),
+  redirectAction: routerActions.replace,
 });
 
 const UserIsAdmin = UserAuthWrapper({
@@ -151,7 +139,7 @@ const IsNotAuthenticated = MetabaseIsSetup(
 );
 
 export const getRoutes = store => (
-  <Route title="Metabase" component={App}>
+  <Route title={t`Metabase`} component={App}>
     {/* SETUP */}
     <Route
       path="/setup"
@@ -181,6 +169,7 @@ export const getRoutes = store => (
         <IndexRedirect to="/auth/login" />
         <Route component={IsNotAuthenticated}>
           <Route path="login" title={t`Login`} component={LoginApp} />
+          <Route path="login/:provider" title={t`Login`} component={LoginApp} />
         </Route>
         <Route path="logout" component={LogoutApp} />
         <Route path="forgot_password" component={ForgotPasswordApp} />
@@ -191,7 +180,16 @@ export const getRoutes = store => (
       {/* MAIN */}
       <Route component={IsAuthenticated}>
         {/* The global all hands rotues, things in here are for all the folks */}
-        <Route path="/" component={Overworld} />
+        <Route
+          path="/"
+          component={Overworld}
+          onEnter={(nextState, replace) => {
+            const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
+            if (page && page !== "/") {
+              replace(page);
+            }
+          }}
+        />
 
         <Route path="/explore" component={PostSetupApp} />
         <Route path="/explore/:databaseId" component={PostSetupApp} />
@@ -221,22 +219,22 @@ export const getRoutes = store => (
           <ModalRoute path="history" modal={DashboardHistoryModal} />
           <ModalRoute path="move" modal={DashboardMoveModal} />
           <ModalRoute path="copy" modal={DashboardCopyModal} />
+          <ModalRoute path="details" modal={DashboardDetailsModal} />
+          <ModalRoute path="archive" modal={ArchiveDashboardModal} />
         </Route>
 
         <Route path="/question">
           <IndexRoute component={QueryBuilder} />
           {/* NEW QUESTION FLOW */}
-          <Route path="new" title={t`New Question`}>
-            <IndexRoute component={NewQuestionStart} />
-            <Route
-              path="metric"
-              title={t`Metrics`}
-              component={NewQuestionMetricSearch}
-            />
-          </Route>
+          <Route
+            path="new"
+            title={t`New Question`}
+            component={NewQueryOptions}
+          />
+          <Route path="notebook" component={QueryBuilder} />
+          <Route path=":cardId" component={QueryBuilder} />
+          <Route path=":cardId/notebook" component={QueryBuilder} />
         </Route>
-        <Route path="/question/:cardId" component={QueryBuilder} />
-        <Route path="/question/:cardId/entity" component={EntityPage} />
 
         <Route path="/ready" component={PostSetupApp} />
 
@@ -258,11 +256,6 @@ export const getRoutes = store => (
       {/* REFERENCE */}
       <Route path="/reference" title={`Data Reference`}>
         <IndexRedirect to="/reference/databases" />
-        <Route
-          path="guide"
-          title={`Getting Started`}
-          component={GettingStartedGuideContainer}
-        />
         <Route path="metrics" component={MetricListContainer} />
         <Route path="metrics/:metricId" component={MetricDetailContainer} />
         <Route
@@ -325,7 +318,6 @@ export const getRoutes = store => (
         <Route path="create" component={PulseEditApp} />
         <Route path=":pulseId">
           <IndexRoute component={PulseEditApp} />
-          <ModalRoute path="move" modal={PulseMoveModal} />
         </Route>
       </Route>
 
@@ -341,7 +333,7 @@ export const getRoutes = store => (
       path="/_internal"
       getChildRoutes={(partialNextState, callback) =>
         // $FlowFixMe: flow doesn't know about require.ensure
-        require.ensure([], require => {
+        require.ensure([], function(require) {
           callback(null, [require("metabase/internal/routes").default]);
         })
       }

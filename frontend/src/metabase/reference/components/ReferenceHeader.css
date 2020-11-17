@@ -1,10 +1,9 @@
 :root {
   --title-color: var(--color-text-medium);
-  --icon-width: calc(48px + 1rem);
 }
 
 :local(.headerBody) {
-  composes: flex flex-full border-bottom text-dark text-bold from "style";
+  composes: flex flex-full text-dark text-bold from "style";
   overflow: hidden;
   align-items: center;
   border-color: var(--color-border);
@@ -23,9 +22,8 @@
 }
 
 :local(.subheaderBody) {
-  composes: text-dark from "style";
-  margin-left: var(--icon-width);
-  font-size: 16px;
+  composes: text-medium text-bold from "style";
+  font-size: 14px;
 }
 
 :local(.subheaderLink) {
@@ -40,7 +38,6 @@
 
 :local(.headerSchema) {
   composes: text-light absolute from "style";
-  left: var(--icon-width);
   top: -10px;
   font-size: 12px;
 }

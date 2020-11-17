@@ -1,10 +1,12 @@
 import React, { Component } from "react";
 
-import Icon from "metabase/components/Icon.jsx";
-import { t, ngettext, msgid } from "c-3po";
+import Icon from "metabase/components/Icon";
+import { t, ngettext, msgid } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
+
+import { regexpEscape } from "metabase/lib/string";
 
 export default class MetadataSchemaList extends Component {
   constructor(props, context) {
@@ -22,7 +24,7 @@ export default class MetadataSchemaList extends Component {
     this.setState({
       searchText: event.target.value,
       searchRegex: event.target.value
-        ? new RegExp(RegExp.escape(event.target.value), "i")
+        ? new RegExp(regexpEscape(event.target.value), "i")
         : null,
     });
   }
@@ -31,8 +33,8 @@ export default class MetadataSchemaList extends Component {
     const { schemas, selectedSchema } = this.props;
     const { searchRegex } = this.state;
 
-    let filteredSchemas = searchRegex
-      ? schemas.filter(s => searchRegex.test(s.name))
+    const filteredSchemas = searchRegex
+      ? schemas.filter(s => searchRegex.test(s))
       : schemas;
     return (
       <div className="MetadataEditor-table-list AdminList flex-no-shrink">
@@ -53,18 +55,17 @@ export default class MetadataSchemaList extends Component {
             )}
           </li>
           {filteredSchemas.map(schema => (
-            <li key={schema.name}>
+            <li key={schema}>
               <a
                 className={cx(
                   "AdminList-item flex align-center no-decoration",
                   {
-                    selected:
-                      selectedSchema && selectedSchema.name === schema.name,
+                    selected: selectedSchema && selectedSchema === schema,
                   },
                 )}
                 onClick={() => this.props.onChangeSchema(schema)}
               >
-                {schema.name}
+                {schema}
               </a>
             </li>
           ))}

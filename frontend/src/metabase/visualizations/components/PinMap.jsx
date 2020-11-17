@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 
@@ -16,7 +16,7 @@ import d3 from "d3";
 
 import L from "leaflet";
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 type Props = VisualizationProps;
 
@@ -52,7 +52,11 @@ export default class PinMap extends Component {
     return hasLatitudeAndLongitudeColumns(cols);
   }
 
-  static checkRenderable([{ data: { cols, rows } }]) {
+  static checkRenderable([
+    {
+      data: { cols, rows },
+    },
+  ]) {
     if (!hasLatitudeAndLongitudeColumns(cols)) {
       throw new LatitudeLongitudeError();
     }
@@ -81,7 +85,9 @@ export default class PinMap extends Component {
     if (
       newProps.series[0].data !== this.props.series[0].data ||
       !_.isEqual(
+        // $FlowFixMe
         _.pick(newProps.settings, ...SETTINGS_KEYS),
+        // $FlowFixMe
         _.pick(this.props.settings, ...SETTINGS_KEYS),
       )
     ) {
@@ -90,7 +96,7 @@ export default class PinMap extends Component {
   }
 
   updateSettings = () => {
-    let newSettings = {};
+    const newSettings = {};
     if (this.state.lat != null) {
       newSettings["map.center_latitude"] = this.state.lat;
     }
@@ -113,7 +119,15 @@ export default class PinMap extends Component {
   };
 
   _getPoints(props: Props) {
-    const { settings, series: [{ data: { cols, rows } }] } = props;
+    const {
+      settings,
+      series: [
+        {
+          data: { cols, rows },
+        },
+      ],
+      onUpdateWarnings,
+    } = props;
     const latitudeIndex = _.findIndex(
       cols,
       col => col.name === settings["map.latitude_column"],
@@ -127,11 +141,27 @@ export default class PinMap extends Component {
       col => col.name === settings["map.metric_column"],
     );
 
-    const points = rows.map(row => [
+    const allPoints = rows.map(row => [
       row[latitudeIndex],
       row[longitudeIndex],
       metricIndex >= 0 ? row[metricIndex] : 1,
     ]);
+
+    // only use points with numeric coordinates & metric
+    const points = allPoints.filter(
+      ([lat, lng, metric]) => lat != null && lng != null && metric != null,
+    );
+
+    const warnings = [];
+    const filteredRows = allPoints.length - points.length;
+    if (filteredRows > 0) {
+      warnings.push(
+        t`We filtered out ${filteredRows} row(s) containing null values.`,
+      );
+    }
+    if (onUpdateWarnings && warnings) {
+      onUpdateWarnings(warnings);
+    }
 
     const bounds = L.latLngBounds(points);
 
@@ -159,7 +189,7 @@ export default class PinMap extends Component {
 
   render() {
     const { className, settings, isEditing, isDashboard } = this.props;
-    let { lat, lng, zoom } = this.state;
+    const { lat, lng, zoom } = this.state;
     const disableUpdateButton = lat == null && lng == null && zoom == null;
 
     const Map = MAP_COMPONENTS_BY_TYPE[settings["map.pin_type"]];

@@ -3,7 +3,10 @@ import { assoc, getIn } from "icepick";
 
 import Dashboards from "metabase/entities/dashboards";
 
-import Query, { AggregationClause } from "metabase/lib/query";
+import * as Query from "metabase/lib/query/query";
+import * as Filter from "metabase/lib/query/filter";
+import * as Aggregation from "metabase/lib/query/aggregation";
+
 import { resourceListToMap } from "metabase/lib/redux";
 
 import { idsToObjectMap, databaseToForeignKeys } from "./utils";
@@ -83,7 +86,11 @@ export const getTable = createSelector(
   (tableId, tables, metricId, tableByMetric, segmentId, tableBySegment) =>
     tableId
       ? tables[tableId] || { id: tableId }
-      : metricId ? tableByMetric : segmentId ? tableBySegment : {},
+      : metricId
+      ? tableByMetric
+      : segmentId
+      ? tableBySegment
+      : {},
 );
 
 export const getFieldId = (state, props) =>
@@ -119,8 +126,7 @@ export const getMetricQuestions = createSelector(
           question.dataset_query.type === "query" &&
           _.any(
             Query.getAggregations(question.dataset_query.query),
-            aggregation =>
-              AggregationClause.getMetric(aggregation) === metricId,
+            aggregation => Aggregation.getMetric(aggregation) === metricId,
           ),
       )
       .reduce((map, question) => assoc(map, question.id, question), {}),
@@ -146,7 +152,7 @@ export const getSegmentQuestions = createSelector(
         question =>
           question.dataset_query.type === "query" &&
           Query.getFilters(question.dataset_query.query).some(
-            filter => Query.isSegmentFilter(filter) && filter[1] === segmentId,
+            filter => Filter.isSegment(filter) && filter[1] === segmentId,
           ),
       )
       .reduce((map, question) => assoc(map, question.id, question), {}),
@@ -193,7 +199,7 @@ export const getHasSingleSchema = createSelector(
   tables =>
     tables && Object.keys(tables).length > 0
       ? Object.values(tables).every(
-          (table, index, tables) => table.schema === tables[0].schema,
+          (table, index, tables) => table.schema_name === tables[0].schema,
         )
       : true,
 );

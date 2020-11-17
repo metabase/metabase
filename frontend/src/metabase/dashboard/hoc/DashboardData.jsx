@@ -17,8 +17,8 @@ import {
 
 import * as dashboardActions from "metabase/dashboard/dashboard";
 
-import type { Dashboard } from "metabase/meta/types/Dashboard";
-import type { Parameter } from "metabase/meta/types/Parameter";
+import type { Dashboard } from "metabase-types/types/Dashboard";
+import type { Parameter } from "metabase-types/types/Parameter";
 
 import _ from "underscore";
 
@@ -58,12 +58,21 @@ type Props = {
     reload: boolean,
     clear: boolean,
   }) => Promise<void>,
+  cancelFetchDashboardCardData: () => Promise<void>,
   setParameterValue: (id: string, value: string) => void,
   setErrorPage: (error: { status: number }) => void,
+
+  navigateToNewCardFromDashboard: (args: any) => void,
+
+  // don't link card titles to the query builder
+  noLink: boolean,
 };
 
 export default (ComposedComponent: ReactClass<any>) =>
-  connect(mapStateToProps, mapDispatchToProps)(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(
     class DashboardContainer extends Component {
       props: Props;
 
@@ -91,6 +100,10 @@ export default (ComposedComponent: ReactClass<any>) =>
         this.load(this.props);
       }
 
+      componentWillUnmount() {
+        this.props.cancelFetchDashboardCardData();
+      }
+
       componentWillReceiveProps(nextProps: Props) {
         if (nextProps.dashboardId !== this.props.dashboardId) {
           this.load(nextProps);
@@ -102,7 +115,16 @@ export default (ComposedComponent: ReactClass<any>) =>
       }
 
       render() {
-        return <ComposedComponent {...this.props} />;
+        const { navigateToNewCardFromDashboard, ...props } = this.props;
+        return (
+          <ComposedComponent
+            {...props}
+            // if noLink is provided, don't include navigateToNewCardFromDashboard
+            navigateToNewCardFromDashboard={
+              this.props.noLink ? null : navigateToNewCardFromDashboard
+            }
+          />
+        );
       }
     },
   );

@@ -1,21 +1,25 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
+import withTableMetadataLoaded from "metabase/admin/datamodel/hoc/withTableMetadataLoaded";
+import Tables from "metabase/entities/tables";
 
+@Tables.load({ id: (state, { tableId }) => tableId, wrapped: true })
+@withTableMetadataLoaded
 export default class MetadataSchema extends Component {
   static propTypes = {
     tableMetadata: PropTypes.object,
   };
 
   render() {
-    const { tableMetadata } = this.props;
-    if (!tableMetadata) {
+    const { table } = this.props;
+    if (!table || !table.fields) {
       return false;
     }
 
     const tdClassName = "py2 px1 border-bottom";
 
-    let fields = tableMetadata.fields.map(field => {
+    const fields = table.fields.map(field => {
       return (
         <tr key={field.id}>
           <td className={tdClassName}>
@@ -34,9 +38,7 @@ export default class MetadataSchema extends Component {
     return (
       <div className="MetadataTable px2 full">
         <div className="flex flex-column px1">
-          <div className="TableEditor-table-name text-bold">
-            {tableMetadata.name}
-          </div>
+          <div className="TableEditor-table-name text-bold">{table.name}</div>
         </div>
         <table className="mt2 full">
           <thead className="text-uppercase text-medium py1">

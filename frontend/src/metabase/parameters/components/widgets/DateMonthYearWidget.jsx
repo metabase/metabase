@@ -1,16 +1,16 @@
-import React, { Component } from "react";
-
-import YearPicker from "./YearPicker.jsx";
+import React from "react";
+import YearPicker from "./YearPicker";
+import { Flex } from "grid-styled";
 
 import moment from "moment";
 import _ from "underscore";
 import cx from "classnames";
 
-export default class DateMonthYearWidget extends Component {
+export default class DateMonthYearWidget extends React.Component {
   constructor(props, context) {
     super(props, context);
 
-    let initial = moment(this.props.value, "YYYY-MM");
+    const initial = moment(this.props.value, "YYYY-MM");
     if (initial.isValid()) {
       this.state = {
         month: initial.month(),
@@ -35,7 +35,7 @@ export default class DateMonthYearWidget extends Component {
   componentWillUnmount() {
     const { month, year } = this.state;
     if (month != null && year != null) {
-      let value = moment()
+      const value = moment()
         .year(year)
         .month(month)
         .format("YYYY-MM");
@@ -49,49 +49,43 @@ export default class DateMonthYearWidget extends Component {
     const { onClose } = this.props;
     const { month, year } = this.state;
     return (
-      <div className="py2">
-        <div className="flex flex-column align-center px1">
+      <div style={{ maxWidth: 320 }}>
+        <div className="border-bottom flex justify-center py1">
           <YearPicker
             value={year}
             onChange={year => this.setState({ year: year })}
           />
         </div>
-        <div className="flex">
-          <ol className="flex flex-column">
-            {_.range(0, 6).map(m => (
+        <Flex flexWrap="wrap" w="100%" p={1}>
+          {_.range(0, 12).map(m => (
+            <Flex w={1 / 3} align="center" justifyContent="center">
               <Month
                 key={m}
                 month={m}
                 selected={m === month}
                 onClick={() => this.setState({ month: m }, onClose)}
               />
-            ))}
-          </ol>
-          <ol className="flex flex-column">
-            {_.range(6, 12).map(m => (
-              <Month
-                key={m}
-                month={m}
-                selected={m === month}
-                onClick={() => this.setState({ month: m }, onClose)}
-              />
-            ))}
-          </ol>
-        </div>
+            </Flex>
+          ))}
+        </Flex>
       </div>
     );
   }
 }
 
 const Month = ({ month, selected, onClick }) => (
-  <li
-    className={cx("cursor-pointer px3 py1 text-bold text-brand-hover", {
-      "text-brand": selected,
-    })}
+  <div
+    className={cx(
+      "cursor-pointer text-bold full text-centered py1 px2 circular my1",
+      {
+        "bg-light-hover": !selected,
+        "text-white bg-brand": selected,
+      },
+    )}
     onClick={onClick}
   >
     {moment()
       .month(month)
       .format("MMMM")}
-  </li>
+  </div>
 );

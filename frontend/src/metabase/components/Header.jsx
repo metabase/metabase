@@ -2,11 +2,11 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
-import HeaderModal from "metabase/components/HeaderModal.jsx";
-import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
-import EditBar from "metabase/components/EditBar.jsx";
-import { t } from "c-3po";
+import HeaderModal from "metabase/components/HeaderModal";
+import TitleAndDescription from "metabase/components/TitleAndDescription";
+import EditBar from "metabase/components/EditBar";
+import EditWarning from "metabase/components/EditWarning";
+import { t } from "ttag";
 import { getScrollY } from "metabase/lib/dom";
 
 export default class Header extends Component {
@@ -30,7 +30,7 @@ export default class Header extends Component {
     this.updateHeaderHeight();
   }
 
-  componentWillUpdate() {
+  componentDidUpdate() {
     const modalIsOpen = !!this.props.headerModalMessage;
     if (modalIsOpen) {
       this.updateHeaderHeight();
@@ -65,6 +65,12 @@ export default class Header extends Component {
     }
   }
 
+  renderEditWarning() {
+    if (this.props.editWarning) {
+      return <EditWarning title={this.props.editWarning} />;
+    }
+  }
+
   renderHeaderModal() {
     return (
       <HeaderModal
@@ -80,40 +86,20 @@ export default class Header extends Component {
   render() {
     const { item } = this.props;
     let titleAndDescription;
-    if (this.props.isEditingInfo) {
+    if (this.props.item && this.props.item.id != null) {
       titleAndDescription = (
-        <div className="Header-title flex flex-column flex-full bordered rounded my1">
-          <InputBlurChange
-            className="AdminInput text-bold border-bottom rounded-top h3"
-            type="text"
-            value={this.props.item.name || ""}
-            onChange={this.setItemAttribute.bind(this, "name")}
-          />
-          <InputBlurChange
-            className="AdminInput rounded-bottom h4"
-            type="text"
-            value={this.props.item.description || ""}
-            onChange={this.setItemAttribute.bind(this, "description")}
-            placeholder={t`No description yet`}
-          />
-        </div>
+        <TitleAndDescription
+          title={this.props.item.name}
+          description={this.props.item.description}
+        />
       );
     } else {
-      if (this.props.item && this.props.item.id != null) {
-        titleAndDescription = (
-          <TitleAndDescription
-            title={this.props.item.name}
-            description={this.props.item.description}
-          />
-        );
-      } else {
-        titleAndDescription = (
-          <TitleAndDescription
-            title={t`New ${this.props.objectType}`}
-            description={this.props.item.description}
-          />
-        );
-      }
+      titleAndDescription = (
+        <TitleAndDescription
+          title={t`New ${this.props.objectType}`}
+          description={this.props.item.description}
+        />
+      );
     }
 
     let attribution;
@@ -125,7 +111,7 @@ export default class Header extends Component {
       );
     }
 
-    let headerButtons = this.props.headerButtons.map(
+    const headerButtons = this.props.headerButtons.map(
       (section, sectionIndex) => {
         return (
           section &&
@@ -148,6 +134,7 @@ export default class Header extends Component {
     return (
       <div>
         {this.renderEditHeader()}
+        {this.renderEditWarning()}
         {this.renderHeaderModal()}
         <div
           className={
@@ -167,7 +154,10 @@ export default class Header extends Component {
             )}
           </div>
 
-          <div className="flex align-center flex-align-right">
+          <div
+            className="flex align-center flex-align-right"
+            style={{ color: "#4C5773" }}
+          >
             {headerButtons}
           </div>
         </div>

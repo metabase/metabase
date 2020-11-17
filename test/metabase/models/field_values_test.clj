@@ -1,95 +1,118 @@
 (ns metabase.models.field-values-test
   "Tests for specific behavior related to FieldValues and functions in the `metabase.models.field-values` namespace."
-  (:require [clojure.java.jdbc :as jdbc]
-            [expectations :refer :all]
+  (:require [cheshire.core :as json]
+            [clojure
+             [string :as str]
+             [test :refer :all]]
+            [clojure.java.jdbc :as jdbc]
             [metabase
              [db :as mdb]
              [sync :as sync]
+             [test :as mt]
              [util :as u]]
+            [metabase.db.metadata-queries :as metadata-queries]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
-             [field-values :refer :all]
+             [field-values :as field-values :refer :all]
              [table :refer [Table]]]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.db :as db]))
 
-;;; ---------------------------------------- field-should-have-field-values? -----------------------------------------
+(deftest field-should-have-field-values?-test
+  (doseq [[group input->expected] {"Text and Category Fields"
+                                   {{:has_field_values :list
+                                     :visibility_type  :normal
+                                     :base_type        :type/Text}
+                                    true
 
-(expect (field-should-have-field-values? {:has_field_values :list
-                                          :visibility_type  :normal
-                                          :base_type        :type/Text}))
+                                    {:has_field_values nil
+                                     :visibility_type  :normal
+                                     :base_type        :type/Text}
+                                    false
 
-(expect false (field-should-have-field-values? {:has_field_values :list
-                                                :visibility_type  :sensitive
-                                                :base_type        :type/Text}))
+                                    {:has_field_values :list
+                                     :special_type     :type/Category
+                                     :visibility_type  :normal
+                                     :base_type        "type/Boolean"}
+                                    true}
 
-(expect false (field-should-have-field-values? {:has_field_values :list
-                                                :visibility_type  :hidden
-                                                :base_type        :type/Text}))
+                                   "retired/sensitive/hidden/details-only fields should always be excluded"
+                                   {{:base_type        :type/Boolean
+                                     :has_field_values :list
+                                     :visibility_type  :retired}
+                                    false
 
-(expect false (field-should-have-field-values? {:has_field_values :list
-                                                :visibility_type  :details-only
-                                                :base_type        :type/Text}))
+                                    {:base_type        :type/Boolean
+                                     :has_field_values :list
+                                     :visibility_type  :sensitive}
+                                    false
 
-(expect false (field-should-have-field-values? {:has_field_values nil
-                                                :visibility_type :normal
-                                                :base_type       :type/Text}))
+                                    {:has_field_values :list
+                                     :visibility_type  :sensitive
+                                     :base_type        :type/Text}
+                                    false
 
-(expect (field-should-have-field-values? {:has_field_values :list
-                                          :visibility_type  :normal
-                                          :base_type        :type/Text}))
+                                    {:base_type        :type/Boolean
+                                     :has_field_values :list
+                                     :visibility_type  :hidden}
+                                    false
 
-(expect (field-should-have-field-values? {:has_field_values :list
-                                          :special_type     :type/Category
-                                          :visibility_type  :normal
-                                          :base_type        "type/Boolean"}))
+                                    {:has_field_values :list
+                                     :visibility_type  :hidden
+                                     :base_type        :type/Text}
+                                    false
 
+                                    {:base_type        :type/Boolean
+                                     :has_field_values :list
+                                     :visibility_type  :details-only}
+                                    false
 
-;; retired/sensitive/hidden/details-only fields should always be excluded
-(expect false (field-should-have-field-values? {:base_type        :type/Boolean
-                                                :has_field_values :list
-                                                :visibility_type  :retired}))
+                                    {:has_field_values :list
+                                     :visibility_type  :details-only
+                                     :base_type        :type/Text}
+                                    false}
 
-(expect false (field-should-have-field-values? {:base_type        :type/Boolean
-                                                :has_field_values :list
-                                                :visibility_type  :sensitive}))
+                                   "date/time based fields should always be excluded"
+                                   {{:base_type        :type/Date
+                                     :has_field_values :list
+                                     :visibility_type  :normal}
+                                    false
 
-(expect false (field-should-have-field-values? {:base_type        :type/Boolean
-                                                :has_field_values :list
-                                                :visibility_type  :hidden}))
+                                    {:base_type        :type/DateTime
+                                     :has_field_values :list
+                                     :visibility_type  :normal}
+                                    false
 
-(expect false (field-should-have-field-values? {:base_type        :type/Boolean
-                                                :has_field_values :list
-                                                :visibility_type  :details-only}))
+                                    {:base_type        :type/Time
+                                     :has_field_values :list
+                                     :visibility_type  :normal}
+                                    false}}
+          [input expected] input->expected]
+    (testing (str group "\n")
+      (testing (pr-str (list 'field-should-have-field-values? input))
+        (is (= expected
+               (#'field-values/field-should-have-field-values? input)))))))
 
-;; date/time based fields should always be excluded
-(expect false (field-should-have-field-values? {:base_type        :type/Date
-                                                :has_field_values :list
-                                                :visibility_type  :normal}))
+(deftest distinct-values-test
+  (with-redefs [metadata-queries/field-distinct-values (constantly [1 2 3 4])]
+    (is (= [1 2 3 4]
+           (#'field-values/distinct-values {}))))
 
-(expect false (field-should-have-field-values? {:base_type        :type/DateTime
-                                                :has_field_values :list
-                                                :visibility_type  :normal}))
+  (testing "(#2332) check that if field values are long we skip over them"
+    (with-redefs [metadata-queries/field-distinct-values (constantly [(str/join (repeat 50000 "A"))])]
+      (is (= nil
+             (#'field-values/distinct-values {}))))))
 
-(expect false (field-should-have-field-values? {:base_type        :type/Time
-                                                :has_field_values :list
-                                                :visibility_type  :normal}))
-
-
-;;; ------------------------------------------------ everything else -------------------------------------------------
-
-(expect
-  [[1 2 3]
-   nil]
-  (tt/with-temp* [Database    [{database-id :id}]
+(deftest clear-field-values!-test
+  (mt/with-temp* [Database    [{database-id :id}]
                   Table       [{table-id :id} {:db_id database-id}]
                   Field       [{field-id :id} {:table_id table-id}]
                   FieldValues [_              {:field_id field-id, :values "[1,2,3]"}]]
-    [(db/select-one-field :values FieldValues, :field_id field-id)
-     (do
-       (clear-field-values! field-id)
-       (db/select-one-field :values FieldValues, :field_id field-id))]))
+    (is (= [1 2 3]
+           (db/select-one-field :values FieldValues, :field_id field-id)))
+    (#'field-values/clear-field-values! field-id)
+    (is (= nil
+           (db/select-one-field :values FieldValues, :field_id field-id)))))
 
 (defn- find-values [field-values-id]
   (-> (db/select-one FieldValues :id field-values-id)
@@ -99,48 +122,92 @@
   (sync/sync-database! db)
   (find-values field-values-id))
 
-;; Test "fixing" of human readable values when field values change
-(expect
-  (concat (repeat 2 {:values [1 2 3] :human_readable_values ["a" "b" "c"]})
-          (repeat 2 {:values [-2 -1 0 1 2 3] :human_readable_values ["-2" "-1" "0" "a" "b" "c"]})
-          [{:values [-2 -1 0] :human_readable_values ["-2" "-1" "0"]}])
+(deftest values-less-than-total-max-length?-test
+  (testing "values-less-than-total-max-length?"
+    (with-redefs [field-values/total-max-length 10]
+      (is (= true
+             (#'field-values/values-less-than-total-max-length? ["a" "b" "c"])))
+      (is (= false
+             (#'field-values/values-less-than-total-max-length? ["123" "4567" "8901"])))
+      (testing "Should only consume enough values to determine whether length is over limit"
+        (let [realized? (atom false)
+              vs        (lazy-cat ["123" "4567" "8901" "2345"] (do (reset! realized? true) ["Shouldn't get here"]))]
+          (is (= false
+                 (#'field-values/values-less-than-total-max-length? vs)))
+          (testing "Entire lazy seq shouldn't be realized"
+            (is (= false
+                   @realized?))))))))
 
-  (binding [mdb/*allow-potentailly-unsafe-connections* true]
-    ;; Create a temp warehouse database that can have it's field values change
-    (jdbc/with-db-connection [conn {:classname "org.h2.Driver", :subprotocol "h2", :subname "mem:temp"}]
-      (jdbc/execute! conn ["drop table foo if exists"])
-      (jdbc/execute! conn ["create table foo (id integer primary key, category_id integer not null, desc text)"])
-      (jdbc/insert-multi! conn :foo [{:id 1 :category_id 1 :desc "foo"}
-                                     {:id 2 :category_id 2 :desc "bar"}
-                                     {:id 3 :category_id 3 :desc "baz"}])
+(deftest normalize-human-readable-values-test
+  (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
+    (mt/with-temp FieldValues [fv {:field_id (mt/id :venues :id)
+                                   :values   (json/generate-string ["1" "2" "3"])}]
+      (db/execute! {:update FieldValues
+                    :set    {:human_readable_values (json/generate-string {"1" "a", "2" "b", "3" "c"})}
+                    :where  [:= :id (:id fv)]})
+      (is (= ["a" "b" "c"]
+             (:human_readable_values (FieldValues (:id fv))))))))
 
-      ;; Create a new in the Database table for this newly created temp database
-      (tt/with-temp Database [db {:engine       :h2
-                                  :name         "foo"
-                                  :is_full_sync true
-                                  :details      "{\"db\": \"mem:temp\"}"}]
+(deftest update-human-readable-values-test
+  (testing "Test \"fixing\" of human readable values when field values change"
+    (binding [mdb/*allow-potentailly-unsafe-connections* true]
+      ;; Create a temp warehouse database that can have it's field values change
+      (jdbc/with-db-connection [conn {:classname "org.h2.Driver", :subprotocol "h2", :subname "mem:temp"}]
+        (jdbc/execute! conn ["drop table foo if exists"])
+        (jdbc/execute! conn ["create table foo (id integer primary key, category_id integer not null, desc text)"])
+        (jdbc/insert-multi! conn :foo [{:id 1 :category_id 1 :desc "foo"}
+                                       {:id 2 :category_id 2 :desc "bar"}
+                                       {:id 3 :category_id 3 :desc "baz"}])
+        ;; Create a new in the Database table for this newly created temp database
+        (mt/with-temp Database [db {:engine       :h2
+                                    :name         "foo"
+                                    :is_full_sync true
+                                    :details      "{\"db\": \"mem:temp\"}"}]
+          ;; Sync the database so we have the new table and it's fields
+          (sync/sync-database! db)
+          (let [table-id        (db/select-one-field :id Table :db_id (u/get-id db) :name "FOO")
+                field-id        (db/select-one-field :id Field :table_id table-id :name "CATEGORY_ID")
+                field-values-id (db/select-one-field :id FieldValues :field_id field-id)]
+            ;; Add in human readable values for remapping
+            (db/update! FieldValues field-values-id {:human_readable_values ["a" "b" "c"]})
+            (let [expected-original-values {:values                [1 2 3]
+                                            :human_readable_values ["a" "b" "c"]}
+                  expected-updated-values  {:values                [-2 -1 0 1 2 3]
+                                            :human_readable_values ["-2" "-1" "0" "a" "b" "c"]}]
+              (is (= expected-original-values
+                     (find-values field-values-id)))
 
-        ;; Sync the database so we have the new table and it's fields
-        (do (sync/sync-database! db)
-            (let [table-id        (db/select-one-field :id Table :db_id (u/get-id db) :name "FOO")
-                  field-id        (db/select-one-field :id Field :table_id table-id :name "CATEGORY_ID")
-                  field-values-id (db/select-one-field :id FieldValues :field_id field-id)]
-              ;; Add in human readable values for remapping
-              (db/update! FieldValues field-values-id {:human_readable_values "[\"a\",\"b\",\"c\"]"})
+              (testing "There should be no changes to human_readable_values when resync'd"
+                (is (= expected-original-values
+                       (sync-and-find-values db field-values-id))))
 
-              ;; This is the starting point, the original catgory ids and their remapped values
-              [(find-values field-values-id)
-               ;; There should be no changes to human_readable_values  when resync'd
-               (sync-and-find-values db field-values-id)
-               (do
-                 ;; Add new rows that will have new field values
-                 (jdbc/insert-multi! conn :foo [{:id 4 :category_id -2 :desc "foo"}
-                                                {:id 5 :category_id -1 :desc "bar"}
-                                                {:id 6 :category_id 0 :desc "baz"}])
-                 ;; Sync to pickup the new field values and rebuild the human_readable_values
-                 (sync-and-find-values db field-values-id))
-               ;; Resyncing this (with the new field values) should result in the same human_readable_values
-               (sync-and-find-values db field-values-id)
-               ;; Test that field values can be removed and the corresponding human_readable_values are removed as well
-               (do (jdbc/delete! conn :foo ["id in (?,?,?)" 1 2 3])
-                   (sync-and-find-values db field-values-id))]))))))
+              (testing "Add new rows that will have new field values"
+                (jdbc/insert-multi! conn :foo [{:id 4 :category_id -2 :desc "foo"}
+                                               {:id 5 :category_id -1 :desc "bar"}
+                                               {:id 6 :category_id 0 :desc "baz"}])
+                (testing "Sync to pickup the new field values and rebuild the human_readable_values"
+                  (is (= expected-updated-values
+                         (sync-and-find-values db field-values-id)))))
+
+              (testing "Resyncing this (with the new field values) should result in the same human_readable_values"
+                (is (= expected-updated-values
+                       (sync-and-find-values db field-values-id))))
+
+              (testing "Test that field values can be removed and the corresponding human_readable_values are removed as well"
+                (jdbc/delete! conn :foo ["id in (?,?,?)" 1 2 3])
+                (is (= {:values [-2 -1 0] :human_readable_values ["-2" "-1" "0"]}
+                       (sync-and-find-values db field-values-id)))))))))))
+
+(deftest validate-human-readable-values-test
+  (testing "Should validate FieldValues :human_readable_values when"
+    (testing "creating"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid human-readable-values"
+           (mt/with-temp FieldValues [_ {:field_id (mt/id :venues :id), :human_readable_values {"1" "A", "2", "B"}}]))))
+    (testing "updating"
+      (mt/with-temp FieldValues [{:keys [id]} {:field_id (mt/id :venues :id), :human_readable_values []}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid human-readable-values"
+             (db/update! FieldValues id :human_readable_values {"1" "A", "2", "B"})))))))

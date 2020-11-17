@@ -2,6 +2,7 @@ import React from "react";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 
 export const component = StackedCheckBox;
+export const category = "input";
 
 export const description = `
 A stacked checkbox, representing "all" items.

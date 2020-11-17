@@ -11,13 +11,21 @@ import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // e
 
 import type { Data, Options } from "metabase/lib/api";
 
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { DatabaseCandidates } from "metabase/meta/types/Auto";
-import type { DashboardWithCards } from "metabase/meta/types/Dashboard";
+import type { DatabaseId } from "metabase-types/types/Database";
+import type { DatabaseCandidates } from "metabase-types/types/Auto";
+import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 
 export const ActivityApi = {
   list: GET("/api/activity"),
   recent_views: GET("/api/activity/recent_views"),
+};
+
+// only available with token loaded
+export const GTAPApi = {
+  list: GET("/api/mt/gtap"),
+  create: POST("/api/mt/gtap"),
+  update: PUT("/api/mt/gtap/:id"),
+  attributes: GET("/api/mt/user/attributes"),
 };
 
 export const CardApi = {
@@ -60,6 +68,9 @@ export const DashboardApi = {
   reposition_cards: PUT("/api/dashboard/:dashId/cards"),
   favorite: POST("/api/dashboard/:dashId/favorite"),
   unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
+  parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
+  parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:prefix"),
+  validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
 
   listPublic: GET("/api/dashboard/public"),
   listEmbeddable: GET("/api/dashboard/embeddable"),
@@ -123,12 +134,6 @@ export const LdapApi = {
 
 export const MetabaseApi = {
   db_list: GET("/api/database"),
-  db_list_with_tables: GET(
-    "/api/database?include_tables=true&include_cards=true",
-  ),
-  db_real_list_with_tables: GET(
-    "/api/database?include_tables=true&include_cards=false",
-  ),
   db_create: POST("/api/database"),
   db_validate: POST("/api/database/validate"),
   db_add_sample_dataset: POST("/api/database/sample_dataset"),
@@ -136,6 +141,8 @@ export const MetabaseApi = {
   db_update: PUT("/api/database/:id"),
   db_delete: DELETE("/api/database/:dbId"),
   db_metadata: GET("/api/database/:dbId/metadata"),
+  db_schemas: GET("/api/database/:dbId/schemas"),
+  db_schema_tables: GET("/api/database/:dbId/schema/:schemaName"),
   //db_tables:   GET("/api/database/:dbId/tables"),
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
@@ -156,10 +163,25 @@ export const MetabaseApi = {
     async table => {
       // HACK: inject GA metadata that we don't have intergrated on the backend yet
       if (table && table.db && table.db.engine === "googleanalytics") {
-        let GA = await getGAMetadata();
-        table.fields = table.fields.map(f => ({ ...f, ...GA.fields[f.name] }));
-        table.metrics.push(...GA.metrics);
-        table.segments.push(...GA.segments);
+        const GA = await getGAMetadata();
+        table.fields = table.fields.map(field => ({
+          ...field,
+          ...GA.fields[field.name],
+        }));
+        table.metrics.push(
+          ...GA.metrics.map(metric => ({
+            ...metric,
+            table_id: table.id,
+            googleAnalyics: true,
+          })),
+        );
+        table.segments.push(
+          ...GA.segments.map(segment => ({
+            ...segment,
+            table_id: table.id,
+            googleAnalyics: true,
+          })),
+        );
       }
 
       if (table && table.fields) {
@@ -196,6 +218,13 @@ export const MetabaseApi = {
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
   dataset_duration: POST("/api/dataset/duration"),
+  native: POST("/api/dataset/native"),
+
+  // to support audit app  allow the endpoint to be provided in the query
+  datasetEndpoint: POST("/api/:endpoint", {
+    // this prevents the `endpoint` parameter from being URL encoded
+    raw: { endpoint: true },
+  }),
 };
 
 export const PulseApi = {
@@ -302,6 +331,7 @@ export const UtilApi = {
   password_check: POST("/api/util/password_check"),
   random_token: GET("/api/util/random_token"),
   logs: GET("/api/util/logs"),
+  bug_report_details: GET("/api/util/bug_report_details"),
 };
 
 export const GeoJSONApi = {
@@ -313,23 +343,24 @@ export const I18NApi = {
 };
 
 export const TaskApi = {
-  get: GET("api/task"),
+  get: GET("/api/task"),
+  getJobsInfo: GET("/api/task/info"),
 };
 
 export function setPublicQuestionEndpoints(uuid: string) {
   setFieldEndpoints("/api/public/card/:uuid", { uuid });
 }
-export function setPublicDashboardEndpoints(uuid: string) {
-  setFieldEndpoints("/api/public/dashboard/:uuid", { uuid });
+export function setPublicDashboardEndpoints() {
+  setParamsEndpoints("/api/public");
 }
 export function setEmbedQuestionEndpoints(token: string) {
   if (!IS_EMBED_PREVIEW) {
     setFieldEndpoints("/api/embed/card/:token", { token });
   }
 }
-export function setEmbedDashboardEndpoints(token: string) {
+export function setEmbedDashboardEndpoints() {
   if (!IS_EMBED_PREVIEW) {
-    setFieldEndpoints("/api/embed/dashboard/:token", { token });
+    setParamsEndpoints("/api/embed");
   }
 }
 
@@ -338,7 +369,7 @@ function GET_with(url: string, params: Data) {
     GET(url)({ ...params, ...data }, options);
 }
 
-export function setFieldEndpoints(prefix: string, params: Data) {
+function setFieldEndpoints(prefix: string, params: Data) {
   MetabaseApi.field_values = GET_with(
     prefix + "/field/:fieldId/values",
     params,
@@ -350,6 +381,15 @@ export function setFieldEndpoints(prefix: string, params: Data) {
   MetabaseApi.field_remapping = GET_with(
     prefix + "/field/:fieldId/remapping/:remappedFieldId",
     params,
+  );
+}
+
+function setParamsEndpoints(prefix: string) {
+  DashboardApi.parameterValues = GET(
+    prefix + "/dashboard/:dashId/params/:paramId/values",
+  );
+  DashboardApi.parameterSearch = GET(
+    prefix + "/dashboard/:dashId/params/:paramId/search/:prefix",
   );
 }
 

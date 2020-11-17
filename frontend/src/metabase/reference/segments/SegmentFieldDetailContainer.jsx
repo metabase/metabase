@@ -3,9 +3,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import SegmentFieldSidebar from "./SegmentFieldSidebar.jsx";
-import SidebarLayout from "metabase/components/SidebarLayout.jsx";
-import SegmentFieldDetail from "metabase/reference/segments/SegmentFieldDetail.jsx";
+import SegmentFieldSidebar from "./SegmentFieldSidebar";
+import SidebarLayout from "metabase/components/SidebarLayout";
+import SegmentFieldDetail from "metabase/reference/segments/SegmentFieldDetail";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
@@ -31,7 +31,10 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class SegmentFieldDetailContainer extends Component {
   static propTypes = {
     params: PropTypes.object.isRequired,

@@ -1,4 +1,4 @@
-import { t } from "c-3po";
+import { t } from "ttag";
 
 const greetingPrefixes = [
   t`Hey there`,
@@ -25,7 +25,7 @@ const Greeting = {
 
   sayHello: function(personalization) {
     if (personalization) {
-      let g = Greeting.simpleGreeting();
+      const g = Greeting.simpleGreeting();
       if (g === t`How's it going`) {
         return g + ", " + personalization + "?";
       } else {

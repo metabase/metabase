@@ -9,9 +9,13 @@ export default (entityType?: string) => (
 ) => {
   const mapStateToProps = (state, props) => ({
     entityDef:
-      props.entityDef ||
       // dynamic require due to dependency load order issues
-      require("metabase/entities")[entityType || props.entityType],
+      require("metabase/entities")[
+        entityType ||
+          (typeof props.entityType === "function"
+            ? props.entityType(state, props)
+            : props.entityType)
+      ],
   });
   return connect(mapStateToProps)(
     class extends React.Component {
@@ -43,7 +47,7 @@ export default (entityType?: string) => (
 
       render() {
         return (
-          <ComposedComponent {...this._boundActionCreators} {...this.props} />
+          <ComposedComponent {...this.props} {...this._boundActionCreators} />
         );
       }
     },

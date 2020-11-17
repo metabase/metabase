@@ -4,11 +4,11 @@ import { connect } from "react-redux";
 
 import title from "metabase/hoc/Title";
 
-import PulseEdit from "../components/PulseEdit.jsx";
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+import PulseEdit from "../components/PulseEdit";
 
 import Collections from "metabase/entities/collections";
 import Pulses from "metabase/entities/pulses";
+import User from "metabase/entities/users";
 
 import { push, goBack } from "react-router-redux";
 
@@ -53,8 +53,11 @@ const mapDispatchToProps = {
   goBack,
 };
 
-@entityListLoader({ entityType: "users" })
-@connect(mapStateToProps, mapDispatchToProps)
+@User.loadList()
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ pulse }) => pulse && pulse.name)
 export default class PulseEditApp extends Component {
   render() {

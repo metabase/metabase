@@ -1,6 +1,6 @@
 import React from "react";
 import { dissoc } from "icepick";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import EntityForm from "metabase/entities/containers/EntityForm";
 import ModalContent from "metabase/components/ModalContent";
@@ -20,7 +20,7 @@ const EntityCopyModal = ({
         ...dissoc(entityObject, "id"),
         name: entityObject.name + " - " + t`Duplicate`,
       }}
-      create={copy}
+      onSubmit={copy}
       onClose={onClose}
       onSaved={onSaved}
       submitTitle={t`Duplicate`}

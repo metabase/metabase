@@ -1,10 +1,9 @@
 import React from "react";
 
 import ColorPicker from "metabase/components/ColorPicker";
-import cx from "classnames";
 
-const FormColorWidget = ({ field, offset, initial }) => (
-  <div className={cx({ "Form-offset": offset })}>
+const FormColorWidget = ({ field, initial }) => (
+  <div>
     <ColorPicker
       {...field}
       value={

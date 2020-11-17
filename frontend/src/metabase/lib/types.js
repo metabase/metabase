@@ -36,7 +36,7 @@ export function isa(child, ancestor) {
 
 // build a pretty sweet dictionary of top-level types, so people can do TYPE.Latitude instead of "type/Latitude" and get error messages / etc.
 // this should also make it easier to keep track of things when we tweak the type hierarchy
-export let TYPE = {};
+export const TYPE = {};
 for (const type of _.keys(PARENTS)) {
   const key = type.substring(5); // strip off "type/"
   TYPE[key] = type;

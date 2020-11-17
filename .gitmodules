@@ -1,4 +1,0 @@
-# don't use private/SSH remotes (e.x. git@github.com) because they break Heroku deploys
-[submodule "OSX/Vendor/INAppStoreWindow"]
-	path = OSX/Vendor/INAppStoreWindow
-	url = https://github.com/indragiek/INAppStoreWindow.git

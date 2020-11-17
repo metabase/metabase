@@ -1,38 +1,41 @@
 /* @flow weak */
 
-import Scalar from "./visualizations/Scalar.jsx";
-import SmartScalar from "./visualizations/SmartScalar.jsx";
-import Progress from "./visualizations/Progress.jsx";
-import Table from "./visualizations/Table.jsx";
-import Text from "./visualizations/Text.jsx";
-import LineChart from "./visualizations/LineChart.jsx";
-import BarChart from "./visualizations/BarChart.jsx";
-import RowChart from "./visualizations/RowChart.jsx";
-import PieChart from "./visualizations/PieChart.jsx";
-import AreaChart from "./visualizations/AreaChart.jsx";
-import ComboChart from "./visualizations/ComboChart.jsx";
-import MapViz from "./visualizations/Map.jsx";
-import ScatterPlot from "./visualizations/ScatterPlot.jsx";
-import Funnel from "./visualizations/Funnel.jsx";
-import Gauge from "./visualizations/Gauge.jsx";
-import ObjectDetail from "./visualizations/ObjectDetail.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 
-import type { Series } from "metabase/meta/types/Visualization";
+import type { Series } from "metabase-types/types/Visualization";
 
 const visualizations = new Map();
 const aliases = new Map();
 // $FlowFixMe
 visualizations.get = function(key) {
-  return Map.prototype.get.call(this, key) || aliases.get(key) || Table;
+  return (
+    Map.prototype.get.call(this, key) ||
+    aliases.get(key) ||
+    defaultVisualization
+  );
 };
+
+export function getSensibleDisplays(data) {
+  return Array.from(visualizations)
+    .filter(
+      ([, viz]) =>
+        // don't rule out displays if there's no data
+        data.rows.length <= 1 || (viz.isSensible && viz.isSensible(data)),
+    )
+    .map(([display]) => display);
+}
+
+let defaultVisualization;
+export function setDefaultVisualization(visualization) {
+  defaultVisualization = visualization;
+}
 
 export function registerVisualization(visualization) {
   if (visualization == null) {
     throw new Error(t`Visualization is null`);
   }
-  let identifier = visualization.identifier;
+  const identifier = visualization.identifier;
   if (identifier == null) {
     throw new Error(
       t`Visualization must define an 'identifier' static variable: ` +
@@ -46,7 +49,7 @@ export function registerVisualization(visualization) {
     );
   }
   visualizations.set(identifier, visualization);
-  for (let alias of visualization.aliases || []) {
+  for (const alias of visualization.aliases || []) {
     aliases.set(alias, visualization);
   }
 }
@@ -54,7 +57,7 @@ export function registerVisualization(visualization) {
 export function getVisualizationRaw(series: Series) {
   return {
     series: series,
-    CardVisualization: visualizations.get(series[0].card.display),
+    visualization: visualizations.get(series[0].card.display),
   };
 }
 
@@ -65,15 +68,15 @@ export function getVisualizationTransformed(series: Series) {
   }
 
   // if a visualization has a transformSeries function, do the transformation until it returns the same visualization / series
-  let CardVisualization, lastSeries;
+  let visualization, lastSeries;
   do {
-    CardVisualization = visualizations.get(series[0].card.display);
-    if (!CardVisualization) {
+    visualization = visualizations.get(series[0].card.display);
+    if (!visualization) {
       throw new Error(t`No visualization for ${series[0].card.display}`);
     }
     lastSeries = series;
-    if (typeof CardVisualization.transformSeries === "function") {
-      series = CardVisualization.transformSeries(series);
+    if (typeof visualization.transformSeries === "function") {
+      series = visualization.transformSeries(series);
     }
     if (series !== lastSeries) {
       series = [...series];
@@ -82,7 +85,12 @@ export function getVisualizationTransformed(series: Series) {
     }
   } while (series !== lastSeries);
 
-  return { series, CardVisualization };
+  return { series, visualization };
+}
+
+export function getIconForVisualizationType(display) {
+  const viz = visualizations.get(display);
+  return viz && viz.iconName;
 }
 
 export const extractRemappings = series => {
@@ -107,6 +115,13 @@ const extractRemappedColumns = data => {
     row.filter((value, colIndex) => {
       const col = cols[colIndex];
       if (col.remapped_from != null) {
+        if (
+          !cols[col.remapped_from_index] ||
+          !cols[col.remapped_from_index].remapping
+        ) {
+          console.warn("Invalid remapped_from", col);
+          return true;
+        }
         cols[col.remapped_from_index].remapped_to_column = col;
         cols[col.remapped_from_index].remapping.set(
           row[col.remapped_from_index],
@@ -124,22 +139,5 @@ const extractRemappedColumns = data => {
     cols: cols.filter(col => col.remapped_from == null),
   };
 };
-
-registerVisualization(Scalar);
-registerVisualization(SmartScalar);
-registerVisualization(Progress);
-registerVisualization(Gauge);
-registerVisualization(Table);
-registerVisualization(Text);
-registerVisualization(LineChart);
-registerVisualization(AreaChart);
-registerVisualization(BarChart);
-registerVisualization(ComboChart);
-registerVisualization(RowChart);
-registerVisualization(ScatterPlot);
-registerVisualization(PieChart);
-registerVisualization(MapViz);
-registerVisualization(Funnel);
-registerVisualization(ObjectDetail);
 
 export default visualizations;

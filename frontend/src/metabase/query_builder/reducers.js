@@ -7,89 +7,141 @@ import {
   INITIALIZE_QB,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
+  TOGGLE_SNIPPET_SIDEBAR,
   SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
-  CLOSE_QB_TUTORIAL,
+  SET_NATIVE_EDITOR_SELECTED_RANGE,
+  SET_MODAL_SNIPPET,
+  SET_SNIPPET_COLLECTION_ID,
   CLOSE_QB_NEWB_MODAL,
-  BEGIN_EDITING,
-  CANCEL_EDITING,
-  LOAD_TABLE_METADATA,
-  LOAD_DATABASE_FIELDS,
   RELOAD_CARD,
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
   SET_CARD_AND_RUN,
-  SET_CARD_ATTRIBUTE,
-  SET_CARD_VISUALIZATION,
-  UPDATE_CARD_VISUALIZATION_SETTINGS,
-  REPLACE_ALL_CARD_VISUALIZATION_SETTINGS,
   UPDATE_TEMPLATE_TAG,
   SET_PARAMETER_VALUE,
-  SET_QUERY_DATABASE,
-  SET_QUERY_SOURCE_TABLE,
-  SET_QUERY_MODE,
   UPDATE_QUESTION,
-  SET_DATASET_QUERY,
   RUN_QUERY,
   CLEAR_QUERY_RESULT,
   CANCEL_QUERY,
   QUERY_COMPLETED,
   QUERY_ERRORED,
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
+  CLEAR_OBJECT_DETAIL_FK_REFERENCES,
   SET_CURRENT_STATE,
   CREATE_PUBLIC_LINK,
   DELETE_PUBLIC_LINK,
   UPDATE_ENABLE_EMBEDDING,
   UPDATE_EMBEDDING_PARAMS,
   SHOW_CHART_SETTINGS,
+  SET_UI_CONTROLS,
+  RESET_UI_CONTROLS,
+  onEditSummary,
+  onCloseSummary,
+  onAddFilter,
+  onCloseFilter,
+  onOpenChartSettings,
+  onCloseChartSettings,
+  onOpenChartType,
+  onCloseChartType,
+  onCloseSidebars,
 } from "./actions";
+
+const DEFAULT_UI_CONTROLS = {
+  isShowingDataReference: false,
+  isShowingTemplateTagsEditor: false,
+  isShowingNewbModal: false,
+  isEditing: false,
+  isRunning: false,
+  isShowingSummarySidebar: false,
+  isShowingFilterSidebar: false,
+  isShowingChartTypeSidebar: false,
+  isShowingChartSettingsSidebar: false,
+  initialChartSetting: null,
+  isPreviewing: true, // sql preview mode
+  isShowingRawTable: false, // table/viz toggle
+  queryBuilderMode: false, // "view" or "notebook"
+  snippetCollectionId: null,
+};
+
+const UI_CONTROLS_SIDEBAR_DEFAULTS = {
+  isShowingSummarySidebar: false,
+  isShowingFilterSidebar: false,
+  isShowingChartSettingsSidebar: false,
+  isShowingChartTypeSidebar: false,
+};
+
+// this is used to close toher sidebar when one is updated
+const CLOSED_NATIVE_EDITOR_SIDEBARS = {
+  isShowingTemplateTagsEditor: false,
+  isShowingSnippetSidebar: false,
+  isShowingDataReference: false,
+};
 
 // various ui state options
 export const uiControls = handleActions(
   {
+    [SET_UI_CONTROLS]: {
+      next: (state, { payload }) => ({ ...state, ...payload }),
+    },
+
+    [RESET_UI_CONTROLS]: {
+      next: (state, { payload }) => DEFAULT_UI_CONTROLS,
+    },
+
     [INITIALIZE_QB]: {
-      next: (state, { payload }) => ({ ...state, ...payload.uiControls }),
+      next: (state, { payload }) => ({
+        ...state,
+        ...DEFAULT_UI_CONTROLS,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
+        ...payload.uiControls,
+      }),
     },
 
     [TOGGLE_DATA_REFERENCE]: {
       next: (state, { payload }) => ({
         ...state,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingDataReference: !state.isShowingDataReference,
-        isShowingTemplateTagsEditor: false,
       }),
     },
     [TOGGLE_TEMPLATE_TAGS_EDITOR]: {
       next: (state, { payload }) => ({
         ...state,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingTemplateTagsEditor: !state.isShowingTemplateTagsEditor,
-        isShowingDataReference: false,
+      }),
+    },
+    [TOGGLE_SNIPPET_SIDEBAR]: {
+      next: (state, { payload }) => ({
+        ...state,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
+        isShowingSnippetSidebar: !state.isShowingSnippetSidebar,
+        snippetCollectionId: null,
       }),
     },
     [SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR]: {
       next: (state, { isShowingTemplateTagsEditor }) => ({
         ...state,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingTemplateTagsEditor,
-        isShowingDataReference: false,
       }),
     },
-    [SET_DATASET_QUERY]: {
-      next: (state, { payload }) => ({
-        ...state,
-        isShowingTemplateTagsEditor: payload.openTemplateTagsEditor,
-      }),
-    },
-    [CLOSE_QB_TUTORIAL]: {
-      next: (state, { payload }) => ({ ...state, isShowingTutorial: false }),
-    },
+    [SET_NATIVE_EDITOR_SELECTED_RANGE]: (state, { payload }) => ({
+      ...state,
+      nativeEditorSelectedRange: payload,
+    }),
+    [SET_MODAL_SNIPPET]: (state, { payload }) => ({
+      ...state,
+      modalSnippet: payload,
+    }),
+    [SET_SNIPPET_COLLECTION_ID]: (state, { payload }) => ({
+      ...state,
+      snippetCollectionId: payload,
+    }),
     [CLOSE_QB_NEWB_MODAL]: {
       next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }),
     },
 
-    [BEGIN_EDITING]: {
-      next: (state, { payload }) => ({ ...state, isEditing: true }),
-    },
-    [CANCEL_EDITING]: {
-      next: (state, { payload }) => ({ ...state, isEditing: false }),
-    },
     [API_UPDATE_QUESTION]: {
       next: (state, { payload }) => ({ ...state, isEditing: false }),
     },
@@ -109,18 +161,56 @@ export const uiControls = handleActions(
     },
 
     [SHOW_CHART_SETTINGS]: {
-      next: (state, { payload }) => ({ ...state, chartSettings: payload }),
+      next: (state, { payload }) => ({
+        ...state,
+        isShowingChartSettingsSidebar: true,
+        initialChartSetting: payload,
+      }),
     },
+    // AGGREGATION
+    [onEditSummary]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingSummarySidebar: true,
+    }),
+    [onCloseSummary]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [onAddFilter]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingFilterSidebar: true,
+    }),
+    [onCloseFilter]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [onOpenChartSettings]: (state, { payload: initial }) => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingChartSettingsSidebar: true,
+      initialChartSetting: initial,
+    }),
+    [onCloseChartSettings]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [onOpenChartType]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingChartTypeSidebar: true,
+    }),
+    [onCloseChartType]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [onCloseSidebars]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
   },
-  {
-    isShowingDataReference: false,
-    isShowingTemplateTagsEditor: false,
-    isShowingTutorial: false,
-    isShowingNewbModal: false,
-    isEditing: false,
-    isRunning: false,
-    chartSettings: null,
-  },
+  DEFAULT_UI_CONTROLS,
 );
 
 // the card that is actively being worked on
@@ -131,37 +221,18 @@ export const card = handleActions(
       next: (state, { payload }) => (payload ? payload.card : null),
     },
     [RELOAD_CARD]: { next: (state, { payload }) => payload },
-    [CANCEL_EDITING]: { next: (state, { payload }) => payload },
     [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.card },
     [API_CREATE_QUESTION]: { next: (state, { payload }) => payload },
     [API_UPDATE_QUESTION]: { next: (state, { payload }) => payload },
 
-    [SET_CARD_ATTRIBUTE]: {
-      next: (state, { payload }) => ({
-        ...state,
-        [payload.attr]: payload.value,
-      }),
-    },
-    [SET_CARD_VISUALIZATION]: { next: (state, { payload }) => payload },
-    [UPDATE_CARD_VISUALIZATION_SETTINGS]: {
-      next: (state, { payload }) => payload,
-    },
-    [REPLACE_ALL_CARD_VISUALIZATION_SETTINGS]: {
-      next: (state, { payload }) => payload,
-    },
-
     [UPDATE_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
 
-    [SET_QUERY_MODE]: { next: (state, { payload }) => payload },
-    [SET_QUERY_DATABASE]: { next: (state, { payload }) => payload },
-    [SET_QUERY_SOURCE_TABLE]: { next: (state, { payload }) => payload },
-    [SET_DATASET_QUERY]: { next: (state, { payload }) => payload.card },
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
       next: (state, { payload }) => ({
         ...state,
-        display: payload.cardDisplay,
+        display: payload.card.display,
       }),
     },
 
@@ -200,9 +271,6 @@ export const originalCard = handleActions(
     [RELOAD_CARD]: {
       next: (state, { payload }) => (payload.id ? Utils.copy(payload) : null),
     },
-    [CANCEL_EDITING]: {
-      next: (state, { payload }) => (payload.id ? Utils.copy(payload) : null),
-    },
     [SET_CARD_AND_RUN]: {
       next: (state, { payload }) =>
         payload.originalCard ? Utils.copy(payload.originalCard) : null,
@@ -217,32 +285,13 @@ export const originalCard = handleActions(
   null,
 );
 
-export const tableForeignKeys = handleActions(
-  {
-    [RESET_QB]: { next: (state, { payload }) => null },
-    [LOAD_TABLE_METADATA]: {
-      next: (state, { payload }) =>
-        payload && payload.foreignKeys ? payload.foreignKeys : state,
-    },
-  },
-  null,
-);
-
-export const databaseFields = handleActions(
-  {
-    [LOAD_DATABASE_FIELDS]: {
-      next: (state, { payload }) => ({ [payload.id]: payload.fields }),
-    },
-  },
-  {},
-);
-
 // references to FK tables specifically used on the ObjectDetail page.
 export const tableForeignKeyReferences = handleActions(
   {
     [LOAD_OBJECT_DETAIL_FK_REFERENCES]: {
       next: (state, { payload }) => payload,
     },
+    [CLEAR_OBJECT_DETAIL_FK_REFERENCES]: () => null,
   },
   null,
 );
@@ -278,6 +327,16 @@ export const cancelQueryDeferred = handleActions(
       next: (state, { payload: { cancelQueryDeferred } }) =>
         cancelQueryDeferred,
     },
+    [CANCEL_QUERY]: { next: (state, { payload }) => null },
+    [QUERY_COMPLETED]: { next: (state, { payload }) => null },
+    [QUERY_ERRORED]: { next: (state, { payload }) => null },
+  },
+  null,
+);
+
+export const queryStartTime = handleActions(
+  {
+    [RUN_QUERY]: { next: (state, { payload }) => performance.now() },
     [CANCEL_QUERY]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: { next: (state, { payload }) => null },
     [QUERY_ERRORED]: { next: (state, { payload }) => null },

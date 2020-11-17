@@ -4,8 +4,8 @@ import { Link } from "react-router";
 
 import S from "./Breadcrumbs.css";
 
-import Icon from "metabase/components/Icon.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
+import Icon from "metabase/components/Icon";
+import Ellipsified from "metabase/components/Ellipsified";
 
 import cx from "classnames";
 
@@ -40,9 +40,8 @@ export default class Breadcrumbs extends Component {
           </span>
         ) : (
           crumbs
-            .map(
-              breadcrumb =>
-                Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb],
+            .map(breadcrumb =>
+              Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb],
             )
             .map((breadcrumb, index) => (
               <Ellipsified
@@ -61,20 +60,19 @@ export default class Breadcrumbs extends Component {
                 )}
               </Ellipsified>
             ))
-            .map(
-              (breadcrumb, index, breadcrumbs) =>
-                index < breadcrumbs.length - 1
-                  ? [
-                      breadcrumb,
-                      <Icon
-                        key={`${index}-separator`}
-                        name="chevronright"
-                        className={S.breadcrumbDivider}
-                        width={12}
-                        height={12}
-                      />,
-                    ]
-                  : breadcrumb,
+            .map((breadcrumb, index, breadcrumbs) =>
+              index < breadcrumbs.length - 1
+                ? [
+                    breadcrumb,
+                    <Icon
+                      key={`${index}-separator`}
+                      name="chevronright"
+                      className={S.breadcrumbDivider}
+                      width={12}
+                      height={12}
+                    />,
+                  ]
+                : breadcrumb,
             )
         )}
       </section>

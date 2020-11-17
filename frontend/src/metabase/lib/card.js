@@ -1,5 +1,5 @@
 import _ from "underscore";
-import Query, { createQuery } from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
 
@@ -17,8 +17,8 @@ export function createCard(name = null) {
 // start a new card using the given query type and optional database and table selections
 export function startNewCard(type, databaseId, tableId) {
   // create a brand new card to work from
-  let card = createCard();
-  card.dataset_query = createQuery(type, databaseId, tableId);
+  const card = createCard();
+  card.dataset_query = Q_DEPRECATED.createQuery(type, databaseId, tableId);
 
   return card;
 }
@@ -68,32 +68,19 @@ export function isCardDirty(card, originalCard) {
   }
 }
 
-export function isCardRunnable(card, tableMetadata) {
-  if (!card) {
-    return false;
-  }
-  const datasetQuery = card.dataset_query;
-  if (datasetQuery.query) {
-    return Query.canRun(datasetQuery.query, tableMetadata);
-  } else {
-    return (
-      datasetQuery.database != undefined && datasetQuery.native.query !== ""
-    );
-  }
-}
-
 // TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js
 export function serializeCardForUrl(card) {
-  let dataset_query = Utils.copy(card.dataset_query);
+  const dataset_query = Utils.copy(card.dataset_query);
   if (dataset_query.query) {
-    dataset_query.query = Query.cleanQuery(dataset_query.query);
+    dataset_query.query = Q_DEPRECATED.cleanQuery(dataset_query.query);
   }
 
-  let cardCopy = {
+  const cardCopy = {
     name: card.name,
     description: card.description,
     dataset_query: dataset_query,
     display: card.display,
+    displayIsLocked: card.displayIsLocked,
     parameters: card.parameters,
     visualization_settings: card.visualization_settings,
     original_card_id: card.original_card_id,
@@ -134,8 +121,8 @@ export function urlForCardState(state, dirty) {
 }
 
 export function cleanCopyCard(card) {
-  let cardCopy = {};
-  for (let name in card) {
+  const cardCopy = {};
+  for (const name in card) {
     if (name.charAt(0) !== "$") {
       cardCopy[name] = card[name];
     }

@@ -27,7 +27,7 @@
   (when-let [secret-key (env/env :mb-encryption-secret-key)]
     (when (seq secret-key)
       (assert (>= (count secret-key) 16)
-        (trs "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters."))
+        (str (trs "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters.")))
       (secret-key->hash secret-key))))
 
 ;; log a nice message letting people know whether DB details encryption is enabled
@@ -39,7 +39,7 @@
    (u/emoji (if default-secret-key "🔐" "🔓"))
    "\n"
    (trs "For more information, see")
-   "https://www.metabase.com/docs/latest/operations-guide/start.html#encrypting-your-database-connection-details-at-rest"))
+   "https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html"))
 
 (defn encrypt
   "Encrypt string `s` as hex bytes using a `secret-key` (a 64-byte byte array), by default the hashed value of
@@ -87,26 +87,33 @@
   (`aes256-block-size`). If it's not divisible by that number it is either not encrypted or it has been corrupted as
   it must always have a multiple of the block size or it won't decrypt."
   [s]
-  (when-let [str-byte-length (and (not (str/blank? s))
-                                  (u/base64-string? s)
-                                  (alength ^bytes (codec/base64-decode s)))]
-    (zero? (mod (- str-byte-length aes256-tag-length)
-                aes256-block-size))))
+  (u/ignore-exceptions
+    (when-let [str-byte-length (and (not (str/blank? s))
+                                    (u/base64-string? s)
+                                    (alength ^bytes (codec/base64-decode s)))]
+      (zero? (mod (- str-byte-length aes256-tag-length)
+                  aes256-block-size)))))
 
 (defn maybe-decrypt
   "If `MB_ENCRYPTION_SECRET_KEY` is set and `s` is encrypted, decrypt `s`; otherwise return `s` as-is."
-  (^String [^String s]
-   (maybe-decrypt default-secret-key s))
-  (^String [secret-key, ^String s]
-   (if (and secret-key (possibly-encrypted-string? s))
-     (try
-       (decrypt secret-key s)
-       (catch Throwable e
-         ;; if we can't decrypt `s`, but it *is* probably encrypted, log a warning
-         (log/warn
-          (trs "Cannot decrypt encrypted string. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?")
-          (.getMessage e)
-          (u/pprint-to-str (u/filtered-stacktrace e)))
-         s))
-     ;; otherwise return `s` without decrypting. It's probably not decrypted in the first place
-     s)))
+  {:arglists '([secret-key? s & {:keys [log-errors?], :or {log-errors? true}}])}
+  [& args]
+  (let [[secret-key & more]        (if (bytes? (first args))
+                                     args
+                                     (cons default-secret-key args))
+        [s & options]              more
+        {:keys [log-errors?]
+         :or   {log-errors? true}} (apply hash-map options)]
+    (if (and secret-key (possibly-encrypted-string? s))
+      (try
+        (decrypt secret-key s)
+        (catch Throwable e
+          ;; if we can't decrypt `s`, but it *is* probably encrypted, log a warning
+          (when log-errors?
+            (log/warn
+             (trs "Cannot decrypt encrypted string. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?")
+             (.getMessage e)
+             (u/pprint-to-str (u/filtered-stacktrace e))))
+          s))
+      ;; otherwise return `s` without decrypting. It's probably not encrypted in the first place
+      s)))

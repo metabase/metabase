@@ -1,14 +1,14 @@
 import React from "react";
 
-import cx from "classnames";
-
 import { formDomOnlyProps } from "metabase/lib/redux";
 
-const FormInputWidget = ({ type = "text", placeholder, field, offset }) => (
+const FormInputWidget = ({ type = "text", placeholder, field, readOnly }) => (
   <input
-    className={cx("Form-input full", { "Form-offset": offset })}
+    className="Form-input full"
     type={type}
     placeholder={placeholder}
+    aria-labelledby={`${field.name}-label`}
+    readOnly={readOnly}
     {...formDomOnlyProps(field)}
   />
 );

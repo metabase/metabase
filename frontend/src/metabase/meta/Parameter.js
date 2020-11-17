@@ -1,12 +1,12 @@
 /* @flow */
 
-import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { DatasetQuery } from "metabase-types/types/Card";
 import type {
   TemplateTag,
   LocalFieldReference,
   ForeignFieldReference,
   FieldFilter,
-} from "metabase/meta/types/Query";
+} from "metabase-types/types/Query";
 import type {
   Parameter,
   ParameterInstance,
@@ -15,13 +15,13 @@ import type {
   ParameterValueOrArray,
   ParameterValues,
   ParameterType,
-} from "metabase/meta/types/Parameter";
-import type { FieldId } from "metabase/meta/types/Field";
-import type { Metadata } from "metabase/meta/types/Metadata";
+} from "metabase-types/types/Parameter";
+import type { FieldId } from "metabase-types/types/Field";
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
 import moment from "moment";
 
-import Q from "metabase/lib/query";
+import * as FIELD_REF from "metabase/lib/query/field_ref";
 
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 
@@ -51,9 +51,9 @@ export const getParametersBySlug = (
   parameters: Parameter[],
   parameterValues: ParameterValues,
 ): { [key: string]: string } => {
-  let result = {};
+  const result = {};
   for (const parameter of parameters) {
-    if (parameterValues[parameter.id] != undefined) {
+    if (parameterValues[parameter.id] != null) {
       result[parameter.slug] = parameterValues[parameter.id];
     }
   }
@@ -63,20 +63,20 @@ export const getParametersBySlug = (
 /** Returns the field ID that this parameter target points to, or null if it's not a dimension target. */
 export function getParameterTargetFieldId(
   target: ?ParameterTarget,
-  datasetQuery: DatasetQuery,
+  datasetQuery: ?DatasetQuery,
 ): ?FieldId {
   if (target && target[0] === "dimension") {
-    let dimension = target[1];
+    const dimension = target[1];
     if (Array.isArray(dimension) && dimension[0] === "template-tag") {
-      if (datasetQuery.type === "native") {
-        let templateTag =
+      if (datasetQuery && datasetQuery.type === "native") {
+        const templateTag =
           datasetQuery.native["template-tags"][String(dimension[1])];
         if (templateTag && templateTag.type === "dimension") {
-          return Q.getFieldTargetId(templateTag.dimension);
+          return FIELD_REF.getFieldTargetId(templateTag.dimension);
         }
       }
     } else {
-      return Q.getFieldTargetId(dimension);
+      return FIELD_REF.getFieldTargetId(dimension);
     }
   }
   return null;
@@ -175,19 +175,18 @@ export function stringParameterValueToMBQL(
   parameterValue: ParameterValueOrArray,
   fieldRef: LocalFieldReference | ForeignFieldReference,
 ): ?FieldFilter {
-  if (Array.isArray(parameterValue)) {
-    // $FlowFixMe: thinks we're returning a nested array which concat does not do
-    return ["=", fieldRef].concat(parameterValue);
-  } else {
-    return ["=", fieldRef, parameterValue];
-  }
+  // $FlowFixMe: thinks we're returning a nested array which concat does not do
+  return ["=", fieldRef].concat(parameterValue);
 }
 
 export function numberParameterValueToMBQL(
   parameterValue: ParameterValue,
   fieldRef: LocalFieldReference | ForeignFieldReference,
 ): ?FieldFilter {
-  return ["=", fieldRef, parseFloat(parameterValue)];
+  // $FlowFixMe: thinks we're returning a nested array which concat does not do
+  return ["=", fieldRef].concat(
+    [].concat(parameterValue).map(v => parseFloat(v)),
+  );
 }
 
 /** compiles a parameter with value to an MBQL clause */
@@ -211,8 +210,8 @@ export function parameterToMBQLFilter(
   if (parameter.type.indexOf("date/") === 0) {
     return dateParameterValueToMBQL(parameter.value, fieldRef);
   } else {
-    const fieldId = Q.getFieldTargetId(fieldRef);
-    const field = metadata.fields[fieldId];
+    const fieldId = FIELD_REF.getFieldTargetId(fieldRef);
+    const field = metadata.field(fieldId);
     // if the field is numeric, parse the value as a number
     if (isNumericBaseType(field)) {
       return numberParameterValueToMBQL(parameter.value, fieldRef);

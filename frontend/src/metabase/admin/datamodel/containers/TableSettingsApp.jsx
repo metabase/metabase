@@ -1,79 +1,60 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import * as metadataActions from "metabase/redux/metadata";
-
-import { getMetadata } from "metabase/selectors/metadata";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { BackButton } from "metabase/admin/datamodel/containers/FieldApp";
-import ActionButton from "metabase/components/ActionButton.jsx";
+import ActionButton from "metabase/components/ActionButton";
 import Section, { SectionHeader } from "../components/Section";
+
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
 
 import { rescanTableFieldValues, discardTableFieldValues } from "../table";
 
-const mapStateToProps = (state, props) => {
-  return {
-    databaseId: parseInt(props.params.databaseId),
-    tableId: parseInt(props.params.tableId),
-    metadata: getMetadata(state),
-  };
-};
+const mapStateToProps = (state, { params: { databaseId, tableId } }) => ({
+  databaseId: parseInt(databaseId),
+  tableId: parseInt(tableId),
+});
 
 const mapDispatchToProps = {
-  fetchDatabaseMetadata: metadataActions.fetchDatabaseMetadata,
-  fetchTableMetadata: metadataActions.fetchTableMetadata,
   rescanTableFieldValues,
   discardTableFieldValues,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class TableSettingsApp extends Component {
-  async componentWillMount() {
-    const {
-      databaseId,
-      tableId,
-      fetchDatabaseMetadata,
-      fetchTableMetadata,
-    } = this.props;
-
-    await fetchDatabaseMetadata(databaseId);
-    await fetchTableMetadata(tableId, true);
-  }
-
   render() {
-    const { metadata, databaseId, tableId } = this.props;
-
-    const db = metadata && metadata.databases[databaseId];
-    const table = metadata && metadata.tables[tableId];
-    const isLoading = !table;
-
+    const { tableId } = this.props;
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={null} noWrapper>
-        {() => (
-          <div className="relative">
-            <div className="wrapper wrapper--trim">
-              <Nav db={db} table={table} />
-              <UpdateFieldValues
-                rescanTableFieldValues={() =>
-                  this.props.rescanTableFieldValues(table.id)
-                }
-                discardTableFieldValues={() =>
-                  this.props.discardTableFieldValues(table.id)
-                }
-              />
-            </div>
-          </div>
-        )}
-      </LoadingAndErrorWrapper>
+      <div className="relative">
+        <div className="wrapper wrapper--trim">
+          <Nav databaseId={this.props.databaseId} tableId={tableId} />
+          <UpdateFieldValues
+            rescanTableFieldValues={() =>
+              this.props.rescanTableFieldValues(tableId)
+            }
+            discardTableFieldValues={() =>
+              this.props.discardTableFieldValues(tableId)
+            }
+          />
+        </div>
+      </div>
     );
   }
 }
 
+@Databases.load({ id: (state, { databaseId }) => databaseId })
+@Tables.load({
+  id: (state, { tableId }) => tableId,
+  selectorName: "getObjectUnfiltered",
+})
 class Nav extends Component {
   render() {
-    const { db, table } = this.props;
+    const { database: db, table } = this.props;
     return (
       <div className="flex align-center my2">
         <BackButton databaseId={db.id} tableId={table.id} />

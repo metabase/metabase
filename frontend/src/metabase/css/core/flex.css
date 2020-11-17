@@ -5,6 +5,16 @@
   display: flex;
 }
 
+.inline-flex,
+:local(.inline-flex) {
+  display: inline-flex;
+}
+
+.flex-auto,
+:local(.flex-auto) {
+  flex: auto;
+}
+
 .flex-full,
 :local(.flex-full) {
   flex: 1 0 auto;
@@ -13,6 +23,16 @@
 .flex-half,
 :local(.flex-half) {
   flex: 0.5;
+}
+
+.flex-3-quarters,
+:local(.flex-3-quarters) {
+  flex: 0.75;
+}
+
+.flex-1-quarter,
+:local(.flex-1-quarter) {
+  flex: 0.25;
 }
 
 .flex-no-shrink,
@@ -35,12 +55,17 @@
   flex-basis: auto;
 }
 
+.flex-basis-none {
+  flex-basis: 0;
+}
+
 .shrink-below-content-size {
   /* W3C spec says:
      * By default, flex items won’t shrink below their minimum content size (the length of the longest word or
      * fixed-size element). To change this, set the min-width or min-height property.
      */
   min-width: 0;
+  min-height: 0;
 }
 
 .align-center,
@@ -56,6 +81,10 @@
 .justify-center,
 :local(.justify-center) {
   justify-content: center;
+}
+
+.justify-evenly {
+  justify-content: space-evenly;
 }
 
 .justify-between {
@@ -74,9 +103,18 @@
   align-items: flex-end;
 }
 
+.align-stretch {
+  align-items: stretch;
+}
+
 .align-self-end,
 :local(.align-self-end) {
   align-self: flex-end;
+}
+
+.align-self-start,
+:local(.align-self-start) {
+  align-self: flex-start;
 }
 
 .align-self-center {
@@ -139,6 +177,10 @@
 
 .flex-column {
   flex-direction: column;
+}
+
+.flex-column-reverse {
+  flex-direction: column-reverse;
 }
 
 @media screen and (--breakpoint-min-sm) {

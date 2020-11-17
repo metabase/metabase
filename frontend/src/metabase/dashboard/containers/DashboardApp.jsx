@@ -3,26 +3,29 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import title from "metabase/hoc/Title";
 import fitViewport from "metabase/hoc/FitViewPort";
+import title from "metabase/hoc/Title";
+import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
-import Dashboard from "metabase/dashboard/components/Dashboard.jsx";
+import Dashboard from "metabase/dashboard/components/Dashboard";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
 
 import {
   getIsEditing,
+  getDashboardBeforeEditing,
   getIsEditingParameter,
   getIsDirty,
   getDashboardComplete,
-  getCardList,
-  getRevisions,
   getCardData,
   getSlowCards,
   getEditingParameter,
   getParameters,
   getParameterValues,
+  getLoadingStartTime,
+  getClickBehaviorSidebarDashcard,
+  getIsAddParameterPopoverOpen,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -38,11 +41,10 @@ const mapStateToProps = (state, props) => {
 
     isAdmin: getUserIsAdmin(state, props),
     isEditing: getIsEditing(state, props),
+    dashboardBeforeEditing: getDashboardBeforeEditing(state, props),
     isEditingParameter: getIsEditingParameter(state, props),
     isDirty: getIsDirty(state, props),
     dashboard: getDashboardComplete(state, props),
-    cards: getCardList(state, props),
-    revisions: getRevisions(state, props),
     dashcardData: getCardData(state, props),
     slowCards: getSlowCards(state, props),
     databases: getDatabases(state, props),
@@ -50,6 +52,9 @@ const mapStateToProps = (state, props) => {
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
     metadata: getMetadata(state),
+    loadingStartTime: getLoadingStartTime(state),
+    clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
+    isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
   };
 };
 
@@ -65,16 +70,21 @@ type DashboardAppState = {
   addCardOnLoad: number | null,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@title(({ dashboard }) => dashboard && dashboard.name)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @fitViewport
+@title(({ dashboard }) => dashboard && dashboard.name)
+@titleWithLoadingTime("loadingStartTime")
+// NOTE: should use DashboardControls and DashboardData HoCs here?
 export default class DashboardApp extends Component {
   state: DashboardAppState = {
     addCardOnLoad: null,
   };
 
   componentWillMount() {
-    let options = parseHashOptions(window.location.hash);
+    const options = parseHashOptions(window.location.hash);
     if (options.add) {
       this.setState({ addCardOnLoad: parseInt(options.add) });
     }
@@ -82,7 +92,7 @@ export default class DashboardApp extends Component {
 
   render() {
     return (
-      <div className={this.props.fitClassNames}>
+      <div className="shrink-below-content-size full-height">
         <Dashboard addCardOnLoad={this.state.addCardOnLoad} {...this.props} />
         {/* For rendering modal urls */}
         {this.props.children}
