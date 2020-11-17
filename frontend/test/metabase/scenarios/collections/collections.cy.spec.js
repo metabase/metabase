@@ -108,6 +108,51 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
+    describe.skip("sidebar behavior", () => {
+      it("should allow a user to expand a collection without navigating to it", () => {
+        cy.visit("/collection/root");
+        // 1. click on the chevron to expand the sub collection
+        cy.click(".Icon-chevronright");
+        // 2. I should see the nested collection name
+        cy.findByText("First level");
+        // 3. The url should still be /collection/root to test that we haven't navigated away
+        //
+      });
+
+      describe("deeply nested collection navigation", () => {
+        // TODO - create three more collections by posting to the API to test deep nesting.
+        // e.x. Third Level -> Fourth Level -> Fifth level with a long name
+        /*
+        1. Expand out via the chevrons so that all collections are showing
+        2. Ensure we can see the entire "Fifth level with a long name" collection text
+        */
+      });
+    });
+
+    describe.skip("managing items", () => {
+      // Note - this behavior is broken right now, so let's skip until it's working
+      it.skip("should let a user move a collection item via modal", () => {
+        cy.visit("/collection/root");
+        /*
+        1. Click on the ... menu
+        2. Select "move this" from the popover
+        3. Select a collection that has child collections and hit the right chevron to navigate there
+        4. Hit done
+        5. I should have been navigated to that collection
+        */
+      });
+
+      it("should allow a user to pin an item", () => {
+        /*
+        Starting from a scenario with no pins
+
+        1. Click on the ... menu
+        2. Select "pin this" from the popover
+        3. Should see "pinned items" and the item should be in that section
+        */
+      });
+    });
+
     // [quarantine]: cannot run tests that rely on email setup in CI (yet)
     describe.skip("a new pulse", () => {
       it("should be in the root collection", () => {
