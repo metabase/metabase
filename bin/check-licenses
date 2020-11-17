@@ -64,8 +64,8 @@ const LICENSE_ALLOWLIST = new Set(
     "MIT Licensed. http://www.opensource.org/licenses/mit-license.php",
     "MIT",
     "MIT*",
-    "(MIT AND BSD-3-Clause)",
-    "(MIT AND Zlib)",
+    "MIT AND BSD-3-Clause",
+    "MIT AND Zlib",
     "MPL 2.0",
     "New BSD License", // same as 3-clause
     "Public Domain",
