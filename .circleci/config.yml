@@ -1045,6 +1045,17 @@ workflows:
           test-files-location: frontend/test/metabase-db/postgres
           <<: *Matrix
 
+      - fe-tests-cyptress:
+          name: fe-tests-cypres-mysql-8-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+            - fe-dps
+          e: fe-mysql-8
+          cypress-group: "mysql"
+          only-single-database: true
+          test-files-location: frontend/test/metabase-db/mysql
+          <<: *Matrix
+
   nightly:
     triggers:
       - schedule:
