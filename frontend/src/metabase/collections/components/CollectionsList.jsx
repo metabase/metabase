@@ -10,73 +10,75 @@ import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
 
 class CollectionsList extends React.Component {
-  state = {
-    // @hack - store the open collection as the collection's id.
-    // @TODO - need to figure out how to handle state when using a recursive component
-    open: null,
-  };
   render() {
-    const { initialIcon, currentCollection, filter = () => true } = this.props;
+    const {
+      initialIcon,
+      currentCollection,
+      filter = () => true,
+      openCollections,
+    } = this.props;
     const collections = this.props.collections.filter(filter);
-    const { open } = this.state;
 
     return (
       <Box>
         {collections.map(c => {
+          const isOpen = openCollections.indexOf(c.id) >= 0;
+          const action = isOpen ? this.props.onClose : this.props.onOpen;
           return (
             <Box key={c.id}>
               <CollectionDropTarget collection={c}>
-                {({ highlighted, hovered }) => (
-                  <CollectionLink
-                    to={Urls.collection(c.id)}
-                    // TODO - need to make sure the types match here
-                    selected={String(c.id) === currentCollection}
-                    depth={this.props.depth}
-                    // when we click on a link, if there are children, expand to show sub collections
-                    onClick={() => c.children && this.setState({ open: c.id })}
-                  >
-                    <Flex
-                      className="relative"
-                      align={
-                        // if a colleciton name is somewhat long, align things at flex-start ("top") for a slightly better
-                        // visual
-                        c.name.length > 25 ? "flex-start" : "center"
-                      }
+                {({ highlighted, hovered }) => {
+                  return (
+                    <CollectionLink
+                      to={Urls.collection(c.id)}
+                      // TODO - need to make sure the types match here
+                      selected={String(c.id) === currentCollection}
+                      depth={this.props.depth}
+                      // when we click on a link, if there are children, expand to show sub collections
+                      onClick={() => c.children && action(c.id)}
                     >
-                      {c.children && (
-                        <Flex
-                          className="absolute text-brand cursor-pointer"
-                          align="center"
-                          justifyContent="center"
-                          style={{ left: -16 }}
-                        >
-                          <Icon
-                            name={
-                              open === c.id ? "chevrondown" : "chevronright"
-                            }
-                            onClick={ev => {
-                              ev.preventDefault();
-                              this.setState({
-                                open: this.state.open ? null : c.id,
-                              });
-                            }}
-                            size={12}
-                          />
-                        </Flex>
-                      )}
-                      <Icon
-                        name={initialIcon}
-                        mr={"6px"}
-                        style={{ opacity: 0.4 }}
-                      />
-                      {c.name}
-                    </Flex>
-                  </CollectionLink>
-                )}
+                      <Flex
+                        className="relative"
+                        align={
+                          // if a colleciton name is somewhat long, align things at flex-start ("top") for a slightly better
+                          // visual
+                          c.name.length > 25 ? "flex-start" : "center"
+                        }
+                      >
+                        {c.children && (
+                          <Flex
+                            className="absolute text-brand cursor-pointer"
+                            align="center"
+                            justifyContent="center"
+                            style={{ left: -16 }}
+                          >
+                            <Icon
+                              name={isOpen ? "chevrondown" : "chevronright"}
+                              onClick={ev => {
+                                ev.preventDefault();
+                                action(c.id);
+                              }}
+                              size={12}
+                            />
+                          </Flex>
+                        )}
+                        <Icon
+                          name={initialIcon}
+                          mr={"6px"}
+                          style={{ opacity: 0.4 }}
+                        />
+                        {c.name}
+                      </Flex>
+                    </CollectionLink>
+                  );
+                }}
               </CollectionDropTarget>
-              {c.children && open === c.id && (
+              {c.children && isOpen && (
                 <Box ml={-SIDEBAR_SPACER} pl={SIDEBAR_SPACER + 10}>
                   <CollectionsList
+                    openCollections={openCollections}
+                    onOpen={this.props.onOpen}
+                    onClose={this.props.onClose}
                     collections={c.children}
                     filter={filter}
                     currentCollection={currentCollection}

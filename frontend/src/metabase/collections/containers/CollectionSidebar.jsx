@@ -36,61 +36,91 @@ const Sidebar = styled(Box)`
   flex-direction: column;
 `;
 
-const CollectionSidebar = ({ currentUser, isRoot, collectionId }) => (
-  <Sidebar w={340} pt={3}>
-    <Box pl="28px">
-      <Greeting />
-    </Box>
-    <CollectionLink
-      to={Urls.collection("root")}
-      selected={isRoot}
-      mb={2}
-      mt={2}
-    >
-      <Icon name="folder" mr={1} />
-      {t`Our analytics`}
-    </CollectionLink>
-    <Collection.ListLoader
-      query={{
-        /* pass "tree" here so that the collection entity knows to use the /tree endpoint and send children in the response
+class CollectionSidebar extends React.Component {
+  state = {
+    openCollections: [],
+  };
+  onOpen = id => {
+    console.log("onOpen");
+    this.setState({ openCollections: this.state.openCollections.concat(id) });
+  };
+  onClose = id => {
+    console.log("onClose");
+    this.setState({
+      openCollections: this.state.openCollections.filter(c => {
+        return c !== id;
+      }),
+    });
+  };
+  componentDidMount() {
+    // TODO - set the collections open here
+  }
+  render() {
+    const { currentUser, isRoot, collectionId } = this.props;
+    return (
+      <Sidebar w={340} pt={3}>
+        <Box pl="28px">
+          <Greeting />
+        </Box>
+        <CollectionLink
+          to={Urls.collection("root")}
+          selected={isRoot}
+          mb={2}
+          mt={2}
+        >
+          <Icon name="folder" mr={1} />
+          {t`Our analytics`}
+        </CollectionLink>
+        <Collection.ListLoader
+          query={{
+            /* pass "tree" here so that the collection entity knows to use the /tree endpoint and send children in the response
           we should eventually refactor code elsewhere in the app to use this by default instead of determining the relationships clientside, but this works in the interim
           */
-        tree: true,
-      }}
-    >
-      {({ list }) => (
-        <Box pb={4}>
-          <CollectionsList
-            collections={list}
-            filter={nonPersonalCollection}
-            currentCollection={collectionId}
-          />
+            tree: true,
+          }}
+        >
+          {({ list }) => (
+            <Box pb={4}>
+              <CollectionsList
+                openCollections={this.state.openCollections}
+                onClose={this.onClose}
+                onOpen={this.onOpen}
+                collections={list}
+                filter={nonPersonalCollection}
+                currentCollection={collectionId}
+              />
 
-          <Box mt={"32px"}>
-            <CollectionsList
-              collections={currentUserPersonalCollections(list, currentUser.id)}
-              initialIcon="person"
-              currentCollection={collectionId}
-            />
-          </Box>
+              <Box mt={"32px"}>
+                <CollectionsList
+                  openCollections={this.state.openCollections}
+                  collections={currentUserPersonalCollections(
+                    list,
+                    currentUser.id,
+                  )}
+                  initialIcon="person"
+                  currentCollection={collectionId}
+                />
+              </Box>
 
-          {currentUser.is_superuser && (
-            <CollectionLink to={Urls.collection("users")}>
-              <Icon name="group" mr={1} />
-              {t`Other users' personal collections`}
-            </CollectionLink>
+              {currentUser.is_superuser && (
+                <CollectionLink to={Urls.collection("users")}>
+                  <Icon name="group" mr={1} />
+                  {t`Other users' personal collections`}
+                </CollectionLink>
+              )}
+            </Box>
           )}
-        </Box>
-      )}
-    </Collection.ListLoader>
+        </Collection.ListLoader>
 
-    <Box className="mt-auto" pb={2} pl={SIDEBAR_SPACER * 2}>
-      <Link to={`/archive`} className="link flex align-center text-bold">
-        <Icon name="view_archive" mr={1} />
-        {t`View archived items`}
-      </Link>
-    </Box>
-  </Sidebar>
-);
+        <Box className="mt-auto" pb={2} pl={SIDEBAR_SPACER * 2}>
+          <Link to={`/archive`} className="link flex align-center text-bold">
+            <Icon name="view_archive" mr={1} />
+            {t`View archived items`}
+          </Link>
+        </Box>
+      </Sidebar>
+    );
+  }
+}
 
 export default connect(getCurrentUser)(CollectionSidebar);
