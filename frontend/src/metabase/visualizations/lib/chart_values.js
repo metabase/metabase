@@ -47,7 +47,8 @@ export function onRenderValueLabels(
   const showAll = chart.settings["graph.label_value_frequency"] === "all";
 
   let barWidth;
-  const barCount = displays.filter(d => d === "bar").length;
+  const barCount = displays.filter(d => (d === "bar") | (d === "waterfall"))
+    .length;
   if (barCount > 0) {
     barWidth = parseFloat(
       chart
@@ -90,12 +91,20 @@ export function onRenderValueLabels(
           // last point point or next is greater than y
           (i === data.length - 1 || data[i + 1][1] > y);
         const showLabelBelow = isLocalMin && display === "line";
-        const rotated = barCount > 1 && display === "bar" && barWidth < 40;
+        const rotated =
+          barCount > 1 &&
+          (display === "bar" || display === "waterfall") &&
+          barWidth < 40;
         const hidden =
-          !showAll && barCount > 1 && display === "bar" && barWidth < 20;
+          !showAll &&
+          barCount > 1 &&
+          (display === "bar" || display === "waterfall") &&
+          barWidth < 20;
         return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
       })
-      .filter(d => !(display === "bar" && d.y === 0));
+      .filter(
+        d => !((display === "bar" || display === "waterfall") && d.y === 0),
+      );
   });
 
   // Count max points in a single series to estimate when labels should be hidden
@@ -132,20 +141,25 @@ export function onRenderValueLabels(
 
   // Ordinal bar charts and histograms need extra logic to center the label.
   const xShifts = displays.map((display, index) => {
-    if (display !== "bar") {
+    if (display !== "bar" && display !== "waterfall") {
       return 0;
     }
-    const barIndex = displays.slice(0, index).filter(d => d === "bar").length;
+    const barIndex = displays
+      .slice(0, index)
+      .filter(d => d === "bar" || d === "waterfall").length;
     let xShift = 0;
 
     if (xScale.rangeBand) {
-      if (display === "bar") {
+      if (display === "bar" || display === "waterfall") {
         const xShiftForSeries = xScale.rangeBand() / barCount;
         xShift += (barIndex + 0.5) * xShiftForSeries;
       } else {
         xShift += xScale.rangeBand() / 2;
       }
-      if (displays.some(d => d === "bar") && displays.some(d => d !== "bar")) {
+      if (
+        displays.some(d => d === "bar" || d === "waterfall") &&
+        displays.some(d => d !== "bar" && d !== "waterfall")
+      ) {
         xShift += (chart._rangeBandPadding() * xScale.rangeBand()) / 2;
       }
     } else if (
@@ -239,7 +253,11 @@ export function onRenderValueLabels(
   };
 
   const nthForSeries = datas.map((data, index) => {
-    if (showAll || (barCount > 1 && displays[index] === "bar")) {
+    if (
+      showAll ||
+      (barCount > 1 &&
+        (displays[index] === "bar" && displays[index] === "waterfall"))
+    ) {
       // show all is turned on or this is a bar in a grouped bar chart
       return 1;
     }
@@ -276,7 +294,9 @@ export function onRenderValueLabels(
     .flatten()
     .filter(
       d =>
-        displays[d.seriesIndex] === "line" || displays[d.seriesIndex] === "bar",
+        displays[d.seriesIndex] === "line" ||
+        displays[d.seriesIndex] === "bar" ||
+        displays[d.seriesIndex] === "waterfall",
     )
     .map(d => ({ d, ...xyPos(d) }))
     .groupBy(({ xPos }) => xPos)
