@@ -1,5 +1,5 @@
 (ns metabase.metabot.websocket
-  "Logic for managing the websocket MetaBot uses to monitor and reply to Slack messages, specifically a 'monitor thread'
+  "Logic for managing the websocket RepenteBot uses to monitor and reply to Slack messages, specifically a 'monitor thread'
   that watches the websocket handling thread and disconnects/reconnects it when needed."
   (:require [aleph.http :as aleph]
             [clojure.tools.logging :as log]
@@ -48,16 +48,16 @@
 (defonce ^:private websocket-monitor-thread-id (atom nil))
 
 (defn stop!
-  "Stop all MetaBot instances. Clear the current monitor thread ID, which will signal to any existing monitor threads to
+  "Stop all RepenteBot instances. Clear the current monitor thread ID, which will signal to any existing monitor threads to
   stop running; disconnect the current websocket."
   []
   (reset! websocket-monitor-thread-id nil)
   (disconnect-websocket!))
 
 (defn currently-running?
-  "Is the MetaBot running?
+  "Is the RepenteBot running?
 
-  Checks whether there is currently a MetaBot websocket monitor thread running. (The monitor threads make sure the
+  Checks whether there is currently a RepenteBot websocket monitor thread running. (The monitor threads make sure the
   WebSocket connections are open; if a monitor thread is open, it's should be maintaining an open WebSocket
   connection.)"
   []
@@ -91,13 +91,13 @@
 (defn- reopen-websocket-connection-if-needed!
   "Check to see if websocket connection is [still] open, [re-]open it if not."
   []
-  ;; Only open the Websocket connection if this instance is the MetaBot
+  ;; Only open the Websocket connection if this instance is the RepenteBot
   (when (metabot.instance/am-i-the-metabot?)
     (when (= (.getId (Thread/currentThread)) @websocket-monitor-thread-id)
       (try
         (when (or (not  @websocket)
                   (s/closed? @websocket))
-          (log/debug (trs "MetaBot WebSocket is closed. Reconnecting now."))
+          (log/debug (trs "RepenteBot WebSocket is closed. Reconnecting now."))
           (connect-websocket!))
         (catch Throwable e
           (log/error e (trs "Error connecting websocket:")))))))

@@ -16,7 +16,7 @@ Metabase is the easy, open source way for everyone in your company to ask questi
 - [SQL Mode](https://www.metabase.com/docs/latest/users-guide/writing-sql.html) for analysts and data pros
 - Create canonical [segments and metrics](https://metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html) for your team to use
 - Send data to Slack or email on a schedule with [Pulses](https://metabase.com/docs/latest/users-guide/10-pulses.html)
-- View data in Slack anytime with [MetaBot](https://metabase.com/docs/latest/users-guide/11-metabot.html)
+- View data in Slack anytime with [RepenteBot](https://metabase.com/docs/latest/users-guide/11-metabot.html)
 - [Humanize data](https://metabase.com/docs/latest/administration-guide/03-metadata-editing.html) for your team by renaming, annotating and hiding fields
 - See changes in your data with [alerts](https://www.metabase.com/docs/latest/users-guide/15-alerts.html)
 
@@ -102,7 +102,7 @@ Metabase also allows you to hit our Query API directly from Javascript to integr
 
 # License
 
-This repository contains the source code for both the Open Source edition of Metabase, released under the AGPL, as well as the commercial edition of Metabase Enterprise, released under the Metabase Commercial Software License. 
+This repository contains the source code for both the Open Source edition of Metabase, released under the AGPL, as well as the commercial edition of Metabase Enterprise, released under the Metabase Commercial Software License.
 
 See [LICENSE.txt](./LICENSE.txt) for details.
 

@@ -50,26 +50,26 @@
       (is (re= #"(?s).+\d+ most recent cards.+"
                (metabot.cmd/command "list")))))
   (testing "with only archived cards"
-    (mt/with-temp Card [_ {:dataset_query (venues-count-query), :name "Cam's Cool MetaBot Card", :archived true}]
+    (mt/with-temp Card [_ {:dataset_query (venues-count-query), :name "Cam's Cool RepenteBot Card", :archived true}]
       ;; normally when running tests this will be empty, but if running from the REPL we can skip it.
       (when (empty? (db/select Card :archived false))
-        (is (= {:response '(Exception. "Card Cam's Cool MetaBot Card not found.")
+        (is (= {:response '(Exception. "Card Cam's Cool RepenteBot Card not found.")
                 :messages []}
-               (command "show" "Cam's Cool MetaBot Card")))
+               (command "show" "Cam's Cool RepenteBot Card")))
         (is (re= #"You don't have any cards yet\."
                  (metabot.cmd/command "list"))))))
   (testing "with ambiguous matches"
-    (mt/with-temp* [Card [{card-1-id :id} {:dataset_query (venues-count-query), :name "Cam's Cool MetaBot Card 1"}]
-                    Card [{card-2-id :id} {:dataset_query (venues-count-query), :name "Cam's Cool MetaBot Card 2"}]]
+    (mt/with-temp* [Card [{card-1-id :id} {:dataset_query (venues-count-query), :name "Cam's Cool RepenteBot Card 1"}]
+                    Card [{card-2-id :id} {:dataset_query (venues-count-query), :name "Cam's Cool RepenteBot Card 2"}]]
       (is (=
            {:response
             (list
              'Exception.
              (str "Could you be a little more specific, or use the ID? I found these cards with names that matched:"
                   "\n"
-                  (format "%d.  <https://metabase.mysite.com/question/%d|\"Cam's Cool MetaBot Card 1\">" card-1-id card-1-id)
+                  (format "%d.  <https://metabase.mysite.com/question/%d|\"Cam's Cool RepenteBot Card 1\">" card-1-id card-1-id)
                   "\n"
-                  (format "%d.  <https://metabase.mysite.com/question/%d|\"Cam's Cool MetaBot Card 2\">" card-2-id card-2-id)))
+                  (format "%d.  <https://metabase.mysite.com/question/%d|\"Cam's Cool RepenteBot Card 2\">" card-2-id card-2-id)))
 
             :messages []}
            (command "show" "Cam's Cool M")))))
@@ -103,7 +103,7 @@
                              (~{:card   metabase.models.card.CardInstance
                                 :result clojure.lang.PersistentHashMap}))))]}
              (command "show" card-id))))
-    (mt/with-temp Card [_ {:dataset_query (venues-count-query), :name "Cam's Cool MetaBot Card"}]
+    (mt/with-temp Card [_ {:dataset_query (venues-count-query), :name "Cam's Cool RepenteBot Card"}]
       (is (= {:response "Ok, just a second..."
               :messages `[(~'post-chat-message!
                            nil

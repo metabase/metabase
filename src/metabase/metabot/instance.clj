@@ -1,16 +1,16 @@
 (ns metabase.metabot.instance
   "Logic for deciding which Repente Insights instance in a multi-instance (i.e., horizontally scaled) setup gets to be the
-  MetaBot.
+  RepenteBot.
 
   Close your eyes, and imagine a scenario: someone is running multiple Repente Insights instances in a horizontal cluster.
-  Good for them, but how do we make sure one, and only one, of those instances, replies to incoming MetaBot commands?
+  Good for them, but how do we make sure one, and only one, of those instances, replies to incoming RepenteBot commands?
   It would certainly be too much if someone ran, say, 4 instances, and typing `metabot kanye` into Slack gave them 4
   Kanye West quotes, wouldn't it?
 
   Luckily, we have an \"elegant\" solution: we'll use the Settings framework to keep track of which instance is
-  currently serving as the MetaBot. We'll have that instance periodically check in; if it doesn't check in for some
-  timeout interval, we'll consider the job of MetaBot up for grabs. Each instance will periodically check if the
-  MetaBot job is open, and, if so, whoever discovers it first will take it.
+  currently serving as the RepenteBot. We'll have that instance periodically check in; if it doesn't check in for some
+  timeout interval, we'll consider the job of RepenteBot up for grabs. Each instance will periodically check if the
+  RepenteBot job is open, and, if so, whoever discovers it first will take it.
 
   How do we uniquiely identify each instance?
 
@@ -18,7 +18,7 @@
   Repente Insights instance during this specifc run. Restarting the server will change this UUID, and each server in a
   hortizontal cluster will have its own ID, making this different from the `site-uuid` Setting. The local process UUID
   is used to differentiate different horizontally clustered MB instances so we can determine which of them will handle
-  MetaBot duties."
+  RepenteBot duties."
   (:require [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
@@ -31,19 +31,19 @@
   (:import java.time.temporal.Temporal))
 
 (defsetting ^:private metabot-instance-uuid
-  "UUID of the active MetaBot instance (the Repente Insights process currently handling MetaBot duties.)"
+  "UUID of the active RepenteBot instance (the Repente Insights process currently handling RepenteBot duties.)"
   ;; This should be cached because we'll be checking it fairly often, basically every 2 seconds as part of the
-  ;; websocket monitor thread to see whether we're MetaBot (the thread won't open the WebSocket unless that instance
-  ;; is handling MetaBot duties)
+  ;; websocket monitor thread to see whether we're RepenteBot (the thread won't open the WebSocket unless that instance
+  ;; is handling RepenteBot duties)
   :visibility :internal)
 
 (defsetting ^:private metabot-instance-last-checkin
-  "Timestamp of the last time the active MetaBot instance checked in."
+  "Timestamp of the last time the active RepenteBot instance checked in."
   :visibility :internal
   ;; caching is disabled for this, since it is intended to be updated frequently (once a minute or so) If we use the
   ;; cache, it will trigger cache invalidation for all the other instances (wasteful), and possibly at any rate be
   ;; incorrect (for example, if another instance checked in a minute ago, our local cache might not get updated right
-  ;; away, causing us to falsely assume the MetaBot role is up for grabs.)
+  ;; away, causing us to falsely assume the RepenteBot role is up for grabs.)
   :cache?    false
   :type      :timestamp)
 
@@ -62,22 +62,22 @@
   (metabot-instance-last-checkin (current-timestamp-from-db)))
 
 (defn- seconds-since-last-checkin
-  "Return the number of seconds since the active MetaBot instance last checked in (updated the
-  `metabot-instance-last-checkin` Setting). If a MetaBot instance has *never* checked in, this returns `nil`. (Since
+  "Return the number of seconds since the active RepenteBot instance last checked in (updated the
+  `metabot-instance-last-checkin` Setting). If a RepenteBot instance has *never* checked in, this returns `nil`. (Since
   `last-checkin` is one of the few Settings that isn't cached, this always requires a DB call.)"
   []
   (when-let [last-checkin (metabot-instance-last-checkin)]
     (u/prog1 (.getSeconds (t/duration last-checkin (current-timestamp-from-db)))
-      (log/debug (u/format-color 'magenta (trs "Last MetaBot checkin was {0} ago." (u/format-seconds <>)))))))
+      (log/debug (u/format-color 'magenta (trs "Last RepenteBot checkin was {0} ago." (u/format-seconds <>)))))))
 
 (def ^:private ^Integer recent-checkin-timeout-interval-seconds
-  "Number of seconds since the last MetaBot checkin that we will consider the MetaBot job to be 'up for grabs',
-  currently 3 minutes. (i.e. if the current MetaBot job holder doesn't check in for more than 3 minutes, it's up for
+  "Number of seconds since the last RepenteBot checkin that we will consider the RepenteBot job to be 'up for grabs',
+  currently 3 minutes. (i.e. if the current RepenteBot job holder doesn't check in for more than 3 minutes, it's up for
   grabs.)"
   (int (* 60 3)))
 
 (defn- last-checkin-was-not-recent?
-  "`true` if the last checkin of the active MetaBot instance was more than 3 minutes ago, or if there has never been a
+  "`true` if the last checkin of the active RepenteBot instance was more than 3 minutes ago, or if there has never been a
   checkin. (This requires DB calls, so it should not be called too often -- once a minute [at the time of this
   writing] should be sufficient.)"
   []
@@ -87,42 +87,42 @@
     true))
 
 (defn am-i-the-metabot?
-  "Does this instance currently have the MetaBot job? (Does not require any DB calls, so may safely be called
+  "Does this instance currently have the RepenteBot job? (Does not require any DB calls, so may safely be called
   often (i.e. in the websocket monitor thread loop.)"
   []
   (= (metabot-instance-uuid)
      local-process-uuid))
 
 (defn- become-metabot!
-  "Direct this instance to assume the duties of acting as MetaBot, and update the Settings we use to track assignment
+  "Direct this instance to assume the duties of acting as RepenteBot, and update the Settings we use to track assignment
   accordingly."
   []
-  (log/info (u/format-color 'green (trs "This instance will now handle MetaBot duties.")))
+  (log/info (u/format-color 'green (trs "This instance will now handle RepenteBot duties.")))
   (metabot-instance-uuid local-process-uuid)
   (update-last-checkin!))
 
 
 (defn- check-and-update-instance-status!
-  "Check whether the current instance is serving as the MetaBot; if so, update the last checkin timestamp; if not, check
-  whether we should become the MetaBot (and do so if we should)."
+  "Check whether the current instance is serving as the RepenteBot; if so, update the last checkin timestamp; if not, check
+  whether we should become the RepenteBot (and do so if we should)."
   []
   (cond
-    ;; if we're already the MetaBot instance, update the last checkin timestamp
+    ;; if we're already the RepenteBot instance, update the last checkin timestamp
     (am-i-the-metabot?)
     (do
-      (log/debug (trs "This instance is performing MetaBot duties."))
+      (log/debug (trs "This instance is performing RepenteBot duties."))
       (update-last-checkin!))
-    ;; otherwise if the last checkin was too long ago, it's time for us to assume the mantle of MetaBot
+    ;; otherwise if the last checkin was too long ago, it's time for us to assume the mantle of RepenteBot
     (last-checkin-was-not-recent?)
     (become-metabot!)
-    ;; otherwise someone else is the MetaBot and we're done here! woo
+    ;; otherwise someone else is the RepenteBot and we're done here! woo
     :else
-    (log/debug (u/format-color 'blue (trs "Another instance is already handling MetaBot duties.")))))
+    (log/debug (u/format-color 'blue (trs "Another instance is already handling RepenteBot duties.")))))
 
 
 (defn start-instance-monitor!
   "Start the thread that will monitor whether this Repente Insights instance should become, or cease being, the instance that
-  handles MetaBot functionality."
+  handles RepenteBot functionality."
   []
   (future
     (loop []

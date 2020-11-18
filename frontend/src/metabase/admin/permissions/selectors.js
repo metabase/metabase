@@ -72,7 +72,7 @@ function getTooltipForGroup(group) {
   } else if (isDefaultGroup(group)) {
     return t`Every Repente Insights user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access.`;
   } else if (isMetaBotGroup(group)) {
-    return t`MetaBot is Repente Insights's Slack bot. You can choose what it has access to here.`;
+    return t`RepenteBot is Repente Insights's Slack bot. You can choose what it has access to here.`;
   }
   return null;
 }

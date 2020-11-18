@@ -255,7 +255,7 @@ export default class SettingsSlackForm extends Component {
               className="Button Button--primary"
               style={{ padding: 0 }}
             >
-              <div className="float-left py2 pl2">{t`Create a Slack Bot User for MetaBot`}</div>
+              <div className="float-left py2 pl2">{t`Create a Slack Bot User for RepenteBot`}</div>
               <Icon
                 className="float-right p2 text-white cursor-pointer"
                 style={{ opacity: 0.6 }}

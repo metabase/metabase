@@ -30,7 +30,7 @@
 (defn execute-card
   "Execute the query for a single Card. `options` are passed along to the Query Processor."
   [{pulse-creator-id :creator_id} card-or-id & {:as options}]
-  ;; The Card must either be executed in the context of a User or by the MetaBot which itself is not a User
+  ;; The Card must either be executed in the context of a User or by the RepenteBot which itself is not a User
   {:pre [(or (integer? pulse-creator-id)
              (= (:context options) :metabot))]}
   (let [card-id (u/get-id card-or-id)]

@@ -1231,7 +1231,7 @@ msgid "Every Repente Insights user belongs to the All Users group. If you want t
 msgstr "全てのRepente Insightsユーザーは、All Users グループに属します。 グループへのアクセスを制限またはブロックする場合は、All Users グループのアクセスレベルが同等かそれ以下であることをご確認ください。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:75
-msgid "MetaBot is Repente Insights's Slack bot. You can choose what it has access to here."
+msgid "RepenteBot is Repente Insights's Slack bot. You can choose what it has access to here."
 msgstr "MetaBotはRepente InsightsのSlackボットです。 ここにアクセスできるものを選択できます。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:128
@@ -1476,7 +1476,7 @@ msgid "Answers sent right to your Slack #channels"
 msgstr "Slackに回答が送信されました"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:258
-msgid "Create a Slack Bot User for MetaBot"
+msgid "Create a Slack Bot User for RepenteBot"
 msgstr "MetaBotのSlack Botユーザーを作成する"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:268
@@ -7498,7 +7498,7 @@ msgid "Set Slack credentials"
 msgstr "Slackの認証情報をセットする"
 
 #: src/metabase/api/setup.clj
-msgid "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with MetaBot."
+msgid "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with RepenteBot."
 msgstr "チームはSlackを使用していますか？使用している場合、自動アップデートをパルスで送信し、MetaBotで質問することができます。"
 
 #: src/metabase/api/setup.clj
@@ -8222,15 +8222,15 @@ msgid "Slack API bearer token obtained from https://api.slack.com/web#authentica
 msgstr "https://api.slack.com/web#authenticationから入手したSlack APIベアラートークン"
 
 #: src/metabase/metabot.clj
-msgid "Enable MetaBot, which lets you search for and view your saved questions directly via Slack."
+msgid "Enable RepenteBot, which lets you search for and view your saved questions directly via Slack."
 msgstr "MetaBotを有効化すると、Slackで保存された質問を直接検索したり見たりすることができます"
 
 #: src/metabase/metabot/instance.clj
-msgid "Last MetaBot checkin was {0} ago."
+msgid "Last RepenteBot checkin was {0} ago."
 msgstr "MetaBotへの最後のチェックインは{0}前でした。"
 
 #: src/metabase/metabot/instance.clj
-msgid "This instance will now handle MetaBot duties."
+msgid "This instance will now handle RepenteBot duties."
 msgstr "このインスタンスはMetaBotのタスクを処理しています。"
 
 #: src/metabase/metabot.clj
@@ -8286,31 +8286,31 @@ msgid "Error launching metabot:"
 msgstr "MetaBot起動中にエラーが発生しました:"
 
 #: src/metabase/metabot/websocket.clj
-msgid "MetaBot WebSocket is closed. Reconnecting now."
-msgstr "MetaBot WebSocketが終了しました。再接続中。"
+msgid "RepenteBot WebSocket is closed. Reconnecting now."
+msgstr "RepenteBot WebSocketが終了しました。再接続中。"
 
 #: src/metabase/metabot/websocket.clj
 msgid "Error connecting websocket:"
 msgstr "WebSocketへの接続中にエラーが発生しました。:"
 
 #: src/metabase/metabot/instance.clj
-msgid "This instance is performing MetaBot duties."
+msgid "This instance is performing RepenteBot duties."
 msgstr "このインスタンスはMetaBotのタスクを処理しています。"
 
 #: src/metabase/metabot/instance.clj
-msgid "Another instance is already handling MetaBot duties."
+msgid "Another instance is already handling RepenteBot duties."
 msgstr "別のインスタンスが既にMetaBotのタスクを処理しています。"
 
 #: src/metabase/metabot.clj
-msgid "Starting MetaBot threads..."
+msgid "Starting RepenteBot threads..."
 msgstr "MetaBotスレッドを開始中..."
 
 #: src/metabase/metabot.clj
-msgid "Stopping MetaBot...  🤖"
+msgid "Stopping RepenteBot...  🤖"
 msgstr "MetaBotを停止しています...  🤖"
 
 #: src/metabase/metabot.clj
-msgid "MetaBot already running. Killing the previous WebSocket listener first."
+msgid "RepenteBot already running. Killing the previous WebSocket listener first."
 msgstr "MetaBotは既に実行中です。 前のWebSocketリスナーを強制終了します。"
 
 #: src/metabase/middleware/security.clj
@@ -8481,8 +8481,8 @@ msgid "You cannot edit or delete the ''{0}'' permissions group!"
 msgstr "\"{0}\"権限グループを編集または削除することはできません！"
 
 #: src/metabase/models/permissions_group_membership.clj
-msgid "You cannot add or remove users to/from the 'MetaBot' group."
-msgstr "「MetaBot」グループへユーザーを追加したりユーザーを削除することはできません"
+msgid "You cannot add or remove users to/from the 'RepenteBot' group."
+msgstr "「RepenteBot」グループへユーザーを追加したりユーザーを削除することはできません"
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the 'All Users' group."
@@ -9363,8 +9363,8 @@ msgid "Administrators"
 msgstr "管理者"
 
 #: frontend/src/metabase/lib/groups.js:6
-msgid "MetaBot"
-msgstr "MetaBot"
+msgid "RepenteBot"
+msgstr "RepenteBot"
 
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:290
 msgid "Sharing"
@@ -9966,7 +9966,7 @@ msgid "You cannot create or revoke permissions for the ''Admin'' group."
 msgstr "Adminグループの権限の作成または取り消しはできません"
 
 #: src/metabase/models/permissions_group_membership.clj
-msgid "You cannot add or remove users to/from the ''MetaBot'' group."
+msgid "You cannot add or remove users to/from the ''RepenteBot'' group."
 msgstr "MetaBotグループのユーザーは変更できません"
 
 #: src/metabase/models/permissions_group_membership.clj
@@ -12446,7 +12446,7 @@ msgid "You cannot update the creator_id of a Metric."
 msgstr "メトリックの creator_id を更新することはできません。"
 
 #: src/metabase/models/permissions.clj
-msgid "MetaBot can only have Collection permissions."
+msgid "RepenteBot can only have Collection permissions."
 msgstr "MetaBotは、コレクションの権限のみを持つことができます。"
 
 #: src/metabase/models/permissions.clj
@@ -16597,7 +16597,7 @@ msgid "Please create or unarchive the channel in order to complete the Slack int
 msgstr "Slackの統合を完了するには、チャネルを作成またはアーカイブ解除してください。"
 
 #: src/metabase/integrations/slack.clj
-msgid "The channel is used for storing graphs that are included in Pulses and MetaBot answers."
+msgid "The channel is used for storing graphs that are included in Pulses and RepenteBot answers."
 msgstr "このチャネルは、PulseおよびMetaBotの回答に含まれるグラフを保存するために使用されます。"
 
 #: src/metabase/integrations/slack.clj

@@ -9,10 +9,10 @@
 (models/defmodel PermissionsGroupMembership :permissions_group_membership)
 
 (defn- check-not-metabot-group
-  "Throw an Exception if we're trying to add or remove a user to the MetaBot group."
+  "Throw an Exception if we're trying to add or remove a user to the RepenteBot group."
   [group-id]
   (when (= group-id (:id (group/metabot)))
-    (throw (ex-info (tru "You cannot add or remove users to/from the ''MetaBot'' group.")
+    (throw (ex-info (tru "You cannot add or remove users to/from the ''RepenteBot'' group.")
              {:status-code 400}))))
 
 (defonce ^:dynamic ^{:doc "Should we allow people to be added to or removed from the All Users permissions group? By

@@ -3,7 +3,7 @@
   more of these groups.
 
   A few 'magic' groups exist: `all-users`, which predicably contains All Users; `admin`, which contains all
-  superusers, and `metabot`, which is used to set permissions for the MetaBot. These groups are 'magic' in the sense
+  superusers, and `metabot`, which is used to set permissions for the RepenteBot. These groups are 'magic' in the sense
   that you cannot add users to them yourself, nor can you delete them; they are created automatically. You can,
   however, set permissions for them. "
   (:require [clojure.string :as str]
@@ -43,8 +43,8 @@
 
 (def ^{:arglists '([])} ^metabase.models.permissions_group.PermissionsGroupInstance
   metabot
-  "Fetch the `MetaBot` permissions group, creating it if needed."
-  (get-or-create-magic-group! "MetaBot"))
+  "Fetch the `RepenteBot` permissions group, creating it if needed."
+  (get-or-create-magic-group! "RepenteBot"))
 
 
 ;;; --------------------------------------------------- Validation ---------------------------------------------------

@@ -566,7 +566,7 @@
              (get-in (perms/graph) [:groups (u/get-id group) (u/get-id database) :schemas]))))))
 
 (deftest metabot-graph-test
-  (testing (str "The data permissions graph should never return permissions for the MetaBot, because the MetaBot can "
+  (testing (str "The data permissions graph should never return permissions for the RepenteBot, because the RepenteBot can "
                 "only have Collection permissions")
     ;; need to swap out the perms check function because otherwise we couldn't even insert the object we want to insert
     (with-redefs [perms/assert-valid-metabot-permissions (constantly nil)]

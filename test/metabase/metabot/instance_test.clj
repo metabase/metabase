@@ -3,7 +3,7 @@
             [metabase.metabot.instance :as metabot.instance]
             [metabase.util.date-2 :as u.date]))
 
-;; test that if we're not the MetaBot based on Settings, our function to check is working correctly
+;; test that if we're not the RepenteBot based on Settings, our function to check is working correctly
 (expect
   false
   (do
@@ -11,7 +11,7 @@
     (#'metabot.instance/metabot-instance-last-checkin nil)
     (#'metabot.instance/am-i-the-metabot?)))
 
-;; test that if nobody is currently the MetaBot, we will become the MetaBot
+;; test that if nobody is currently the RepenteBot, we will become the RepenteBot
 (expect
   (do
     (#'metabot.instance/metabot-instance-uuid nil)
@@ -19,7 +19,7 @@
     (#'metabot.instance/check-and-update-instance-status!)
     (#'metabot.instance/am-i-the-metabot?)))
 
-;; test that if nobody has checked in as MetaBot for a while, we will become the MetaBot
+;; test that if nobody has checked in as RepenteBot for a while, we will become the RepenteBot
 (expect
   (do
     (#'metabot.instance/metabot-instance-uuid (str (java.util.UUID/randomUUID)))
@@ -27,7 +27,7 @@
     (#'metabot.instance/check-and-update-instance-status!)
     (#'metabot.instance/am-i-the-metabot?)))
 
-;; check that if another instance has checked in recently, we will *not* become the MetaBot
+;; check that if another instance has checked in recently, we will *not* become the RepenteBot
 (expect
   false
   (do

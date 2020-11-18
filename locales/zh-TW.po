@@ -1228,7 +1228,7 @@ msgid "Every Repente Insights user belongs to the All Users group. If you want t
 msgstr "每個Repente Insights使用者都屬於\"所有使用者群組\"。如果要限制某個使用者群組對某些內容的訪問權限，請確保“所有使用者”組具有相同或更低級別的訪問權限。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:75
-msgid "MetaBot is Repente Insights's Slack bot. You can choose what it has access to here."
+msgid "RepenteBot is Repente Insights's Slack bot. You can choose what it has access to here."
 msgstr "MetaBot是Repente Insights的Slack機器人。您可以在此處選擇訪問權限。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:128
@@ -1473,7 +1473,7 @@ msgid "Answers sent right to your Slack #channels"
 msgstr "答案發送到您的Slack #channels"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:258
-msgid "Create a Slack Bot User for MetaBot"
+msgid "Create a Slack Bot User for RepenteBot"
 msgstr "為MetaBot建立一個Slack Bot使用者"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:268
@@ -7493,7 +7493,7 @@ msgid "Set Slack credentials"
 msgstr "設定Slack憑證"
 
 #: src/metabase/api/setup.clj
-msgid "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with MetaBot."
+msgid "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with RepenteBot."
 msgstr "您的團隊是否使用Slack？如果使用，您可以通過定時通知發送自動更新並通過MetaBot建立問題。"
 
 #: src/metabase/api/setup.clj
@@ -8214,15 +8214,15 @@ msgid "Slack API bearer token obtained from https://api.slack.com/web#authentica
 msgstr "從 https://api.slack.com/web#authentication 獲取的Slack API的不記名令牌"
 
 #: src/metabase/metabot.clj
-msgid "Enable MetaBot, which lets you search for and view your saved questions directly via Slack."
+msgid "Enable RepenteBot, which lets you search for and view your saved questions directly via Slack."
 msgstr "啟用MetaBot，可讓您直接透過Slack搜索和檢視已儲存的問題。"
 
 #: src/metabase/metabot/instance.clj
-msgid "Last MetaBot checkin was {0} ago."
+msgid "Last RepenteBot checkin was {0} ago."
 msgstr "上次MetaBot確認已經是{0}之前了。"
 
 #: src/metabase/metabot/instance.clj
-msgid "This instance will now handle MetaBot duties."
+msgid "This instance will now handle RepenteBot duties."
 msgstr "這個實例現在將處理MetaBot任務"
 
 #: src/metabase/metabot.clj
@@ -8278,31 +8278,31 @@ msgid "Error launching metabot:"
 msgstr "執行Metabot時發生錯誤："
 
 #: src/metabase/metabot/websocket.clj
-msgid "MetaBot WebSocket is closed. Reconnecting now."
-msgstr "MetaBot WebSocket已關閉。現在重新連接。"
+msgid "RepenteBot WebSocket is closed. Reconnecting now."
+msgstr "RepenteBot WebSocket已關閉。現在重新連接。"
 
 #: src/metabase/metabot/websocket.clj
 msgid "Error connecting websocket:"
 msgstr "連接websocket時發生錯誤："
 
 #: src/metabase/metabot/instance.clj
-msgid "This instance is performing MetaBot duties."
+msgid "This instance is performing RepenteBot duties."
 msgstr "此實例正在執行MetaBot任務。"
 
 #: src/metabase/metabot/instance.clj
-msgid "Another instance is already handling MetaBot duties."
+msgid "Another instance is already handling RepenteBot duties."
 msgstr "另一個實例已經在處理MetaBot任務。"
 
 #: src/metabase/metabot.clj
-msgid "Starting MetaBot threads..."
-msgstr "MetaBot 啟動中..."
+msgid "Starting RepenteBot threads..."
+msgstr "RepenteBot 啟動中..."
 
 #: src/metabase/metabot.clj
-msgid "Stopping MetaBot...  🤖"
+msgid "Stopping RepenteBot...  🤖"
 msgstr "Metabot停止中……"
 
 #: src/metabase/metabot.clj
-msgid "MetaBot already running. Killing the previous WebSocket listener first."
+msgid "RepenteBot already running. Killing the previous WebSocket listener first."
 msgstr "MetaBot已經在執行。請先殺死之前的WebSocket偵聽器。"
 
 #: src/metabase/middleware/security.clj
@@ -8473,7 +8473,7 @@ msgid "You cannot edit or delete the ''{0}'' permissions group!"
 msgstr "您不能編輯或刪除''{0}''權限群組"
 
 #: src/metabase/models/permissions_group_membership.clj
-msgid "You cannot add or remove users to/from the 'MetaBot' group."
+msgid "You cannot add or remove users to/from the 'RepenteBot' group."
 msgstr "您不能在MetaBot群組中新增或者移除成員。"
 
 #: src/metabase/models/permissions_group_membership.clj
@@ -9356,7 +9356,7 @@ msgid "Administrators"
 msgstr "系統管理群組"
 
 #: frontend/src/metabase/lib/groups.js:6
-msgid "MetaBot"
+msgid "RepenteBot"
 msgstr "Meta機器人"
 
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:290
@@ -9958,8 +9958,8 @@ msgid "You cannot create or revoke permissions for the ''Admin'' group."
 msgstr "您無法為\"系統管理員（Admin）\"群組建立或撤銷權限"
 
 #: src/metabase/models/permissions_group_membership.clj
-msgid "You cannot add or remove users to/from the ''MetaBot'' group."
-msgstr "您不能新增或移除’MetaBot‘組的成員"
+msgid "You cannot add or remove users to/from the ''RepenteBot'' group."
+msgstr "您不能新增或移除’RepenteBot‘組的成員"
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''All Users'' group."
@@ -12428,7 +12428,7 @@ msgid "You cannot update the creator_id of a Metric."
 msgstr "您不能更新量值的建立者標識(creator_id)"
 
 #: src/metabase/models/permissions.clj
-msgid "MetaBot can only have Collection permissions."
+msgid "RepenteBot can only have Collection permissions."
 msgstr "MetaBot只能擁有Collection權限。"
 
 #: src/metabase/models/permissions.clj
@@ -16581,7 +16581,7 @@ msgid "Please create or unarchive the channel in order to complete the Slack int
 msgstr "請創建或取消歸檔通道，以完成Slack集成。"
 
 #: src/metabase/integrations/slack.clj
-msgid "The channel is used for storing graphs that are included in Pulses and MetaBot answers."
+msgid "The channel is used for storing graphs that are included in Pulses and RepenteBot answers."
 msgstr "該通道用於存儲包含在Pulses和MetaBot答案中的圖形。"
 
 #: src/metabase/integrations/slack.clj

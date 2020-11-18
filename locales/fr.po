@@ -1240,8 +1240,8 @@ msgid "Every Repente Insights user belongs to the All Users group. If you want t
 msgstr "Tous les utilisateurs de Repente Insights appartiennent au groupe \"Tous les utilisateurs\". Si vous voulez limiter ou restreindre l'accès d'un groupe à un élément, assurez-vous que le groupe \"Tous les utilisateurs\" a un niveau d'accès égal ou inférieur."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:75
-msgid "MetaBot is Repente Insights's Slack bot. You can choose what it has access to here."
-msgstr "MetaBot est le bot Slack de Repente Insights. Vous pouvez choisir à quoi il a accès ici."
+msgid "RepenteBot is Repente Insights's Slack bot. You can choose what it has access to here."
+msgstr "RepenteBot est le bot Slack de Repente Insights. Vous pouvez choisir à quoi il a accès ici."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:128
 msgid "The \"{0}\" group may have access to a different set of {1} than this group, which may give this group additional access to some {2}."
@@ -1485,8 +1485,8 @@ msgid "Answers sent right to your Slack #channels"
 msgstr "Réponses envoyées directement vers vos #canaux Slack"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:258
-msgid "Create a Slack Bot User for MetaBot"
-msgstr "Créer un Slack Bot User pour MetaBot"
+msgid "Create a Slack Bot User for RepenteBot"
+msgstr "Créer un Slack Bot User pour RepenteBot"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:268
 msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Repente Insights needs this to upload graphs."
@@ -2498,7 +2498,7 @@ msgstr "Voici le message d'erreur complet"
 
 #: frontend/src/metabase/components/ExplorePane.jsx:19
 msgid "Hi, Metabot here."
-msgstr "Salut, ici MetaBot."
+msgstr "Salut, ici RepenteBot."
 
 #: frontend/src/metabase/components/ExplorePane.jsx:94
 msgid "Based on the schema"
@@ -6374,31 +6374,31 @@ msgstr "Bureau des prodiges"
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:26
 msgid "Metabot is admiring your integers…"
-msgstr "MetaBot est en admiration devant vos chiffres..."
+msgstr "RepenteBot est en admiration devant vos chiffres..."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:27
 msgid "Metabot is performing billions of differential equations…"
-msgstr "MetaBot effectue des milliards d'équations différentielles ..."
+msgstr "RepenteBot effectue des milliards d'équations différentielles ..."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:28
 msgid "Metabot is doing science…"
-msgstr "MetaBot fait de la science ..."
+msgstr "RepenteBot fait de la science ..."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:29
 msgid "Metabot is checking out your metrics…"
-msgstr "MetaBot vérifie vos métriques ..."
+msgstr "RepenteBot vérifie vos métriques ..."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:30
 msgid "Metabot is looking for trends and outliers…"
-msgstr "MetaBot recherche des tendances et des valeurs aberrantes ..."
+msgstr "RepenteBot recherche des tendances et des valeurs aberrantes ..."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:31
 msgid "Metabot is consulting the quantum abacus…"
-msgstr "MetaBot consulte l'abaque quantique ..."
+msgstr "RepenteBot consulte l'abaque quantique ..."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:32
 msgid "Metabot is feeling pretty good about all this…"
-msgstr "MetaBot se sent bien dans tout ça ..."
+msgstr "RepenteBot se sent bien dans tout ça ..."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:52
 msgid "We’ll show you some interesting explorations of your data in\n"
@@ -7547,8 +7547,8 @@ msgid "Set Slack credentials"
 msgstr "Régler les identifiants Slack"
 
 #: src/metabase/api/setup.clj
-msgid "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with MetaBot."
-msgstr "Votre équipe utilise Slack ? Vous pouvez envoyer des mises à jour automatiques via les pulses et poser des questions avec MetaBot."
+msgid "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with RepenteBot."
+msgstr "Votre équipe utilise Slack ? Vous pouvez envoyer des mises à jour automatiques via les pulses et poser des questions avec RepenteBot."
 
 #: src/metabase/api/setup.clj
 msgid "Invite team members"
@@ -8274,16 +8274,16 @@ msgid "Slack API bearer token obtained from https://api.slack.com/web#authentica
 msgstr "Jeton de l'API Slack obtenu à partir de https://api.slack.com/web#authentication"
 
 #: src/metabase/metabot.clj
-msgid "Enable MetaBot, which lets you search for and view your saved questions directly via Slack."
-msgstr "Activer MetaBot, qui vous permet de rechercher et voir vos questions sauvegardées directement via Slack."
+msgid "Enable RepenteBot, which lets you search for and view your saved questions directly via Slack."
+msgstr "Activer RepenteBot, qui vous permet de rechercher et voir vos questions sauvegardées directement via Slack."
 
 #: src/metabase/metabot/instance.clj
-msgid "Last MetaBot checkin was {0} ago."
-msgstr "La dernière vérification MetaBot a eu lieu il y a {0}."
+msgid "Last RepenteBot checkin was {0} ago."
+msgstr "La dernière vérification RepenteBot a eu lieu il y a {0}."
 
 #: src/metabase/metabot/instance.clj
-msgid "This instance will now handle MetaBot duties."
-msgstr "Cette instance gérera désormais les tâches MetaBot."
+msgid "This instance will now handle RepenteBot duties."
+msgstr "Cette instance gérera désormais les tâches RepenteBot."
 
 #: src/metabase/metabot.clj
 msgid "Here''s what I can {0}:"
@@ -8327,7 +8327,7 @@ msgstr "Chargement des citations de Kanye..."
 
 #: src/metabase/metabot/events.clj
 msgid "Evaluating Metabot command:"
-msgstr "Évaluation de la commande MetaBot :"
+msgstr "Évaluation de la commande RepenteBot :"
 
 #: src/metabase/metabot.clj
 msgid "Go home websocket, you're drunk."
@@ -8335,35 +8335,35 @@ msgstr "Rentre chez toi websocket, tu es saoule."
 
 #: src/metabase/metabot/websocket.clj
 msgid "Error launching metabot:"
-msgstr "Erreur au lancement de MetaBot :"
+msgstr "Erreur au lancement de RepenteBot :"
 
 #: src/metabase/metabot/websocket.clj
-msgid "MetaBot WebSocket is closed. Reconnecting now."
-msgstr "La websocket MetaBot est fermée. Reconnexion en cours."
+msgid "RepenteBot WebSocket is closed. Reconnecting now."
+msgstr "La websocket RepenteBot est fermée. Reconnexion en cours."
 
 #: src/metabase/metabot/websocket.clj
 msgid "Error connecting websocket:"
 msgstr "Erreur lors de la connexion de la websocket :"
 
 #: src/metabase/metabot/instance.clj
-msgid "This instance is performing MetaBot duties."
-msgstr "Cette instance effectue les tâches MetaBot"
+msgid "This instance is performing RepenteBot duties."
+msgstr "Cette instance effectue les tâches RepenteBot"
 
 #: src/metabase/metabot/instance.clj
-msgid "Another instance is already handling MetaBot duties."
-msgstr "Une autre instance gère déjà les tâches MetaBot."
+msgid "Another instance is already handling RepenteBot duties."
+msgstr "Une autre instance gère déjà les tâches RepenteBot."
 
 #: src/metabase/metabot.clj
-msgid "Starting MetaBot threads..."
-msgstr "Démarrage des fils d'exécution de MetaBot..."
+msgid "Starting RepenteBot threads..."
+msgstr "Démarrage des fils d'exécution de RepenteBot..."
 
 #: src/metabase/metabot.clj
-msgid "Stopping MetaBot...  🤖"
-msgstr "Arrêt de MetaBot... 🤖"
+msgid "Stopping RepenteBot...  🤖"
+msgstr "Arrêt de RepenteBot... 🤖"
 
 #: src/metabase/metabot.clj
-msgid "MetaBot already running. Killing the previous WebSocket listener first."
-msgstr "MetaBot est déjà en route. Arrêt préliminaire du précédent écouteur de websocket."
+msgid "RepenteBot already running. Killing the previous WebSocket listener first."
+msgstr "RepenteBot est déjà en route. Arrêt préliminaire du précédent écouteur de websocket."
 
 #: src/metabase/middleware/security.clj
 msgid "Base-64 encoded public key for this site's SSL certificate."
@@ -8533,8 +8533,8 @@ msgid "You cannot edit or delete the ''{0}'' permissions group!"
 msgstr "Vous ne pouvez pas modifier ou supprimer le groupe d'autorisations ''{0}'' !"
 
 #: src/metabase/models/permissions_group_membership.clj
-msgid "You cannot add or remove users to/from the 'MetaBot' group."
-msgstr "Vous ne pouvez pas ajouter (resp. supprimer) d'utilisateur au (resp. du) groupe 'MetaBot'."
+msgid "You cannot add or remove users to/from the 'RepenteBot' group."
+msgstr "Vous ne pouvez pas ajouter (resp. supprimer) d'utilisateur au (resp. du) groupe 'RepenteBot'."
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the 'All Users' group."
@@ -9416,8 +9416,8 @@ msgid "Administrators"
 msgstr "Administrateurs"
 
 #: frontend/src/metabase/lib/groups.js:6
-msgid "MetaBot"
-msgstr "MetaBot"
+msgid "RepenteBot"
+msgstr "RepenteBot"
 
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:290
 msgid "Sharing"
@@ -10019,8 +10019,8 @@ msgid "You cannot create or revoke permissions for the ''Admin'' group."
 msgstr "Vous ne pouvez pas créer ou révoquer des autorisations pour le groupe ''Admin''."
 
 #: src/metabase/models/permissions_group_membership.clj
-msgid "You cannot add or remove users to/from the ''MetaBot'' group."
-msgstr "Vous ne pouvez pas ajouter ou supprimer des utilisateurs du groupe ''MetaBot\"."
+msgid "You cannot add or remove users to/from the ''RepenteBot'' group."
+msgstr "Vous ne pouvez pas ajouter ou supprimer des utilisateurs du groupe ''RepenteBot\"."
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''All Users'' group."
@@ -12507,8 +12507,8 @@ msgid "You cannot update the creator_id of a Metric."
 msgstr "Vous ne pouvez pas mettre à jour le creator_id d'une métrique."
 
 #: src/metabase/models/permissions.clj
-msgid "MetaBot can only have Collection permissions."
-msgstr "MetaBot ne peut avoir qu'une permission de type Collection"
+msgid "RepenteBot can only have Collection permissions."
+msgstr "RepenteBot ne peut avoir qu'une permission de type Collection"
 
 #: src/metabase/models/permissions.clj
 msgid "Failed to grant permissions"
@@ -16672,8 +16672,8 @@ msgid "Please create or unarchive the channel in order to complete the Slack int
 msgstr "Veuillez créer ou désarchiver le canal afin de terminer l'intégration Slack."
 
 #: src/metabase/integrations/slack.clj
-msgid "The channel is used for storing graphs that are included in Pulses and MetaBot answers."
-msgstr "Le canal est utilisé pour stocker les graphiques inclus dans les réponses Pulses et MetaBot."
+msgid "The channel is used for storing graphs that are included in Pulses and RepenteBot answers."
+msgstr "Le canal est utilisé pour stocker les graphiques inclus dans les réponses Pulses et RepenteBot."
 
 #: src/metabase/integrations/slack.clj
 msgid "Uploaded image"

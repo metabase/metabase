@@ -14,14 +14,14 @@
 
 (defmacro with-channel-id
   "Execute `body` with `channel-id` as the current Slack channel; all messages will be posted to that channel. (This is
-  bound to the channel that recieved the MetaBot command we're currently handling by the
+  bound to the channel that recieved the RepenteBot command we're currently handling by the
   `metabase.metabot.events/handle-slack-event` event handler.)"
   {:style/indent 1}
   [channel-id & body]
   `(do-with-channel-id ~channel-id (fn [] ~@body)))
 
 (defn post-chat-message!
-  "Post a MetaBot response Slack message. Goes to channel where the MetaBot command we're replying to was posted."
+  "Post a RepenteBot response Slack message. Goes to channel where the RepenteBot command we're replying to was posted."
   {:arglists '([text-or-nil] [text-or-nil attachments])}
   [& args]
   {:pre [(some? *channel-id*)]}

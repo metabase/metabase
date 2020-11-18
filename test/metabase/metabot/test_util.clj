@@ -37,7 +37,7 @@
 
 (defmacro with-slack-messages
   "Execute body with the functions that post to Slack mocked, returning a sequence of all fncalls to relevant functions
-  like `post-chat-message!`. Use this to write tests for the MetaBot without actually having to worry about setting up
+  like `post-chat-message!`. Use this to write tests for the RepenteBot without actually having to worry about setting up
   Slack!"
   [& body]
   `(do-with-slack-messages (fn [] ~@body)))

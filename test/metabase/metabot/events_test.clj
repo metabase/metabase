@@ -27,22 +27,22 @@
      (json/generate-string
       (merge {:type "message", :ts "1001"} event)))))
 
-;; MetaBot shouldn't handle events that aren't of type "message"
+;; RepenteBot shouldn't handle events that aren't of type "message"
 (expect
   []
   (handle-slack-event {:text "metabot list", :type "not_a_message"}))
 
-;; MetaBot shouldn't handle "message" events if the subtype is something like "bot_message"
+;; RepenteBot shouldn't handle "message" events if the subtype is something like "bot_message"
 (expect
   []
   (handle-slack-event {:text "metabot list", :subtype "bot_message"}))
 
-;; MetaBot shouldn't handlle events if they were posted after the MetaBot start time
+;; RepenteBot shouldn't handlle events if they were posted after the RepenteBot start time
 (expect
   []
   (handle-slack-event {:text "metabot list", :ts "999"}))
 
-;; MetaBot shouldn't handle events that don't start with metabot
+;; RepenteBot shouldn't handle events that don't start with metabot
 (expect
   []
   (handle-slack-event {:text "metabase list"}))

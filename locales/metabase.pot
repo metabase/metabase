@@ -1298,7 +1298,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/permissions/selectors.js:69
 msgid ""
-"MetaBot is Repente Insights's Slack bot. You can choose what it has access to here."
+"RepenteBot is Repente Insights's Slack bot. You can choose what it has access to here."
 msgstr ""
 
 #: frontend/src/metabase/admin/permissions/selectors.js:122
@@ -1598,7 +1598,7 @@ msgid "Answers sent right to your Slack #channels"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:251
-msgid "Create a Slack Bot User for MetaBot"
+msgid "Create a Slack Bot User for RepenteBot"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:261
@@ -4227,7 +4227,7 @@ msgid "Administrators"
 msgstr ""
 
 #: frontend/src/metabase/lib/groups.js:6
-msgid "MetaBot"
+msgid "RepenteBot"
 msgstr ""
 
 #: frontend/src/metabase/lib/query.js:298
@@ -8702,7 +8702,7 @@ msgstr ""
 #: src/metabase/api/setup.clj
 msgid ""
 "Does your team use Slack? If so, you can send automated updates via pulses "
-"and ask questions with MetaBot."
+"and ask questions with RepenteBot."
 msgstr ""
 
 #: src/metabase/api/setup.clj
@@ -9831,20 +9831,20 @@ msgstr ""
 
 #: src/metabase/metabot.clj
 msgid ""
-"Enable MetaBot, which lets you search for and view your saved questions "
+"Enable RepenteBot, which lets you search for and view your saved questions "
 "directly via Slack."
 msgstr ""
 
 #: src/metabase/metabot.clj
-msgid "Starting MetaBot threads..."
+msgid "Starting RepenteBot threads..."
 msgstr ""
 
 #: src/metabase/metabot.clj
-msgid "Stopping MetaBot...  🤖"
+msgid "Stopping RepenteBot...  🤖"
 msgstr ""
 
 #: src/metabase/metabot.clj
-msgid "MetaBot already running. Killing the previous WebSocket listener first."
+msgid "RepenteBot already running. Killing the previous WebSocket listener first."
 msgstr ""
 
 #: src/metabase/metabot/command.clj
@@ -9892,19 +9892,19 @@ msgid "Evaluating Metabot command:"
 msgstr ""
 
 #: src/metabase/metabot/instance.clj
-msgid "Last MetaBot checkin was {0} ago."
+msgid "Last RepenteBot checkin was {0} ago."
 msgstr ""
 
 #: src/metabase/metabot/instance.clj
-msgid "This instance will now handle MetaBot duties."
+msgid "This instance will now handle RepenteBot duties."
 msgstr ""
 
 #: src/metabase/metabot/instance.clj
-msgid "This instance is performing MetaBot duties."
+msgid "This instance is performing RepenteBot duties."
 msgstr ""
 
 #: src/metabase/metabot/instance.clj
-msgid "Another instance is already handling MetaBot duties."
+msgid "Another instance is already handling RepenteBot duties."
 msgstr ""
 
 #: src/metabase/metabot/slack.clj
@@ -9926,7 +9926,7 @@ msgid "Error launching metabot:"
 msgstr ""
 
 #: src/metabase/metabot/websocket.clj
-msgid "MetaBot WebSocket is closed. Reconnecting now."
+msgid "RepenteBot WebSocket is closed. Reconnecting now."
 msgstr ""
 
 #: src/metabase/metabot/websocket.clj
@@ -10180,7 +10180,7 @@ msgid "Invalid permissions object path: ''{0}''."
 msgstr ""
 
 #: src/metabase/models/permissions.clj
-msgid "MetaBot can only have Collection permissions."
+msgid "RepenteBot can only have Collection permissions."
 msgstr ""
 
 #: src/metabase/models/permissions.clj
@@ -10234,7 +10234,7 @@ msgid "You cannot edit or delete the ''{0}'' permissions group!"
 msgstr ""
 
 #: src/metabase/models/permissions_group_membership.clj
-msgid "You cannot add or remove users to/from the ''MetaBot'' group."
+msgid "You cannot add or remove users to/from the ''RepenteBot'' group."
 msgstr ""
 
 #: src/metabase/models/permissions_group_membership.clj

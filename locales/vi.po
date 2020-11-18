@@ -1230,8 +1230,8 @@ msgid "Every Repente Insights user belongs to the All Users group. If you want t
 msgstr "Tất cả người dùng Repente Insights nằm trong nhóm \"Tất cả người dùng\". Nếu bạn muốn giới hạn hoặc thu hẹp truy cập của một nhóm tới một thứ gì đó, hãy đảm bảo rằng nhóm \"Tất cả người dùng\" có quyền tương đương hoặc thấp hơn."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:75
-msgid "MetaBot is Repente Insights's Slack bot. You can choose what it has access to here."
-msgstr "MetaBot là một con bot của Repente Insights trên Slack. Bạn có thể chọn những thứ nó có thể truy cập ở đây."
+msgid "RepenteBot is Repente Insights's Slack bot. You can choose what it has access to here."
+msgstr "RepenteBot là một con bot của Repente Insights trên Slack. Bạn có thể chọn những thứ nó có thể truy cập ở đây."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:128
 msgid "The \"{0}\" group may have access to a different set of {1} than this group, which may give this group additional access to some {2}."
@@ -1475,8 +1475,8 @@ msgid "Answers sent right to your Slack #channels"
 msgstr "Câu trả lời đã được gửi thằng tới kênh Slack của bạn"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:258
-msgid "Create a Slack Bot User for MetaBot"
-msgstr "Tạo một tài khoản Slack Bot cho MetaBot"
+msgid "Create a Slack Bot User for RepenteBot"
+msgstr "Tạo một tài khoản Slack Bot cho RepenteBot"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:268
 msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Repente Insights needs this to upload graphs."
@@ -7494,8 +7494,8 @@ msgid "Set Slack credentials"
 msgstr "Đặt thông tin đăng nhập Slack"
 
 #: src/metabase/api/setup.clj
-msgid "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with MetaBot."
-msgstr "Đội của bạn có sử dụng Slack không? Nếu vậy, bạn có thể gửi cập nhật tự động qua các xung và đặt câu hỏi với MetaBot"
+msgid "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with RepenteBot."
+msgstr "Đội của bạn có sử dụng Slack không? Nếu vậy, bạn có thể gửi cập nhật tự động qua các xung và đặt câu hỏi với RepenteBot"
 
 #: src/metabase/api/setup.clj
 msgid "Invite team members"
@@ -8217,16 +8217,16 @@ msgid "Slack API bearer token obtained from https://api.slack.com/web#authentica
 msgstr "Mã thông báo mang Slack API thu được từ https://api.slack.com/web#authentication."
 
 #: src/metabase/metabot.clj
-msgid "Enable MetaBot, which lets you search for and view your saved questions directly via Slack."
-msgstr "Kích hoạt MetaBot, cho phép bạn tìm kiếm và xem các câu hỏi đã lưu của bạn trực tiếp thông qua Slack."
+msgid "Enable RepenteBot, which lets you search for and view your saved questions directly via Slack."
+msgstr "Kích hoạt RepenteBot, cho phép bạn tìm kiếm và xem các câu hỏi đã lưu của bạn trực tiếp thông qua Slack."
 
 #: src/metabase/metabot/instance.clj
-msgid "Last MetaBot checkin was {0} ago."
-msgstr "Lần đăng ký MetaBot cuối cùng là {0} trước đây."
+msgid "Last RepenteBot checkin was {0} ago."
+msgstr "Lần đăng ký RepenteBot cuối cùng là {0} trước đây."
 
 #: src/metabase/metabot/instance.clj
-msgid "This instance will now handle MetaBot duties."
-msgstr "Trường hợp này bây giờ sẽ xử lý các nhiệm vụ MetaBot."
+msgid "This instance will now handle RepenteBot duties."
+msgstr "Trường hợp này bây giờ sẽ xử lý các nhiệm vụ RepenteBot."
 
 #: src/metabase/metabot.clj
 msgid "Here''s what I can {0}:"
@@ -8281,32 +8281,32 @@ msgid "Error launching metabot:"
 msgstr "Lỗi khởi chạy metabot:"
 
 #: src/metabase/metabot/websocket.clj
-msgid "MetaBot WebSocket is closed. Reconnecting now."
-msgstr "MetaBot WebSocket đã bị đóng. Kết nối lại bây giờ."
+msgid "RepenteBot WebSocket is closed. Reconnecting now."
+msgstr "RepenteBot WebSocket đã bị đóng. Kết nối lại bây giờ."
 
 #: src/metabase/metabot/websocket.clj
 msgid "Error connecting websocket:"
 msgstr "Lỗi kết nối websocket:"
 
 #: src/metabase/metabot/instance.clj
-msgid "This instance is performing MetaBot duties."
-msgstr "Trường hợp này đang thực hiện nhiệm vụ MetaBot."
+msgid "This instance is performing RepenteBot duties."
+msgstr "Trường hợp này đang thực hiện nhiệm vụ RepenteBot."
 
 #: src/metabase/metabot/instance.clj
-msgid "Another instance is already handling MetaBot duties."
-msgstr "Một trường hợp khác đã xử lý các nhiệm vụ của MetaBot."
+msgid "Another instance is already handling RepenteBot duties."
+msgstr "Một trường hợp khác đã xử lý các nhiệm vụ của RepenteBot."
 
 #: src/metabase/metabot.clj
-msgid "Starting MetaBot threads..."
-msgstr "Bắt đầu các chủ đề MetaBot ..."
+msgid "Starting RepenteBot threads..."
+msgstr "Bắt đầu các chủ đề RepenteBot ..."
 
 #: src/metabase/metabot.clj
-msgid "Stopping MetaBot...  🤖"
+msgid "Stopping RepenteBot...  🤖"
 msgstr "Đang dừng Metabot..."
 
 #: src/metabase/metabot.clj
-msgid "MetaBot already running. Killing the previous WebSocket listener first."
-msgstr "MetaBot đã chạy. Giết người nghe WebSocket trước đó trước."
+msgid "RepenteBot already running. Killing the previous WebSocket listener first."
+msgstr "RepenteBot đã chạy. Giết người nghe WebSocket trước đó trước."
 
 #: src/metabase/middleware/security.clj
 msgid "Base-64 encoded public key for this site's SSL certificate."
@@ -8476,8 +8476,8 @@ msgid "You cannot edit or delete the ''{0}'' permissions group!"
 msgstr "Bạn không thể chỉnh sửa hoặc xóa nhóm quyền '' {0} ''!"
 
 #: src/metabase/models/permissions_group_membership.clj
-msgid "You cannot add or remove users to/from the 'MetaBot' group."
-msgstr "Bạn không thể thêm hoặc xóa người dùng vào / ra khỏi nhóm 'MetaBot'."
+msgid "You cannot add or remove users to/from the 'RepenteBot' group."
+msgstr "Bạn không thể thêm hoặc xóa người dùng vào / ra khỏi nhóm 'RepenteBot'."
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the 'All Users' group."
@@ -9358,8 +9358,8 @@ msgid "Administrators"
 msgstr "Quản trị viên"
 
 #: frontend/src/metabase/lib/groups.js:6
-msgid "MetaBot"
-msgstr "MetaBot"
+msgid "RepenteBot"
+msgstr "RepenteBot"
 
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:290
 msgid "Sharing"
@@ -9961,8 +9961,8 @@ msgid "You cannot create or revoke permissions for the ''Admin'' group."
 msgstr "Bạn không thể tạo hoặc thu hồi quyền cho nhóm '' Quản trị viên ''."
 
 #: src/metabase/models/permissions_group_membership.clj
-msgid "You cannot add or remove users to/from the ''MetaBot'' group."
-msgstr "Bạn không thể thêm hoặc xóa người dùng vào / ra khỏi nhóm '' MetaBot ''."
+msgid "You cannot add or remove users to/from the ''RepenteBot'' group."
+msgstr "Bạn không thể thêm hoặc xóa người dùng vào / ra khỏi nhóm '' RepenteBot ''."
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''All Users'' group."
@@ -12431,8 +12431,8 @@ msgid "You cannot update the creator_id of a Metric."
 msgstr "Bạn không thể cập nhật creator_id của một Metric."
 
 #: src/metabase/models/permissions.clj
-msgid "MetaBot can only have Collection permissions."
-msgstr "MetaBot chỉ có thể có quyền Collection."
+msgid "RepenteBot can only have Collection permissions."
+msgstr "RepenteBot chỉ có thể có quyền Collection."
 
 #: src/metabase/models/permissions.clj
 msgid "Failed to grant permissions"
@@ -16583,8 +16583,8 @@ msgid "Please create or unarchive the channel in order to complete the Slack int
 msgstr "Vui lòng tạo hoặc hủy lưu trữ kênh để hoàn tất quá trình tích hợp Slack."
 
 #: src/metabase/integrations/slack.clj
-msgid "The channel is used for storing graphs that are included in Pulses and MetaBot answers."
-msgstr "Kênh được sử dụng để lưu trữ các biểu đồ được bao gồm trong các câu trả lời Pulses và MetaBot."
+msgid "The channel is used for storing graphs that are included in Pulses and RepenteBot answers."
+msgstr "Kênh được sử dụng để lưu trữ các biểu đồ được bao gồm trong các câu trả lời Pulses và RepenteBot."
 
 #: src/metabase/integrations/slack.clj
 msgid "Uploaded image"

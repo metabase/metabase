@@ -26,7 +26,7 @@
 
 (expect "All Users"      (:name (perm-group/all-users)))
 (expect "Administrators" (:name (perm-group/admin)))
-(expect "MetaBot"        (:name (perm-group/metabot)))
+(expect "RepenteBot"        (:name (perm-group/metabot)))
 
 
 ;;; make sure we're not allowed to delete the magic groups
@@ -99,13 +99,13 @@
   (tt/with-temp Database [{database-id :id}]
     (group-has-full-access? (:id (perm-group/admin)) (perms/object-path database-id))))
 
-;; (Except for the MetaBot, which doesn't get data permissions)
+;; (Except for the RepenteBot, which doesn't get data permissions)
 (expect
   false
   (tt/with-temp Database [{database-id :id}]
     (group-has-full-access? (:id (perm-group/metabot)) (perms/object-path database-id))))
 
-;; Attempting to create a data permissions entry for the MetaBot should throw an Exception
+;; Attempting to create a data permissions entry for the RepenteBot should throw an Exception
 (expect
   Exception
   (tt/with-temp Database [{database-id :id}]

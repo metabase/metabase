@@ -1235,8 +1235,8 @@ msgid "Every Repente Insights user belongs to the All Users group. If you want t
 msgstr "Hver Repente Insights bruker tilhører i \"alle brukere\" gruppen. Hvis du vil begrense gruppe tilgang til noe, valider om \"alle brukere\" gruppen har samme eller mindre nivå med tilganger."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:75
-msgid "MetaBot is Repente Insights's Slack bot. You can choose what it has access to here."
-msgstr "MetaBot er Repente Insights sin Slack-bot. Du kan velge hva den skal ha tilgang til her."
+msgid "RepenteBot is Repente Insights's Slack bot. You can choose what it has access to here."
+msgstr "RepenteBot er Repente Insights sin Slack-bot. Du kan velge hva den skal ha tilgang til her."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:128
 msgid "The \"{0}\" group may have access to a different set of {1} than this group, which may give this group additional access to some {2}."
@@ -1481,8 +1481,8 @@ msgid "Answers sent right to your Slack #channels"
 msgstr "Svar er sendt direkte til din Slack #kanaler"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:258
-msgid "Create a Slack Bot User for MetaBot"
-msgstr "Lag en Slack Bot bruker for MetaBot"
+msgid "Create a Slack Bot User for RepenteBot"
+msgstr "Lag en Slack Bot bruker for RepenteBot"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:268
 msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Repente Insights needs this to upload graphs."
@@ -2498,7 +2498,7 @@ msgstr "Her er hele feilmeldingen"
 
 #: frontend/src/metabase/components/ExplorePane.jsx:19
 msgid "Hi, Metabot here."
-msgstr "Hei, MetaBot her."
+msgstr "Hei, RepenteBot her."
 
 #: frontend/src/metabase/components/ExplorePane.jsx:94
 msgid "Based on the schema"
@@ -6354,15 +6354,15 @@ msgstr "Avdeling råkul"
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:26
 msgid "Metabot is admiring your integers…"
-msgstr "MetaBot beundrer dine heltall..."
+msgstr "RepenteBot beundrer dine heltall..."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:27
 msgid "Metabot is performing billions of differential equations…"
-msgstr "MetaBot går igjennom flere milliarder av forskjellige ligninger..."
+msgstr "RepenteBot går igjennom flere milliarder av forskjellige ligninger..."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:28
 msgid "Metabot is doing science…"
-msgstr "MetaBot gjør noen vitenskaplige kalkulasjoner..."
+msgstr "RepenteBot gjør noen vitenskaplige kalkulasjoner..."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:29
 msgid "Metabot is checking out your metrics…"
@@ -6375,11 +6375,11 @@ msgstr "MwtaBot ser etter trender og uthevelser..."
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:31
 #, fuzzy
 msgid "Metabot is consulting the quantum abacus…"
-msgstr "MetaBot konsulterer med moder jord..."
+msgstr "RepenteBot konsulterer med moder jord..."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:32
 msgid "Metabot is feeling pretty good about all this…"
-msgstr "MetaBot føler seg bra med dette..."
+msgstr "RepenteBot føler seg bra med dette..."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:52
 msgid "We’ll show you some interesting explorations of your data in\n"
@@ -7527,8 +7527,8 @@ msgid "Set Slack credentials"
 msgstr "Sett Slack innlogging"
 
 #: src/metabase/api/setup.clj
-msgid "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with MetaBot."
-msgstr "Bruker laget ditt Slack? I så fall kan du sende automatiske oppdateringer via pulser og stille spørsmål med MetaBot."
+msgid "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with RepenteBot."
+msgstr "Bruker laget ditt Slack? I så fall kan du sende automatiske oppdateringer via pulser og stille spørsmål med RepenteBot."
 
 #: src/metabase/api/setup.clj
 msgid "Invite team members"
@@ -8254,15 +8254,15 @@ msgid "Slack API bearer token obtained from https://api.slack.com/web#authentica
 msgstr "Slack API bearer token som fåes fra https://api.slack.com/web#authentication"
 
 #: src/metabase/metabot.clj
-msgid "Enable MetaBot, which lets you search for and view your saved questions directly via Slack."
-msgstr "Aktiver MetaBot, som lar deg søke etter og vise spørsmålene dine direkte via Slack."
+msgid "Enable RepenteBot, which lets you search for and view your saved questions directly via Slack."
+msgstr "Aktiver RepenteBot, som lar deg søke etter og vise spørsmålene dine direkte via Slack."
 
 #: src/metabase/metabot/instance.clj
-msgid "Last MetaBot checkin was {0} ago."
-msgstr "Sist MetaBot sjekket inn var {0} siden."
+msgid "Last RepenteBot checkin was {0} ago."
+msgstr "Sist RepenteBot sjekket inn var {0} siden."
 
 #: src/metabase/metabot/instance.clj
-msgid "This instance will now handle MetaBot duties."
+msgid "This instance will now handle RepenteBot duties."
 msgstr "Denne instansen vil nå ta hånd om MetaBase forespørsler."
 
 #: src/metabase/metabot.clj
@@ -8307,7 +8307,7 @@ msgstr "Laster Kanye sitater..."
 
 #: src/metabase/metabot/events.clj
 msgid "Evaluating Metabot command:"
-msgstr "Evaluerer MetaBot kommando:"
+msgstr "Evaluerer RepenteBot kommando:"
 
 #: src/metabase/metabot.clj
 msgid "Go home websocket, you're drunk."
@@ -8315,35 +8315,35 @@ msgstr "Gå hjem nettplugg, du er full."
 
 #: src/metabase/metabot/websocket.clj
 msgid "Error launching metabot:"
-msgstr "Feil innlasting av MetaBot:"
+msgstr "Feil innlasting av RepenteBot:"
 
 #: src/metabase/metabot/websocket.clj
-msgid "MetaBot WebSocket is closed. Reconnecting now."
-msgstr "MetaBot WebSocket er lukket. Kobler opp på nytt nå."
+msgid "RepenteBot WebSocket is closed. Reconnecting now."
+msgstr "RepenteBot WebSocket er lukket. Kobler opp på nytt nå."
 
 #: src/metabase/metabot/websocket.clj
 msgid "Error connecting websocket:"
 msgstr "Feil ved kobling til websocket:"
 
 #: src/metabase/metabot/instance.clj
-msgid "This instance is performing MetaBot duties."
-msgstr "Denne instansen utfører MetaBot-plikter."
+msgid "This instance is performing RepenteBot duties."
+msgstr "Denne instansen utfører RepenteBot-plikter."
 
 #: src/metabase/metabot/instance.clj
-msgid "Another instance is already handling MetaBot duties."
-msgstr "En annen instans utfører allerede MetaBot-plikter."
+msgid "Another instance is already handling RepenteBot duties."
+msgstr "En annen instans utfører allerede RepenteBot-plikter."
 
 #: src/metabase/metabot.clj
-msgid "Starting MetaBot threads..."
+msgid "Starting RepenteBot threads..."
 msgstr "Starter MetaBase tråder..."
 
 #: src/metabase/metabot.clj
-msgid "Stopping MetaBot...  🤖"
-msgstr "Stopper MetaBot... 🤖"
+msgid "Stopping RepenteBot...  🤖"
+msgstr "Stopper RepenteBot... 🤖"
 
 #: src/metabase/metabot.clj
-msgid "MetaBot already running. Killing the previous WebSocket listener first."
-msgstr "MetaBot kjører allerede. Avslutter den forrige websocket kjøringen først."
+msgid "RepenteBot already running. Killing the previous WebSocket listener first."
+msgstr "RepenteBot kjører allerede. Avslutter den forrige websocket kjøringen først."
 
 #: src/metabase/middleware/security.clj
 msgid "Base-64 encoded public key for this site's SSL certificate."
@@ -8513,8 +8513,8 @@ msgid "You cannot edit or delete the ''{0}'' permissions group!"
 msgstr "Du kan ikke redigere eller slette \"{0}\" tilgangsgruppen!"
 
 #: src/metabase/models/permissions_group_membership.clj
-msgid "You cannot add or remove users to/from the 'MetaBot' group."
-msgstr "Du kan ikke legge til eller slette brukere til/fra 'MetaBot' gruppen."
+msgid "You cannot add or remove users to/from the 'RepenteBot' group."
+msgstr "Du kan ikke legge til eller slette brukere til/fra 'RepenteBot' gruppen."
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the 'All Users' group."
@@ -9403,8 +9403,8 @@ msgid "Administrators"
 msgstr "Administratorer"
 
 #: frontend/src/metabase/lib/groups.js:6
-msgid "MetaBot"
-msgstr "MetaBot"
+msgid "RepenteBot"
+msgstr "RepenteBot"
 
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:290
 msgid "Sharing"
@@ -10005,8 +10005,8 @@ msgid "You cannot create or revoke permissions for the ''Admin'' group."
 msgstr "Du kan ikke lage eller tilbakekalle tillatelser for \"Admin\"-gruppen."
 
 #: src/metabase/models/permissions_group_membership.clj
-msgid "You cannot add or remove users to/from the ''MetaBot'' group."
-msgstr "Du kan ikke legge til eller fjerne brukere i \"MetaBot\"-gruppen."
+msgid "You cannot add or remove users to/from the ''RepenteBot'' group."
+msgstr "Du kan ikke legge til eller fjerne brukere i \"RepenteBot\"-gruppen."
 
 #: src/metabase/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''All Users'' group."
@@ -12492,8 +12492,8 @@ msgid "You cannot update the creator_id of a Metric."
 msgstr "Du kan iukke oppdatere creator_id for en Indikator."
 
 #: src/metabase/models/permissions.clj
-msgid "MetaBot can only have Collection permissions."
-msgstr "MetaBot kan bare ha tillatelser for Samling."
+msgid "RepenteBot can only have Collection permissions."
+msgstr "RepenteBot kan bare ha tillatelser for Samling."
 
 #: src/metabase/models/permissions.clj
 msgid "Failed to grant permissions"
@@ -16664,8 +16664,8 @@ msgid "Please create or unarchive the channel in order to complete the Slack int
 msgstr "Vennligst opprett eller avarkiver kanalen for å fullføre Slack-integrasjonen."
 
 #: src/metabase/integrations/slack.clj
-msgid "The channel is used for storing graphs that are included in Pulses and MetaBot answers."
-msgstr "Kanalen brukes for å lagre grafer som er inkludert i Pulser og MetaBot-svar."
+msgid "The channel is used for storing graphs that are included in Pulses and RepenteBot answers."
+msgstr "Kanalen brukes for å lagre grafer som er inkludert i Pulser og RepenteBot-svar."
 
 #: src/metabase/integrations/slack.clj
 msgid "Uploaded image"

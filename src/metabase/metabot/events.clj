@@ -1,5 +1,5 @@
 (ns metabase.metabot.events
-  "Logic related to handling Slack events, running commands for events that are messages to the MetaBot, and posting the
+  "Logic related to handling Slack events, running commands for events that are messages to the RepenteBot, and posting the
   response on Slack."
   (:require [cheshire.core :as json]
             [clojure
@@ -64,7 +64,7 @@
   appropriate command, and reply with the results."
   [start-time-ms event]
   (when-let [event (json/parse-string event keyword)]
-    ;; Only respond to events where a *human* sends a message that have happened *after* the MetaBot launches
+    ;; Only respond to events where a *human* sends a message that have happened *after* the RepenteBot launches
     (when (and (human-message? event)
                (> (event-timestamp-ms event) start-time-ms))
       (metabot.slack/with-channel-id (:channel event)
