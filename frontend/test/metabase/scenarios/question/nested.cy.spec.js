@@ -259,8 +259,9 @@ describe("scenarios > question > nested", () => {
 
     cy.log("**Reported failing in v0.36.4 (`Category` is missing)**");
     popover().within(() => {
-      cy.findByText(/Vendor/i);
       cy.findByText(/Category/i);
+      cy.findByText(/Title/i);
+      cy.findByText(/Vendor/i);
     });
   });
 });
