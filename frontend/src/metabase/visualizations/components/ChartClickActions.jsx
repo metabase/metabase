@@ -3,9 +3,10 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
+import { t } from "ttag";
+import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
-import { Link } from "react-router";
 
 import "./ChartClickActions.css";
 
@@ -320,6 +321,13 @@ export const ChartClickAction = ({
                 : action.buttonType === "horizontal"
                 ? 14
                 : 12
+            }
+            tooltip={
+              action.name === "sort-ascending"
+                ? t`Sort ascending`
+                : action.name === "sort-descending"
+                ? t`Sort descending`
+                : null
             }
             name={action.icon}
           />
