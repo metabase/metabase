@@ -50,12 +50,12 @@ describe("mysql > user > query", () => {
     signInAsNormalUser();
   });
 
-  it("can query a My SQL database as a user", () => {
+  it("can query a MySQL database as a user", () => {
     cy.visit("/question/new");
     cy.contains("Simple question").click();
     cy.contains("MySQL").click();
     cy.contains("Orders").click();
-    cy.contains("Showing first 2,000 rows");
+    cy.contains("Showing first");
   });
 
   it("can write a native MySQL query with a field filter", () => {
@@ -82,7 +82,7 @@ describe("mysql > user > query", () => {
     cy.contains("Doohickey");
   });
 
-  it("can save a native My SQL query", () => {
+  it("can save a native MySQL query", () => {
     cy.server();
     cy.route("POST", "/api/card").as("createQuestion");
 
@@ -94,7 +94,7 @@ describe("mysql > user > query", () => {
       parseSpecialCharSequences: false,
     });
     cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("2,000");
+    cy.contains("37.65");
 
     // Close the Ace editor because it interferes with the modal for some reason
     cy.get(".Icon-contract").click();
