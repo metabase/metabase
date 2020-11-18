@@ -1,5 +1,5 @@
 /* @flow */
-
+import { t } from "ttag";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 
@@ -40,6 +40,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       section: "sort",
       buttonType: "sort",
       icon: "arrow_up",
+      tooltip: t`Sort ascending`,
       question: () => query.replaceSort(["asc", fieldRef]).question(),
     });
   }
@@ -49,6 +50,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       section: "sort",
       buttonType: "sort",
       icon: "arrow_down",
+      tooltip: t`Sort descending`,
       question: () => query.replaceSort(["desc", fieldRef]).question(),
     });
   }

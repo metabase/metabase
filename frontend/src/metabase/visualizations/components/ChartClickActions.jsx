@@ -3,10 +3,10 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import { t } from "ttag";
 import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
+import Tooltip from "metabase/components/Tooltip";
 
 import "./ChartClickActions.css";
 
@@ -294,41 +294,44 @@ export const ChartClickAction = ({
         </Link>
       </div>
     );
-  } else {
+  } else if (action.tooltip) {
+    // Only the Sort and Formatting actions have tooltips.
     return (
-      <div
-        className={cx(
-          className,
-          {
+      <Tooltip tooltip={action.tooltip}>
+        <div
+          className={cx(className, {
             "flex flex-row align-center":
               action.buttonType === "formatting" ||
               action.buttonType === "sort",
-          },
-          {
-            mb1: action.buttonType === "horizontal",
-          },
-        )}
+          })}
+          onClick={() => handleClickAction(action)}
+        >
+          {action.icon && (
+            <Icon
+              className={cx("flex mr1", {
+                "text-brand text-white-hover":
+                  action.buttonType !== "formatting",
+              })}
+              size={action.buttonType === "formatting" ? 16 : 12}
+              name={action.icon}
+            />
+          )}
+          {action.title && action.title}
+        </div>
+      </Tooltip>
+    );
+  } else {
+    return (
+      <div
+        className={cx(className, {
+          mb1: action.buttonType === "horizontal",
+        })}
         onClick={() => handleClickAction(action)}
       >
         {action.icon && (
           <Icon
-            className={cx("flex mr1", {
-              "text-brand text-white-hover": action.buttonType !== "formatting",
-            })}
-            size={
-              action.buttonType === "formatting"
-                ? 16
-                : action.buttonType === "horizontal"
-                ? 14
-                : 12
-            }
-            tooltip={
-              action.name === "sort-ascending"
-                ? t`Sort ascending`
-                : action.name === "sort-descending"
-                ? t`Sort descending`
-                : null
-            }
+            className="flex mr1 text-brand text-white-hover"
+            size={action.buttonType === "horizontal" ? 14 : 12}
             name={action.icon}
           />
         )}
