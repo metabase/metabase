@@ -34,7 +34,7 @@ describe("smoketest > admin_setup", () => {
         .click();
       cy.findByText("Admin").click();
 
-      cy.findByText("Metabase Admin");
+      cy.findByText("Repente Insights Admin");
       cy.findByText("dashboard").should("not.exist");
 
       cy.findByText("Databases").click();
