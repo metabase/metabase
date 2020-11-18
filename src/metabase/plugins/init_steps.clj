@@ -1,7 +1,7 @@
 (ns metabase.plugins.init-steps
-  "Logic for performing the `init-steps` listed in a Metabase plugin's manifest. For driver plugins that specify that we
+  "Logic for performing the `init-steps` listed in a Repente Insights plugin's manifest. For driver plugins that specify that we
   should `lazy-load`, these steps are lazily performed the first time non-trivial driver methods (such as connecting
-  to a Database) are called; for all other Metabase plugins these are perfomed during launch.
+  to a Database) are called; for all other Repente Insights plugins these are perfomed during launch.
 
   The entire list of possible init steps is below, as impls for the `do-init-step!` multimethod."
   (:require [clojure.tools.logging :as log]
@@ -25,7 +25,7 @@
   (jdbc-proxy/create-and-register-proxy-driver! class-name))
 
 (defn do-init-steps!
-  "Perform the initialization steps for a Metabase plugin as specified under `init:` in its plugin
+  "Perform the initialization steps for a Repente Insights plugin as specified under `init:` in its plugin
   manifest (`metabase-plugin.yaml`) by calling `do-init-step!` for each step."
   [init-steps]
   (doseq [step init-steps]

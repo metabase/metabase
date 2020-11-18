@@ -14,7 +14,7 @@
   (s/maybe su/IntGreaterThanZero))
 
 (def TableMetadataFieldWithID
-  "Schema for `TableMetadataField` with an included ID of the corresponding Metabase Field object.
+  "Schema for `TableMetadataField` with an included ID of the corresponding Repente Insights Field object.
   `our-metadata` is always returned in this format. (The ID is needed in certain places so we know which Fields to
   retire, and the parent ID of any nested-fields.)"
   (assoc i/TableMetadataField
@@ -50,7 +50,7 @@
 
 (s/defn matching-field-metadata :- (s/maybe TableMetadataFieldWithOptionalID)
   "Find Metadata that matches `field-metadata` from a set of `other-metadata`, if any exists. Useful for finding the
-  corresponding Metabase Field for field metadata from the DB, or vice versa."
+  corresponding Repente Insights Field for field metadata from the DB, or vice versa."
   [field-metadata :- TableMetadataFieldWithOptionalID
    other-metadata :- #{TableMetadataFieldWithOptionalID}]
   (some

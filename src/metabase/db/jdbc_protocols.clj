@@ -1,5 +1,5 @@
 (ns metabase.db.jdbc-protocols
-  "Implementations of `clojure.java.jdbc` protocols for the Metabase application database. These handle type mappings
+  "Implementations of `clojure.java.jdbc` protocols for the Repente Insights application database. These handle type mappings
   for setting parameters and for reading results from the DB — mainly by automatically converting CLOBs to Strings and
   using new `java.time` classes."
   (:require [clojure.java.jdbc :as jdbc]
@@ -160,7 +160,7 @@
   (.getObject rs i OffsetTime))
 
 (defn read-columns
-  "Default `clojure.java.jdbc` `:read-columns` method to use for Metabase. Reads temporal values as `java.sql.time`
+  "Default `clojure.java.jdbc` `:read-columns` method to use for Repente Insights. Reads temporal values as `java.sql.time`
   types rather than legacy `java.sql.Timestamp` and the like."
   [rs rsmeta indexes]
   (mapv

@@ -50,7 +50,7 @@
         (throw (Exception. (tru "Could not load {0} driver." driver) e))))))
 
 (defn load-driver-namespace-if-needed!
-  "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Metabase
+  "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Repente Insights
   drivers, whose namespaces follow an expected pattern; drivers provided by 3rd-party plugins are expected to register
   themselves in their plugin initialization code.
 

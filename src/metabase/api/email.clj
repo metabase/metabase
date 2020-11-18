@@ -106,10 +106,10 @@
   []
   (api/check-superuser)
   (let [response (email/send-message!
-                   :subject      "Metabase Test Email"
+                   :subject      "Repente Insights Test Email"
                    :recipients   [(:email @api/*current-user*)]
                    :message-type :text
-                   :message      "Your Metabase emails are working — hooray!")]
+                   :message      "Your Repente Insights emails are working — hooray!")]
     (if (= :SUCCESS (:error response))
       {:ok true}
       {:status 500

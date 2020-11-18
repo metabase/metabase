@@ -165,7 +165,7 @@
     (set (map :table_cat (jdbc/metadata-result rs)))))
 
 (defn- database-type->base-type-or-warn
-  "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
+  "Given a `database-type` (e.g. `VARCHAR`) return the mapped Repente Insights type (e.g. `:type/Text`)."
   [driver database-type]
   (or (database-type->base-type driver (keyword database-type))
       (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."

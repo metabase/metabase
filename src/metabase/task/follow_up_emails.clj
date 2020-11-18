@@ -1,5 +1,5 @@
 (ns metabase.task.follow-up-emails
-  "Tasks which follow up with Metabase users."
+  "Tasks which follow up with Repente Insights users."
   (:require [clojure.tools.logging :as log]
             [clojurewerkz.quartzite
              [jobs :as jobs]
@@ -35,7 +35,7 @@
   :visibility :internal)
 
 (defn- send-follow-up-email!
-  "Send an email to the instance admin following up on their experience with Metabase thus far."
+  "Send an email to the instance admin following up on their experience with Repente Insights thus far."
   []
   ;; we need access to email AND the instance must be opted into anonymous tracking. Make sure email hasn't been sent yet
   (when (and (email/email-configured?)
@@ -52,7 +52,7 @@
           (follow-up-email-sent true))))))
 
 (defn- instance-creation-timestamp
-  "The date this Metabase instance was created. We use the `:date_joined` of the first `User` to determine this."
+  "The date this Repente Insights instance was created. We use the `:date_joined` of the first `User` to determine this."
   ^java.time.temporal.Temporal []
   (db/select-one-field :date_joined User, {:order-by [[:date_joined :asc]]}))
 
@@ -112,7 +112,7 @@
          (or (not last-view)     (u.date/older-than? last-view     (t/weeks 2)))))))
 
 (defn- send-abandoment-email-if-needed!
-  "Send an email to the instance admin about why Metabase usage has died down."
+  "Send an email to the instance admin about why Repente Insights usage has died down."
   []
   ;; grab the oldest admins email address, that's who we'll send to
   (when-let [admin-email (db/select-one-field :email User :is_superuser true, {:order-by [:date_joined]})]

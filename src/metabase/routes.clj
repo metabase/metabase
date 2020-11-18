@@ -38,7 +38,7 @@
        (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (public-settings/site-url) token export-format)))
   (GET "*" [] index/embed))
 
-(defroutes ^{:doc "Top-level ring routes for Metabase."} routes
+(defroutes ^{:doc "Top-level ring routes for Repente Insights."} routes
   (or (some-> (resolve 'ee.sso.routes/routes) var-get)
       (fn [_ respond _]
         (respond nil)))
@@ -53,10 +53,10 @@
   (context "/api" [] (fn [& args]
                        ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
                        ;;
-                       ;; if Metabase is not finished initializing, return a generic error message rather than
+                       ;; if Repente Insights is not finished initializing, return a generic error message rather than
                        ;; something potentially confusing like "DB is not set up"
                        (if-not (init-status/complete?)
-                         {:status 503, :body "Metabase is still initializing. Please sit tight..."}
+                         {:status 503, :body "Repente Insights is still initializing. Please sit tight..."}
                          (apply api/routes args))))
   ;; ^/app/ -> static files under frontend_client/app
   (context "/app" []

@@ -76,7 +76,7 @@
 (defsetting ldap-group-mappings
   ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of
   ;; MB groups IDs
-  (deferred-tru "JSON containing LDAP to Metabase group mappings.")
+  (deferred-tru "JSON containing LDAP to Repente Insights group mappings.")
   :type    :json
   :default {}
   :getter  (fn []
@@ -222,6 +222,6 @@
    (i/find-user impl ldap-connection username (ldap-settings))))
 
 (s/defn fetch-or-create-user! :- (class User)
-  "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
+  "Using the `user-info` (from `find-user`) get the corresponding Repente Insights user, creating it if necessary."
   [user-info :- i/UserInfo]
   (i/fetch-or-create-user! impl user-info (ldap-settings)))

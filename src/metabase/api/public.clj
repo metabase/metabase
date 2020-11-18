@@ -1,5 +1,5 @@
 (ns metabase.api.public
-  "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
+  "Repente Insights API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require [cheshire.core :as json]
             [clojure.core.async :as a]
             [compojure.core :refer [GET]]
@@ -292,7 +292,7 @@
 
 
 (api/defendpoint GET "/oembed"
-  "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
+  "oEmbed endpoint used to retreive embed code and metadata for a (public) Repente Insights URL."
   [url format maxheight maxwidth]
   ;; the format param is not used by the API, but is required as part of the oEmbed spec: http://oembed.com/#section2
   ;; just return an error if `format` is specified and it's anything other than `json`.

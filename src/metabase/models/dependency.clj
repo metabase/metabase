@@ -12,7 +12,7 @@
   "Methods an entity may optionally implement to control how dependencies of an instance are captured."
   (dependencies [this id instance]
     "Provide a map of dependent models and their corresponding IDs for the given instance.  Each key in the returned map
-     must correspond to a valid Metabase entity model otherwise it will be ignored.  Each value for a given key should
+     must correspond to a valid Repente Insights entity model otherwise it will be ignored.  Each value for a given key should
      be a collection of unique integer ids for the given model.
 
      For example:

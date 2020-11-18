@@ -85,7 +85,7 @@
             (.setHandled base-request true)))))))
 
 (defn create-server
-  "Create a new async Jetty server with `handler` and `options`. Handy for creating the real Metabase web server, and
+  "Create a new async Jetty server with `handler` and `options`. Handy for creating the real Repente Insights web server, and
   creating one-off web servers for tests and REPL usage."
   ^Server [handler options]
   ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results later after 10

@@ -75,7 +75,7 @@
       (log/error (format "Error translating to %s: no resource bundle" locale)))))
 
 (defn- bundle
-  "Get the Metabase i18n resource bundle associated with `locale`. Returns `nil` if no such bundle can be found."
+  "Get the Repente Insights i18n resource bundle associated with `locale`. Returns `nil` if no such bundle can be found."
   ^ResourceBundle [locale-or-name]
   (when-let [locale (locale locale-or-name)]
     (bundle* locale)))

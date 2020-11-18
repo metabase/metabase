@@ -20,7 +20,7 @@
    :dest-field   i/FieldInstance})
 
 (s/defn ^:private fetch-fk-relationship-objects :- (s/maybe FKRelationshipObjects)
-  "Fetch the Metabase objects (Tables and Fields) that are relevant to a foreign key relationship described by FK."
+  "Fetch the Repente Insights objects (Tables and Fields) that are relevant to a foreign key relationship described by FK."
   [database :- i/DatabaseInstance, table :- i/TableInstance, fk :- i/FKMetadataEntry]
   (when-let [source-field (db/select-one Field
                             :table_id           (u/get-id table)
@@ -74,7 +74,7 @@
                                             fks-to-update)}))))
 
 (s/defn sync-fks!
-  "Sync the foreign keys in a DATABASE. This sets appropriate values for relevant Fields in the Metabase application DB
+  "Sync the foreign keys in a DATABASE. This sets appropriate values for relevant Fields in the Repente Insights application DB
    based on values from the `FKMetadata` returned by `describe-table-fks`."
   [database :- i/DatabaseInstance]
   (reduce (fn [update-info table]

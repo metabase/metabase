@@ -242,7 +242,7 @@
   (mdb/setup-db!)
 
   (assert (#{:postgres :mysql} (mdb/db-type))
-    (trs "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."))
+    (trs "Repente Insights can only transfer data from H2 to Postgres or MySQL/MariaDB."))
 
   (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-spec)]
     (jdbc/db-set-rollback-only! target-db-conn)

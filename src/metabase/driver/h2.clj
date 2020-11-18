@@ -282,7 +282,7 @@
                     (str ";" k "=" v))))
 
 (defn- connection-string-set-safe-options
-  "Add Metabase Security Settings™ to this `connection-string` (i.e. try to keep shady users from writing nasty SQL)."
+  "Add Repente Insights Security Settings™ to this `connection-string` (i.e. try to keep shady users from writing nasty SQL)."
   [connection-string]
   {:pre [(string? connection-string)]}
   (let [[file options] (connection-string->file+options connection-string)]

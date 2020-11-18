@@ -15,7 +15,7 @@
             [toucan.db :as db]))
 
 (def ^:private activity-feed-topics
-  "The set of event topics which are subscribed to for use in the Metabase activity feed."
+  "The set of event topics which are subscribed to for use in the Repente Insights activity feed."
   #{:alert-create
     :alert-delete
     :card-create

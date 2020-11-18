@@ -200,7 +200,7 @@
   [_]
   {:title       (tru "Organize questions")
    :group       (tru "Curate your data")
-   :description (tru "Have a lot of saved questions in {0}? Create collections to help manage them and add context." (tru "Metabase"))
+   :description (tru "Have a lot of saved questions in {0}? Create collections to help manage them and add context." (tru "Repente Insights"))
    :link        "/collection/root"
    :completed   (db/exists? Collection)
    :triggered   (>= (db/count Card) 30)})

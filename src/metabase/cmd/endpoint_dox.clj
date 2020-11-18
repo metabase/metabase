@@ -6,14 +6,14 @@
             [metabase.util :as u]))
 
 (defn- dox
-  "Generate a Markdown string containing documentation for all Metabase API endpoints."
+  "Generate a Markdown string containing documentation for all Repente Insights API endpoints."
   []
-  (str "# API Documentation for Metabase"
+  (str "# API Documentation for Repente Insights"
        "\n\n"
        "_This file was generated from source comments by `lein run api-documentation`_."
        "\n\n"
        "Check out an introduction to the "
-       "[Metabase API](https://www.metabase.com/blog/metabase-api/index.html)."
+       "[Repente Insights API](https://www.metabase.com/blog/metabase-api/index.html)."
        "\n\n"
        (str/join "\n\n\n" (for [ns-symb     u/metabase-namespace-symbols
                                 :when       (.startsWith (name ns-symb) "metabase.api.")

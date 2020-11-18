@@ -22,7 +22,7 @@
              (str ";USER=GUEST;PASSWORD=guest"))})) ; specify the GUEST user account created for the DB
 
 (defn add-sample-dataset!
-  "Add the sample dataset as a Metabase DB if it doesn't already exist."
+  "Add the sample dataset as a Repente Insights DB if it doesn't already exist."
   []
   (when-not (db/exists? Database :is_sample true)
     (try

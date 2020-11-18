@@ -18,7 +18,7 @@
 ;;; CONFIG
 
 (defsetting email-from-address
-  (deferred-tru "Email address you want to use as the sender of Metabase.")
+  (deferred-tru "Email address you want to use as the sender of Repente Insights.")
   :default "notifications@metabase.com")
 
 (defsetting email-smtp-host
@@ -111,7 +111,7 @@
   `recipients` is a sequence of email addresses; `message-type` must be either `:text` or `:html` or `:attachments`.
 
      (email/send-message!
-       :subject      \"[Metabase] Password Reset Request\"
+       :subject      \"[Repente Insights] Password Reset Request\"
        :recipients   [\"cam@metabase.com\"]
        :message-type :text
        :message      \"How are you today?\")

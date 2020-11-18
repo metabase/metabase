@@ -1,4 +1,4 @@
-# Metabase Smoketests
+# Repente Insights Smoketests
 
 These files exist to ensure that we can always do the things we expect with Repente Insights. :)
 

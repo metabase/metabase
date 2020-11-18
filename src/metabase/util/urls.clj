@@ -1,9 +1,9 @@
 (ns metabase.util.urls
-  "Utility functions for generating the frontend URLs that correspond various user-facing Metabase *objects*, like Cards or Dashboards.
+  "Utility functions for generating the frontend URLs that correspond various user-facing Repente Insights *objects*, like Cards or Dashboards.
    This is intended as the central place for all such URL-generation activity, so if frontend routes change, only this file need be changed
    on the backend.
 
-   Functions for generating URLs not related to Metabase *objects* generally do not belong here, unless they are used in many places in the
+   Functions for generating URLs not related to Repente Insights *objects* generally do not belong here, unless they are used in many places in the
    codebase; one-off URL-generation functions should go in the same namespaces or modules where they are used."
   (:require [metabase.public-settings :as public-settings]))
 

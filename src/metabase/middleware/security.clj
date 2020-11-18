@@ -78,7 +78,7 @@
                   :img-src      ["*"
                                  "'self' data:"]
                   :connect-src  ["'self'"
-                                 ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
+                                 ;; MailChimp. So people can sign up for the Repente Insights mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
                                  (when config/is-dev?
                                    "localhost:8080 ws://localhost:8080")]

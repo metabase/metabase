@@ -68,7 +68,7 @@
 (def ^Boolean is-test? "Are we running in `test` mode (i.e. via `lein test`)?"                    (= :test (config-kw :mb-run-mode)))
 
 ;;; Version stuff
-;; Metabase version is of the format `GIT-TAG (GIT-SHORT-HASH GIT-BRANCH)`
+;; Repente Insights version is of the format `GIT-TAG (GIT-SHORT-HASH GIT-BRANCH)`
 
 (defn- version-info-from-shell-script []
   (try
@@ -92,7 +92,7 @@
 
 ;; TODO - Can we make this `^:const`, so we don't have to read the file at launch when running from the uberjar?
 (def mb-version-info
-  "Information about the current version of Metabase.
+  "Information about the current version of Repente Insights.
    This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./bin/version`
   script for dev.
 
@@ -110,12 +110,12 @@
     (format "%s (%s %s)" tag hash branch)))
 
 (def ^String mb-app-id-string
-  "A formatted version string including the word 'Metabase' appropriate for passing along
-   with database connections so admins can identify them as Metabase ones.
-   Looks something like `Metabase v0.25.0.RC1`."
-  (str "Metabase " (mb-version-info :tag)))
+  "A formatted version string including the word 'Repente Insights' appropriate for passing along
+   with database connections so admins can identify them as Repente Insights ones.
+   Looks something like `Repente Insights v0.25.0.RC1`."
+  (str "Repente Insights " (mb-version-info :tag)))
 
-(defonce ^{:doc "This UUID is randomly-generated upon launch and used to identify this specific Metabase instance during
+(defonce ^{:doc "This UUID is randomly-generated upon launch and used to identify this specific Repente Insights instance during
                 this specifc run. Restarting the server will change this UUID, and each server in a horizontal cluster
                 will have its own ID, making this different from the `site-uuid` Setting."}
   local-process-uuid

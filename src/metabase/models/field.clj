@@ -22,7 +22,7 @@
     :details-only   ; For long blob like columns such as JSON.  field is not shown in some places on the frontend.
     :hidden         ; Lightweight hiding which removes field as a choice in most of the UI.  should still be returned in queries.
     :sensitive      ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
-    :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
+    :retired})      ; For fields that no longer exist in the physical db.  automatically set by Repente Insights.  QP should error if encountered in a query.
 
 (def has-field-values-options
   "Possible options for `has_field_values`. This column is used to determine whether we keep FieldValues for a Field,

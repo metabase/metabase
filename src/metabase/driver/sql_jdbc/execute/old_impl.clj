@@ -24,7 +24,7 @@
 (defmethod set-timezone-sql :sql-jdbc [_] nil)
 
 (defmulti read-column
-  "Read a single value from a single column in the current row from the JDBC ResultSet of a Metabase query. Normal
+  "Read a single value from a single column in the current row from the JDBC ResultSet of a Repente Insights query. Normal
   implementations call an appropriate method on `ResultSet` to retrieve this value, such as `(.getObject rs
   i)`. (`i` is the index of the column whose value you should retrieve.)
 

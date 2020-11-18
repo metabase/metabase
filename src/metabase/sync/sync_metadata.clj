@@ -5,7 +5,7 @@
    1.  Sync tables (`metabase.sync.sync-metadata.tables`)
    2.  Sync fields (`metabase.sync.sync-metadata.fields`)
    3.  Sync FKs    (`metabase.sync.sync-metadata.fks`)
-   4.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
+   4.  Sync Repente Insights Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
   (:require [metabase.sync
              [interface :as i]
              [util :as sync-util]]
@@ -45,7 +45,7 @@
    (sync-util/create-sync-step "sync-metabase-metadata" metabase-metadata/sync-metabase-metadata!)])
 
 (s/defn sync-db-metadata!
-  "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."
+  "Sync the metadata for a Repente Insights `database`. This makes sure child Table & Field objects are synchronized."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
     (sync-util/run-sync-operation "sync" database sync-steps)))

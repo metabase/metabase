@@ -20,7 +20,7 @@
             [toucan.db :as db])
   (:import java.util.UUID))
 
-;; How do authenticated API requests work? Metabase first looks for a cookie called `metabase.SESSION`. This is the
+;; How do authenticated API requests work? Repente Insights first looks for a cookie called `metabase.SESSION`. This is the
 ;; normal way of doing things; this cookie gets set automatically upon login. `metabase.SESSION` is an HttpOnly
 ;; cookie and thus can't be viewed by FE code.
 ;;
@@ -78,7 +78,7 @@
     (= scheme :https)))
 
 (defn clear-session-cookie
-  "Add a header to `response` to clear the current Metabase session cookie."
+  "Add a header to `response` to clear the current Repente Insights session cookie."
   [response]
   (reduce clear-cookie (wrap-body-if-needed response) [metabase-session-cookie metabase-embedded-session-cookie]))
 

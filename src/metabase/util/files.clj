@@ -1,5 +1,5 @@
 (ns metabase.util.files
-  "Low-level file-related functions for implementing Metabase plugin functionality. These use the `java.nio.file`
+  "Low-level file-related functions for implementing Repente Insights plugin functionality. These use the `java.nio.file`
   library rather than the usual `java.io` stuff because it abstracts better across different filesystems (such as
   files in a normal directory vs files inside a JAR.)
 

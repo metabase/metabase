@@ -1,5 +1,5 @@
 (ns metabase.task.upgrade-checks
-  "Contains a Metabase task which periodically checks for the availability of new Metabase versions."
+  "Contains a Repente Insights task which periodically checks for the availability of new Repente Insights versions."
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.tools.logging :as log]
@@ -23,7 +23,7 @@
 ;; simple job which looks up all databases and runs a sync on them
 (jobs/defjob CheckForNewVersions [_]
   (when (public-settings/check-for-updates)
-    (log/debug (trs "Checking for new Metabase version info."))
+    (log/debug (trs "Checking for new Repente Insights version info."))
     (try
       ;; TODO: add in additional request params if anonymous tracking is enabled
       (when-let [version-info (get-version-info)]

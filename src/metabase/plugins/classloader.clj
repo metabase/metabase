@@ -1,5 +1,5 @@
 (ns metabase.plugins.classloader
-  "Logic for getting and setting the context classloader we'll use for loading Metabase plugins. Use `the-classloader`
+  "Logic for getting and setting the context classloader we'll use for loading Repente Insights plugins. Use `the-classloader`
   to get the Classloader you should use with calls to `Class/forName`; call it for side effects to ensure the current
   thread context classloader will have access to JARs we add at runtime before calling `require`.
 

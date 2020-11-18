@@ -56,7 +56,7 @@
         (:timezone (if (= database ::db-from-store) (qp.store/database) database))))))
 
 (defn system-timezone-id
-  "The system timezone of this Metabase instance."
+  "The system timezone of this Repente Insights instance."
   ^String []
   (.. (t/system-clock) getZone getId))
 

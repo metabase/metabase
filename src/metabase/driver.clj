@@ -1,5 +1,5 @@
 (ns metabase.driver
-  "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like
+  "Repente Insights Drivers handle various things we need to do with connected data warehouse databases, including things like
   introspecting their schemas and processing and running MBQL queries. Drivers must implement some or all of the
   multimethods defined below, and register themselves with a call to `register!`.
 
@@ -91,7 +91,7 @@
   for all registered, non-abstract drivers and false everything else.
 
   Note that an available driver is not necessarily initialized yet; for example lazy-loaded drivers are *registered*
-  when Metabase starts up (meaning this will return `true` for them) and only initialized when first needed."
+  when Repente Insights starts up (meaning this will return `true` for them) and only initialized when first needed."
   [driver]
   ((every-pred impl/registered? impl/concrete?) driver))
 
@@ -182,12 +182,12 @@
   internally by the driver.)
 
   'Trivial' methods include a tiny handful of ones like `connection-properties` that simply provide information about
-  the driver, but do not connect to databases; these can be be supplied, for example, by a Metabase plugin manifest
+  the driver, but do not connect to databases; these can be be supplied, for example, by a Repente Insights plugin manifest
   file (which is supplied for lazy-loaded drivers). Methods that require connecting to a database dispatch off of
   `the-initialized-driver`, which will initialize a driver if not already done so.
 
   You will rarely need to write an implentation for this method yourself. A lazy-loaded driver (like most of the
-  Metabase drivers in v1.0 and above) are automatiaclly given an implentation of this method that performs the
+  Repente Insights drivers in v1.0 and above) are automatiaclly given an implentation of this method that performs the
   `init-steps` specified in the plugin manifest (such as loading namespaces in question).
 
   If you do need to implement this method yourself, you do not need to call parent implementations. We'll take care of
@@ -434,7 +434,7 @@
 
 
 (defmulti ^:deprecated format-custom-field-name
-  "Prior to Metabase 0.33.0, you could specifiy custom names for aggregations in MBQL by wrapping the clause in a
+  "Prior to Repente Insights 0.33.0, you could specifiy custom names for aggregations in MBQL by wrapping the clause in a
   `:named` clause:
 
     [:named [:count] \"My Count\"]
@@ -485,7 +485,7 @@
 
   For example, a driver like Postgres would build a valid SQL expression and return a map such as:
 
-    {:query \"-- Metabase card: 10 user: 5
+    {:query \"-- Repente Insights card: 10 user: 5
               SELECT * FROM my_table\"}"
   {:arglists '([driver query]), :style/indent 1}
   dispatch-on-initialized-driver

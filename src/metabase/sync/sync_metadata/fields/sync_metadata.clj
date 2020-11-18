@@ -17,7 +17,7 @@
             [toucan.db :as db]))
 
 (s/defn ^:private update-field-metadata-if-needed! :- (s/enum 0 1)
-  "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
+  "Update the metadata for a Repente Insights Field as needed if any of the info coming back from the DB has changed. Syncs
   base type, database type, special type, and comments/remarks; returns `1` if the Field was updated; `0` otherwise."
   [table :- i/TableInstance, field-metadata :- i/TableMetadataField, metabase-field :- common/TableMetadataFieldWithID]
   (let [{old-database-type     :database-type

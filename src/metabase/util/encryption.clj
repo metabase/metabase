@@ -34,8 +34,8 @@
 (when-not *compile-files*
   (log/info
    (if default-secret-key
-     (trs "Saved credentials encryption is ENABLED for this Metabase instance.")
-     (trs "Saved credentials encryption is DISABLED for this Metabase instance."))
+     (trs "Saved credentials encryption is ENABLED for this Repente Insights instance.")
+     (trs "Saved credentials encryption is DISABLED for this Repente Insights instance."))
    (u/emoji (if default-secret-key "🔐" "🔓"))
    "\n"
    (trs "For more information, see")

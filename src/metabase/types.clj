@@ -1,5 +1,5 @@
 (ns metabase.types
-  "The Metabase Hierarchical Type System (MHTS). This is a hierarchy where types derive from one or more parent types,
+  "The Repente Insights Hierarchical Type System (MHTS). This is a hierarchy where types derive from one or more parent types,
    which in turn derive from their own parents. This makes it possible to add new types without needing to add
    corresponding mappings in the frontend or other places. For example, a Database may want a type called something
    like `:type/CaseInsensitiveText`; we can add this type as a derivative of `:type/Text` and everywhere else can
@@ -208,7 +208,7 @@
               {t (parents t)}))))
 
 (defn temporal-field?
-  "True if a Metabase `Field` instance has a temporal base or special type, i.e. if this Field represents a value
+  "True if a Repente Insights `Field` instance has a temporal base or special type, i.e. if this Field represents a value
   relating to a moment in time."
   {:arglists '([field])}
   [{base-type :base_type, special-type :special_type}]

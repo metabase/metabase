@@ -76,7 +76,7 @@
    ;; server on the West Coast.
    ;;
    ;; This suggests the additional cost of this test is more or less based entirely to the network latency of the
-   ;; request. IRL the Metabase server and data warehouse are likely to be located in closer geographical proximity to
+   ;; request. IRL the Repente Insights server and data warehouse are likely to be located in closer geographical proximity to
    ;; one another than my trans-contintental tests. Thus in the majority of cases the overhead should be next to
    ;; nothing, and in the worst case close to imperceptible.
    "testConnectionOnCheckout"     true

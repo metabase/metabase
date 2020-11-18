@@ -17,7 +17,7 @@
                   (str (name k) ": " v ";"))))
 
 (def ^:const color-brand
-  "Classic Metabase blue."
+  "Classic Repente Insights blue."
   "#2D86D4")
 
 (def ^:const color-purple

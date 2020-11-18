@@ -47,10 +47,10 @@
   "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or
   less values (at the time of this writing) get marked as `auto-list` Fields, meaning we save all their distinct
   values in a FieldValues object, which powers a list widget in the FE when using the Field for filtering in the QB.
-  Admins can however manually mark any Field as `list`, which is effectively ordering Metabase to keep FieldValues for
+  Admins can however manually mark any Field as `list`, which is effectively ordering Repente Insights to keep FieldValues for
   the Field regardless of its cardinality.
 
-  Of course, if a User does something crazy, like mark a million-arity Field as List, we don't want Metabase to
+  Of course, if a User does something crazy, like mark a million-arity Field as List, we don't want Repente Insights to
   explode trying to make their dreams a reality; we need some sort of hard limit to prevent catastrophes. So this
   limit is effectively a safety to prevent Users from nuking their own instance for Fields that really shouldn't be
   List Fields at all. For these very-high-cardinality Fields, we're effectively capping the number of
@@ -60,7 +60,7 @@
 
   * Not being too low, which would definitly result in GitHub issues along the lines of 'My 500-distinct-value Field
     that I marked as List is not showing all values in the List Widget'
-  * Not being too high, which would result in Metabase running out of memory dealing with too many values"
+  * Not being too high, which would result in Repente Insights running out of memory dealing with too many values"
   (int 5000))
 
 (s/defn field-distinct-values

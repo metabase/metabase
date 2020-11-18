@@ -268,7 +268,7 @@
 
 (defprotocol ^:private IFilteredStacktrace
   (filtered-stacktrace [this]
-    "Get the stack trace associated with E and return it as a vector with non-metabase frames after the last Metabase
+    "Get the stack trace associated with E and return it as a vector with non-metabase frames after the last Repente Insights
     frame filtered out."))
 
 (extend-protocol IFilteredStacktrace
@@ -287,7 +287,7 @@
   IFilteredStacktrace
   {:filtered-stacktrace
    (fn [this]
-     ;; keep all the frames before the last Metabase frame, but then filter out any other non-Metabase frames after
+     ;; keep all the frames before the last Repente Insights frame, but then filter out any other non-Repente Insights frames after
      ;; that
      (let [[frames-after-last-mb other-frames]     (split-with #(not (str/includes? % "metabase"))
                                                                (seq this))
@@ -504,7 +504,7 @@
 
 ;; This is made `^:const` so it will get calculated when the uberjar is compiled. `find-namespaces` won't work if
 ;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.
-(defonce ^:const ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended for
+(defonce ^:const ^{:doc "Vector of symbols of all Repente Insights namespaces, excluding test namespaces. This is intended for
   use by various routines that load related namespaces, such as task and events initialization."}
   metabase-namespace-symbols
   (vec (sort (for [ns-symb (ns-find/find-namespaces (classpath/system-classpath))

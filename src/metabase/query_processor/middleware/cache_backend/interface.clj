@@ -7,7 +7,7 @@
             [potemkin.types :as p.types]))
 
 (p.types/defprotocol+ CacheBackend
-  "Protocol that different Metabase cache backends must implement.
+  "Protocol that different Repente Insights cache backends must implement.
 
    `query-hash` as passed below is a byte-array representing a 256-byte SHA3 hash; encode this as needed for use as a
    cache entry key. `results` are passed as a compressed byte array.

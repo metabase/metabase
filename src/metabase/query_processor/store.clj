@@ -5,7 +5,7 @@
   in the store to fetch those objects as needed.
 
   For example, a driver might be converting a Field ID clause (e.g. `[:field-id 10]`) to its native query language. It
-  can fetch the underlying Metabase FieldInstance by calling `field`:
+  can fetch the underlying Repente Insights FieldInstance by calling `field`:
 
     (qp.store/field 10) ;; get Field 10
 

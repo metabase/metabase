@@ -2,7 +2,7 @@
   "Classifier that determines whether a Field should be marked as a `:type/Category` and/or as a `list` Field based on
   the number of distinct values it has.
 
-  As of Metabase v0.29, the Category now longer has any use inside of the Metabase backend; it is used
+  As of Repente Insights v0.29, the Category now longer has any use inside of the Repente Insights backend; it is used
   only for frontend purposes (e.g. deciding which widget to show). Previously, makring something as a Category meant
   that its values should be cached and saved in a FieldValues object. With the changes in v0.29, this is instead
   managed by a column called `has_field_values`.

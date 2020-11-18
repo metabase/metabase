@@ -1,5 +1,5 @@
 (ns metabase.models.pulse
-  "Notifications are ways to deliver the results of Questions to users without going through the normal Metabase UI. At
+  "Notifications are ways to deliver the results of Questions to users without going through the normal Repente Insights UI. At
   the time of this writing, there are two delivery mechanisms for Notifications -- email and Slack notifications;
   these destinations are known as 'Channels'. Notifications themselves are futher divied into two categories --
   'Pulses', which are sent at specified intervals, and 'Alerts', which are sent when certain conditions are met (such
@@ -10,7 +10,7 @@
   work with either type.
 
   One more thing to keep in mind: this code is pretty old and doesn't follow the code patterns used in the other
-  Metabase models. There is a plethora of CRUD functions for working with Pulses that IMO aren't really needed (e.g.
+  Repente Insights models. There is a plethora of CRUD functions for working with Pulses that IMO aren't really needed (e.g.
   functions for fetching a specific Pulse). At some point in the future, we can clean this namespace up and bring the
   code in line with the rest of the codebase, but for the time being, it probably makes sense to follow the existing
   patterns in this namespace rather than further confuse things."

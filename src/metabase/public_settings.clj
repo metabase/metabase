@@ -42,22 +42,22 @@
       (ee-sso-configured?)))
 
 (defsetting check-for-updates
-  (deferred-tru "Identify when new versions of Metabase are available.")
+  (deferred-tru "Identify when new versions of Repente Insights are available.")
   :type    :boolean
   :default true)
 
 (defsetting version-info
-  (deferred-tru "Information about available versions of Metabase.")
+  (deferred-tru "Information about available versions of Repente Insights.")
   :type    :json
   :default {})
 
 (defsetting site-name
-  (deferred-tru "The name used for this instance of Metabase.")
-  :default "Metabase")
+  (deferred-tru "The name used for this instance of Repente Insights.")
+  :default "Repente Insights")
 
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
-  "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
+  "Unique identifier used for this instance of Repente Insights. This is set once and only once the first time it is fetched via
   its magic getter. Nice!"
   :visibility :internal
   :setter     :none
@@ -85,7 +85,7 @@
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's no protocol when it comes in
 (defsetting site-url
-  (deferred-tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
+  (deferred-tru "The base URL of this Repente Insights instance, e.g. \"http://my-company.repenteinsights.com\".")
   :visibility :public
   :getter (fn []
             (try
@@ -101,7 +101,7 @@
               (setting/set-string! :site-url new-value))))
 
 (defsetting site-locale
-  (str (deferred-tru "The default language for all users across the Metabase UI, system emails, pulses, and alerts.")
+  (str (deferred-tru "The default language for all users across the Repente Insights UI, system emails, pulses, and alerts.")
        " "
        (deferred-tru "Users can individually override this default language from their own account settings."))
   :default    "en"
@@ -117,7 +117,7 @@
   :visibility :authenticated)
 
 (defsetting anon-tracking-enabled
-  (deferred-tru "Enable the collection of anonymous usage data in order to help Metabase improve.")
+  (deferred-tru "Enable the collection of anonymous usage data in order to help Repente Insights improve.")
   :type       :boolean
   :default    true
   :visibility :public)
@@ -151,7 +151,7 @@
   :visibility :authenticated)
 
 (defsetting embedding-app-origin
-  (deferred-tru "Allow this origin to embed the full Metabase application")
+  (deferred-tru "Allow this origin to embed the full Repente Insights application")
   :visibility :public)
 
 (defsetting enable-nested-queries
@@ -198,7 +198,7 @@
 
 ;; TODO -- this isn't really a TTL at all. Consider renaming to something like `-min-duration`
 (defsetting query-caching-min-ttl
-  (deferred-tru "Metabase will cache all saved questions with an average query execution time longer than this many seconds:")
+  (deferred-tru "Repente Insights will cache all saved questions with an average query execution time longer than this many seconds:")
   :type    :double
   :default 60)
 
@@ -210,13 +210,13 @@
   :default 10)
 
 (defsetting application-name
-  (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
+  (deferred-tru "This will replace the word \"Repente Insights\" wherever it appears.")
   :visibility :public
   :type       :string
-  :default    "Metabase")
+  :default    "Repente Insights")
 
 (defsetting application-colors
-  (deferred-tru "These are the primary colors used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect.")
+  (deferred-tru "These are the primary colors used in charts and throughout Repente Insights. You might need to refresh your browser to see your changes take effect.")
   :visibility :public
   :type       :json
   :default    {})
@@ -353,7 +353,7 @@
   :getter     (fn [] (short-timezone-name (setting/get :report-timezone))))
 
 (defsetting version
-  "Metabase's version info"
+  "Repente Insights's version info"
   :visibility :public
   :setter     :none
   :getter     (constantly config/mb-version-info))

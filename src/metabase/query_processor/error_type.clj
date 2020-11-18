@@ -19,7 +19,7 @@
   (isa? hierarchy error-type :error))
 
 (defn show-in-embeds?
-  "Should errors of this type be shown to users of Metabase in embedded Cards or Dashboards? Normally, we return a
+  "Should errors of this type be shown to users of Repente Insights in embedded Cards or Dashboards? Normally, we return a
   generic 'Query Failed' error message for embedded queries, so as not to leak information. Some errors (like missing
   parameter errors), however, should be shown even in these situations."
   [error-type]

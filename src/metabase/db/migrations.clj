@@ -1,6 +1,6 @@
 (ns metabase.db.migrations
   "Clojure-land data migration definitions and fns for running them.
-  These migrations are all ran once when Metabase is first launched, except when transferring data from an existing
+  These migrations are all ran once when Repente Insights is first launched, except when transferring data from an existing
   H2 database.  When data is transferred from an H2 database, migrations will already have been run against that data;
   thus, all of these migrations need to be repeatable, e.g.:
 

@@ -229,7 +229,7 @@
    password su/ComplexPassword}
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (user/set-password! user-id password)
-        ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
+        ;; if this is the first time the user has logged in it means that they're just accepted their Repente Insights invite.
         ;; Send all the active admins an email :D
         (when-not (:last_login user)
           (email/send-user-joined-admin-notification-email! (User user-id)))
@@ -284,7 +284,7 @@
              audience (if (string? audience) [audience] audience)]
          (when-not (contains? (set audience) client-id)
            (throw (ex-info (str (deferred-tru "Google Auth token appears to be incorrect. ")
-                                (deferred-tru "Double check that it matches in Google and Metabase."))
+                                (deferred-tru "Double check that it matches in Google and Repente Insights."))
                            {:status-code 400}))))
        (when-not (= (:email_verified <>) "true")
          (throw (ex-info (tru "Email is not verified.") {:status-code 400})))))))
@@ -308,7 +308,7 @@
     ;; Use some wacky status code (428 - Precondition Required) so we will know when to so the error screen specific
     ;; to this situation
     (throw
-     (ex-info (tru "You''ll need an administrator to create a Metabase account before you can use Google to log in.")
+     (ex-info (tru "You''ll need an administrator to create a Repente Insights account before you can use Google to log in.")
        {:status-code 428}))))
 
 (s/defn ^:private google-auth-create-new-user!

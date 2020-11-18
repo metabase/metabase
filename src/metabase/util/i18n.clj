@@ -26,7 +26,7 @@
   nil)
 
 (defn site-locale
-  "The default locale for this Metabase installation. Normally this is the value of the `site-locale` Setting."
+  "The default locale for this Repente Insights installation. Normally this is the value of the `site-locale` Setting."
   ^Locale []
   (locale (or (impl/site-locale-from-setting)
               ;; if DB is not initialized yet fall back to English

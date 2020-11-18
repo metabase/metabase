@@ -36,5 +36,5 @@
   by the `UserInfo` schema above. `ldap-settings` match the `LDAPSettings` schema above.")
 
   (fetch-or-create-user! [this user-info ldap-settings]
-    "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary.
+    "Using the `user-info` (from `find-user`) get the corresponding Repente Insights user, creating it if necessary.
     `ldap-settings` match the `LDAPSettings` schema above."))

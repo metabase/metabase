@@ -1,18 +1,18 @@
 (ns metabase.sync.sync-metadata.fields
-  "Logic for updating Metabase Field models from metadata fetched from a physical DB.
+  "Logic for updating Repente Insights Field models from metadata fetched from a physical DB.
 
   The basic idea here is to look at the metadata we get from calling `describe-table` on a connected database, then
-  construct an identical set of metadata from what we have about that Table in the Metabase DB. Then we iterate over
+  construct an identical set of metadata from what we have about that Table in the Repente Insights DB. Then we iterate over
   both sets of Metadata and perform whatever steps are needed to make sure the things in the DB match the things that
   came back from `describe-table`. These steps are broken out into three main parts:
 
   * Fetch Metadata - logic is in `metabase.sync.sync-metadata.fields.fetch-metadata`. Construct a map of metadata from
-    the Metabase application database that matches the form of DB metadata about Fields in a Table. This metadata is
+    the Repente Insights application database that matches the form of DB metadata about Fields in a Table. This metadata is
     used to next two steps to determine what sync operations need to be performed by comparing the differences in the
     two sets of Metadata.
 
   * Sync Field instances -- logic is in `metabase.sync.sync-metadata.fields.sync-instances`. Make sure the `Field`
-    instances in the Metabase application database match up with those in the DB metadata, creating new Fields as
+    instances in the Repente Insights application database match up with those in the DB metadata, creating new Fields as
     needed, and marking existing ones as active or inactive as appropriate.
 
   * Update instance metadata -- logic is in `metabase.sync.sync-metadata.fields.sync-metadata`. Update metadata
@@ -28,11 +28,11 @@
 
   *  `field-metadata` is a map of information describing a single columnn currently present in the table being synced
 
-  *  `our-metadata` is a set of maps of Field metadata reconstructed from the Metabase application database.
+  *  `our-metadata` is a set of maps of Field metadata reconstructed from the Repente Insights application database.
 
-  *  `metabase-field` is a single map of Field metadata reconstructed from the Metabase application database; there is
+  *  `metabase-field` is a single map of Field metadata reconstructed from the Repente Insights application database; there is
      a 1:1 correspondance between this metadata and a row in the `Field` table. Unlike `field-metadata`, these entries
-     always have an `:id` associated with them (because they are present in the Metabase application DB).
+     always have an `:id` associated with them (because they are present in the Repente Insights application DB).
 
   Other notes:
 
@@ -56,7 +56,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private sync-and-update! :- su/IntGreaterThanOrEqualToZero
-  "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
+  "Sync Field instances (i.e., rows in the Field table in the Repente Insights application DB) for a Table, and update metadata
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced."
   [table :- i/TableInstance, db-metadata :- #{i/TableMetadataField}]
   (+ (sync-instances/sync-instances! table db-metadata (fetch-metadata/our-metadata table))
@@ -66,7 +66,7 @@
      (sync-metadata/update-metadata! table db-metadata (fetch-metadata/our-metadata table))))
 
 (s/defn sync-fields-for-table!
-  "Sync the Fields in the Metabase application database for a specific `table`."
+  "Sync the Fields in the Repente Insights application database for a specific `table`."
   ([table :- i/TableInstance]
    (sync-fields-for-table! (table/database table) table))
 
@@ -79,7 +79,7 @@
 
 (s/defn sync-fields! :- (s/maybe {:updated-fields su/IntGreaterThanOrEqualToZero
                                   :total-fields   su/IntGreaterThanOrEqualToZero})
-  "Sync the Fields in the Metabase application database for all the Tables in a `database`."
+  "Sync the Fields in the Repente Insights application database for all the Tables in a `database`."
   [database :- i/DatabaseInstance]
   (->> database
        sync-util/db->sync-tables

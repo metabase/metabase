@@ -62,7 +62,7 @@
     (driver/initialize! driver)))
 
 (defn register-lazy-loaded-driver!
-  "Register a basic shell of a Metabase driver using the information from its Metabase plugin"
+  "Register a basic shell of a Repente Insights driver using the information from its Repente Insights plugin"
   [{:keys                                                                                            [add-to-classpath!]
     init-steps                                                                                       :init
     {driver-name :name, :keys [abstract display-name parent], :or {abstract false}, :as driver-info} :driver}]
@@ -86,6 +86,6 @@
              driver/connection-properties (constantly connection-props)}]
       (when f
         (.addMethod multifn driver f)))
-    ;; finally, register the Metabase driver
+    ;; finally, register the Repente Insights driver
     (log/debug (u/format-color 'magenta (trs "Registering lazy loading driver {0}..." driver)))
     (driver/register! driver, :parent (set (map keyword (u/one-or-many parent))), :abstract? abstract)))

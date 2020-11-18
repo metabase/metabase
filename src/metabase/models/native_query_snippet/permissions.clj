@@ -1,5 +1,5 @@
 (ns metabase.models.native-query-snippet.permissions
-  "NativeQuerySnippets have different permissions implementations. In Metabase CE, anyone can read/edit/create all
+  "NativeQuerySnippets have different permissions implementations. In Repente Insights CE, anyone can read/edit/create all
   NativeQuerySnippets. EE has a more advanced implementation.
 
   The code in this namespace provides sort of a strategy pattern interface to the underlying permissions operations.
@@ -30,7 +30,7 @@
   (reset! impl new-impl))
 
 (def default-impl
-  "Default 'simple' permissions implementation for NativeQuerySnippets for Metabase CE."
+  "Default 'simple' permissions implementation for NativeQuerySnippets for Repente Insights CE."
   (reify
     PrettyPrintable
     (pretty [_]

@@ -33,8 +33,8 @@
      "plural-forms" "nplurals=2; plural=(n != 1);"}
 
     "translations"
-    {"" {"Metabase" {"msgid"  "Metabase"
-                     "msgstr" ["Metabase"]}}}}))
+    {"" {"Repente Insights" {"msgid"  "Repente Insights"
+                     "msgstr" ["Repente Insights"]}}}}))
 
 (defn- localization-json-file-name [locale-or-name]
   (format "frontend_client/app/locales/%s.json" (str (i18n/locale locale-or-name))))
@@ -66,7 +66,7 @@
   (try
     (stencil/render-file path variables)
     (catch IllegalArgumentException e
-      (let [message (trs "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?" path)]
+      (let [message (trs "Failed to load template ''{0}''. Did you remember to build the Repente Insights frontend?" path)]
         (log/error e message)
         (throw (Exception. message e))))))
 
@@ -92,7 +92,7 @@
     {:initJS (load-inline-js "init")}))
 
 (defn- entrypoint
-  "Repsonse that serves up an entrypoint into the Metabase application, e.g. `index.html`."
+  "Repsonse that serves up an entrypoint into the Repente Insights application, e.g. `index.html`."
   [entrypoint-name embeddable? {:keys [uri]} respond raise]
   (respond
     (-> (resp/response (if (init-status/complete?)

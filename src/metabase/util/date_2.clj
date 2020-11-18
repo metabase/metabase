@@ -249,7 +249,7 @@
 
 (s/defn bucket :- (s/cond-pre Number Temporal)
   "Perform a truncation or extraction unit on temporal value `t`. (These two operations are collectively known as
-  'date bucketing' in Metabase code and MBQL, e.g. for date/time columns in MBQL `:breakout` (SQL `GROUP BY`)).
+  'date bucketing' in Repente Insights code and MBQL, e.g. for date/time columns in MBQL `:breakout` (SQL `GROUP BY`)).
 
   You can combine this function with `group-by` to do some date/time bucketing in Clojure-land:
 
