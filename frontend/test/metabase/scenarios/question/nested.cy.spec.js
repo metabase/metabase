@@ -248,7 +248,9 @@ describe("scenarios > question > nested", () => {
 
     // Add Q2 to that dashboard
     cy.get(".Icon-pencil").click();
-    cy.get(".Icon-add").click();
+    cy.get(".Icon-add")
+      .last()
+      .click();
     cy.findByText("13816_Q2").click();
 
     // Add filter to the dashboard...
@@ -262,6 +264,79 @@ describe("scenarios > question > nested", () => {
       cy.findByText(/Category/i);
       cy.findByText(/Title/i);
       cy.findByText(/Vendor/i);
+    });
+  });
+
+  it.skip("should apply metrics including filter to the nested question (metabase#12507)", () => {
+    const METRIC_NAME = "Discount Applied";
+
+    withSampleDataset(({ ORDERS }) => {
+      cy.log("**-- 1. Create a metric with a filter --**");
+
+      cy.request("POST", "/api/metric", {
+        name: METRIC_NAME,
+        description: "Discounted orders.",
+        definition: {
+          aggregation: [["count"]],
+          filter: ["not-null", ["field-id", ORDERS.DISCOUNT]],
+          "source-table": 2,
+        },
+        table_id: 2,
+      }).then(({ body: { id: METRIC_ID } }) => {
+        // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
+        const ORIGINAL_QUERY = {
+          aggregation: ["metric", METRIC_ID],
+          breakout: [
+            ["binning-strategy", ["field-id", ORDERS.TOTAL], "default"],
+          ],
+          "source-table": 2,
+        };
+
+        cy.log(
+          "**-- 2. Create new question which uses previously defined metric --**",
+        );
+
+        cy.request("POST", "/api/card", {
+          name: "Orders with discount applied",
+          dataset_query: {
+            database: 1,
+            query: ORIGINAL_QUERY,
+            type: "query",
+          },
+          display: "bar",
+          visualization_settings: {
+            "graph.dimension": ["TOTAL"],
+            "graph.metrics": [METRIC_NAME],
+          },
+        }).then(({ body: { id: QUESTION_ID } }) => {
+          cy.server();
+          cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+          cy.log(
+            "**-- 3. Create a nested question based on the previous one --**",
+          );
+
+          // we're adding filter and saving/overwriting the original question, keeping the same ID
+          cy.request("PUT", `/api/card/${QUESTION_ID}`, {
+            dataset_query: {
+              database: 1,
+              query: {
+                filter: [">", ["field-literal", "TOTAL", "type/Float"], 50],
+                "source-query": ORIGINAL_QUERY,
+              },
+              type: "query",
+            },
+          });
+
+          cy.log("**Reported failing since v0.35.2**");
+          cy.visit(`/question/${QUESTION_ID}`);
+          cy.wait("@cardQuery").then(xhr => {
+            expect(xhr.response.body.error).not.to.exist;
+          });
+          cy.findByText(METRIC_NAME);
+          cy.get(".bar");
+        });
+      });
     });
   });
 });
