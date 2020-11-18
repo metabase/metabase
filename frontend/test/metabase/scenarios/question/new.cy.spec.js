@@ -3,6 +3,7 @@ import {
   signInAsAdmin,
   popover,
   openOrdersTable,
+  withSampleDataset,
 } from "__support__/cypress";
 
 // test various entry points into the query builder
@@ -43,6 +44,36 @@ describe("scenarios > question > new", () => {
       cy.get(".QueryBuilder .Icon-sql").click();
       cy.findByText("Convert this question to SQL").click();
       cy.url().should("include", "question#");
+    });
+
+    it.skip("should correctly choose between 'Object Detail' and 'Table (metabase#13717)", () => {
+      withSampleDataset(({ ORDERS }) => {
+        // set ID to `No special type`
+        cy.request("PUT", `/api/field/${ORDERS.ID}`, {
+          special_type: null,
+        });
+        // set Quantity to `Entity Key`
+        cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+          special_type: "type/PK",
+        });
+      });
+
+      openOrdersTable();
+      // this url check is just to give some time for the render to finish
+      cy.url().should("include", "/question#");
+
+      cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Dataset)
+        .eq(1) // first table body cell
+        .should("contain", 2) // quantity for order ID#1
+        .click();
+
+      cy.log(
+        "**Reported at v0.34.3 - v0.37.0.2 / probably was always like this**",
+      );
+      cy.log(
+        "**It should display the table with all orders with the selected quantity.**",
+      );
+      cy.findByText("Fantastic Wool Shirt"); // order ID#3 with the same quantity
     });
   });
 
@@ -133,6 +164,38 @@ describe("scenarios > question > new", () => {
       });
       // this should be among the granular selection choices
       cy.findByText("Hour of day").click();
+    });
+
+    it.skip("trend visualization should work regardless of column order (metabase#13710)", () => {
+      cy.server();
+      withSampleDataset(({ ORDERS }) => {
+        cy.request("POST", "/api/card", {
+          name: "13710",
+          dataset_query: {
+            database: 1,
+            query: {
+              "source-table": 2,
+              breakout: [
+                ["field-id", ORDERS.QUANTITY],
+                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ],
+            },
+            type: "query",
+          },
+          display: "smartscalar",
+          visualization_settings: {},
+        }).then(({ body: { id: questionId } }) => {
+          cy.route("POST", `/api/card/${questionId}/query`).as("cardQuery");
+
+          cy.visit(`/question/${questionId}`);
+          cy.findByText("13710");
+
+          cy.wait("@cardQuery");
+          cy.log("**Reported failing on v0.35 - v0.37.0.2**");
+          cy.log("**Bug: showing blank visualization**");
+          cy.get(".ScalarValue").contains("33");
+        });
+      });
     });
   });
 });

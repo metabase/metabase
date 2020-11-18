@@ -7,12 +7,14 @@
 (assert (str/ends-with? (env/env :user-dir) "/bin/release")
         "Please run release.clj from the `release` directory e.g. `cd bin/release; clojure -m release`")
 
+(def cloudfront-distribution-id "E35CJLWZIZVG7K")
+
 (def ^String root-directory
   "e.g. /Users/cam/metabase"
-  (.. (File. (env/env :user-dir)) getParentFile getParent))
+  (.. (File. ^String (env/env :user-dir)) getParentFile getParent))
 
 (def ^String uberjar-path
-  (str root-directory "/target/uberjar/metabase.jar"))
+  (u/filename root-directory "target" "uberjar" "metabase.jar"))
 
 (defonce ^:private build-options
   (atom nil))
@@ -83,10 +85,10 @@
 
 (defn artifact-download-url
   "Public-facing URL where you can download the artifact after it has been uploaded."
-  ([filename]
+  (^String [filename]
    (artifact-download-url (version) filename))
 
-  ([version filename]
+  (^String [version filename]
    (format "https://%s/%s/%s"
            (downloads-url)
            (if (= version "latest") "latest" (str "v" version))
@@ -102,10 +104,36 @@
     :ce "metabase/metabase-buildpack"
     nil))
 
-(defn metabase-repo []
-  (case (edition)
-    :ce "metabase/metabase"
-    :ee "metabase/metabase-enterprise"))
+(defn metabase-repo
+  "Metabase GitHub repo"
+  []
+  "metabase/metabase")
 
-(defn docker-tag []
+(defn docker-tag
+  "The complete image name + tag e.g. \"metabase/metabase:v0.37.0\""
+  []
   (format "%s:v%s" (docker-image-name) (version)))
+
+(defn s3-artifact-path
+  "S3 path excluding the protocol and bucket e.g. `/enterprise/v1.37.0.2/metabase.jar`"
+  ([filename]
+   (s3-artifact-path (version) filename))
+
+  ([version filename]
+   (str
+    (when (= (edition) :ee)
+      "/enterprise")
+    (format "/%s/%s"
+            (if (= version "latest") "latest" (str "v" version))
+            filename))))
+
+(defn s3-artifact-url
+  "S3 path including protocol and bucket e.g. `s3://downloads.metabase.com/enterprise/v1.37.0.2/metabase.jar`"
+  ([filename]
+   (s3-artifact-url (version) filename))
+
+  ([version filename]
+   (s3-artifact-url "downloads.metabase.com" version filename))
+
+  ([s3-bucket version filename]
+   (format "s3://%s%s" s3-bucket (s3-artifact-path version filename))))

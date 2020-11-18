@@ -195,8 +195,8 @@
         metadata                        (matching-metadata field-id-or-name source-metadata)
         {:keys [min-value max-value]
          :as   min-max}                 (extract-bounds (when (integer? field-id-or-name) field-id-or-name)
-         (:fingerprint metadata)
-         field-id->filters)
+                                                        (:fingerprint metadata)
+                                                        field-id->filters)
         [new-strategy resolved-options] (resolve-options strategy strategy-param metadata min-value max-value)
         resolved-options                (merge min-max resolved-options)]
     ;; Bail out and use unmodifed version if we can't converge on a nice version.

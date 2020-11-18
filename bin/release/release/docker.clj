@@ -10,6 +10,7 @@
 
 (defn- validate-docker-image []
   (u/step "Validate Docker image"
+    (u/announce "TODO")
     ;;   image="$1"
     ;;   docker pull "$image" > /dev/null
     ;;   docker_hash=$(docker run --rm "$image" version | grep -Eo 'hash [0-9a-f]+' | awk '{ print $2 }')

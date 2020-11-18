@@ -50,6 +50,7 @@
     :cache_field_values_schedule "0 50 0 * * ? *"
     :metadata_sync_schedule      "0 50 * * * ? *"
     :options                     nil
+    :refingerprint               nil
     :auto_run_queries            true}))
 
 (defn- table-defaults []

@@ -7722,3 +7722,44 @@ databaseChangeLog:
             tableName: core_user
             columnName: email
             newDataType: varchar_ignorecase(254)
+
+  - changeSet:
+      id: 273
+      author: camsaul
+      comment: Added 0.37.1
+      changes:
+        - addDefaultValue:
+            tableName: core_user
+            columnName: is_superuser
+            columnDataType: boolean
+            defaultValueBoolean: false
+
+  - changeSet:
+      id: 274
+      author: camsaul
+      comment: Added 0.37.1
+      changes:
+        - addDefaultValue:
+            tableName: core_user
+            columnName: is_active
+            columnDataType: boolean
+            defaultValueBoolean: true
+
+ # Add refingerprint to database to mark if fingerprinting or
+ # not. Nullable in first pass so can be opt in and then in a
+ # subsequent pass can be globally turned on where null, respecting
+ # people who turned it on and then off.
+
+  - changeSet:
+      id: 275
+      author: dpsutton
+      comment: 'Add refingerprint to Database'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: refingerprint
+                  type: boolean
+                  constraints:
+                    nullable: true

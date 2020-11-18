@@ -730,11 +730,12 @@ exports[`Position should render "Relative" correctly 1`] = `
 
 exports[`ProgressBar should render "Animated" correctly 1`] = `
 <div
-  className="ProgressBar__ProgressWrapper-sc-11v0v62-0 jstHKb"
+  className="ProgressBar__ProgressWrapper-sc-11v0v62-0 gNslgH"
   color="#509EE3"
 >
   <div
-    className="ProgressBar__Progress-sc-11v0v62-1 dhIpua"
+    className="ProgressBar__Progress-sc-11v0v62-1 gzZAJq"
+    color="#509EE3"
     width={35}
   />
 </div>
@@ -742,11 +743,12 @@ exports[`ProgressBar should render "Animated" correctly 1`] = `
 
 exports[`ProgressBar should render "Default" correctly 1`] = `
 <div
-  className="ProgressBar__ProgressWrapper-sc-11v0v62-0 jstHKb"
+  className="ProgressBar__ProgressWrapper-sc-11v0v62-0 gNslgH"
   color="#509EE3"
 >
   <div
-    className="ProgressBar__Progress-sc-11v0v62-1 kTuUwV"
+    className="ProgressBar__Progress-sc-11v0v62-1 cmFRuU"
+    color="#509EE3"
     width={75}
   />
 </div>
