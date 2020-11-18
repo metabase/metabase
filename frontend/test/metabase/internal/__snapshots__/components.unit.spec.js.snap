@@ -239,7 +239,7 @@ exports[`CheckBox should render "Default - Off" correctly 1`] = `
   style={
     Object {
       "backgroundColor": "white",
-      "border": "2px solid #C7CFD4",
+      "border": "2px solid #B8BBC3",
       "borderRadius": 4,
       "height": 16,
       "width": 16,
@@ -1089,7 +1089,7 @@ exports[`Select should render "default" correctly 1`] = `
     >
       <span>
         Entity Key
-        
+
       </span>
     </span>
     <svg
@@ -1171,11 +1171,11 @@ exports[`Select should render "multiple" correctly 1`] = `
     >
       <span>
         Entity Key
-        , 
+        ,
       </span>
       <span>
         Category
-        
+
       </span>
     </span>
     <svg
@@ -1214,7 +1214,7 @@ exports[`Select should render "search" correctly 1`] = `
     >
       <span>
         Entity Key
-        
+
       </span>
     </span>
     <svg
@@ -1253,7 +1253,7 @@ exports[`Select should render "sections" correctly 1`] = `
     >
       <span>
         Entity Key
-        
+
       </span>
     </span>
     <svg
@@ -1411,7 +1411,7 @@ exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
     style={
       Object {
         "backgroundColor": "white",
-        "border": "2px solid #C7CFD4",
+        "border": "2px solid #B8BBC3",
         "borderRadius": 4,
         "height": 16,
         "width": 16,
@@ -1424,7 +1424,7 @@ exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
     style={
       Object {
         "backgroundColor": "white",
-        "border": "2px solid #C7CFD4",
+        "border": "2px solid #B8BBC3",
         "borderRadius": 4,
         "height": 16,
         "left": 4,

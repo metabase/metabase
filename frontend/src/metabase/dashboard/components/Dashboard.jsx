@@ -74,6 +74,7 @@ type Props = {
 
   setEditingParameter: (parameterId: ?ParameterId) => void,
   setEditingDashboard: (isEditing: false | DashboardWithCards) => void,
+  setSharing: (isSharing: boolean) => void,
 
   addParameter: (option: ParameterOption) => Promise<Parameter>,
   removeParameter: (parameterId: ParameterId) => void,
@@ -119,13 +120,13 @@ type Props = {
   onChangeLocation: string => void,
   setErrorPage: (error: ApiError) => void,
 
+  onCancel: () => void,
   onSharingClick: () => void,
   onEmbeddingClick: () => void,
 };
 
 type State = {
   error: ?ApiError,
-  isSharing: boolean,
 };
 
 // NOTE: move DashboardControls HoC to container
@@ -134,7 +135,6 @@ export default class Dashboard extends Component {
   props: Props;
   state: State = {
     error: null,
-    isSharing: false,
   };
 
   static propTypes = {
@@ -152,6 +152,7 @@ export default class Dashboard extends Component {
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttributes: PropTypes.func.isRequired,
     setEditingDashboard: PropTypes.func.isRequired,
+    setSharing: PropTypes.func.isRequired,
 
     onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
     onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
@@ -228,8 +229,12 @@ export default class Dashboard extends Component {
     });
   };
 
+  onCancel = () => {
+    this.props.setSharing(false);
+  };
+
   onSharingClick = () => {
-    this.setState({ isSharing: !this.state.isSharing });
+    this.props.setSharing(true);
   };
 
   onEmbeddingClick = () => {};
@@ -238,6 +243,7 @@ export default class Dashboard extends Component {
     let {
       dashboard,
       isEditing,
+      isSharing,
       editingParameter,
       parameters,
       parameterValues,
@@ -246,7 +252,7 @@ export default class Dashboard extends Component {
       isNightMode,
       hideParameters,
     } = this.props;
-    const { error, isSharing } = this.state;
+    const { error } = this.state;
     isNightMode = isNightMode && isFullscreen;
 
     let parametersWidget;
@@ -331,7 +337,10 @@ export default class Dashboard extends Component {
                   )}
                 </div>
               </div>
-              <Sidebars {...this.props} isSharing={isSharing} />
+              <Sidebars
+                {...this.props}
+                onCancel={this.onCancel}
+              />
             </div>
           </div>
         )}
@@ -360,6 +369,7 @@ function Sidebars(props) {
     dashcardData,
     setParameterFilteringParameters,
     isSharing,
+    onCancel,
   } = props;
   if (clickBehaviorSidebarDashcard) {
     return (

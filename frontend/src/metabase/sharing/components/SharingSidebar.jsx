@@ -257,16 +257,8 @@ class SharingSidebar extends React.Component {
     const newPulse = {
       ...pulse,
       cards: pulse.cards.map(card => {
-        if (value === null) {
-          card.include_xls = false;
-          card.include_csv = false;
-        } else if (value === "xls") {
-          card.include_xls = true;
-          card.include_csv = false;
-        } else if (value === "csv") {
-          card.include_xls = false;
-          card.include_csv = true;
-        }
+        card.include_xls = value === "xls";
+        card.include_csv = value === "csv";
         return card;
       }),
     };
@@ -502,7 +494,7 @@ class SharingSidebar extends React.Component {
 
   render() {
     const { editingMode } = this.state;
-    const { pulse, formInput, pulseList } = this.props;
+    const { pulse, formInput, pulseList, onCancel } = this.props;
 
     // protect from empty values that will mess this up
     if (formInput === null || pulse === null || pulseList === null) {
@@ -513,7 +505,7 @@ class SharingSidebar extends React.Component {
       return (
         <Sidebar>
           <div className="p4 flex justify-between align-center">
-            <h3>{t`Subscriptions`}</h3>
+            <h3>{t`Schedules`}</h3>
 
             <Tooltip tooltip={t`Set up a new schedule`}>
               <Icon
@@ -521,6 +513,14 @@ class SharingSidebar extends React.Component {
                 className="text-brand bg-light-hover rounded p1 cursor-pointer"
                 size={20}
                 onClick={() => this.createSubscription()}
+              />
+            </Tooltip>
+            <Tooltip tooltip={t`Close`}>
+              <Icon
+                name="close"
+                className="text-brand bg-light-hover rounded p1 cursor-pointer"
+                size={20}
+                onClick={onCancel}
               />
             </Tooltip>
           </div>
@@ -561,7 +561,7 @@ class SharingSidebar extends React.Component {
       const slackSpec = formInput.channels.slack;
 
       return (
-        <Sidebar onCancel={() => true}>
+        <Sidebar onCancel={onCancel}>
           <div className="mt2 pt2 px4">
             <Heading>{t`Create a dashboard subscription`}</Heading>
           </div>
@@ -668,7 +668,7 @@ class SharingSidebar extends React.Component {
       return (
         <Sidebar
           onClose={this.handleSave}
-          onCancel={() => true}
+          onCancel={onCancel}
           className="text-dark"
         >
           <div className="pt4 flex align-center px4">
@@ -762,7 +762,6 @@ class SharingSidebar extends React.Component {
         return <Sidebar />;
       }
 
-      console.log("details", channelDetails);
       const channel = channelDetails[0][0];
       const index = channelDetails[0][1];
 
@@ -771,7 +770,7 @@ class SharingSidebar extends React.Component {
       return (
         <Sidebar
           onClose={this.handleSave}
-          onCancel={() => true}
+          onCancel={onCancel}
           className="text-dark"
         >
           <div className="pt4 flex align-center px4 mb3">
