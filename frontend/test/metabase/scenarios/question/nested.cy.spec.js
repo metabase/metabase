@@ -3,6 +3,7 @@ import {
   withSampleDataset,
   restore,
   popover,
+  createNativeQuestion,
 } from "__support__/cypress";
 
 describe("scenarios > question > nested (metabase#12568)", () => {
@@ -213,5 +214,53 @@ describe("scenarios > question > nested", () => {
       .contains("Average of Total")
       .closest(".List-item")
       .contains("Auto binned");
+  });
+
+  it.skip("should show all filter options for a nested question (metabase#13186)", () => {
+    cy.log("**-- 1. Create and save native question Q1 --**");
+
+    createNativeQuestion("13816_Q1", "SELECT * FROM PRODUCTS").then(
+      ({ body: { id: Q1_ID } }) => {
+        cy.log("**-- 2. Convert it to `query` and save as Q2 --**");
+
+        cy.request("POST", "/api/card", {
+          name: "13816_Q2",
+          dataset_query: {
+            database: 1,
+            query: {
+              "source-table": `card__${Q1_ID}`,
+            },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        });
+      },
+    );
+
+    cy.log("**-- 3. Create a brand new dashboard --**");
+
+    cy.request("POST", "/api/dashboard", {
+      name: "13186D",
+    }).then(({ body: { id: DASBOARD_ID } }) => {
+      cy.visit(`/dashboard/${DASBOARD_ID}`);
+    });
+
+    // Add Q2 to that dashboard
+    cy.get(".Icon-pencil").click();
+    cy.get(".Icon-add").click();
+    cy.findByText("13816_Q2").click();
+
+    // Add filter to the dashboard...
+    cy.get(".Icon-filter").click();
+    cy.findByText("Other Categories").click();
+    // ...and try to connect it to the question
+    cy.findByText("Select…").click();
+
+    cy.log("**Reported failing in v0.36.4 (`Category` is missing)**");
+    popover().within(() => {
+      cy.findByText(/Vendor/i);
+      cy.findByText(/Category/i);
+    });
   });
 });
