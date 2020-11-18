@@ -124,7 +124,7 @@ class Settings {
     if (anchor) {
       anchor = `#${anchor}`;
     }
-    return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
+    return `https://insights.repentefactory.com/docs/${tag}/${page}${anchor}`;
   }
 
   newVersionAvailable() {
