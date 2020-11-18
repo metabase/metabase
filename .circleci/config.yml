@@ -1055,7 +1055,7 @@ workflows:
           name: fe-tests-cypres-mysql-8-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - fe-dps
+            - fe-deps
           e: fe-mysql-8
           cypress-group: "mysql"
           only-single-database: true
