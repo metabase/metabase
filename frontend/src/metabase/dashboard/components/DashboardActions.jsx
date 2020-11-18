@@ -8,7 +8,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
 import Tooltip from "metabase/components/Tooltip";
 
-export const getDashboardActions = ({
+export const getDashboardActions = (self, {
   isEditing = false,
   isEmpty = false,
   isFullscreen,
@@ -29,14 +29,18 @@ export const getDashboardActions = ({
 
     buttons.push(
       <PopoverWithTrigger
-        triggerElement={<Icon name="share" className="text-brand-hover" />}
+        ref="popover"
+        triggerElement={<Tooltip tooltip={t`Sharing`}><Icon name="share" className="text-brand-hover" /></Tooltip>}
       >
         <div className="py1">
           <div>
             <a
               className={extraButtonClassNames}
               data-metabase-event={"Dashboard;Subscriptions"}
-              onClick={onSharingClick}
+              onClick={() => {
+                self.refs.popover.close();
+                onSharingClick();
+              }}
             >
               {t`Create a dashboard subscription`}
             </a>
@@ -45,7 +49,10 @@ export const getDashboardActions = ({
             <a
               className={extraButtonClassNames}
               data-metabase-event={"Dashboard;Sharing"}
-              onClick={onEmbeddingClick}
+              onClick={() => {
+                self.refs.popover.close();
+                onEmbeddingClick();
+              }}
             >
               {t`Sharing and embedding`}
             </a>

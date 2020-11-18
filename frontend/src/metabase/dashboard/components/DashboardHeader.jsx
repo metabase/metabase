@@ -347,7 +347,7 @@ export default class DashboardHeader extends Component {
       );
     }
 
-    buttons.push(...getDashboardActions(this.props));
+    buttons.push(...getDashboardActions(this, this.props));
 
     if (
       !isEditing &&
