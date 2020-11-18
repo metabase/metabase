@@ -302,7 +302,7 @@ describe("scenarios > question > nested", () => {
           display: "bar",
           visualization_settings: {
             "graph.dimension": ["TOTAL"],
-            "graph.metrics": ["count"],
+            "graph.metrics": [METRIC_NAME],
           },
         }).then(({ body: { id: QUESTION_ID } }) => {
           cy.server();
