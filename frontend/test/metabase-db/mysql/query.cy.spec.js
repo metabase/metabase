@@ -55,7 +55,7 @@ describe("mysql > user > query", () => {
     cy.contains("Simple question").click();
     cy.contains("MySQL").click();
     cy.contains("Orders").click();
-    cy.contains("Showing first 2,000 rows")
+    cy.contains("Showing first 2,000 rows");
   });
 
   it("can write a native MySQL query with a field filter", () => {
@@ -64,18 +64,21 @@ describe("mysql > user > query", () => {
     cy.contains("MySQL").click();
 
     // Write Native query that includes a filter
-    cy.get(".ace_content").type(`SELECT PRODUCT_ID, TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.CATEGORY = {{category}}]];`, {
-      parseSpecialCharSequences: false,
-    });
+    cy.get(".ace_content").type(
+      `SELECT PRODUCT_ID, TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.CATEGORY = {{category}}]];`,
+      {
+        parseSpecialCharSequences: false,
+      },
+    );
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("Widget");
 
     // Filter by Doohickey
     cy.findByPlaceholderText("Category")
-        .click()
-        .type("Doohickey")
+      .click()
+      .type("Doohickey");
     cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("Widget").should("not.exist")
+    cy.contains("Widget").should("not.exist");
     cy.contains("Doohickey");
   });
 
@@ -113,7 +116,7 @@ describe("mysql > user > query", () => {
 
     cy.findByText("Not now").click();
 
-    cy.contains("Save").should("not.exist")
+    cy.contains("Save").should("not.exist");
     cy.url().should("match", /\/question\/\d+$/);
   });
 });
