@@ -7,6 +7,10 @@ PROJECT_ROOT="$BASEDIR/../.."
 
 DOCKERHUB_NAMESPACE=metabase
 
+if [ ! -z "$MB_EDITION" ] && [ "$MB_EDITION" != ee ] && [ "$MB_EDITION" != oss ]; then
+    echo "MB_EDITION must be either 'ee' or 'oss'."
+    exit 1
+fi
 
 BUILD_TYPE=$1
 if [ -z $BUILD_TYPE ]; then
@@ -37,7 +41,7 @@ fi
 
 
 if [ "$BUILD_TYPE" == "release" ]; then
-    if [ "$MB_EDITION" = "ENTERPRISE" ]; then
+    if [ "$MB_EDITION" = ee ]; then
         DOCKERHUB_REPO=metabase-enterprise
     else
         DOCKERHUB_REPO=metabase

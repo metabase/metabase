@@ -3,6 +3,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
+            [medley.core :as m]
             [metabase
              [config :as config]
              [driver :as driver]
@@ -533,12 +534,26 @@
 
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
+(defn upsert-sensitive-fields
+  "Replace any sensitive values not overriden in the PUT with the original values"
+  [database details]
+  (when details
+    (merge (:details database)
+           (reduce
+            (fn [details k]
+              (if (= protected-password (get details k))
+                (m/update-existing details k (constantly (get-in database [:details k])))
+                details))
+            details
+            database/sensitive-fields))))
+
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
-                   auto_run_queries]} :body}]
+                   auto_run_queries refingerprint]} :body}]
   {name               (s/maybe su/NonBlankString)
    engine             (s/maybe DBEngineString)
+   refingerprint      (s/maybe s/Bool)
    details            (s/maybe su/Map)
    schedules          (s/maybe ExpandedSchedulesMap)
    description        (s/maybe s/Str)                ; s/Str instead of su/NonBlankString because we don't care
@@ -547,9 +562,7 @@
    auto_run_queries   (s/maybe s/Bool)}
   (api/check-superuser)
   (api/let-404 [database (Database id)]
-    (let [details    (if-not (= protected-password (:password details))
-                       details
-                       (assoc details :password (get-in database [:details :password])))
+    (let [details    (upsert-sensitive-fields database details)
           conn-error (when (some? details)
                        (assert (some? engine))
                        (test-database-connection engine details))
@@ -565,18 +578,19 @@
           ;;       that seems like the kind of thing that will almost never work in any practical way
           ;; TODO - this means one cannot unset the description. Does that matter?
           (api/check-500 (db/update-non-nil-keys! Database id
-                           (merge
-                            {:name               name
-                             :engine             engine
-                             :details            details
-                             :is_full_sync       full-sync?
-                             :is_on_demand       (boolean is_on_demand)
-                             :description        description
-                             :caveats            caveats
-                             :points_of_interest points_of_interest
-                             :auto_run_queries   auto_run_queries}
-                            (when schedules
-                              (schedule-map->cron-strings schedules)))))
+                                                  (merge
+                                                   {:name               name
+                                                    :engine             engine
+                                                    :details            details
+                                                    :refingerprint      refingerprint
+                                                    :is_full_sync       full-sync?
+                                                    :is_on_demand       (boolean is_on_demand)
+                                                    :description        description
+                                                    :caveats            caveats
+                                                    :points_of_interest points_of_interest
+                                                    :auto_run_queries   auto_run_queries}
+                                                   (when schedules
+                                                     (schedule-map->cron-strings schedules)))))
           (let [db (Database id)]
             (events/publish-event! :database-update db)
             ;; return the DB with the expanded schedules back in place

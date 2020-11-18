@@ -6,6 +6,7 @@
              [jobs :as jobs]
              [triggers :as triggers]]
             [clojurewerkz.quartzite.schedule.cron :as cron]
+            [java-time :as t]
             [metabase
              [task :as task]
              [util :as u]]
@@ -37,6 +38,26 @@
 ;; The DisallowConcurrentExecution on the two defrecords below attaches an annotation to the generated class that will
 ;; constrain the job execution to only be one at a time. Other triggers wanting the job to run will misfire.
 
+(def ^:private analyze-duration-threshold-for-refingerprinting
+  "If the `analyze-db!` step is shorter than this number of MINUTES, then we may refingerprint fields."
+  5)
+
+(defn- should-refingerprint-fields?
+  "Whether to refingerprint fields in the database. Looks at the runtime of the last analysis and if any fields were
+  fingerprinted. If no fields were fingerprinted and the run was shorter than the threshold, it will re-fingerprint
+  some fields."
+  [{:keys [start-time end-time steps] :as _analyze-results}]
+  (let [attempted (some->> steps
+                           (filter (fn [[step-name _results]] (= step-name "fingerprint-fields")))
+                           first
+                           second
+                           :fingerprints-attempted)]
+    (and (number? attempted)
+         (zero? attempted)
+         start-time
+         end-time
+         (< (.toMinutes (t/duration start-time end-time)) analyze-duration-threshold-for-refingerprinting))))
+
 (defn- sync-and-analyze-database!
   "The sync and analyze database job, as a function that can be used in a test"
   [job-context]
@@ -49,7 +70,9 @@
       (sync-metadata/sync-db-metadata! database)
       ;; only run analysis if this is a "full sync" database
       (when (:is_full_sync database)
-        (analyze/analyze-db! database)))))
+        (let [results (analyze/analyze-db! database)]
+          (when (and (:refingerprint database) (should-refingerprint-fields? results))
+            (analyze/refingerprint-db! database)))))))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} SyncAndAnalyzeDatabase [job-context]
   (sync-and-analyze-database! job-context))
