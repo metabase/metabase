@@ -71,7 +71,8 @@ function getHeaderRows(values, { valueColumns, formatters }) {
       formatters: otherFormatters,
     });
     rowLists.push(rows);
-    const span = rows.length === 0 ? 1 : sumSpan(rows[0]);
+    const span =
+      rows.length === 0 ? 1 : rows[0].reduce((sum, { span }) => sum + span, 0);
     return { value: currentFormatter(value), span };
   });
   const followingRows = _.zip(...rowLists).map(a => a.flat());
@@ -110,15 +111,11 @@ function getBodyRows(tree, context, valueList = []) {
     const rows = getBodyRows(children, context, [...valueList, value]);
     const item = {
       value: context.rowHeaderFormatters[valueList.length](value),
-      span: sumSpan(rows.map(row => row[0])),
+      span: rows.length,
     };
     const [first, ...rest] = rows;
     return [[item, ...first], ...rest];
   });
-}
-
-function sumSpan(a) {
-  return a.reduce((sum, { span }) => sum + span, 0);
 }
 
 function updateValueObject(row, indexes, seenValues) {

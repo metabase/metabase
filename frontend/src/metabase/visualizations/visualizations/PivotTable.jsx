@@ -1,13 +1,32 @@
 import React, { Component } from "react";
 import { t } from "ttag";
+import _ from "underscore";
+import { getIn } from "icepick";
 
 import { isDimension } from "metabase/lib/schema_metadata";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { multiLevelPivot } from "metabase/lib/data_grid";
 // import { formatColumn } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
+
+const partitions = [
+  {
+    name: "rows",
+    columnFilter: isDimension,
+    title: t`Fields to use for the table rows`,
+  },
+  {
+    name: "columns",
+    columnFilter: isDimension,
+    title: t`Fields to use for the table columns`,
+  },
+  {
+    name: "values",
+    columnFilter: col => !isDimension(col),
+    title: t`Fields to use for the table values`,
+  },
+];
 
 export default class PivotTable extends Component {
   props: VisualizationProps;
@@ -23,8 +42,16 @@ export default class PivotTable extends Component {
     );
   }
 
-  static checkRenderable(foo) {
-    // todo: raise when we can't render
+  static checkRenderable([{ data }]) {
+    if (
+      !data.cols.every(
+        col => col.source === "aggregation" || col.source === "breakout",
+      )
+    ) {
+      throw new Error(
+        t`Pivot tables can only be used with aggregated queries.`,
+      );
+    }
   }
 
   static seriesAreCompatible(initialSeries, newSeries) {
@@ -33,53 +60,35 @@ export default class PivotTable extends Component {
 
   static settings = {
     ...columnSettings({ hidden: true }),
-    "pivot_table.table_rows": {
+    "pivot_table.column_split": {
       section: null,
-      title: t`Fields to use for the table rows`,
-      widget: "fields",
-      getProps: ([{ data }], settings) => {
-        if (!data) {
-          return {};
+      widget: "fieldsPartition",
+      getProps: ([{ data }], settings) => ({ partitions }),
+      getValue: ([{ data }], settings = {}) => {
+        const storedValue = settings["pivot_table.column_split"];
+        let setting;
+        if (storedValue == null) {
+          const [dimensions, values] = _.partition(data.cols, isDimension);
+          const [first, second, ...rest] = _.sortBy(dimensions, col =>
+            getIn(col, ["fingerprint", "global", "distinct-count"]),
+          );
+          let rows, columns;
+          if (dimensions.length < 2) {
+            columns = [];
+            rows = [first];
+          } else if (dimensions.length <= 3) {
+            columns = [first];
+            rows = [second, ...rest];
+          } else {
+            columns = [first, second];
+            rows = rest;
+          }
+          setting = { rows, columns, values };
+        } else {
+          setting = updateValueWithCurrentColumns(storedValue, data.cols);
         }
-        return {
-          options: data.cols.filter(isDimension).map(getOptionFromColumn),
-          addAnother: t`Add a column`,
-          columns: data.cols,
-        };
+        return setting;
       },
-      getDefault: () => [null],
-    },
-    "pivot_table.table_columns": {
-      section: null,
-      title: t`Fields to use for the table columns`,
-      widget: "fields",
-      getProps: ([{ data }], settings) => {
-        if (!data) {
-          return {};
-        }
-        return {
-          options: data.cols.filter(isDimension).map(getOptionFromColumn),
-          addAnother: t`Add a column`,
-          columns: data.cols,
-        };
-      },
-      getDefault: () => [null],
-    },
-    "pivot_table.table_values": {
-      section: null,
-      title: t`Fields to use for the table values`,
-      widget: "fields",
-      getProps: ([{ data }], settings) => {
-        if (!data) {
-          return {};
-        }
-        return {
-          options: data.cols.map(getOptionFromColumn),
-          addAnother: t`Add a column`,
-          columns: data.cols,
-        };
-      },
-      getDefault: () => [null],
     },
   };
 
@@ -92,16 +101,15 @@ export default class PivotTable extends Component {
 
   render() {
     const { settings, data } = this.props;
-    console.log({ settings, cols: data.cols });
-    const [rowIndexes, columnIndexes, valueIndexes] = [
-      "pivot_table.table_rows",
-      "pivot_table.table_columns",
-      "pivot_table.table_values",
-    ].map(settingName =>
-      settings[settingName]
-        .map(colOption =>
-          data.cols.findIndex(
-            col => getOptionFromColumn(col).value === colOption,
+    const {
+      rows: rowIndexes,
+      columns: columnIndexes,
+      values: valueIndexes,
+    } = _.mapObject(settings["pivot_table.column_split"], columns =>
+      columns
+        .map(column =>
+          data.cols.findIndex(col =>
+            _.isEqual(col.field_ref, column.field_ref),
           ),
         )
         .filter(index => index !== -1),
@@ -150,4 +158,31 @@ export default class PivotTable extends Component {
       </div>
     );
   }
+}
+
+function updateValueWithCurrentColumns(storedValue, columns) {
+  const currentQueryFieldRefs = columns.map(c => JSON.stringify(c.field_ref));
+  const currentSettingFieldRefs = Object.values(storedValue).flatMap(columns =>
+    columns.map(c => JSON.stringify(c.field_ref)),
+  );
+  const toAdd = _.difference(currentQueryFieldRefs, currentSettingFieldRefs);
+  const toRemove = _.difference(currentSettingFieldRefs, currentQueryFieldRefs);
+
+  // remove toRemove
+  const value = _.mapObject(storedValue, columns =>
+    columns.filter(col => !toRemove.includes(JSON.stringify(col.field_ref))),
+  );
+  // add toAdd to first partitions where it matches the filter
+  for (const fieldRef of toAdd) {
+    for (const { filter, name } of partitions) {
+      const column = columns.find(
+        c => JSON.stringify(c.field_ref) === fieldRef,
+      );
+      if (filter == null || filter(column)) {
+        value[name] = [...value[name], column];
+        break;
+      }
+    }
+  }
+  return value;
 }
