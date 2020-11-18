@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
+import { getIn } from "icepick";
 
 import { isDimension } from "metabase/lib/schema_metadata";
 import { multiLevelPivot } from "metabase/lib/data_grid";
@@ -20,8 +21,13 @@ const partitions = [
     columnFilter: isDimension,
     title: t`Fields to use for the table columns`,
   },
-  { name: "values", title: t`Fields to use for the table values` },
+  {
+    name: "values",
+    columnFilter: col => !isDimension(col),
+    title: t`Fields to use for the table values`,
+  },
 ];
+
 export default class PivotTable extends Component {
   props: VisualizationProps;
   static uiName = t`Pivot Table`;
@@ -36,8 +42,16 @@ export default class PivotTable extends Component {
     );
   }
 
-  static checkRenderable(foo) {
-    // todo: raise when we can't render
+  static checkRenderable([{ data }]) {
+    if (
+      !data.cols.every(
+        col => col.source === "aggregation" || col.source === "breakout",
+      )
+    ) {
+      throw new Error(
+        t`Pivot tables can only be used with aggregated queries.`,
+      );
+    }
   }
 
   static seriesAreCompatible(initialSeries, newSeries) {
@@ -51,17 +65,29 @@ export default class PivotTable extends Component {
       widget: "fieldsPartition",
       getProps: ([{ data }], settings) => ({ partitions }),
       getValue: ([{ data }], settings = {}) => {
-        const columns = data.cols;
         const storedValue = settings["pivot_table.column_split"];
+        let setting;
         if (storedValue == null) {
-          return {
-            rows: columns.filter(isDimension),
-            values: columns.filter(col => !isDimension(col)),
-            columns: [],
-          };
+          const [dimensions, values] = _.partition(data.cols, isDimension);
+          const [first, second, ...rest] = _.sortBy(dimensions, col =>
+            getIn(col, ["fingerprint", "global", "distinct-count"]),
+          );
+          let rows, columns;
+          if (dimensions.length < 2) {
+            columns = [];
+            rows = [first];
+          } else if (dimensions.length <= 3) {
+            columns = [first];
+            rows = [second, ...rest];
+          } else {
+            columns = [first, second];
+            rows = rest;
+          }
+          setting = { rows, columns, values };
+        } else {
+          setting = updateValueWithCurrentColumns(storedValue, data.cols);
         }
-
-        return updateValueWithCurrentColumns(storedValue, columns);
+        return setting;
       },
     },
   };

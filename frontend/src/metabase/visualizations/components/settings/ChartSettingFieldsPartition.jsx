@@ -25,23 +25,34 @@ class ChartSettingFieldsPartition extends React.Component {
     return (
       <div>
         {this.props.partitions.map(({ name, title, columnFilter }, index) => (
-          <div className={cx("py2", { "border-top": index > 0 })}>
-            <h4 className="mb2">{title}</h4>
-            <Partition
-              columnFilter={columnFilter}
-              partitionName={name}
-              columns={value[name]}
-              value={value}
-              updateDisplayedValue={this.updateDisplayedValue}
-              commitDisplayedValue={this.commitDisplayedValue}
-            />
-          </div>
+          <Partition
+            className={cx("py2", { "border-top": index > 0 })}
+            title={title}
+            columnFilter={columnFilter}
+            partitionName={name}
+            columns={value[name]}
+            value={value}
+            updateDisplayedValue={this.updateDisplayedValue}
+            commitDisplayedValue={this.commitDisplayedValue}
+          />
         ))}
       </div>
     );
   }
 }
 
+@DropTarget(
+  "columns",
+  {
+    // Using a drop target here is a hack to work around another issue.
+    // The version of react-dnd we're on has a bug where endDrag isn't called.
+    // Drop is still called here, so we trigger commit here.
+    drop: (props, monitor, component) => {
+      props.commitDisplayedValue();
+    },
+  },
+  (connect, monitor) => ({ connectDropTarget: connect.dropTarget() }),
+)
 class Partition extends React.Component {
   render() {
     const {
@@ -51,9 +62,13 @@ class Partition extends React.Component {
       updateDisplayedValue,
       commitDisplayedValue,
       value,
+      connectDropTarget,
+      title,
+      className,
     } = this.props;
-    return (
-      <div>
+    return connectDropTarget(
+      <div className={className}>
+        <h4 className="mb2">{title}</h4>
         {columns.length === 0 ? (
           <EmptyPartition
             columnFilter={columnFilter}
@@ -74,7 +89,7 @@ class Partition extends React.Component {
             />
           ))
         )}
-      </div>
+      </div>,
     );
   }
 }
@@ -127,7 +142,7 @@ class EmptyPartition extends React.Component {
         columnsDup[hoverIndex] = columns[dragIndex];
         updateDisplayedValue({ ...value, [itemPartition]: columnsDup });
         item.index = hoverIndex;
-      } else if (partitionName !== itemPartition && dragIndex !== hoverIndex) {
+      } else if (partitionName !== itemPartition) {
         updateDisplayedValue({
           ...value,
           [itemPartition]: [
@@ -161,7 +176,7 @@ class EmptyPartition extends React.Component {
       index,
     }),
     endDrag: (props, monitor, component) => {
-      props.commitDisplayedValue();
+      // props.commitDisplayedValue();
     },
   },
   (connect, monitor) => ({
