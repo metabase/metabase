@@ -8,19 +8,22 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
 import Tooltip from "metabase/components/Tooltip";
 
-export const getDashboardActions = (self, {
-  isEditing = false,
-  isEmpty = false,
-  isFullscreen,
-  isNightMode,
-  onNightModeChange,
-  onFullscreenChange,
-  refreshPeriod,
-  setRefreshElapsedHook,
-  onRefreshPeriodChange,
-  onSharingClick,
-  onEmbeddingClick,
-}) => {
+export const getDashboardActions = (
+  self,
+  {
+    isEditing = false,
+    isEmpty = false,
+    isFullscreen,
+    isNightMode,
+    onNightModeChange,
+    onFullscreenChange,
+    refreshPeriod,
+    setRefreshElapsedHook,
+    onRefreshPeriodChange,
+    onSharingClick,
+    onEmbeddingClick,
+  },
+) => {
   const buttons = [];
 
   if (!isEditing && !isEmpty) {
@@ -30,7 +33,11 @@ export const getDashboardActions = (self, {
     buttons.push(
       <PopoverWithTrigger
         ref="popover"
-        triggerElement={<Tooltip tooltip={t`Sharing`}><Icon name="share" className="text-brand-hover" /></Tooltip>}
+        triggerElement={
+          <Tooltip tooltip={t`Sharing`}>
+            <Icon name="share" className="text-brand-hover" />
+          </Tooltip>
+        }
       >
         <div className="py1">
           <div>

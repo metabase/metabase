@@ -243,7 +243,6 @@ export default class Dashboard extends Component {
     let {
       dashboard,
       isEditing,
-      isSharing,
       editingParameter,
       parameters,
       parameterValues,
@@ -337,10 +336,7 @@ export default class Dashboard extends Component {
                   )}
                 </div>
               </div>
-              <Sidebars
-                {...this.props}
-                onCancel={this.onCancel}
-              />
+              <Sidebars {...this.props} onCancel={this.onCancel} />
             </div>
           </div>
         )}
@@ -369,7 +365,6 @@ function Sidebars(props) {
     dashcardData,
     setParameterFilteringParameters,
     isSharing,
-    onCancel,
   } = props;
   if (clickBehaviorSidebarDashcard) {
     return (
