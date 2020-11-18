@@ -85,7 +85,7 @@ export default class PreferencesStep extends Component {
           <StepTitle title={stepText} circleText={String(stepNumber - 1)} />
           <form onSubmit={this.formSubmitted.bind(this)} noValidate>
             <div className="Form-field">
-              {t`In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics.`}{" "}
+              {t`In order to help us improve Repente Insights, we'd like to collect certain data about usage through Google Analytics.`}{" "}
               <a
                 className="link"
                 href={MetabaseSettings.docsUrl("information-collection")}
@@ -105,7 +105,7 @@ export default class PreferencesStep extends Component {
                   aria-labelledby="anonymous-usage-events-label"
                 />
                 <span className="ml1" id="anonymous-usage-events-label">
-                  {t`Allow Metabase to anonymously collect usage events`}
+                  {t`Allow Repente Insights to anonymously collect usage events`}
                 </span>
               </div>
             </div>
@@ -113,7 +113,7 @@ export default class PreferencesStep extends Component {
             {allowTracking ? (
               <div className="Form-field">
                 <ul style={{ listStyle: "disc inside", lineHeight: "200%" }}>
-                  <li>{jt`Metabase ${(
+                  <li>{jt`Repente Insights ${(
                     <span style={{ fontWeight: "bold" }}>{t`never`}</span>
                   )} collects anything about your data or question results.`}</li>
                   <li>{t`All collection is completely anonymous.`}</li>

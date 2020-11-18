@@ -66,7 +66,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Settings").click();
       cy.findByText("Email").click();
 
-      cy.findByText("Email address you want to use as the sender of Metabase.");
+      cy.findByText("Email address you want to use as the sender of Repente Insights.");
       cy.findByText("Sample Database").should("not.exist");
 
       setupLocalHostEmail();
@@ -91,7 +91,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Create a Slack Bot User for MetaBot");
       cy.contains(
-        'Once you\'re there, give it a name and click "Add bot integration". Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Metabase needs this to upload graphs.',
+        'Once you\'re there, give it a name and click "Add bot integration". Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Repente Insights needs this to upload graphs.',
       );
     });
 

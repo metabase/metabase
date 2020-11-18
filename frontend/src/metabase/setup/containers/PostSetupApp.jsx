@@ -69,7 +69,7 @@ export default class PostSetupApp extends Component {
                         <ExplorePane
                           candidates={sampleCandidates}
                           title={null}
-                          description={t`This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Metabase can do for you.`}
+                          description={t`This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Repente Insights can do for you.`}
                         />
                       </Card>
                     )}

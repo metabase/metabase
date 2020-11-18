@@ -51,7 +51,7 @@ export default function CacheFieldValuesScheduleWidget({
           select={() => setIsFullSyncIsOnDemand(false, true)}
         >
           <p className="text-paragraph text-measure">
-            {t`When a user adds a new filter to a dashboard or a SQL question, Metabase will
+            {t`When a user adds a new filter to a dashboard or a SQL question, Repente Insights will
                                                   scan the field(s) mapped to that filter in order to show the list of selectable values.`}
           </p>
         </SyncOption>

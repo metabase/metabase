@@ -127,7 +127,7 @@ export default class DatabaseConnectionStep extends Component {
           <StepTitle title={stepText} circleText={String(stepNumber)} />
 
           <div className="Form-field">
-            {t`You’ll need some info about your database, like the username and password. If you don’t have that right now, Metabase also comes with a sample dataset you can get started with.`}
+            {t`You’ll need some info about your database, like the username and password. If you don’t have that right now, Repente Insights also comes with a sample dataset you can get started with.`}
           </div>
 
           <Databases.Form

@@ -2,10 +2,10 @@
 /* eslint-disable no-color-literals */
 
 /*
-    Metabase Icon Paths
+    Repente Insights Icon Paths
     -----
 
-    These paths represent the current canonical icon set for Metabase.
+    These paths represent the current canonical icon set for Repente Insights.
 */
 
 export const ICON_PATHS = {

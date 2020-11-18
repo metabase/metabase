@@ -14,7 +14,7 @@ export default class SettingsUpdatesForm extends Component {
       const currentVersion = MetabaseSettings.currentVersion();
       return (
         <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
-          {jt`You're running Metabase ${formatVersion(
+          {jt`You're running Repente Insights ${formatVersion(
             currentVersion,
           )} which is the latest and greatest!`}
         </div>
@@ -27,7 +27,7 @@ export default class SettingsUpdatesForm extends Component {
         <div>
           <div className="p2 bg-green bordered rounded border-success flex flex-row align-center justify-between">
             <span className="text-white text-bold">
-              {jt`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
+              {jt`Repente Insights ${formatVersion(latestVersion)} is available.`}{" "}
               {jt`You're running ${formatVersion(currentVersion)}`}
             </span>
             <a

@@ -17,7 +17,7 @@ export async function loadLocalization(locale) {
             "plural-forms": "nplurals=2; plural=(n != 1);",
           },
           translations: {
-            "": { Metabase: { msgid: "Metabase", msgstr: ["Metabase"] } },
+            "": { Metabase: { msgid: "Repente Insights", msgstr: ["Repente Insights"] } },
           },
         };
   setLocalization(translationsObject);

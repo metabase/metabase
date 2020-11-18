@@ -20,7 +20,7 @@ describe("scenarios > setup", () => {
         },
       });
       cy.location("pathname").should("eq", "/setup");
-      cy.findByText("Welcome to Metabase");
+      cy.findByText("Welcome to Repente Insights");
       cy.findByText("Let's get started").click();
 
       // ========
@@ -100,7 +100,7 @@ describe("scenarios > setup", () => {
       // add h2 database
       cy.findByText("Select a database").click();
       cy.findByText("H2").click();
-      cy.findByLabelText("Name").type("Metabase H2");
+      cy.findByLabelText("Name").type("Repente Insights H2");
       cy.findByText("Next")
         .closest("button")
         .should("be.disabled");
@@ -116,9 +116,9 @@ describe("scenarios > setup", () => {
         .click();
 
       // return to db settings and turn on manual scheduling
-      cy.findByText("Connecting to Metabase H2").click();
+      cy.findByText("Connecting to Repente Insights H2").click();
       cy.findByLabelText(
-        "This is a large database, so let me choose when Metabase syncs and scans",
+        "This is a large database, so let me choose when Repente Insights syncs and scans",
       ).click();
       cy.findByText("Next").click();
 
@@ -135,7 +135,7 @@ describe("scenarios > setup", () => {
       cy.findByText("All collection is completely anonymous.");
       // turn collection off, which hides data collection description
       cy.findByLabelText(
-        "Allow Metabase to anonymously collect usage events",
+        "Allow Repente Insights to anonymously collect usage events",
       ).click();
       cy.findByText("All collection is completely anonymous.").should(
         "not.exist",
@@ -149,7 +149,7 @@ describe("scenarios > setup", () => {
       cy.findByText(
         "Get infrequent emails about new releases and feature updates.",
       );
-      cy.findByText("Take me to Metabase").click();
+      cy.findByText("Take me to Repente Insights").click();
       cy.location("pathname").should("eq", "/");
     });
   });

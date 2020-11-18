@@ -23,7 +23,7 @@ describe("scenarios > admin > databases > edit", () => {
       cy.visit("/admin/databases/1");
 
       cy.findByLabelText(
-        "This is a large database, so let me choose when Metabase syncs and scans",
+        "This is a large database, so let me choose when Repente Insights syncs and scans",
       ).click();
 
       cy.findByText("Save changes").click();

@@ -203,7 +203,7 @@ const SECTIONS = updateSectionsWithPlugins({
       {
         key: "map-tile-server-url",
         display_name: t`Map tile server URL`,
-        note: t`Metabase uses OpenStreetMaps by default.`,
+        note: t`Repente Insights uses OpenStreetMaps by default.`,
         type: "string",
       },
       {
@@ -305,7 +305,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
       {
         key: "enable-embedding",
-        display_name: t`Enable Embedding Metabase in other Applications`,
+        display_name: t`Enable Embedding Repente Insights in other Applications`,
         type: "boolean",
         getHidden: settings => !settings["enable-embedding"],
       },

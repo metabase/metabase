@@ -18,10 +18,10 @@ describe("metabase-smoketest > admin", () => {
   before(() => restore("blank"));
 
   describe("Admin can setup an account", () => {
-    it("should set up Metabase", () => {
+    it("should set up Repente Insights", () => {
       // This is a simplified version of the "scenarios > setup" test
       cy.visit("/");
-      cy.findByText("Welcome to Metabase");
+      cy.findByText("Welcome to Repente Insights");
       cy.url().should("not.include", "login");
       cy.findByText("Let's get started").click();
 
@@ -55,7 +55,7 @@ describe("metabase-smoketest > admin", () => {
 
       cy.findByText("Select a database").click();
       cy.findByText("H2").click();
-      cy.findByLabelText("Name").type("Metabase H2");
+      cy.findByLabelText("Name").type("Repente Insights H2");
 
       const dbPath = path.resolve(
         Cypress.config("fileServerFolder"),
@@ -66,7 +66,7 @@ describe("metabase-smoketest > admin", () => {
 
       // Turns off anonymous data collection
       cy.findByLabelText(
-        "Allow Metabase to anonymously collect usage events",
+        "Allow Repente Insights to anonymously collect usage events",
       ).click();
       cy.findByText("All collection is completely anonymous.").should(
         "not.exist",
@@ -75,7 +75,7 @@ describe("metabase-smoketest > admin", () => {
 
       // Finish & Subscribe
 
-      cy.findByText("Take me to Metabase").click();
+      cy.findByText("Take me to Repente Insights").click();
       cy.location("pathname").should("eq", "/");
     });
   });
@@ -90,7 +90,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Our analytics");
 
       // Following section is repeated-- turn into callback function?
-      // Also, selecting Metabase H2 doesn't do anything
+      // Also, selecting Repente Insights H2 doesn't do anything
       cy.findByText("Ask a question").click();
 
       cy.findByText("Custom question");

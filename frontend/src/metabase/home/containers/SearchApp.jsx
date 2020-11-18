@@ -39,7 +39,7 @@ export default class SearchApp extends React.Component {
                   <Card>
                     <EmptyState
                       title={t`No results`}
-                      message={t`Metabase couldn't find any results for your search.`}
+                      message={t`Repente Insights couldn't find any results for your search.`}
                       illustrationElement={<img src={NoResults} />}
                     />
                   </Card>

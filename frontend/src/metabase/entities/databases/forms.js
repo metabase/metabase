@@ -166,7 +166,7 @@ function getAuthCodeEnableAPILink(engine, details) {
       const enableAPIURL = ENABLE_API_PREFIXES[engine] + projectID;
       return (
         <span>
-          {t`To use Metabase with this data you must enable API access in the Google Developers Console.`}{" "}
+          {t`To use Repente Insights with this data you must enable API access in the Google Developers Console.`}{" "}
           {jt`${(
             <ExternalLink href={enableAPIURL}>{t`Click here`}</ExternalLink>
           )} to go to the console if you haven't already done so.`}
@@ -277,22 +277,22 @@ const forms = {
         name: "auto_run_queries",
         type: "boolean",
         title: t`Automatically run queries when doing simple filtering and summarizing`,
-        description: t`When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.`,
+        description: t`When this is on, Repente Insights will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.`,
         initial: true,
         hidden: !engine,
       },
       {
         name: "details.let-user-control-scheduling",
         type: "boolean",
-        title: t`This is a large database, so let me choose when Metabase syncs and scans`,
-        description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`,
+        title: t`This is a large database, so let me choose when Repente Insights syncs and scans`,
+        description: t`By default, Repente Insights does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`,
         hidden: !engine,
       },
       {
         name: "refingerprint",
         type: "boolean",
         title: t`Periodically refingerprint tables`,
-        description: t`When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter.`,
+        description: t`When syncing with this database, Repente Insights will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Repente Insights instance smarter.`,
         hidden: !engine,
       },
       { name: "is_full_sync", type: "hidden" },
@@ -309,15 +309,15 @@ const forms = {
         type: CacheFieldValuesScheduleWidget,
         title: t`Scanning for Filter Values`,
         description:
-          t`Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.` +
+          t`Repente Insights can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.` +
           " " +
-          t`When should Metabase automatically scan and cache field values?`,
+          t`When should Repente Insights automatically scan and cache field values?`,
         hidden: !engine || !details["let-user-control-scheduling"],
       },
     ],
     normalize: function(database) {
       if (!database.details["let-user-control-scheduling"]) {
-        // If we don't let user control the scheduling settings, let's override them with Metabase defaults
+        // If we don't let user control the scheduling settings, let's override them with Repente Insights defaults
         // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults
         return {
           ...database,

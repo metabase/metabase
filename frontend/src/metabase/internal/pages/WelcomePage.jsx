@@ -13,9 +13,9 @@ const WelcomePage = () => {
   return (
     <Box className="wrapper wrapper--trim">
       <Box my={4}>
-        <Heading>Metabase Style Guide</Heading>
+        <Heading>Repente Insights Style Guide</Heading>
         <Text>
-          Reference and samples for how to make things the Metabase way.
+          Reference and samples for how to make things the Repente Insights way.
         </Text>
       </Box>
 

@@ -234,7 +234,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           });
 
           // NOTE: The actual "Assertion" phase begins here
-          cy.log("**Reported failing on Metabase 1.34.3 and 0.36.2**");
+          cy.log("**Reported failing on Repente Insights 1.34.3 and 0.36.2**");
 
           cy.log("**The first case**");
           // set filter values (ratings 5 and 4) directly through the URL

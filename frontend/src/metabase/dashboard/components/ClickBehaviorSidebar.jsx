@@ -41,7 +41,7 @@ const clickBehaviorOptions = [
 function getClickBehaviorOptionName(value, dashcard) {
   if (value === "menu") {
     return hasActionsMenu(dashcard)
-      ? t`Open the Metabase actions menu`
+      ? t`Open the Repente Insights actions menu`
       : t`Do nothing`;
   }
   return value === "link"

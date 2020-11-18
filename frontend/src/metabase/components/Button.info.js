@@ -5,7 +5,7 @@ export const component = Button;
 export const category = "input";
 
 export const description = `
-Metabase's main button component.
+Repente Insights's main button component.
 `;
 
 export const examples = {

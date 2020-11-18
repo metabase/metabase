@@ -18,7 +18,7 @@ describe("ProfileLink", () => {
           "Account settings",
           "Activity",
           "Help",
-          "About Metabase",
+          "About Repente Insights",
           "Sign out",
         ]);
       });
@@ -38,7 +38,7 @@ describe("ProfileLink", () => {
           "Admin",
           "Activity",
           "Help",
-          "About Metabase",
+          "About Repente Insights",
           "Sign out",
         ]);
       });

@@ -23,7 +23,7 @@ function BigQueryServiceAccountToggle({
 
   return (!value && hasNoOldStyleData) || value === true ? (
     <div>
-      <p>{jt`Metabase connects to Big Query via ${saLink}.`}</p>
+      <p>{jt`Repente Insights connects to Big Query via ${saLink}.`}</p>
       {value === true && (
         <Link className="link" onClick={() => onChange(false)}>
           {t`Continue using an OAuth application to connect`}

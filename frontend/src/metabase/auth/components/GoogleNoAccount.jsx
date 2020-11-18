@@ -12,9 +12,9 @@ const GoogleNoAccount = () => (
           <LogoIcon className="Logo my4 sm-my0" height={65} />
         </div>
         <div className="Grid-cell text-centered bg-white bordered rounded shadowed p4">
-          <h3 className="mt4 mb2">{t`No Metabase account exists for this Google account.`}</h3>
+          <h3 className="mt4 mb2">{t`No Repente Insights account exists for this Google account.`}</h3>
           <p className="mb4 ml-auto mr-auto" style={{ maxWidth: 360 }}>
-            {t`You'll need an administrator to create a Metabase account before you can use Google to log in.`}
+            {t`You'll need an administrator to create a Repente Insights account before you can use Google to log in.`}
           </p>
 
           <BackToLogin />

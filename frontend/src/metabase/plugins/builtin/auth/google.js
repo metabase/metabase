@@ -29,7 +29,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
     ...settings,
     {
       authName: t`Sign in with Google`,
-      authDescription: t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`,
+      authDescription: t`Allows users with existing Repente Insights accounts to login with a Google account that matches their email address in addition to their Repente Insights username and password.`,
       authType: "google",
       authEnabled: settings => !!settings["google-auth-client-id"],
       widget: AuthenticationOption,

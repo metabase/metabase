@@ -35,13 +35,13 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Severity**
-How severe an issue is this bug to you? Is this annoying, blocking some users, blocking an upgrade or blocking your usage of Metabase entirely?
+How severe an issue is this bug to you? Is this annoying, blocking some users, blocking an upgrade or blocking your usage of Repente Insights entirely?
 Note: the more honest and specific you are here the more we will take you seriously.
 
 **Additional context**
 Add any other context about the problem here.
 
-**Metabase Diagnostic Info**
+**Repente Insights Diagnostic Info**
 `;
 
 function githubIssueLink(bugReportDetails) {
@@ -105,13 +105,13 @@ export default class Help extends Component {
         <Box my={2} style={{ maxWidth: "468px" }}>
           <ol>
             <HelpLink
-              title={t`Metabase Documentation`}
+              title={t`Repente Insights Documentation`}
               description={t`Includes a troubleshooting guide`}
               link={MetabaseSettings.docsUrl()}
             />
             <HelpLink
-              title={t`Post on the Metabase support forum`}
-              description={t`A community forum for all things Metabase`}
+              title={t`Post on the Repente Insights support forum`}
+              description={t`A community forum for all things Repente Insights`}
               link={discourseLink(detailString)}
             />
             <HelpLink

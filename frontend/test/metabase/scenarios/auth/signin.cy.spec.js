@@ -57,7 +57,7 @@ describe("scenarios > auth > signin", () => {
     signOut();
     cy.reload();
 
-    cy.contains("Sign in to Metabase");
+    cy.contains("Sign in to Repente Insights");
     cy.findByLabelText("Email address").type(USERS.admin.username);
     cy.findByLabelText("Password").type(USERS.admin.password);
     cy.findByText("Sign in").click();

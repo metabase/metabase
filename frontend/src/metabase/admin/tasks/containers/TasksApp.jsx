@@ -36,7 +36,7 @@ class TasksApp extends React.Component {
           <Flex align="center">
             <AdminHeader title={t`Troubleshooting logs`} />
             <Tooltip
-              tooltip={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
+              tooltip={t`Trying to get to the bottom of something? This section shows logs of Repente Insights's background tasks, which can help shed light on what's going on.`}
             >
               <Icon
                 name="info"

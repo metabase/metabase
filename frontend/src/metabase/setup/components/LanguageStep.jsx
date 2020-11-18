@@ -51,7 +51,7 @@ export default class LanguageStep extends React.Component {
             circleText={String(stepNumber)}
           />
           <p className="text-default">
-            {t`This language will be used throughout Metabase and will be the default for new users.`}
+            {t`This language will be used throughout Repente Insights and will be the default for new users.`}
           </p>
           <div className="overflow-hidden mb4">
             <ol

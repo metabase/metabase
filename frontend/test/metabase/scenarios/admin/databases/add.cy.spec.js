@@ -54,7 +54,7 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.findByText("Save").should("not.be.disabled");
 
-    toggleFieldWithDisplayName("let me choose when Metabase syncs and scans");
+    toggleFieldWithDisplayName("let me choose when Repente Insights syncs and scans");
 
     cy.findByText("Next")
       .should("not.be.disabled")
@@ -77,7 +77,7 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.findByText("Save").should("not.be.disabled");
 
-    toggleFieldWithDisplayName("let me choose when Metabase syncs and scans");
+    toggleFieldWithDisplayName("let me choose when Repente Insights syncs and scans");
 
     cy.findByText("Next")
       .should("not.be.disabled")

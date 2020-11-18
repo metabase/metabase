@@ -23,7 +23,7 @@ class PremiumTokenInput extends Component {
     } else if (token) {
       message = t`Premium embedding enabled`;
     } else {
-      message = t`Enter the token you bought from the Metabase Store`;
+      message = t`Enter the token you bought from the Repente Insights Store`;
     }
 
     return (
@@ -50,7 +50,7 @@ class PremiumTokenInput extends Component {
 const PremiumExplanation = ({ showEnterScreen }) => (
   <div>
     <h2>Premium embedding</h2>
-    <p className="mt1">{t`Premium embedding lets you disable "Powered by Metabase" on your embedded dashboards and questions.`}</p>
+    <p className="mt1">{t`Premium embedding lets you disable "Powered by Repente Insights" on your embedded dashboards and questions.`}</p>
     <div className="mt2 mb3">
       <a
         className="link mx1"

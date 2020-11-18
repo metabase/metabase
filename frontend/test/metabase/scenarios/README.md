@@ -1,4 +1,4 @@
-# Metabase Scenarios
+# Repente Insights Scenarios
 
 ## Running
 
