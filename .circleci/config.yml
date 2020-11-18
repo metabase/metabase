@@ -1051,7 +1051,7 @@ workflows:
           test-files-location: frontend/test/metabase-db/postgres
           <<: *Matrix
 
-      - fe-tests-cyptress:
+      - fe-tests-cypress:
           name: fe-tests-cypres-mysql-8-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
