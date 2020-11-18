@@ -248,7 +248,9 @@ describe("scenarios > question > nested", () => {
 
     // Add Q2 to that dashboard
     cy.get(".Icon-pencil").click();
-    cy.get(".Icon-add").click();
+    cy.get(".Icon-add")
+      .last()
+      .click();
     cy.findByText("13816_Q2").click();
 
     // Add filter to the dashboard...
@@ -284,7 +286,9 @@ describe("scenarios > question > nested", () => {
         // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
         const ORIGINAL_QUERY = {
           aggregation: ["metric", METRIC_ID],
-          breakout: [["binning-strategy", ["field-id", ORDERS.TOTAL], "default"]],
+          breakout: [
+            ["binning-strategy", ["field-id", ORDERS.TOTAL], "default"],
+          ],
           "source-table": 2,
         };
 
