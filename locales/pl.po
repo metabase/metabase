@@ -4,7 +4,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: POEditor.com\n"
-"Project-Id-Version: Metabase\n"
+"Project-Id-Version: Repente Insights\n"
 "Language: pl\n"
 "Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
@@ -47,8 +47,8 @@ msgid "Save"
 msgstr "Zapisz"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:122
-msgid "To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
-msgstr "Aby wykonać część z jego magii, Metabase musi przeskanować Twoją bazę danych. Będzie również skanować ją regularnie, aby zachować aktualne metadane. Możesz ustawić poniżej, kiedy ma się odbywać regularne skanowanie."
+msgid "To do some of its magic, Repente Insights needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
+msgstr "Aby wykonać część z jego magii, Repente Insights musi przeskanować Twoją bazę danych. Będzie również skanować ją regularnie, aby zachować aktualne metadane. Możesz ustawić poniżej, kiedy ma się odbywać regularne skanowanie."
 
 #: frontend/src/metabase/entities/databases/forms.js:291
 msgid "Database syncing"
@@ -71,16 +71,16 @@ msgid "Scanning for Filter Values"
 msgstr "Skanowanie w poszukiwaniu wartości filtrów"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:153
-msgid "Metabase can scan the values present in each\n"
+msgid "Repente Insights can scan the values present in each\n"
 "field in this database to enable checkbox filters in dashboards and questions. This\n"
 "can be a somewhat resource-intensive process, particularly if you have a very large\n"
 "database."
-msgstr "Metabase  może skanować wartości znajdujące się w każdym z pól w tej bazie danych,  aby włączyć filtry pól wyboru w pulpitach nawigacyjnych i zapytaniach.\n"
+msgstr "Repente Insights  może skanować wartości znajdujące się w każdym z pól w tej bazie danych,  aby włączyć filtry pól wyboru w pulpitach nawigacyjnych i zapytaniach.\n"
 " Może to być proces dość intensywnie korzystający z zasobów, szczególnie jeśli masz bardzo dużą bazę danych."
 
 #: frontend/src/metabase/entities/databases/forms.js:302
-msgid "When should Metabase automatically scan and cache field values?"
-msgstr "Kiedy Metabase powinien automatycznie skanować i buforować wartości pól?"
+msgid "When should Repente Insights automatically scan and cache field values?"
+msgstr "Kiedy Repente Insights powinien automatycznie skanować i buforować wartości pól?"
 
 #: frontend/src/metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget.jsx:25
 msgid "Regularly, on a schedule"
@@ -91,10 +91,10 @@ msgid "Only when adding a new filter widget"
 msgstr "Tylko w przypadku dodawania nowego widżetu filtru"
 
 #: frontend/src/metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget.jsx:54
-msgid "When a user adds a new filter to a dashboard or a SQL question, Metabase will\n"
+msgid "When a user adds a new filter to a dashboard or a SQL question, Repente Insights will\n"
 "scan the field(s) mapped to that filter in order to show the list of selectable values."
 msgstr "Gdy użytkownik doda nowy filtr do pulpitu nawigacyjnego lub zapytania SQL, \n"
-" Metabase będzie skanować pola mapowane do tego filtru w celu wyświetlenia listy wartości do wyboru."
+" Repente Insights będzie skanować pola mapowane do tego filtru w celu wyświetlenia listy wartości do wyboru."
 
 #: frontend/src/metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget.jsx:62
 msgid "Never, I'll do this manually if I need to"
@@ -601,8 +601,8 @@ msgid "{0} – Field Settings"
 msgstr "{0} — ustawienia pól"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:298
-msgid "Where this field will appear throughout Metabase"
-msgstr "Gdzie to pole pojawi się w Metabase"
+msgid "Where this field will appear throughout Repente Insights"
+msgstr "Gdzie to pole pojawi się w Repente Insights"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:321
 msgid "Filtering on this field"
@@ -683,8 +683,8 @@ msgid "Cached field values"
 msgstr "Buforowane wartości pola"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:356
-msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
-msgstr "Metabase może skanować wartości tego pola, aby włączyć filtry pól wyboru w pulpitach nawigacyjnych i zapytaniach."
+msgid "Repente Insights can scan the values for this field to enable checkbox filters in dashboards and questions."
+msgstr "Repente Insights może skanować wartości tego pola, aby włączyć filtry pól wyboru w pulpitach nawigacyjnych i zapytaniach."
 
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:14
 msgid "Re-scan this field"
@@ -845,8 +845,8 @@ msgid "Settings"
 msgstr "Ustawienia"
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:84
-msgid "Metabase can scan the values in this table to enable checkbox filters in dashboards and questions."
-msgstr "Metabase może skanować wartości w tej tabeli, aby włączyć filtry CheckBox w pulpitach nawigacyjnych i zapytaniach."
+msgid "Repente Insights can scan the values in this table to enable checkbox filters in dashboards and questions."
+msgstr "Repente Insights może skanować wartości w tej tabeli, aby włączyć filtry CheckBox w pulpitach nawigacyjnych i zapytaniach."
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:89
 msgid "Re-scan this table"
@@ -885,18 +885,18 @@ msgstr "Nadaj uprawnienia administratora"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
-"make sure you know what new Metabase users will be able to see."
+"make sure you know what new Repente Insights users will be able to see."
 msgstr "Wszyscy użytkownicy należą do grupy {0} i nie można ich z niej usunąć. Ustawienie uprawnień dla tej grupy to świetny sposób, \n"
-"aby upewnić się, że wiesz, co nowi użytkownicy Metabase będą mogli zobaczyć."
+"aby upewnić się, że wiesz, co nowi użytkownicy Repente Insights będą mogli zobaczyć."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid "This is a special group whose members can see everything in the Repente Insights instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "Jest to specjalna Grupa, której członkowie mogą zobaczyć wszystko w wystąpieniu Metabase i kto może uzyskać dostęp i wprowadzać zmiany do ustawień w panelu administracyjnym, w tym zmieniać uprawnienia! Tak, Dodaj ludzi do tej grupy z troską."
+msgstr "Jest to specjalna Grupa, której członkowie mogą zobaczyć wszystko w wystąpieniu Repente Insights i kto może uzyskać dostęp i wprowadzać zmiany do ustawień w panelu administracyjnym, w tym zmieniać uprawnienia! Tak, Dodaj ludzi do tej grupy z troską."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:47
-msgid "To make sure you don't get locked out of Metabase, there always has to be at least one user in this group."
-msgstr "Aby upewnić się, że Metabase nie jest zablokowana, zawsze musi istnieć co najmniej jeden użytkownik w tej grupie."
+msgid "To make sure you don't get locked out of Repente Insights, there always has to be at least one user in this group."
+msgstr "Aby upewnić się, że Repente Insights nie jest zablokowana, zawsze musi istnieć co najmniej jeden użytkownik w tej grupie."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:187
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:218
@@ -1240,16 +1240,16 @@ msgid "Sorry, an error occurred."
 msgstr "Przepraszamy, wystąpił błąd"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:71
-msgid "Administrators always have the highest level of access to everything in Metabase."
-msgstr "Administratorzy mają zawsze najwyższy poziom dostępu do wszystkich rzeczy w Metabase."
+msgid "Administrators always have the highest level of access to everything in Repente Insights."
+msgstr "Administratorzy mają zawsze najwyższy poziom dostępu do wszystkich rzeczy w Repente Insights."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:73
-msgid "Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access."
-msgstr "Każdy użytkownik Metabase należy do grupy Wszyscy użytkownicy. Jeśli chcesz ograniczyć lub ograniczyć dostęp grupy do konkretnego elementu, upewnij się, że grupa Wszyscy użytkownicy ma taki sam lub niższy poziom dostępu."
+msgid "Every Repente Insights user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access."
+msgstr "Każdy użytkownik Repente Insights należy do grupy Wszyscy użytkownicy. Jeśli chcesz ograniczyć lub ograniczyć dostęp grupy do konkretnego elementu, upewnij się, że grupa Wszyscy użytkownicy ma taki sam lub niższy poziom dostępu."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:75
-msgid "MetaBot is Metabase's Slack bot. You can choose what it has access to here."
-msgstr "MetaBot jest botem Metabase Slack. Możesz wybrać tutaj, do czego ma dostęp."
+msgid "MetaBot is Repente Insights's Slack bot. You can choose what it has access to here."
+msgstr "MetaBot jest botem Repente Insights Slack. Możesz wybrać tutaj, do czego ma dostęp."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:128
 msgid "The \"{0}\" group may have access to a different set of {1} than this group, which may give this group additional access to some {2}."
@@ -1375,8 +1375,8 @@ msgstr "Zaloguj przez Google"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:120
 #: frontend/src/metabase/plugins/builtin/auth/google.js:32
-msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
-msgstr "Umożliwia użytkownikom z istniejącymi kontami Metabase logowanie się za pomocą konta Google, które oprócz nazwy użytkownika i hasła Metabase odpowiada ich adresom e-mail."
+msgid "Allows users with existing Repente Insights accounts to login with a Google account that matches their email address in addition to their Repente Insights username and password."
+msgstr "Umożliwia użytkownikom z istniejącymi kontami Repente Insights logowanie się za pomocą konta Google, które oprócz nazwy użytkownika i hasła Repente Insights odpowiada ich adresom e-mail."
 
 #: frontend/src/metabase/admin/settings/components/widgets/AuthenticationOption.jsx:24
 #: frontend/src/metabase/components/ChannelSetupMessage.jsx:32
@@ -1389,8 +1389,8 @@ msgid "LDAP"
 msgstr "LDAP"
 
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:16
-msgid "Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
-msgstr "Umożliwia użytkownikom w katalogu LDAP zalogować się do Metabase przy użyciu poświadczeń LDAP i umożliwia automatyczne mapowanie grup LDAP na grupy Metabase."
+msgid "Allows users within your LDAP directory to log in to Repente Insights with their LDAP credentials, and allows automatic mapping of LDAP groups to Repente Insights groups."
+msgstr "Umożliwia użytkownikom w katalogu LDAP zalogować się do Repente Insights przy użyciu poświadczeń LDAP i umożliwia automatyczne mapowanie grup LDAP na grupy Repente Insights."
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:19
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:76
@@ -1465,8 +1465,8 @@ msgid "Getting set up"
 msgstr "Trwa konfiguracja"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:106
-msgid "A few things you can do to get the most out of Metabase."
-msgstr "Kilka rzeczy, które możesz zrobić, aby jak najlepiej wykorzystać Metabase ."
+msgid "A few things you can do to get the most out of Repente Insights."
+msgstr "Kilka rzeczy, które możesz zrobić, aby jak najlepiej wykorzystać Repente Insights ."
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:115
 msgid "Recommended next step"
@@ -1477,7 +1477,7 @@ msgid "Google Sign-In"
 msgstr "Logowanie Google"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:123
-msgid "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}"
+msgid "To allow users to sign in with Google you'll need to give Repente Insights a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}"
 msgstr "Aby zezwolić użytkownikom na logowanie za pomocą Google, musisz podać identyfikator klienta aplikacji konsoli deweloperów Google. To zajmie tylko kilka kroków i instrukcje na temat tworzenia klucza można znaleźć {0}"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:140
@@ -1497,16 +1497,16 @@ msgid "Create a Slack Bot User for MetaBot"
 msgstr "Tworzenie użytkownika Slack bot dla MetaBot"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:268
-msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
-msgstr "Gdy już tam jesteś, nadaj mu nazwę i kliknij {0}. Następnie skopiuj i wklej token API bota w polu poniżej. Gdy skończysz, utworzyć \"metabase_files\" kanał w Slack. Metabase wymaga tego, aby przesyłać wykresy."
+msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Repente Insights needs this to upload graphs."
+msgstr "Gdy już tam jesteś, nadaj mu nazwę i kliknij {0}. Następnie skopiuj i wklej token API bota w polu poniżej. Gdy skończysz, utworzyć \"metabase_files\" kanał w Slack. Repente Insights wymaga tego, aby przesyłać wykresy."
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:17
-msgid "You're running Metabase {0} which is the latest and greatest!"
-msgstr "Używasz Metabase {0}, która jest najnowsza i Najlepsza!"
+msgid "You're running Repente Insights {0} which is the latest and greatest!"
+msgstr "Używasz Repente Insights {0}, która jest najnowsza i Najlepsza!"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:100
-msgid "Metabase {0} is available.  You're running {1}"
-msgstr "Dostępny jest Metabase {0}.  Używasz {1}"
+msgid "Repente Insights {0} is available.  You're running {1}"
+msgstr "Dostępny jest Repente Insights {0}.  Używasz {1}"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:41
 #: frontend/src/metabase/components/form/StandardForm.jsx:18
@@ -1618,8 +1618,8 @@ msgid "By enabling embedding you're agreeing to the embedding license located at
 msgstr "Włączając osadzenie wyrażasz zgodę na osadzanie licencji znajdującej się na"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:20
-msgid "In plain English, when you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
-msgstr "W zwykłym języku angielskim podczas osadzania wykresów lub pulpitów nawigacyjnych z Metabase we własnej aplikacji Aplikacja ta nie podlega Affero ogólnej licencji publicznej, która obejmuje resztę Metabase, pod warunkiem zachowania logo Metabasei \"Powered by Metabase\" widoczne na tych osadza. Należy jednak przeczytać tekst licencyjny powyżej, jak to jest rzeczywista licencja, że będzie zgadzając się po włączeniu tej funkcji."
+msgid "In plain English, when you embed charts or dashboards from Repente Insights in your own application, that application isn't subject to the Affero General Public License that covers the rest of Repente Insights, provided you keep the Repente Insights logo and the \"Powered by Repente Insights\" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
+msgstr "W zwykłym języku angielskim podczas osadzania wykresów lub pulpitów nawigacyjnych z Repente Insights we własnej aplikacji Aplikacja ta nie podlega Affero ogólnej licencji publicznej, która obejmuje resztę Repente Insights, pod warunkiem zachowania logo Repente Insightsi \"Powered by Repente Insights\" widoczne na tych osadza. Należy jednak przeczytać tekst licencyjny powyżej, jak to jest rzeczywista licencja, że będzie zgadzając się po włączeniu tej funkcji."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:33
 msgid "Enable"
@@ -1630,12 +1630,12 @@ msgid "Premium embedding enabled"
 msgstr "Włączone osadzanie premii"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:26
-msgid "Enter the token you bought from the Metabase Store"
-msgstr "Wprowadź token zakupiony w Sklepie Metabase"
+msgid "Enter the token you bought from the Repente Insights Store"
+msgstr "Wprowadź token zakupiony w Sklepie Repente Insights"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:53
-msgid "Premium embedding lets you disable \"Powered by Metabase\" on your embedded dashboards and questions."
-msgstr "Osadzanie Premium umożliwia wyłączenie \"Powered by Metabase\" na osadzonych pulpitach nawigacyjnych i zapytaniach."
+msgid "Premium embedding lets you disable \"Powered by Repente Insights\" on your embedded dashboards and questions."
+msgstr "Osadzanie Premium umożliwia wyłączenie \"Powered by Repente Insights\" na osadzonych pulpitach nawigacyjnych i zapytaniach."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:60
 msgid "Buy a token"
@@ -1658,10 +1658,10 @@ msgid "Create a mapping"
 msgstr "Tworzenie mapowania"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:170
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the\n"
+msgid "Mappings allow Repente Insights to automatically add and remove users from groups based on the membership information provided by the\n"
 "directory server. Membership to the Admin group can be granted through mappings, but will not be automatically removed as a\n"
 "failsafe measure."
-msgstr "Mapowania umożliwiają Metabase  automatyczne dodawanie i usuwanie użytkowników z grup na podstawie informacji o członkostwie udostępnianych przez serwer katalogowy. Członkostwo w grupie administracyjnej może być przyznane za pośrednictwem mapowań, ale nie zostanie automatycznie usunięte jako zabezpieczenie bezawaryjne."
+msgstr "Mapowania umożliwiają Repente Insights  automatyczne dodawanie i usuwanie użytkowników z grup na podstawie informacji o członkostwie udostępnianych przez serwer katalogowy. Członkostwo w grupie administracyjnej może być przyznane za pośrednictwem mapowań, ale nie zostanie automatycznie usunięte jako zabezpieczenie bezawaryjne."
 
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:107
 msgid "Distinguished Name"
@@ -1934,8 +1934,8 @@ msgid "Map tile server URL"
 msgstr "Adres URL serwera kafelków mapy"
 
 #: frontend/src/metabase/admin/settings/selectors.js:206
-msgid "Metabase uses OpenStreetMaps by default."
-msgstr "Domyślnie Metabase korzysta z OpenStreetMaps."
+msgid "Repente Insights uses OpenStreetMaps by default."
+msgstr "Domyślnie Repente Insights korzysta z OpenStreetMaps."
 
 #: frontend/src/metabase/admin/settings/selectors.js:211
 msgid "Custom Maps"
@@ -1966,8 +1966,8 @@ msgid "Embedding in other Applications"
 msgstr "Osadzanie w innych aplikacjach"
 
 #: frontend/src/metabase/admin/settings/selectors.js:308
-msgid "Enable Embedding Metabase in other Applications"
-msgstr "Włącz osadzanie Metabase w innych aplikacjach"
+msgid "Enable Embedding Repente Insights in other Applications"
+msgstr "Włącz osadzanie Repente Insights w innych aplikacjach"
 
 #: frontend/src/metabase/admin/settings/selectors.js:318
 msgid "Embedding secret key"
@@ -2028,12 +2028,12 @@ msgid "Back to login"
 msgstr "Powrót do logowania"
 
 #: frontend/src/metabase/auth/components/GoogleNoAccount.jsx:15
-msgid "No Metabase account exists for this Google account."
-msgstr "Dla tego konta Google nie istnieje konto Metabase ."
+msgid "No Repente Insights account exists for this Google account."
+msgstr "Dla tego konta Google nie istnieje konto Repente Insights ."
 
 #: frontend/src/metabase/auth/components/GoogleNoAccount.jsx:17
-msgid "You'll need an administrator to create a Metabase account before you can use Google to log in."
-msgstr "Aby móc korzystać z usługi Google, musisz mieć uprawnienia administratora, aby utworzyć konto Metabase ."
+msgid "You'll need an administrator to create a Repente Insights account before you can use Google to log in."
+msgstr "Aby móc korzystać z usługi Google, musisz mieć uprawnienia administratora, aby utworzyć konto Repente Insights ."
 
 #: frontend/src/metabase/auth/components/AuthProviderButton.jsx:23
 msgid "Sign in with {0}"
@@ -2048,8 +2048,8 @@ msgid "Forgot password"
 msgstr "Zapomniałem hasła"
 
 #: frontend/src/metabase/auth/containers/ForgotPasswordApp.jsx:47
-msgid "The email you use for your Metabase account"
-msgstr "Adres e-mail używany do korzystania z konta Metabase"
+msgid "The email you use for your Repente Insights account"
+msgstr "Adres e-mail używany do korzystania z konta Repente Insights"
 
 #: frontend/src/metabase/auth/containers/ForgotPasswordApp.jsx:54
 msgid "Send password reset email"
@@ -2060,8 +2060,8 @@ msgid "Check your email for instructions on how to reset your password."
 msgstr "Sprawdz email w poszukiwaniu instrukcji do resetu hasła"
 
 #: frontend/src/metabase/auth/containers/LoginApp.jsx:27
-msgid "Sign in to Metabase"
-msgstr "Zaloguj do Metabase"
+msgid "Sign in to Repente Insights"
+msgstr "Zaloguj do Repente Insights"
 
 #: frontend/src/metabase/auth/containers/LoginApp.jsx:165
 msgid "OR"
@@ -2361,13 +2361,13 @@ msgstr "Do niektórych instalacji baz danych można uzyskać dostęp tylko poprz
 "Włączenie tego jest zwykle wolniejsze niż bezpośrednie połączenie."
 
 #: frontend/src/metabase/entities/databases/forms.js:282
-msgid "This is a large database, so let me choose when Metabase syncs and scans"
-msgstr "Jest to duża baza danych, więc pozwól mi wybrać, kiedy Metabase synchronizuje i skanuje"
+msgid "This is a large database, so let me choose when Repente Insights syncs and scans"
+msgstr "Jest to duża baza danych, więc pozwól mi wybrać, kiedy Repente Insights synchronizuje i skanuje"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:296
-msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values.\n"
+msgid "By default, Repente Insights does a lightweight hourly sync and an intensive daily scan of field values.\n"
 "If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
-msgstr "Domyślnie Metabase wykonuje lekką synchronizację godzinową i intensywnie codziennie skanuje wartości pól.\n"
+msgstr "Domyślnie Repente Insights wykonuje lekką synchronizację godzinową i intensywnie codziennie skanuje wartości pól.\n"
 "W przypadku dużej bazy danych zaleca się włączenie tej funkcji i sprawdzenie, kiedy i jak często ma miejsce skanowanie wartości pola."
 
 #: frontend/src/metabase/entities/databases/forms.js:113
@@ -2393,8 +2393,8 @@ msgid "with Google Drive permissions"
 msgstr "z uprawnieniami dysku Google"
 
 #: frontend/src/metabase/entities/databases/forms.js:164
-msgid "To use Metabase with this data you must enable API access in the Google Developers Console."
-msgstr "Aby użyć Metabase z tymi danymi, należy włączyć dostęp do interfejsu API w konsoli programisty Google."
+msgid "To use Repente Insights with this data you must enable API access in the Google Developers Console."
+msgstr "Aby użyć Repente Insights z tymi danymi, należy włączyć dostęp do interfejsu API w konsoli programisty Google."
 
 #: frontend/src/metabase/entities/databases/forms.js:165
 msgid "{0} to go to the console if you haven't already done so."
@@ -2662,8 +2662,8 @@ msgid "Loading..."
 msgstr "Ładowanie..."
 
 #: frontend/src/metabase/components/NewsletterForm.jsx:71
-msgid "Metabase Newsletter"
-msgstr "Metabase Newsletter"
+msgid "Repente Insights Newsletter"
+msgstr "Repente Insights Newsletter"
 
 #: frontend/src/metabase/components/NewsletterForm.jsx:81
 msgid "Get infrequent emails about new releases and feature updates."
@@ -2674,8 +2674,8 @@ msgid "Subscribe"
 msgstr "Subskrybuj"
 
 #: frontend/src/metabase/components/NewsletterForm.jsx:106
-msgid "You're subscribed. Thanks for using Metabase!"
-msgstr "Zasubskrybowane. Dzięki że korzystasz z Metabase!"
+msgid "You're subscribed. Thanks for using Repente Insights!"
+msgstr "Zasubskrybowane. Dzięki że korzystasz z Repente Insights!"
 
 #: frontend/src/metabase/containers/ErrorPages.jsx:46
 msgid "We're a little lost..."
@@ -2777,8 +2777,8 @@ msgid "Calendar Day"
 msgstr "Dzień kalendarzowy"
 
 #: frontend/src/metabase/components/SchedulePicker.jsx:211
-msgid "your Metabase timezone"
-msgstr "strefa czasowa tej instancji Metabase"
+msgid "your Repente Insights timezone"
+msgstr "strefa czasowa tej instancji Repente Insights"
 
 #: frontend/src/metabase/components/SearchHeader.jsx:21
 msgid "Filter this list..."
@@ -3207,8 +3207,8 @@ msgid "Hello World!"
 msgstr "Witaj Świecie!"
 
 #: frontend/src/metabase/home/components/Activity.jsx:255
-msgid "Metabase is up and running."
-msgstr "Metabase jest uruchomiona i działa."
+msgid "Repente Insights is up and running."
+msgstr "Repente Insights jest uruchomiona i działa."
 
 #: frontend/src/metabase/home/components/Activity.jsx:261
 #: frontend/src/metabase/home/components/Activity.jsx:291
@@ -3580,8 +3580,8 @@ msgid "Do Not Include"
 msgstr "Nie zawiera"
 
 #: frontend/src/metabase/lib/core.js:260
-msgid "Metabase will never retrieve this field. Use this for sensitive or irrelevant information."
-msgstr "Metabase nigdy nie będzie pobierać tego pola. Użyj tego dla informacji poufnych lub nieistotnych."
+msgid "Repente Insights will never retrieve this field. Use this for sensitive or irrelevant information."
+msgstr "Repente Insights nigdy nie będzie pobierać tego pola. Użyj tego dla informacji poufnych lub nieistotnych."
 
 #: frontend/src/metabase/lib/query/description.js:77
 #: frontend/src/metabase/lib/query/description.js:262
@@ -4153,8 +4153,8 @@ msgid "Help"
 msgstr "Pomoc"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:72
-msgid "About Metabase"
-msgstr "O Metabase"
+msgid "About Repente Insights"
+msgstr "O Repente Insights"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:78
 msgid "Sign out"
@@ -4181,8 +4181,8 @@ msgid "and is built with care in San Francisco, CA"
 msgstr "i jest tworzony w San Francisco, CA"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:224
-msgid "Metabase Admin"
-msgstr "Metabase Admin"
+msgid "Repente Insights Admin"
+msgstr "Repente Insights Admin"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:354
 #: frontend/src/metabase/reference/databases/TableQuestions.jsx:35
@@ -4487,8 +4487,8 @@ msgid "Public link"
 msgstr "Link publiczny"
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:117
-msgid "Share this {0} with people who don't have a Metabase account using the URL below:"
-msgstr "Udostępnij tę encję {0} osobom, które nie mają konta Metabase, korzystając z poniższego adresu URL:"
+msgid "Share this {0} with people who don't have a Repente Insights account using the URL below:"
+msgstr "Udostępnij tę encję {0} osobom, które nie mają konta Repente Insights, korzystając z poniższego adresu URL:"
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:154
 msgid "Public embed"
@@ -4703,8 +4703,8 @@ msgid "Help everyone on your team stay in sync with your data."
 msgstr "Pomóż wszystkim w zespole pozostać zsynchronizowanym z Twoimi danymi."
 
 #: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:31
-msgid "Pulses let you send data from Metabase to email or Slack on the schedule of your choice."
-msgstr "Pulsy umożliwiają wysyłanie danych z Metabase na adres email lub Slack według wybranego harmonogramu."
+msgid "Pulses let you send data from Repente Insights to email or Slack on the schedule of your choice."
+msgstr "Pulsy umożliwiają wysyłanie danych z Repente Insights na adres email lub Slack według wybranego harmonogramu."
 
 #: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:98
 msgid "After {0}"
@@ -5905,8 +5905,8 @@ msgid "X-ray this field"
 msgstr "Preświetl X-ray to pole"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:8
-msgid "Metabase is no fun without any data"
-msgstr "Metabase nie jest fajny bez danych"
+msgid "Repente Insights is no fun without any data"
+msgstr "Repente Insights nie jest fajny bez danych"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:9
 msgid "Your databases will appear here once you connect one"
@@ -6045,8 +6045,8 @@ msgid "Contact {0}"
 msgstr "Kontakt {0}"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:253
-msgid "Help new Metabase users find their way around."
-msgstr "Pomóż odnaleźć się nowym użytkownikom Metabase."
+msgid "Help new Repente Insights users find their way around."
+msgstr "Pomóż odnaleźć się nowym użytkownikom Repente Insights."
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:256
 msgid "The Getting Started guide highlights the dashboard, metrics, segments, and tables that matter most, and informs your users of important things they should know before digging into the data."
@@ -6257,8 +6257,8 @@ msgid "Connecting to {0}"
 msgstr "Łączenie do {0}"
 
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:130
-msgid "You’ll need some info about your database, like the username and password. If you don’t have that right now, Metabase also comes with a sample dataset you can get started with."
-msgstr "Potrzebujesz informacji o bazie danych, takiej jak nazwa użytkownika i hasło. Jeśli nie masz tego już teraz, Metabase jest również dostarczana z przykładowym zestawem danych, który można rozpocząć."
+msgid "You’ll need some info about your database, like the username and password. If you don’t have that right now, Repente Insights also comes with a sample dataset you can get started with."
+msgstr "Potrzebujesz informacji o bazie danych, takiej jak nazwa użytkownika i hasło. Jeśli nie masz tego już teraz, Repente Insights jest również dostarczana z przykładowym zestawem danych, który można rozpocząć."
 
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:150
 msgid "I'll add my data later"
@@ -6281,20 +6281,20 @@ msgid "We won't collect any usage events"
 msgstr "Nie będziemy zbierać żadnych zdarzeń użycia"
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:88
-msgid "In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics."
-msgstr "Aby pomóc w ulepszaniu Metabase, chcielibyśmy zebrać pewne dane dotyczące użycia w Google Analytics."
+msgid "In order to help us improve Repente Insights, we'd like to collect certain data about usage through Google Analytics."
+msgstr "Aby pomóc w ulepszaniu Repente Insights, chcielibyśmy zebrać pewne dane dotyczące użycia w Google Analytics."
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:93
 msgid "Here's a full list of everything we track and why."
 msgstr "Oto pełna lista wszystkiego, co śledzimy i dlaczego."
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:108
-msgid "Allow Metabase to anonymously collect usage events"
-msgstr "Zezwalaj na anonimowe zbieranie zdarzeń użycia Metabase"
+msgid "Allow Repente Insights to anonymously collect usage events"
+msgstr "Zezwalaj na anonimowe zbieranie zdarzeń użycia Repente Insights"
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:116
-msgid "Metabase {0} collects anything about your data or question results."
-msgstr "Metabase {0} gromadzi wszelkie informacje na temat wyników danych lub pytań."
+msgid "Repente Insights {0} collects anything about your data or question results."
+msgstr "Repente Insights {0} gromadzi wszelkie informacje na temat wyników danych lub pytań."
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:117
 msgid "never"
@@ -6321,8 +6321,8 @@ msgid "is just a click away."
 msgstr "znajduje się zaledwie kilka kliknięć stąd."
 
 #: frontend/src/metabase/setup/components/Setup.jsx:113
-msgid "Welcome to Metabase"
-msgstr "Witamy w Metabase"
+msgid "Welcome to Repente Insights"
+msgstr "Witamy w Repente Insights"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:114
 msgid "Looks like everything is working. Now let’s get to know you, connect to your data, and start finding you some answers!"
@@ -6337,8 +6337,8 @@ msgid "You're all set up!"
 msgstr "Wszystko ustawione!"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:179
-msgid "Take me to Metabase"
-msgstr "Zabierz mnie do Metabase"
+msgid "Take me to Repente Insights"
+msgstr "Zabierz mnie do Repente Insights"
 
 #: frontend/src/metabase/setup/components/UserStep.jsx:49
 msgid "What should we call you?"
@@ -6408,8 +6408,8 @@ msgid "We’ll show you some interesting explorations of your data in\n"
 msgstr "W ciągu kilku minut pokażemy Ci kilka interesujących eksploracji Twoich danych."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:72
-msgid "This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Metabase can do for you."
-msgstr "To powinno zająć chwilę. W międzyczasie możesz sprawdzić jedną z tych przykładowych eksploracji, aby sprawdzić, co Metabase może zrobić dla Ciebie."
+msgid "This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Repente Insights can do for you."
+msgstr "To powinno zająć chwilę. W międzyczasie możesz sprawdzić jedną z tych przykładowych eksploracji, aby sprawdzić, co Repente Insights może zrobić dla Ciebie."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:86
 msgid "I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!"
@@ -7515,7 +7515,7 @@ msgid "Email is not verified."
 msgstr "E-mail nie jest zweryfikowany."
 
 #: src/metabase/api/session.clj
-msgid "You''ll need an administrator to create a Metabase account before you can use Google to log in."
+msgid "You''ll need an administrator to create a Repente Insights account before you can use Google to log in."
 msgstr "Będziesz potrzebował administratora, aby utworzyć konto Matabase, zanim będzie można użyć Google, aby się zalogować."
 
 #: src/metabase/api/session.clj
@@ -7580,7 +7580,7 @@ msgstr "Masz dużo zapisanych zapytań w {0}? Twórz kolekcje, aby ułatwić zar
 
 #. This is the very first log message that will get printed.
 #. It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
-#. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+#. It shows up a solid 10-15 seconds before the "Starting Repente Insights in STANDALONE mode" message because so many other namespaces need to get loaded
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:240
 #: frontend/src/metabase/home/components/Activity.jsx:87
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:90
@@ -7588,8 +7588,8 @@ msgstr "Masz dużo zapisanych zapytań w {0}? Twórz kolekcje, aby ułatwić zar
 #: frontend/src/metabase/routes-public.jsx:15
 #: frontend/src/metabase/routes.jsx:142 src/metabase/api/setup.clj
 #: src/metabase/email/messages.clj
-msgid "Metabase"
-msgstr "Metabase"
+msgid "Repente Insights"
+msgstr "Repente Insights"
 
 #: src/metabase/api/setup.clj
 msgid "Create metrics"
@@ -7975,20 +7975,20 @@ msgid "FAIL [[[{0}]]]"
 msgstr "Błąd  [[{0}]]]"
 
 #: src/metabase/core.clj
-msgid "Please use the following URL to setup your Metabase installation:"
+msgid "Please use the following URL to setup your Repente Insights installation:"
 msgstr "Aby skonfigurować instalację Matabase, należy użyć następującego adresu URL:"
 
 #: src/metabase/core.clj
-msgid "Metabase Shutting Down ..."
-msgstr "Trwa zamykanie Metabase..."
+msgid "Repente Insights Shutting Down ..."
+msgstr "Trwa zamykanie Repente Insights..."
 
 #: src/metabase/core.clj
-msgid "Metabase Shutdown COMPLETE"
-msgstr "Zakończenie zamykania Metabase"
+msgid "Repente Insights Shutdown COMPLETE"
+msgstr "Zakończenie zamykania Repente Insights"
 
 #: src/metabase/core.clj
-msgid "Starting Metabase version {0} ..."
-msgstr "Uruchamianie Metabase w wersji {0}..."
+msgid "Starting Repente Insights version {0} ..."
+msgstr "Uruchamianie Repente Insights w wersji {0}..."
 
 #: src/metabase/core.clj
 msgid "System timezone is ''{0}'' ..."
@@ -7996,16 +7996,16 @@ msgstr "Strefa czasowa systemu to ' ' {0} ' '..."
 
 #. startup database.  validates connection & runs any necessary migrations
 #: src/metabase/core.clj
-msgid "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."
-msgstr "Konfigurowanie i migrowanie Metabase DB. Proszę czekać, może to potrwać minutę..."
+msgid "Setting up and migrating Repente Insights DB. Please sit tight, this may take a minute..."
+msgstr "Konfigurowanie i migrowanie Repente Insights DB. Proszę czekać, może to potrwać minutę..."
 
 #: src/metabase/core.clj
 msgid "Looks like this is a new installation ... preparing setup wizard"
 msgstr "Wygląda na to, że jest to nowa instalacja... Przygotowanie Kreatora konfiguracji"
 
 #: src/metabase/core.clj
-msgid "Metabase Initialization COMPLETE"
-msgstr "Zakończenie inicjowania Metabase"
+msgid "Repente Insights Initialization COMPLETE"
+msgstr "Zakończenie inicjowania Repente Insights"
 
 #: src/metabase/server.clj
 msgid "Launching Embedded Jetty Webserver with config:"
@@ -8016,12 +8016,12 @@ msgid "Shutting Down Embedded Jetty Webserver"
 msgstr "Wyłączanie Embedded Jetty Webserver"
 
 #: src/metabase/core.clj
-msgid "Starting Metabase in STANDALONE mode"
-msgstr "Uruchamianie Metabase w trybie autonomicznym"
+msgid "Starting Repente Insights in STANDALONE mode"
+msgstr "Uruchamianie Repente Insights w trybie autonomicznym"
 
 #: src/metabase/core.clj
-msgid "Metabase Initialization FAILED"
-msgstr "Inicjowanie Metabase nie powiodło się"
+msgid "Repente Insights Initialization FAILED"
+msgstr "Inicjowanie Repente Insights nie powiodło się"
 
 #: src/metabase/db/liquibase.clj
 msgid "Database has migration lock; cannot run migrations."
@@ -8172,17 +8172,17 @@ msgstr "Błąd: MetaBase. Driver. FixedHiveDriver jest zarejestrowany, ale JDBC 
 
 #: src/metabase/driver/sparksql.clj
 msgid "Found metabase.driver.FixedHiveDriver."
-msgstr "Znaleziono Metabase. Driver. FixedHiveDriver."
+msgstr "Znaleziono Repente Insights. Driver. FixedHiveDriver."
 
 #: src/metabase/driver/sparksql.clj
 msgid "Successfully registered metabase.driver.FixedHiveDriver with JDBC."
-msgstr "Pomyślnie zarejestrowano Metabase. Driver. FixedHiveDriver z JDBC."
+msgstr "Pomyślnie zarejestrowano Repente Insights. Driver. FixedHiveDriver z JDBC."
 
 #. CONFIG
 #. TODO - smtp-port should be switched to type :integer
 #: src/metabase/email.clj
-msgid "Email address you want to use as the sender of Metabase."
-msgstr "Adres e-mail, którego chcesz użyć jako nadawcy Metabase."
+msgid "Email address you want to use as the sender of Repente Insights."
+msgstr "Adres e-mail, którego chcesz użyć jako nadawcy Repente Insights."
 
 #: src/metabase/email.clj
 msgid "The address of the SMTP server that handles your emails."
@@ -8274,8 +8274,8 @@ msgstr "Baza wyszukiwania dla grup, nie jest wymagana, jeśli katalog LDAP zawie
 
 #. Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP groups and values are lists of MB groups IDs
 #: src/metabase/integrations/ldap.clj
-msgid "JSON containing LDAP to Metabase group mappings."
-msgstr "JSON zawierający LDAP do mapowania grupy Metabase."
+msgid "JSON containing LDAP to Repente Insights group mappings."
+msgstr "JSON zawierający LDAP do mapowania grupy Repente Insights."
 
 #. Define a setting which captures our Slack api token
 #: src/metabase/integrations/slack.clj
@@ -8490,8 +8490,8 @@ msgid "Storing FieldValues for Field {0}..."
 msgstr "Przechowywanie fieldValues dla pola {0}..."
 
 #: src/metabase/models/humanization.clj
-msgid "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
-msgstr "Metabase może próbować przekształcić nazwy tabel i pól w bardziej sensowne, czytelne dla człowieka wersje, na przykład \"jakasokropnanazwa\" staje się \"Jakas Okropna Nazwa\"."
+msgid "Repente Insights can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
+msgstr "Repente Insights może próbować przekształcić nazwy tabel i pól w bardziej sensowne, czytelne dla człowieka wersje, na przykład \"jakasokropnanazwa\" staje się \"Jakas Okropna Nazwa\"."
 
 #: src/metabase/models/humanization.clj
 msgid "This doesn’t work all that well if the names are in a language other than English, however."
@@ -8636,12 +8636,12 @@ msgid "Loading plugin {0}... "
 msgstr "Trwa ładowanie wtyczki {0}..."
 
 #: src/metabase/plugins.clj
-msgid "It looks like you have some external dependencies in your Metabase plugins directory."
-msgstr "Wygląda na to, że w katalogu wtyczek Metabase znajduje się kilka zewnętrznych zależności."
+msgid "It looks like you have some external dependencies in your Repente Insights plugins directory."
+msgstr "Wygląda na to, że w katalogu wtyczek Repente Insights znajduje się kilka zewnętrznych zależności."
 
 #: src/metabase/plugins.clj
-msgid "With Java 9 or higher, Metabase cannot automatically add them to your classpath."
-msgstr "W przypadku oprogramowania Java 9 lub nowszego Metabase nie może automatycznie dodawać ich do ścieżki klasy."
+msgid "With Java 9 or higher, Repente Insights cannot automatically add them to your classpath."
+msgstr "W przypadku oprogramowania Java 9 lub nowszego Repente Insights nie może automatycznie dodawać ich do ścieżki klasy."
 
 #: src/metabase/plugins.clj
 msgid "Instead, you should include them at launch with the -cp option. For example:"
@@ -8652,28 +8652,28 @@ msgid "See https://metabase.com/docs/latest/operations-guide/start.html#java-ver
 msgstr "Zobacz więcej szczegółów na https://metabase.com/docs/latest/operations-guide/start.html#java-versions."
 
 #: src/metabase/plugins.clj
-msgid "(If you're already running Metabase this way, you can ignore this message.)"
-msgstr "(jeśli już korzystasz z Metabase w ten sposób, możesz zignorować ten komunikat)."
+msgid "(If you're already running Repente Insights this way, you can ignore this message.)"
+msgstr "(jeśli już korzystasz z Repente Insights w ten sposób, możesz zignorować ten komunikat)."
 
 #: src/metabase/public_settings.clj
-msgid "Identify when new versions of Metabase are available."
-msgstr "Identyfikowanie dostępności nowych wersji Metabase."
+msgid "Identify when new versions of Repente Insights are available."
+msgstr "Identyfikowanie dostępności nowych wersji Repente Insights."
 
 #: src/metabase/public_settings.clj
-msgid "Information about available versions of Metabase."
-msgstr "Informacje o dostępnych wersjach Metabase."
+msgid "Information about available versions of Repente Insights."
+msgstr "Informacje o dostępnych wersjach Repente Insights."
 
 #: src/metabase/public_settings.clj
-msgid "The name used for this instance of Metabase."
-msgstr "Nazwa jest używana dla tej instancji Metabase."
+msgid "The name used for this instance of Repente Insights."
+msgstr "Nazwa jest używana dla tej instancji Repente Insights."
 
 #: src/metabase/public_settings.clj
-msgid "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"."
-msgstr "Podstawowy adres URL tej instancji Metabase , na przykład \"http://MetaBase.My-Company.com\"."
+msgid "The base URL of this Repente Insights instance, e.g. \"http://metabase.my-company.com\"."
+msgstr "Podstawowy adres URL tej instancji Repente Insights , na przykład \"http://MetaBase.My-Company.com\"."
 
 #: src/metabase/public_settings.clj
-msgid "The default language for this Metabase instance."
-msgstr "Język domyślny dla tego tej instancji Metabase."
+msgid "The default language for this Repente Insights instance."
+msgstr "Język domyślny dla tego tej instancji Repente Insights."
 
 #: src/metabase/public_settings.clj
 msgid "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."
@@ -8684,8 +8684,8 @@ msgid "The email address users should be referred to if they encounter a problem
 msgstr "Adres e-mail użytkowników powinny być określony w przypadku napotkania problemu."
 
 #: src/metabase/public_settings.clj
-msgid "Enable the collection of anonymous usage data in order to help Metabase improve."
-msgstr "Włącz zbieranie anonimowych danych użycia w celu usprawnienia Metabase."
+msgid "Enable the collection of anonymous usage data in order to help Repente Insights improve."
+msgstr "Włącz zbieranie anonimowych danych użycia w celu usprawnienia Repente Insights."
 
 #: src/metabase/public_settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
@@ -8716,8 +8716,8 @@ msgid "The absolute maximum time to keep any cached query results, in seconds."
 msgstr "Absolutny maksymalny czas, zachowania wszelkich wyników buforowanych zapytan, w sekundach."
 
 #: src/metabase/public_settings.clj
-msgid "Metabase will cache all saved questions with an average query execution time longer than this many seconds:"
-msgstr "Metabase będzie buforować wszystkie zapisane zapytania ze średnim czasem wykonywania dłuższym niż sekund:"
+msgid "Repente Insights will cache all saved questions with an average query execution time longer than this many seconds:"
+msgstr "Repente Insights będzie buforować wszystkie zapisane zapytania ze średnim czasem wykonywania dłuższym niż sekund:"
 
 #: src/metabase/public_settings.clj
 msgid "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here."
@@ -8927,10 +8927,10 @@ msgstr "Zadanie już istnieje:"
 
 #. This is the very first log message that will get printed.  It's here because this is one of the very first
 #. namespaces that gets loaded, and the first that has access to the logger It shows up a solid 10-15 seconds before
-#. the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+#. the "Starting Repente Insights in STANDALONE mode" message because so many other namespaces need to get loaded
 #: src/metabase/util.clj
-msgid "Loading Metabase..."
-msgstr "Wczytywanie Metabase..."
+msgid "Loading Repente Insights..."
+msgstr "Wczytywanie Repente Insights..."
 
 #: src/metabase/util/date.clj
 msgid "Possible timezone conflict found on database {0}."
@@ -8953,11 +8953,11 @@ msgid "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters."
 msgstr "MB_ENCRYPTION_SECRET_KEY musi mieć co najmniej 16 znaków."
 
 #: src/metabase/util/encryption.clj
-msgid "Saved credentials encryption is ENABLED for this Metabase instance."
+msgid "Saved credentials encryption is ENABLED for this Repente Insights instance."
 msgstr "Dla tej instancji Matabase włączone jest szyfrowanie zapisanych poświadczeń."
 
 #: src/metabase/util/encryption.clj
-msgid "Saved credentials encryption is DISABLED for this Metabase instance."
+msgid "Saved credentials encryption is DISABLED for this Repente Insights instance."
 msgstr "Dla tej instancji Matabase wyłączone jest szyfrowanie zapisanych poświadczeń."
 
 #: src/metabase/util/encryption.clj
@@ -9191,8 +9191,8 @@ msgid "No results"
 msgstr "Brak wyników"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:42
-msgid "Metabase couldn't find any results for your search."
-msgstr "Metabase nie może znaleźć żadnych wyników wyszukiwania."
+msgid "Repente Insights couldn't find any results for your search."
+msgstr "Repente Insights nie może znaleźć żadnych wyników wyszukiwania."
 
 #: frontend/src/metabase/new_query/containers/MetricSearch.jsx:115
 msgid "No metrics"
@@ -9565,8 +9565,8 @@ msgid "Troubleshooting logs"
 msgstr "Logi diagnostyczne"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:31
-msgid "Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on."
-msgstr "Próbujesz dojść do sedna czegoś? Ta sekcja pokazuje logi zadań w tle Metabase które mogą pomóc rzucić światło na to, co się dzieje."
+msgid "Trying to get to the bottom of something? This section shows logs of Repente Insights's background tasks, which can help shed light on what's going on."
+msgstr "Próbujesz dojść do sedna czegoś? Ta sekcja pokazuje logi zadań w tle Repente Insights które mogą pomóc rzucić światło na to, co się dzieje."
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:56
 msgid "Task"
@@ -11409,44 +11409,44 @@ msgid "We’d love your feedback."
 msgstr "Chętnie poznamy Twoją opinię."
 
 #: src/metabase/email/messages.clj
-msgid "It looks like Metabase wasn’t quite a match for you."
-msgstr "Wygląda na to, że Metabase nie za bardzo Ci pasuje."
+msgid "It looks like Repente Insights wasn’t quite a match for you."
+msgstr "Wygląda na to, że Repente Insights nie za bardzo Ci pasuje."
 
 #: src/metabase/email/messages.clj
-msgid "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
-msgstr "Co powiesz na szybką 5 minutową ankietę, która pomoże nam zrozumieć potrzeby użytkowników i lepiej rozwijać Metabase?"
+msgid "Would you mind taking a fast 5 question survey to help the Repente Insights team understand why and make things better in the future?"
+msgstr "Co powiesz na szybką 5 minutową ankietę, która pomoże nam zrozumieć potrzeby użytkowników i lepiej rozwijać Repente Insights?"
 
 #: src/metabase/email/messages.clj
-msgid "We hope you''ve been enjoying Metabase."
-msgstr "Mamy nadzieję, że podoba Ci się Metabase."
+msgid "We hope you''ve been enjoying Repente Insights."
+msgstr "Mamy nadzieję, że podoba Ci się Repente Insights."
 
 #: src/metabase/email/messages.clj
 msgid "Would you mind taking a fast 6 question survey to tell us how it’s going?"
 msgstr "Czy odpowiesz na krótkie 6 pytań, aby powiedzieć nam jak Ci idzie?"
 
 #: src/metabase/email/messages.clj
-msgid "{0} created a Metabase account"
-msgstr "{0} stworzył konto Metabase"
+msgid "{0} created a Repente Insights account"
+msgstr "{0} stworzył konto Repente Insights"
 
 #: src/metabase/email/messages.clj
-msgid "{0} accepted their Metabase invite"
-msgstr "{0} zaakceptował zaproszenie do Metabase"
+msgid "{0} accepted their Repente Insights invite"
+msgstr "{0} zaakceptował zaproszenie do Repente Insights"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase] Żądanie Resetu Hasła"
+msgid "[Repente Insights] Password Reset Request"
+msgstr "[Repente Insights] Żądanie Resetu Hasła"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Notification"
-msgstr "[Metabase] Notyfikacja"
+msgid "[Repente Insights] Notification"
+msgstr "[Repente Insights] Notyfikacja"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Help make Metabase better."
-msgstr "[Metabase] Pomóż rozwijać Metabase."
+msgid "[Repente Insights] Help make Repente Insights better."
+msgstr "[Repente Insights] Pomóż rozwijać Repente Insights."
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Tell us how things are going."
-msgstr "[Metabase] Powiedź nam jak Ci idzie."
+msgid "[Repente Insights] Tell us how things are going."
+msgstr "[Repente Insights] Powiedź nam jak Ci idzie."
 
 #: src/metabase/mbql/util.clj
 msgid "Error: query''s source query has not been resolved. You probably need to `preprocess` the query first."
@@ -11749,16 +11749,16 @@ msgid "You may need to add `?sslmode=require` to your application DB connection 
 msgstr "Może być konieczne dodanie `? Sslmode = require` do połączenia DB aplikacji."
 
 #: src/metabase/db.clj
-msgid "If Metabase fails to launch, please add it and try again."
-msgstr "Jeśli uruchomienie Metabase nie powiedzie się, dodaj ją i spróbuj ponownie."
+msgid "If Repente Insights fails to launch, please add it and try again."
+msgstr "Jeśli uruchomienie Repente Insights nie powiedzie się, dodaj ją i spróbuj ponownie."
 
 #: src/metabase/db.clj
 msgid "See https://github.com/metabase/metabase/issues/8908 for more details."
 msgstr "Zobacz https://github.com/metabase/metabase/issues/8908, aby uzyskać więcej informacji."
 
 #: src/metabase/db.clj
-msgid "WARNING: Using Metabase with an H2 application database is not recomended for production deployments."
-msgstr "OSTRZEŻENIE: Używanie Metabase z bazą danych H2 nie jest zalecane dla wdrożeń produkcyjnych."
+msgid "WARNING: Using Repente Insights with an H2 application database is not recomended for production deployments."
+msgstr "OSTRZEŻENIE: Używanie Repente Insights z bazą danych H2 nie jest zalecane dla wdrożeń produkcyjnych."
 
 #: src/metabase/db.clj
 msgid "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead."
@@ -11773,8 +11773,8 @@ msgid "See https://metabase.com/docs/latest/operations-guide/start.html#migratin
 msgstr "Więcej informacji można znaleźć na stronie https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-ting-the-h2-database-to-mysql-or-postgres."
 
 #: src/metabase/db.clj
-msgid "Unable to connect to Metabase {0} DB."
-msgstr "Nie można połączyć się z bazą danych Metabase {0}."
+msgid "Unable to connect to Repente Insights {0} DB."
+msgstr "Nie można połączyć się z bazą danych Repente Insights {0}."
 
 #: src/metabase/db/migrations.clj
 msgid "Error adding legacy SQL directive to BigQuery saved Question"
@@ -11885,32 +11885,32 @@ msgid "Could not find matching Field ID for target:"
 msgstr "Nie można znaleźć zgodnego Field ID dla celu:"
 
 #: src/metabase/plugins.clj
-msgid "Metabase does not have permissions to write to plugins directory {0}"
-msgstr "Metabase nie ma uprawnień do zapisu do katalogu wtyczek {0}"
+msgid "Repente Insights does not have permissions to write to plugins directory {0}"
+msgstr "Repente Insights nie ma uprawnień do zapisu do katalogu wtyczek {0}"
 
 #: src/metabase/plugins.clj
-msgid "Metabase cannot use the plugins directory {0}"
+msgid "Repente Insights cannot use the plugins directory {0}"
 msgstr "Matabase nie może używać katalogu wtyczek {0}"
 
 #: src/metabase/plugins.clj
-msgid "Please make sure the directory exists and that Metabase has permission to write to it."
-msgstr "Upewnij się, że katalog istnieje i że Metabase ma uprawnienia do zapisu."
+msgid "Please make sure the directory exists and that Repente Insights has permission to write to it."
+msgstr "Upewnij się, że katalog istnieje i że Repente Insights ma uprawnienia do zapisu."
 
 #: src/metabase/plugins.clj
-msgid "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR."
-msgstr "Możesz zmienić katalog, którego Metabase używa dla modułów, ustawiając zmienną środowiskową MB_PLUGINS_DIR."
+msgid "You can change the directory Repente Insights uses for modules by setting the environment variable MB_PLUGINS_DIR."
+msgstr "Możesz zmienić katalog, którego Repente Insights używa dla modułów, ustawiając zmienną środowiskową MB_PLUGINS_DIR."
 
 #: src/metabase/plugins.clj
 msgid "Falling back to a temporary directory for now."
 msgstr "Na razie wracam do katalogu tymczasowego."
 
 #: src/metabase/plugins.clj
-msgid "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
-msgstr "Metabase nie może zapisywać do katalogu tymczasowego. Ustaw MB_PLUGINS_DIR na zapisywalny katalog i zrestartuj Metabase"
+msgid "Repente Insights cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Repente Insights."
+msgstr "Repente Insights nie może zapisywać do katalogu tymczasowego. Ustaw MB_PLUGINS_DIR na zapisywalny katalog i zrestartuj Repente Insights"
 
 #: src/metabase/plugins.clj
-msgid "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
-msgstr "spark-deps.jar nie jest już wymagany przez Metabase 1.0+. Możesz usunąć go z katalogu wtyczek."
+msgid "spark-deps.jar is no longer needed by Repente Insights 1.0+. You can delete it from the plugins directory."
+msgstr "spark-deps.jar nie jest już wymagany przez Repente Insights 1.0+. Możesz usunąć go z katalogu wtyczek."
 
 #: src/metabase/plugins.clj
 msgid "Failied to initialize plugin {0}"
@@ -11941,16 +11941,16 @@ msgid "Added URL {0} to classpath"
 msgstr "Dodano adres URL {0} do ścieżki klasy"
 
 #: src/metabase/plugins/dependencies.clj
-msgid "Plugin {0} declares a dependency that Metabase does not understand: {1}"
-msgstr "Wtyczka {0} deklaruje zależność, której Metabase nie rozumie: {1}"
+msgid "Plugin {0} declares a dependency that Repente Insights does not understand: {1}"
+msgstr "Wtyczka {0} deklaruje zależność, której Repente Insights nie rozumie: {1}"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Refer to the plugin manifest reference for a complete list of valid plugin dependencies:"
 msgstr "Pełna lista poprawnych wtyczek znajduje się w odnośniku do manifestu wtyczki:"
 
 #: src/metabase/plugins/dependencies.clj
-msgid "Metabase cannot initialize plugin {0} due to required dependencies."
-msgstr "Metabase nie może zainicjować wtyczki {0} z powodu wymaganych zależności."
+msgid "Repente Insights cannot initialize plugin {0} due to required dependencies."
+msgstr "Repente Insights nie może zainicjować wtyczki {0} z powodu wymaganych zależności."
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Class not found: {0}"
@@ -12013,7 +12013,7 @@ msgstr "Nie można zainicjować wtyczki: brak wymaganej właściwości `driver-n
 msgid "Warning: plugin manifest for {0} does not include connection properties"
 msgstr "Ostrzeżenie: manifest wtyczki dla {0} nie zawiera właściwości połączenia"
 
-#. finally, register the Metabase driver
+#. finally, register the Repente Insights driver
 #: src/metabase/plugins/lazy_loaded_driver.clj
 msgid "Registering lazy loading driver {0}..."
 msgstr "Rejestrowanie sterownika lazy loading {0}"
@@ -12161,8 +12161,8 @@ msgid "Task history cleanup successful, no rows were deleted"
 msgstr "Pomyślne czyszczenie historii zadań, żadne wiersze nie zostały usunięte"
 
 #: src/metabase/task/upgrade_checks.clj
-msgid "Checking for new Metabase version info."
-msgstr "Sprawdzanie informacji o nowej wersji Metabase."
+msgid "Checking for new Repente Insights version info."
+msgstr "Sprawdzanie informacji o nowej wersji Repente Insights."
 
 #: src/metabase/task/upgrade_checks.clj
 msgid "Error fetching version info"
@@ -12494,16 +12494,16 @@ msgid "Request canceled before finishing."
 msgstr "Żądanie anulowane przed zakończeniem."
 
 #: src/metabase/middleware/json.clj
-msgid "Metabase only supports JSON requests."
-msgstr "Metabase obsługuje tylko żądania JSON."
+msgid "Repente Insights only supports JSON requests."
+msgstr "Repente Insights obsługuje tylko żądania JSON."
 
 #: src/metabase/middleware/json.clj
 msgid "Make sure you set a 'Content-Type: application/json' header."
 msgstr "Upewnij się, że ustawiłeś nagłówek 'Content-Type: application/json'."
 
 #: src/metabase/middleware/misc.clj
-msgid "Setting Metabase site URL to {0}"
-msgstr "Ustawianie adresu URL witryny Metabase na {0}"
+msgid "Setting Repente Insights site URL to {0}"
+msgstr "Ustawianie adresu URL witryny Repente Insights na {0}"
 
 #: src/metabase/models/database.clj
 msgid "Error scheduling tasks for DB"
@@ -12609,7 +12609,7 @@ msgid "Automatically run queries when doing simple filtering and summarizing"
 msgstr "Automatycznie uruchamiaj zapytania podczas prostego filtrowania i podsumowywania"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:320
-msgid "When this is on Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
+msgid "When this is on Repente Insights will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
 msgstr "Po włączeniu tej opcji Metabasa automatycznie uruchamia zapytania, gdy użytkownicy wykonują proste eksploracje za pomocą przycisków Podsumuj i Filtruj podczas przeglądania tabeli lub wykresu. Możesz to wyłączyć, jeśli odpytywanie tej bazy danych jest powolne. To ustawienie nie wpływa na drążenie wszerz lub zapytania SQL."
 
 #: frontend/src/metabase/containers/Overworld.jsx:329
@@ -12963,11 +12963,11 @@ msgid "Request canceled, canceling future."
 msgstr "Żądanie anulowane, anulowanie w przyszłości."
 
 #: src/metabase/cmd/load_from_h2.clj
-msgid "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."
+msgid "Repente Insights can only transfer data from H2 to Postgres or MySQL/MariaDB."
 msgstr "Metabaza może przesyłać dane tylko z H2 do Postgres lub MySQL / MariaDB."
 
 #: src/metabase/db.clj
-msgid "WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
+msgid "WARNING: Using Repente Insights with an H2 application database is not recommended for production deployments."
 msgstr "OSTRZEŻENIE: Używanie Metabazy z bazą danych aplikacji H2 nie jest zalecane w przypadku wdrożeń produkcyjnych."
 
 #: src/metabase/db.clj
@@ -13029,8 +13029,8 @@ msgid "Error saving task history"
 msgstr "Błąd podczas zapisywania historii zadań"
 
 #: src/metabase/plugins.clj
-msgid "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory."
-msgstr "Spark-deps.jar nie jest już wymagany przez Metabase 0.32.0+. Możesz usunąć go z katalogu wtyczek."
+msgid "spark-deps.jar is no longer needed by Repente Insights 0.32.0+. You can delete it from the plugins directory."
+msgstr "Spark-deps.jar nie jest już wymagany przez Repente Insights 0.32.0+. Możesz usunąć go z katalogu wtyczek."
 
 #: src/metabase/plugins/classloader.clj
 msgid "Using NEWLY CREATED classloader as shared context classloader: {0}"
@@ -13062,8 +13062,8 @@ msgid "We were unable to display this Pulse."
 msgstr "Nie byliśmy w stanie wyświetlić tego Pulsu."
 
 #: src/metabase/pulse/render/body.clj
-msgid "Please view this card in Metabase."
-msgstr "Zobacz tę kartę w Metabase."
+msgid "Please view this card in Repente Insights."
+msgstr "Zobacz tę kartę w Repente Insights."
 
 #: src/metabase/pulse/render/body.clj
 msgid "An error occurred while displaying this card."
@@ -13259,8 +13259,8 @@ msgid "Failed to fetch Field {0}: Field does not exist, or belongs to a differen
 msgstr "Nie udało się pobrać pola {0}: pole nie istnieje lub należy do innej bazy danych."
 
 #: src/metabase/routes/index.clj
-msgid "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?"
-msgstr "Nie udało się załadować szablonu {0}. Pamiętasz, jak zbudować nakładkę Metabase?"
+msgid "Failed to load template ''{0}''. Did you remember to build the Repente Insights frontend?"
+msgstr "Nie udało się załadować szablonu {0}. Pamiętasz, jak zbudować nakładkę Repente Insights?"
 
 #: src/metabase/sample_data.clj
 msgid "Sample dataset DB file ''{0}'' cannot be found."
@@ -13316,8 +13316,8 @@ msgid "Pick the columns you want to include"
 msgstr "Wybierz kolumny, które chcesz uwzględnić"
 
 #: frontend/src/metabase/entities/databases/forms.js:275
-msgid "When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
-msgstr "Gdy ta opcja jest włączona, Metabase automatycznie uruchamia zapytania, gdy użytkownicy wykonują proste eksploracje za pomocą przycisków Podsumuj i Filtruj podczas przeglądania tabeli lub wykresu. Możesz to wyłączyć, jeśli odpytywanie tej bazy danych jest powolne. To ustawienie nie wpływa na drążenie wszerz lub zapytania SQL."
+msgid "When this is on, Repente Insights will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
+msgstr "Gdy ta opcja jest włączona, Repente Insights automatycznie uruchamia zapytania, gdy użytkownicy wykonują proste eksploracje za pomocą przycisków Podsumuj i Filtruj podczas przeglądania tabeli lub wykresu. Możesz to wyłączyć, jeśli odpytywanie tej bazy danych jest powolne. To ustawienie nie wpływa na drążenie wszerz lub zapytania SQL."
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/JoinStep.jsx:97
 msgid "Change join type"
@@ -13358,12 +13358,12 @@ msgid "Diagnostic Info"
 msgstr "Informacje diagnostyczne"
 
 #: frontend/src/metabase/admin/tasks/containers/Logs.jsx:123
-msgid "Select Metabase process:"
-msgstr "Wybierz proces Metabase:"
+msgid "Select Repente Insights process:"
+msgstr "Wybierz proces Repente Insights:"
 
 #: frontend/src/metabase/admin/tasks/containers/Logs.jsx:133
-msgid "All Metabase processes"
-msgstr "Wszystkie procesy Metabase"
+msgid "All Repente Insights processes"
+msgstr "Wszystkie procesy Repente Insights"
 
 #: frontend/src/metabase/auth/components/GoogleButton.jsx:13
 msgid "The window was closed before completing Google Authentication."
@@ -13383,8 +13383,8 @@ msgid "Using this option requires that provided host is a FQDN.  If connecting t
 msgstr "Korzystanie z tej opcji wymaga, aby podany host był nazwą FQDN. W przypadku łączenia się z klastrem Atlas może być konieczne włączenie tej opcji. Jeśli nie wiesz, co to oznacza, pozostaw to wyłączone."
 
 #: frontend/src/metabase/entities/databases/forms.js:283
-msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
-msgstr "Domyślnie Metabase wykonuje lekką synchronizację godzinową i intensywny codzienny skan wartości pól. Jeśli masz dużą bazę danych, zalecamy włączenie tej opcji i sprawdzenie, kiedy i jak często skanowane są wartości pola."
+msgid "By default, Repente Insights does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
+msgstr "Domyślnie Repente Insights wykonuje lekką synchronizację godzinową i intensywny codzienny skan wartości pól. Jeśli masz dużą bazę danych, zalecamy włączenie tej opcji i sprawdzenie, kiedy i jak często skanowane są wartości pola."
 
 #: frontend/src/metabase/containers/Overworld.jsx:126
 msgid "Remove these suggestions"
@@ -13714,8 +13714,8 @@ msgid "Sending Alert ({0}: {1}) via email"
 msgstr "Wysyłanie alertu ({0}: {1}) pocztą elektroniczną"
 
 #: src/metabase/pulse.clj
-msgid "Metabase alert: {0} has {1}"
-msgstr "Alert Metabase: {0} ma {1}"
+msgid "Repente Insights alert: {0} has {1}"
+msgstr "Alert Repente Insights: {0} ma {1}"
 
 #: src/metabase/pulse.clj
 msgid "Sending Alert ({0}: {1}) via Slack"
@@ -13799,7 +13799,7 @@ msgid "OK"
 msgstr "OK"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:123
-msgid "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}."
+msgid "To allow users to sign in with Google you'll need to give Repente Insights a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}."
 msgstr "Aby umożliwić użytkownikom logowanie się za pomocą Google, musisz nadać Metabazie identyfikator klienta aplikacji konsoli Google Developers . Wystarczy kilka kroków, a instrukcje tworzenia klucza można znaleźć {0}."
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:134
@@ -13807,8 +13807,8 @@ msgid "Be sure to include the full client ID, including the apps.googleuserconte
 msgstr "Pamiętaj o podaniu pełnego client ID, w tym sufiksu apps.googleusercontent.com"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:30
-msgid "Metabase {0} is available."
-msgstr "Metabase {0} jest dostępna."
+msgid "Repente Insights {0} is available."
+msgstr "Repente Insights {0} jest dostępna."
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:31
 msgid "You're running {0}"
@@ -13835,19 +13835,19 @@ msgid "No mappable groups"
 msgstr "Brak grup, które można zmapować"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:108
-msgid "Metabase Documentation"
-msgstr "Dokumentacja  Metabase"
+msgid "Repente Insights Documentation"
+msgstr "Dokumentacja  Repente Insights"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:109
 msgid "Includes a troubleshooting guide"
 msgstr "Zawiera przewodnik rozwiązywania problemów"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:113
-msgid "Post on the Metabase support forum"
-msgstr "Publikuj na forum wsparcia Metabase"
+msgid "Post on the Repente Insights support forum"
+msgstr "Publikuj na forum wsparcia Repente Insights"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:114
-msgid "A community forum for all things Metabase"
+msgid "A community forum for all things Repente Insights"
 msgstr "Forum społeczności dla Matabase"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:118
@@ -13920,8 +13920,8 @@ msgid "This is a lightweight process that checks for updates to this database’
 msgstr "Jest to proces, który sprawdza dostępność aktualizacji schematu tej bazy danych. W większości przypadków powinieneś pozostawić ten zestaw do synchronizacji co godzinę."
 
 #: frontend/src/metabase/entities/databases/forms.js:300
-msgid "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
-msgstr "Metabase może skanować wartości obecne w każdym polu w tej bazie danych, aby włączyć filtry pól wyboru w pulpitach nawigacyjnych i pytaniach. Może to być proces bardzo obciążający zasoby, szczególnie jeśli masz bardzo dużą bazę danych."
+msgid "Repente Insights can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
+msgstr "Repente Insights może skanować wartości obecne w każdym polu w tej bazie danych, aby włączyć filtry pól wyboru w pulpitach nawigacyjnych i pytaniach. Może to być proces bardzo obciążający zasoby, szczególnie jeśli masz bardzo dużą bazę danych."
 
 #: frontend/src/metabase/entities/questions.js:96
 msgid "Collection"
@@ -14479,8 +14479,8 @@ msgid "must be {0} characters or less"
 msgstr "musi mieć maksymalnie {0} znaków"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:113
-msgid "Thanks for using Metabase!"
-msgstr "Dziękujemy za korzystanie z Metabase!"
+msgid "Thanks for using Repente Insights!"
+msgstr "Dziękujemy za korzystanie z Repente Insights!"
 
 #: frontend/src/metabase/public/components/LogoBadge.jsx:20
 msgid "Powered by {0}"
@@ -14628,8 +14628,8 @@ msgid "Google Auth token appears to be incorrect. "
 msgstr "Token Google Auth wydaje się być niepoprawny."
 
 #: src/metabase/api/session.clj
-msgid "Double check that it matches in Google and Metabase."
-msgstr "Sprawdź dokładnie, czy pasuje do Google i Metabase."
+msgid "Double check that it matches in Google and Repente Insights."
+msgstr "Sprawdź dokładnie, czy pasuje do Google i Repente Insights."
 
 #: src/metabase/api/table.clj
 msgid "Everything else"
@@ -14644,8 +14644,8 @@ msgid "Database Upgrade Required"
 msgstr "Wymagana aktualizacja bazy danych"
 
 #: src/metabase/db.clj
-msgid "NOTICE: Your database requires updates to work with this version of Metabase."
-msgstr "UWAGA: Twoja baza danych wymaga aktualizacji do pracy z tą wersją Metabase."
+msgid "NOTICE: Your database requires updates to work with this version of Repente Insights."
+msgstr "UWAGA: Twoja baza danych wymaga aktualizacji do pracy z tą wersją Repente Insights."
 
 #: src/metabase/db.clj
 msgid "Please execute the following sql commands on your database before proceeding."
@@ -14687,12 +14687,12 @@ msgid "The sub-query from referenced question #{0} failed with the following err
 msgstr "Zapytanie podrzędne z odwołania do zapytania nr {0} nie powiodło się z następującym błędem: {1}"
 
 #: src/metabase/driver/mysql.clj
-msgid "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
-msgstr "OSTRZEŻENIE: Metabase oficjalnie obsługuje tylko MySQL {0} / MariaDB {1} i powyższe."
+msgid "WARNING: Repente Insights only officially supports MySQL {0}/MariaDB {1} and above."
+msgstr "OSTRZEŻENIE: Repente Insights oficjalnie obsługuje tylko MySQL {0} / MariaDB {1} i powyższe."
 
 #: src/metabase/driver/mysql.clj
-msgid "All Metabase features may not work properly when using an unsupported version."
-msgstr "Wszystkie funkcje Metabase mogą nie działać poprawnie w przypadku korzystania z nieobsługiwanej wersji."
+msgid "All Repente Insights features may not work properly when using an unsupported version."
+msgstr "Wszystkie funkcje Repente Insights mogą nie działać poprawnie w przypadku korzystania z nieobsługiwanej wersji."
 
 #: src/metabase/driver/sql/parameters/substitute.clj
 msgid "Unable to substitute parameters"
@@ -14985,8 +14985,8 @@ msgid "Service Accounts"
 msgstr "Service Accounts"
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:26
-msgid "Metabase connects to Big Query via {0}."
-msgstr "Metabase łączy się z Big Query poprzez {0}."
+msgid "Repente Insights connects to Big Query via {0}."
+msgstr "Repente Insights łączy się z Big Query poprzez {0}."
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:29
 msgid "Continue using an OAuth application to connect"
@@ -15118,8 +15118,8 @@ msgid "What's your preferred language?"
 msgstr "Jaki jest Twój preferowany język?"
 
 #: frontend/src/metabase/setup/components/LanguageStep.jsx:54
-msgid "This language will be used throughout Metabase and will be the default for new users."
-msgstr "Ten język będzie używany w całym Metabase oraz ustawiony wszystkim nowym użytkownikom jako domyślny."
+msgid "This language will be used throughout Repente Insights and will be the default for new users."
+msgstr "Ten język będzie używany w całym Repente Insights oraz ustawiony wszystkim nowym użytkownikom jako domyślny."
 
 #: frontend/src/metabase/visualizations/components/PinMap.jsx:159
 msgid "We filtered out {0} row(s) containing null values."
@@ -15270,8 +15270,8 @@ msgid "Error fetching value of Setting"
 msgstr "Błąd w pobieraniu wartości Ustawienia"
 
 #: src/metabase/public_settings.clj
-msgid "The language that should be used for Metabase's UI, system emails, pulses, and alerts."
-msgstr "Język który zostanie użyty w UI Metabase, mailach systemowych, pulsach oraz alertach."
+msgid "The language that should be used for Repente Insights's UI, system emails, pulses, and alerts."
+msgstr "Język który zostanie użyty w UI Repente Insights, mailach systemowych, pulsach oraz alertach."
 
 #: src/metabase/public_settings.clj
 msgid "This is also the default language for all users, which they can change from their own account settings."
@@ -15290,8 +15290,8 @@ msgid "Cannot redirect requests to HTTPS unless `site-url` is HTTPS."
 msgstr "Nie można przekierować zapytań na HTTPS dopóki `site-url` nie będzie zawierał HTTPS."
 
 #: src/metabase/pulse/render/png.clj
-msgid "Error registering fonts: Metabase will not be able to send Pulses."
-msgstr "Błąd w rejestracji czcionek: Metabase nie będzie mógł wysyłać Pulsów."
+msgid "Error registering fonts: Repente Insights will not be able to send Pulses."
+msgstr "Błąd w rejestracji czcionek: Repente Insights nie będzie mógł wysyłać Pulsów."
 
 #: src/metabase/pulse/render/png.clj
 msgid "This is a known issue with certain JVMs. See {0} and for more details."
@@ -15422,8 +15422,8 @@ msgid "Configure your identity provider (IdP)"
 msgstr "Skonfiguruj swojego dostawcę tożsamości (IdP)"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:82
-msgid "Your identity provider will need the following info about Metabase."
-msgstr "Twój dostawca tożsamości będzie potrzebował następujących informacji o Metabase."
+msgid "Your identity provider will need the following info about Repente Insights."
+msgstr "Twój dostawca tożsamości będzie potrzebował następujących informacji o Repente Insights."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:85
 msgid "URL the IdP should redirect back to"
@@ -15458,11 +15458,11 @@ msgid "User's last name attribute"
 msgstr "Atrybut nazwiska użytkownika"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:113
-msgid "Tell Metabase about your identity provider"
-msgstr "Powiedz Metabase o swoim dostawcy tożsamości"
+msgid "Tell Repente Insights about your identity provider"
+msgstr "Powiedz Repente Insights o swoim dostawcy tożsamości"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:114
-msgid "Metabase will need the following info about your provider."
+msgid "Repente Insights will need the following info about your provider."
 msgstr "Metabaza będzie potrzebowała następujących informacji o twoim dostawcy."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:117
@@ -15507,9 +15507,9 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Synchronizacja członkostwa grupowego z Twoim OSO"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:157
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid "To enable this, you'll need to create mappings to tell Repente Insights which group(s) your users should\n"
 "be added to based on the SSO group they're in."
-msgstr "Aby to umożliwić, należy utworzyć mapowania, które powiedzą Metabase, która grupa (grupy) użytkowników powinna (powinny) być\n"
+msgstr "Aby to umożliwić, należy utworzyć mapowania, które powiedzą Repente Insights, która grupa (grupy) użytkowników powinna (powinny) być\n"
 "być dodane do grupy SSO, w której się znajdują."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:173
@@ -15529,8 +15529,8 @@ msgid "Note:"
 msgstr "Uwaga:"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:186
-msgid "If you change any of the settings of an existing SAML active setup, then you will need to restart Metabase for them to take effect."
-msgstr "Jeśli zmienisz którekolwiek z ustawień istniejącej aktywnej konfiguracji SAML, będziesz musiał zrestartować Metabase, aby mogły one wejść w życie."
+msgid "If you change any of the settings of an existing SAML active setup, then you will need to restart Repente Insights for them to take effect."
+msgstr "Jeśli zmienisz którekolwiek z ustawień istniejącej aktywnej konfiguracji SAML, będziesz musiał zrestartować Repente Insights, aby mogły one wejść w życie."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/index.js:29
 msgid "Allows users to login via a SAML Identity Provider."
@@ -15581,12 +15581,12 @@ msgid "String used by the JWT signing key"
 msgstr "Sznur używany przez klucz do podpisywania JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:17
-msgid "Embedding the entire Metabase app"
-msgstr "Osadzanie całej aplikacji Metabase"
+msgid "Embedding the entire Repente Insights app"
+msgstr "Osadzanie całej aplikacji Repente Insights"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:18
-msgid "If you want to embed all of Metabase, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the {0} for what can be entered."
-msgstr "Jeśli chcesz osadzić wszystkie Metabase, wprowadź pochodzenie stron lub aplikacji internetowych, w których chcesz zezwolić na osadzanie w iframe, oddzielone spacją. Poniżej znajduje się {0} dla tego, co można wpisać."
+msgid "If you want to embed all of Repente Insights, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the {0} for what can be entered."
+msgstr "Jeśli chcesz osadzić wszystkie Repente Insights, wprowadź pochodzenie stron lub aplikacji internetowych, w których chcesz zezwolić na osadzanie w iframe, oddzielone spacją. Poniżej znajduje się {0} dla tego, co można wpisać."
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:163
 msgid "Grant sandboxed access to this table"
@@ -15708,20 +15708,20 @@ msgid "We're having trouble validating your token"
 msgstr "Mamy problem z zatwierdzeniem twojego żetonu."
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:88
-msgid "Please double-check that your instance can connect to Metabase's servers"
-msgstr "Upewnij się, że Twoja instancja może połączyć się z serwerami Metabase."
+msgid "Please double-check that your instance can connect to Repente Insights's servers"
+msgstr "Upewnij się, że Twoja instancja może połączyć się z serwerami Repente Insights."
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:93
 msgid "Get help"
 msgstr "Uzyskać pomoc"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:100
-msgid "Get even more out of Metabase with the Enterprise Edition"
-msgstr "Jeszcze więcej z Metabase z Enterprise Edition"
+msgid "Get even more out of Repente Insights with the Enterprise Edition"
+msgstr "Jeszcze więcej z Repente Insights z Enterprise Edition"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:102
-msgid "All the tools you need to quickly and easily provide reports for your customers, or to help you run and monitor Metabase in a large organization"
-msgstr "Wszystkie narzędzia potrzebne do szybkiego i łatwego tworzenia raportów dla klientów lub do pomocy w prowadzeniu i monitorowaniu Bazy Metabase w dużej organizacji"
+msgid "All the tools you need to quickly and easily provide reports for your customers, or to help you run and monitor Repente Insights in a large organization"
+msgstr "Wszystkie narzędzia potrzebne do szybkiego i łatwego tworzenia raportów dla klientów lub do pomocy w prowadzeniu i monitorowaniu Bazy Repente Insights w dużej organizacji"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:114
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:136
@@ -15820,8 +15820,8 @@ msgid "White labeling"
 msgstr "Białe etykiety"
 
 #: enterprise/frontend/src/metabase-enterprise/store/lib/features.js:17
-msgid "Match Metabase to your brand with custom colors, your own logo and more."
-msgstr "Dopasuj Metabase do swojej marki za pomocą niestandardowych kolorów, własnego logo i innych elementów."
+msgid "Match Repente Insights to your brand with custom colors, your own logo and more."
+msgstr "Dopasuj Repente Insights do swojej marki za pomocą niestandardowych kolorów, własnego logo i innych elementów."
 
 #: enterprise/frontend/src/metabase-enterprise/store/lib/features.js:26
 msgid "Auditing"
@@ -15916,7 +15916,7 @@ msgid "at"
 msgstr "na stronie"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:44
-msgid "Open the Metabase actions menu"
+msgid "Open the Repente Insights actions menu"
 msgstr "Otwórz menu akcji bazy metadanych"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:45
@@ -16581,8 +16581,8 @@ msgid "Send it to Slack"
 msgstr "Wyślij to do Slack'a"
 
 #: frontend/src/metabase/sharing/components/SharingSidebar.jsx:539
-msgid "Pick a channel and a schedule, and Metabase will do the rest."
-msgstr "Wybierz kanał i harmonogram, a Metabase zajmie się resztą."
+msgid "Pick a channel and a schedule, and Repente Insights will do the rest."
+msgstr "Wybierz kanał i harmonogram, a Repente Insights zajmie się resztą."
 
 #: frontend/src/metabase/sharing/components/SharingSidebar.jsx:569
 msgid "Email this dashboard"
@@ -16638,24 +16638,24 @@ msgid "Invalid Slack token."
 msgstr "Nieważny żeton Slack'a."
 
 #: src/metabase/cmd.clj
-msgid "The ''{0}'' command is only available in Metabase Enterprise Edition."
-msgstr "Polecenie ''{0}'' jest dostępne tylko w Metabase Enterprise Edition."
+msgid "The ''{0}'' command is only available in Repente Insights Enterprise Edition."
+msgstr "Polecenie ''{0}'' jest dostępne tylko w Repente Insights Enterprise Edition."
 
 #: src/metabase/core.clj
-msgid "Metabase Enterprise Edition extensions are PRESENT."
-msgstr "Rozszerzenia Metabase Enterprise Edition są PRESENTNE."
+msgid "Repente Insights Enterprise Edition extensions are PRESENT."
+msgstr "Rozszerzenia Repente Insights Enterprise Edition są PRESENTNE."
 
 #: src/metabase/core.clj
-msgid "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License."
-msgstr "Korzystanie z funkcji Metabase Enterprise Edition podlega licencji Metabase Commercial License."
+msgid "Usage of Repente Insights Enterprise Edition features are subject to the Repente Insights Commercial License."
+msgstr "Korzystanie z funkcji Repente Insights Enterprise Edition podlega licencji Repente Insights Commercial License."
 
 #: src/metabase/core.clj
 msgid "See {0} for details."
 msgstr "Zobacz {0} po szczegóły."
 
 #: src/metabase/core.clj
-msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
-msgstr "Rozszerzenia Metabase Enterprise Edition NIE są PREZENTNE."
+msgid "Repente Insights Enterprise Edition extensions are NOT PRESENT."
+msgstr "Rozszerzenia Repente Insights Enterprise Edition NIE są PREZENTNE."
 
 #: src/metabase/email/messages.clj
 msgid "You''re invited to join {0}''s {1}"
@@ -16806,8 +16806,8 @@ msgid "login attribute keys must be a keyword or string"
 msgstr "klucze atrybutów logowania muszą być słowem kluczowym lub ciągiem znaków"
 
 #: src/metabase/public_settings.clj
-msgid "The default language for all users across the Metabase UI, system emails, pulses, and alerts."
-msgstr "Domyślny język dla wszystkich użytkowników w obrębie Metabase UI, systemowych wiadomości e-mail, impulsów i alarmów."
+msgid "The default language for all users across the Repente Insights UI, system emails, pulses, and alerts."
+msgstr "Domyślny język dla wszystkich użytkowników w obrębie Repente Insights UI, systemowych wiadomości e-mail, impulsów i alarmów."
 
 #: src/metabase/public_settings.clj
 msgid "Users can individually override this default language from their own account settings."
@@ -16818,20 +16818,20 @@ msgid "Default page to show the user"
 msgstr "Strona domyślna do wyświetlania użytkownika"
 
 #: src/metabase/public_settings.clj
-msgid "Allow this origin to embed the full Metabase application"
-msgstr "Pozwolić temu pochodzeniu na umieszczenie pełnej aplikacji Metabase"
+msgid "Allow this origin to embed the full Repente Insights application"
+msgstr "Pozwolić temu pochodzeniu na umieszczenie pełnej aplikacji Repente Insights"
 
 #: src/metabase/public_settings.clj
 msgid "Values greater than {0} ({1}) are not allowed."
 msgstr "Wartości większe niż {0} ({1}) nie są dozwolone."
 
 #: src/metabase/public_settings.clj
-msgid "This will replace the word \"Metabase\" wherever it appears."
+msgid "This will replace the word \"Repente Insights\" wherever it appears."
 msgstr "To zastąpi słowo \"Metabaza\", gdziekolwiek się pojawi."
 
 #: src/metabase/public_settings.clj
-msgid "These are the primary colors used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect."
-msgstr "Są to podstawowe kolory używane na wykresach i w całej Metabase. Być może konieczne będzie odświeżenie przeglądarki, aby zmiany odniosły skutek."
+msgid "These are the primary colors used in charts and throughout Repente Insights. You might need to refresh your browser to see your changes take effect."
+msgstr "Są to podstawowe kolory używane na wykresach i w całej Repente Insights. Być może konieczne będzie odświeżenie przeglądarki, aby zmiany odniosły skutek."
 
 #: src/metabase/public_settings.clj
 msgid "For best results, use an SVG file with a transparent background."

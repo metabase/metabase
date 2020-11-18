@@ -4,7 +4,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: POEditor.com\n"
-"Project-Id-Version: Metabase\n"
+"Project-Id-Version: Repente Insights\n"
 "Language: zh-TW\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
@@ -47,8 +47,8 @@ msgid "Save"
 msgstr "儲存"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:122
-msgid "To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
-msgstr "為了做一些預設分析的事情，Metabase需要掃描您的資料庫。我們將會定期自動掃描您的資料庫，確保資料庫欄位的後設資料在 Metabase 是最新的狀態。您可以在下方更改更新掃描時間。"
+msgid "To do some of its magic, Repente Insights needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
+msgstr "為了做一些預設分析的事情，Repente Insights需要掃描您的資料庫。我們將會定期自動掃描您的資料庫，確保資料庫欄位的後設資料在 Repente Insights 是最新的狀態。您可以在下方更改更新掃描時間。"
 
 #: frontend/src/metabase/entities/databases/forms.js:291
 msgid "Database syncing"
@@ -70,15 +70,15 @@ msgid "Scanning for Filter Values"
 msgstr "根據篩選值進行掃描"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:153
-msgid "Metabase can scan the values present in each\n"
+msgid "Repente Insights can scan the values present in each\n"
 "field in this database to enable checkbox filters in dashboards and questions. This\n"
 "can be a somewhat resource-intensive process, particularly if you have a very large\n"
 "database."
-msgstr "Metabase 可以掃描資料庫中每個欄位的值，用來讓使用者啟用查詢或資訊看板中的篩選器。當您的資料庫較大時，這個功能同時會耗費更多的系統資源。"
+msgstr "Repente Insights 可以掃描資料庫中每個欄位的值，用來讓使用者啟用查詢或資訊看板中的篩選器。當您的資料庫較大時，這個功能同時會耗費更多的系統資源。"
 
 #: frontend/src/metabase/entities/databases/forms.js:302
-msgid "When should Metabase automatically scan and cache field values?"
-msgstr "Metabase應該在什麼時候自動掃描及快取欄位值？"
+msgid "When should Repente Insights automatically scan and cache field values?"
+msgstr "Repente Insights應該在什麼時候自動掃描及快取欄位值？"
 
 #: frontend/src/metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget.jsx:25
 msgid "Regularly, on a schedule"
@@ -89,9 +89,9 @@ msgid "Only when adding a new filter widget"
 msgstr "只在新增篩選控制項時"
 
 #: frontend/src/metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget.jsx:54
-msgid "When a user adds a new filter to a dashboard or a SQL question, Metabase will\n"
+msgid "When a user adds a new filter to a dashboard or a SQL question, Repente Insights will\n"
 "scan the field(s) mapped to that filter in order to show the list of selectable values."
-msgstr "當使用者向資訊看板或SQL查詢新增一個新的篩選器，Metabase會掃描篩選器對應的欄位來顯示一個可選值欄位表。"
+msgstr "當使用者向資訊看板或SQL查詢新增一個新的篩選器，Repente Insights會掃描篩選器對應的欄位來顯示一個可選值欄位表。"
 
 #: frontend/src/metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget.jsx:62
 msgid "Never, I'll do this manually if I need to"
@@ -589,7 +589,7 @@ msgid "{0} – Field Settings"
 msgstr "{0} - 欄位設定"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:298
-msgid "Where this field will appear throughout Metabase"
+msgid "Where this field will appear throughout Repente Insights"
 msgstr "這些欄位將在哪裡顯示？"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:321
@@ -671,8 +671,8 @@ msgid "Cached field values"
 msgstr "快取欄位值"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:356
-msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
-msgstr "Metabase 會掃描該欄位，來啟用資訊看板和提問的多選框篩選。"
+msgid "Repente Insights can scan the values for this field to enable checkbox filters in dashboards and questions."
+msgstr "Repente Insights 會掃描該欄位，來啟用資訊看板和提問的多選框篩選。"
 
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:14
 msgid "Re-scan this field"
@@ -833,8 +833,8 @@ msgid "Settings"
 msgstr "設定"
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:84
-msgid "Metabase can scan the values in this table to enable checkbox filters in dashboards and questions."
-msgstr "Metabase掃描此表中的值以啟用資訊看板和提問中的複選框篩選器。"
+msgid "Repente Insights can scan the values in this table to enable checkbox filters in dashboards and questions."
+msgstr "Repente Insights掃描此表中的值以啟用資訊看板和提問中的複選框篩選器。"
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:89
 msgid "Re-scan this table"
@@ -873,17 +873,17 @@ msgstr "設為系統管理員"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
-"make sure you know what new Metabase users will be able to see."
-msgstr "所有屬於這個{0}群組的使用者，且無法從這個群組中被移除。為這個群組設定許可權限是一個確保您知道Metabase新使用者將會能夠看到什麼的好辦法。"
+"make sure you know what new Repente Insights users will be able to see."
+msgstr "所有屬於這個{0}群組的使用者，且無法從這個群組中被移除。為這個群組設定許可權限是一個確保您知道Repente Insights新使用者將會能夠看到什麼的好辦法。"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid "This is a special group whose members can see everything in the Repente Insights instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "這是一個特殊的組，其成員可以檢視Metabase實例中的所有內容，可以訪問和更改管理面板中的設定，包括更改權限！ 因此，小心地將人員新增到該組。"
+msgstr "這是一個特殊的組，其成員可以檢視Repente Insights實例中的所有內容，可以訪問和更改管理面板中的設定，包括更改權限！ 因此，小心地將人員新增到該組。"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:47
-msgid "To make sure you don't get locked out of Metabase, there always has to be at least one user in this group."
-msgstr "為了確保您不會被Metabase鎖在外面，必須需要至少一個使用者在這個群組裡。"
+msgid "To make sure you don't get locked out of Repente Insights, there always has to be at least one user in this group."
+msgstr "為了確保您不會被Repente Insights鎖在外面，必須需要至少一個使用者在這個群組裡。"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:187
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:218
@@ -1220,16 +1220,16 @@ msgid "Sorry, an error occurred."
 msgstr "對不起，發生錯誤。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:71
-msgid "Administrators always have the highest level of access to everything in Metabase."
-msgstr "系統管理員對Metabase中的所有內容具有最高級別的訪問權限。"
+msgid "Administrators always have the highest level of access to everything in Repente Insights."
+msgstr "系統管理員對Repente Insights中的所有內容具有最高級別的訪問權限。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:73
-msgid "Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access."
-msgstr "每個Metabase使用者都屬於\"所有使用者群組\"。如果要限制某個使用者群組對某些內容的訪問權限，請確保“所有使用者”組具有相同或更低級別的訪問權限。"
+msgid "Every Repente Insights user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access."
+msgstr "每個Repente Insights使用者都屬於\"所有使用者群組\"。如果要限制某個使用者群組對某些內容的訪問權限，請確保“所有使用者”組具有相同或更低級別的訪問權限。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:75
-msgid "MetaBot is Metabase's Slack bot. You can choose what it has access to here."
-msgstr "MetaBot是Metabase的Slack機器人。您可以在此處選擇訪問權限。"
+msgid "MetaBot is Repente Insights's Slack bot. You can choose what it has access to here."
+msgstr "MetaBot是Repente Insights的Slack機器人。您可以在此處選擇訪問權限。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:128
 msgid "The \"{0}\" group may have access to a different set of {1} than this group, which may give this group additional access to some {2}."
@@ -1355,8 +1355,8 @@ msgstr "Google帳號登入"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:120
 #: frontend/src/metabase/plugins/builtin/auth/google.js:32
-msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
-msgstr "允許擁有Metabase帳戶的使用者使用與其電子郵件地址匹配的Google帳戶以及其Metabase使用者名稱和密碼進行登入。"
+msgid "Allows users with existing Repente Insights accounts to login with a Google account that matches their email address in addition to their Repente Insights username and password."
+msgstr "允許擁有Repente Insights帳戶的使用者使用與其電子郵件地址匹配的Google帳戶以及其Repente Insights使用者名稱和密碼進行登入。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/AuthenticationOption.jsx:24
 #: frontend/src/metabase/components/ChannelSetupMessage.jsx:32
@@ -1369,8 +1369,8 @@ msgid "LDAP"
 msgstr "LDAP"
 
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:16
-msgid "Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
-msgstr "允許LDAP目錄中的使用者使用他們的LDAP憑證登入到Metabase，並且允許自動同步LDAP組的資料到Metabase中來。"
+msgid "Allows users within your LDAP directory to log in to Repente Insights with their LDAP credentials, and allows automatic mapping of LDAP groups to Repente Insights groups."
+msgstr "允許LDAP目錄中的使用者使用他們的LDAP憑證登入到Repente Insights，並且允許自動同步LDAP組的資料到Repente Insights中來。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:19
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:76
@@ -1445,8 +1445,8 @@ msgid "Getting set up"
 msgstr "開始設定精靈"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:106
-msgid "A few things you can do to get the most out of Metabase."
-msgstr "您可以採取一些措施來充分利用Metabase。"
+msgid "A few things you can do to get the most out of Repente Insights."
+msgstr "您可以採取一些措施來充分利用Repente Insights。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:115
 msgid "Recommended next step"
@@ -1457,8 +1457,8 @@ msgid "Google Sign-In"
 msgstr "Google登入"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:123
-msgid "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}"
-msgstr "為了允許使用者使用Google登入，您需要給Metabase一個Google開發者應用端ID，在如何建立一個可以被找到的金鑰上{0}，它只需要幾步和一些指導。"
+msgid "To allow users to sign in with Google you'll need to give Repente Insights a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}"
+msgstr "為了允許使用者使用Google登入，您需要給Repente Insights一個Google開發者應用端ID，在如何建立一個可以被找到的金鑰上{0}，它只需要幾步和一些指導。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:140
 msgid "Your Google client ID"
@@ -1477,16 +1477,16 @@ msgid "Create a Slack Bot User for MetaBot"
 msgstr "為MetaBot建立一個Slack Bot使用者"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:268
-msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
-msgstr "進入後，請為其命名並單擊{0}。然後將Bot API令牌複製並黏貼到下面的欄位中。完成後，在Slack中建立“metabase_files”通道。Metabase需要這個來上傳圖表。"
+msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Repente Insights needs this to upload graphs."
+msgstr "進入後，請為其命名並單擊{0}。然後將Bot API令牌複製並黏貼到下面的欄位中。完成後，在Slack中建立“metabase_files”通道。Repente Insights需要這個來上傳圖表。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:17
-msgid "You're running Metabase {0} which is the latest and greatest!"
-msgstr "您正在執行的Metabase {0}是最新版本的。"
+msgid "You're running Repente Insights {0} which is the latest and greatest!"
+msgstr "您正在執行的Repente Insights {0}是最新版本的。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:100
-msgid "Metabase {0} is available.  You're running {1}"
-msgstr "Metabase {0}可更新。您正在執行是{1}"
+msgid "Repente Insights {0} is available.  You're running {1}"
+msgstr "Repente Insights {0}可更新。您正在執行是{1}"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:41
 #: frontend/src/metabase/components/form/StandardForm.jsx:18
@@ -1598,8 +1598,8 @@ msgid "By enabling embedding you're agreeing to the embedding license located at
 msgstr "啟用嵌入即表示您同意嵌入許可，該許可位於"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:20
-msgid "In plain English, when you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
-msgstr "簡單來說，當您在自己的應用程式中嵌入Metabase的圖表或資訊看板時，只要您保留Metabase徽標和“Powered by Metabase”，該應用程式就不受涵蓋Metabase其餘部分的Affero通用公共許可證的約束。但是，您應該閱讀上面連結的許可文本，因為這是您將透過啟用此功能同意的實際許可。"
+msgid "In plain English, when you embed charts or dashboards from Repente Insights in your own application, that application isn't subject to the Affero General Public License that covers the rest of Repente Insights, provided you keep the Repente Insights logo and the \"Powered by Repente Insights\" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
+msgstr "簡單來說，當您在自己的應用程式中嵌入Repente Insights的圖表或資訊看板時，只要您保留Repente Insights徽標和“Powered by Repente Insights”，該應用程式就不受涵蓋Repente Insights其餘部分的Affero通用公共許可證的約束。但是，您應該閱讀上面連結的許可文本，因為這是您將透過啟用此功能同意的實際許可。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:33
 msgid "Enable"
@@ -1610,12 +1610,12 @@ msgid "Premium embedding enabled"
 msgstr "高級嵌入已啟用"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:26
-msgid "Enter the token you bought from the Metabase Store"
-msgstr "輸入您從Metabase商店購買的token"
+msgid "Enter the token you bought from the Repente Insights Store"
+msgstr "輸入您從Repente Insights商店購買的token"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:53
-msgid "Premium embedding lets you disable \"Powered by Metabase\" on your embedded dashboards and questions."
-msgstr "高級嵌入允許您在嵌入式資訊看板和問題上取消\"Powered by Metabase\" 文字。"
+msgid "Premium embedding lets you disable \"Powered by Repente Insights\" on your embedded dashboards and questions."
+msgstr "高級嵌入允許您在嵌入式資訊看板和問題上取消\"Powered by Repente Insights\" 文字。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:60
 msgid "Buy a token"
@@ -1638,10 +1638,10 @@ msgid "Create a mapping"
 msgstr "建立映射"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:170
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the\n"
+msgid "Mappings allow Repente Insights to automatically add and remove users from groups based on the membership information provided by the\n"
 "directory server. Membership to the Admin group can be granted through mappings, but will not be automatically removed as a\n"
 "failsafe measure."
-msgstr "映射允許Metabase根據目錄伺服器提供的成員資格訊息自動新增和刪除組中的使用者。Admin組的成員身份可以通過映射授予，但作為故障保護措施並不會被自動刪除。"
+msgstr "映射允許Repente Insights根據目錄伺服器提供的成員資格訊息自動新增和刪除組中的使用者。Admin組的成員身份可以通過映射授予，但作為故障保護措施並不會被自動刪除。"
 
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:107
 msgid "Distinguished Name"
@@ -1914,8 +1914,8 @@ msgid "Map tile server URL"
 msgstr "地圖貼片伺服器URL"
 
 #: frontend/src/metabase/admin/settings/selectors.js:206
-msgid "Metabase uses OpenStreetMaps by default."
-msgstr "Metabase預設使用PoenStreet地圖"
+msgid "Repente Insights uses OpenStreetMaps by default."
+msgstr "Repente Insights預設使用PoenStreet地圖"
 
 #: frontend/src/metabase/admin/settings/selectors.js:211
 msgid "Custom Maps"
@@ -1946,8 +1946,8 @@ msgid "Embedding in other Applications"
 msgstr "嵌入在其他的應用中"
 
 #: frontend/src/metabase/admin/settings/selectors.js:308
-msgid "Enable Embedding Metabase in other Applications"
-msgstr "啟用將Metabase嵌入到其他應用中"
+msgid "Enable Embedding Repente Insights in other Applications"
+msgstr "啟用將Repente Insights嵌入到其他應用中"
 
 #: frontend/src/metabase/admin/settings/selectors.js:318
 msgid "Embedding secret key"
@@ -2008,12 +2008,12 @@ msgid "Back to login"
 msgstr "返回登入"
 
 #: frontend/src/metabase/auth/components/GoogleNoAccount.jsx:15
-msgid "No Metabase account exists for this Google account."
-msgstr "這個Google帳戶不存在Metabase帳戶"
+msgid "No Repente Insights account exists for this Google account."
+msgstr "這個Google帳戶不存在Repente Insights帳戶"
 
 #: frontend/src/metabase/auth/components/GoogleNoAccount.jsx:17
-msgid "You'll need an administrator to create a Metabase account before you can use Google to log in."
-msgstr "在您能夠使用Google帳戶登入之前，需要一個系統管理員來建立一個Metabase帳戶"
+msgid "You'll need an administrator to create a Repente Insights account before you can use Google to log in."
+msgstr "在您能夠使用Google帳戶登入之前，需要一個系統管理員來建立一個Repente Insights帳戶"
 
 #: frontend/src/metabase/auth/components/AuthProviderButton.jsx:23
 msgid "Sign in with {0}"
@@ -2028,8 +2028,8 @@ msgid "Forgot password"
 msgstr "忘記密碼"
 
 #: frontend/src/metabase/auth/containers/ForgotPasswordApp.jsx:47
-msgid "The email you use for your Metabase account"
-msgstr "您作為Metabase帳戶的Email地址"
+msgid "The email you use for your Repente Insights account"
+msgstr "您作為Repente Insights帳戶的Email地址"
 
 #: frontend/src/metabase/auth/containers/ForgotPasswordApp.jsx:54
 msgid "Send password reset email"
@@ -2040,8 +2040,8 @@ msgid "Check your email for instructions on how to reset your password."
 msgstr "檢查您的郵件來獲取重設密碼說明"
 
 #: frontend/src/metabase/auth/containers/LoginApp.jsx:27
-msgid "Sign in to Metabase"
-msgstr "登入Metabase"
+msgid "Sign in to Repente Insights"
+msgstr "登入Repente Insights"
 
 #: frontend/src/metabase/auth/containers/LoginApp.jsx:165
 msgid "OR"
@@ -2338,13 +2338,13 @@ msgstr "一些資料庫安裝只有通過SSH通道訪問的伺服器有權訪問
 "啟用這個選項，通常比直接連接速度更慢。"
 
 #: frontend/src/metabase/entities/databases/forms.js:282
-msgid "This is a large database, so let me choose when Metabase syncs and scans"
-msgstr "這是一個大型資料庫，讓我選擇Metabase同步和掃描的時間"
+msgid "This is a large database, so let me choose when Repente Insights syncs and scans"
+msgstr "這是一個大型資料庫，讓我選擇Repente Insights同步和掃描的時間"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:296
-msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values.\n"
+msgid "By default, Repente Insights does a lightweight hourly sync and an intensive daily scan of field values.\n"
 "If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
-msgstr "預設情況下，Metabase每小時執行一次輕量級同步，每天執行一次密集掃描。\n"
+msgstr "預設情況下，Repente Insights每小時執行一次輕量級同步，每天執行一次密集掃描。\n"
 "如果您有一個大型資料庫，我們建議啟用此功能並檢視欄位值掃描的發生時間和頻率。"
 
 #: frontend/src/metabase/entities/databases/forms.js:113
@@ -2370,8 +2370,8 @@ msgid "with Google Drive permissions"
 msgstr "使用Google Driver權限"
 
 #: frontend/src/metabase/entities/databases/forms.js:164
-msgid "To use Metabase with this data you must enable API access in the Google Developers Console."
-msgstr "要將Metabase用於此資料，您必須在Google Developers Console中啟用API訪問權限。"
+msgid "To use Repente Insights with this data you must enable API access in the Google Developers Console."
+msgstr "要將Repente Insights用於此資料，您必須在Google Developers Console中啟用API訪問權限。"
 
 #: frontend/src/metabase/entities/databases/forms.js:165
 msgid "{0} to go to the console if you haven't already done so."
@@ -2639,8 +2639,8 @@ msgid "Loading..."
 msgstr "載入中……"
 
 #: frontend/src/metabase/components/NewsletterForm.jsx:71
-msgid "Metabase Newsletter"
-msgstr "Metabase新聞"
+msgid "Repente Insights Newsletter"
+msgstr "Repente Insights新聞"
 
 #: frontend/src/metabase/components/NewsletterForm.jsx:81
 msgid "Get infrequent emails about new releases and feature updates."
@@ -2651,8 +2651,8 @@ msgid "Subscribe"
 msgstr "訂閱"
 
 #: frontend/src/metabase/components/NewsletterForm.jsx:106
-msgid "You're subscribed. Thanks for using Metabase!"
-msgstr "訂閱成功。感謝您使用Metabase！"
+msgid "You're subscribed. Thanks for using Repente Insights!"
+msgstr "訂閱成功。感謝您使用Repente Insights！"
 
 #: frontend/src/metabase/containers/ErrorPages.jsx:46
 msgid "We're a little lost..."
@@ -2754,8 +2754,8 @@ msgid "Calendar Day"
 msgstr "日曆日"
 
 #: frontend/src/metabase/components/SchedulePicker.jsx:211
-msgid "your Metabase timezone"
-msgstr "您的Metabase時區"
+msgid "your Repente Insights timezone"
+msgstr "您的Repente Insights時區"
 
 #: frontend/src/metabase/components/SearchHeader.jsx:21
 msgid "Filter this list..."
@@ -3184,8 +3184,8 @@ msgid "Hello World!"
 msgstr "Hello World!"
 
 #: frontend/src/metabase/home/components/Activity.jsx:255
-msgid "Metabase is up and running."
-msgstr "Metabase正在執行"
+msgid "Repente Insights is up and running."
+msgstr "Repente Insights正在執行"
 
 #: frontend/src/metabase/home/components/Activity.jsx:261
 #: frontend/src/metabase/home/components/Activity.jsx:291
@@ -3557,8 +3557,8 @@ msgid "Do Not Include"
 msgstr "不要包括"
 
 #: frontend/src/metabase/lib/core.js:260
-msgid "Metabase will never retrieve this field. Use this for sensitive or irrelevant information."
-msgstr "Metabase永遠不會獲取此欄位。將此用於敏感或不相關的訊息。"
+msgid "Repente Insights will never retrieve this field. Use this for sensitive or irrelevant information."
+msgstr "Repente Insights永遠不會獲取此欄位。將此用於敏感或不相關的訊息。"
 
 #: frontend/src/metabase/lib/query/description.js:77
 #: frontend/src/metabase/lib/query/description.js:262
@@ -4124,8 +4124,8 @@ msgid "Help"
 msgstr "說明"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:72
-msgid "About Metabase"
-msgstr "關於Metabase"
+msgid "About Repente Insights"
+msgstr "關於Repente Insights"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:78
 msgid "Sign out"
@@ -4145,15 +4145,15 @@ msgstr "建置於"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:139
 msgid "is a Trademark of"
-msgstr "是 Metabase Inc 的註冊商標"
+msgstr "是 Repente Insights Inc 的註冊商標"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:141
 msgid "and is built with care in San Francisco, CA"
 msgstr "在加州舊金山精心設計"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:224
-msgid "Metabase Admin"
-msgstr "Metabase 系統管理員"
+msgid "Repente Insights Admin"
+msgstr "Repente Insights 系統管理員"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:354
 #: frontend/src/metabase/reference/databases/TableQuestions.jsx:35
@@ -4448,8 +4448,8 @@ msgid "Public link"
 msgstr "公開連結"
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:117
-msgid "Share this {0} with people who don't have a Metabase account using the URL below:"
-msgstr "將{0}通過下面的連結分享那些沒有Metabase帳號的人。"
+msgid "Share this {0} with people who don't have a Repente Insights account using the URL below:"
+msgstr "將{0}通過下面的連結分享那些沒有Repente Insights帳號的人。"
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.jsx:154
 msgid "Public embed"
@@ -4661,8 +4661,8 @@ msgid "Help everyone on your team stay in sync with your data."
 msgstr "幫助每個在您們團隊的人和您們的資料保持聯結"
 
 #: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:31
-msgid "Pulses let you send data from Metabase to email or Slack on the schedule of your choice."
-msgstr "定時通知允許您根據您選擇的時間表從Metabase發送資料到電子郵件或Slack。"
+msgid "Pulses let you send data from Repente Insights to email or Slack on the schedule of your choice."
+msgstr "定時通知允許您根據您選擇的時間表從Repente Insights發送資料到電子郵件或Slack。"
 
 #: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:98
 msgid "After {0}"
@@ -5858,8 +5858,8 @@ msgid "X-ray this field"
 msgstr "綜覽欄位資訊"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:8
-msgid "Metabase is no fun without any data"
-msgstr "Metabase沒有任何資料的話一點都不好玩"
+msgid "Repente Insights is no fun without any data"
+msgstr "Repente Insights沒有任何資料的話一點都不好玩"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:9
 msgid "Your databases will appear here once you connect one"
@@ -5998,8 +5998,8 @@ msgid "Contact {0}"
 msgstr "聯繫{0}"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:253
-msgid "Help new Metabase users find their way around."
-msgstr "幫助新的Metabase使用者了解如何使用"
+msgid "Help new Repente Insights users find their way around."
+msgstr "幫助新的Repente Insights使用者了解如何使用"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:256
 msgid "The Getting Started guide highlights the dashboard, metrics, segments, and tables that matter most, and informs your users of important things they should know before digging into the data."
@@ -6210,7 +6210,7 @@ msgid "Connecting to {0}"
 msgstr "連接到{0}"
 
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:130
-msgid "You’ll need some info about your database, like the username and password. If you don’t have that right now, Metabase also comes with a sample dataset you can get started with."
+msgid "You’ll need some info about your database, like the username and password. If you don’t have that right now, Repente Insights also comes with a sample dataset you can get started with."
 msgstr "在開始之前需要配置資料庫訊息（如：使用者名稱、密碼）。如果暫時沒有這些訊息metabase也提供了一個簡單資料源供學習使用。"
 
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:150
@@ -6234,20 +6234,20 @@ msgid "We won't collect any usage events"
 msgstr "我們不會收集任何使用事件訊息"
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:88
-msgid "In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics."
-msgstr "為了提升Metabase的使用者體驗，可能需要通過Google Analytics收集特定的使用資料。"
+msgid "In order to help us improve Repente Insights, we'd like to collect certain data about usage through Google Analytics."
+msgstr "為了提升Repente Insights的使用者體驗，可能需要通過Google Analytics收集特定的使用資料。"
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:93
 msgid "Here's a full list of everything we track and why."
 msgstr "這個我們所有我們要收集的清單，以及為什麼要收集"
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:108
-msgid "Allow Metabase to anonymously collect usage events"
-msgstr "允許Metabase匿名收集使用事件"
+msgid "Allow Repente Insights to anonymously collect usage events"
+msgstr "允許Repente Insights匿名收集使用事件"
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:116
-msgid "Metabase {0} collects anything about your data or question results."
-msgstr "Metabase{0}收集任何事情關於您的資料或者提問結果"
+msgid "Repente Insights {0} collects anything about your data or question results."
+msgstr "Repente Insights{0}收集任何事情關於您的資料或者提問結果"
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:117
 msgid "never"
@@ -6274,8 +6274,8 @@ msgid "is just a click away."
 msgstr "點擊一下"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:113
-msgid "Welcome to Metabase"
-msgstr "歡迎來到Metabase"
+msgid "Welcome to Repente Insights"
+msgstr "歡迎來到Repente Insights"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:114
 msgid "Looks like everything is working. Now let’s get to know you, connect to your data, and start finding you some answers!"
@@ -6290,8 +6290,8 @@ msgid "You're all set up!"
 msgstr "您已經設定完畢了！"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:179
-msgid "Take me to Metabase"
-msgstr "開始使用Metabase"
+msgid "Take me to Repente Insights"
+msgstr "開始使用Repente Insights"
 
 #: frontend/src/metabase/setup/components/UserStep.jsx:49
 msgid "What should we call you?"
@@ -6361,8 +6361,8 @@ msgid "We’ll show you some interesting explorations of your data in\n"
 msgstr "我們很快將會展示給您一些關於您的資料的有趣的探索結果。"
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:72
-msgid "This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Metabase can do for you."
-msgstr "這需要花費一段時間。 在此期間，您可以檢視其中一個範例，來了解Metabase可以為您做些什麼。"
+msgid "This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Repente Insights can do for you."
+msgstr "這需要花費一段時間。 在此期間，您可以檢視其中一個範例，來了解Repente Insights可以為您做些什麼。"
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:86
 msgid "I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!"
@@ -7461,8 +7461,8 @@ msgid "Email is not verified."
 msgstr "電子郵件未認證"
 
 #: src/metabase/api/session.clj
-msgid "You''ll need an administrator to create a Metabase account before you can use Google to log in."
-msgstr "在您能夠使用Google來登入之前，您需要一個系統管理員來建立一個Metabase帳戶。"
+msgid "You''ll need an administrator to create a Repente Insights account before you can use Google to log in."
+msgstr "在您能夠使用Google來登入之前，您需要一個系統管理員來建立一個Repente Insights帳戶。"
 
 #: src/metabase/api/session.clj
 msgid "Successfully authenticated Google Auth token for: {0} {1}"
@@ -7526,7 +7526,7 @@ msgstr "在{0}中有很多已儲存的問題？建立集合以幫助管理它們
 
 #. This is the very first log message that will get printed.
 #. It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
-#. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+#. It shows up a solid 10-15 seconds before the "Starting Repente Insights in STANDALONE mode" message because so many other namespaces need to get loaded
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:240
 #: frontend/src/metabase/home/components/Activity.jsx:87
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:90
@@ -7534,8 +7534,8 @@ msgstr "在{0}中有很多已儲存的問題？建立集合以幫助管理它們
 #: frontend/src/metabase/routes-public.jsx:15
 #: frontend/src/metabase/routes.jsx:142 src/metabase/api/setup.clj
 #: src/metabase/email/messages.clj
-msgid "Metabase"
-msgstr "Metabase"
+msgid "Repente Insights"
+msgstr "Repente Insights"
 
 #: src/metabase/api/setup.clj
 msgid "Create metrics"
@@ -7906,20 +7906,20 @@ msgid "FAIL [[[{0}]]]"
 msgstr "失敗 [[[{0}]]]"
 
 #: src/metabase/core.clj
-msgid "Please use the following URL to setup your Metabase installation:"
-msgstr "請使用下列URL來設定您的Metabase安裝程式:"
+msgid "Please use the following URL to setup your Repente Insights installation:"
+msgstr "請使用下列URL來設定您的Repente Insights安裝程式:"
 
 #: src/metabase/core.clj
-msgid "Metabase Shutting Down ..."
-msgstr "Metabase正在關閉……"
+msgid "Repente Insights Shutting Down ..."
+msgstr "Repente Insights正在關閉……"
 
 #: src/metabase/core.clj
-msgid "Metabase Shutdown COMPLETE"
-msgstr "Metabase關閉完成"
+msgid "Repente Insights Shutdown COMPLETE"
+msgstr "Repente Insights關閉完成"
 
 #: src/metabase/core.clj
-msgid "Starting Metabase version {0} ..."
-msgstr "開始Metabase 版本{0}……"
+msgid "Starting Repente Insights version {0} ..."
+msgstr "開始Repente Insights 版本{0}……"
 
 #: src/metabase/core.clj
 msgid "System timezone is ''{0}'' ..."
@@ -7927,7 +7927,7 @@ msgstr "系統時區是''{0}''"
 
 #. startup database.  validates connection & runs any necessary migrations
 #: src/metabase/core.clj
-msgid "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."
+msgid "Setting up and migrating Repente Insights DB. Please sit tight, this may take a minute..."
 msgstr "Metabse資料庫設定、遷移中。坐穩了，這個可能要花一分鐘……"
 
 #: src/metabase/core.clj
@@ -7935,8 +7935,8 @@ msgid "Looks like this is a new installation ... preparing setup wizard"
 msgstr "看起來這是一個新的安裝過程……正在準備安裝精靈"
 
 #: src/metabase/core.clj
-msgid "Metabase Initialization COMPLETE"
-msgstr "Metabase初始化完成"
+msgid "Repente Insights Initialization COMPLETE"
+msgstr "Repente Insights初始化完成"
 
 #: src/metabase/server.clj
 msgid "Launching Embedded Jetty Webserver with config:"
@@ -7947,12 +7947,12 @@ msgid "Shutting Down Embedded Jetty Webserver"
 msgstr "關閉嵌入式Jetty We伺服器"
 
 #: src/metabase/core.clj
-msgid "Starting Metabase in STANDALONE mode"
-msgstr "在離線模式下啟動Metabase"
+msgid "Starting Repente Insights in STANDALONE mode"
+msgstr "在離線模式下啟動Repente Insights"
 
 #: src/metabase/core.clj
-msgid "Metabase Initialization FAILED"
-msgstr "Metabase初始化失敗"
+msgid "Repente Insights Initialization FAILED"
+msgstr "Repente Insights初始化失敗"
 
 #: src/metabase/db/liquibase.clj
 msgid "Database has migration lock; cannot run migrations."
@@ -8112,7 +8112,7 @@ msgstr "成功使用FixedHiveDriver JDBC註冊為Metabse驅動程式"
 #. CONFIG
 #. TODO - smtp-port should be switched to type :integer
 #: src/metabase/email.clj
-msgid "Email address you want to use as the sender of Metabase."
+msgid "Email address you want to use as the sender of Repente Insights."
 msgstr "您想要使用的作為Metabse發送者的電子郵件地址"
 
 #: src/metabase/email.clj
@@ -8205,8 +8205,8 @@ msgstr "如果您的LDAP目錄提供了“成員”的覆蓋，則不需要搜�
 
 #. Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP groups and values are lists of MB groups IDs
 #: src/metabase/integrations/ldap.clj
-msgid "JSON containing LDAP to Metabase group mappings."
-msgstr "JSON包含LDAP到Metabase 組映射"
+msgid "JSON containing LDAP to Repente Insights group mappings."
+msgstr "JSON包含LDAP到Repente Insights 組映射"
 
 #. Define a setting which captures our Slack api token
 #: src/metabase/integrations/slack.clj
@@ -8421,8 +8421,8 @@ msgid "Storing FieldValues for Field {0}..."
 msgstr "儲存欄位{0}的FieldValues"
 
 #: src/metabase/models/humanization.clj
-msgid "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
-msgstr "Metabase 會嘗試將資料表名稱和表中欄位名稱轉換為適合理解的版本，例如：將somehorriblename轉換為 Some Horrible Name。"
+msgid "Repente Insights can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
+msgstr "Repente Insights 會嘗試將資料表名稱和表中欄位名稱轉換為適合理解的版本，例如：將somehorriblename轉換為 Some Horrible Name。"
 
 #: src/metabase/models/humanization.clj
 msgid "This doesn’t work all that well if the names are in a language other than English, however."
@@ -8567,12 +8567,12 @@ msgid "Loading plugin {0}... "
 msgstr "載入插件{0}……"
 
 #: src/metabase/plugins.clj
-msgid "It looks like you have some external dependencies in your Metabase plugins directory."
-msgstr "您的Metabase插件目錄中應該有一些外部依賴項。"
+msgid "It looks like you have some external dependencies in your Repente Insights plugins directory."
+msgstr "您的Repente Insights插件目錄中應該有一些外部依賴項。"
 
 #: src/metabase/plugins.clj
-msgid "With Java 9 or higher, Metabase cannot automatically add them to your classpath."
-msgstr "對於Java 9或更高版本，Metabase無法自動將它們新增到類別路徑中。"
+msgid "With Java 9 or higher, Repente Insights cannot automatically add them to your classpath."
+msgstr "對於Java 9或更高版本，Repente Insights無法自動將它們新增到類別路徑中。"
 
 #: src/metabase/plugins.clj
 msgid "Instead, you should include them at launch with the -cp option. For example:"
@@ -8583,27 +8583,27 @@ msgid "See https://metabase.com/docs/latest/operations-guide/start.html#java-ver
 msgstr "檢視更多細節： https://metabase.com/docs/latest/operations-guide/start.html#java-versions"
 
 #: src/metabase/plugins.clj
-msgid "(If you're already running Metabase this way, you can ignore this message.)"
+msgid "(If you're already running Repente Insights this way, you can ignore this message.)"
 msgstr "（如果您已經用這個方法執行了Metabse，您可以忽略這條訊息）"
 
 #: src/metabase/public_settings.clj
-msgid "Identify when new versions of Metabase are available."
-msgstr "確定新版本的Metabase何時可用。"
+msgid "Identify when new versions of Repente Insights are available."
+msgstr "確定新版本的Repente Insights何時可用。"
 
 #: src/metabase/public_settings.clj
-msgid "Information about available versions of Metabase."
-msgstr "關於Metabase可用版本的訊息"
+msgid "Information about available versions of Repente Insights."
+msgstr "關於Repente Insights可用版本的訊息"
 
 #: src/metabase/public_settings.clj
-msgid "The name used for this instance of Metabase."
-msgstr "用於此Metabase實例的名稱。"
+msgid "The name used for this instance of Repente Insights."
+msgstr "用於此Repente Insights實例的名稱。"
 
 #: src/metabase/public_settings.clj
-msgid "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"."
-msgstr "此Metabase實例的基本URL，例如“http://metabase.my-company.com”。"
+msgid "The base URL of this Repente Insights instance, e.g. \"http://metabase.my-company.com\"."
+msgstr "此Repente Insights實例的基本URL，例如“http://metabase.my-company.com”。"
 
 #: src/metabase/public_settings.clj
-msgid "The default language for this Metabase instance."
+msgid "The default language for this Repente Insights instance."
 msgstr "這個Metabse實例的預設語系"
 
 #: src/metabase/public_settings.clj
@@ -8615,8 +8615,8 @@ msgid "The email address users should be referred to if they encounter a problem
 msgstr "如果碰到問題，可以使用使用者的郵件地址"
 
 #: src/metabase/public_settings.clj
-msgid "Enable the collection of anonymous usage data in order to help Metabase improve."
-msgstr "啟用匿名使用資料的收集，以幫助改進Metabase。"
+msgid "Enable the collection of anonymous usage data in order to help Repente Insights improve."
+msgstr "啟用匿名使用資料的收集，以幫助改進Repente Insights。"
 
 #: src/metabase/public_settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
@@ -8647,8 +8647,8 @@ msgid "The absolute maximum time to keep any cached query results, in seconds."
 msgstr "保留任何快取查詢結果的絕對最長時間（以秒為單位）。"
 
 #: src/metabase/public_settings.clj
-msgid "Metabase will cache all saved questions with an average query execution time longer than this many seconds:"
-msgstr "Metabase會捕捉所有平均查詢時間大於這麼多秒的已儲存問題"
+msgid "Repente Insights will cache all saved questions with an average query execution time longer than this many seconds:"
+msgstr "Repente Insights會捕捉所有平均查詢時間大於這麼多秒的已儲存問題"
 
 #: src/metabase/public_settings.clj
 msgid "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here."
@@ -8858,10 +8858,10 @@ msgstr "job已存在"
 
 #. This is the very first log message that will get printed.  It's here because this is one of the very first
 #. namespaces that gets loaded, and the first that has access to the logger It shows up a solid 10-15 seconds before
-#. the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+#. the "Starting Repente Insights in STANDALONE mode" message because so many other namespaces need to get loaded
 #: src/metabase/util.clj
-msgid "Loading Metabase..."
-msgstr "正在載入Metabase……"
+msgid "Loading Repente Insights..."
+msgstr "正在載入Repente Insights……"
 
 #: src/metabase/util/date.clj
 msgid "Possible timezone conflict found on database {0}."
@@ -8884,12 +8884,12 @@ msgid "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters."
 msgstr "MB_ENCRYPTION_SECRET_KEY至少要16個字元"
 
 #: src/metabase/util/encryption.clj
-msgid "Saved credentials encryption is ENABLED for this Metabase instance."
-msgstr "已存儲的證書加密方式已經為這個Metabase實例啟用"
+msgid "Saved credentials encryption is ENABLED for this Repente Insights instance."
+msgstr "已存儲的證書加密方式已經為這個Repente Insights實例啟用"
 
 #: src/metabase/util/encryption.clj
-msgid "Saved credentials encryption is DISABLED for this Metabase instance."
-msgstr "已存儲的證書加密方式已經為這個Metabase實\n"
+msgid "Saved credentials encryption is DISABLED for this Repente Insights instance."
+msgstr "已存儲的證書加密方式已經為這個Repente Insights實\n"
 "例禁用"
 
 #: src/metabase/util/encryption.clj
@@ -9123,8 +9123,8 @@ msgid "No results"
 msgstr "沒有結果"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:42
-msgid "Metabase couldn't find any results for your search."
-msgstr "Metabase無法找到您的搜索結果。"
+msgid "Repente Insights couldn't find any results for your search."
+msgstr "Repente Insights無法找到您的搜索結果。"
 
 #: frontend/src/metabase/new_query/containers/MetricSearch.jsx:115
 msgid "No metrics"
@@ -9495,8 +9495,8 @@ msgid "Troubleshooting logs"
 msgstr "分析日誌"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:31
-msgid "Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on."
-msgstr "Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on."
+msgid "Trying to get to the bottom of something? This section shows logs of Repente Insights's background tasks, which can help shed light on what's going on."
+msgstr "Trying to get to the bottom of something? This section shows logs of Repente Insights's background tasks, which can help shed light on what's going on."
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:56
 msgid "Task"
@@ -11338,44 +11338,44 @@ msgid "We’d love your feedback."
 msgstr "我們需要您的回饋。"
 
 #: src/metabase/email/messages.clj
-msgid "It looks like Metabase wasn’t quite a match for you."
-msgstr "看起來似乎Metabase不是很適合您使用。"
+msgid "It looks like Repente Insights wasn’t quite a match for you."
+msgstr "看起來似乎Repente Insights不是很適合您使用。"
 
 #: src/metabase/email/messages.clj
-msgid "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
-msgstr "為了幫助Metabase團隊改進產品，請參與完成包含5個簡單問題的調查，謝謝。"
+msgid "Would you mind taking a fast 5 question survey to help the Repente Insights team understand why and make things better in the future?"
+msgstr "為了幫助Repente Insights團隊改進產品，請參與完成包含5個簡單問題的調查，謝謝。"
 
 #: src/metabase/email/messages.clj
-msgid "We hope you''ve been enjoying Metabase."
-msgstr "我們希望您能對Metabase滿意。"
+msgid "We hope you''ve been enjoying Repente Insights."
+msgstr "我們希望您能對Repente Insights滿意。"
 
 #: src/metabase/email/messages.clj
 msgid "Would you mind taking a fast 6 question survey to tell us how it’s going?"
 msgstr "您是否願意幫助我們來快速填寫一個有著6個問題的調查問卷？"
 
 #: src/metabase/email/messages.clj
-msgid "{0} created a Metabase account"
-msgstr "{0}建立了一個Metabase帳號"
+msgid "{0} created a Repente Insights account"
+msgstr "{0}建立了一個Repente Insights帳號"
 
 #: src/metabase/email/messages.clj
-msgid "{0} accepted their Metabase invite"
-msgstr "{0}接受了Metabase的邀請"
+msgid "{0} accepted their Repente Insights invite"
+msgstr "{0}接受了Repente Insights的邀請"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase] 重設密碼請求"
+msgid "[Repente Insights] Password Reset Request"
+msgstr "[Repente Insights] 重設密碼請求"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Notification"
-msgstr "[Metabase] 通知"
+msgid "[Repente Insights] Notification"
+msgstr "[Repente Insights] 通知"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Help make Metabase better."
-msgstr "[Metabase] 幫助Metabase變得更好"
+msgid "[Repente Insights] Help make Repente Insights better."
+msgstr "[Repente Insights] 幫助Repente Insights變得更好"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Tell us how things are going."
-msgstr "[Metabase] 使用回饋"
+msgid "[Repente Insights] Tell us how things are going."
+msgstr "[Repente Insights] 使用回饋"
 
 #: src/metabase/mbql/util.clj
 msgid "Error: query''s source query has not been resolved. You probably need to `preprocess` the query first."
@@ -11648,16 +11648,16 @@ msgid "You may need to add `?sslmode=require` to your application DB connection 
 msgstr "您可能需要將參數“？sslmode = require”新增到應用程式資料庫連接字串中。"
 
 #: src/metabase/db.clj
-msgid "If Metabase fails to launch, please add it and try again."
-msgstr "如果Metabase無法啟動，請新增並重試。"
+msgid "If Repente Insights fails to launch, please add it and try again."
+msgstr "如果Repente Insights無法啟動，請新增並重試。"
 
 #: src/metabase/db.clj
 msgid "See https://github.com/metabase/metabase/issues/8908 for more details."
 msgstr "有關詳細訊息，請參閱https://github.com/metabase/metabase/issues/8908。"
 
 #: src/metabase/db.clj
-msgid "WARNING: Using Metabase with an H2 application database is not recomended for production deployments."
-msgstr "警告：建議不要將Metabase與H2應用程式資料庫一起用於生產部署。"
+msgid "WARNING: Using Repente Insights with an H2 application database is not recomended for production deployments."
+msgstr "警告：建議不要將Repente Insights與H2應用程式資料庫一起用於生產部署。"
 
 #: src/metabase/db.clj
 msgid "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead."
@@ -11672,8 +11672,8 @@ msgid "See https://metabase.com/docs/latest/operations-guide/start.html#migratin
 msgstr "有關詳細訊息，請參閱https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres。"
 
 #: src/metabase/db.clj
-msgid "Unable to connect to Metabase {0} DB."
-msgstr " 不能連接到 Metabase {0} 資料庫。"
+msgid "Unable to connect to Repente Insights {0} DB."
+msgstr " 不能連接到 Repente Insights {0} 資料庫。"
 
 #: src/metabase/db/migrations.clj
 msgid "Error adding legacy SQL directive to BigQuery saved Question"
@@ -11784,32 +11784,32 @@ msgid "Could not find matching Field ID for target:"
 msgstr "{0} {1}前"
 
 #: src/metabase/plugins.clj
-msgid "Metabase does not have permissions to write to plugins directory {0}"
+msgid "Repente Insights does not have permissions to write to plugins directory {0}"
 msgstr "{0} {1}從現在開始"
 
 #: src/metabase/plugins.clj
-msgid "Metabase cannot use the plugins directory {0}"
-msgstr "Metabase不能使用plugins路徑下的{0}檔案"
+msgid "Repente Insights cannot use the plugins directory {0}"
+msgstr "Repente Insights不能使用plugins路徑下的{0}檔案"
 
 #: src/metabase/plugins.clj
-msgid "Please make sure the directory exists and that Metabase has permission to write to it."
-msgstr "請確保該目錄存在，並且Metabase有權寫入該目錄。"
+msgid "Please make sure the directory exists and that Repente Insights has permission to write to it."
+msgstr "請確保該目錄存在，並且Repente Insights有權寫入該目錄。"
 
 #: src/metabase/plugins.clj
-msgid "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR."
-msgstr "您可以透過設定環境變數MB_PLUGINS_DIR來更改Metabase用於模組的目錄。"
+msgid "You can change the directory Repente Insights uses for modules by setting the environment variable MB_PLUGINS_DIR."
+msgstr "您可以透過設定環境變數MB_PLUGINS_DIR來更改Repente Insights用於模組的目錄。"
 
 #: src/metabase/plugins.clj
 msgid "Falling back to a temporary directory for now."
 msgstr "暫時回到臨時目錄。"
 
 #: src/metabase/plugins.clj
-msgid "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
-msgstr "Metabase無法寫入臨時目錄。請將MB_PLUGINS_DIR設定為可寫目錄並重新啟動Metabase。"
+msgid "Repente Insights cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Repente Insights."
+msgstr "Repente Insights無法寫入臨時目錄。請將MB_PLUGINS_DIR設定為可寫目錄並重新啟動Repente Insights。"
 
 #: src/metabase/plugins.clj
-msgid "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
-msgstr "Metabase 1.0+以上版本不再需要spark-deps.jar。您可以從plugins目錄中刪除它。"
+msgid "spark-deps.jar is no longer needed by Repente Insights 1.0+. You can delete it from the plugins directory."
+msgstr "Repente Insights 1.0+以上版本不再需要spark-deps.jar。您可以從plugins目錄中刪除它。"
 
 #: src/metabase/plugins.clj
 msgid "Failied to initialize plugin {0}"
@@ -11840,16 +11840,16 @@ msgid "Added URL {0} to classpath"
 msgstr "將{0}新增到 classpath"
 
 #: src/metabase/plugins/dependencies.clj
-msgid "Plugin {0} declares a dependency that Metabase does not understand: {1}"
-msgstr "插件{0}聲明了Metabase不理解的依賴項：{1}"
+msgid "Plugin {0} declares a dependency that Repente Insights does not understand: {1}"
+msgstr "插件{0}聲明了Repente Insights不理解的依賴項：{1}"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Refer to the plugin manifest reference for a complete list of valid plugin dependencies:"
 msgstr "有關有效插件依賴項的完整欄位表，請參閱插件清單引用："
 
 #: src/metabase/plugins/dependencies.clj
-msgid "Metabase cannot initialize plugin {0} due to required dependencies."
-msgstr "由於所需的依賴性，Metabase無法初始化插件{0}。"
+msgid "Repente Insights cannot initialize plugin {0} due to required dependencies."
+msgstr "由於所需的依賴性，Repente Insights無法初始化插件{0}。"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Class not found: {0}"
@@ -11912,7 +11912,7 @@ msgstr "無法初始化插件：缺少必需的‘driver-name’屬性"
 msgid "Warning: plugin manifest for {0} does not include connection properties"
 msgstr "無法處理同步資料庫事件。"
 
-#. finally, register the Metabase driver
+#. finally, register the Repente Insights driver
 #: src/metabase/plugins/lazy_loaded_driver.clj
 msgid "Registering lazy loading driver {0}..."
 msgstr "錯誤的嵌套查詢級別：查詢沒有源查詢"
@@ -12003,7 +12003,7 @@ msgstr "找不到匹配的目標欄位ID："
 
 #: src/metabase/task.clj
 msgid "Starting Quartz Scheduler {0}"
-msgstr "Metabase無權寫入插件目錄{0}"
+msgstr "Repente Insights無權寫入插件目錄{0}"
 
 #: src/metabase/task.clj
 msgid "Error loading tasks namespace {0}"
@@ -12060,8 +12060,8 @@ msgid "Task history cleanup successful, no rows were deleted"
 msgstr "任務歷史清理完畢, 無記錄被刪除"
 
 #: src/metabase/task/upgrade_checks.clj
-msgid "Checking for new Metabase version info."
-msgstr "檢查Metabase新版本."
+msgid "Checking for new Repente Insights version info."
+msgstr "檢查Repente Insights新版本."
 
 #: src/metabase/task/upgrade_checks.clj
 msgid "Error fetching version info"
@@ -12105,11 +12105,11 @@ msgstr "這裡是 [[this]] 的速覽"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateTimestamp]] by day of the month"
-msgstr "插件{0}聲明了Metabase不理解的依賴項：{1}"
+msgstr "插件{0}聲明了Repente Insights不理解的依賴項：{1}"
 
 #: resources/automagic_dashboards/table/UserTable.yaml
 msgid "Here's an overview of the people in your [[this]]"
-msgstr "由於所需的依賴性，Metabase無法初始化插件{0}。"
+msgstr "由於所需的依賴性，Repente Insights無法初始化插件{0}。"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[CreateTimestamp]] by quarter of the year"
@@ -12392,16 +12392,16 @@ msgid "Request canceled before finishing."
 msgstr "請求在完成之前取消。"
 
 #: src/metabase/middleware/json.clj
-msgid "Metabase only supports JSON requests."
-msgstr "Metabase僅支持JSON請求"
+msgid "Repente Insights only supports JSON requests."
+msgstr "Repente Insights僅支持JSON請求"
 
 #: src/metabase/middleware/json.clj
 msgid "Make sure you set a 'Content-Type: application/json' header."
 msgstr "確定您設定了一個'Content-Type：application / json' header。"
 
 #: src/metabase/middleware/misc.clj
-msgid "Setting Metabase site URL to {0}"
-msgstr "將Metabase的網站URL設定為{0}"
+msgid "Setting Repente Insights site URL to {0}"
+msgstr "將Repente Insights的網站URL設定為{0}"
 
 #: src/metabase/models/database.clj
 msgid "Error scheduling tasks for DB"
@@ -12506,8 +12506,8 @@ msgid "Automatically run queries when doing simple filtering and summarizing"
 msgstr "在進行簡單的過濾和匯總時自動執行查詢"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:320
-msgid "When this is on Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
-msgstr "這個選項開啟時，當使用者在檢視表格或圖表時使用“匯總”和“過濾”按鈕進行簡單資料探索時，Metabase將自動執行查詢。 如果查詢此資料庫的速度很慢，可以將該選項關閉。 此設定不會影響資料鑽探或SQL查詢。"
+msgid "When this is on Repente Insights will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
+msgstr "這個選項開啟時，當使用者在檢視表格或圖表時使用“匯總”和“過濾”按鈕進行簡單資料探索時，Repente Insights將自動執行查詢。 如果查詢此資料庫的速度很慢，可以將該選項關閉。 此設定不會影響資料鑽探或SQL查詢。"
 
 #: frontend/src/metabase/containers/Overworld.jsx:329
 msgid "Learn about this database"
@@ -12851,12 +12851,12 @@ msgid "Request canceled, canceling future."
 msgstr "請求已取消，以後將會取消。"
 
 #: src/metabase/cmd/load_from_h2.clj
-msgid "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."
-msgstr "Metabase只能將資料從H2傳輸到Postgres或MySQL / MariaDB。"
+msgid "Repente Insights can only transfer data from H2 to Postgres or MySQL/MariaDB."
+msgstr "Repente Insights只能將資料從H2傳輸到Postgres或MySQL / MariaDB。"
 
 #: src/metabase/db.clj
-msgid "WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
-msgstr "警告：不推薦將Metabase與H2應用資料庫一起用於生產環境部署。"
+msgid "WARNING: Using Repente Insights with an H2 application database is not recommended for production deployments."
+msgstr "警告：不推薦將Repente Insights與H2應用資料庫一起用於生產環境部署。"
 
 #: src/metabase/db.clj
 msgid "Application database setup"
@@ -12917,8 +12917,8 @@ msgid "Error saving task history"
 msgstr "儲存任務歷史失敗"
 
 #: src/metabase/plugins.clj
-msgid "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory."
-msgstr "0.32.0 及以上版本的Metabase不再需要spark-deps.jar了. 您可以從插件目錄中刪除它."
+msgid "spark-deps.jar is no longer needed by Repente Insights 0.32.0+. You can delete it from the plugins directory."
+msgstr "0.32.0 及以上版本的Repente Insights不再需要spark-deps.jar了. 您可以從插件目錄中刪除它."
 
 #: src/metabase/plugins/classloader.clj
 msgid "Using NEWLY CREATED classloader as shared context classloader: {0}"
@@ -12950,7 +12950,7 @@ msgid "We were unable to display this Pulse."
 msgstr "我們無法展示這個排程任務"
 
 #: src/metabase/pulse/render/body.clj
-msgid "Please view this card in Metabase."
+msgid "Please view this card in Repente Insights."
 msgstr "請在metabase中檢視這個卡片"
 
 #: src/metabase/pulse/render/body.clj
@@ -13147,7 +13147,7 @@ msgid "Failed to fetch Field {0}: Field does not exist, or belongs to a differen
 msgstr "查詢欄位{0}失敗：欄位不存在，或者屬於另一個資料庫"
 
 #: src/metabase/routes/index.clj
-msgid "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?"
+msgid "Failed to load template ''{0}''. Did you remember to build the Repente Insights frontend?"
 msgstr "載入模板{0}失敗。您是否記得構建metabse的前端？"
 
 #: src/metabase/sample_data.clj
@@ -13204,8 +13204,8 @@ msgid "Pick the columns you want to include"
 msgstr "選擇需要包含的欄位"
 
 #: frontend/src/metabase/entities/databases/forms.js:275
-msgid "When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
-msgstr "這個選項開啟時，當使用者在檢視表格或圖表時使用“匯總”和“過濾”按鈕進行簡單資料探索時，Metabase將自動執行查詢。 如果查詢此資料庫的速度很慢，可以將該選項關閉。 此設定不會影響資料鑽探或SQL查詢。"
+msgid "When this is on, Repente Insights will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
+msgstr "這個選項開啟時，當使用者在檢視表格或圖表時使用“匯總”和“過濾”按鈕進行簡單資料探索時，Repente Insights將自動執行查詢。 如果查詢此資料庫的速度很慢，可以將該選項關閉。 此設定不會影響資料鑽探或SQL查詢。"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/JoinStep.jsx:97
 msgid "Change join type"
@@ -13246,12 +13246,12 @@ msgid "Diagnostic Info"
 msgstr "診斷訊息"
 
 #: frontend/src/metabase/admin/tasks/containers/Logs.jsx:123
-msgid "Select Metabase process:"
-msgstr "選擇Metabase進程："
+msgid "Select Repente Insights process:"
+msgstr "選擇Repente Insights進程："
 
 #: frontend/src/metabase/admin/tasks/containers/Logs.jsx:133
-msgid "All Metabase processes"
-msgstr "所有Metabase進程"
+msgid "All Repente Insights processes"
+msgstr "所有Repente Insights進程"
 
 #: frontend/src/metabase/auth/components/GoogleButton.jsx:13
 msgid "The window was closed before completing Google Authentication."
@@ -13270,8 +13270,8 @@ msgid "Using this option requires that provided host is a FQDN.  If connecting t
 msgstr "使用此選項要求提供的主機是FQDN。 如果連接到Atlas群集，則可能需要啟用此選項。 如果您不知道這意味著什麼，請取消此功能。"
 
 #: frontend/src/metabase/entities/databases/forms.js:283
-msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
-msgstr "預設情況下，Metabase每小時執行一次輕量級同步，每天執行一次密集掃描。 如果您有一個大型資料庫，我們建議啟用此功能並檢視欄位值掃描的發生時間和頻率。"
+msgid "By default, Repente Insights does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
+msgstr "預設情況下，Repente Insights每小時執行一次輕量級同步，每天執行一次密集掃描。 如果您有一個大型資料庫，我們建議啟用此功能並檢視欄位值掃描的發生時間和頻率。"
 
 #: frontend/src/metabase/containers/Overworld.jsx:126
 msgid "Remove these suggestions"
@@ -13601,8 +13601,8 @@ msgid "Sending Alert ({0}: {1}) via email"
 msgstr "通過電子郵件發送警告（{0}：{1}）"
 
 #: src/metabase/pulse.clj
-msgid "Metabase alert: {0} has {1}"
-msgstr "Metabase 警告: {0} 有 {1}"
+msgid "Repente Insights alert: {0} has {1}"
+msgstr "Repente Insights 警告: {0} 有 {1}"
 
 #: src/metabase/pulse.clj
 msgid "Sending Alert ({0}: {1}) via Slack"
@@ -13686,16 +13686,16 @@ msgid "OK"
 msgstr "確定"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:123
-msgid "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}."
-msgstr "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}."
+msgid "To allow users to sign in with Google you'll need to give Repente Insights a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}."
+msgstr "To allow users to sign in with Google you'll need to give Repente Insights a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}."
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:134
 msgid "Be sure to include the full client ID, including the apps.googleusercontent.com suffix."
 msgstr "Be sure to include the full client ID, including the apps.googleusercontent.com suffix"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:30
-msgid "Metabase {0} is available."
-msgstr "Metabase {0} 目前有新版本"
+msgid "Repente Insights {0} is available."
+msgstr "Repente Insights {0} 目前有新版本"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:31
 msgid "You're running {0}"
@@ -13722,20 +13722,20 @@ msgid "No mappable groups"
 msgstr "No mappable groups"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:108
-msgid "Metabase Documentation"
-msgstr "Metabase文件資料"
+msgid "Repente Insights Documentation"
+msgstr "Repente Insights文件資料"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:109
 msgid "Includes a troubleshooting guide"
 msgstr "包含 troubleshooting guide"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:113
-msgid "Post on the Metabase support forum"
-msgstr "問題送出到Metabase支援論壇"
+msgid "Post on the Repente Insights support forum"
+msgstr "問題送出到Repente Insights支援論壇"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:114
-msgid "A community forum for all things Metabase"
-msgstr "Metabase社區論壇"
+msgid "A community forum for all things Repente Insights"
+msgstr "Repente Insights社區論壇"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:118
 msgid "File a bug report"
@@ -13807,8 +13807,8 @@ msgid "This is a lightweight process that checks for updates to this database’
 msgstr "檢核或更新資料庫 schema 是一個輕量級的動作，大部分情況下，可以設定為每小時同步一次。"
 
 #: frontend/src/metabase/entities/databases/forms.js:300
-msgid "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
-msgstr "Metabase 會掃描資料庫中每個欄位的資料值，方便在展示板與提問(查詢)點擊篩選核取方塊。這個動作會有一點耗費系統資源，尤其是資料內容非常大的時候。"
+msgid "Repente Insights can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
+msgstr "Repente Insights 會掃描資料庫中每個欄位的資料值，方便在展示板與提問(查詢)點擊篩選核取方塊。這個動作會有一點耗費系統資源，尤其是資料內容非常大的時候。"
 
 #: frontend/src/metabase/entities/questions.js:96
 msgid "Collection"
@@ -14352,8 +14352,8 @@ msgid "must be {0} characters or less"
 msgstr "必須含或少於 {0} 個字元 "
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:113
-msgid "Thanks for using Metabase!"
-msgstr "感謝使用 Metabase ！"
+msgid "Thanks for using Repente Insights!"
+msgstr "感謝使用 Repente Insights ！"
 
 #: frontend/src/metabase/public/components/LogoBadge.jsx:20
 msgid "Powered by {0}"
@@ -14501,8 +14501,8 @@ msgid "Google Auth token appears to be incorrect. "
 msgstr "Google Auth token似乎是錯誤的"
 
 #: src/metabase/api/session.clj
-msgid "Double check that it matches in Google and Metabase."
-msgstr "仔細檢查它在Google和Metabase中是否匹配"
+msgid "Double check that it matches in Google and Repente Insights."
+msgstr "仔細檢查它在Google和Repente Insights中是否匹配"
 
 #: src/metabase/api/table.clj
 msgid "Everything else"
@@ -14517,8 +14517,8 @@ msgid "Database Upgrade Required"
 msgstr "資料庫必須更新"
 
 #: src/metabase/db.clj
-msgid "NOTICE: Your database requires updates to work with this version of Metabase."
-msgstr "注意:您的資料庫必須更新版本來讓此版本的Metabase可以使用"
+msgid "NOTICE: Your database requires updates to work with this version of Repente Insights."
+msgstr "注意:您的資料庫必須更新版本來讓此版本的Repente Insights可以使用"
 
 #: src/metabase/db.clj
 msgid "Please execute the following sql commands on your database before proceeding."
@@ -14560,12 +14560,12 @@ msgid "The sub-query from referenced question #{0} failed with the following err
 msgstr "The sub-query from referenced question #{0} failed with the following error: {1}"
 
 #: src/metabase/driver/mysql.clj
-msgid "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
-msgstr "警告：Metabase 官方支援 MySQL {0}/MariaDB {1} 以上之版本"
+msgid "WARNING: Repente Insights only officially supports MySQL {0}/MariaDB {1} and above."
+msgstr "警告：Repente Insights 官方支援 MySQL {0}/MariaDB {1} 以上之版本"
 
 #: src/metabase/driver/mysql.clj
-msgid "All Metabase features may not work properly when using an unsupported version."
-msgstr "若使用不支援的版本，Metabase 的功能可能無法適當地工作"
+msgid "All Repente Insights features may not work properly when using an unsupported version."
+msgstr "若使用不支援的版本，Repente Insights 的功能可能無法適當地工作"
 
 #: src/metabase/driver/sql/parameters/substitute.clj
 msgid "Unable to substitute parameters"
@@ -14858,7 +14858,7 @@ msgid "Service Accounts"
 msgstr "服務帳號"
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:26
-msgid "Metabase connects to Big Query via {0}."
+msgid "Repente Insights connects to Big Query via {0}."
 msgstr "配置數據庫通過{0}連接到Big Query。"
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:29
@@ -14991,8 +14991,8 @@ msgid "What's your preferred language?"
 msgstr "您首選的語言是什麼？"
 
 #: frontend/src/metabase/setup/components/LanguageStep.jsx:54
-msgid "This language will be used throughout Metabase and will be the default for new users."
-msgstr "該語言將在整個Metabase中使用，並將成為新用戶的默認語言。"
+msgid "This language will be used throughout Repente Insights and will be the default for new users."
+msgstr "該語言將在整個Repente Insights中使用，並將成為新用戶的默認語言。"
 
 #: frontend/src/metabase/visualizations/components/PinMap.jsx:159
 msgid "We filtered out {0} row(s) containing null values."
@@ -15143,8 +15143,8 @@ msgid "Error fetching value of Setting"
 msgstr "撈取設置值時錯誤"
 
 #: src/metabase/public_settings.clj
-msgid "The language that should be used for Metabase's UI, system emails, pulses, and alerts."
-msgstr "語系會使用在Metabase的UI，系統電子郵件，pulses和alerts。"
+msgid "The language that should be used for Repente Insights's UI, system emails, pulses, and alerts."
+msgstr "語系會使用在Repente Insights的UI，系統電子郵件，pulses和alerts。"
 
 #: src/metabase/public_settings.clj
 msgid "This is also the default language for all users, which they can change from their own account settings."
@@ -15163,8 +15163,8 @@ msgid "Cannot redirect requests to HTTPS unless `site-url` is HTTPS."
 msgstr "除非`site-url`是HTTPS，否則不能將請求重定向到HTTPS。"
 
 #: src/metabase/pulse/render/png.clj
-msgid "Error registering fonts: Metabase will not be able to send Pulses."
-msgstr "註冊字體時出錯：Metabase無法發送Pulse。"
+msgid "Error registering fonts: Repente Insights will not be able to send Pulses."
+msgstr "註冊字體時出錯：Repente Insights無法發送Pulse。"
 
 #: src/metabase/pulse/render/png.clj
 msgid "This is a known issue with certain JVMs. See {0} and for more details."
@@ -15295,7 +15295,7 @@ msgid "Configure your identity provider (IdP)"
 msgstr "配置您的身份提供商（IdP）"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:82
-msgid "Your identity provider will need the following info about Metabase."
+msgid "Your identity provider will need the following info about Repente Insights."
 msgstr "您的身份提供者將需要以下有關元數據庫的信息。"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:85
@@ -15331,11 +15331,11 @@ msgid "User's last name attribute"
 msgstr "用戶的姓氏屬性"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:113
-msgid "Tell Metabase about your identity provider"
-msgstr "告訴Metabase您的身份提供者"
+msgid "Tell Repente Insights about your identity provider"
+msgstr "告訴Repente Insights您的身份提供者"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:114
-msgid "Metabase will need the following info about your provider."
+msgid "Repente Insights will need the following info about your provider."
 msgstr "配置數據庫將需要有關您的提供程序的以下信息。"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:117
@@ -15380,9 +15380,9 @@ msgid "Synchronize group membership with your SSO"
 msgstr "將組成員身份與您的SSO同步"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:157
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid "To enable this, you'll need to create mappings to tell Repente Insights which group(s) your users should\n"
 "be added to based on the SSO group they're in."
-msgstr "為此，您需要創建映射以告訴Metabase您的用戶應該使用哪個組。\n"
+msgstr "為此，您需要創建映射以告訴Repente Insights您的用戶應該使用哪個組。\n"
 "根據他們所在的SSO組添加到。"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:173
@@ -15402,8 +15402,8 @@ msgid "Note:"
 msgstr "注意："
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:186
-msgid "If you change any of the settings of an existing SAML active setup, then you will need to restart Metabase for them to take effect."
-msgstr "如果更改現有SAML活動設置的任何設置，則將需要重新啟動Metabase才能使它們生效。"
+msgid "If you change any of the settings of an existing SAML active setup, then you will need to restart Repente Insights for them to take effect."
+msgstr "如果更改現有SAML活動設置的任何設置，則將需要重新啟動Repente Insights才能使它們生效。"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/index.js:29
 msgid "Allows users to login via a SAML Identity Provider."
@@ -15454,11 +15454,11 @@ msgid "String used by the JWT signing key"
 msgstr "JWT簽名密鑰使用的字符串"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:17
-msgid "Embedding the entire Metabase app"
-msgstr "嵌入整個Metabase應用"
+msgid "Embedding the entire Repente Insights app"
+msgstr "嵌入整個Repente Insights應用"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:18
-msgid "If you want to embed all of Metabase, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the {0} for what can be entered."
+msgid "If you want to embed all of Repente Insights, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the {0} for what can be entered."
 msgstr "如果要嵌入所有元數據庫，請輸入要允許嵌入iframe的網站或Web應用程序的來源，以空格分隔。這是可以輸入的內容{0}。"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:163
@@ -15581,20 +15581,20 @@ msgid "We're having trouble validating your token"
 msgstr "我們無法驗證您的令牌"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:88
-msgid "Please double-check that your instance can connect to Metabase's servers"
-msgstr "請仔細檢查您的實例可以連接到Metabase的服務器"
+msgid "Please double-check that your instance can connect to Repente Insights's servers"
+msgstr "請仔細檢查您的實例可以連接到Repente Insights的服務器"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:93
 msgid "Get help"
 msgstr "得到幫助"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:100
-msgid "Get even more out of Metabase with the Enterprise Edition"
-msgstr "通過企業版充分利用Metabase"
+msgid "Get even more out of Repente Insights with the Enterprise Edition"
+msgstr "通過企業版充分利用Repente Insights"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:102
-msgid "All the tools you need to quickly and easily provide reports for your customers, or to help you run and monitor Metabase in a large organization"
-msgstr "快速，輕鬆地為客戶提供報告，或幫助您在大型組織中運行和監視Metabase所需的所有工具"
+msgid "All the tools you need to quickly and easily provide reports for your customers, or to help you run and monitor Repente Insights in a large organization"
+msgstr "快速，輕鬆地為客戶提供報告，或幫助您在大型組織中運行和監視Repente Insights所需的所有工具"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:114
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:136
@@ -15693,8 +15693,8 @@ msgid "White labeling"
 msgstr "白色標籤"
 
 #: enterprise/frontend/src/metabase-enterprise/store/lib/features.js:17
-msgid "Match Metabase to your brand with custom colors, your own logo and more."
-msgstr "使用自定義顏色，您自己的徽標等將Metabase與您的品牌匹配。"
+msgid "Match Repente Insights to your brand with custom colors, your own logo and more."
+msgstr "使用自定義顏色，您自己的徽標等將Repente Insights與您的品牌匹配。"
 
 #: enterprise/frontend/src/metabase-enterprise/store/lib/features.js:26
 msgid "Auditing"
@@ -15789,7 +15789,7 @@ msgid "at"
 msgstr "在"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:44
-msgid "Open the Metabase actions menu"
+msgid "Open the Repente Insights actions menu"
 msgstr "打開配置數據庫操作菜單"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:45
@@ -16448,8 +16448,8 @@ msgid "Send it to Slack"
 msgstr "發送給Slack"
 
 #: frontend/src/metabase/sharing/components/SharingSidebar.jsx:539
-msgid "Pick a channel and a schedule, and Metabase will do the rest."
-msgstr "選擇一個頻道和時間表，其餘的工作由Metabase完成。"
+msgid "Pick a channel and a schedule, and Repente Insights will do the rest."
+msgstr "選擇一個頻道和時間表，其餘的工作由Repente Insights完成。"
 
 #: frontend/src/metabase/sharing/components/SharingSidebar.jsx:569
 msgid "Email this dashboard"
@@ -16505,24 +16505,24 @@ msgid "Invalid Slack token."
 msgstr "無效的Slack令牌。"
 
 #: src/metabase/cmd.clj
-msgid "The ''{0}'' command is only available in Metabase Enterprise Edition."
-msgstr "“ {0}”命令僅在Metabase Enterprise Edition中可用。"
+msgid "The ''{0}'' command is only available in Repente Insights Enterprise Edition."
+msgstr "“ {0}”命令僅在Repente Insights Enterprise Edition中可用。"
 
 #: src/metabase/core.clj
-msgid "Metabase Enterprise Edition extensions are PRESENT."
-msgstr "Metabase Enterprise Edition擴展是當前的。"
+msgid "Repente Insights Enterprise Edition extensions are PRESENT."
+msgstr "Repente Insights Enterprise Edition擴展是當前的。"
 
 #: src/metabase/core.clj
-msgid "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License."
-msgstr "Metabase Enterprise Edition功能的使用須遵守Metabase商業許可。"
+msgid "Usage of Repente Insights Enterprise Edition features are subject to the Repente Insights Commercial License."
+msgstr "Repente Insights Enterprise Edition功能的使用須遵守Repente Insights商業許可。"
 
 #: src/metabase/core.clj
 msgid "See {0} for details."
 msgstr "有關詳細信息，請參見{0}。"
 
 #: src/metabase/core.clj
-msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
-msgstr "不存在Metabase Enterprise Edition擴展。"
+msgid "Repente Insights Enterprise Edition extensions are NOT PRESENT."
+msgstr "不存在Repente Insights Enterprise Edition擴展。"
 
 #: src/metabase/email/messages.clj
 msgid "You''re invited to join {0}''s {1}"
@@ -16673,8 +16673,8 @@ msgid "login attribute keys must be a keyword or string"
 msgstr "登錄屬性鍵必須是關鍵字或字符串"
 
 #: src/metabase/public_settings.clj
-msgid "The default language for all users across the Metabase UI, system emails, pulses, and alerts."
-msgstr "Metabase UI，系統電子郵件，脈沖和警報中所有用戶的默認語言。"
+msgid "The default language for all users across the Repente Insights UI, system emails, pulses, and alerts."
+msgstr "Repente Insights UI，系統電子郵件，脈沖和警報中所有用戶的默認語言。"
 
 #: src/metabase/public_settings.clj
 msgid "Users can individually override this default language from their own account settings."
@@ -16685,20 +16685,20 @@ msgid "Default page to show the user"
 msgstr "顯示用戶的默認頁面"
 
 #: src/metabase/public_settings.clj
-msgid "Allow this origin to embed the full Metabase application"
-msgstr "允許此來源嵌入完整的Metabase應用程序"
+msgid "Allow this origin to embed the full Repente Insights application"
+msgstr "允許此來源嵌入完整的Repente Insights應用程序"
 
 #: src/metabase/public_settings.clj
 msgid "Values greater than {0} ({1}) are not allowed."
 msgstr "不允許大於{0}（{1}）的值。"
 
 #: src/metabase/public_settings.clj
-msgid "This will replace the word \"Metabase\" wherever it appears."
-msgstr "無論出現在何處，它將替換單詞“ Metabase”。"
+msgid "This will replace the word \"Repente Insights\" wherever it appears."
+msgstr "無論出現在何處，它將替換單詞“ Repente Insights”。"
 
 #: src/metabase/public_settings.clj
-msgid "These are the primary colors used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect."
-msgstr "這些是圖表和整個Metabase中使用的原色。您可能需要刷新瀏覽器才能看到更改生效。"
+msgid "These are the primary colors used in charts and throughout Repente Insights. You might need to refresh your browser to see your changes take effect."
+msgstr "這些是圖表和整個Repente Insights中使用的原色。您可能需要刷新瀏覽器才能看到更改生效。"
 
 #: src/metabase/public_settings.clj
 msgid "For best results, use an SVG file with a transparent background."
