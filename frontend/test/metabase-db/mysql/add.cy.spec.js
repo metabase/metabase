@@ -91,7 +91,6 @@ describe("mysql > admin > add", () => {
     cy.get(".LoadingSpinner").should("not.exist");
 
     // Assertions
-    cy.log("**Fails in v0.36.6**");
     cy.findByText("There was a problem with your question").should("not.exist");
     cy.contains("37.65");
   });
