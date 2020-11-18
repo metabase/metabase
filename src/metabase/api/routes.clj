@@ -7,6 +7,7 @@
              [util :as u]]
             [metabase.api
              [activity :as activity]
+             [advanced-computation :as advcomp]
              [alert :as alert]
              [automagic-dashboards :as magic]
              [card :as card]
@@ -72,6 +73,7 @@
       (fn [_ respond _]
         (respond nil)))
   (context "/activity"             [] (+auth activity/routes))
+  (context "/advanced_computation" [] (+auth advcomp/routes))
   (context "/alert"                [] (+auth alert/routes))
   (context "/automagic-dashboards" [] (+auth magic/routes))
   (context "/card"                 [] (+auth card/routes))
