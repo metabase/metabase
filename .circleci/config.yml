@@ -735,32 +735,6 @@ jobs:
       - store_test_results:
           path: cypress/results
 
-  fe-tests-cypress-smoketest:
-    parameters:
-      e:
-        type: executor
-        default: clojure-and-node
-      cypress-group:
-        type: string
-    executor: << parameters.e >>
-    environment:
-      CYPRESS_GROUP: << parameters.cypress-group >>
-      DISPLAY: ""
-    steps:
-      - run-yarn-command:
-          command-name: Run Cypress tests
-          command: run test-cypress-smoketest
-          before-steps:
-            - restore_cache:
-                keys:
-                  - uberjar-oss-{{ checksum "./backend-checksums.txt" }}
-            - run:
-                name: Generate version file
-                command: ./bin/build version
-      - store_artifacts:
-          path: /home/circleci/metabase/metabase/cypress
-      - store_test_results:
-          path: cypress/results
 
 ########################################################################################################################
 #                                                   DEPLOYMENT, ETC.                                                   #
