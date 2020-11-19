@@ -1477,8 +1477,8 @@ msgid "Create a Slack Bot User for RepenteBot"
 msgstr "为MetaBot创建一个Slack Bot用户"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:268
-msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Repente Insights needs this to upload graphs."
-msgstr "进入后，请为其命名并单击{0}。然后将Bot API令牌复制并粘贴到下面的字段中。完成后，在Slack中创建“metabase_files”通道。Repente Insights需要这个来上传图表。"
+msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"insights_files\" channel in Slack. Repente Insights needs this to upload graphs."
+msgstr "进入后，请为其命名并单击{0}。然后将Bot API令牌复制并粘贴到下面的字段中。完成后，在Slack中创建“insights_files”通道。Repente Insights需要这个来上传图表。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:17
 msgid "You're running Repente Insights {0} which is the latest and greatest!"
@@ -16587,8 +16587,8 @@ msgid "Slack API error: {0}"
 msgstr "Slack API错误。{0}"
 
 #: src/metabase/integrations/slack.clj
-msgid "Slack channel named `metabase_files` is missing!"
-msgstr "名为 \"metabase_files \"的Slack频道不见了!"
+msgid "Slack channel named `insights_files` is missing!"
+msgstr "名为 \"insights_files \"的Slack频道不见了!"
 
 #: src/metabase/integrations/slack.clj
 msgid "Please create or unarchive the channel in order to complete the Slack integration."

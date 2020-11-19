@@ -1488,8 +1488,8 @@ msgid "Create a Slack Bot User for RepenteBot"
 msgstr "Vytvořit Slack Bot uživatele pro RepenteBot"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:268
-msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Repente Insights needs this to upload graphs."
-msgstr "Když už jste tam, pojmenujte ho a klikněte na {0}. Potom zkopírujte a vložte Bot API Token do pole níže. Po dokončení vytvořte v Slack kanálu \"metabase_files\". Repente Insights to potřebuje na posílání grafů."
+msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"insights_files\" channel in Slack. Repente Insights needs this to upload graphs."
+msgstr "Když už jste tam, pojmenujte ho a klikněte na {0}. Potom zkopírujte a vložte Bot API Token do pole níže. Po dokončení vytvořte v Slack kanálu \"insights_files\". Repente Insights to potřebuje na posílání grafů."
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:17
 msgid "You're running Repente Insights {0} which is the latest and greatest!"
@@ -16668,8 +16668,8 @@ msgid "Slack API error: {0}"
 msgstr "Chyba Slack API: {0}"
 
 #: src/metabase/integrations/slack.clj
-msgid "Slack channel named `metabase_files` is missing!"
-msgstr "Slack kanál pojmenovaný `metabase_files` nebyl nalezen!"
+msgid "Slack channel named `insights_files` is missing!"
+msgstr "Slack kanál pojmenovaný `insights_files` nebyl nalezen!"
 
 #: src/metabase/integrations/slack.clj
 msgid "Please create or unarchive the channel in order to complete the Slack integration."

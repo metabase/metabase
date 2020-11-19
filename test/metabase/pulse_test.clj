@@ -66,7 +66,7 @@
   "Macro that ensures test-data is present and disables sending of all notifications"
   [& body]
   `(with-redefs [metabase.pulse/send-notifications! realize-lazy-seqs
-                 slack/files-channel                (constantly {:name "metabase_files"
+                 slack/files-channel                (constantly {:name "insights_files"
                                                                  :id   "FOO"})]
      (do-with-site-url (fn [] ~@body))))
 

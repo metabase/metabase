@@ -267,7 +267,7 @@ export default class SettingsSlackForm extends Component {
           <div className="py2">
             {jt`Once you're there, give it a name and click ${(
               <strong>"Add bot integration"</strong>
-            )}. Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Repente Insights needs this to upload graphs.`}
+            )}. Then copy and paste the Bot API Token into the field below. Once you are done, create a "insights_files" channel in Slack. Repente Insights needs this to upload graphs.`}
           </div>
         </div>
         <ul>

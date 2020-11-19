@@ -16,7 +16,7 @@
 (defsetting slack-token (deferred-tru "Slack API bearer token obtained from https://api.slack.com/web#authentication"))
 
 (def ^:private ^String slack-api-base-url "https://slack.com/api")
-(def ^:private ^String files-channel-name "metabase_files")
+(def ^:private ^String files-channel-name "insights_files")
 
 (defn slack-configured?
   "Is Slack integration configured?"
@@ -138,7 +138,7 @@
 
 (defn- files-channel* []
   (or (channel-with-name files-channel-name)
-      (let [message (str (tru "Slack channel named `metabase_files` is missing!")
+      (let [message (str (tru "Slack channel named `insights_files` is missing!")
                          " "
                          (tru "Please create or unarchive the channel in order to complete the Slack integration.")
                          " "
@@ -147,7 +147,7 @@
         (throw (ex-info message {:status-code 400})))))
 
 (def ^{:arglists '([])} files-channel
-  "Calls Slack api `channels.info` to check whether a channel named #metabase_files exists. If it doesn't, throws an
+  "Calls Slack api `channels.info` to check whether a channel named #insights_files exists. If it doesn't, throws an
   error that advices an admin to create it."
   ;; If the channel has successfully been created we can cache the information about it from the API response. We need
   ;; this information every time we send out a pulse, but making a call to the `coversations.list` endpoint everytime we

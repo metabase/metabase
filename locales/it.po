@@ -1486,8 +1486,8 @@ msgid "Create a Slack Bot User for RepenteBot"
 msgstr "Crea un Utente Bot Slack per RepenteBot"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:268
-msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Repente Insights needs this to upload graphs."
-msgstr "Una volta che sei lì, dagli un nome e fai clicca {0}. Quindi copia e incolla il token API Bot nel campo sottostante. Una volta terminato, crea un canale \"metabase_files\" in Slack. Repente Insights ha bisogno di questo per caricare grafici."
+msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"insights_files\" channel in Slack. Repente Insights needs this to upload graphs."
+msgstr "Una volta che sei lì, dagli un nome e fai clicca {0}. Quindi copia e incolla il token API Bot nel campo sottostante. Una volta terminato, crea un canale \"insights_files\" in Slack. Repente Insights ha bisogno di questo per caricare grafici."
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:17
 msgid "You're running Repente Insights {0} which is the latest and greatest!"
@@ -16626,8 +16626,8 @@ msgid "Slack API error: {0}"
 msgstr "Errore API allentato: {0}"
 
 #: src/metabase/integrations/slack.clj
-msgid "Slack channel named `metabase_files` is missing!"
-msgstr "Manca il canale Slack chiamato `metabase_files`!"
+msgid "Slack channel named `insights_files` is missing!"
+msgstr "Manca il canale Slack chiamato `insights_files`!"
 
 #: src/metabase/integrations/slack.clj
 msgid "Please create or unarchive the channel in order to complete the Slack integration."

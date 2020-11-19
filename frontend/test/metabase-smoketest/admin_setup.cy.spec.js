@@ -91,7 +91,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Create a Slack Bot User for RepenteBot");
       cy.contains(
-        'Once you\'re there, give it a name and click "Add bot integration". Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Repente Insights needs this to upload graphs.',
+        'Once you\'re there, give it a name and click "Add bot integration". Then copy and paste the Bot API Token into the field below. Once you are done, create a "insights_files" channel in Slack. Repente Insights needs this to upload graphs.',
       );
     });
 

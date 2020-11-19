@@ -1479,8 +1479,8 @@ msgid "Create a Slack Bot User for RepenteBot"
 msgstr "Tạo một tài khoản Slack Bot cho RepenteBot"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:268
-msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Repente Insights needs this to upload graphs."
-msgstr "Khi bạn đã ở đó, hãy đặt tên cho nó và nhấp vào {0}. Sau đó sao chép và dán mã thông báo Bot API vào trường bên dưới. Khi bạn đã hoàn tất, hãy tạo kênh \\ \"metabase_files \" trong Slack. Repente Insights cần điều này để tải lên biểu đồ."
+msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"insights_files\" channel in Slack. Repente Insights needs this to upload graphs."
+msgstr "Khi bạn đã ở đó, hãy đặt tên cho nó và nhấp vào {0}. Sau đó sao chép và dán mã thông báo Bot API vào trường bên dưới. Khi bạn đã hoàn tất, hãy tạo kênh \\ \"insights_files \" trong Slack. Repente Insights cần điều này để tải lên biểu đồ."
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:17
 msgid "You're running Repente Insights {0} which is the latest and greatest!"
@@ -16575,8 +16575,8 @@ msgid "Slack API error: {0}"
 msgstr "Lỗi API Slack: {0}"
 
 #: src/metabase/integrations/slack.clj
-msgid "Slack channel named `metabase_files` is missing!"
-msgstr "Kênh Slack có tên `metabase_files` bị thiếu!"
+msgid "Slack channel named `insights_files` is missing!"
+msgstr "Kênh Slack có tên `insights_files` bị thiếu!"
 
 #: src/metabase/integrations/slack.clj
 msgid "Please create or unarchive the channel in order to complete the Slack integration."
