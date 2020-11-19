@@ -269,12 +269,13 @@
                (with-alert-setup
                  (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
                  [(et/with-expected-messages 1
-                    ((alert-client :rasta) :post 200 "alert"
-                     {:card             {:id (u/get-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
-                      :collection_id    (u/get-id collection)
-                      :alert_condition  "rows"
-                      :alert_first_only false
-                      :channels         [daily-email-channel]}))
+                    (alert-response
+                     ((alert-client :rasta) :post 200 "alert"
+                      {:card             {:id (u/get-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
+                       :collection_id    (u/get-id collection)
+                       :alert_condition  "rows"
+                       :alert_first_only false
+                       :channels         [daily-email-channel]})))
                   (et/regex-email-bodies #"https://metabase.com/testmb"
                                          #"has any results"
                                          #"My question")])))))))
@@ -310,7 +311,8 @@
                                 :channels         [(assoc daily-email-channel
                                                           :details       {:emails nil}
                                                           :recipients    (mapv fetch-user [:crowberto :rasta]))]})
-                              setify-recipient-emails))
+                              setify-recipient-emails
+                              alert-response))
               :emails (et/regex-email-bodies #"https://metabase.com/testmb"
                                              #"now getting alerts"
                                              #"confirmation that your alert"
@@ -437,8 +439,9 @@
                  (assoc-in [:card :collection_id] true))
              (with-alerts-in-writeable-collection [alert]
                (tu/with-model-cleanup [Pulse]
-                 ((alert-client :rasta) :put 200 (alert-url alert)
-                  (default-alert-req card pc))))))))
+                 (alert-response
+                  ((alert-client :rasta) :put 200 (alert-url alert)
+                   (default-alert-req card pc)))))))))
 
   (testing "Admin users can update any alert"
     (tt/with-temp* [Pulse                 [alert (basic-alert)]
@@ -448,8 +451,9 @@
                     PulseChannelRecipient [_     (recipient pc :rasta)]]
       (is (= (default-alert card)
              (tu/with-model-cleanup [Pulse]
-               ((alert-client :crowberto) :put 200 (alert-url alert)
-                (default-alert-req card pc)))))))
+               (alert-response
+                ((alert-client :crowberto) :put 200 (alert-url alert)
+                 (default-alert-req card pc))))))))
 
   (testing "Admin users can update any alert, changing the related alert attributes"
     (tt/with-temp* [Pulse                 [alert (basic-alert)]
@@ -462,9 +466,10 @@
                     :alert_above_goal true
                     :alert_condition  "goal")
              (tu/with-model-cleanup [Pulse]
-               ((alert-client :crowberto) :put 200 (alert-url alert)
-                (default-alert-req card (u/get-id pc) {:alert_first_only true, :alert_above_goal true, :alert_condition "goal"}
-                                   [(fetch-user :rasta)])))))))
+               (alert-response
+                ((alert-client :crowberto) :put 200 (alert-url alert)
+                 (default-alert-req card (u/get-id pc) {:alert_first_only true, :alert_above_goal true, :alert_condition "goal"}
+                                    [(fetch-user :rasta)]))))))))
 
   (testing "Admin users can add a recipient, that recipient should be notified"
     (tt/with-temp* [Pulse                 [alert (basic-alert)]
@@ -478,10 +483,11 @@
                                    :body    {"https://metabase.com/testmb" true, "now getting alerts" true}})]
              (with-alert-setup
                [(et/with-expected-messages 1
-                  (setify-recipient-emails
-                   ((alert-client :crowberto) :put 200 (alert-url alert)
-                    (default-alert-req card pc {} [(fetch-user :crowberto)
-                                                   (fetch-user :rasta)]))))
+                  (alert-response
+                   (setify-recipient-emails
+                    ((alert-client :crowberto) :put 200 (alert-url alert)
+                     (default-alert-req card pc {} [(fetch-user :crowberto)
+                                                    (fetch-user :rasta)])))))
                 (et/regex-email-bodies #"https://metabase.com/testmb"
                                        #"now getting alerts")]))))))
 
@@ -584,8 +590,9 @@
                 (assoc-in [:card :collection_id] true))]
            (tu/with-non-admin-groups-no-root-collection-perms
              (with-alert-setup
-               (with-alerts-in-readable-collection [alert]
-                 ((alert-client :rasta) :get 200 (alert-question-url card))))))))
+               (map alert-response
+                (with-alerts-in-readable-collection [alert]
+                  ((alert-client :rasta) :get 200 (alert-question-url card)))))))))
 
   (testing "Non-admin users shouldn't see alerts they created if they're no longer recipients"
     (is (= {:count-1 1
