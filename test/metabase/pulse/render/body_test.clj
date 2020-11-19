@@ -49,8 +49,9 @@
    #{4}])
 
 (defn- prep-for-html-rendering'
-  [cols rows bar-column max-value]
-  (let [results (#'body/prep-for-html-rendering pacific-tz {} {:cols cols :rows rows} bar-column max-value (count cols))]
+  [cols rows bar-column min-value max-value]
+  (let [results (#'body/prep-for-html-rendering pacific-tz {} {:cols cols :rows rows} (count cols)
+                                                {:bar-column bar-column :min-value min-value :max-value max-value})]
     [(first results)
      (col-counts results)]))
 
@@ -80,31 +81,31 @@
 ;; Testing the format of headers
 (deftest header-result
   (is (= default-header-result
-         (prep-for-html-rendering' test-columns test-data nil nil))))
+         (prep-for-html-rendering' test-columns test-data nil nil nil))))
 
 (deftest header-result-2
   (let [cols-with-desc (conj test-columns description-col)
         data-with-desc (mapv #(conj % "Desc") test-data)]
     (is (= default-header-result
-           (prep-for-html-rendering' cols-with-desc data-with-desc nil nil)))))
+           (prep-for-html-rendering' cols-with-desc data-with-desc nil nil nil)))))
 
 (deftest header-result-3
   (let [cols-with-details (conj test-columns detail-col)
         data-with-details (mapv #(conj % "Details") test-data)]
     (is (= default-header-result
-           (prep-for-html-rendering' cols-with-details data-with-details nil nil)))))
+           (prep-for-html-rendering' cols-with-details data-with-details nil nil nil)))))
 
 (deftest header-result-4
   (let [cols-with-sensitive (conj test-columns sensitive-col)
         data-with-sensitive (mapv #(conj % "Sensitive") test-data)]
     (is (= default-header-result
-           (prep-for-html-rendering' cols-with-sensitive data-with-sensitive nil nil)))))
+           (prep-for-html-rendering' cols-with-sensitive data-with-sensitive nil nil nil)))))
 
 (deftest header-result-5
   (let [columns-with-retired (conj test-columns retired-col)
         data-with-retired    (mapv #(conj % "Retired") test-data)]
     (is (= default-header-result
-           (prep-for-html-rendering' columns-with-retired data-with-retired nil nil)))))
+           (prep-for-html-rendering' columns-with-retired data-with-retired nil nil nil)))))
 
 (deftest prefers-col-visualization-settings-for-header
   (testing "Users can give columns custom names. Use those if they exist."
@@ -129,8 +130,6 @@
              (first (#'body/prep-for-html-rendering pacific-tz
                                                     card
                                                     {:cols cols :rows []}
-                                                    nil
-                                                    nil
                                                     (count test-columns)))))
 
       ;; card does not contain custom column names
@@ -139,35 +138,34 @@
              (first (#'body/prep-for-html-rendering pacific-tz
                                                     {}
                                                     {:cols cols :rows []}
-                                                    nil
-                                                    nil
                                                     (count test-columns))))))))
 
 ;; When including a bar column, bar-width is 99%
 (deftest bar-width
   (is (= (assoc-in default-header-result [0 :bar-width] 99)
-         (prep-for-html-rendering' test-columns test-data second 40.0))))
+         (prep-for-html-rendering' test-columns test-data second 0 40.0))))
 
 ;; When there are too many columns, #'body/prep-for-html-rendering show narrow it
 (deftest narrow-the-columns
   (is (= [{:row [(number "ID") (number "Latitude")]
            :bar-width 99}
           #{2}]
-         (prep-for-html-rendering' (subvec test-columns 0 2) test-data second 40.0 ))))
+         (prep-for-html-rendering' (subvec test-columns 0 2) test-data second 0 40.0))))
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
   (is (= [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
           {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
           {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
-         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data} nil nil (count test-columns))))))
+         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data} (count test-columns))))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
   (is (= [{:bar-width (float 85.249),  :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
           {:bar-width (float 85.1015), :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
           {:bar-width (float 85.1185), :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
-         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data} second 40 (count test-columns))))))
+         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data} (count test-columns)
+                                               {:bar-column second, :min-value 0, :max-value 40})))))
 
 (defn- add-rating
   "Injects `RATING-OR-COL` and `DESCRIPTION-OR-COL` into `COLUMNS-OR-ROW`"
@@ -202,7 +200,7 @@
   (is (= [{:row [(number "ID") (number "Latitude") "Rating Desc" "Last Login" "Name"]
            :bar-width nil}
           #{5}]
-         (prep-for-html-rendering' test-columns-with-remapping test-data-with-remapping nil nil))))
+         (prep-for-html-rendering' test-columns-with-remapping test-data-with-remapping nil nil nil))))
 
 ;; Result rows should include only the remapped column value, not the original
 (deftest include-only-remapped-column-name
@@ -212,8 +210,6 @@
          (map :row (rest (#'body/prep-for-html-rendering pacific-tz
                                                          {}
                                                          {:cols test-columns-with-remapping :rows test-data-with-remapping}
-                                                         nil
-                                                         nil
                                                          (count test-columns-with-remapping)))))))
 
 ;; There should be no truncation warning if the number of rows/cols is fewer than the row/column limit
@@ -246,8 +242,6 @@
          (rest (#'body/prep-for-html-rendering pacific-tz
                                                {}
                                                {:cols test-columns-with-date-special-type :rows test-data}
-                                               nil
-                                               nil
                                                (count test-columns))))))
 
 (defn- render-scalar-value [results]

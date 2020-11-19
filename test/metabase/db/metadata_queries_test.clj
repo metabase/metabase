@@ -48,7 +48,7 @@
                   ["BCD Tofu House"]]
         table    (Table (mt/id :venues))
         fields   [(Field (mt/id :venues :name))]
-        fetch!   #(->> (metadata-queries/table-rows-sample table fields (when % {:truncation-size %}))
+        fetch!   #(->> (metadata-queries/table-rows-sample table fields (constantly conj) (when % {:truncation-size %}))
                        ;; since order is not guaranteed do some sorting here so we always get the same results
                        (sort-by first)
                        (take 5))]
@@ -63,18 +63,14 @@
               "Did not truncate a text field")))))
 
   (testing "substring checking"
-    ;; turn off validation so we can just return the query that is emitted and check for expressions
-    (s/without-fn-validation
-      ;; just return the query map
-      (with-redefs [qp/process-query (fn [query] {:data {:rows (:query query)}})
-                    table/database   (constantly (database/map->DatabaseInstance {:id 5678}))]
-        (let [table  (table/map->TableInstance {:id 1234})
-              fields [(field/map->FieldInstance {:id 4321 :base_type :type/Text})]]
-          (testing "uses substrings if driver supports expressions"
-            (with-redefs [driver/supports? (constantly true)]
-              (let [query (metadata-queries/table-rows-sample table fields {:truncation-size 4})]
-                (is (seq (:expressions query))))))
-          (testing "doesnt' use substrings if driver doesn't support expressions"
-            (with-redefs [driver/supports? (constantly false)]
-              (let [query (metadata-queries/table-rows-sample table fields {:truncation-size 4})]
-                (is (empty (:expressions query)))))))))))
+    (with-redefs [table/database (constantly (database/map->DatabaseInstance {:id 5678}))]
+      (let [table  (table/map->TableInstance {:id 1234})
+            fields [(field/map->FieldInstance {:id 4321 :base_type :type/Text})]]
+        (testing "uses substrings if driver supports expressions"
+          (with-redefs [driver/supports? (constantly true)]
+            (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
+              (is (seq (get-in query [:query :expressions]))))))
+        (testing "doesnt' use substrings if driver doesn't support expressions"
+          (with-redefs [driver/supports? (constantly false)]
+            (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
+              (is (empty? (get-in query [:query :expressions]))))))))))

@@ -62,7 +62,8 @@
             ["800 Degrees Neapolitan Pizzeria"]
             ["BCD Tofu House"]]
            (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                  [(Field (mt/id :venues :name))])
+                  [(Field (mt/id :venues :name))]
+                  (constantly conj))
                 ;; since order is not guaranteed do some sorting here so we always get the same results
                 (sort-by first)
                 (take 5))))))
