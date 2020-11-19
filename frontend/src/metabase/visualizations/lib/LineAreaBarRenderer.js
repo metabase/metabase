@@ -254,6 +254,7 @@ function getDimensionsAndGroupsForWaterfallChart(props, originalDatas, warn) {
         : beams[i - 1];
   }
   for (let k = 0; k < values.length; ++k) {
+    datas[0][k]._waterfallValue = datas[0][k][1];
     datas[0][k][1] = beams[k];
     datas[1][k][1] = negatives[k];
     datas[2][k][1] = positives[k];
@@ -965,6 +966,14 @@ export default function lineAreaBar(
   setupTooltips(props, datas, parent, brushChangeFunctions);
 
   parent.render();
+
+  datas.map(data => {
+    data.map(d => {
+      if (d._waterfallValue) {
+        d[1] = d._waterfallValue;
+      }
+    });
+  });
 
   // apply any on-rendering functions (this code lives in `LineAreaBarPostRenderer`)
   lineAndBarOnRender(parent, {
