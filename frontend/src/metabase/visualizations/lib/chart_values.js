@@ -83,7 +83,7 @@ export function onRenderValueLabels(
       })
       .value();
 
-    return data
+    data = data
       .map(([x, y], i) => {
         const isLocalMin =
           // first point or prior is greater than y
@@ -105,6 +105,16 @@ export function onRenderValueLabels(
       .filter(
         d => !((display === "bar" || display === "waterfall") && d.y === 0),
       );
+
+    if (display === "waterfall") {
+      let total = 0;
+      data.forEach(d => {
+        d.cumulativeY = d.y + total;
+        total += d.y;
+      });
+    }
+
+    return data;
   });
 
   // Count max points in a single series to estimate when labels should be hidden
@@ -191,14 +201,19 @@ export function onRenderValueLabels(
     return xShift;
   });
 
-  const xyPos = ({ x, y, showLabelBelow, seriesIndex }) => {
+  const xyPos = ({ x, y, showLabelBelow, cumulativeY, seriesIndex }) => {
+    const display = displays[seriesIndex];
+    const yy = display === "waterfall" ? cumulativeY : y;
     const yScale = yScaleForSeries(seriesIndex);
     const xPos = xShifts[seriesIndex] + xScale(x);
-    let yPos = yScale(y) + (showLabelBelow ? 18 : -8);
+    let yPos = yScale(yy) + (showLabelBelow ? 18 : -8);
+    if (y >= 0 && display === "waterfall") {
+      yPos += 25;
+    }
     // if the yPos is below the x axis, move it to be above the data point
     const [yMax] = yScale.range();
     if (yPos > yMax) {
-      yPos = yScale(y) - 8;
+      yPos = yScale(yy) - 8;
     }
     return {
       xPos,
