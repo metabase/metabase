@@ -46,9 +46,12 @@ export function onRenderValueLabels(
   }
   const showAll = chart.settings["graph.label_value_frequency"] === "all";
 
+  function isBarLike(display) {
+    return display === "bar" || display === "waterfall";
+  }
+
   let barWidth;
-  const barCount = displays.filter(d => (d === "bar") | (d === "waterfall"))
-    .length;
+  const barCount = displays.filter(isBarLike).length;
   if (barCount > 0) {
     barWidth = parseFloat(
       chart
@@ -91,20 +94,12 @@ export function onRenderValueLabels(
           // last point point or next is greater than y
           (i === data.length - 1 || data[i + 1][1] > y);
         const showLabelBelow = isLocalMin && display === "line";
-        const rotated =
-          barCount > 1 &&
-          (display === "bar" || display === "waterfall") &&
-          barWidth < 40;
+        const rotated = barCount > 1 && isBarLike(display) && barWidth < 40;
         const hidden =
-          !showAll &&
-          barCount > 1 &&
-          (display === "bar" || display === "waterfall") &&
-          barWidth < 20;
+          !showAll && barCount > 1 && isBarLike(display) && barWidth < 20;
         return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
       })
-      .filter(
-        d => !((display === "bar" || display === "waterfall") && d.y === 0),
-      );
+      .filter(d => !(isBarLike(display) && d.y === 0));
 
     if (display === "waterfall") {
       let total = 0;
@@ -151,25 +146,20 @@ export function onRenderValueLabels(
 
   // Ordinal bar charts and histograms need extra logic to center the label.
   const xShifts = displays.map((display, index) => {
-    if (display !== "bar" && display !== "waterfall") {
+    if (!isBarLike(display)) {
       return 0;
     }
-    const barIndex = displays
-      .slice(0, index)
-      .filter(d => d === "bar" || d === "waterfall").length;
+    const barIndex = displays.slice(0, index).filter(isBarLike).length;
     let xShift = 0;
 
     if (xScale.rangeBand) {
-      if (display === "bar" || display === "waterfall") {
+      if (isBarLike(display)) {
         const xShiftForSeries = xScale.rangeBand() / barCount;
         xShift += (barIndex + 0.5) * xShiftForSeries;
       } else {
         xShift += xScale.rangeBand() / 2;
       }
-      if (
-        displays.some(d => d === "bar" || d === "waterfall") &&
-        displays.some(d => d !== "bar" && d !== "waterfall")
-      ) {
+      if (displays.some(isBarLike) && displays.some(d => !isBarLike(d))) {
         xShift += (chart._rangeBandPadding() * xScale.rangeBand()) / 2;
       }
     } else if (
@@ -268,11 +258,7 @@ export function onRenderValueLabels(
   };
 
   const nthForSeries = datas.map((data, index) => {
-    if (
-      showAll ||
-      (barCount > 1 &&
-        (displays[index] === "bar" && displays[index] === "waterfall"))
-    ) {
+    if (showAll || (barCount > 1 && isBarLike(displays[index]))) {
       // show all is turned on or this is a bar in a grouped bar chart
       return 1;
     }
@@ -310,8 +296,7 @@ export function onRenderValueLabels(
     .filter(
       d =>
         displays[d.seriesIndex] === "line" ||
-        displays[d.seriesIndex] === "bar" ||
-        displays[d.seriesIndex] === "waterfall",
+        isBarLike(displays[d.seriesIndex]),
     )
     .map(d => ({ d, ...xyPos(d) }))
     .groupBy(({ xPos }) => xPos)
