@@ -11,8 +11,6 @@ import Collection from "metabase/entities/collections";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
-import Greeting from "metabase/collections/containers/Greeting";
-
 import CollectionsList from "metabase/collections/components/CollectionsList";
 import CollectionLink from "metabase/collections/components/CollectionLink";
 
@@ -38,8 +36,8 @@ const Sidebar = styled(Box)`
 
 @Collection.loadList({
   /* pass "tree" here so that the collection entity knows to use the /tree endpoint and send children in the response
-          we should eventually refactor code elsewhere in the app to use this by default instead of determining the relationships clientside, but this works in the interim
-          */
+    we should eventually refactor code elsewhere in the app to use this by default instead of determining the relationships clientside, but this works in the interim
+  */
   query: () => ({ tree: true }),
 })
 class CollectionSidebar extends React.Component {
@@ -63,9 +61,6 @@ class CollectionSidebar extends React.Component {
     const { currentUser, isRoot, collectionId, list } = this.props;
     return (
       <Sidebar w={340} pt={3}>
-        <Box pl="28px">
-          <Greeting />
-        </Box>
         <CollectionLink
           to={Urls.collection("root")}
           selected={isRoot}

@@ -3,6 +3,7 @@ import {
   signInAsAdmin,
   setupLocalHostEmail,
   signInAsNormalUser,
+  modal,
 } from "__support__/cypress";
 // Ported from initial_collection.e2e.spec.js
 
@@ -108,6 +109,108 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
+    describe("sidebar behavior", () => {
+      beforeEach(() => {
+        restore();
+        signInAsAdmin();
+      });
+
+      it("should allow a user to expand a collection without navigating to it", () => {
+        cy.visit("/collection/root");
+        // 1. click on the chevron to expand the sub collection
+        openDropdownFor("First collection");
+        // 2. I should see the nested collection name
+        cy.findByText("First collection");
+        cy.findByText("Second collection");
+        // 3. The url should still be /collection/root to test that we haven't navigated away
+        cy.location("pathname").should("eq", "/collection/root");
+        //
+      });
+
+      describe("deeply nested collection navigation", () => {
+        it("should correctly display deep nested collections", () => {
+          cy.request("GET", "/api/collection").then(xhr => {
+            // "Third collection" is the last nested collection in the snapshot (data set)
+            // we need its ID to continue nesting below it
+            const THIRD_COLLECTION_ID = xhr.body.length - 1;
+
+            // sanity check and early alarm if the initial data set changes in the future
+            expect(xhr.body[THIRD_COLLECTION_ID].name).to.eq(
+              "Third collection",
+            );
+
+            cy.log("**-- Create two more nested collections --**");
+            [
+              "Fourth collection",
+              "Fifth collection with a very long name",
+            ].forEach((collection, index) => {
+              cy.request("POST", "/api/collection", {
+                name: collection,
+                parent_id: THIRD_COLLECTION_ID + index,
+                color: "#509ee3",
+              });
+            });
+          });
+          cy.visit("/collection/root");
+          // 1. Expand out via the chevrons so that all collections are showing
+          openDropdownFor("First collection");
+          openDropdownFor("Second collection");
+          openDropdownFor("Third collection");
+          openDropdownFor("Fourth collection");
+          // 2. Ensure we can see the entire "Fifth level with a long name" collection text
+          cy.findByText("Fifth collection with a very long name");
+        });
+      });
+    });
+
+    describe("managing items", () => {
+      it("should let a user move a collection item via modal", () => {
+        cy.visit("/collection/root");
+
+        // 1. Click on the ... menu
+        openEllipsisMenuFor("Orders");
+
+        // 2. Select "move this" from the popover
+        cy.findByText("Move this item").click();
+        modal().within(() => {
+          cy.findByText(`Move "Orders"?`);
+          // 3. Select a collection that has child collections and hit the right chevron to navigate there
+          cy.findByText("First collection")
+            .next() // right chevron icon
+            .click();
+          cy.findByText("Second collection").click();
+          // 4. Move that item
+          cy.findByText("Move").click();
+        });
+        // Assert that the item no longer exists in "Our collection"...
+        cy.findByText("Orders").should("not.exist");
+
+        openDropdownFor("First collection");
+        // ...and that it is indeed moved inside "Second collection"
+        cy.findByText("Second collection").click();
+        cy.findByText("Orders");
+      });
+
+      it("should allow a user to pin an item", () => {
+        cy.visit("/collection/root");
+        // Assert that we're starting from a scenario with no pins
+        cy.findByText("Pinned items").should("not.exist");
+
+        // 1. Click on the ... menu
+        openEllipsisMenuFor("Orders in a dashboard");
+
+        // 2. Select "pin this" from the popover
+        cy.findByText("Pin this item").click();
+
+        // 3. Should see "pinned items" and the item should be in that section
+        cy.findByText("Pinned items")
+          .parent()
+          .contains("Orders in a dashboard");
+        // 4. Consequently, "Everything else" should now also be visible
+        cy.findByText("Everything else");
+      });
+    });
+
     // [quarantine]: cannot run tests that rely on email setup in CI (yet)
     describe.skip("a new pulse", () => {
       it("should be in the root collection", () => {
@@ -201,4 +304,11 @@ function openDropdownFor(collectionName) {
     .find(".Icon-chevronright")
     .eq(0) // there may be more nested icons, but we need the top level one
     .click();
+}
+
+function openEllipsisMenuFor(item) {
+  cy.findByText(item)
+    .closest("a")
+    .find(".Icon-ellipsis")
+    .click({ force: true });
 }
