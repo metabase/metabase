@@ -171,6 +171,7 @@
                                         [{:channel_type  :email
                                           :schedule_type :daily
                                           :schedule_hour 18
+                                          :enabled       true
                                           :recipients    [{:email "foo@bar.com"}]}]
                                         false))))))
 
@@ -223,6 +224,7 @@
                                        :channels      [{:channel_type  :email
                                                         :schedule_type :daily
                                                         :schedule_hour 18
+                                                        :enabled       true
                                                         :recipients    [{:email "foo@bar.com"}
                                                                         {:id (user->id :crowberto)}]}]
                                        :skip_if_empty false})))))
