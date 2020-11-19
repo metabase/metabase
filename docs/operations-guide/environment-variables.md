@@ -138,7 +138,7 @@ When using the default binning strategy and a number of bins is not provided, th
 Type: boolean<br>
 Default: `true`
 
-Identify when new versions of Metabase are available.
+Identify when new versions of Repente Insights are available.
 
 #### `MB_CLIENT`
 

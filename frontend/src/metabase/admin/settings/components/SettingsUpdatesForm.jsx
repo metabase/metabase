@@ -35,7 +35,7 @@ export default class SettingsUpdatesForm extends Component {
                 "Updates Settings; Update link clicked; " + latestVersion
               }
               className="Button Button--white Button--medium borderless"
-              href="https://metabase.com/start/"
+              href="https://insights.repentefactory.com/"
               target="_blank"
             >
               {t`Update`}

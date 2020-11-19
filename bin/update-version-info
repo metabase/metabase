@@ -27,8 +27,8 @@ echo '{
             "released": "2016-05-04T21:09:36.358Z",
             "patch": false,
             "highlights": [
-                "Tags + Search for Saved Questions", 
-                "Calculated columns", 
+                "Tags + Search for Saved Questions",
+                "Calculated columns",
                 "Faster Syncing of Metadata",
                 "Lots of database driver improvements and bug fixes"
             ]
@@ -38,7 +38,7 @@ echo '{
             "released": "2016-05-04T21:09:36.358Z",
             "patch": true,
             "highlights": [
-                "Fixes for several time alignment issues (timezones)", 
+                "Fixes for several time alignment issues (timezones)",
                 "Resolved problem with SQL Server db connections"
             ]
         },
@@ -47,8 +47,8 @@ echo '{
             "released": "2016-05-04T21:09:36.358Z",
             "patch": false,
             "highlights": [
-                "Fullscreen (and fabulous) Dashboards", 
-                "Say hello to Metabot in Slack"
+                "Fullscreen (and fabulous) Dashboards",
+                "Say hello to RepenteBot in Slack"
             ]
         }
     ]
