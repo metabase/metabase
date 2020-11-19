@@ -268,7 +268,7 @@ export default class PieChart extends Component {
       others.length === 1
         ? others[0]
         : {
-            key: "Other",
+            key: t`Other`,
             value: otherTotal,
             percentage: otherTotal / total,
             color: color("text-light"),
@@ -352,7 +352,7 @@ export default class PieChart extends Component {
             showPercentInTooltip && slice.percentage != null
               ? [
                   {
-                    key: "Percentage",
+                    key: t`Percentage`,
                     value: formatPercent(slice.percentage),
                   },
                 ]
