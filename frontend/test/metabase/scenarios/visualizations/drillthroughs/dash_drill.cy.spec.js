@@ -1,122 +1,87 @@
 // Imported from drillthroughs.e2e.spec.js
 import { restore, signInAsAdmin, withSampleDataset } from "__support__/cypress";
 
-let dash_name_var;
-let dash_num;
-
-function addCardToNewDash(dash_name, card_id) {
-  dash_name_var = dash_name;
-  cy.request("POST", "/api/dashboard", {
-    name: dash_name,
-    parameters: [],
-  });
-  cy.request("POST", `/api/dashboard/${dash_num}/cards`, {
-    id: dash_num,
-    cardId: card_id,
-    parameter_mappings: [],
-  });
-}
+// This question is part of our pre-defined data set used for testing
+const Q2 = {
+  name: "Orders, Count",
+  id: 2,
+};
 
 describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
-  describe("title click action", () => {
-    before(restore);
-
+  describe("card title click action", () => {
     describe("from a scalar card", () => {
-      before(() => {
-        cy.server();
-        cy.route("POST", "/api/card/*/query").as("card");
+      const DASHBOARD_NAME = "Scalar Dash";
 
+      before(() => {
+        restore();
         signInAsAdmin();
 
-        // Make the second question scalar
-        cy.visit("/question/1");
-        cy.contains("Orders");
-        cy.findByText("Visualization").click();
-        cy.get(".Icon-number")
-          .should("be.visible")
-          .click();
-        cy.findByText("Save").click();
-
-        cy.get(".Modal").within(() => {
-          cy.findByText("Save question");
-          cy.findByText("Save").click();
+        // Convert the second question to a scalar (Orders, summarized by count)
+        cy.request("PUT", `/api/card/${Q2.id}`, {
+          display: "scalar",
         });
 
-        // Add it to a new dashboard
-        dash_num = 2;
-        addCardToNewDash("Scalar Dash", 2);
+        addCardToNewDashboard(DASHBOARD_NAME, Q2.id);
 
-        // Click to question from Dashboard
-
-        cy.visit(`/dashboard/${dash_num}`);
-        cy.wait("@card").wait("@card"); // without this, XHR was being aborted in every test run
-        cy.findByText(dash_name_var);
-        cy.findByText("Orders, Count").click();
+        cy.findByText(DASHBOARD_NAME);
+        clickCardTitle(Q2.name);
       });
 
-      // [quarantine] flaky
-      it.skip("should result in a correct query result", () => {
+      it("should result in a correct query result", () => {
         cy.log("**Assert that the url is correct**");
-        cy.url().should("include", "/question/2");
+        cy.location("pathname").should("eq", `/question/${Q2.id}`);
 
         cy.contains("18,760");
       });
     });
 
     describe("from a scalar with active filter applied", () => {
-      before(() => {
-        cy.server();
-        cy.route("POST", "/api/card/*/query").as("card");
+      const DASHBOARD_NAME = "Scalar w Filter Dash";
 
+      before(() => {
+        restore();
         signInAsAdmin();
 
-        // Apply filter to scalar question
-        cy.visit("/question/3");
-        cy.findByText("Filter").click();
-        cy.findByText("Quantity").click();
-        cy.findByText("2").click();
-        cy.findByText("Add filter").click();
-        cy.findByText("1,000");
-        cy.findByText("6,000").should("not.exist");
-
-        cy.findByText("Save").click();
-
-        cy.get(".Modal").within(() => {
-          cy.findByText("Save question");
-          cy.findByText("Save").click();
+        // Convert Q2 to a scalar with a filter applied
+        withSampleDataset(({ ORDERS }) => {
+          cy.request("PUT", `/api/card/${Q2.id}`, {
+            dataset_query: {
+              database: 1,
+              query: {
+                aggregation: [["count"]],
+                filter: [">", ["field-id", ORDERS.TOTAL], 100],
+                "source-table": 2,
+              },
+              type: "query",
+            },
+            display: "scalar",
+          });
         });
 
-        // Add it to a new dashboard
-        dash_num = 3;
-        addCardToNewDash("Scalar w Filter Dash", 3);
+        addCardToNewDashboard(DASHBOARD_NAME, Q2.id);
 
-        // Go to dashboard
-        cy.visit(`/dashboard/${dash_num}`);
-        cy.wait("@card").wait("@card");
-        cy.findByText(dash_name_var);
-        cy.contains("Orders,").click();
+        cy.findByText(DASHBOARD_NAME);
+        clickCardTitle(Q2.name);
       });
 
-      // [quarantine] flaky
-      it.skip("should result in a correct query result", () => {
-        cy.url().should("include", "/question/3");
-        cy.findByText("1,000");
-        cy.findByText("6,000").should("not.exist");
+      it("should result in a correct query result", () => {
+        cy.location("pathname").should("eq", `/question/${Q2.id}`);
+        cy.findByText("5,995");
       });
     });
 
     describe("from a dashcard multiscalar legend", () => {
-      before(() => {
-        cy.server();
-        cy.route("POST", "/api/card/*/query").as("card");
+      const DASHBOARD_NAME = "Multiscalar Dash";
+      const CARD_NAME = "Multiscalar Question";
 
+      before(() => {
+        restore();
         signInAsAdmin();
 
         // Create muliscalar card
         withSampleDataset(({ PEOPLE, PEOPLE_ID }) => {
           cy.request("POST", "/api/card", {
-            visualization_settings: {},
-            name: "Multiscalar question",
+            name: CARD_NAME,
             dataset_query: {
               database: 1,
               query: {
@@ -130,24 +95,43 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               type: "query",
             },
             display: "line",
+            visualization_settings: {},
+          }).then(({ body: { id: CARD_ID } }) => {
+            addCardToNewDashboard(DASHBOARD_NAME, CARD_ID);
+
+            cy.findByText(DASHBOARD_NAME);
+            cy.findByText(CARD_NAME).click();
           });
-
-          addCardToNewDash("Multiscalar Dash", 4);
         });
-
-        cy.visit("collection/root?type=dashboard");
-        cy.findByText(dash_name_var).click();
-        cy.wait("@card").wait("@card");
-        cy.findByText("All personal collection").should("not.exist");
-        cy.contains("Multiscalar question").click({ force: true });
       });
 
-      // [quarantine] flaky
-      it.skip("should result in a correct query result", () => {
-        cy.url().should("include", "/question/4");
-        cy.get(".dot");
+      it("should result in a correct query result", () => {
         cy.findByText("Affiliate");
+        cy.get(".dot").should("have.length.of.at.least", 100);
       });
     });
   });
 });
+
+function clickCardTitle(card_name) {
+  cy.get(".Scalar-title")
+    .contains(card_name)
+    .click();
+}
+
+function addCardToNewDashboard(dashboard_name, card_id) {
+  // Create a new dashboard
+  cy.request("POST", "/api/dashboard", {
+    name: dashboard_name,
+  }).then(({ body: { id: DASHBOARD_ID } }) => {
+    // Add a card to it (with predefined size 6,4 simply for readability)
+    cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+      id: DASHBOARD_ID,
+      cardId: card_id,
+      sizeX: 6,
+      sizeY: 4,
+    });
+    // Visit newly created dashboard
+    cy.visit(`/dashboard/${DASHBOARD_ID}`);
+  });
+}
