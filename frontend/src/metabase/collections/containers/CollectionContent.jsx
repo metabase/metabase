@@ -161,7 +161,13 @@ export default class CollectionContent extends React.Component {
     return (
       <Box pt={2}>
         <Box w={"80%"} ml="auto" mr="auto">
-          <Flex align="center" pt={2} pb={3}>
+          <Flex
+            align="center"
+            py={3}
+            className={cx({
+              "border-bottom": !collectionHasPins && unpinnedItems.length > 0,
+            })}
+          >
             <Flex align="center">
               <PageHeading className="text-wrap">{collection.name}</PageHeading>
               {collection.description && (
@@ -244,6 +250,18 @@ export default class CollectionContent extends React.Component {
                         index={index}
                         item={item}
                         collection={collection}
+                        onMove={selectedItems =>
+                          this.setState({
+                            selectedItems,
+                            selectedAction: "move",
+                          })
+                        }
+                        onCopy={selectedItems =>
+                          this.setState({
+                            selectedItems,
+                            selectedAction: "copy",
+                          })
+                        }
                       />
                       <PinPositionDropTarget
                         pinIndex={item.collection_position}
@@ -426,7 +444,7 @@ export default class CollectionContent extends React.Component {
   }
 }
 
-const PinnedItem = ({ item, index, collection }) => (
+const PinnedItem = ({ item, index, collection, onCopy, onMove }) => (
   <Link
     key={index}
     to={item.getUrl()}
@@ -438,6 +456,9 @@ const PinnedItem = ({ item, index, collection }) => (
       item={item}
       collection={collection}
       onPin={() => item.setPinned(false)}
+      onMove={onMove}
+      onCopy={onCopy}
+      pinned
     />
   </Link>
 );
@@ -550,6 +571,7 @@ export const NormalItem = ({
   onMove,
   onCopy,
   onPin,
+  pinned,
 }) => (
   <Link
     to={item.getUrl()}
@@ -583,6 +605,7 @@ export const NormalItem = ({
       onToggleSelected={() => {
         onToggleSelected(item);
       }}
+      pinned={pinned}
     />
   </Link>
 );

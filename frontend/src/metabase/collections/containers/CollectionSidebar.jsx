@@ -11,8 +11,6 @@ import Collection from "metabase/entities/collections";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
-import Greeting from "metabase/collections/containers/Greeting";
-
 import CollectionsList from "metabase/collections/components/CollectionsList";
 import CollectionLink from "metabase/collections/components/CollectionLink";
 
@@ -38,9 +36,6 @@ const Sidebar = styled(Box)`
 
 const CollectionSidebar = ({ currentUser, isRoot, collectionId }) => (
   <Sidebar w={340} pt={3}>
-    <Box pl="28px">
-      <Greeting />
-    </Box>
     <CollectionLink
       to={Urls.collection("root")}
       selected={isRoot}
