@@ -34,7 +34,7 @@ const Collections = createEntity({
       /* Parts of the UI, like ItemPicker don't yet know about the /tree endpoint and break if it's used,
       so choose which endpoint to use based on the presence of a "tree" param
       */
-      params.tree
+      params && params.tree
         ? listCollectionsTree(params, ...args)
         : listCollections(params, ...args),
   },
