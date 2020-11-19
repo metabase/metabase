@@ -108,18 +108,17 @@
           (mt/with-temp Card [card {:dataset_query query}]
             (testing "GET /api/pulse/preview_card/:id"
               (is (= 22
-                     (html->row-count ((mt/user->client :rasta) :get 200 (format "pulse/preview_card/%d" (u/get-id card)))))))
-
+                     (html->row-count (mt/user-http-request :rasta :get 200 (format "pulse/preview_card/%d" (u/get-id card)))))))
             (testing "POST /api/pulse/test"
               (mt/with-fake-inbox
-                ((mt/user->client :rasta) :post 200 "pulse/test" {:name     "venues"
-                                                                  :cards    [{:id          (u/get-id card)
-                                                                              :include_csv true
-                                                                              :include_xls false}]
-                                                                  :channels [{:channel_type :email
-                                                                              :enabled      :true
-                                                                              :recipients   [{:id    (mt/user->id :rasta)
-                                                                                              :email "rasta@metabase.com"}]}]})
+                (mt/user-http-request :rasta :post 200 "pulse/test" {:name     "venues"
+                                                                     :cards    [{:id          (u/get-id card)
+                                                                                 :include_csv true
+                                                                                 :include_xls false}]
+                                                                     :channels [{:channel_type :email
+                                                                                 :enabled      :true
+                                                                                 :recipients   [{:id    (mt/user->id :rasta)
+                                                                                                 :email "rasta@metabase.com"}]}]})
                 (let [[{html :content} {attachment :content}] (get-in @mt/inbox ["rasta@metabase.com" 0 :body])]
                   (testing "email"
                     (is (= 22

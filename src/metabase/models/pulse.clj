@@ -102,10 +102,10 @@
 (def CardRef
   "Schema for the map we use to internally represent the fact that a Card is in a Notification and the details about its
   presence there."
-  (su/with-api-error-message {:id                su/IntGreaterThanZero
-                              :include_csv       s/Bool
-                              :include_xls       s/Bool
-                              :dashboard_card_id (s/maybe su/IntGreaterThanZero)}
+  (su/with-api-error-message {:id                                 su/IntGreaterThanZero
+                              :include_csv                        s/Bool
+                              :include_xls                        s/Bool
+                              (s/optional-key :dashboard_card_id) (s/maybe su/IntGreaterThanZero)}
     (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
 
 (def HybridPulseCard
