@@ -16,9 +16,15 @@ const CollectionLink = styled(Link)`
   align-items: center;
   font-weight: bold;
   color: ${props => (props.selected ? "white" : color("brand"))};
-  background-color: ${props => (props.selected ? color("brand") : "inherit")};
+  background-color: ${props =>
+    props.selected
+      ? color("brand")
+      : props.hovered
+      ? color("brand-light")
+      : "inherit"};
   :hover {
-    background-color: ${props => !props.selected && color("bg-medium")};
+    background-color: ${props =>
+      props.hovered ? color("brand") : "bg-medium"};
   }
   .Icon {
     fill: ${props => props.selected && "white"};

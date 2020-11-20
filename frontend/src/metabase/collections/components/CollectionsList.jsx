@@ -36,6 +36,8 @@ class CollectionsList extends React.Component {
                       depth={this.props.depth}
                       // when we click on a link, if there are children, expand to show sub collections
                       onClick={() => c.children && action(c.id)}
+                      hovered={hovered}
+                      highlighted={highlighted}
                     >
                       <Flex
                         className="relative"
