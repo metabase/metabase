@@ -144,7 +144,7 @@ describe("scenarios > public", () => {
         });
     });
 
-    it("should allow users to create embedded questions", () => {
+    it.skip("should allow users to create embedded questions", () => {
       cy.request("PUT", "/api/setting/enable-embedding", { value: true });
       cy.request("PUT", "/api/setting/site-url", {
         value: "http://localhost:4000/", // Cypress.config().baseUrl
@@ -167,7 +167,7 @@ describe("scenarios > public", () => {
       });
     });
 
-    it("should allow users to create public dashboards", () => {
+    it.skip("should allow users to create public dashboards", () => {
       cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
 
       cy.visit(`/dashboard/${dashboardId}`);
@@ -188,7 +188,7 @@ describe("scenarios > public", () => {
         });
     });
 
-    it("should allow users to create embedded dashboards", () => {
+    it.skip("should allow users to create embedded dashboards", () => {
       cy.request("PUT", "/api/setting/enable-embedding", { value: true });
       cy.request("PUT", "/api/setting/site-url", {
         value: "http://localhost:4000/", // Cypress.config().baseUrl
@@ -238,7 +238,7 @@ describe("scenarios > public", () => {
           cy.contains(COUNT_DOOHICKEY);
         });
 
-        it(`should be able to view public dashboards`, () => {
+        it.skip(`should be able to view public dashboards`, () => {
           cy.visit(dashboardPublicLink);
           cy.contains(COUNT_ALL);
 
@@ -249,7 +249,7 @@ describe("scenarios > public", () => {
           cy.contains(COUNT_DOOHICKEY);
         });
 
-        it(`should be able to view embedded dashboards`, () => {
+        it.skip(`should be able to view embedded dashboards`, () => {
           cy.visit(dashboardEmbedUrl);
           cy.contains(COUNT_ALL);
 
