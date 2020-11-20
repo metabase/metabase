@@ -12,6 +12,7 @@ const CollectionLink = styled(Link)`
   padding-top: 8px;
   padding-bottom: 8px;
   display: flex;
+  flex-shrink: 0;
   margin-left: ${props => -props.depth * SIDEBAR_SPACER}px;
   align-items: center;
   font-weight: bold;
