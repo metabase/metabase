@@ -5,15 +5,18 @@ import { color } from "metabase/lib/colors";
 import { SIDEBAR_SPACER } from "../constants";
 
 const CollectionLink = styled(Link)`
-  position: relative;
+  margin-left: ${props =>
+    // use negative margin to reset our potentially nested item back by the depth
+    -props.depth * SIDEBAR_SPACER}px;
   padding-left: ${props =>
+    // now pad it by the depth so we get hover states that are the full width of the sidebar
     props.depth * (SIDEBAR_SPACER * 2) + SIDEBAR_SPACER}px;
+  position: relative;
   padding-right: 8px;
   padding-top: 8px;
   padding-bottom: 8px;
   display: flex;
   flex-shrink: 0;
-  margin-left: ${props => -props.depth * SIDEBAR_SPACER}px;
   align-items: center;
   font-weight: bold;
   color: ${props => (props.selected ? "white" : color("brand"))};
