@@ -199,6 +199,7 @@ export default class CollectionContent extends React.Component {
                 collection.can_write &&
                 !collection.personal_owner_id && (
                   <CollectionEditMenu
+                    tooltip={t`Edit collection`}
                     collectionId={collectionId}
                     isAdmin={isAdmin}
                     isRoot={isRoot}
@@ -506,7 +507,7 @@ const CollectionSectionHeading = ({ children }) => (
   </h5>
 );
 
-const CollectionEditMenu = ({ isRoot, isAdmin, collectionId }) => {
+const CollectionEditMenu = ({ isRoot, isAdmin, collectionId, tooltip }) => {
   const items = [];
   if (!isRoot) {
     items.push({
@@ -525,7 +526,7 @@ const CollectionEditMenu = ({ isRoot, isAdmin, collectionId }) => {
     });
   }
   return items.length > 0 ? (
-    <EntityMenu items={items} triggerIcon="pencil" />
+    <EntityMenu items={items} triggerIcon="pencil" tooltip={tooltip} />
   ) : null;
 };
 
