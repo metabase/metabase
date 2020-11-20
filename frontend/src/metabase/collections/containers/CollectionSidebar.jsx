@@ -18,6 +18,7 @@ import { SIDEBAR_SPACER } from "metabase/collections/constants";
 import {
   nonPersonalCollection,
   currentUserPersonalCollections,
+  getParentPath,
 } from "metabase/collections/utils";
 
 const getCurrentUser = ({ currentUser }) => ({ currentUser });
@@ -55,7 +56,12 @@ class CollectionSidebar extends React.Component {
     });
   };
   componentDidMount() {
-    // TODO - set the collections open here
+    // an array to store the ancestors
+    const { collectionId, collections } = this.props;
+
+    const ancestors = getParentPath(collections, collectionId);
+    console.log(ancestors);
+    this.setState({ openCollections: ancestors });
   }
   render() {
     const { currentUser, isRoot, collectionId, list } = this.props;
