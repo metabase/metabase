@@ -40,7 +40,7 @@ describe("getParentPath", () => {
         ],
       },
     ];
-    const expected = [1, 5];
+    const expected = [1, 5, 6];
     const path = getParentPath(testList, 6);
     expect(path).toEqual(expected);
   });

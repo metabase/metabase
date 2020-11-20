@@ -91,7 +91,6 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText(sub_collection.name).should("not.exist");
 
         cy.visit(`/collection/${collection.id}`);
-        openDropdownFor(collection.name);
         cy.findByText(sub_collection.name);
       });
 
@@ -104,7 +103,6 @@ describe("scenarios > collection_defaults", () => {
         // this changed in 0.38
         // It used to be "Robert Tableton's personal collection"
         // but since we're logged in as admin, it's showing "Your personal collection"
-        openDropdownFor("Your personal collection");
         cy.findByText(sub_collection.name);
       });
     });

@@ -23,13 +23,14 @@ export function currentUserPersonalCollections(collectionList, userID) {
 }
 
 export function getParentPath(collections, targetId) {
+  console.log("collections", collections);
   if (collections.length === 0) {
     return null; // not found!
   }
 
   for (const collection of collections) {
     if (collection.id === targetId) {
-      return collection.id; // we found it!
+      return [collection.id]; // we found it!
     }
     if (collection.children) {
       const path = getParentPath(collection.children, targetId);
