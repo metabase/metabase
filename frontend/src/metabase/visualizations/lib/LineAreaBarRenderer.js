@@ -136,7 +136,7 @@ function getXAxisProps(props, datas, warn) {
   const xValues = isHistogram
     ? [...rawXValues, Math.max(...rawXValues) + xInterval]
     : props.chartType === "waterfall"
-    ? [...rawXValues, "Total"]
+    ? [...rawXValues, t`Total`]
     : rawXValues;
 
   return {
