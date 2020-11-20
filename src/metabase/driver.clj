@@ -413,7 +413,7 @@
 
     ;; Does the driver support percentile calculations (including median)
     :percentile-aggregations
-    
+
     ;; Does this driver support pivot table pushdown? (executing a pivot table in a driver-specific way)
     :pivot-table-pushdown})
 
