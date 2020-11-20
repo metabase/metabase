@@ -14,8 +14,15 @@ function addMongoDatabase() {
   cy.contains("MongoDB").click({ force: true });
   cy.contains("Additional Mongo connection");
 
-  typeAndBlurUsingLabel("Name", "MongoDB");
-  typeAndBlurUsingLabel("Database name", "admin");
+  typeAndBlurUsingLabel("Name", "QA Mongo4");
+  typeAndBlurUsingLabel("Host", "localhost");
+  cy.findByPlaceholderText("27017")
+    .click()
+    .type("27017");
+  typeAndBlurUsingLabel("Database name", "sample");
+  typeAndBlurUsingLabel("Username", "metabase");
+  typeAndBlurUsingLabel("Password", "metasample123");
+  typeAndBlurUsingLabel("Authentication Database", "admin");
 
   cy.findByText("Save")
     .should("not.be.disabled")
@@ -51,8 +58,8 @@ describe("mongodb > admin > add", () => {
     cy.url().should("match", /\/admin\/databases\?created=\d+$/);
     cy.visit("/question/new");
     cy.contains("Simple question").click();
-    cy.contains("MongoDB").click();
-    cy.contains("Version").click();
-    cy.contains("featureCompatibilityVersion");
+    cy.contains("QA Mongo4").click();
+    cy.contains("Orders").click();
+    cy.contains("37.65");
   });
 });

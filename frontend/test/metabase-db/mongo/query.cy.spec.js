@@ -3,47 +3,45 @@ import {
   restore,
   modal,
   signInAsNormalUser,
+  typeAndBlurUsingLabel,
 } from "__support__/cypress";
 
 function addMongoDatabase() {
-  cy.request("POST", "/api/database", {
-    engine: "mongo",
-    name: "MongoDB",
-    details: {
-      host: "localhost",
-      dbname: "admin",
-      port: 27017,
-      user: null,
-      pass: null,
-      authdb: null,
-      "additional-options": null,
-      "use-srv": false,
-      "tunnel-enabled": false,
-    },
-    auto_run_queries: true,
-    is_full_sync: true,
-    schedules: {
-      cache_field_values: {
-        schedule_day: null,
-        schedule_frame: null,
-        schedule_hour: 0,
-        schedule_type: "daily",
-      },
-      metadata_sync: {
-        schedule_day: null,
-        schedule_frame: null,
-        schedule_hour: null,
-        schedule_type: "hourly",
-      },
-    },
-  });
+  cy.visit("/admin/databases/create");
+  cy.contains("Database type")
+    .closest(".Form-field")
+    .find("a")
+    .click();
+  cy.contains("MongoDB").click({ force: true });
+  cy.contains("Additional Mongo connection");
+
+  typeAndBlurUsingLabel("Name", "QA Mongo4");
+  typeAndBlurUsingLabel("Host", "localhost");
+  cy.findByPlaceholderText("27017")
+    .click()
+    .type("27017");
+  typeAndBlurUsingLabel("Database name", "sample");
+  typeAndBlurUsingLabel("Username", "metabase");
+  typeAndBlurUsingLabel("Password", "metasample123");
+  typeAndBlurUsingLabel("Authentication Database", "admin");
+
+  cy.findByText("Save")
+    .should("not.be.disabled")
+    .click();
 }
 
 describe("mongodb > user > query", () => {
   before(() => {
+    cy.server();
+    cy.route({
+      method: "POST",
+      url: "/api/database",
+    }).as("createDatabase");
+
     restore();
     signInAsAdmin();
     addMongoDatabase();
+    cy.wait("@createDatabase");
   });
 
   beforeEach(() => {
@@ -53,15 +51,15 @@ describe("mongodb > user > query", () => {
   it("can query a Mongo database as a user", () => {
     cy.visit("/question/new");
     cy.contains("Simple question").click();
-    cy.contains("MongoDB").click();
-    cy.contains("Version").click();
-    cy.contains("featureCompatibilityVersion");
+    cy.contains("QA Mongo4").click();
+    cy.contains("Orders").click();
+    cy.contains("37.65");
   });
 
-  it.only("can write a native MongoDB query", () => {
+  it("can write a native MongoDB query", () => {
     cy.visit("/question/new");
     cy.contains("Native query").click();
-    cy.contains("MongoDB").click();
+    cy.contains("QA Mongo4").click();
 
     cy.get(".ace_content").type(`[ { $count: "Total" } ]`, {
       parseSpecialCharSequences: false,
@@ -76,7 +74,7 @@ describe("mongodb > user > query", () => {
 
     cy.visit("/question/new");
     cy.contains("Native query").click();
-    cy.contains("MongoDB").click();
+    cy.contains("QA Mongo4").click();
 
     cy.get(".ace_content").type(`[ { $count: "Total" } ]`, {
       parseSpecialCharSequences: false,
