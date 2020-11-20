@@ -165,8 +165,17 @@ export default class ChartClickActions extends Component {
       );
     }
 
-    const sections = _.chain(clickActions)
-      .groupBy("section")
+    const groupedClickActions = _.groupBy(clickActions, "section");
+    if (groupedClickActions["sum"].length === 1) {
+      // if there's only one "sum" click action, merge it into "summarize" and change its button type and icon
+      groupedClickActions["summarize"].push({
+        ...groupedClickActions["sum"][0],
+        buttonType: "horizontal",
+        icon: "number",
+      });
+      delete groupedClickActions["sum"];
+    }
+    const sections = _.chain(groupedClickActions)
       .pairs()
       .sortBy(([key]) => (SECTIONS[key] ? SECTIONS[key].index : 99))
       .value();
@@ -324,7 +333,7 @@ export const ChartClickAction = ({
     return (
       <div
         className={cx(className, {
-          mb1: action.buttonType === "horizontal",
+          mb1: action.buttonType === "horizontal" && !isLastItem,
         })}
         onClick={() => handleClickAction(action)}
       >
