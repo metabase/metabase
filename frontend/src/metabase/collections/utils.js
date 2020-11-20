@@ -23,7 +23,6 @@ export function currentUserPersonalCollections(collectionList, userID) {
 }
 
 export function getParentPath(collections, targetId) {
-  console.log("collections", collections);
   if (collections.length === 0) {
     return null; // not found!
   }
