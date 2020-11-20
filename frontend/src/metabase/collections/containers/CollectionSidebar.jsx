@@ -89,6 +89,8 @@ class CollectionSidebar extends React.Component {
           <Box mt={"32px"}>
             <CollectionsList
               openCollections={this.state.openCollections}
+              onClose={this.onClose}
+              onOpen={this.onOpen}
               collections={currentUserPersonalCollections(list, currentUser.id)}
               initialIcon="person"
               currentCollection={collectionId}
