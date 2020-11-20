@@ -91,16 +91,17 @@
                        (map :name)))]
           (testing "shouldn't show Collections of a different `:namespace` by default"
             (is (= ["Normal Collection"]
-                   (collection-names ((mt/user->client :rasta) :get 200 "collection")))))
+                   (collection-names (mt/user-http-request :rasta :get 200 "collection")))))
 
+          (perms/grant-collection-read-permissions! (group/all-users) coins-id)
           (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`"
             (testing "?namespace=currency"
               (is (= ["Coin Collection"]
-                     (collection-names ((mt/user->client :rasta) :get 200 "collection?namespace=currency")))))
+                     (collection-names (mt/user-http-request :rasta :get 200 "collection?namespace=currency")))))
 
             (testing "?namespace=stamps"
               (is (= []
-                     (collection-names ((mt/user->client :rasta) :get 200 "collection?namespace=stamps")))))))))))
+                     (collection-names (mt/user-http-request :rasta :get 200 "collection?namespace=stamps")))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -442,7 +443,7 @@
               :effective_ancestors []
               :parent_id           nil}
              (with-some-children-of-collection nil
-               ((mt/user->client :crowberto) :get 200 "collection/root")))))
+               (mt/user-http-request :crowberto :get 200 "collection/root")))))
 
     (testing "Make sure you can see everything for Users that can see everything"
       (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
@@ -450,7 +451,7 @@
               (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
               (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
              (with-some-children-of-collection nil
-               (-> ((mt/user->client :crowberto) :get 200 "collection/root/items")
+               (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                    (remove-non-test-items &ids)
                    mt/boolean-ids-and-timestamps))))
 
@@ -458,7 +459,7 @@
         (is (= [(collection-item "Rasta Toucan's Personal Collection")]
                ;; if a User doesn't have perms for the Root Collection then they don't get to see things with no collection_id
                (with-some-children-of-collection nil
-                 (mt/boolean-ids-and-timestamps ((mt/user->client :rasta) :get 200 "collection/root/items")))))
+                 (mt/boolean-ids-and-timestamps (mt/user-http-request :rasta :get 200 "collection/root/items")))))
 
         (testing "...but if they have read perms for the Root Collection they should get to see them"
           (with-some-children-of-collection nil
@@ -469,7 +470,7 @@
                       (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
                       (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
                       (collection-item "Rasta Toucan's Personal Collection")]
-                     (-> ((mt/user->client :rasta) :get 200 "collection/root/items")
+                     (-> (mt/user-http-request :rasta :get 200 "collection/root/items")
                          (remove-non-test-items &ids)
                          mt/boolean-ids-and-timestamps ))))))))
 
@@ -479,7 +480,7 @@
                :description nil
                :model       "collection"
                :can_write   true}]
-             (->> ((mt/user->client :rasta) :get 200 "collection/root/items")
+             (->> (mt/user-http-request :rasta :get 200 "collection/root/items")
                   (filter #(str/includes? (:name %) "Personal Collection"))))))
 
     (testing "For admins, only return our own Personal Collection (!)"
@@ -488,7 +489,7 @@
                :description nil
                :model       "collection"
                :can_write   true}]
-             (->> ((mt/user->client :crowberto) :get 200 "collection/root/items")
+             (->> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                   (filter #(str/includes? (:name %) "Personal Collection")))))
 
       (testing "That includes sub-collections of Personal Collections! I shouldn't see them!"
@@ -500,7 +501,7 @@
                    :description nil
                    :model       "collection"
                    :can_write   true}]
-                 (->> ((mt/user->client :crowberto) :get 200 "collection/root/items")
+                 (->> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                       (filter #(str/includes? (:name %) "Personal Collection"))))))))
 
     (testing "Can we look for `archived` stuff with this endpoint?"
@@ -511,7 +512,7 @@
                  :display             "table"
                  :favorite            false
                  :model               "card"}]
-               (for [item ((mt/user->client :crowberto) :get 200 "collection/root/items?archived=true")]
+               (for [item (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true")]
                  (dissoc item :id))))))))
 
 
@@ -521,11 +522,11 @@
   "Call the API with Rasta to fetch the 'Root' Collection and put the `:effective_` results in a nice format for the
   tests below."
   [& additional-get-params]
-  (format-ancestors ((mt/user->client :rasta) :get 200 "collection/root")))
+  (format-ancestors (mt/user-http-request :rasta :get 200 "collection/root")))
 
 (defn- api-get-root-collection-children
   [& additional-get-params]
-  (mt/boolean-ids-and-timestamps (apply (mt/user->client :rasta) :get 200 "collection/root/items" additional-get-params)))
+  (mt/boolean-ids-and-timestamps (apply mt/user-http-request :rasta :get 200 "collection/root/items" additional-get-params)))
 
 (deftest fetch-root-collection-items-test
   (testing "GET /api/collection/root/items"
@@ -570,15 +571,16 @@
                        (map :name)))]
           (testing "should only show Collections in the 'default' namespace by default"
             (is (= ["Normal Collection"]
-                   (collection-names ((mt/user->client :rasta) :get 200 "collection/root/items")))))
+                   (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items")))))
 
           (testing "By passing `:namespace` we should be able to see Collections in that `:namespace`"
+            (perms/grant-collection-read-permissions! (group/all-users) coins-id)
             (testing "?namespace=currency"
               (is (= ["Coin Collection"]
-                     (collection-names ((mt/user->client :rasta) :get 200 "collection/root/items?namespace=currency")))))
+                     (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=currency")))))
             (testing "?namespace=stamps"
               (is (= []
-                     (collection-names ((mt/user->client :rasta) :get 200 "collection/root/items?namespace=stamps")))))))))))
+                     (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=stamps")))))))))))
 
 (deftest root-collection-snippets-test
   (testing "GET /api/collection/root/items?namespace=snippets"
@@ -601,21 +603,21 @@
           (is (= [{:id    snippet-id
                    :name  "My Snippet"
                    :model "snippet"}]
-                 (only-test-items ((mt/user->client :rasta) :get 200 "collection/root/items?namespace=snippets"))))
+                 (only-test-items (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=snippets"))))
 
           (testing "\nSnippets should not come back for the default namespace"
             (is (= ["My Dashboard"]
-                   (only-test-item-names ((mt/user->client :rasta) :get 200 "collection/root/items")))))
+                   (only-test-item-names (mt/user-http-request :rasta :get 200 "collection/root/items")))))
 
           (testing "\nShould be able to fetch archived Snippets"
             (is (= ["Archived Snippet"]
-                   (only-test-item-names ((mt/user->client :rasta) :get 200
-                                          "collection/root/items?namespace=snippets&archived=true")))))
+                   (only-test-item-names (mt/user-http-request :rasta :get 200
+                                                               "collection/root/items?namespace=snippets&archived=true")))))
 
           (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
             (is (= ["My Snippet"]
-                   (only-test-item-names ((mt/user->client :rasta) :get 200
-                                          "collection/root/items?namespace=snippets&model=snippet"))))))))))
+                   (only-test-item-names (mt/user-http-request :rasta :get 200
+                                                               "collection/root/items?namespace=snippets&model=snippet"))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -634,15 +636,15 @@
                  :archived          false
                  :location          "/"
                  :personal_owner_id nil})
-               (-> ((mt/user->client :crowberto) :post 200 "collection"
-                    {:name "Stamp Collection", :color "#123456"})
+               (-> (mt/user-http-request :crowberto :post 200 "collection"
+                                         {:name "Stamp Collection", :color "#123456"})
                    (dissoc :id))))))
 
     (testing "\ntest that non-admins aren't allowed to create a collection in the root collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (is (= "You don't have permissions to do that."
-               ((mt/user->client :rasta) :post 403 "collection"
-                {:name "Stamp Collection", :color "#123456"})))))
+               (mt/user-http-request :rasta :post 403 "collection"
+                                     {:name "Stamp Collection", :color "#123456"})))))
 
     (testing "\nCan a non-admin user with Root Collection perms add a new collection to the Root Collection? (#8949)"
       (mt/with-model-cleanup [Collection]
@@ -656,8 +658,8 @@
                      :color    "#123456"
                      :location "/"
                      :slug     "stamp_collection"})
-                   (dissoc ((mt/user->client :rasta) :post 200 "collection"
-                            {:name "Stamp Collection", :color "#123456"})
+                   (dissoc (mt/user-http-request :rasta :post 200 "collection"
+                                                 {:name "Stamp Collection", :color "#123456"})
                            :id)))))))
 
     (testing "\nCan I create a Collection as a child of an existing collection?"
@@ -671,11 +673,11 @@
                    :description "Collection of basketball cards including limited-edition holographic Draymond Green"
                    :color       "#ABCDEF"
                    :location    "/A/C/D/"})
-                 (-> ((mt/user->client :crowberto) :post 200 "collection"
-                      {:name        "Trading Card Collection"
-                       :color       "#ABCDEF"
-                       :description "Collection of basketball cards including limited-edition holographic Draymond Green"
-                       :parent_id   (u/get-id d)})
+                 (-> (mt/user-http-request :crowberto :post 200 "collection"
+                                           {:name        "Trading Card Collection"
+                                            :color       "#ABCDEF"
+                                            :description "Collection of basketball cards including limited-edition holographic Draymond Green"
+                                            :parent_id   (u/get-id d)})
                      (update :location collection-test/location-path-ids->names)
                      (update :id integer?)))))))
 
@@ -685,11 +687,11 @@
           (is (schema= {:name      (s/eq collection-name)
                         :namespace (s/eq "snippets")
                         s/Keyword  s/Any}
-                       ((mt/user->client :crowberto) :post 200 "collection"
-                        {:name       collection-name
-                         :color      "#f38630"
-                         :descrption "My SQL Snippets"
-                         :namespace  "snippets"})))
+                       (mt/user-http-request :crowberto :post 200 "collection"
+                                             {:name       collection-name
+                                              :color      "#f38630"
+                                              :descrption "My SQL Snippets"
+                                              :namespace  "snippets"})))
           (finally
             (db/delete! Collection :name collection-name)))))))
 
@@ -707,16 +709,17 @@
                  :name     "My Beautiful Collection"
                  :slug     "my_beautiful_collection"
                  :color    "#ABCDEF"
-                 :location "/"})
-               ((mt/user->client :crowberto) :put 200 (str "collection/" (u/get-id collection))
-                {:name "My Beautiful Collection", :color "#ABCDEF"})))))
+                 :location "/"
+                 :parent_id nil})
+               (mt/user-http-request :crowberto :put 200 (str "collection/" (u/get-id collection))
+                                     {:name "My Beautiful Collection", :color "#ABCDEF"})))))
 
     (testing "check that users without write perms aren't allowed to update a Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
           (is (= "You don't have permissions to do that."
-                 ((mt/user->client :rasta) :put 403 (str "collection/" (u/get-id collection))
-                  {:name "My Beautiful Collection", :color "#ABCDEF"}))))))))
+                 (mt/user-http-request :rasta :put 403 (str "collection/" (u/get-id collection))
+                                       {:name "My Beautiful Collection", :color "#ABCDEF"}))))))))
 
 (deftest archive-collection-test
   (testing "PUT /api/collection/:id"
@@ -738,8 +741,8 @@
                                                              :pulse_channel_id pc-id}]]
         (mt/with-fake-inbox
           (mt/with-expected-messages 2
-            ((mt/user->client :crowberto) :put 200 (str "collection/" collection-id)
-             {:name "My Beautiful Collection", :color "#ABCDEF", :archived true}))
+            (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id)
+                                  {:name "My Beautiful Collection", :color "#ABCDEF", :archived true}))
           (testing "emails"
             (is (= (merge (mt/email-to :crowberto {:subject "One of your alerts has stopped working",
                                                    :body    {"the question was archived by Crowberto Corv" true}})
@@ -754,8 +757,8 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
           (is (= "You don't have permissions to do that."
-                 ((mt/user->client :rasta) :put 403 (str "collection/" (u/get-id collection))
-                  {:archived true})))))
+                 (mt/user-http-request :rasta :put 403 (str "collection/" (u/get-id collection))
+                                       {:archived true})))))
 
       (testing "Perms checking should be recursive as well..."
         ;; Create Collections A > B, and grant permissions for A. You should not be allowed to archive A because you
@@ -765,8 +768,8 @@
                           Collection [collection-b {:location (collection/children-location collection-a)}]]
             (perms/grant-collection-readwrite-permissions! (group/all-users) collection-a)
             (is (= "You don't have permissions to do that."
-                   ((mt/user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
-                    {:archived true})))))))))
+                   (mt/user-http-request :rasta :put 403 (str "collection/" (u/get-id collection-a))
+                                         {:archived true})))))))))
 
 (deftest move-collection-test
   (testing "PUT /api/collection/:id"
@@ -778,9 +781,10 @@
                  :name     "E"
                  :slug     "e"
                  :color    "#ABCDEF"
-                 :location "/A/B/"})
-               (-> ((mt/user->client :crowberto) :put 200 (str "collection/" (u/get-id e))
-                    {:parent_id (u/get-id b)})
+                 :location "/A/B/"
+                 :parent_id (u/get-id b)})
+               (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/get-id e))
+                                         {:parent_id (u/get-id b)})
                    (update :location collection-test/location-path-ids->names)
                    (update :id integer?))))))
 
@@ -791,8 +795,8 @@
                           Collection [collection-b]]
             (perms/grant-collection-readwrite-permissions! (group/all-users) collection-a)
             (is (= "You don't have permissions to do that."
-                   ((mt/user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
-                    {:parent_id (u/get-id collection-b)}))))))
+                   (mt/user-http-request :rasta :put 403 (str "collection/" (u/get-id collection-a))
+                                         {:parent_id (u/get-id collection-b)}))))))
 
       (testing "Perms checking should be recursive as well..."
         (testing "Create A, B, and C; B is a child of A."
@@ -806,8 +810,8 @@
                 (doseq [collection [collection-a collection-b]]
                   (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
                 (is (= "You don't have permissions to do that."
-                       ((mt/user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
-                        {:parent_id (u/get-id collection-c)}))))))
+                       (mt/user-http-request :rasta :put 403 (str "collection/" (u/get-id collection-a))
+                                             {:parent_id (u/get-id collection-c)}))))))
 
           (testing "Grant perms for A and C. Moving A into C should fail because we need perms for B."
             ;; A* -> B  ==>  C -> A -> B
@@ -819,8 +823,8 @@
                 (doseq [collection [collection-a collection-c]]
                   (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
                 (is (= "You don't have permissions to do that."
-                       ((mt/user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
-                        {:parent_id (u/get-id collection-c)}))))))
+                       (mt/user-http-request :rasta :put 403 (str "collection/" (u/get-id collection-a))
+                                             {:parent_id (u/get-id collection-c)}))))))
 
           (testing "Grant perms for B and C. Moving A into C should fail because we need perms for A"
             ;; A -> B*  ==>  C -> A -> B
@@ -832,8 +836,8 @@
                 (doseq [collection [collection-b collection-c]]
                   (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
                 (is (= "You don't have permissions to do that."
-                       ((mt/user->client :rasta) :put 403 (str "collection/" (u/get-id collection-a))
-                        {:parent_id (u/get-id collection-c)})))))))))))
+                       (mt/user-http-request :rasta :put 403 (str "collection/" (u/get-id collection-a))
+                                             {:parent_id (u/get-id collection-c)})))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -866,32 +870,36 @@
       (testing "GET /api/collection/graph\n"
         (testing "Should be able to fetch the permissions graph for the default namespace"
           (is (= {"Default A" "read", "Default A -> B" "read"}
-                 (nice-graph ((mt/user->client :crowberto) :get 200 "collection/graph")))))
+                 (nice-graph (mt/user-http-request :crowberto :get 200 "collection/graph")))))
 
         (testing "Should be able to fetch the permissions graph for a non-default namespace"
           (is (= {"Currency A" "read", "Currency A -> B" "read"}
-                 (nice-graph ((mt/user->client :crowberto) :get 200 "collection/graph?namespace=currency")))))
+                 (nice-graph (mt/user-http-request :crowberto :get 200 "collection/graph?namespace=currency")))))
 
         (testing "have to be a superuser"
           (is (= "You don't have permissions to do that."
-                 ((mt/user->client :rasta) :get 403 "collection/graph")))))
+                 (mt/user-http-request :rasta :get 403 "collection/graph")))))
 
       (testing "PUT /api/collection/graph\n"
         (testing "Should be able to update the graph for the default namespace.\n"
           (testing "Should ignore updates to Collections outside of the namespace"
-            (let [response ((mt/user->client :crowberto) :put 200 "collection/graph"
-                            (assoc (graph/graph) :groups {group-id {default-ab :write, currency-ab :write}}))]
+            (let [response (mt/user-http-request :crowberto :put 200 "collection/graph"
+                                                 (assoc (graph/graph) :groups {group-id {default-ab :write, currency-ab :write}}))]
               (is (= {"Default A" "read", "Default A -> B" "write"}
                      (nice-graph response))))))
 
         (testing "Should be able to update the graph for a non-default namespace.\n"
           (testing "Should ignore updates to Collections outside of the namespace"
-            (let [response ((mt/user->client :crowberto) :put 200 "collection/graph?namespace=currency"
-                            (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}))]
+            (let [response (mt/user-http-request :crowberto :put 200 "collection/graph"
+                                                 (assoc (graph/graph)
+                                                        :groups {group-id {default-a :write, currency-a :write}}
+                                                        :namespace :currency))]
               (is (= {"Currency A" "write", "Currency A -> B" "read"}
                      (nice-graph response))))))
 
         (testing "have to be a superuser"
           (is (= "You don't have permissions to do that."
-                 ((mt/user->client :rasta) :put 403 "collection/graph?namespace=currency"
-                  (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}})))))))))
+                 (mt/user-http-request :rasta :put 403 "collection/graph"
+                                       (assoc (graph/graph)
+                                              :groups {group-id {default-a :write, currency-a :write}}
+                                              :namespace :currency)))))))))
