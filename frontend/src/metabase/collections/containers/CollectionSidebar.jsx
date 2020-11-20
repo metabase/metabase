@@ -106,9 +106,12 @@ class CollectionSidebar extends React.Component {
         </Box>
 
         <Box className="mt-auto" pb={2} pl={SIDEBAR_SPACER * 2}>
-          <Link to={`/archive`} className="link flex align-center text-bold">
+          <Link
+            to={`/archive`}
+            className="flex align-center text-bold text-light text-brand-hover"
+          >
             <Icon name="view_archive" mr={1} />
-            {t`View archived items`}
+            {t`View archive`}
           </Link>
         </Box>
       </Sidebar>
