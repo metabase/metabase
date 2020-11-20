@@ -901,7 +901,7 @@ export default function lineAreaBar(
       const rows = series.data.rows;
       const finalRow = rows[rows.length - 1];
       if (!finalRow._waterfallTotal) {
-        const totalValue = rows.reduce((t, d) => (t += d[1]), 0);
+        const totalValue = rows.reduce((t, d) => t + d[1], 0);
         const totalRow = ["Total", totalValue];
         rows.push(totalRow);
         const _origin = {
