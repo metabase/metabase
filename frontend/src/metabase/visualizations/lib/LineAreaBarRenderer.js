@@ -135,7 +135,10 @@ function getXAxisProps(props, datas, warn) {
   // This compensates for the barshifting we do align ticks
   const xValues = isHistogram
     ? [...rawXValues, Math.max(...rawXValues) + xInterval]
+    : props.chartType === "waterfall"
+    ? [...rawXValues, "Total"]
     : rawXValues;
+
   return {
     isHistogramBar: isHistogram,
     xDomain: d3.extent(xValues),
@@ -244,6 +247,9 @@ function getDimensionsAndGroupsForWaterfallChart(props, originalDatas, warn) {
   */
 
   const values = datas[0].map(d => d[1]);
+  const last = values.length - 1;
+  const totalValue = values[last];
+
   const positives = values.map(v => (v > 0 ? v : 0));
   const negatives = values.map(v => (v < 0 ? -v : 0));
   const beams = [0];
@@ -259,6 +265,11 @@ function getDimensionsAndGroupsForWaterfallChart(props, originalDatas, warn) {
     datas[1][k][1] = negatives[k];
     datas[2][k][1] = positives[k];
   }
+
+  // The last one is the total bar, treat it as either a positive or negative bar
+  datas[0][last][1] = 0;
+  datas[1][last][1] = totalValue < 0 ? totalValue : 0;
+  datas[2][last][1] = totalValue > 0 ? totalValue : 0;
 
   // The subsequent steps are exactly like any other stacked bar chart
 
@@ -884,6 +895,26 @@ export default function lineAreaBar(
   };
 
   checkSeriesIsValid(props);
+
+  if (props.chartType === "waterfall") {
+    props.series.map(series => {
+      const rows = series.data.rows;
+      const finalRow = rows[rows.length - 1];
+      if (!finalRow._waterfallTotal) {
+        const totalValue = rows.reduce((t, d) => (t += d[1]), 0);
+        const totalRow = ["Total", totalValue];
+        rows.push(totalRow);
+        const _origin = {
+          seriesIndex: finalRow._origin.seriesIndex,
+          rowIndex: rows.length,
+          cols: series.data.cols,
+          row: totalRow,
+        };
+        totalRow._origin = _origin;
+        totalRow._waterfallTotal = totalValue;
+      }
+    });
+  }
 
   // force histogram to be ordinal axis with zero-filled missing points
   settings["graph.x_axis._scale_original"] = settings["graph.x_axis.scale"];
