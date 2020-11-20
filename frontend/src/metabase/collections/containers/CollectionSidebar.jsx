@@ -57,11 +57,11 @@ class CollectionSidebar extends React.Component {
   };
   componentDidMount() {
     // an array to store the ancestors
-    const { collectionId, collections } = this.props;
-
-    const ancestors = getParentPath(collections, collectionId);
-    console.log(ancestors);
-    this.setState({ openCollections: ancestors });
+    const { collectionId, collections, loading } = this.props;
+    if (!loading) {
+      const ancestors = getParentPath(collections, Number(collectionId)) || [];
+      this.setState({ openCollections: ancestors });
+    }
   }
   render() {
     const { currentUser, isRoot, collectionId, list } = this.props;

@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 // return collections that aren't personal and aren't archived
 export function nonPersonalCollection(collection) {
@@ -23,20 +22,22 @@ export function currentUserPersonalCollections(collectionList, userID) {
     .map(preparePersonalCollection);
 }
 
-/* return an array of IDs representing the path to a nested collection */
-export function getParentPath(collections, id, visited = []) {
-  const v = visited;
-  // loop through our current list of collections
-  for (const c in collections) {
-    const col = collections[c];
-    // mark the current one as visited
-    v.push(col.id);
-    // if we haven't found the id yet and there are children, check those
-    if (c.id !== id && col.children) {
-      getParentPath(col.children, id, v);
-    } else {
-      v.pop();
+export function getParentPath(collections, targetId) {
+  if (collections.length === 0) {
+    return null; // not found!
+  }
+
+  for (const collection of collections) {
+    if (collection.id === targetId) {
+      return collection.id; // we found it!
+    }
+    if (collection.children) {
+      const path = getParentPath(collection.children, targetId);
+      if (path !== null) {
+        // we found it under this collection
+        return [collection.id, ...path];
+      }
     }
   }
-  return v;
+  return null; // didn't find it under any collection
 }
