@@ -24,7 +24,7 @@ const CollectionLink = styled(Link)`
       : "inherit"};
   :hover {
     background-color: ${props =>
-      props.hovered ? color("brand") : "bg-medium"};
+      props.hovered ? color("brand") : color("bg-medium")};
   }
   .Icon {
     fill: ${props => props.selected && "white"};
