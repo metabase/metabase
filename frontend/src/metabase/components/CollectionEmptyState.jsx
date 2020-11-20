@@ -13,15 +13,16 @@ import Link from "metabase/components/Link";
 
 const Element = ({
   iconName,
-  iconBackgroundColor = color("brand"),
+  iconBackgroundColor = color("brand-light"),
   textWidth,
 }) => (
   <Flex
-    className="bg-white rounded shadowed"
+    className="bg-white rounded"
     align="center"
     p={2}
     w={"300px"}
     mb={1}
+    style={{ boxShadow: `0 1px 4px 1px rgba(0, 0, 0, 0.08)` }}
   >
     <IconWrapper borderRadius={"99px"} bg={iconBackgroundColor} p={1} mr={1}>
       <Icon name={iconName} color="white" />
@@ -39,19 +40,12 @@ const CollectionEmptyState = ({ params }) => {
     <EmptyState
       title={t`Nothing to see yet.`}
       message={t`Use collections to organize and group dashboards and questions for your team or yourself`}
+      className="text-medium"
       illustrationElement={
         <Box>
           <Element iconName="dashboard" textWidth={110} />
-          <Element
-            iconName="question"
-            iconBackgroundColor={color("bg-medium")}
-            textWidth={48}
-          />
-          <Element
-            iconName="folder"
-            iconBackgroundColor={color("brand-light")}
-            textWidth={72}
-          />
+          <Element iconName="line" textWidth={48} />
+          <Element iconName="folder" textWidth={72} />
         </Box>
       }
       link={
