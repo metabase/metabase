@@ -327,18 +327,23 @@ export default class Navbar extends Component {
             </Link>
           )}
           {hasDataAccess && (
-            <Link
-              mr={[1, 2]}
-              to="browse"
-              p={1}
-              className="flex align-center rounded transition-background"
-              data-metabase-event={`NavBar;Data Browse`}
-              hover={{
-                backgroundColor: darken(color("brand")),
-              }}
+            <IconWrapper
+              className="relative hide sm-show mr1 overflow-hidden"
+              hover={NavHover}
             >
-              <Icon name="table_spaced" size={14} />
-            </Link>
+              <Link
+                to="browse"
+                className="flex align-center rounded transition-background"
+                data-metabase-event={`NavBar;Data Browse`}
+              >
+                <Icon
+                  name="table_spaced"
+                  size={14}
+                  p={"11px"}
+                  tooltip={t`Browse data`}
+                />
+              </Link>
+            </IconWrapper>
           )}
           {hasNativeWrite && (
             <IconWrapper
