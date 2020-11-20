@@ -41,7 +41,7 @@ describe("scenarios > pulse", () => {
     cy.get('[placeholder="Enter user names or email addresses"]')
       .type("bobby@example.com")
       .blur();
-    
+
     // pulse card preview
     cy.contains("18,760");
 
