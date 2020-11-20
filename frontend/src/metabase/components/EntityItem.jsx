@@ -113,7 +113,7 @@ const EntityItem = ({
       })}
     >
       <IconWrapper
-        p={"12px"}
+        p={"12px 13px"}
         mr={2}
         bg={
           pinned ? getPinnedBackground(item.model) : getBackground(item.model)
