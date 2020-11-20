@@ -226,6 +226,11 @@
   []
   (or (:brand (setting/get-json :application-colors)) "#509EE3"))
 
+(defn secondary-chart-color
+  "The first 'Additional chart color'"
+  []
+  (or (:accent3 (setting/get-json :application-colors)) "#EF8C8C"))
+
 (defsetting application-logo-url
   (deferred-tru "For best results, use an SVG file with a transparent background.")
   :visibility :public

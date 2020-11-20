@@ -17,6 +17,7 @@
              [field :as field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor
+             [error-type :as qp.error-type]
              [interface :as i]
              [store :as qp.store]]
             [metabase.query-processor.middleware
@@ -24,7 +25,7 @@
              [wrap-value-literals :as value-literal]]
             [metabase.util
              [honeysql-extensions :as hx]
-             [i18n :refer [deferred-tru]]
+             [i18n :refer [deferred-tru tru]]
              [schema :as su]]
             [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]
@@ -571,11 +572,13 @@
 
 (defmethod apply-top-level-clause [:sql :breakout]
   [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
-  (as-> honeysql-form new-hsql
-    (apply h/merge-select new-hsql (vec (for [field-clause breakout-fields
-                                              :when        (not (contains? (set fields-fields) field-clause))]
-                                          (as driver field-clause))))
-    (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields))))
+  (let [unique-name-fn (mbql.u/unique-name-generator)]
+    (as-> honeysql-form new-hsql
+      (apply h/merge-select new-hsql (->> breakout-fields
+                                          (remove (set fields-fields))
+                                          (mapv (fn [field-clause]
+                                                  (as driver field-clause unique-name-fn)))))
+      (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields)))))
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
@@ -813,7 +816,11 @@
                             "\n"
                             (u/pprint-to-str honeysql-form))))
         (finally
-          (throw e))))))
+          (throw (ex-info (tru "Error compiling HoneySQL form")
+                          {:driver driver
+                           :form   honeysql-form
+                           :type   qp.error-type/driver}
+                          e)))))))
 
 (defn- add-default-select
   "Add `SELECT *` to `honeysql-form` if no `:select` clause is present."
@@ -875,24 +882,28 @@
 
 ;;; -------------------------------------------- putting it all togetrher --------------------------------------------
 
+(defn- expressions->expression-definitions
+  [expressions]
+  (for [[expression-name expression-definition] expressions]
+    [:expression-definition
+     (mbql.u/qualified-name expression-name)
+     (mbql.u/replace expression-definition
+       [:expression expr] (expressions (keyword expr)))]))
+
 (defn- expressions->subselect
-  [{:keys [expressions] :as query}]
+  [{:keys [expressions fields] :as query}]
   (let [subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata])
-                      (assoc :fields
-                             (vec
-                              (concat
-                               (for [[expression-name expression-definition] expressions]
-                                 [:expression-definition
-                                  (mbql.u/qualified-name expression-name)
-                                  (mbql.u/replace expression-definition
-                                    [:expression expr] (expressions (keyword expr)))])
-                               (distinct
-                                (mbql.u/match query [(_ :guard #{:field-literal :field-id :joined-field}) & _]))))))]
+                      (assoc :fields (-> query
+                                         (dissoc :source-query)
+                                         (mbql.u/match #{:field-literal :field-id :joined-field})
+                                         distinct
+                                         (concat (expressions->expression-definitions expressions))
+                                         vec)))]
     (-> query
         ;; TODO -- correctly handle fields in multiple tables with the same name
-        (mbql.u/replace [:joined-field alias field] [:joined-field "source" field])
-        (dissoc :source-table :source-query :joins :expressions :source-metadata)
+        (mbql.u/replace [:joined-field alias field] [:joined-field source-query-alias field])
+        (dissoc :source-table :joins :expressions :source-metadata)
         (assoc :source-query subselect))))
 
 (defn- apply-clauses

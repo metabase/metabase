@@ -20,7 +20,6 @@
   "Schema for the expected output of `describe-database`."
   {:tables #{DatabaseMetadataTable}})
 
-
 (def TableMetadataField
   "Schema for a given Field as provided in `describe-table`."
   {:name                           su/NonBlankString

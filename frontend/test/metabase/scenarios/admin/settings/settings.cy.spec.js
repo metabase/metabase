@@ -46,10 +46,9 @@ describe("scenarios > admin > settings", () => {
     // Ported from `SettingsAuthenticationOptions.e2e.spec.js`
     // Google sign in
     cy.visit("/admin/settings/authentication");
-    cy.findByText("Sign in with Google");
-    cy.findAllByText("Configure")
-      .first()
-      .click();
+
+    configureAuth("Sign in with Google");
+
     cy.contains(
       "To allow users to sign in with Google you'll need to give Repente Insights a Google Developers console application client ID.",
     );
@@ -58,10 +57,9 @@ describe("scenarios > admin > settings", () => {
 
     // SSO
     cy.visit("/admin/settings/authentication");
-    cy.findByText("LDAP").click();
-    cy.findAllByText("Configure")
-      .last()
-      .click();
+
+    configureAuth("LDAP");
+
     cy.findByText("LDAP Authentication");
     cy.findByText("User Schema");
     cy.findByText("Save changes");
@@ -314,3 +312,10 @@ describe("scenarios > admin > settings", () => {
     });
   });
 });
+
+function configureAuth(providerTitle) {
+  cy.findByText(providerTitle)
+    .closest(".rounded.bordered")
+    .contains("Configure")
+    .click();
+}

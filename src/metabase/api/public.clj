@@ -471,12 +471,14 @@
 ;;; ------------------------------------------------ Chain Filtering -------------------------------------------------
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
+  "Fetch filter values for dashboard parameter `param-key`."
   [uuid param-key :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (dashboard-api/chain-filter dashboard param-key query-params))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:prefix"
+  "Fetch filter values for dashboard parameter `param-key`, with specified `prefix`."
   [uuid param-key prefix :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]

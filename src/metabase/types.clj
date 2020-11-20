@@ -134,6 +134,12 @@
 (derive :type/DeletionDate :type/Date)
 (derive :type/DeletionDate :type/DeletionTimestamp)
 
+(derive :type/UpdatedTimestamp :type/DateTime)
+(derive :type/UpdatedTime :type/Date)
+(derive :type/UpdatedTime :type/UpdatedTimestamp)
+(derive :type/UpdatedDate :type/Date)
+(derive :type/UpdatedDate :type/UpdatedTimestamp)
+
 (derive :type/Birthdate :type/Date)
 
 
