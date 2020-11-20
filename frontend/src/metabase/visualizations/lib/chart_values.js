@@ -107,6 +107,7 @@ export function onRenderValueLabels(
         d.cumulativeY = d.y + total;
         total += d.y;
       });
+      data[data.length - 1].cumulativeY = data[data.length - 1].y;
     }
 
     return data;
