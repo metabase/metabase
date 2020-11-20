@@ -85,6 +85,7 @@ window.MetabaseBootstrap = {
     "type/JoinDate": ["type/JoinTimestamp", "type/Date"],
     "type/Boolean": ["type/Category", "type/*"],
     "type/CancelationTimestamp": ["type/DateTime"],
+    "type/TextDate": ["type/DateTime"],
     "type/GrossMargin": ["type/Currency"],
     "type/CreationDate": ["type/Date", "type/CreationTimestamp"],
     "type/AvatarURL": ["type/ImageURL"],

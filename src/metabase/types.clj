@@ -109,6 +109,7 @@
 (derive :type/UNIXTimestamp :type/Integer)
 (derive :type/UNIXTimestampSeconds :type/UNIXTimestamp)
 (derive :type/UNIXTimestampMilliseconds :type/UNIXTimestamp)
+(derive :type/TextDate :type/DateTime)
 
 (derive :type/CreationTimestamp :type/DateTime)
 (derive :type/CreationTime :type/Time)

@@ -224,6 +224,11 @@ export const field_special_types = [
     section: t`Date and Time`,
   },
   {
+    id: TYPE.TextDate,
+    name: t`Text as a timestamp`,
+    section: t`Date and Time`,
+  },
+  {
     id: TYPE.JoinDate,
     name: t`Join date`,
     section: t`Date and Time`,

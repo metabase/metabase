@@ -1,6 +1,7 @@
 (ns metabase.driver.sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
-  (:require [clojure.string :as str]
+  (:require [clojure.core.match :refer [match]]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
@@ -256,13 +257,14 @@
   [driver [_ _ expression-definition]]
   (->honeysql driver expression-definition))
 
-(defn cast-unix-timestamp-field-if-needed
+(defn cast-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field field-identifier]
-  (condp #(isa? %2 %1) (:special_type field)
-    :type/UNIXTimestampSeconds      (unix-timestamp->honeysql driver :seconds      field-identifier)
-    :type/UNIXTimestampMilliseconds (unix-timestamp->honeysql driver :milliseconds field-identifier)
-    field-identifier))
+  (match [(:base_type field) (:special_type field)]
+    [_ (:isa? :type/UNIXTimestampSeconds)]      (unix-timestamp->honeysql driver :seconds      field-identifier)
+    [_ (:isa? :type/UNIXTimestampMilliseconds)] (unix-timestamp->honeysql driver :milliseconds field-identifier)
+    [:type/Text (:isa? :type/TextDate)]  (hx/cast :datetime field-identifier)
+    :else field-identifier))
 
 ;; default implmentation is a no-op; other drivers can override it as needed
 (defmethod ->honeysql [:sql Identifier]
@@ -277,7 +279,7 @@
                      (let [{schema :schema, table-name :name} (qp.store/table table-id)]
                        [schema table-name]))
         identifier (->honeysql driver (apply hx/identifier :field (concat qualifiers [field-name])))]
-    (cast-unix-timestamp-field-if-needed driver field identifier)))
+    (cast-field-if-needed driver field identifier)))
 
 (defmethod ->honeysql [:sql :field-id]
   [driver [_ field-id]]
