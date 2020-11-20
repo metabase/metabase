@@ -205,7 +205,8 @@
      [ring/ring-mock "0.4.0"]]
 
     :plugins
-    [[lein-environ "1.1.0"]] ; easy access to environment variables
+    [[lein-environ "1.1.0"] ; easy access to environment variables
+     [lein-licenses "LATEST"]]
 
     :injections
     [(require 'pjstadig.humane-test-output)

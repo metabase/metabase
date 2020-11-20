@@ -149,4 +149,4 @@
         (mt/run-mbql-query messages
           {:aggregation [[:count]]
            :breakout    [$sender_id->users.name]
-           :filter      [:= $reciever_id->users.name "Rasta Toucan"]})))))
+           :filter      [:= $receiver_id->users.name "Rasta Toucan"]})))))

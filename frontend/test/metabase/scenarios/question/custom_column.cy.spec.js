@@ -110,7 +110,7 @@ describe("scenarios > question > custom columns", () => {
     });
   });
 
-  it.skip("should create custom column with fields from aggregated data (metabase#12762)", () => {
+  it("should create custom column with fields from aggregated data (metabase#12762)", () => {
     // go straight to "orders" in custom questions
     cy.visit("/question/new?database=1&table=2&mode=notebook");
 

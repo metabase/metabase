@@ -10,17 +10,21 @@
             [metabase.driver.sql-jdbc.execute :as execute]
             [metabase.plugins.jdbc-proxy :as jdbc-proxy]
             [metabase.test.data.redshift :as rstest]
-            [metabase.test.fixtures :as fixtures]))
+            [metabase.test.fixtures :as fixtures])
+  (:import metabase.plugins.jdbc_proxy.ProxyDriver))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest correct-driver-test
-  (mt/test-driver
-    :redshift
-    (is (= "com.amazon.redshift.jdbc.Driver"
-           (.getName (class (jdbc-proxy/wrapped-driver (java.sql.DriverManager/getDriver "jdbc:redshift://host:5432/testdb")))))
-        "Make sure we're using the correct driver for Redshift")))
+  (mt/test-driver :redshift
+    (testing "Make sure we're using the correct driver for Redshift"
+      (let [driver (java.sql.DriverManager/getDriver "jdbc:redshift://host:5432/testdb")
+            driver (if (instance? metabase.plugins.jdbc_proxy.ProxyDriver driver)
+                     (jdbc-proxy/wrapped-driver driver)
+                     driver)]
+        (is (= "com.amazon.redshift.jdbc.Driver"
+               (.getName (class driver))))))))
 
 (defn- query->native [query]
   (let [native-query (atom nil)]

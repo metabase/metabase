@@ -56,19 +56,6 @@ export default class ExpressionPopover extends React.Component {
               }
             }}
           />
-          {error &&
-            (Array.isArray(error) ? (
-              error.map(error => (
-                <div
-                  className="text-error mb1"
-                  style={{ whiteSpace: "pre-wrap" }}
-                >
-                  {error.message}
-                </div>
-              ))
-            ) : (
-              <div className="text-error mb1">{error.message}</div>
-            ))}
           {onChangeName && (
             <input
               className="input block full my1"
