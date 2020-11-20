@@ -19,7 +19,7 @@ class DefaultLogoIcon extends Component {
     return (
       <svg
         className={cx("Icon", { "text-brand": !dark }, { "text-white": dark })}
-
+        viewBox="0 0 35 35"
         width={width}
         height={height}
         fill="currentcolor"
