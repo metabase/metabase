@@ -2,33 +2,8 @@ import {
   signInAsAdmin,
   restore,
   modal,
-  typeAndBlurUsingLabel,
+  addPostgresDatabase,
 } from "__support__/cypress";
-
-function addPostgresDatabase() {
-  cy.visit("/admin/databases/create");
-  cy.contains("Database type")
-    .closest(".Form-field")
-    .find("a")
-    .click();
-  cy.contains("PostgreSQL").click({ force: true });
-  cy.contains("Additional JDBC connection string options");
-
-  typeAndBlurUsingLabel("Name", "QA Postgres12");
-  typeAndBlurUsingLabel("Host", "localhost");
-  // TODO: "Port" label and input field are misconfigured (input field is missing `aria-labeledby` attribute)
-  // typeAndBlurUsingLabel("Port", "5432") => this will not work (switching to placeholder temporarily)
-  cy.findByPlaceholderText("5432")
-    .click()
-    .type("5432");
-  typeAndBlurUsingLabel("Database name", "sample");
-  typeAndBlurUsingLabel("Username", "metabase");
-  typeAndBlurUsingLabel("Password", "metasample123");
-
-  cy.findByText("Save")
-    .should("not.be.disabled")
-    .click();
-}
 
 describe("postgres > admin > add", () => {
   beforeEach(() => {

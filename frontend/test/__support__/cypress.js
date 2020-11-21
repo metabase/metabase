@@ -199,3 +199,29 @@ export function createBasicAlert({ firstAlert, includeNormal } = {}) {
   cy.findByText("Done").click();
   cy.findByText("Let's set up your alert").should("not.exist");
 }
+
+// Functions specific to QA databases that we started supporting recently in CI
+export function addPostgresDatabase(db_display_name = "QA Postgres12") {
+  cy.visit("/admin/databases/create");
+  cy.contains("Database type")
+    .closest(".Form-field")
+    .find("a")
+    .click();
+  cy.contains("PostgreSQL").click({ force: true });
+  cy.contains("Additional JDBC connection string options");
+
+  typeAndBlurUsingLabel("Name", db_display_name);
+  typeAndBlurUsingLabel("Host", "localhost");
+  // TODO: "Port" label and input field are misconfigured (input field is missing `aria-labeledby` attribute)
+  // typeAndBlurUsingLabel("Port", "5432") => this will not work (switching to placeholder temporarily)
+  cy.findByPlaceholderText("5432")
+    .click()
+    .type("5432");
+  typeAndBlurUsingLabel("Database name", "sample");
+  typeAndBlurUsingLabel("Username", "metabase");
+  typeAndBlurUsingLabel("Password", "metasample123");
+
+  cy.findByText("Save")
+    .should("not.be.disabled")
+    .click();
+}
