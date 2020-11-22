@@ -9,7 +9,7 @@ const EmbeddingLegalese = ({ onChange }) => (
       {t`By enabling embedding you're agreeing to the embedding license located at`}{" "}
       <a
         className="link"
-        href="https://metabase.com/license/embedding"
+        href="https://insights.repentefactory.com/license/embedding"
         target="_blank"
       >
         metabase.com/license/embedding
