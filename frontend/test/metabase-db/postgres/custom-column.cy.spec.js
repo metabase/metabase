@@ -37,7 +37,6 @@ describe("postgres > question > custom columns", () => {
     cy.log("**-- 2. Add filter based on custom column--**");
 
     cy.findByText("Add filters to narrow your answer").click();
-    // ADd filt
     popover().within(() => {
       cy.findByText(CC_NAME).click();
       cy.get(".AdminSelect").click();
