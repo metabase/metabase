@@ -199,13 +199,22 @@ export default class ChartClickActions extends Component {
           <div className="text-bold px2 pt2 pb1">
             {sections.map(([key, actions]) => (
               <div
-                className={cx("pb1", { pb2: SECTIONS[key].icon === "bolt" })}
+                className={cx(
+                  "pb1",
+                  { pb2: SECTIONS[key].icon === "bolt" },
+                  {
+                    ml1:
+                      SECTIONS[key].icon === "bolt" ||
+                      SECTIONS[key].icon === "sum" ||
+                      SECTIONS[key].icon === "breakout",
+                  },
+                )}
               >
                 {SECTIONS[key].icon === "sum" && (
                   <p className="mt0 text-medium text-small">Summarize</p>
                 )}
                 {SECTIONS[key].icon === "breakout" && (
-                  <p className="mt0 text-medium text-small">Break out by a…</p>
+                  <p className="my1 text-medium text-small">Break out by a…</p>
                 )}
                 {SECTIONS[key].icon === "bolt" && (
                   <p className="mt2 text-medium text-small">
