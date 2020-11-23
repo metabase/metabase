@@ -135,7 +135,10 @@ function getXAxisProps(props, datas, warn) {
   // This compensates for the barshifting we do align ticks
   const xValues = isHistogram
     ? [...rawXValues, Math.max(...rawXValues) + xInterval]
+    : props.chartType === "waterfall"
+    ? [...rawXValues, t`Total`]
     : rawXValues;
+
   return {
     isHistogramBar: isHistogram,
     xDomain: d3.extent(xValues),
@@ -228,6 +231,17 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
 // ASSERT(datas[0].length > 0)
 function getDimensionsAndGroupsForWaterfallChart(props, originalDatas, warn) {
   const datas = originalDatas.slice();
+  const mainSeries = datas[0];
+  const totalValue = mainSeries.reduce((t, d) => t + d[1], 0);
+  const total = ["Total", totalValue];
+  // $FlowFixMe cloning for the total bar
+  total._origin = {
+    seriesIndex: mainSeries[0]._origin.seriesIndex,
+    rowIndex: mainSeries.length,
+    cols: mainSeries[0]._origin.cols,
+    row: total,
+  };
+  datas[0] = [...mainSeries, total];
   datas.push(datas[0].map(k => k.slice())); // negatives
   datas.push(datas[0].map(k => k.slice())); // positives
 
@@ -259,6 +273,12 @@ function getDimensionsAndGroupsForWaterfallChart(props, originalDatas, warn) {
     datas[1][k][1] = negatives[k];
     datas[2][k][1] = positives[k];
   }
+
+  // The last one is the total bar, treat it as either a positive or negative bar
+  const last = values.length - 1;
+  datas[0][last][1] = 0;
+  datas[1][last][1] = totalValue < 0 ? totalValue : 0;
+  datas[2][last][1] = totalValue > 0 ? totalValue : 0;
 
   // The subsequent steps are exactly like any other stacked bar chart
 
