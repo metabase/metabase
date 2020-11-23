@@ -21,9 +21,8 @@
   (api/read-check Database database)
 
   ;;TODO: make this use process-query-async, and run all four queries in parallel
-  (let [pivot-queries (pivot/generate-queries query)]
-    (log/spy :error (map (fn [inner-query]
-                           (-> (qp/process-query (log/spy :error (assoc query :query (:query inner-query))))
-                               (assoc :breakout (:breakout inner-query)))) pivot-queries))))
+  (for [pivot-query (pivot/generate-queries query)]
+    (-> (qp/process-query (log/spy :error (assoc query :query (:query pivot-query))))
+        (assoc :breakout (:breakout pivot-query)))))
 
 (api/define-routes)

@@ -1,14 +1,18 @@
 (ns metabase.query-processor.pivot
-  "Pivot table actions for the query processor"
-  (:require [metabase.util.i18n :refer [trs]]))
+  "Pivot table actions for the query processor")
+
+(defn powerset
+  "Generate the set of all subsets"
+  [items]
+  (reduce (fn [s x]
+            (clojure.set/union s (map #(conj % x) s)))
+          (hash-set #{})
+          items))
 
 (defn- generate-breakouts
   "Generate the combinatorial breakouts for a given query pivot table query"
   [breakouts]
-  (when (not= 3 (count breakouts))
-    (throw (ex-info (trs "A pivot table query requires three breakouts") {:breakout breakouts})))
-
-  [(take 1 breakouts) (take 2 breakouts) (take-last 2 breakouts) []])
+  (powerset (set breakouts)))
 
 (defn generate-queries
   "Generate the additional queries to perform a generic pivot table"
@@ -16,5 +20,5 @@
   (let [query     (:query request)
         breakouts (generate-breakouts (:breakout query))]
     (map (fn [breakout]
-           {:breakout breakout
-            :query    (assoc query :breakout breakout)}) breakouts)))
+           {:breakout (vec breakout)
+            :query    (assoc query :breakout (vec breakout))}) breakouts)))
