@@ -199,3 +199,38 @@ export function createBasicAlert({ firstAlert, includeNormal } = {}) {
   cy.findByText("Done").click();
   cy.findByText("Let's set up your alert").should("not.exist");
 }
+
+// Functions specific to QA databases that we started supporting recently in CI
+export function addPostgresDatabase(db_display_name = "QA Postgres12") {
+  cy.request("POST", "/api/database", {
+    engine: "postgres",
+    name: db_display_name,
+    details: {
+      host: "localhost",
+      dbname: "sample",
+      port: 5432,
+      user: "metabase",
+      password: "metasample123", // NOTE: we're inconsistent in where we use `pass` vs `password` as a key
+      authdb: null,
+      "additional-options": null,
+      "use-srv": false,
+      "tunnel-enabled": false,
+    },
+    auto_run_queries: true,
+    is_full_sync: true,
+    schedules: {
+      cache_field_values: {
+        schedule_day: null,
+        schedule_frame: null,
+        schedule_hour: 0,
+        schedule_type: "daily",
+      },
+      metadata_sync: {
+        schedule_day: null,
+        schedule_frame: null,
+        schedule_hour: null,
+        schedule_type: "hourly",
+      },
+    },
+  });
+}
