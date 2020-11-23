@@ -200,8 +200,47 @@ export function createBasicAlert({ firstAlert, includeNormal } = {}) {
   cy.findByText("Let's set up your alert").should("not.exist");
 }
 
-// Functions specific to QA databases that we started supporting recently in CI
+/*****************************************
+ **            QA DATABASES             **
+ ******************************************/
+export function addMongoDatabase(db_display_name = "QA Mongo4") {
+  // https://hub.docker.com/layers/metabase/qa-databases/mongo-sample-4.0/images/sha256-3f568127248b6c6dba0b114b65dc3b3bf69bf4c804310eb57b4e3de6eda989cf
+  cy.log("**-- Adding Mongo 4 DB --**");
+  cy.request("POST", "/api/database", {
+    engine: "mongo",
+    name: db_display_name,
+    details: {
+      host: "localhost",
+      dbname: "sample",
+      port: 27017,
+      user: "metabase",
+      pass: "metasample123",
+      authdb: "admin",
+      "additional-options": null,
+      "use-srv": false,
+      "tunnel-enabled": false,
+    },
+    auto_run_queries: true,
+    is_full_sync: true,
+    schedules: {
+      cache_field_values: {
+        schedule_day: null,
+        schedule_frame: null,
+        schedule_hour: 0,
+        schedule_type: "daily",
+      },
+      metadata_sync: {
+        schedule_day: null,
+        schedule_frame: null,
+        schedule_hour: null,
+        schedule_type: "hourly",
+      },
+    },
+  });
+}
+
 export function addPostgresDatabase(db_display_name = "QA Postgres12") {
+  cy.log("**-- Adding Postgres 12 DB --**");
   cy.request("POST", "/api/database", {
     engine: "postgres",
     name: db_display_name,
