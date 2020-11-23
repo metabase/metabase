@@ -231,6 +231,17 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
 // ASSERT(datas[0].length > 0)
 function getDimensionsAndGroupsForWaterfallChart(props, originalDatas, warn) {
   const datas = originalDatas.slice();
+  const mainSeries = datas[0];
+  const totalValue = mainSeries.reduce((t, d) => t + d[1], 0);
+  const total = ["Total", totalValue];
+  // $FlowFixMe cloning for the total bar
+  total._origin = {
+    seriesIndex: mainSeries[0]._origin.seriesIndex,
+    rowIndex: mainSeries.length,
+    cols: mainSeries[0]._origin.cols,
+    row: total,
+  };
+  datas[0] = [...mainSeries, total];
   datas.push(datas[0].map(k => k.slice())); // negatives
   datas.push(datas[0].map(k => k.slice())); // positives
 
@@ -247,9 +258,6 @@ function getDimensionsAndGroupsForWaterfallChart(props, originalDatas, warn) {
   */
 
   const values = datas[0].map(d => d[1]);
-  const last = values.length - 1;
-  const totalValue = values[last];
-
   const positives = values.map(v => (v > 0 ? v : 0));
   const negatives = values.map(v => (v < 0 ? -v : 0));
   const beams = [0];
@@ -267,6 +275,7 @@ function getDimensionsAndGroupsForWaterfallChart(props, originalDatas, warn) {
   }
 
   // The last one is the total bar, treat it as either a positive or negative bar
+  const last = values.length - 1;
   datas[0][last][1] = 0;
   datas[1][last][1] = totalValue < 0 ? totalValue : 0;
   datas[2][last][1] = totalValue > 0 ? totalValue : 0;
@@ -895,25 +904,6 @@ export default function lineAreaBar(
   };
 
   checkSeriesIsValid(props);
-
-  if (props.chartType === "waterfall") {
-    _.each(props.series, series => {
-      const rows = series.data.rows;
-      const finalRow = rows[rows.length - 1];
-      if (!finalRow._waterfallTotal) {
-        const totalValue = rows.reduce((t, d) => t + d[1], 0);
-        const totalRow = ["Total", totalValue];
-        totalRow._waterfallTotal = totalValue;
-        totalRow._origin = {
-          seriesIndex: finalRow._origin.seriesIndex,
-          rowIndex: rows.length,
-          cols: series.data.cols,
-          row: totalRow,
-        };
-        series.data.rows = [...series.data.rows, totalRow];
-      }
-    });
-  }
 
   // force histogram to be ordinal axis with zero-filled missing points
   settings["graph.x_axis._scale_original"] = settings["graph.x_axis.scale"];
