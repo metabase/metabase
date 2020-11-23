@@ -897,21 +897,20 @@ export default function lineAreaBar(
   checkSeriesIsValid(props);
 
   if (props.chartType === "waterfall") {
-    props.series.map(series => {
+    _.each(props.series, series => {
       const rows = series.data.rows;
       const finalRow = rows[rows.length - 1];
       if (!finalRow._waterfallTotal) {
         const totalValue = rows.reduce((t, d) => t + d[1], 0);
         const totalRow = ["Total", totalValue];
-        rows.push(totalRow);
-        const _origin = {
+        totalRow._waterfallTotal = totalValue;
+        totalRow._origin = {
           seriesIndex: finalRow._origin.seriesIndex,
           rowIndex: rows.length,
           cols: series.data.cols,
           row: totalRow,
         };
-        totalRow._origin = _origin;
-        totalRow._waterfallTotal = totalValue;
+        series.data.rows = [...series.data.rows, totalRow];
       }
     });
   }
