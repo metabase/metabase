@@ -7,7 +7,7 @@ The following databases are officially supported by Metabase:
 - Google Analytics
 - H2
 - MongoDB
-- MySQL/MariaDB
+- MySQL/MariaDB/TiDB
 - PostgreSQL
 - Presto
 - Amazon Redshift
