@@ -8,10 +8,11 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import EmbedFrame from "../components/EmbedFrame";
+import title from "metabase/hoc/Title";
 
-import type { Card } from "metabase/meta/types/Card";
-import type { Dataset } from "metabase/meta/types/Dataset";
-import type { ParameterValues } from "metabase/meta/types/Parameter";
+import type { Card } from "metabase-types/types/Card";
+import type { Dataset } from "metabase-types/types/Dataset";
+import type { ParameterValues } from "metabase-types/types/Parameter";
 
 import { getParametersBySlug } from "metabase/meta/Parameter";
 import {
@@ -29,6 +30,9 @@ import {
 
 import { setErrorPage } from "metabase/redux/app";
 import { addParamValues, addFields } from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
+
+import PublicMode from "metabase/modes/components/modes/PublicMode";
 
 import { updateIn } from "icepick";
 
@@ -48,6 +52,10 @@ type State = {
   parameterValues: ParameterValues,
 };
 
+const mapStateToProps = state => ({
+  metadata: getMetadata(state),
+});
+
 const mapDispatchToProps = {
   setErrorPage,
   addParamValues,
@@ -55,9 +63,10 @@ const mapDispatchToProps = {
 };
 
 @connect(
-  null,
+  mapStateToProps,
   mapDispatchToProps,
 )
+@title(({ card }) => card && card.name)
 @ExplicitSize()
 export default class PublicQuestion extends Component {
   props: Props;
@@ -219,6 +228,10 @@ export default class PublicQuestion extends Component {
               gridUnit={12}
               showTitle={false}
               isDashboard
+              mode={PublicMode}
+              // $FlowFixMe: metadata provided by @connect
+              metadata={this.props.metadata}
+              onChangeCardAndRun={() => {}}
             />
           )}
         </LoadingAndErrorWrapper>

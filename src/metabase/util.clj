@@ -6,13 +6,10 @@
              [set :as set]
              [string :as str]
              [walk :as walk]]
-            [clojure.java
-             [classpath :as classpath]
-             [io :as io]]
+            [clojure.java.classpath :as classpath]
             [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
-            [clojure.tools.reader.edn :as edn]
             [colorize.core :as colorize]
             [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
@@ -25,15 +22,7 @@
            java.util.concurrent.TimeoutException
            java.util.Locale
            javax.xml.bind.DatatypeConverter
-           org.apache.commons.validator.routines.UrlValidator))
-
-;; This is the very first log message that will get printed.
-;;
-;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the
-;; logger It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many
-;; other namespaces need to get loaded
-(when-not *compile-files*
-  (log/info (trs "Loading Metabase...")))
+           [org.apache.commons.validator.routines RegexValidator UrlValidator]))
 
 (defn format-bytes
   "Nicely format `num-bytes` as kilobytes/megabytes/etc.
@@ -52,7 +41,7 @@
 
 ;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
 ;; for pprinting huge things like expanded queries
-(intern 'clojure.pprint '*print-right-margin* 200)
+(alter-var-root #'clojure.pprint/*print-right-margin* (constantly 200))
 
 (defmacro ignore-exceptions
   "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
@@ -85,7 +74,7 @@
 
     (u/varargs String)
     (u/varargs String [\"A\" \"B\"])"
-  {:style/indent 1}
+  {:style/indent 1, :arglists '([klass] [klass xs])}
   [klass & [objects]]
   (vary-meta `(into-array ~klass ~objects)
              assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))
@@ -97,10 +86,29 @@
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (str/lower-case s)))))
 
+(defn state?
+  "Is `s` a state string?"
+  ^Boolean [^String s]
+  (boolean
+    (when (string? s)
+      (contains? #{"alabama" "alaska" "arizona" "arkansas" "california" "colorado" "connecticut" "delaware"
+                   "florida" "georgia" "hawaii" "idaho" "illinois" "indiana" "iowa" "kansas" "kentucky" "louisiana"
+                   "maine" "maryland" "massachusetts" "michigan" "minnesota" "mississippi" "missouri" "montana"
+                   "nebraska" "nevada" "new hampshire" "new jersey" "new mexico" "new york" "north carolina"
+                   "north dakota" "ohio" "oklahoma" "oregon" "pennsylvania" "rhode island" "south carolina"
+                   "south dakota" "tennessee" "texas" "utah" "vermont" "virginia" "washington" "west virginia"
+                   "wisconsin" "wyoming"
+                   "ak" "al" "ar" "az" "ca" "co" "ct" "de" "fl" "ga" "hi" "ia" "id" "il" "in" "ks" "ky" "la"
+                   "ma" "md" "me" "mi" "mn" "mo" "ms" "mt" "nc" "nd" "ne" "nh" "nj" "nm" "nv" "ny" "oh" "ok"
+                   "or" "pa" "ri" "sc" "sd" "tn" "tx" "ut" "va" "vt" "wa" "wi" "wv" "wy"}
+                 (str/lower-case s)))))
+
 (defn url?
   "Is `s` a valid HTTP/HTTPS URL string?"
   ^Boolean [s]
-  (let [validator (UrlValidator. (varargs String ["http" "https"]) UrlValidator/ALLOW_LOCAL_URLS)]
+  (let [validator (UrlValidator. (varargs String ["http" "https"])
+                                 (RegexValidator. "^\\p{Alnum}+([\\.|\\-]\\p{Alnum}+)*(:\\d*)?")
+                                 UrlValidator/ALLOW_LOCAL_URLS)]
     (.isValid validator (str s))))
 
 (defn maybe?
@@ -196,7 +204,7 @@
    and [Common Lisp](http://www.lispworks.com/documentation/HyperSpec/Body/m_prog1c.htm#prog1).
 
   Style note: Prefer `doto` when appropriate, e.g. when dealing with Java objects."
-  {:style/indent 1}
+  {:style/indent :defn}
   [first-form & body]
   `(let [~'<> ~first-form]
      ~@body
@@ -208,28 +216,38 @@
     identity
     (constantly "")))
 
-(def ^:private ^{:arglists '([color-symb x])} colorize
-  "Colorize string `x` with the function matching `color` symbol or keyword, but only if `MB_COLORIZE_LOGS` is
-  enabled (the default)."
-  (if (config/config-bool :mb-colorize-logs)
+(def ^:private colorize?
+  ;; As of 0.35.0 we support the NO_COLOR env var. See https://no-color.org/ (But who hates color logs?)
+  (if (config/config-str :no-color)
+    false
+    (config/config-bool :mb-colorize-logs)))
+
+(def ^{:arglists '(^String [color-symb x]), :style/indent 1} colorize
+  "Colorize string `x` using `color`, a symbol or keyword, but only if `MB_COLORIZE_LOGS` is enabled (the default).
+  `color` can be `green`, `red`, `yellow`, `blue`, `cyan`, `magenta`, etc. See the entire list of avaliable
+  colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj)"
+  (if colorize?
     (fn [color x]
-      (colorize/color (keyword color) x))
+      (colorize/color (keyword color) (str x)))
     (fn [_ x]
-      x)))
+      (str x))))
+
+(defn decolorize
+  "Remove ANSI escape sequences from a String `s`."
+  ^String [s]
+  (some-> s (str/replace #"\[[;\d]*m" "")))
 
 (defn format-color
-  "Like `format`, but colorizes the output. `color` should be a symbol or keyword like `green`, `red`, `yellow`, `blue`,
-  `cyan`, `magenta`, etc. See the entire list of avaliable
-  colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
+  "With one arg, converts something to a string and colorizes it. With two args, behaves like `format`, but colorizes
+  the output.
 
-     (format-color :red \"Fatal error: %s\" error-message)"
-  {:style/indent 2}
+    (format-color :red \"%d cans\" 2)"
+  {:arglists '(^String [color x] ^String [color format-string & args]), :style/indent 2}
   (^String [color x]
-   {:pre [((some-fn symbol? keyword?) color)]}
-   (colorize color (str x)))
+   (colorize color x))
 
-  (^String [color format-string & args]
-   (colorize color (apply format (str format-string) args))))
+  (^String [color format-str & args]
+   (colorize color (apply format format-str args))))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing `x` as a string.
@@ -240,7 +258,10 @@
   {:style/indent 1}
   (^String [x]
    (when x
-     (with-out-str (pprint x))))
+     (with-open [w (java.io.StringWriter.)]
+       (pprint x w)
+       (str w))))
+
   (^String [color-symb x]
    (colorize color-symb (pprint-to-str x))))
 
@@ -273,12 +294,13 @@
            [last-mb-frame & frames-before-last-mb] (for [frame other-frames
                                                          :when (str/includes? frame "metabase")]
                                                      (str/replace frame #"^metabase\." ""))]
-       (concat
-        (map str frames-after-last-mb)
-        ;; add a little arrow to the frame so it stands out more
-        (cons
-         (some->> last-mb-frame (str "--> "))
-         frames-before-last-mb))))})
+       (vec
+        (concat
+         (map str frames-after-last-mb)
+         ;; add a little arrow to the frame so it stands out more
+         (cons
+          (some->> last-mb-frame (str "--> "))
+          frames-before-last-mb)))))})
 
 (declare format-milliseconds)
 
@@ -376,7 +398,7 @@
   "Return a version of String `s` appropriate for use as a URL slug.
    Downcase the name, remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores;
    URL-encode non-ASCII characters. (Non-ASCII characters are encoded rather than replaced with underscores in order
-   to support languages that don't use the Latin alphabet; see issue #3818).
+   to support languages that don't use the Latin alphabet; see metabase#3818).
 
    Optionally specify `max-length` which will truncate the slug after that many characters."
   (^String [^String s]
@@ -480,37 +502,15 @@
   (or (id object-or-id)
       (throw (Exception. (tru "Not something with an ID: {0}" object-or-id)))))
 
-(defn- metabase-namespace-symbs* []
+;; This is made `^:const` so it will get calculated when the uberjar is compiled. `find-namespaces` won't work if
+;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.
+(defonce ^:const ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended for
+  use by various routines that load related namespaces, such as task and events initialization."}
+  metabase-namespace-symbols
   (vec (sort (for [ns-symb (ns-find/find-namespaces (classpath/system-classpath))
                    :when   (and (.startsWith (name ns-symb) "metabase.")
                                 (not (.contains (name ns-symb) "test")))]
                ns-symb))))
-
-(def ^:private namespace-symbs-filename "namespaces.edn")
-
-(when *compile-files*
-  (let [filename (str "resources/" namespace-symbs-filename)]
-    (printf "Saving list of Metabase namespaces to %s...\n" filename)
-    (spit filename (with-out-str (pprint (metabase-namespace-symbs*))))))
-
-(def metabase-namespace-symbols
-  "Delay to a vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended for use by
-  various routines that load related namespaces, such as task and events initialization."
-  ;; When building the uberjar we'll determine the symbols ahead of time ans save to an EDN file which will speed up
-  ;; initialization a bit and also fix an issue where the sequence would be empty if `:omit-source` was enabled.
-  ;; `ns-find` looks for Clojure source files.
-  ;;
-  ;; Use a delay for dev runs since `ns-find` is slow and can take several seconds or more
-  (if config/is-prod?
-    (delay
-      (try
-        (log/info (trs "Reading Metabase namespaces from {0}" namespace-symbs-filename))
-        (edn/read-string (slurp (io/resource namespace-symbs-filename)))
-        (catch Throwable e
-          (log/error e (trs "Failed to read Metabase namespaces from {0}" namespace-symbs-filename))
-          (metabase-namespace-symbs*))))
-    (delay
-      (metabase-namespace-symbs*))))
 
 (def ^java.util.regex.Pattern uuid-regex
   "A regular expression for matching canonical string representations of UUIDs."
@@ -552,7 +552,7 @@
   "Is `s` a Base-64 encoded string?"
   ^Boolean [s]
   (boolean (when (string? s)
-             (re-find #"^[0-9A-Za-z/+]+=*$" s))))
+             (re-matches #"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$" s))))
 
 (defn decode-base64
   "Decodes a Base64 string to a UTF-8 string"
@@ -567,15 +567,6 @@
 (def ^{:arglists '([n])} safe-inc
   "Increment `n` if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
   (fnil inc 0))
-
-(defn occurances-of-substring
-  "Return the number of times SUBSTR occurs in string S."
-  ^Long [^String s, ^String substr]
-  (when (and (seq s) (seq substr))
-    (loop [index 0, cnt 0]
-      (if-let [^long new-index (str/index-of s substr index)]
-        (recur (inc new-index) (inc cnt))
-        cnt))))
 
 (defn select-non-nil-keys
   "Like `select-keys`, but returns a map only containing keys in KS that are present *and non-nil* in M.
@@ -621,9 +612,9 @@
 (defn update-in-when
   "Like `clojure.core/update-in` but does not create new keys if they do not exist. Useful when you don't want to create
   cruft."
-  [m k f & args]
-  (if (not= ::not-found (get-in m k ::not-found))
-    (apply update-in m k f args)
+  [m ks f & args]
+  (if (not= ::not-found (get-in m ks ::not-found))
+    (apply update-in m ks f args)
     m))
 
 (defn index-of
@@ -632,15 +623,6 @@
   (first (keep-indexed (fn [i x]
                          (when (pred x) i))
                        coll)))
-
-
-(defn is-java-9-or-higher?
-  "Are we running on Java 9 or above?"
-  ([]
-   (is-java-9-or-higher? (System/getProperty "java.version")))
-  ([java-version-str]
-   (when-let [[_ java-major-version-str] (re-matches #"^(?:1\.)?(\d+).*$" java-version-str)]
-     (>= (Integer/parseInt java-major-version-str) 9))))
 
 (defn hexadecimal-string?
   "Returns truthy if `new-value` is a hexadecimal-string"
@@ -714,32 +696,9 @@
   [& body]
   `(do-with-us-locale (fn [] ~@body)))
 
-(defn xor
-  "Exclusive or. (Because this is implemented as a function, rather than a macro, it is not short-circuting the way `or`
-  is.)"
-  [x y & more]
-  (loop [[x y & more] (into [x y] more)]
-    (cond
-      (and x y)
-      false
-
-      (seq more)
-      (recur (cons (or x y) more))
-
-      :else
-      (or x y))))
-
-(defn xor-pred
-  "Takes a set of predicates and returns a function that is true if *exactly one* of its composing predicates returns a
-  logically true value. Compare to `every-pred`."
-  [& preds]
-  (fn [& args]
-    (apply xor (for [pred preds]
-                 (apply pred args)))))
-
 (defn topological-sort
   "Topologically sorts vertexs in graph g. Graph is a map of vertexs to edges. Optionally takes an
-   additional argument `edge-fn`, a function used to extract edges. Returns data in the same shape
+   additional argument `edges-fn`, a function used to extract edges. Returns data in the same shape
    (a graph), only sorted.
 
    Say you have a graph shaped like:
@@ -791,6 +750,14 @@
   [^CharSequence s]
   (.. s toString (toLowerCase (Locale/US))))
 
+(defn upper-case-en
+  "Locale-agnostic version of `clojure.string/upper-case`.
+  `clojure.string/upper-case` uses the default locale in conversions, turning
+  `id` into `İD`, in the Turkish locale. This function always uses the
+  `Locale/US` locale."
+  [^CharSequence s]
+  (.. s toString (toUpperCase (Locale/US))))
+
 (defn lower-case-map-keys
   "Changes the keys of a given map to lower case."
   [m]
@@ -835,8 +802,8 @@
    `(profile ~(str form) ~form))
   ([message & body]
    `(let [start-time# (System/nanoTime)]
-      (u/prog1 (do ~@body)
-        (println (u/format-color '~'green "%s took %s"
+      (prog1 (do ~@body)
+        (println (format-color '~'green "%s took %s"
                    ~message
                    (format-nanoseconds (- (System/nanoTime) start-time#))))))))
 
@@ -854,3 +821,33 @@
   "Convert `minutes` to milliseconds. More readable than doing this math inline."
   [minutes]
   (-> minutes minutes->seconds seconds->ms))
+
+(defn hours->ms
+  "Convert `hours` to milliseconds. More readable than doing this math inline."
+  [hours]
+  (-> (* 60 hours) minutes->seconds seconds->ms))
+
+(defn parse-currency
+  "Parse a currency String to a BigDecimal. Handles a variety of different formats, such as:
+
+    $1,000.00
+    -£127.54
+    -127,54 €
+    kr-127,54
+    € 127,54-
+    ¥200"
+  ^java.math.BigDecimal [^String s]
+  (when-not (str/blank? s)
+    (bigdec
+     (reduce
+      (partial apply str/replace)
+      s
+      [
+       ;; strip out any current symbols
+       [#"[^\d,.-]+"          ""]
+       ;; now strip out any thousands separators
+       [#"(?<=\d)[,.](\d{3})" "$1"]
+       ;; now replace a comma decimal seperator with a period
+       [#","                  "."]
+       ;; move minus sign at end to front
+       [#"(^[^-]+)-$"         "-$1"]]))))

@@ -1,34 +1,30 @@
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 
 import FieldList from "./FieldList";
-import FieldName from "./FieldName";
+import Clearable from "./Clearable";
 import Popover from "metabase/components/Popover";
 
-import * as Q_DEPRECATED from "metabase/lib/query";
+import * as FieldRef from "metabase/lib/query/field_ref";
 
-import _ from "underscore";
 import cx from "classnames";
+import { t } from "ttag";
 
-export default class FieldWidget extends Component {
+export default class FieldWidget extends React.Component {
   constructor(props, context) {
     super(props, context);
 
     this.state = {
       isOpen: props.isInitiallyOpen || false,
     };
-
-    _.bindAll(this, "toggle", "setField");
   }
 
   static propTypes = {
     field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
     fieldOptions: PropTypes.object.isRequired,
-    customFieldOptions: PropTypes.object,
-    setField: PropTypes.func.isRequired,
+    onChange: PropTypes.func.isRequired,
     onRemove: PropTypes.func,
     isInitiallyOpen: PropTypes.bool,
-    tableMetadata: PropTypes.object.isRequired,
     enableSubDimensions: PropTypes.bool,
     useOriginalDimension: PropTypes.bool,
   };
@@ -39,12 +35,12 @@ export default class FieldWidget extends Component {
     useOriginalDimension: false,
   };
 
-  setField(value) {
-    this.props.setField(value);
-    if (Q_DEPRECATED.isValidField(value)) {
+  handleChangeField = value => {
+    this.props.onChangeField(value);
+    if (FieldRef.isValidField(value)) {
       this.toggle();
     }
-  }
+  };
 
   toggle() {
     this.setState({ isOpen: !this.state.isOpen });
@@ -56,11 +52,9 @@ export default class FieldWidget extends Component {
         <Popover ref="popover" className="FieldPopover" onClose={this.toggle}>
           <FieldList
             className={"text-" + this.props.color}
-            table={this.props.tableMetadata}
             field={this.props.field}
             fieldOptions={this.props.fieldOptions}
-            customFieldOptions={this.props.customFieldOptions}
-            onFieldChange={this.setField}
+            onFieldChange={this.handleChangeField}
             enableSubDimensions={this.props.enableSubDimensions}
             useOriginalDimension={this.props.useOriginalDimension}
           />
@@ -71,18 +65,17 @@ export default class FieldWidget extends Component {
 
   render() {
     const { className, field, query } = this.props;
+    const dimension = field && query.parseFieldReference(field);
     return (
       <div className="flex align-center">
-        <FieldName
-          className={cx(className, "QueryOption text-wrap flex flex-auto")}
-          field={field}
-          query={query}
-          tableMetadata={this.props.tableMetadata}
-          fieldOptions={this.props.fieldOptions}
-          customFieldOptions={this.props.customFieldOptions}
-          onRemove={this.props.onRemove}
-          onClick={this.toggle}
-        />
+        <Clearable onClear={this.props.onRemove}>
+          <span
+            className={cx(className, "QueryOption text-wrap flex flex-auto")}
+            onClick={this.toggle}
+          >
+            {dimension ? dimension.displayName() : t`Unknown Field`}
+          </span>
+        </Clearable>
         {this.renderPopover()}
       </div>
     );

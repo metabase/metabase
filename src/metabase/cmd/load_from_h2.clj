@@ -40,6 +40,7 @@
              [field-values :refer [FieldValues]]
              [metric :refer [Metric]]
              [metric-important-field :refer [MetricImportantField]]
+             [native-query-snippet :refer [NativeQuerySnippet]]
              [permissions :refer [Permissions]]
              [permissions-group :refer [PermissionsGroup]]
              [permissions-group-membership :refer [PermissionsGroupMembership]]
@@ -65,7 +66,7 @@
 
 ;;; ------------------------------------------ Models to Migrate (in order) ------------------------------------------
 
-(def ^:private entities
+(def entities
   "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load load
   instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
   [Database
@@ -81,6 +82,8 @@
    Revision
    ViewLog
    Session
+   Collection
+   CollectionRevision
    Dashboard
    Card
    CardFavorite
@@ -95,10 +98,9 @@
    PermissionsGroupMembership
    Permissions
    PermissionsRevision
-   Collection
-   CollectionRevision
    DashboardFavorite
    Dimension
+   NativeQuerySnippet
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
    DataMigrations])
@@ -113,7 +115,7 @@
 
 (defn- h2-details [h2-connection-string-or-nil]
   (let [h2-filename (add-file-prefix-if-needed (or h2-connection-string-or-nil @metabase.db/db-file))]
-    (mdb/jdbc-details {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})))
+    (mdb/jdbc-spec {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})))
 
 
 ;;; ------------------------------------------- Fetching & Inserting Rows --------------------------------------------
@@ -214,7 +216,7 @@
 
 ;; Update the sequence nextvals.
 (defmethod update-sequence-values! :postgres []
-  (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-details)]
+  (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-spec)]
     (println (u/format-color 'blue "Setting postgres sequence ids to proper values..."))
     (doseq [e     entities
             :when (not (contains? entities-without-autoinc-ids e))
@@ -242,7 +244,7 @@
   (assert (#{:postgres :mysql} (mdb/db-type))
     (trs "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."))
 
-  (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-details)]
+  (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-spec)]
     (jdbc/db-set-rollback-only! target-db-conn)
 
     (println (u/format-color 'blue "Testing if target DB is already populated..."))

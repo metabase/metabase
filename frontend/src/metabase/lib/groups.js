@@ -18,6 +18,10 @@ export function isMetaBotGroup(group) {
   return group.name === "MetaBot";
 }
 
+export function isSpecialGroup(group) {
+  return isDefaultGroup(group) || isMetaBotGroup(group);
+}
+
 export function canEditPermissions(group) {
   return !isAdminGroup(group);
 }

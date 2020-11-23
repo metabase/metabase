@@ -11,7 +11,8 @@ import { normalizeFieldRef } from "metabase/lib/dataset";
 import { t } from "ttag";
 
 import type { Settings, SettingDefs, WidgetDef } from "../settings";
-import type { Series } from "metabase/meta/types/Visualization";
+import type { Series } from "metabase-types/types/Visualization";
+import type { VisualizationSettings } from "metabase-types/types/Card";
 
 const COMMON_SETTINGS = {
   "card.title": {
@@ -29,6 +30,7 @@ const COMMON_SETTINGS = {
     dashboard: true,
     useRawSeries: true,
   },
+  click_behavior: {},
 };
 
 function getSettingDefintionsForSeries(series: ?Series): SettingDefs {
@@ -61,7 +63,7 @@ function normalizeColumnSettings(columnSettings) {
 }
 
 export function getStoredSettingsForSeries(series: ?Series): Settings {
-  const storedSettings =
+  const storedSettings: VisualizationSettings =
     (series && series[0] && series[0].card.visualization_settings) || {};
   if (storedSettings.column_settings) {
     // normalize any settings stored under old style keys: [ref, [fk->, 1, 2]]

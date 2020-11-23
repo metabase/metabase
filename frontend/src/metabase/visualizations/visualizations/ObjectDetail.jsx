@@ -15,10 +15,10 @@ import {
   foreignKeyCountsByOriginTable,
 } from "metabase/lib/schema_metadata";
 import { TYPE, isa } from "metabase/lib/types";
-import { singularize, inflect } from "inflection";
+import { inflect } from "inflection";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
-import { isQueryable } from "metabase/lib/table";
 
+import Tables from "metabase/entities/tables";
 import {
   loadObjectDetailFKReferences,
   followForeignKey,
@@ -36,9 +36,9 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import cx from "classnames";
 import _ from "underscore";
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
-import type { FieldId, Field } from "metabase/meta/types/Field";
+import type { VisualizationProps } from "metabase-types/types/Visualization";
+import type { FieldId, Field } from "metabase-types/types/Field";
+import type Table from "metabase-lib/lib/metadata/Table";
 
 type ForeignKeyId = number;
 type ForeignKey = {
@@ -56,23 +56,26 @@ type ForeignKeyCountInfo = {
 };
 
 type Props = VisualizationProps & {
-  tableMetadata: ?TableMetadata,
+  table: ?Table,
   tableForeignKeys: ?(ForeignKey[]),
   tableForeignKeyReferences: { [id: ForeignKeyId]: ForeignKeyCountInfo },
+  fetchTableFks: () => void,
   loadObjectDetailFKReferences: () => void,
+  fetchTableFks: (id: any) => void,
   followForeignKey: (fk: any) => void,
   viewNextObjectDetail: () => void,
   viewPreviousObjectDetail: () => void,
 };
 
 const mapStateToProps = state => ({
-  tableMetadata: getTableMetadata(state),
+  table: getTableMetadata(state),
   tableForeignKeys: getTableForeignKeys(state),
   tableForeignKeyReferences: getTableForeignKeyReferences(state),
 });
 
 // ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
 const mapDispatchToProps = dispatch => ({
+  fetchTableFks: id => dispatch(Tables.objectActions.fetchForeignKeys({ id })),
   loadObjectDetailFKReferences: (...args) =>
     dispatch(loadObjectDetailFKReferences(...args)),
   followForeignKey: (...args) => dispatch(followForeignKey(...args)),
@@ -96,6 +99,10 @@ export class ObjectDetail extends Component {
   };
 
   componentDidMount() {
+    const { table } = this.props;
+    if (table && table.fks == null) {
+      this.props.fetchTableFks(table.id);
+    }
     // load up FK references
     if (this.props.tableForeignKeys) {
       this.props.loadObjectDetailFKReferences();
@@ -218,14 +225,10 @@ export class ObjectDetail extends Component {
   }
 
   renderRelationships() {
-    let { tableForeignKeys, tableForeignKeyReferences } = this.props;
+    const { tableForeignKeys, tableForeignKeyReferences } = this.props;
     if (!tableForeignKeys) {
       return null;
     }
-
-    tableForeignKeys = tableForeignKeys.filter(fk =>
-      isQueryable(fk.origin.table),
-    );
 
     if (tableForeignKeys.length < 1) {
       return <p className="my4 text-centered">{t`No relationships found.`}</p>;
@@ -320,13 +323,12 @@ export class ObjectDetail extends Component {
   };
 
   render() {
-    if (!this.props.data) {
+    const { data, table } = this.props;
+    if (!data) {
       return false;
     }
 
-    const tableName = this.props.tableMetadata
-      ? singularize(this.props.tableMetadata.display_name)
-      : t`Unknown`;
+    const tableName = table ? table.objectName() : t`Unknown`;
     // TODO: once we nail down the "title" column of each table this should be something other than the id
     const idValue = this.getIdValue();
 

@@ -18,34 +18,27 @@ import { TableSchema } from "metabase/schema";
 
 import Metrics from "metabase/entities/metrics";
 import Segments from "metabase/entities/segments";
+import Fields from "metabase/entities/fields";
 
-import { GET } from "metabase/lib/api";
-
-import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
+import { GET, PUT } from "metabase/lib/api";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
 const listTables = GET("/api/table");
 const listTablesForDatabase = async (...args) =>
   // HACK: no /api/database/:dbId/tables endpoint
-  (await GET("/api/database/:dbId/metadata")(...args)).tables.filter(
-    /*
-     * HACK: Right now the endpoint returns all tables regardless of
-     * whether they're hidden. make sure table lists only use non hidden tables
-     * Ideally this should live in the API?
-     */
-    t =>
-      t.visibility_type !== "hidden" &&
-      t.visibility_type !== "technical" &&
-      t.visibility_type !== "cruft",
-  );
+  (await GET("/api/database/:dbId/metadata")(...args)).tables;
 const listTablesForSchema = GET("/api/database/:dbId/schema/:schemaName");
+const updateFieldOrder = PUT("/api/table/:id/fields/order");
+const updateTables = PUT("/api/table");
 
 // OBJECT ACTIONS
+export const TABLES_BULK_UPDATE = "metabase/entities/TABLES_BULK_UPDATE";
 export const FETCH_METADATA = "metabase/entities/FETCH_METADATA";
 export const FETCH_TABLE_METADATA = "metabase/entities/FETCH_TABLE_METADATA";
 export const FETCH_TABLE_FOREIGN_KEYS =
   "metabase/entities/FETCH_TABLE_FOREIGN_KEYS";
+const UPDATE_TABLE_FIELD_ORDER = "metabase/entities/UPDATE_TABLE_FIELD_ORDER";
 
 const Tables = createEntity({
   name: "tables",
@@ -65,6 +58,14 @@ const Tables = createEntity({
     },
   },
 
+  actions: {
+    // updates all tables in the `ids` key
+    bulkUpdate: compose(
+      withAction(TABLES_BULK_UPDATE),
+      withNormalize([TableSchema]),
+    )(updates => async (dispatch, getState) => updateTables(updates)),
+  },
+
   // ACTION CREATORS
   objectActions: {
     // loads `query_metadata` for a single table
@@ -75,20 +76,23 @@ const Tables = createEntity({
         ({ id }) => [...Tables.getObjectStatePath(id), "fetchMetadata"],
       ),
       withNormalize(TableSchema),
-    )(({ id }) => async (dispatch, getState) => {
-      const table = await MetabaseApi.table_query_metadata({
+    )(({ id }, options = {}) => (dispatch, getState) =>
+      MetabaseApi.table_query_metadata({
         tableId: id,
-      });
-      return addValidOperatorsToFields(table);
-    }),
+        ...options.params,
+      }),
+    ),
 
     // like fetchMetadata but also loads tables linked by foreign key
-    fetchTableMetadata: createThunkAction(
+    fetchMetadataAndForeignTables: createThunkAction(
       FETCH_TABLE_METADATA,
-      ({ id }, options) => async (dispatch, getState) => {
+      ({ id }, options = {}) => async (dispatch, getState) => {
         await dispatch(Tables.actions.fetchMetadata({ id }, options));
         // fetch foreign key linked table's metadata as well
-        const table = Tables.selectors.getObject(getState(), { entityId: id });
+        const table = Tables.selectors[options.selectorName || "getObject"](
+          getState(),
+          { entityId: id },
+        );
         await Promise.all(
           getTableForeignKeyTableIds(table).map(id =>
             dispatch(Tables.actions.fetchMetadata({ id }, options)),
@@ -108,6 +112,11 @@ const Tables = createEntity({
       const fks = await MetabaseApi.table_fks({ tableId: entityObject.id });
       return { id: entityObject.id, fks: fks };
     }),
+
+    setFieldOrder: compose(withAction(UPDATE_TABLE_FIELD_ORDER))(
+      ({ id }, fieldOrder) => (dispatch, getState) =>
+        updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
+    ),
   },
 
   // FORMS
@@ -141,7 +150,7 @@ const Tables = createEntity({
     if (type === Segments.actionTypes.UPDATE) {
       const { table_id: tableId, archived, id: segmentId } = payload.segment;
       const table = state[tableId];
-      if (archived && table) {
+      if (archived && table && table.segments) {
         return {
           ...state,
           [tableId]: {
@@ -155,7 +164,7 @@ const Tables = createEntity({
     if (type === Metrics.actionTypes.UPDATE) {
       const { table_id: tableId, archived, id: metricId } = payload.metric;
       const table = state[tableId];
-      if (archived && table) {
+      if (archived && table && table.metrics) {
         return {
           ...state,
           [tableId]: {
@@ -177,7 +186,26 @@ const Tables = createEntity({
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).table(entityId),
-
+    // these unfiltered selectors include hidden tables/fields for display in the admin panel
+    getObjectUnfiltered: (state, { entityId }) => {
+      const table = state.entities.tables[entityId];
+      return (
+        table && {
+          ...table,
+          fields: (table.fields || []).map(entityId =>
+            Fields.selectors.getObjectUnfiltered(state, { entityId }),
+          ),
+          metrics: (table.metrics || []).map(id => state.entities.metrics[id]),
+          segments: (table.segments || []).map(
+            id => state.entities.segments[id],
+          ),
+        }
+      );
+    },
+    getListUnfiltered: ({ entities }, { entityQuery }) =>
+      (entities.tables_list[JSON.stringify(entityQuery)] || []).map(
+        id => entities.tables[id],
+      ),
     getTable: createSelector(
       // we wrap getMetadata to handle a circular dep issue
       [state => getMetadata(state), (state, props) => props.entityId],

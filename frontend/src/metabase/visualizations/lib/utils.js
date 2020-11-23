@@ -7,7 +7,7 @@ import crossfilter from "crossfilter";
 
 import { isDimension, isMetric, isDate } from "metabase/lib/schema_metadata";
 
-export const MAX_SERIES = 20;
+export const MAX_SERIES = 100;
 
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
@@ -234,6 +234,7 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
         isMultiseriesQuestion
         ? previousCard.id
         : nextCard.id,
+      id: null,
     };
   } else {
     // Even though the card is currently clean, we might still apply dashboard parameters to it,

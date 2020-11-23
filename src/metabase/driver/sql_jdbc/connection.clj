@@ -4,14 +4,25 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [metabase
+             [config :as config]
              [connection-pool :as connection-pool]
              [driver :as driver]
              [util :as u]]
             [metabase.models.database :refer [Database]]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util
-             [i18n :refer [trs]]
+             [i18n :refer [trs tru]]
              [ssh :as ssh]]
             [toucan.db :as db]))
+
+(def ^:deprecated application-db-mock-id
+  "Mock ID used to get a connection to the application DB itself, rather than to a some other data warehouse DB. Only
+  used to make certain driver methods like `metabase.driver/db-default-timezone` work with the application DB
+  itself.
+
+  Try not to use this unless you absolutely have to -- it's only here in the first place because the EE audit code
+  needs to run queries against the application DB itself."
+  -5432)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Interface                                                    |
@@ -44,14 +55,15 @@
 
 (defmethod data-warehouse-connection-pool-properties :default
   [_]
-  {;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
+  { ;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
    ;; interest of minimizing memory consumption
    "acquireIncrement"             1
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
    "maxIdleTime"                  (* 3 60 60) ; 3 hours
    "minPoolSize"                  1
    "initialPoolSize"              1
-   "maxPoolSize"                  15
+   "maxPoolSize"                  (or (config/config-int :mb-jdbc-data-warehouse-max-connection-pool-size)
+                                      15)
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,
    ;; but for better performance, consider verifying connections periodically using `idleConnectionTestPeriod`. [...]
@@ -85,14 +97,12 @@
   (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
         spec                (connection-details->spec driver details-with-tunnel)
         properties          (data-warehouse-connection-pool-properties driver)]
-    (assoc (connection-pool/connection-pool-spec spec properties)
-           :ssh-tunnel (:tunnel-connection details-with-tunnel))))
+    (connection-pool/connection-pool-spec spec properties)))
 
-(defn- destroy-pool! [database-id {:keys [ssh-tunnel], :as pool-spec}]
+(defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color 'red (trs "Closing old connection pool for database {0} ..." database-id)))
   (connection-pool/destroy-connection-pool! pool-spec)
-  (when ssh-tunnel
-    (.disconnect ^com.jcraft.jsch.Session ssh-tunnel)))
+  (ssh/close-tunnel! pool-spec))
 
 (defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by Database `:id`."}
   database-id->connection-pool
@@ -104,7 +114,9 @@
   more than one pool is ever open for a single database."
   [database-id pool-spec-or-nil]
   {:pre [(integer? database-id)]}
-  (let [[old-id->pool] (swap-vals! database-id->connection-pool assoc database-id pool-spec-or-nil)]
+  (let [[old-id->pool] (if pool-spec-or-nil
+                         (swap-vals! database-id->connection-pool assoc database-id pool-spec-or-nil)
+                         (swap-vals! database-id->connection-pool dissoc database-id))]
     ;; if we replaced a different pool with the new pool that is different from the old one, destroy the old pool
     (when-let [old-pool-spec (get old-id->pool database-id)]
       (when-not (identical? old-pool-spec pool-spec-or-nil)
@@ -115,29 +127,50 @@
   "Default implementation of `driver/notify-database-updated` for JDBC SQL drivers. We are being informed that a
   `database` has been updated, so lets shut down the connection pool (if it exists) under the assumption that the
   connection details have changed."
-  [_ database]
+  [database]
   (set-pool! (u/get-id database) nil))
 
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB."
-  [database-or-id]
-  (let [database-id (u/get-id database-or-id)]
-    (or
-     ;; we have an existing pool for this database, so use it
-     (get @database-id->connection-pool database-id)
-     ;; Even tho `set-pool!` will properly shut down old pools if two threads call this method at the same time, we
-     ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the very
-     ;; next instant. This will cause their queries to fail. Thus we should do the usual locking here and make sure only
-     ;; one thread will be creating a pool at a given instant.
-     (locking database-id->connection-pool
-       (or
-        ;; check if another thread created the pool while we were waiting to acquire the lock
-        (get @database-id->connection-pool database-id)
-        ;; create a new pool and add it to our cache, then return it
-        (let [db (db/select-one [Database :id :engine :details] :id database-id)]
-          (u/prog1 (create-pool! db)
-            (set-pool! database-id <>))))))))
+  [db-or-id-or-spec]
+  (cond
+    ;; db-or-id-or-spec is a Database instance or an integer ID
+    (u/id db-or-id-or-spec)
+    (let [database-id (u/get-id db-or-id-or-spec)]
+      (or
+       ;; if we're using the special mock ID to refer to the application DB itself, return a connection spec for the
+       ;; application DB
+       (when (= database-id application-db-mock-id)
+         (db/connection))
+       ;; we have an existing pool for this database, so use it
+       (get @database-id->connection-pool database-id)
+       ;; Even tho `set-pool!` will properly shut down old pools if two threads call this method at the same time, we
+       ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the
+       ;; very next instant. This will cause their queries to fail. Thus we should do the usual locking here and make
+       ;; sure only one thread will be creating a pool at a given instant.
+       (locking database-id->connection-pool
+         (or
+          ;; check if another thread created the pool while we were waiting to acquire the lock
+          (get @database-id->connection-pool database-id)
+          ;; create a new pool and add it to our cache, then return it
+          (let [db (or (db/select-one [Database :id :engine :details] :id database-id)
+                       (throw (ex-info (tru "Database {0} does not exist." database-id)
+                                       {:status-code 404
+                                        :type        qp.error-type/invalid-query
+                                        :database-id database-id})))]
+            (u/prog1 (create-pool! db)
+              (set-pool! database-id <>)))))))
+
+    ;; already a `clojure.java.jdbc` spec map
+    (map? db-or-id-or-spec)
+    db-or-id-or-spec
+
+    ;; invalid. Throw Exception
+    :else
+    (throw (ex-info (tru "Not a valid Database/Database ID/JDBC spec")
+                    ;; don't log the actual spec lest we accidentally expose credentials
+                    {:input (class db-or-id-or-spec)}))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

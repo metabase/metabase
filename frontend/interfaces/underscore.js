@@ -47,7 +47,10 @@ declare module "underscore" {
 
   declare function object<T>(a: Array<[string, T]>): { [key: string]: T };
 
-  declare function every<T>(a: Array<T>, pred: (val: T) => boolean): boolean;
+  declare function every<T>(
+    a: Array<T> | { [key: string]: T },
+    pred: (val: T) => boolean,
+  ): boolean;
   declare function some<T>(a: Array<T>, pred: (val: T) => boolean): boolean;
   declare function all<T>(a: Array<T>, pred: (val: T) => boolean): boolean;
   declare function any<T>(a: Array<T>, pred: (val: T) => boolean): boolean;
@@ -72,6 +75,11 @@ declare module "underscore" {
     a: Array<T>,
     iteratee: string | ((val: T, index: number) => any),
   ): { [key: string]: T[] };
+
+  declare function indexBy<T>(
+    a: Array<T>,
+    iteratee: string | ((val: T, index: number) => any),
+  ): { [key: string]: T };
 
   declare function min<T>(a: Array<T> | { [key: any]: T }): T;
   declare function max<T>(a: Array<T> | { [key: any]: T }): T;
@@ -113,7 +121,7 @@ declare module "underscore" {
 
   declare function flatten(a: Array<any>): Array<any>;
 
-  declare function debounce<T: any => any>(func: T): T;
+  declare function debounce<T: Function>(func: T): T;
 
   declare function partition<T>(
     array: T[],
@@ -127,4 +135,6 @@ declare module "underscore" {
 
   declare function isMatch(object: Object, properties: Object): boolean;
   declare function identity<T>(o: T): T;
+
+  declare function uniqueId(prefix?: string): string;
 }

@@ -1,7 +1,5 @@
-jest.mock("metabase/components/ExplicitSize");
-
 import React from "react";
-import { render, cleanup } from "@testing-library/react";
+import { render } from "@testing-library/react";
 
 import { NumberColumn } from "../__support__/visualizations";
 
@@ -21,8 +19,6 @@ const series = (rows, settings = {}) => {
 };
 
 describe("Table", () => {
-  afterEach(cleanup);
-
   it("should render correct background colors", () => {
     const rows = [[1], [2], [3], [4]];
     const settings = {

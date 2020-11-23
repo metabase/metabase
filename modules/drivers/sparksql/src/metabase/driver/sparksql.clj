@@ -6,6 +6,7 @@
             [honeysql
              [core :as hsql]
              [helpers :as h]]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.hive-like :as hive-like]
             [metabase.driver.sql
@@ -22,7 +23,8 @@
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util.honeysql-extensions :as hx])
+  (:import [java.sql Connection ResultSet]))
 
 (driver/register! :sparksql, :parent :hive-like)
 
@@ -118,36 +120,63 @@
                                                       (dash-to-underscore schema)
                                                       (dash-to-underscore table-name)))])]
        (set
-        (for [{col-name :col_name, data-type :data_type, :as result} results
-              :when                                                  (valid-describe-table-row? result)]
-          {:name          col-name
-           :database-type data-type
-           :base-type     (sql-jdbc.sync/database-type->base-type :hive-like (keyword data-type))}))))})
+        (for [[idx {col-name :col_name, data-type :data_type, :as result}] (m/indexed results)
+              :when (valid-describe-table-row? result)]
+          {:name              col-name
+           :database-type     data-type
+           :base-type         (sql-jdbc.sync/database-type->base-type :hive-like (keyword data-type))
+           :database-position idx}))))})
 
-;; we need this because transactions are not supported in Hive 1.2.1
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
-(defmethod driver/execute-query :sparksql
-  [driver {:keys [database settings], query :native, :as outer-query}]
-  (let [query (-> (assoc query
-                    :remark (qputil/query->remark outer-query)
-                    :query  (if (seq (:params query))
-                              (unprepare/unprepare driver (cons (:query query) (:params query)))
-                              (:query query))
-                    :max-rows (mbql.u/query->max-rows-limit outer-query))
-                  (dissoc :params))]
-    (sql-jdbc.execute/do-with-try-catch
-      (fn []
-        (let [db-connection (sql-jdbc.conn/db->pooled-connection-spec database)]
-          (hive-like/run-query-without-timezone driver settings db-connection query))))))
+(defmethod driver/execute-reducible-query :sparksql
+  [driver {:keys [database settings], {sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
+  (let [inner-query (-> (assoc inner-query
+                               :remark (qputil/query->remark :sparksql outer-query)
+                               :query  (if (seq params)
+                                         (binding [hive-like/*param-splice-style* :paranoid]
+                                           (unprepare/unprepare driver (cons sql params)))
+                                         sql)
+                               :max-rows (mbql.u/query->max-rows-limit outer-query))
+                        (dissoc :params))
+        query       (assoc outer-query :native inner-query)]
+    ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)))
 
+;; 1.  SparkSQL doesn't support `.supportsTransactionIsolationLevel`
+;; 2.  SparkSQL doesn't support session timezones (at least our driver doesn't support it)
+;; 3.  SparkSQL doesn't support making connections read-only
+;; 4.  SparkSQL doesn't support setting the default result set holdability
+(defmethod sql-jdbc.execute/connection-with-timezone :sparksql
+  [driver database ^String timezone-id]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+    (try
+      (.setTransactionIsolation conn Connection/TRANSACTION_READ_UNCOMMITTED)
+      conn
+      (catch Throwable e
+        (.close conn)
+        (throw e)))))
 
-(defmethod driver/supports? [:sparksql :basic-aggregations]              [_ _] true)
-(defmethod driver/supports? [:sparksql :binning]                         [_ _] true)
-(defmethod driver/supports? [:sparksql :expression-aggregations]         [_ _] true)
-(defmethod driver/supports? [:sparksql :expressions]                     [_ _] true)
-(defmethod driver/supports? [:sparksql :native-parameters]               [_ _] true)
-(defmethod driver/supports? [:sparksql :nested-queries]                  [_ _] true)
-(defmethod driver/supports? [:sparksql :standard-deviation-aggregations] [_ _] true)
+;; 1.  SparkSQL doesn't support setting holdability type to `CLOSE_CURSORS_AT_COMMIT`
+(defmethod sql-jdbc.execute/prepared-statement :sparksql
+  [driver ^Connection conn ^String sql params]
+  (let [stmt (.prepareStatement conn sql
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY)]
+    (try
+      (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+      (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
+
+(doseq [feature [:basic-aggregations
+                 :binning
+                 :expression-aggregations
+                 :expressions
+                 :native-parameters
+                 :nested-queries
+                 :standard-deviation-aggregations]]
+  (defmethod driver/supports? [:sparksql feature] [_ _] true))
 
 ;; only define an implementation for `:foreign-keys` if none exists already. In test extensions we define an alternate
 ;; implementation, and we don't want to stomp over that if it was loaded already

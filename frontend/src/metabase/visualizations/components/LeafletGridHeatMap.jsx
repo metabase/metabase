@@ -73,7 +73,15 @@ export default class LeafletGridHeatMap extends LeafletMap {
   };
 
   _clickForPoint(index, e) {
-    const { points } = this.props;
+    const {
+      points,
+      settings,
+      series: [
+        {
+          data: { rows, cols },
+        },
+      ],
+    } = this.props;
     const point = points[index];
     const metricColumn = this._getMetricColumn();
     const { latitudeColumn, longitudeColumn } = this._getLatLonColumns();
@@ -91,6 +99,8 @@ export default class LeafletGridHeatMap extends LeafletMap {
         },
       ],
       event: e.originalEvent,
+      origin: { row: rows[index], cols },
+      settings,
     };
   }
 

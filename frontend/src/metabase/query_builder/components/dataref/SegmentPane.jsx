@@ -9,7 +9,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import DetailPane from "./DetailPane";
 import QueryButton from "metabase/components/QueryButton";
 import UseForButton from "./UseForButton";
-import QueryDefinition from "./QueryDefinition";
+import QueryDefinition from "../QueryDefinition";
 
 import { createCard } from "metabase/lib/card";
 import * as Q_DEPRECATED from "metabase/lib/query";
@@ -76,7 +76,7 @@ export default class SegmentPane extends Component {
 
   newCard() {
     const { segment, metadata } = this.props;
-    const table = metadata && metadata.tables[segment.table_id];
+    const table = metadata && metadata.table(segment.table_id);
 
     if (table) {
       const card = createCard();
@@ -107,7 +107,7 @@ export default class SegmentPane extends Component {
   }
 
   render() {
-    const { segment, metadata, question } = this.props;
+    const { segment, question } = this.props;
     const query = question.query();
 
     const segmentName = segment.name;
@@ -150,12 +150,10 @@ export default class SegmentPane extends Component {
         useForCurrentQuestion={useForCurrentQuestion}
         usefulQuestions={usefulQuestions}
         extra={
-          metadata && (
-            <div>
-              <p className="text-bold">{t`Segment Definition`}</p>
-              <QueryDefinition object={segment} metadata={metadata} />
-            </div>
-          )
+          <div>
+            <p className="text-bold">{t`Segment Definition`}</p>
+            <QueryDefinition object={segment} />
+          </div>
         }
       />
     );

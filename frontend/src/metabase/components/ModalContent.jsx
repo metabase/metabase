@@ -18,6 +18,14 @@ export default class ModalContent extends Component {
     formModal: true,
   };
 
+  static childContextTypes = {
+    isModal: PropTypes.bool,
+  };
+
+  getChildContext() {
+    return { isModal: true };
+  }
+
   render() {
     const {
       title,

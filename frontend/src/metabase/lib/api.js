@@ -5,32 +5,42 @@ import querystring from "querystring";
 import EventEmitter from "events";
 
 import { delay } from "metabase/lib/promise";
+import { IFRAMED } from "metabase/lib/dom";
 
 type TransformFn = (o: any) => any;
 
 export type Options = {
   noEvent?: boolean,
+  json?: boolean,
   retry?: boolean,
   retryCount?: number,
   retryDelayIntervals?: number[],
   transformResponse?: TransformFn,
   cancelled?: Promise<any>,
   raw?: { [key: string]: boolean },
+  headers?: { [key: string]: string },
   hasBody?: boolean,
+  bodyParamName?: string,
 };
 
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
+
+const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
+
+let ANTI_CSRF_TOKEN = null;
 
 export type Data = {
   [key: string]: any,
 };
 
 const DEFAULT_OPTIONS: Options = {
+  json: true,
   hasBody: false,
   noEvent: false,
   transformResponse: o => o,
   raw: {},
+  headers: {},
   retry: false,
   retryCount: MAX_RETRIES,
   // Creates an array with exponential backoff in millis
@@ -101,20 +111,31 @@ export class Api extends EventEmitter {
           }
         }
 
-        const headers: { [key: string]: string } = {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        };
+        const headers: { [key: string]: string } = options.json
+          ? { Accept: "application/json", "Content-Type": "application/json" }
+          : {};
+
+        if (IFRAMED) {
+          headers["X-Metabase-Embedded"] = "true";
+        }
+
+        if (ANTI_CSRF_TOKEN) {
+          headers[ANTI_CSRF_HEADER] = ANTI_CSRF_TOKEN;
+        }
 
         let body;
         if (options.hasBody) {
-          body = JSON.stringify(data);
+          body = JSON.stringify(
+            options.bodyParamName != null ? data[options.bodyParamName] : data,
+          );
         } else {
           const qs = querystring.stringify(data);
           if (qs) {
             url += (url.indexOf("?") >= 0 ? "&" : "?") + qs;
           }
         }
+
+        Object.assign(headers, options.headers);
 
         if (options.retry) {
           return this._makeRequestWithRetries(
@@ -175,24 +196,36 @@ export class Api extends EventEmitter {
       xhr.onreadystatechange = () => {
         // $FlowFixMe
         if (xhr.readyState === XMLHttpRequest.DONE) {
+          // getResponseHeader() is case-insensitive
+          const antiCsrfToken = xhr.getResponseHeader(ANTI_CSRF_HEADER);
+          if (antiCsrfToken) {
+            ANTI_CSRF_TOKEN = antiCsrfToken;
+          }
+
           let body = xhr.responseText;
-          try {
-            body = JSON.parse(body);
-          } catch (e) {}
-          if (xhr.status >= 200 && xhr.status <= 299) {
+          if (options.json) {
+            try {
+              body = JSON.parse(body);
+            } catch (e) {}
+          }
+          let status = xhr.status;
+          if (status === 202 && body && body._status > 0) {
+            status = body._status;
+          }
+          if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
               body = options.transformResponse(body, { data });
             }
             resolve(body);
           } else {
             reject({
-              status: xhr.status,
+              status: status,
               data: body,
               isCancelled: isCancelled,
             });
           }
           if (!options.noEvent) {
-            this.emit(xhr.status, url);
+            this.emit(status, url);
           }
         }
       };

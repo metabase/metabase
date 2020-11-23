@@ -20,8 +20,8 @@ export default class RowChart extends LineAreaBarChart {
   static renderer = rowRenderer;
 
   static settings = {
-    ...GRAPH_DATA_SETTINGS,
     ...GRAPH_COLORS_SETTINGS,
+    ...GRAPH_DATA_SETTINGS,
   };
 }
 

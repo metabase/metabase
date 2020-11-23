@@ -6,14 +6,13 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { loadTableAndForeignKeys } from "metabase/lib/table";
-
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import View from "../components/view/View";
 // import Notebook from "../components/notebook/Notebook";
 
 import title from "metabase/hoc/Title";
+import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import {
   getCard,
@@ -38,10 +37,13 @@ import {
   getIsRunnable,
   getIsResultDirty,
   getMode,
+  getModalSnippet,
+  getSnippetCollectionId,
   getQuery,
   getQuestion,
   getOriginalQuestion,
   getSettings,
+  getQueryStartTime,
   getRawSeries,
   getQuestionAlerts,
   getVisualizationSettings,
@@ -50,6 +52,8 @@ import {
   getIsPreviewable,
   getIsVisualized,
   getIsLiveResizable,
+  getNativeEditorCursorOffset,
+  getNativeEditorSelectedText,
 } from "../selectors";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -132,7 +136,6 @@ const mapStateToProps = (state, props) => {
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
 
-    loadTableAndForeignKeysFn: loadTableAndForeignKeys,
     autocompleteResultsFn: prefix => autocompleteResults(state.qb.card, prefix),
     instanceSettings: getSettings(state),
 
@@ -140,6 +143,11 @@ const mapStateToProps = (state, props) => {
       state,
       props,
     ),
+    queryStartTime: getQueryStartTime(state),
+    nativeEditorCursorOffset: getNativeEditorCursorOffset(state),
+    nativeEditorSelectedText: getNativeEditorSelectedText(state),
+    modalSnippet: getModalSnippet(state),
+    snippetCollectionId: getSnippetCollectionId(state),
   };
 };
 
@@ -153,6 +161,7 @@ const mapDispatchToProps = {
   mapDispatchToProps,
 )
 @title(({ card }) => (card && card.name) || t`Question`)
+@titleWithLoadingTime("queryStartTime")
 @fitViewport
 export default class QueryBuilder extends Component {
   timeout: any;
@@ -218,6 +227,8 @@ export default class QueryBuilder extends Component {
     window.removeEventListener("resize", this.handleResize);
 
     clearTimeout(this.timeout);
+
+    this.closeModal(); // close any modal that might be open
   }
 
   // When the window is resized we need to re-render, mainly so that our visualization pane updates

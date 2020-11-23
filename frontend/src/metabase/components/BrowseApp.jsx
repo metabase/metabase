@@ -32,7 +32,14 @@ export class SchemaBrowser extends React.Component {
       <Box>
         <Schema.ListLoader query={{ dbId }}>
           {({ schemas }) =>
-            schemas.length > 1 ? (
+            schemas.length === 1 ? (
+              <TableBrowser
+                {...this.props}
+                params={{ ...this.props.params, schemaName: schemas[0].name }}
+                // hide the schema since there's only one
+                showSchemaInHeader={false}
+              />
+            ) : (
               <Box>
                 <BrowseHeader
                   crumbs={[
@@ -40,39 +47,41 @@ export class SchemaBrowser extends React.Component {
                     { title: <Database.Name id={dbId} /> },
                   ]}
                 />
-                <Grid>
-                  {schemas.map(schema => (
-                    <GridItem w={ITEM_WIDTHS} key={schema.id}>
-                      <Link
-                        to={`/browse/${dbId}/schema/${schema.name}`}
-                        mb={1}
-                        hover={{ color: color("accent2") }}
-                        data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}
-                        className="overflow-hidden"
-                      >
-                        <Card hoverable px={1}>
-                          <Flex align="center">
-                            <EntityItem
-                              name={schema.name}
-                              iconName="folder"
-                              iconColor={color("accent2")}
-                              item={schema}
-                            />
-                            <Box ml="auto">
-                              <Icon name="reference" />
-                              <Tooltip tooltip={t`X-ray this schema`}>
-                                <Icon name="bolt" mx={1} />
-                              </Tooltip>
-                            </Box>
-                          </Flex>
-                        </Card>
-                      </Link>
-                    </GridItem>
-                  ))}
-                </Grid>
+                {schemas.length === 0 ? (
+                  <h2 className="full text-centered text-medium">{t`This database doesn't have any tables.`}</h2>
+                ) : (
+                  <Grid>
+                    {schemas.map(schema => (
+                      <GridItem w={ITEM_WIDTHS} key={schema.id}>
+                        <Link
+                          to={`/browse/${dbId}/schema/${schema.name}`}
+                          mb={1}
+                          hover={{ color: color("accent2") }}
+                          data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}
+                          className="overflow-hidden"
+                        >
+                          <Card hoverable px={1}>
+                            <Flex align="center">
+                              <EntityItem
+                                name={schema.name}
+                                iconName="folder"
+                                iconColor={color("accent2")}
+                                item={schema}
+                              />
+                              <Box ml="auto">
+                                <Icon name="reference" />
+                                <Tooltip tooltip={t`X-ray this schema`}>
+                                  <Icon name="bolt" mx={1} />
+                                </Tooltip>
+                              </Box>
+                            </Flex>
+                          </Card>
+                        </Link>
+                      </GridItem>
+                    ))}
+                  </Grid>
+                )}
               </Box>
-            ) : (
-              <TableBrowser {...this.props} />
             )
           }
         </Schema.ListLoader>
@@ -90,6 +99,7 @@ export class TableBrowser extends React.Component {
     const {
       metadata,
       params: { dbId, schemaName },
+      showSchemaInHeader = true,
     } = this.props;
     return (
       <Box>
@@ -104,7 +114,7 @@ export class TableBrowser extends React.Component {
                       title: <Database.Name id={dbId} />,
                       to: `browse/${dbId}`,
                     },
-                    schemaName != null && { title: schemaName },
+                    showSchemaInHeader && { title: schemaName },
                   ]}
                 />
                 <Grid>

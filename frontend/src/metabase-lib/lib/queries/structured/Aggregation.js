@@ -4,16 +4,18 @@ import MBQLClause from "./MBQLClause";
 
 import { t } from "ttag";
 
-import * as A_DEPRECATED from "metabase/lib/query_aggregation";
-
 import { TYPE } from "metabase/lib/types";
 
-import type { Aggregation as AggregationObject } from "metabase/meta/types/Query";
+import * as AGGREGATION from "metabase/lib/query/aggregation";
+
+import { AggregationDimension } from "../../Dimension";
+
+import type { Aggregation as AggregationObject } from "metabase-types/types/Query";
 import type StructuredQuery from "../StructuredQuery";
 import type Dimension from "../../Dimension";
-import type { AggregationOperator } from "metabase/meta/types/Metadata";
-import type { MetricId } from "metabase/meta/types/Metric";
-import type { FieldId } from "metabase/meta/types/Field";
+import type { AggregationOperator } from "metabase-types/types/Metadata";
+import type { MetricId } from "metabase-types/types/Metric";
+import type { FieldId } from "metabase-types/types/Field";
 
 const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);
 
@@ -134,35 +136,50 @@ export default class Aggregation extends MBQLClause {
   isValid(): boolean {
     if (this.hasOptions()) {
       return this.aggregation().isValid();
-    } else if (this.isCustom()) {
-      // TODO: custom aggregations
-      return true;
-    } else if (this.isStandard()) {
+    } else if (this.isStandard() && this.dimension()) {
       const dimension = this.dimension();
-      const aggregation = this.query()
+      const aggregationOperator = this.query()
         .table()
-        .aggregation(this[0]);
+        .aggregationOperator(this[0]);
       return (
-        aggregation &&
-        (!aggregation.requiresField ||
+        aggregationOperator &&
+        (!aggregationOperator.requiresField ||
           this.query()
-            .aggregationFieldOptions(aggregation)
+            .aggregationFieldOptions(aggregationOperator)
             .hasDimension(dimension))
       );
     } else if (this.isMetric()) {
       return !!this.metric();
+    } else {
+      // FIXME: custom aggregation validation
+      return true;
     }
-    return false;
   }
 
-  // STANDARD AGGREGATION
+  // There are currently 3 "classes" of aggregations that are handled differently, "standard", "segment", and "custom"
 
   /**
    * Returns true if this is a "standard" metric
    */
   isStandard(): boolean {
-    return A_DEPRECATED.isStandard(this);
+    return AGGREGATION.isStandard(this);
   }
+
+  /**
+   * Returns true if this is a metric
+   */
+  isMetric(): boolean {
+    return AGGREGATION.isMetric(this);
+  }
+
+  /**
+   * Returns true if this is custom expression created with the expression editor
+   */
+  isCustom(): boolean {
+    return AGGREGATION.isCustom(this);
+  }
+
+  // STANDARD AGGREGATION
 
   /**
    * Gets the aggregation option matching this aggregation
@@ -211,13 +228,6 @@ export default class Aggregation extends MBQLClause {
   // METRIC AGGREGATION
 
   /**
-   * Returns true if this is a metric
-   */
-  isMetric(): boolean {
-    return this[0] === "metric";
-  }
-
-  /**
    * Get metricId from a metric aggregation clause
    * Returns `null` if the clause doesn't represent a metric
    */
@@ -231,15 +241,6 @@ export default class Aggregation extends MBQLClause {
     if (this.isMetric()) {
       return this.metadata().metric(this.metricId());
     }
-  }
-
-  // CUSTOM
-
-  /**
-   * Returns true if this is custom expression created with the expression editor
-   */
-  isCustom(): boolean {
-    return A_DEPRECATED.isCustom(this);
   }
 
   // OPTIONS
@@ -265,5 +266,20 @@ export default class Aggregation extends MBQLClause {
     } else {
       return this;
     }
+  }
+
+  // MISC
+
+  aggregationDimension() {
+    return new AggregationDimension(
+      null,
+      [this._index],
+      this._query.metadata(),
+      this._query,
+    );
+  }
+
+  isSortable() {
+    return AGGREGATION.isSortable(this);
   }
 }

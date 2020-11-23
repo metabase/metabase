@@ -1,15 +1,10 @@
 (ns metabase.query-processor.middleware.constraints-test
   (:require [expectations :refer [expect]]
-            [metabase.query-processor.middleware.constraints :as constraints]))
+            [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.test :as mt]))
 
 (defn- add-default-userland-constraints [query]
-  ((constraints/add-default-userland-constraints
-     (fn [query respond _ _]
-       (respond query)))
-   query
-   identity
-   identity
-   nil))
+  (:pre (mt/test-qp-middleware constraints/add-default-userland-constraints query)))
 
 ;; don't do anything to queries without [:middleware :add-default-userland-constraints?] set
 (expect

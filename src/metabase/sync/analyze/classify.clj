@@ -68,24 +68,27 @@
 (def ^:private classifiers
   "Various classifier functions available. These should all take two args, a `FieldInstance` and a possibly `nil`
   `Fingerprint`, and return `FieldInstance` with any inferred property changes, or `nil` if none could be inferred.
-  Order is important!"
+  Order is important!
+
+  A classifier may see the original field (before any classifiers were run) in the metadata of the field at
+  `:sync.classify/original`."
   [name/infer-and-assoc-special-type
    category/infer-is-category-or-list
    no-preview-display/infer-no-preview-display
    text-fingerprint/infer-special-type])
 
 (s/defn run-classifiers :- i/FieldInstance
-  "Run all the available `classifiers` against `field` and `fingerprint`, and return the resulting `field` with changes
-  decided upon by the classifiers."
+  "Run all the available `classifiers` against `field` and `fingerprint`, and return the resulting `field` with
+  changes decided upon by the classifiers. The original field can be accessed in the metadata at
+  `:sync.classify/original`."
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
-  (loop [field field, [classifier & more] classifiers]
-    (if-not classifier
-      field
-      (recur (or (sync-util/with-error-handling (format "Error running classifier on %s"
-                                                        (sync-util/name-for-logging field))
-                   (classifier field fingerprint))
-                 field)
-             more))))
+  (reduce (fn [field classifier]
+            (or (sync-util/with-error-handling (format "Error running classifier on %s"
+                                                       (sync-util/name-for-logging field))
+                  (classifier field fingerprint))
+                field))
+          (vary-meta field assoc :sync.classify/original field)
+          classifiers))
 
 
 (s/defn ^:private classify!
@@ -120,17 +123,20 @@
   [table :- i/TableInstance]
   (when-let [fields (fields-to-classify table)]
     {:fields-classified (count fields)
-     :fields-failed     (sync-util/sum-numbers (fn [field]
-                                                 (let [result (classify! field)]
-                                                   (if (instance? Exception result)
-                                                     1
-                                                     0)))
-                                               fields)}))
+     :fields-failed     (->> fields
+                             (map classify!)
+                             (filter (partial instance? Exception))
+                             count)}))
 
 (s/defn ^:always-validate classify-table!
   "Run various classifiers on the `table`. These do things like inferring (and setting) entitiy type of `table`."
   [table :- i/TableInstance]
-  (save-model-updates! table (name/infer-entity-type table)))
+  (let [updated-table (sync-util/with-error-handling (format "Error running classifier on %s"
+                                                             (sync-util/name-for-logging table))
+                        (name/infer-entity-type table))]
+    (if (instance? Exception updated-table)
+      table
+      (save-model-updates! table updated-table))))
 
 (s/defn classify-tables-for-db!
   "Classify all tables found in a given database"

@@ -3,46 +3,76 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
+import _ from "underscore";
 
 import TokenField from "metabase/components/TokenField";
-import RemappedValue from "metabase/containers/RemappedValue";
+import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import AutoExpanding from "metabase/hoc/AutoExpanding";
 
-import { MetabaseApi } from "metabase/services";
+import { DashboardApi, MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
-import { debounce } from "underscore";
 import { stripId } from "metabase/lib/formatting";
 
 import Fields from "metabase/entities/fields";
 
 import type Field from "metabase-lib/lib/metadata/Field";
-import type { FieldId } from "metabase/meta/types/Field";
-import type { Value } from "metabase/meta/types/Dataset";
+import type { FieldId } from "metabase-types/types/Field";
+import type { Value } from "metabase-types/types/Dataset";
 import type { FormattingOptions } from "metabase/lib/formatting";
 import type { LayoutRendererProps } from "metabase/components/TokenField";
+import type { DashboardWithCards } from "metabase-types/types/Dashboard";
+import type { Parameter } from "metabase-types/types/Parameter";
 
 const MAX_SEARCH_RESULTS = 100;
+
+// fetch the possible values of a parameter based on the values of the other parameters in a dashboard.
+// parameterId = the auto-generated ID of the parameter
+// parameters = all parameters in the current dashboard, as an array
+const fetchParameterPossibleValues = async (
+  dashboardId,
+  { id: paramId, filteringParameters = [] } = {},
+  parameters,
+  prefix,
+) => {
+  // build a map of parameter ID -> value for parameters that this parameter is filtered by
+  const otherValues = _.chain(parameters)
+    .filter(p => filteringParameters.includes(p.id) && p.value != null)
+    .map(p => [p.id, p.value])
+    .object()
+    .value();
+
+  const args = { paramId, prefix, dashId: dashboardId, ...otherValues };
+  const endpoint = prefix
+    ? DashboardApi.parameterSearch
+    : DashboardApi.parameterValues;
+  // now call the new chain filter API endpoint
+  const results = await endpoint(args);
+  return results.map(result => [].concat(result));
+};
 
 const mapDispatchToProps = {
   addRemappings,
   fetchFieldValues,
 };
 
-function mapStateToProps(state, { field }) {
-  const selectedField =
-    field && Fields.selectors.getObject(state, { entityId: field.id });
-  // try and use the selected field, but fall back to the one passed
-  return { field: selectedField || field };
+function mapStateToProps(state, { fields = [] }) {
+  // try and use the selected fields, but fall back to the ones passed
+  return {
+    fields: fields.map(
+      field =>
+        Fields.selectors.getObject(state, { entityId: field.id }) || field,
+    ),
+  };
 }
 
 type Props = {
   value: Value[],
   onChange: (value: Value[]) => void,
-  field: Field,
-  searchField?: Field,
+  fields: Field[],
+  disablePKRemappingForSearch?: boolean,
   multi?: boolean,
   autoFocus?: boolean,
   color?: string,
@@ -55,6 +85,10 @@ type Props = {
   minWidth?: number,
   optionsMaxHeight?: Number,
   alwaysShowOptions?: boolean,
+
+  dashboard?: DashboardWithCards,
+  parameter?: Parameter,
+  parameters?: Parameter[],
 
   className?: string,
 };
@@ -90,12 +124,48 @@ export class FieldValuesWidget extends Component {
     maxWidth: 500,
   };
 
+  // if [dashboard] parameter ID is specified use the fancy new Chain Filter API endpoints to fetch parameter values.
+  // Otherwise (e.g. for Cards) fall back to the old field/:id/values endpoint
+  useChainFilterEndpoints() {
+    return this.props.dashboard && this.props.dashboard.id;
+  }
+
+  parameterId() {
+    return this.props.parameter && this.props.parameter.id;
+  }
+
   componentWillMount() {
-    const { field, fetchFieldValues } = this.props;
-    if (field.has_field_values === "list") {
-      fetchFieldValues(field.id);
+    if (this.shouldList()) {
+      if (this.useChainFilterEndpoints()) {
+        this.fetchDashboardParamValues();
+      } else {
+        const { fields, fetchFieldValues } = this.props;
+        fields.forEach(field => fetchFieldValues(field.id));
+      }
     }
   }
+
+  fetchDashboardParamValues = async () => {
+    this.setState({
+      loadingState: "LOADING",
+      options: [],
+    });
+
+    let options;
+    try {
+      const { dashboard, parameter, parameters } = this.props;
+      options = await fetchParameterPossibleValues(
+        dashboard && dashboard.id,
+        parameter,
+        parameters,
+      );
+    } finally {
+      this.setState({
+        loadingState: "LOADED",
+        options,
+      });
+    }
+  };
 
   componentWillUnmount() {
     if (this._cancel) {
@@ -103,14 +173,34 @@ export class FieldValuesWidget extends Component {
     }
   }
 
+  shouldList() {
+    return this.props.fields.every(field => field.has_field_values === "list");
+  }
+
   hasList() {
-    const { field } = this.props;
-    return field.has_field_values === "list" && field.values;
+    const nonEmptyArray = a => a && a.length > 0;
+    return (
+      this.shouldList() &&
+      (this.useChainFilterEndpoints()
+        ? this.state.loadingState === "LOADED" &&
+          nonEmptyArray(this.state.options)
+        : this.props.fields.every(field => nonEmptyArray(field.values)))
+    );
   }
 
   isSearchable() {
-    const { field, searchField } = this.props;
-    return searchField && field.has_field_values === "search";
+    const { fields } = this.props;
+    return (
+      // search is available if:
+      // all fields have a valid search field
+      fields.every(this.searchField) &&
+      // at least one field is set to display as "search"
+      fields.some(f => f.has_field_values === "search") &&
+      // and all fields are either "search" or "list"
+      fields.every(
+        f => f.has_field_values === "search" || f.has_field_values === "list",
+      )
+    );
   }
 
   onInputChange = (value: string) => {
@@ -121,29 +211,63 @@ export class FieldValuesWidget extends Component {
     return value;
   };
 
-  search = async (value: string, cancelled: Promise<void>) => {
-    const { field, searchField, maxResults } = this.props;
+  searchField = (field: Field) => {
+    if (this.props.disablePKRemappingForSearch && field.isPK()) {
+      return field.isSearchable() ? field : null;
+    }
 
-    if (!field || !searchField || !value) {
+    const remappedField = field.remappedField();
+    if (remappedField && remappedField.isSearchable()) {
+      return remappedField;
+    }
+    return field.isSearchable() ? field : null;
+  };
+
+  showRemapping = () => this.props.fields.length === 1;
+
+  search = async (value: string, cancelled: Promise<void>) => {
+    if (!value) {
       return;
     }
 
-    const fieldId = (field.target || field).id;
-    const searchFieldId = searchField.id;
-    const results = await MetabaseApi.field_search(
-      {
-        value,
-        fieldId,
-        searchFieldId,
-        limit: maxResults,
-      },
-      { cancelled },
-    );
+    const { fields } = this.props;
 
-    if (results && field.remappedField() === searchField) {
-      // $FlowFixMe: addRemappings provided by @connect
-      this.props.addRemappings(field.id, results);
+    let results;
+    if (this.useChainFilterEndpoints()) {
+      const { dashboard, parameter, parameters } = this.props;
+      results = await fetchParameterPossibleValues(
+        dashboard && dashboard.id,
+        parameter,
+        parameters,
+        value,
+      );
+    } else {
+      results = dedupeValues(
+        await Promise.all(
+          fields.map(field =>
+            MetabaseApi.field_search(
+              {
+                value,
+                fieldId: field.id,
+                // $FlowFixMe all fields have a search field if we're searching
+                searchFieldId: this.searchField(field).id,
+                limit: this.props.maxResults,
+              },
+              { cancelled },
+            ),
+          ),
+        ),
+      );
     }
+
+    if (this.showRemapping()) {
+      const [field] = fields;
+      if (field.remappedField() === this.searchField(field)) {
+        // $FlowFixMe
+        this.props.addRemappings(field.id, results);
+      }
+    }
+
     return results;
   };
 
@@ -173,7 +297,7 @@ export class FieldValuesWidget extends Component {
   };
 
   // $FlowFixMe
-  _searchDebounced = debounce(async (value): void => {
+  _searchDebounced = _.debounce(async (value): void => {
     this.setState({
       loadingState: "LOADING",
     });
@@ -184,7 +308,12 @@ export class FieldValuesWidget extends Component {
       cancelDeferred.resolve();
     };
 
-    const results = await this.search(value, cancelDeferred.promise);
+    let results;
+    try {
+      results = await this.search(value, cancelDeferred.promise);
+    } catch (e) {
+      console.warn(e);
+    }
 
     this._cancel = null;
 
@@ -208,7 +337,7 @@ export class FieldValuesWidget extends Component {
     isFocused,
     isAllSelected,
   }: LayoutRendererProps) {
-    const { alwaysShowOptions, field, searchField } = this.props;
+    const { alwaysShowOptions, fields } = this.props;
     const { loadingState } = this.state;
     if (alwaysShowOptions || isFocused) {
       if (optionsList) {
@@ -221,38 +350,61 @@ export class FieldValuesWidget extends Component {
         if (loadingState === "LOADING") {
           return <LoadingState />;
         } else if (loadingState === "LOADED") {
-          return <NoMatchState field={searchField || field} />;
+          // $FlowFixMe all fields have a search field if this.isSearchable()
+          return <NoMatchState fields={fields.map(this.searchField)} />;
         }
       }
     }
   }
 
+  renderValue = (value: Value, options: FormattingOptions) => {
+    const { fields, formatOptions } = this.props;
+    return (
+      <ValueComponent
+        value={value}
+        column={fields[0]}
+        maximumFractionDigits={20}
+        remap={this.showRemapping()}
+        {...formatOptions}
+        // $FlowFixMe
+        {...options}
+      />
+    );
+  };
+
   render() {
     const {
       value,
       onChange,
-      field,
-      searchField,
+      fields,
       multi,
       autoFocus,
       color,
       className,
       style,
-      formatOptions,
       optionsMaxHeight,
     } = this.props;
     const { loadingState } = this.state;
 
     let { placeholder } = this.props;
     if (!placeholder) {
+      const [field] = fields;
       if (this.hasList()) {
         placeholder = t`Search the list`;
-      } else if (this.isSearchable() && searchField) {
-        const searchFieldName =
-          stripId(searchField.display_name) || searchField.display_name;
-        placeholder = t`Search by ${searchFieldName}`;
-        if (field.isID() && field !== searchField) {
-          placeholder += t` or enter an ID`;
+      } else if (this.isSearchable()) {
+        const names = new Set(
+          // $FlowFixMe all fields have a search field if this.isSearchable()
+          fields.map(field => stripId(this.searchField(field).display_name)),
+        );
+        if (names.size > 1) {
+          placeholder = t`Search`;
+        } else {
+          // $FlowFixMe
+          const [name] = names;
+          placeholder = t`Search by ${name}`;
+          if (field.isID() && field !== this.searchField(field)) {
+            placeholder += t` or enter an ID`;
+          }
         }
       } else {
         if (field.isID()) {
@@ -266,9 +418,12 @@ export class FieldValuesWidget extends Component {
     }
 
     let options = [];
-    if (this.hasList()) {
-      options = field.values;
-    } else if (this.isSearchable() && loadingState === "LOADED") {
+    if (this.hasList() && !this.useChainFilterEndpoints()) {
+      options = dedupeValues(fields.map(field => field.values));
+    } else if (
+      loadingState === "LOADED" &&
+      (this.isSearchable() || this.useChainFilterEndpoints())
+    ) {
       options = this.state.options;
     } else {
       options = [];
@@ -302,25 +457,12 @@ export class FieldValuesWidget extends Component {
           options={options}
           // $FlowFixMe
           valueKey={0}
-          valueRenderer={value => (
-            <RemappedValue
-              value={value}
-              column={field}
-              {...formatOptions}
-              maximumFractionDigits={20}
-              compact={false}
-              autoLoad={true}
-            />
-          )}
-          optionRenderer={option => (
-            <RemappedValue
-              value={option[0]}
-              column={field}
-              maximumFractionDigits={20}
-              autoLoad={false}
-              {...formatOptions}
-            />
-          )}
+          valueRenderer={value =>
+            this.renderValue(value, { autoLoad: true, compact: false })
+          }
+          optionRenderer={option =>
+            this.renderValue(option[0], { autoLoad: false })
+          }
           layoutRenderer={props => (
             <div>
               {props.valuesList}
@@ -346,7 +488,7 @@ export class FieldValuesWidget extends Component {
               return null;
             }
             // if the field is numeric we need to parse the string into an integer
-            if (field.isNumeric()) {
+            if (fields[0].isNumeric()) {
               if (/^-?\d+(\.\d+)?$/.test(v)) {
                 return parseFloat(v);
               } else {
@@ -361,6 +503,12 @@ export class FieldValuesWidget extends Component {
   }
 }
 
+function dedupeValues(valuesList) {
+  // $FlowFixMe
+  const uniqueValueMap = new Map(valuesList.flat().map(o => [o[0], o]));
+  return Array.from(uniqueValueMap.values());
+}
+
 const LoadingState = () => (
   <div
     className="flex layout-centered align-center border-bottom"
@@ -370,13 +518,20 @@ const LoadingState = () => (
   </div>
 );
 
-const NoMatchState = ({ field }) => (
-  <OptionsMessage
-    message={jt`No matching ${(
-      <strong>&nbsp;{field.display_name}&nbsp;</strong>
-    )} found.`}
-  />
-);
+const NoMatchState = ({ fields }: { fields: Field[] }) => {
+  if (fields.length > 1) {
+    // if there is more than one field, don't name them
+    return <OptionsMessage message={t`No matching result`} />;
+  }
+  const [{ display_name }] = fields;
+  return (
+    <OptionsMessage
+      message={jt`No matching ${(
+        <strong>&nbsp;{display_name}&nbsp;</strong>
+      )} found.`}
+    />
+  );
+};
 
 const EveryOptionState = () => (
   <OptionsMessage

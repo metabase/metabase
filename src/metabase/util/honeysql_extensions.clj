@@ -31,10 +31,15 @@
 (defmethod hformat/fn-handler "extract" [_ unit expr]
   (str "extract(" (name unit) " from " (hformat/to-sql expr) ")"))
 
-;; register the function "distinct-count" with HoneySQL
+;; register the function `distinct-count` with HoneySQL
 ;; (hsql/format :%distinct-count.x) -> "count(distinct x)"
 (defmethod hformat/fn-handler "distinct-count" [_ field]
   (str "count(distinct " (hformat/to-sql field) ")"))
+
+;; register the function `percentile` with HoneySQL
+;; (hsql/format (hsql/call :percentile-cont :a 0.9)) -> "percentile_cont(0.9) within group (order by a)"
+(defmethod hformat/fn-handler "percentile-cont" [_ field p]
+  (str "PERCENTILE_CONT(" (hformat/to-sql p) ") within group (order by " (hformat/to-sql field) ")"))
 
 
 ;; HoneySQL 0.7.0+ parameterizes numbers to fix issues with NaN and infinity -- see
@@ -121,8 +126,9 @@
   "Wrap keyword or string `s` in single quotes and a HoneySQL `raw` form.
 
   We'll try to escape single quotes in the literal, unless they're already escaped (either as `''` or as `\\`, but
-  this won't handle wacky cases like three single quotes in a row. Don't use `literal` for things that might be wacky.
-  Only use it for things that are hardcoded."
+  this won't handle wacky cases like three single quotes in a row.
+
+  DON'T USE `LITERAL` FOR THINGS THAT MIGHT BE WACKY (USER INPUT). Only use it for things that are hardcoded."
   [s]
   (Literal. (u/qualified-name s)))
 
@@ -169,19 +175,19 @@
 (defn ->boolean                  "CAST `x` to a `boolean` datatype"          [x] (cast :boolean x))
 
 ;;; Random SQL fns. Not all DBs support all these!
-(def ^{:arglists '([& exprs])} floor   "SQL `floor` function."  (partial hsql/call :floor))
-(def ^{:arglists '([& exprs])} hour    "SQL `hour` function."   (partial hsql/call :hour))
-(def ^{:arglists '([& exprs])} minute  "SQL `minute` function." (partial hsql/call :minute))
-(def ^{:arglists '([& exprs])} day     "SQL `day` function."    (partial hsql/call :day))
-(def ^{:arglists '([& exprs])} week    "SQL `week` function."   (partial hsql/call :week))
-(def ^{:arglists '([& exprs])} month   "SQL `month` function."  (partial hsql/call :month))
-(def ^{:arglists '([& exprs])} quarter "SQL `quarter` function."(partial hsql/call :quarter))
-(def ^{:arglists '([& exprs])} year    "SQL `year` function."   (partial hsql/call :year))
-(def ^{:arglists '([& exprs])} concat  "SQL `concat` function." (partial hsql/call :concat))
+(def ^{:arglists '([& exprs])} floor   "SQL `floor` function."   (partial hsql/call :floor))
+(def ^{:arglists '([& exprs])} hour    "SQL `hour` function."    (partial hsql/call :hour))
+(def ^{:arglists '([& exprs])} minute  "SQL `minute` function."  (partial hsql/call :minute))
+(def ^{:arglists '([& exprs])} day     "SQL `day` function."     (partial hsql/call :day))
+(def ^{:arglists '([& exprs])} week    "SQL `week` function."    (partial hsql/call :week))
+(def ^{:arglists '([& exprs])} month   "SQL `month` function."   (partial hsql/call :month))
+(def ^{:arglists '([& exprs])} quarter "SQL `quarter` function." (partial hsql/call :quarter))
+(def ^{:arglists '([& exprs])} year    "SQL `year` function."    (partial hsql/call :year))
+(def ^{:arglists '([& exprs])} concat  "SQL `concat` function."  (partial hsql/call :concat))
 
 ;; Etc (Dev Stuff)
-(alter-meta! #'honeysql.core/format assoc :style/indent 1)
-(alter-meta! #'honeysql.core/call   assoc :style/indent 1)
+(alter-meta! #'honeysql.core/format assoc :style/indent :defn)
+(alter-meta! #'honeysql.core/call   assoc :style/indent :defn)
 
 (require 'honeysql.types)
 (extend-protocol PrettyPrintable

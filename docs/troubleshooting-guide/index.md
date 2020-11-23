@@ -12,4 +12,6 @@
 
 ### [Incorrect results due to time zones](timezones.md)
 
+### [Problems with saving questions/dashboards or blank page](proxies.md)
+
 ### [I think I found a bug](bugs.md)

@@ -38,14 +38,20 @@ class ColumnWidgets extends React.Component {
   componentDidMount() {
     const {
       setSidebarPropsOverride,
-      onChangeEditingObject,
       object,
+      onEndShowWidget,
+      currentSectionHasColumnSettings,
     } = this.props;
 
-    if (setSidebarPropsOverride) {
+    // These two props (title and onBack) are overridden to display a column
+    // name instead of the visualization type when viewing a column's settings.
+    // If the column setting is directly within the section rather than an
+    // additional widget we drilled into, clicking back should still return us
+    // to the visualization list. In that case, we don't override these at all.
+    if (setSidebarPropsOverride && !currentSectionHasColumnSettings) {
       setSidebarPropsOverride({
         title: displayNameForColumn(object),
-        onBack: () => onChangeEditingObject(),
+        onBack: onEndShowWidget,
       });
     }
   }

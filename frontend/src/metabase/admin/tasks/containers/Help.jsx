@@ -46,14 +46,14 @@ Add any other context about the problem here.
 
 function githubIssueLink(bugReportDetails) {
   return (
-    "https://github.com/metabase/metabase/issues/new?title=&labels=Type:Bug&body=" +
+    "https://github.com/metabase/metabase/issues/new?title=&labels=.Needs+Triage%2C+Type%3ABug&body=" +
     encodeURIComponent(template + "\n```json\n" + bugReportDetails + "\n```")
   );
 }
 
 function discourseLink(bugReportDetails) {
   return (
-    "http://discourse.metabase.com/new-topic?category_id=7&body=" +
+    "https://discourse.metabase.com/new-topic?category_id=7&body=" +
     encodeURIComponent("```json\n" + bugReportDetails + "\n```")
   );
 }
@@ -63,6 +63,7 @@ const HelpLink = ({ title, description, link }) => (
     <ExternalLink
       className="bordered border-brand-hover rounded transition-border flex p2 no-decoration"
       href={link}
+      target="_blank"
     >
       <div>
         <h3 className="text-brand">{title}</h3>
@@ -104,18 +105,18 @@ export default class Help extends Component {
         <Box my={2} style={{ maxWidth: "468px" }}>
           <ol>
             <HelpLink
-              title="Metabase Documentation"
-              description="Includes a troubleshooting guide"
+              title={t`Metabase Documentation`}
+              description={t`Includes a troubleshooting guide`}
               link={MetabaseSettings.docsUrl()}
             />
             <HelpLink
-              title="Post on the Metabase support forum"
-              description="A community forum for all things Metabase"
+              title={t`Post on the Metabase support forum`}
+              description={t`A community forum for all things Metabase`}
               link={discourseLink(detailString)}
             />
             <HelpLink
-              title="File a bug report"
-              description="Create a GitHub issue (includes the diagnostic info below)"
+              title={t`File a bug report`}
+              description={t`Create a GitHub issue (includes the diagnostic info below)`}
               link={githubIssueLink(detailString)}
             />
           </ol>
@@ -123,7 +124,7 @@ export default class Help extends Component {
 
         <Box my={2}>
           <AdminHeader title={t`Diagnostic Info`} className="mb2" />
-          <p>Please include these details in support requests. Thank you!</p>
+          <p>{t`Please include these details in support requests. Thank you!`}</p>
           <InfoBlock>{detailString}</InfoBlock>
         </Box>
       </Box>

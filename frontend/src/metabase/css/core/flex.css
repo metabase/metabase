@@ -5,6 +5,11 @@
   display: flex;
 }
 
+.inline-flex,
+:local(.inline-flex) {
+  display: inline-flex;
+}
+
 .flex-auto,
 :local(.flex-auto) {
   flex: auto;
@@ -60,6 +65,7 @@
      * fixed-size element). To change this, set the min-width or min-height property.
      */
   min-width: 0;
+  min-height: 0;
 }
 
 .align-center,
@@ -75,6 +81,10 @@
 .justify-center,
 :local(.justify-center) {
   justify-content: center;
+}
+
+.justify-evenly {
+  justify-content: space-evenly;
 }
 
 .justify-between {

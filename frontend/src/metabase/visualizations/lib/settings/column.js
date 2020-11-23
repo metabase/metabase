@@ -35,10 +35,10 @@ import currency from "metabase/lib/currency";
 
 import type { Settings, SettingDef } from "../settings";
 import type { DateStyle, TimeStyle } from "metabase/lib/formatting/date";
-import type { DatetimeUnit } from "metabase/meta/types/Query";
-import type { Column } from "metabase/meta/types/Dataset";
-import type { Series } from "metabase/meta/types/Visualization";
-import type { VisualizationSettings } from "metabase/meta/types/Card";
+import type { DatetimeUnit } from "metabase-types/types/Query";
+import type { Column } from "metabase-types/types/Dataset";
+import type { Series } from "metabase-types/types/Visualization";
+import type { VisualizationSettings } from "metabase-types/types/Card";
 
 type ColumnSettings = Settings;
 
@@ -80,7 +80,7 @@ export function getGlobalSettingsForColumn(column: Column) {
   const customFormatting = MetabaseSettings.get("custom-formatting");
   // NOTE: the order of these doesn't matter as long as there's no overlap between settings
   for (const [type, globalSettings] of Object.entries(customFormatting || {})) {
-    if (isa(column.special_type, type)) {
+    if (isa(column.special_type || column.base_type, type)) {
       // $FlowFixMe
       Object.assign(settings, globalSettings);
     }
@@ -267,11 +267,11 @@ export const DATE_COLUMN_SETTINGS = {
     default: "h:mm A",
     getProps: (column: Column, settings: ColumnSettings) => ({
       options: [
-        timeStyleOption("h:mm A", "12-hour clock"),
+        timeStyleOption("h:mm A", t`12-hour clock`),
         ...(column.unit === "hour-of-day"
           ? [timeStyleOption("h A", "12-hour clock without minutes")]
           : []),
-        timeStyleOption("k:mm", "24-hour clock"),
+        timeStyleOption("k:mm", t`24-hour clock`),
       ],
     }),
     getHidden: (column: Column, settings: ColumnSettings) =>
@@ -337,9 +337,18 @@ export const NUMBER_COLUMN_SETTINGS = {
       const c = settings["currency"] || "USD";
       return {
         options: [
-          { name: `Symbol (${getCurrency(c, "symbol")})`, value: "symbol" },
-          { name: `Code (${getCurrency(c, "code")})`, value: "code" },
-          { name: `Name (${getCurrency(c, "name")})`, value: "name" },
+          {
+            name: t`Symbol` + ` ` + `(${getCurrency(c, "symbol")})`,
+            value: "symbol",
+          },
+          {
+            name: t`Code` + ` ` + `(${getCurrency(c, "code")})`,
+            value: "code",
+          },
+          {
+            name: t`Name` + ` ` + `(${getCurrency(c, "name")})`,
+            value: "name",
+          },
         ],
       };
     },
@@ -353,8 +362,8 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "radio",
     props: {
       options: [
-        { name: "In the column heading", value: true },
-        { name: "In every table cell", value: false },
+        { name: t`In the column heading`, value: true },
+        { name: t`In every table cell`, value: false },
       ],
     },
     default: true,

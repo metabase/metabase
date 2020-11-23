@@ -6,17 +6,16 @@ import moment from "moment";
 const DateSingleWidget = ({ value, setValue, onClose }) => {
   value = value ? moment(value) : moment();
   return (
-    <div className="p1">
-      <Calendar
-        initial={value}
-        selected={value}
-        selectedEnd={value}
-        onChange={value => {
-          setValue(value);
-          onClose();
-        }}
-      />
-    </div>
+    <Calendar
+      initial={value}
+      selected={value}
+      selectedEnd={value}
+      isRangePicker={false}
+      onChange={value => {
+        setValue(value);
+        onClose();
+      }}
+    />
   );
 };
 

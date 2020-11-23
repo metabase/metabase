@@ -8,6 +8,7 @@ import {
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
+import Schema from "metabase-lib/lib/metadata/Schema";
 import Table from "metabase-lib/lib/metadata/Table";
 import Field from "metabase-lib/lib/metadata/Field";
 import Metric from "metabase-lib/lib/metadata/Metric";
@@ -17,16 +18,31 @@ import _ from "underscore";
 import { shallowEqual } from "recompose";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 
-import {
-  getFilterOperators,
-  getAggregationOperatorsWithFields,
-} from "metabase/lib/schema_metadata";
 import { getIn } from "icepick";
 
 // fully nomalized, raw "entities"
 export const getNormalizedDatabases = state => state.entities.databases;
-export const getNormalizedTables = state => state.entities.tables;
-export const getNormalizedFields = state => state.entities.fields;
+export const getNormalizedSchemas = state => state.entities.schemas;
+const getNormalizedTablesUnfiltered = state => state.entities.tables;
+export const getNormalizedTables = createSelector(
+  [getNormalizedTablesUnfiltered],
+  // remove hidden tables from the metadata graph
+  tables => filterValues(tables, table => table.visibility_type == null),
+);
+
+const getNormalizedFieldsUnfiltered = state => state.entities.fields;
+export const getNormalizedFields = createSelector(
+  [getNormalizedFieldsUnfiltered, getNormalizedTablesUnfiltered],
+  (fields, tables) =>
+    filterValues(fields, field => {
+      // remove fields that are sensitive or belong to hidden tables
+      const table = tables[field.table_id];
+      return (
+        (!table || table.visibility_type == null) &&
+        field.visibility_type !== "sensitive"
+      );
+    }),
+);
 export const getNormalizedMetrics = state => state.entities.metrics;
 export const getNormalizedSegments = state => state.entities.segments;
 
@@ -59,32 +75,67 @@ export const getShallowSegments = getNormalizedSegments;
 export const getMetadata = createSelector(
   [
     getNormalizedDatabases,
+    getNormalizedSchemas,
     getNormalizedTables,
     getNormalizedFields,
     getNormalizedSegments,
     getNormalizedMetrics,
   ],
-  (databases, tables, fields, segments, metrics): Metadata => {
+  (databases, schemas, tables, fields, segments, metrics): Metadata => {
     const meta = new Metadata();
     meta.databases = copyObjects(meta, databases, Database);
+    meta.schemas = copyObjects(meta, schemas, Schema);
     meta.tables = copyObjects(meta, tables, Table);
     meta.fields = copyObjects(meta, fields, Field);
     meta.segments = copyObjects(meta, segments, Segment);
     meta.metrics = copyObjects(meta, metrics, Metric);
-    // meta.loaded    = getLoadedStatuses(requestStates)
 
+    // database
     hydrateList(meta.databases, "tables", meta.tables);
-
+    // schema
+    hydrate(meta.schemas, "database", s => meta.database(s.database));
+    // table
     hydrateList(meta.tables, "fields", meta.fields);
     hydrateList(meta.tables, "segments", meta.segments);
     hydrateList(meta.tables, "metrics", meta.metrics);
-
     hydrate(meta.tables, "db", t => meta.database(t.db_id || t.db));
+    hydrate(meta.tables, "schema", t => meta.schema(t.schema));
 
+    // NOTE: special handling for schemas
+    // This is pretty hacky
+    // hydrateList(meta.databases, "schemas", meta.schemas);
+    hydrate(meta.databases, "schemas", database =>
+      database.schemas
+        ? // use the database schemas if they exist
+          database.schemas.map(s => meta.schema(s))
+        : database.tables.length > 0
+        ? // if the database has tables, use their schemas
+          _.uniq(database.tables.map(t => t.schema))
+        : // otherwise use any loaded schemas that match the database id
+          Object.values(meta.schemas).filter(
+            s => s.database && s.database.id === database.id,
+          ),
+    );
+    // hydrateList(meta.schemas, "tables", meta.tables);
+    hydrate(meta.schemas, "tables", schema =>
+      schema.tables
+        ? // use the schema tables if they exist
+          schema.tables.map(t => meta.table(t))
+        : schema.database && schema.database.tables.length > 0
+        ? // if the schema has a database with tables, use those
+          schema.database.tables.filter(t => t.schema_name === schema.name)
+        : // otherwise use any loaded tables that match the schema id
+          Object.values(meta.tables).filter(
+            t => t.schema && t.schema.id === schema.id,
+          ),
+    );
+
+    // segments
     hydrate(meta.segments, "table", s => meta.table(s.table_id));
+    // metrics
     hydrate(meta.metrics, "table", m => meta.table(m.table_id));
+    // fields
     hydrate(meta.fields, "table", f => meta.table(f.table_id));
-
     hydrate(meta.fields, "target", f => meta.field(f.fk_target_field_id));
     hydrate(meta.fields, "name_field", f => {
       if (f.name_field != null) {
@@ -94,20 +145,8 @@ export const getMetadata = createSelector(
       }
     });
 
-    hydrate(meta.fields, "filter_operators", f =>
-      getFilterOperators(f, f.table),
-    );
-    hydrate(meta.tables, "aggregation_operators", t =>
-      getAggregationOperatorsWithFields(t),
-    );
-
     hydrate(meta.fields, "values", f => getFieldValues(f));
     hydrate(meta.fields, "remapping", f => new Map(getRemappings(f)));
-
-    hydrateLookup(meta.databases, "tables", "id");
-    hydrateLookup(meta.tables, "fields", "id");
-    hydrateLookup(meta.fields, "filter_operators", "name");
-    hydrateLookup(meta.tables, "aggregation_operators", "short");
 
     return meta;
   },
@@ -249,17 +288,18 @@ function hydrate(objects, property, getPropertyValue) {
 // replaces lists of ids with the actual objects
 function hydrateList(objects, property, targetObjects) {
   hydrate(objects, property, object =>
-    (object[property] || []).map(id => targetObjects[id]),
+    (object[property] || [])
+      .map(id => targetObjects[id])
+      .filter(o => o != null),
   );
 }
 
-// creates a *_lookup object for a previously hydrated list
-function hydrateLookup(objects, property, idProperty = "id") {
-  hydrate(objects, property + "_lookup", object => {
-    const lookup = {};
-    for (const item of object[property] || []) {
-      lookup[item[idProperty]] = item;
+function filterValues(obj, pred) {
+  const filtered = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (pred(v)) {
+      filtered[k] = v;
     }
-    return lookup;
-  });
+  }
+  return filtered;
 }

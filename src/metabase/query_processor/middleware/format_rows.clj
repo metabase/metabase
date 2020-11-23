@@ -4,7 +4,6 @@
   (:require [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [potemkin.types :as p.types])
   (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneId]))
@@ -18,7 +17,8 @@
 
 (extend-protocol FormatValue
   nil
-  (format-value [_ _] nil)
+  (format-value [_ _]
+    nil)
 
   Object
   (format-value [v _]
@@ -51,28 +51,39 @@
   OffsetDateTime
   (format-value [t, ^ZoneId timezone-id]
     (t/format :iso-offset-date-time
-              (let [rules  (.getRules timezone-id)
-                    offset (.getOffset rules (t/instant t))]
-                (t/with-offset-same-instant t offset))))
+              (if (or (= t OffsetDateTime/MAX)
+                      (= t OffsetDateTime/MIN))
+                t
+                (let [rules  (.getRules timezone-id)
+                      offset (.getOffset rules (t/instant t))]
+                  (t/with-offset-same-instant t offset)))))
 
   ZonedDateTime
   (format-value [t timezone-id]
     (t/format :iso-offset-date-time
               (t/offset-date-time (t/with-zone-same-instant t timezone-id)))))
 
-(defn- format-rows* [rows]
-  (log/debug (tru "Formatting rows with results timezone ID {0}" (qp.timezone/results-timezone-id))
-             "\n"
-             (u/pprint-to-str 'blue (take 5 rows)))
+(defn- format-rows-xform [rf]
+  {:pre [(fn? rf)]}
+  (log/debug (tru "Formatting rows with results timezone ID {0}" (qp.timezone/results-timezone-id)))
   (let [timezone-id (t/zone-id (qp.timezone/results-timezone-id))]
-    (for [row rows]
-      (for [v row]
-        (format-value v timezone-id)))))
+    (fn
+      ([]
+       (rf))
+
+      ([result]
+       (rf result))
+
+      ([result row]
+       (rf result (mapv #(format-value % timezone-id) row))))))
 
 (defn format-rows
   "Format individual query result values as needed.  Ex: format temporal values as ISO-8601 strings w/ timezone offset."
   [qp]
-  (fn [{{:keys [format-rows?] :or {format-rows? true}} :middleware, :as query}]
-    (let [results (qp query)]
-      (cond-> results
-        (and format-rows? (:rows results)) (update :rows format-rows*)))))
+  (fn [{{:keys [format-rows?] :or {format-rows? true}} :middleware, :as query} rff context]
+    (qp query
+        (if format-rows?
+          (fn [metadata]
+            (format-rows-xform (rff metadata)))
+          rff)
+        context)))

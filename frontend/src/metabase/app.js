@@ -14,10 +14,22 @@ import "number-to-locale-string";
 import "metabase/lib/i18n-debug";
 
 // set the locale before loading anything else
-import "metabase/lib/i18n";
+import { loadLocalization } from "metabase/lib/i18n";
 
 // NOTE: why do we need to load this here?
 import "metabase/lib/colors";
+
+// NOTE: this loads all builtin plugins
+import "metabase/plugins/builtin";
+
+// This is conditionally aliased in the webpack config.
+// If EE isn't enabled, it loads an empty file.
+// $FlowFixMe
+import "ee-plugins"; // eslint-disable-line import/no-unresolved
+
+import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
+
+import registerVisualizations from "metabase/visualizations/register";
 
 import React from "react";
 import ReactDOM from "react-dom";
@@ -30,6 +42,7 @@ import MetabaseAnalytics, {
 import MetabaseSettings from "metabase/lib/settings";
 
 import api from "metabase/lib/api";
+import { initializeEmbedding } from "metabase/lib/embed";
 
 import { getStore } from "./store";
 
@@ -62,8 +75,9 @@ function _init(reducers, getRoutes, callback) {
   const routes = getRoutes(store);
   const history = syncHistoryWithStore(browserHistory, store);
 
+  let root;
   ReactDOM.render(
-    <Provider store={store}>
+    <Provider store={store} ref={ref => (root = ref)}>
       <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
         <ThemeProvider theme={theme}>
           <Router history={history}>{routes}</Router>
@@ -78,19 +92,36 @@ function _init(reducers, getRoutes, callback) {
     MetabaseAnalytics.trackPageView(location.pathname);
   });
 
+  registerVisualizations();
+
+  initializeEmbedding(store);
+
   registerAnalyticsClickListener();
 
   store.dispatch(refreshSiteSettings());
 
   // enable / disable GA based on opt-out of anonymous tracking
-  MetabaseSettings.on("anon_tracking_enabled", () => {
+  MetabaseSettings.on("anon-tracking-enabled", () => {
     window[
-      "ga-disable-" + MetabaseSettings.get("ga_code")
+      "ga-disable-" + MetabaseSettings.get("ga-code")
     ] = MetabaseSettings.isTrackingEnabled() ? null : true;
   });
 
+  MetabaseSettings.on("user-locale", async locale => {
+    // reload locale definition and site settings with the new locale
+    await Promise.all([
+      loadLocalization(locale),
+      store.dispatch(refreshSiteSettings({ locale })),
+    ]);
+    // force re-render of React application
+    root.forceUpdate();
+  });
+
+  PLUGIN_APP_INIT_FUCTIONS.forEach(init => init({ root }));
+
   window.Metabase = window.Metabase || {};
   window.Metabase.store = store;
+  window.Metabase.settings = MetabaseSettings;
 
   if (callback) {
     callback(store);

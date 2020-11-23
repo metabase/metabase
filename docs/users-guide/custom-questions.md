@@ -32,6 +32,12 @@ When you add a filter step, you can select one or more columns to filter on. Dep
 
 You can add subsequent filter steps after every Summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
 
+**Filter expressions and including ORs in filters**
+
+![Filter expression](./images/expressions/filter-expression.png)
+
+If you have a more complex filter you're trying to express, you can pick "Custom Expression" from the add-filter menu create a filter expression. You can use comparison operators like greater than (>) or less than (<), as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`. [Learn more about writing expressions](./expressions.md)
+
 #### Summarizing
 
 ![Summarizing](./images/notebook/summarize-step.png)
@@ -44,35 +50,17 @@ If you summarize and add a grouping you can then summarize _again_. You can also
 
 **Custom expressions**
 
-Custom expressions allow you to do simple arithmetic within or between aggregation functions. For example, you could do `Average(FieldX) + Sum(FieldY)` or `Max(FieldX - FieldY)`, where `FieldX` and `FieldY` are fields in the currently selected table. You can either use your cursor to select suggested functions and fields, or simply start typing and use the autocomplete. If you are a Metabase administrator, you can now also use custom aggregation expressions when creating defined common metrics in the Admin Panel.
+![Custom expression](./images/expressions/aggregation-expression.png)
 
-Currently, you can any of the basic aggregation functions (the same ones that appear in the pick-the-metric-you-want-to-see dropdown), and these basic mathematical operators: `+`, `-`, `*` (multiply), `/` (divide). You can also use parentheses to specify the order of operations.
+Custom expressions allow you to use spreadsheet-like functions and simple arithmetic within or between aggregation functions. For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md)
 
 #### Creating custom columns
 
-Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another.
+![Custom column](./images/expressions/custom-column.png)
 
-![Custom columns](images/custom-fields/blank-formula.png)
+Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Note that columns you add in a custom question are not permanently added to your table; they'll only be present in the given question.
 
-Say we had a table of baseball games, each row representing a single game, and we wanted to figure out how many more runs the home team scored than the away team (the “run differential”). If we have one field with the home team’s score, and another field with the away team’s score, we could type a formula like this:
-
-![Formula](images/custom-fields/filled-formula.png)
-
-The words in the quotes are the names of the fields in our table. If you start typing in this box, Metabase will show you fields in the current table that match what you’ve typed, and you can select from this list to autocomplete the field name.
-
-Right now, you can only use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division). You can also use parentheses to clarify the order of operations.
-
-Once you’ve written your formula and given your new column a name, select `Raw Data` for your view, and click the `Get Answer` button to see your new field appended to your current table. It’ll be on the far right of the table.
-
-**Note that this new column is NOT permanently added to this table.** It will only be kept if you save a question that uses it.
-
-Here’s our result:
-
-![New field](images/custom-fields/query-result.png)
-
-Now we can use this new column just like any other one, meaning we can use it to filter our question, add a grouping with it, or find out things like the average of it. You can add multiple custom fields, and they’ll all show up at the top of drop downs within the question builder:
-
-![Field in dropdown](images/custom-fields/field-in-dropdown.png)
+You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations. You can [learn more about writing expressions here](./expressions.md).
 
 #### Sorting results
 
@@ -88,7 +76,7 @@ The row limit step lets you limit how many rows you want from the previous resul
 
 ![Joining](./images/notebook/join-step.png)
 
-The join step allows you to combine your current data with another table, or even with a saved question.
+You can [join data](https://www.metabase.com/blog/joining-tables/index.html) to combine your current data with another table, or even with a saved question.
 
 Currently you can't use joins if your starting data is from a Google Analytics or MongoDB database.
 
@@ -98,12 +86,14 @@ After you click on the Join Data button to add a join step, you'll need to pick 
 
 Next, you'll need to pick the columns you want to join on. This means you pick a column from the first table, and a column from the second table, and the join will stitch rows together where the value from the first column is equal to the value in the second column. A very common example is to join on an ID column in each table, so if you happened to pick a table to join on where there is a foreign key relationship between the tables, Metabase will automatically pick those corresponding ID columns for you. At the end of your join step, there's a `Columns` button you can click to choose which columns you want to include from the joined data.
 
-By default, Metabase will do a left outer join, but you can click on the Venn diagram icon to change this to a different type of join. The options you'll see will differ based on the type of database you're using. Here are what the basic types of joins each do:
+By default, Metabase will do a left outer join, but you can click on the Venn diagram icon to select a different type of join. Not all databases support all types of joins, so Metabase will only display the options supported by the database you're using.
+
+Here are the basic types of joins:
 
 - **Left outer join:** select all records from Table A, along with records from Table B that meet the join condition, if any.
-- **Right outer join:** select all records from Table B, along with records from Table B that meet the join condition, if any.
+- **Right outer join:** select all records from Table B, along with records from Table A that meet the join condition, if any.
 - **Inner join:** only select the records from Table A and B where the join condition is met.
-- **Full outer join:** select all records from both tables, whether or not the join condition is met. This is not available for MySQL or H2, and is only available for some database types, like Spark SQL, SQL Server, and SQLite.
+- **Full outer join:** select all records from both tables, whether or not the join condition is met.
 
 **A left outer join example:** If Table A is Orders and Table B is Customers, and assuming you do a join where the `customer_id` column in Orders is equal to the `ID` column in Customers, when you do a left outer join your results will be a full list of all your orders, and each order row will also display the columns of the customer who placed that order. Since a single customer can place many orders, a given customer's information might be repeated many times for different order rows. If there isn't a corresponding customer for a given order, the order's information will be shown, but the customer columns will just be blank for that row.
 
@@ -112,6 +102,8 @@ By default, Metabase will do a left outer join, but you can click on the Venn di
 In many cases you might have tables A, B, and C, where A and B have a connection, and B and C have a connection, but A and C don't. If you want to join A to B to C, all you have to do is add multiple join steps. Click on Join Data, join table A to table B, then click the Join Data step below that completed join block to add a second join step, and join the results of your last join to table C.
 
 ![An A to B to C join](./images/notebook/join-a-b-c.png)
+
+See [Joins in Metabase](https://www.metabase.com/blog/joining-tables/index.html) to learn more.
 
 ### Viewing the SQL that powers your question
 

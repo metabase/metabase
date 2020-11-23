@@ -2,6 +2,7 @@ import {
   dimensionIsTimeseries,
   computeTimeseriesDataInverval,
   getTimezone,
+  computeTimeseriesTicksInterval,
 } from "metabase/visualizations/lib/timeseries";
 import { getVisualizationTransformed } from "metabase/visualizations";
 
@@ -170,5 +171,82 @@ describe("visualization.lib.timeseries", () => {
       const timezone = getTimezone(transformed);
       expect(timezone).toBe("US/Eastern");
     });
+  });
+
+  describe("computeTimeseriesTicksInterval", () => {
+    // computeTimeseriesTicksInterval just uses tickFormat to measure the character length of the current formatting style
+    const fakeTickFormat = () => "2020-01-01";
+    const TEST_CASES = [
+      // on a wide chart, 12 month ticks shouldn't be changed
+      [
+        {
+          xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
+          xInterval: { interval: "month", count: 1 },
+          chartWidth: 1920,
+          tickFormat: fakeTickFormat,
+        },
+        { expectedInterval: "month", expectedCount: 1 },
+      ],
+      // it should be bump to quarters on a narrower chart
+      [
+        {
+          xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
+          xInterval: { interval: "month", count: 1 },
+          chartWidth: 800,
+          tickFormat: fakeTickFormat,
+        },
+        { expectedInterval: "month", expectedCount: 3 },
+      ],
+      // even narrower and we should show yearly ticks
+      [
+        {
+          xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
+          xInterval: { interval: "month", count: 1 },
+          chartWidth: 300,
+          tickFormat: fakeTickFormat,
+        },
+        { expectedInterval: "year", expectedCount: 1 },
+      ],
+      // shouldn't move to a more granular interval than what was passed
+      [
+        {
+          xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
+          xInterval: { interval: "month", count: 3 },
+          chartWidth: 1920,
+          tickFormat: fakeTickFormat,
+        },
+        { expectedInterval: "month", expectedCount: 3 },
+      ],
+      // Long date formats should update the interval to have fewer ticks
+      [
+        {
+          xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
+          xInterval: { interval: "month", count: 1 },
+          chartWidth: 1920,
+          tickFormat: () =>
+            // thankfully no date format is actually this long
+            "The eigth day of July in the year of our Lord two thousand and ninteen",
+        },
+        { expectedInterval: "year", expectedCount: 1 },
+      ],
+    ];
+
+    TEST_CASES.map(
+      ([
+        { xDomain, xInterval, chartWidth, tickFormat },
+        { expectedInterval, expectedCount },
+      ]) => {
+        it("should return " + expectedCount + " " + expectedInterval, () => {
+          const { interval, count } = computeTimeseriesTicksInterval(
+            xDomain,
+            xInterval,
+            chartWidth,
+            tickFormat,
+          );
+          expect(interval).toBe(expectedInterval);
+          expect(count).toBe(expectedCount);
+        });
+      },
+    );
   });
 });

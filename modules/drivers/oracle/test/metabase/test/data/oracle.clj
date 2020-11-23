@@ -165,7 +165,7 @@
   ([username]
    (create-user! username session-password))
   ([username password]
-   (execute! "CREATE USER %s IDENTIFIED BY %s DEFAULT TABLESPACE USERS QUOTA UNLIMITED ON USERS"
+   (execute! "CREATE USER \"%s\" IDENTIFIED BY \"%s\" DEFAULT TABLESPACE USERS QUOTA UNLIMITED ON USERS"
              username
              password)))
 
@@ -178,6 +178,15 @@
   (drop-user! session-schema)
   (create-user! session-schema))
 
-(defmethod tx/after-run :oracle
-  [_]
-  (drop-user! session-schema))
+(defmethod tx/aggregate-column-info :oracle
+  ([driver ag-type]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type)
+    (when (#{:count :cum-count} ag-type)
+      {:base_type :type/Decimal})))
+
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (#{:count :cum-count} ag-type)
+      {:base_type :type/Decimal}))))

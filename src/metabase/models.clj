@@ -16,6 +16,7 @@
              [field-values :as field-values]
              [metric :as metric]
              [metric-important-field :as metric-important-field]
+             [native-query-snippet :as native-query-snippet]
              [permissions :as permissions]
              [permissions-group :as permissions-group]
              [permissions-group-membership :as permissions-group-membership]
@@ -31,6 +32,7 @@
              [session :as session]
              [setting :as setting]
              [table :as table]
+             [task-history :as task-history]
              [user :as user]
              [view-log :as view-log]]
             [potemkin :as p]))
@@ -52,6 +54,7 @@
          field-values/keep-me
          metric/keep-me
          metric-important-field/keep-me
+         native-query-snippet/keep-me
          permissions/keep-me
          permissions-group/keep-me
          permissions-group-membership/keep-me
@@ -67,6 +70,7 @@
          session/keep-me
          setting/keep-me
          table/keep-me
+         task-history/keep-me
          user/keep-me
          view-log/keep-me)
 
@@ -87,6 +91,7 @@
  [field-values FieldValues]
  [metric Metric]
  [metric-important-field MetricImportantField]
+ [native-query-snippet NativeQuerySnippet]
  [permissions Permissions]
  [permissions-group PermissionsGroup]
  [permissions-group-membership PermissionsGroupMembership]
@@ -102,5 +107,6 @@
  [session Session]
  [setting Setting]
  [table Table]
+ [task-history TaskHistory]
  [user User]
  [view-log ViewLog])

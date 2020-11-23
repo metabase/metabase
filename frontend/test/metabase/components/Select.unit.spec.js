@@ -1,11 +1,9 @@
 import React from "react";
-import { render, cleanup } from "@testing-library/react";
+import { render } from "@testing-library/react";
 
 import Select, { Option } from "metabase/components/Select";
 
 describe("Select", () => {
-  afterEach(cleanup);
-
   it("should render selected option", () => {
     const { getByText, queryByText } = render(
       <Select value="b">

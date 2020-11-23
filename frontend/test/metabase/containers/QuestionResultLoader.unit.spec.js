@@ -18,6 +18,6 @@ describe("QuestionResultLoader", () => {
       </QuestionResultLoader>,
     );
 
-    expect(loadSpy).toHaveBeenCalledWith(question);
+    expect(loadSpy).toHaveBeenCalledWith(question, undefined);
   });
 });

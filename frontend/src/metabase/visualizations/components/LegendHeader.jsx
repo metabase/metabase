@@ -9,7 +9,6 @@ import LegendItem from "./LegendItem";
 import cx from "classnames";
 
 import { normal } from "metabase/lib/colors";
-
 const DEFAULT_COLORS = Object.values(normal);
 const MIN_WIDTH_PER_SERIES = 100;
 
@@ -84,6 +83,7 @@ export default class LegendHeader extends Component {
             title={titles[index]}
             description={description}
             color={colors[index % colors.length]}
+            className={cx({ "text-brand-hover": !isBreakoutSeries })}
             showDot={showDots}
             showTitle={showTitles}
             isMuted={

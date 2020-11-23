@@ -3,9 +3,11 @@ import PropTypes from "prop-types";
 
 import ItemPicker from "./ItemPicker";
 
-const QuestionPicker = ({ value, onChange, ...props }) => (
+const QuestionPicker = ({ value, onChange, maxHeight, ...props }) => (
   <ItemPicker
     {...props}
+    // maxHeight is set when rendered in a popover
+    style={maxHeight != null ? { maxHeight } : {}}
     value={value === undefined ? undefined : { model: "card", id: value }}
     onChange={question => onChange(question ? question.id : undefined)}
     models={["card"]}

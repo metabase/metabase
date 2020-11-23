@@ -2,6 +2,8 @@
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require [clojure.core.cache :as cache]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [hiccup.core :refer [html]]
             [java-time :as t]
@@ -15,8 +17,9 @@
             [metabase.pulse.render
              [body :as render.body]
              [style :as render.style]]
+            [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.query-processor.streaming.interface :as qp.streaming.i]
             [metabase.util
-             [export :as export]
              [i18n :refer [deferred-trs trs tru]]
              [quotation :as quotation]
              [urls :as url]]
@@ -26,15 +29,64 @@
             [toucan.db :as db])
   (:import [java.io File IOException]))
 
-(when config/is-dev?
-  (alter-meta! #'stencil.core/render-file assoc :style/indent 1))
+(defn- app-name-trs
+  "Return the user configured application name, or Metabase translated
+  via tru if a name isn't configured."
+  []
+  (or (public-settings/application-name)
+      (trs "Metabase")))
 
 ;; Dev only -- disable template caching
 (when config/is-dev?
+  (alter-meta! #'stencil.core/render-file assoc :style/indent 1)
   (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
 
+(def ^:private ^:const data-uri-svg-regex #"^data:image/svg\+xml;base64,(.*)$")
+
+(defn- data-uri-svg? [url]
+  (re-matches data-uri-svg-regex url))
+
+(defn- themed-image-url
+  [url color]
+  (try
+    (let [base64 (second (re-matches data-uri-svg-regex url))
+          svg    (u/decode-base64 base64)
+          themed (str/replace svg #"<svg\b([^>]*)( fill=\"[^\"]*\")([^>]*)>" (str "<svg$1$3 fill=\"" color "\">"))]
+      (str "data:image/svg+xml;base64," (u/encode-base64 themed)))
+  (catch Throwable e
+    url)))
+
+(defn- logo-url []
+  (let [url   (public-settings/application-logo-url)
+        color (public-settings/application-color)]
+    (cond
+      (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
+      ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
+      ;; We need to extract them and embed as attachments like we do in metabase.pulse.render.image-bundle
+      true                              nil
+      (data-uri-svg? url)               (themed-image-url url color)
+      :else                             url)))
+
+(defn- button-style [color]
+  (str "display: inline-block; "
+       "box-sizing: border-box; "
+       "padding: 0.5rem 1.375rem; "
+       "font-size: 1.063rem; "
+       "font-weight: bold; "
+       "text-decoration: none; "
+       "cursor: pointer; "
+       "color: #fff; "
+       "border: 1px solid " color "; "
+       "background-color: " color "; "
+       "border-radius: 4px;"))
 
 ;;; Various Context Helper Fns. Used to build Stencil template context
+
+(defn- common-context []
+  {:applicationName    (public-settings/application-name)
+   :applicationColor   (public-settings/application-color)
+   :applicationLogoUrl (logo-url)
+   :buttonStyle        (button-style (public-settings/application-color))})
 
 (defn- random-quote-context []
   (let [data-quote (quotation/random-quote)]
@@ -61,11 +113,12 @@
 ;;; ### Public Interface
 
 (defn send-new-user-email!
-  "Send an email to INVITIED letting them know INVITOR has invited them to join Metabase."
+  "Send an email to `invitied` letting them know `invitor` has invited them to join Metabase."
   [invited invitor join-url]
   (let [company      (or (public-settings/site-name) "Unknown")
         message-body (stencil/render-file "metabase/email/new_user_invite"
-                       (merge {:emailType    "new_user_invite"
+                       (merge (common-context)
+                              {:emailType    "new_user_invite"
                                :invitedName  (:first_name invited)
                                :invitorName  (:first_name invitor)
                                :invitorEmail (:email invitor)
@@ -75,7 +128,7 @@
                                :logoHeader   true}
                               (random-quote-context)))]
     (email/send-message!
-      :subject      (str "You're invited to join " company "'s Metabase")
+      :subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
       :recipients   [(:email invited)]
       :message-type :html
       :message      message-body)))
@@ -91,18 +144,19 @@
           (db/select-field :email 'User, :is_superuser true, :is_active true, {:order-by [[:id :asc]]})))
 
 (defn send-user-joined-admin-notification-email!
-  "Send an email to the INVITOR (the Admin who invited NEW-USER) letting them know NEW-USER has joined."
+  "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
   [new-user & {:keys [google-auth?]}]
   {:pre [(map? new-user)]}
   (let [recipients (all-admin-recipients)]
     (email/send-message!
       :subject      (str (if google-auth?
-                           (trs "{0} created a Metabase account"     (:common_name new-user))
-                           (trs "{0} accepted their Metabase invite" (:common_name new-user))))
+                           (trs "{0} created a {1} account" (:common_name new-user) (app-name-trs))
+                           (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
       :recipients   recipients
       :message-type :html
       :message      (stencil/render-file "metabase/email/user_joined_notification"
-                      (merge {:logoHeader        true
+                      (merge (common-context)
+                             {:logoHeader        true
                               :joinedUserName    (:first_name new-user)
                               :joinedViaSSO      google-auth?
                               :joinedUserEmail   (:email new-user)
@@ -120,13 +174,14 @@
          (string? hostname)
          (string? password-reset-url)]}
   (let [message-body (stencil/render-file "metabase/email/password_reset"
-                       {:emailType        "password_reset"
-                        :hostname         hostname
-                        :sso              google-auth?
-                        :passwordResetUrl password-reset-url
-                        :logoHeader       true})]
+                       (merge (common-context)
+                              {:emailType        "password_reset"
+                               :hostname         hostname
+                               :sso              google-auth?
+                               :passwordResetUrl password-reset-url
+                               :logoHeader       true}))]
     (email/send-message!
-      :subject      (trs "[Metabase] Password Reset Request")
+      :subject      (trs "[{0}] Password Reset Request" (app-name-trs))
       :recipients   [email]
       :message-type :html
       :message      message-body)))
@@ -163,9 +218,10 @@
   (let [context      (merge (update context :dependencies build-dependencies)
                             notification-context
                             (random-quote-context))
-        message-body (stencil/render-file "metabase/email/notification" context)]
+        message-body (stencil/render-file "metabase/email/notification"
+                                          (merge (common-context) context))]
     (email/send-message!
-      :subject      (trs "[Metabase] Notification")
+      :subject      (trs "[{0}] Notification" (app-name-trs))
       :recipients   [email]
       :message-type :html
       :message      message-body)))
@@ -175,14 +231,15 @@
   [email msg-type]
   {:pre [(u/email? email) (contains? #{"abandon" "follow-up"} msg-type)]}
   (let [subject      (str (if (= "abandon" msg-type)
-                            (trs "[Metabase] Help make Metabase better.")
-                            (trs "[Metabase] Tell us how things are going.")))
+                            (trs "[{0}] Help make [{1}] better." (app-name-trs) (app-name-trs))
+                            (trs "[{0}] Tell us how things are going." (app-name-trs))))
         context      (merge notification-context
                             (random-quote-context)
                             (if (= "abandon" msg-type)
                               (abandonment-context)
                               (follow-up-context)))
-        message-body (stencil/render-file "metabase/email/follow_up_email" context)]
+        message-body (stencil/render-file "metabase/email/follow_up_email"
+                                          (merge (common-context) context))]
     (email/send-message!
       :subject      subject
       :recipients   [email]
@@ -196,7 +253,8 @@
    :content      url})
 
 (defn- pulse-context [pulse]
-  (merge {:emailType    "pulse"
+  (merge (common-context)
+         {:emailType    "pulse"
           :pulseName    (:name pulse)
           :sectionStyle (render.style/style (render.style/section-style))
           :colorGrey4   render.style/color-gray-4
@@ -220,48 +278,65 @@
         (throw (IOException. ex-msg e))))))
 
 (defn- create-result-attachment-map [export-type card-name ^File attachment-file]
-  (let [{:keys [content-type ext]} (get export/export-formats export-type)]
+  (let [{:keys [content-type]} (qp.streaming.i/stream-options export-type)]
     {:type         :attachment
      :content-type content-type
-     :file-name    (format "%s.%s" card-name ext)
+     :file-name    (format "%s.%s" card-name (name export-type))
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
 
 (defn- include-csv-attachment?
   "Should this `card` and `results` include a CSV attachment?"
-  [card {:keys [cols rows] :as result-data}]
-  (or (:include_csv card)
-      (and (not (:include_xls card))
-           (= :table (render/detect-pulse-card-type card result-data))
-           (or
-            ;; If some columns are not shown, include an attachment
-            (some (complement render.body/show-in-table?) cols)
-            ;; If there are too many rows or columns, include an attachment
-            (>= (count cols) render.body/cols-limit)
-            (>= (count rows) render.body/rows-limit)))))
+  [{include-csv? :include_csv, include-xls? :include_xls, card-name :name, :as card} {:keys [cols rows], :as result-data}]
+  (letfn [(yes [reason & args]
+            (log/tracef "Including CSV attachement for Card %s because %s" (pr-str card-name) (apply format reason args))
+            true)
+          (no [reason & args]
+            (log/tracef "NOT including CSV attachement for Card %s because %s" (pr-str card-name) (apply format reason args))
+            false)]
+    (cond
+      include-csv?
+      (yes "it has `:include_csv`")
+
+      include-xls?
+      (no "it has `:include_xls`")
+
+      (some (complement render.body/show-in-table?) cols)
+      (yes "some columns are not included in rendered results")
+
+      (not= :table (render/detect-pulse-chart-type card result-data))
+      (no "we've determined it should not be rendered as a table")
+
+      (= (count (take render.body/cols-limit cols)) render.body/cols-limit)
+      (yes "the results have >= %d columns" render.body/cols-limit)
+
+      (= (count (take render.body/rows-limit rows)) render.body/rows-limit)
+      (yes "the results have >= %d rows" render.body/rows-limit)
+
+      :else
+      (no "less than %d columns, %d rows in results" render.body/cols-limit render.body/rows-limit))))
+
+(defn- result-attachment
+  [{{card-name :name, :as card} :card, {{:keys [rows], :as result-data} :data, :as result} :result}]
+  (when (seq rows)
+    [(when-let [temp-file (and (include-csv-attachment? card result-data)
+                               (create-temp-file-or-throw "csv"))]
+       (with-open [os (io/output-stream temp-file)]
+         (qp.streaming/stream-api-results-to-export-format :csv os result))
+       (create-result-attachment-map "csv" card-name temp-file))
+     (when-let [temp-file (and (:include_xls card)
+                               (create-temp-file-or-throw "xlsx"))]
+       (with-open [os (io/output-stream temp-file)]
+         (qp.streaming/stream-api-results-to-export-format :xlsx os result))
+       (create-result-attachment-map "xlsx" card-name temp-file))]))
 
 (defn- result-attachments [results]
-  (remove
-   nil?
-   (apply
-    concat
-    (for [{{card-name :name, :as card} :card :as result} results
-          :let [{:keys [rows] :as result-data} (get-in result [:result :data])]
-          :when (seq rows)]
-      [(when-let [temp-file (and (include-csv-attachment? card result-data)
-                                 (create-temp-file-or-throw "csv"))]
-         (export/export-to-csv-writer temp-file result)
-         (create-result-attachment-map "csv" card-name temp-file))
-
-       (when-let [temp-file (and (:include_xls card)
-                                 (create-temp-file-or-throw "xlsx"))]
-         (export/export-to-xlsx-file temp-file result)
-         (create-result-attachment-map "xlsx" card-name temp-file))]))))
+  (filter some? (mapcat result-attachment results)))
 
 (defn- render-message-body [message-template message-context timezone results]
   (let [rendered-cards (binding [render/*include-title* true]
                          ;; doall to ensure we haven't exited the binding before the valures are created
-                         (doall (map #(render/render-pulse-section timezone %) results)))
+                         (mapv #(render/render-pulse-section timezone %) results))
         message-body   (assoc message-context :pulse (html (vec (cons :div (map :content rendered-cards)))))
         attachments    (apply merge (map :attachments rendered-cards))]
     (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file message-template message-body)}]
@@ -279,7 +354,7 @@
   (render-message-body "metabase/email/pulse" (pulse-context pulse) timezone (assoc-attachment-booleans pulse results)))
 
 (defn pulse->alert-condition-kwd
-  "Given an `ALERT` return a keyword representing what kind of goal needs to be met."
+  "Given an `alert` return a keyword representing what kind of goal needs to be met."
   [{:keys [alert_above_goal alert_condition card creator] :as alert}]
   (if (= "goal" alert_condition)
     (if (true? alert_above_goal)

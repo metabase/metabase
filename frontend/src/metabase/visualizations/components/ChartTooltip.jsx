@@ -52,6 +52,8 @@ export default class ChartTooltip extends Component {
         targetEvent={hovered && hovered.event}
         verticalAttachments={["bottom", "top"]}
         isOpen={isOpen}
+        // Make sure that for chart tooltips we don't constrain the width so longer strings don't get cut off
+        constrainedWidth={false}
       >
         <table className="py1 px2">
           <tbody>

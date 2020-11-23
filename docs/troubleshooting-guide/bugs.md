@@ -1,3 +1,5 @@
+## Reporting a bug
+
 If you come across something that looks like a bug, start by searching our [Github issues](https://github.com/metabase/metabase/issues) to see if it has already been reported. If it has, please let us know you're experiencing the same issue by reacting with a thumbs up emoji or adding a comment providing additional information.
 
 If the bug has not yet been reported, go ahead and [open a bug report](https://github.com/metabase/metabase/issues/new/choose). We suggest collecting the following information to help us reproduce the issue:
@@ -15,7 +17,7 @@ If the bug has not yet been reported, go ahead and [open a bug report](https://g
 
 ### Accessing the Metabase server logs
 
-While you can always look for the logs Metabase leaves on your server file system (or however you collect logs), if you are logged into Metabase with an admin account, you can also access them from the gear drop down menu in the upper right hand corner -> Admin -> Troubleshooting -> Logs.
+While you can always look for the logs Metabase leaves on your server file system (or however you collect logs), if you are logged into Metabase with an admin account you can also access them from the Logs tab in the Troubleshooting section of the Admin Panel. To get to the Admin Panel, click the gear icon in the top-right of Metabase.
 
 ### Checking for Javascript console errors
 

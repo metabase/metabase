@@ -1,6 +1,5 @@
 /* @flow */
 
-import { t } from "ttag";
 import { assocIn } from "icepick";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -11,9 +10,7 @@ import { createEntity } from "metabase/lib/entities";
 
 import { UserApi, SessionApi } from "metabase/services";
 
-import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
-
-import type { FormFieldDefinition } from "metabase/containers/Form";
+import forms from "./users/forms";
 
 export const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
 export const REACTIVATE = "metabase/entities/users/REACTIVATE";
@@ -27,31 +24,6 @@ export const RESEND_INVITE = "metabase/entities/users/RESEND_INVITE";
 function loadMemberships() {
   return require("metabase/admin/people/people").loadMemberships();
 }
-
-const BASE_FORM_FIELDS: FormFieldDefinition[] = [
-  {
-    name: "first_name",
-    title: t`First name`,
-    placeholder: "Johnny",
-    validate: name =>
-      (!name && t`First name is required`) ||
-      (name && name.length > 100 && t`Must be 100 characters or less`),
-  },
-  {
-    name: "last_name",
-    title: t`Last name`,
-    placeholder: "Appleseed",
-    validate: name =>
-      (!name && t`Last name is required`) ||
-      (name && name.length > 100 && t`Must be 100 characters or less`),
-  },
-  {
-    name: "email",
-    title: t`Email`,
-    placeholder: "youlooknicetoday@email.com",
-    validate: email => !email && t`Email is required`,
-  },
-];
 
 const Users = createEntity({
   name: "users",
@@ -146,21 +118,7 @@ const Users = createEntity({
     return state;
   },
 
-  forms: {
-    admin: {
-      fields: [
-        ...BASE_FORM_FIELDS,
-        {
-          name: "group_ids",
-          title: "Groups",
-          type: FormGroupsWidget,
-        },
-      ],
-    },
-    user: {
-      fields: BASE_FORM_FIELDS,
-    },
-  },
+  forms,
 });
 
 export default Users;

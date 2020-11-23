@@ -7,6 +7,8 @@ import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon";
 
+import ExternalLink from "metabase/components/ExternalLink";
+
 import { formatValue } from "metabase/lib/formatting";
 import { isID, isFK } from "metabase/lib/schema_metadata";
 import { memoize } from "metabase-lib/lib/utils";
@@ -43,9 +45,9 @@ let DRAG_COUNTER = 0;
 import type {
   VisualizationProps,
   ClickObject,
-} from "metabase/meta/types/Visualization";
-import type { VisualizationSettings } from "metabase/meta/types/Card";
-import type { DatasetData } from "metabase/meta/types/Dataset";
+} from "metabase-types/types/Visualization";
+import type { VisualizationSettings } from "metabase-types/types/Card";
+import type { DatasetData } from "metabase-types/types/Dataset";
 
 function pickRowsToMeasure(rows, columnIndex, count = 10) {
   const rowIndexes = [];
@@ -68,6 +70,12 @@ type Props = VisualizationProps & {
   sort: any,
   isPivoted: boolean,
   onActionDismissal: () => void,
+  onContentWidthChange: (number, number[]) => void,
+  renderTableCellWrapper: any,
+  renderTableHeaderWrapper: any,
+  tableHeaderHeight: number,
+  getColumnTitle: number => string,
+  data: any,
 };
 type State = {
   columnWidths: number[],
@@ -327,6 +335,7 @@ export default class TableInteractive extends Component {
     try {
       return this._getCellClickedObjectCached(
         this.props.data,
+        this.props.settings,
         rowIndex,
         columnIndex,
         this.props.isPivoted,
@@ -339,11 +348,18 @@ export default class TableInteractive extends Component {
   @memoize
   _getCellClickedObjectCached(
     data: DatasetData,
+    settings: VisualizationSettings,
     rowIndex: number,
     columnIndex: number,
     isPivoted: boolean,
   ) {
-    return getTableCellClickedObject(data, rowIndex, columnIndex, isPivoted);
+    return getTableCellClickedObject(
+      data,
+      settings,
+      rowIndex,
+      columnIndex,
+      isPivoted,
+    );
   }
 
   getHeaderClickedObject(columnIndex: number) {
@@ -417,13 +433,18 @@ export default class TableInteractive extends Component {
 
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   @memoize
-  getCellFormattedValue(value: Value, columnSettings: any) {
+  getCellFormattedValue(
+    value: Value,
+    columnSettings: any,
+    clicked: ?ClickObject,
+  ) {
     try {
       return formatValue(value, {
         ...columnSettings,
         type: "cell",
         jsx: true,
         rich: true,
+        clicked: clicked,
       });
     } catch (e) {
       console.error(e);
@@ -439,16 +460,29 @@ export default class TableInteractive extends Component {
     const row = rows[rowIndex];
     const value = row[columnIndex];
 
+    const columnSettings = settings.column(column);
     const clicked = this.getCellClickedObject(rowIndex, columnIndex);
-    const isClickable = this.visualizationIsClickable(clicked);
+
+    const cellData = columnSettings["show_mini_bar"] ? (
+      <MiniBar
+        value={value}
+        options={columnSettings}
+        extent={getColumnExtent(data.cols, data.rows, columnIndex)}
+        cellHeight={ROW_HEIGHT}
+      />
+    ) : (
+      this.getCellFormattedValue(value, columnSettings, clicked)
+      /* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */
+    );
+
+    const isLink = cellData && cellData.type === ExternalLink;
+    const isClickable = !isLink && this.visualizationIsClickable(clicked);
     const backgroundColor = this.getCellBackgroundColor(
       settings,
       value,
       rowIndex,
       column.name,
     );
-
-    const columnSettings = settings.column(column);
 
     return (
       <div
@@ -480,19 +514,7 @@ export default class TableInteractive extends Component {
             : undefined
         }
       >
-        {this.props.renderTableCellWrapper(
-          columnSettings["show_mini_bar"] ? (
-            <MiniBar
-              value={value}
-              options={columnSettings}
-              extent={getColumnExtent(data.cols, data.rows, columnIndex)}
-              cellHeight={ROW_HEIGHT}
-            />
-          ) : (
-            this.getCellFormattedValue(value, columnSettings)
-            /* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */
-          ),
-        )}
+        {this.props.renderTableCellWrapper(cellData)}
       </div>
     );
   };
@@ -536,6 +558,7 @@ export default class TableInteractive extends Component {
     const { dragColIndex, columnPositions } = this.state;
     const { cols } = this.props.data;
     const indexes = cols.map((col, index) => index);
+    // $FlowFixMe
     indexes.splice(dragColNewIndex, 0, indexes.splice(dragColIndex, 1)[0]);
     let left = 0;
     const lefts = indexes.map(index => {
@@ -579,7 +602,7 @@ export default class TableInteractive extends Component {
     const isRightAligned = isColumnRightAligned(column);
 
     // TODO MBQL: use query lib to get the sort field
-    const fieldRef = fieldRefForColumn(column, cols);
+    const fieldRef = fieldRefForColumn(column);
     const sortIndex = _.findIndex(
       sort,
       sort => sort[1] && Dimension.isEqual(sort[1], fieldRef),

@@ -18,9 +18,9 @@
 
 (defn- start-ldap-server! []
   (with-open [ldif (LDIFReader. (or (io/file (io/resource "ldap.ldif"))
+                                    (io/file "test_resources/ldap.ldif")
                                     (throw
-                                     (FileNotFoundException.
-                                      "ldap.ldif does not exist! (You may need to copy it into your resources dir.)"))))]
+                                     (FileNotFoundException. "ldap.ldif does not exist!"))))]
     (doto (InMemoryDirectoryServer. (get-server-config))
       (.importFromLDIF true ldif)
       (.startListening))))

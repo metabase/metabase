@@ -38,7 +38,7 @@ const FieldSidebar = ({ database, table, field, style, className }) => (
           name={t`Details`}
         />
 
-        {MetabaseSettings.get("enable_xrays") && (
+        {MetabaseSettings.get("enable-xrays") && (
           <SidebarItem
             key={`/auto/dashboard/field/${field.id}`}
             href={`/auto/dashboard/field/${field.id}`}

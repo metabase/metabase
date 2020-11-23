@@ -110,6 +110,24 @@
                  (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)}))))))))
 
 
+;;; -------------------------------------------- Referenced Card Queries ---------------------------------------------
+
+(deftest substitute-referenced-card-query-test
+  (testing "Referenced card query substitution"
+    (let [query ["SELECT * FROM " (param "#123")]]
+      (is (= ["SELECT * FROM (SELECT 1 `x`)" nil]
+             (substitute query {"#123" (i/->ReferencedCardQuery 123 "SELECT 1 `x`")}))))))
+
+
+;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
+
+(deftest substitute-native-query-snippets-test
+  (testing "Native query snippet substitution"
+    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
+      (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
+             (substitute query {"snippet:symbol_is_A" (i/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
+
+
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
 (defn- substitute-e2e {:style/indent 1} [sql params]
@@ -256,7 +274,7 @@
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND num_toucans < {{num_toucans}}]]"
                          {"num_toucans" 5})))
 
-  (testing "Make sure that substiutions still work if the subsitution contains brackets inside it (#3657)"
+  (testing "Make sure that substitutions still work if the substitution contains brackets inside it (#3657)"
     (is (= {:query  "select * from foobars  where foobars.id in (string_to_array(100, ',')::integer[])"
             :params []}
            (substitute-e2e "select * from foobars [[ where foobars.id in (string_to_array({{foobar_id}}, ',')::integer[]) ]]"
@@ -533,7 +551,7 @@
               "2018-04-18"
 
               ;; TIMEZONE FIXME — Busted
-              (#{:snowflake :vertica} driver/*driver*)
+              (= driver/*driver* :vertica)
               "2018-04-17T00:00:00-07:00"
 
               (qp.test/supports-report-timezone? driver/*driver*)
@@ -716,14 +734,14 @@
                            :target [:variable [:template-tag "names_list"]]
                            :value  ["BBQ", "Bakery", "Bar"]}]}))))
   (testing "Make sure arrays of values also work for 'field filter' params"
-    (is (= {:query  "SELECT * FROM CATEGORIES WHERE \"PUBLIC\".\"USERS\".\"ID\" IN (?, ?, ?)",
+    (is (= {:query  "SELECT * FROM CATEGORIES WHERE \"PUBLIC\".\"CATEGORIES\".\"NAME\" IN (?, ?, ?)",
             :params ["BBQ" "Bakery" "Bar"]}
            (expand*
             {:native     {:query         "SELECT * FROM CATEGORIES WHERE {{names_list}}"
                           :template-tags {"names_list" {:name         "names_list"
                                                         :display-name "Names List"
                                                         :type         :dimension
-                                                        :dimension    [:field-id (mt/id :users :id)]}}}
+                                                        :dimension    [:field-id (mt/id :categories :name)]}}}
              :parameters [{:type   :text
                            :target [:dimension [:template-tag "names_list"]]
                            :value  ["BBQ", "Bakery", "Bar"]}]})))))

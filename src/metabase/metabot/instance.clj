@@ -35,11 +35,11 @@
   ;; This should be cached because we'll be checking it fairly often, basically every 2 seconds as part of the
   ;; websocket monitor thread to see whether we're MetaBot (the thread won't open the WebSocket unless that instance
   ;; is handling MetaBot duties)
-  :internal? true)
+  :visibility :internal)
 
 (defsetting ^:private metabot-instance-last-checkin
   "Timestamp of the last time the active MetaBot instance checked in."
-  :internal? true
+  :visibility :internal
   ;; caching is disabled for this, since it is intended to be updated frequently (once a minute or so) If we use the
   ;; cache, it will trigger cache invalidation for all the other instances (wasteful), and possibly at any rate be
   ;; incorrect (for example, if another instance checked in a minute ago, our local cache might not get updated right

@@ -16,7 +16,9 @@
            [java.time.temporal Temporal TemporalAdjuster WeekFields]
            org.threeten.extra.PeriodDuration))
 
-(defn- add-zone-to-local [t timezone-id]
+(defn- add-zone-to-local
+  "Converts a temporal type without timezone info to one with zone info (i.e., a `ZonedDateTime`)."
+  [t timezone-id]
   (condp instance? t
     LocalDateTime (t/zoned-date-time t (t/zone-id timezone-id))
     LocalDate     (t/zoned-date-time t (t/local-time 0) (t/zone-id timezone-id))
@@ -55,16 +57,29 @@
     OffsetDateTime :iso-offset-date-time
     ZonedDateTime  :iso-offset-date-time))
 
-(defn- format* [formatter t]
-  (when t
-    (if (t/instant? t)
-      (recur formatter (t/zoned-date-time t (t/zone-id "UTC")))
-      (t/format formatter t))))
-
 (defn format
-  "Format temporal value `t` as a ISO-8601 date/time/datetime string."
-  ^String [t]
-  (format* (temporal->iso-8601-formatter t) t))
+  "Format temporal value `t`, by default as an ISO-8601 date/time/datetime string. By default `t` is formatted in a way
+  that's appropriate for its type, e.g. a `LocalDate` is formatted as year-month-day. You can optionally pass
+  `formatter` to format a different way. `formatter` can be:
+
+   1. A keyword name of a predefined formatter. Eval
+
+       (keys java-time.format/predefined-formatters)
+
+     for a list of predefined formatters.
+
+  2. An instance of `java.time.format.DateTimeFormatter`. You can use utils in `metabase.util.date-2.parse.builder` to help create one of these formatters.
+
+  3. A format String e.g. `YYYY-MM-dd`"
+  (^String [t]
+   (when t
+     (format (temporal->iso-8601-formatter t) t)))
+
+  (^String [formatter t]
+   (when t
+     (if (t/instant? t)
+       (recur formatter (t/zoned-date-time t (t/zone-id "UTC")))
+       (t/format formatter t)))))
 
 (defn format-sql
   "Format a temporal value `t` as a SQL-style literal string (for most SQL databases). This is the same as ISO-8601 but
@@ -114,6 +129,8 @@
     :iso-week-of-year
     :month-of-year
     :quarter-of-year
+    ;; TODO - in this namespace `:year` is something you can both extract and truncate to. In MBQL `:year` is a truncation
+    ;; operation. Maybe we should rename this unit to clear up the potential confusion (?)
     :year})
 
 (def ^:private week-fields*
@@ -226,9 +243,9 @@
      :day         (t/truncate-to t :days)
      :week        (-> (.with t (adjuster :first-day-of-week))     (t/truncate-to :days))
      :iso-week    (-> (.with t (adjuster :first-day-of-iso-week)) (t/truncate-to :days))
-     :month       (-> (t/adjust t :first-day-of-month)             (t/truncate-to :days))
+     :month       (-> (t/adjust t :first-day-of-month)            (t/truncate-to :days))
      :quarter     (-> (.with t (adjuster :first-day-of-quarter))  (t/truncate-to :days))
-     :year        (-> (t/adjust t :first-day-of-year)              (t/truncate-to :days)))))
+     :year        (-> (t/adjust t :first-day-of-year)             (t/truncate-to :days)))))
 
 (s/defn bucket :- (s/cond-pre Number Temporal)
   "Perform a truncation or extraction unit on temporal value `t`. (These two operations are collectively known as
@@ -404,7 +421,7 @@
                         ZonedDateTime  't/zoned-date-time}]
   (defmethod print-method klass
     [t writer]
-    (print-method (list f-symb (str t)) writer))
+    ((get-method print-dup klass) t writer))
 
   (defmethod print-dup klass
     [t ^java.io.Writer writer]
@@ -412,11 +429,11 @@
 
 (defmethod print-method PeriodDuration
   [d writer]
-  (print-method (list 'u.date/period-duration (str d)) writer))
+  ((get-method print-dup PeriodDuration) d writer))
 
 (defmethod print-dup PeriodDuration
   [d ^java.io.Writer writer]
-  (.write writer (clojure.core/format "(metabase.util.date-2/period-duration \"%s\")" (str d))))
+  (.write writer (clojure.core/format "(metabase.util.date-2/period-duration %s)" (pr-str (str d)))))
 
 (defmethod print-method Period
   [d writer]

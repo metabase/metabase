@@ -1,6 +1,7 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.set :as set]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase
              [events :as events]
@@ -8,18 +9,26 @@
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.populate :as magic.populate]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
              [collection :as collection]
              [dashboard :as dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard delete-dashboard-card!]]
              [dashboard-favorite :refer [DashboardFavorite]]
+             [field :refer [Field]]
              [interface :as mi]
+             [params :as params]
              [query :as query :refer [Query]]
              [revision :as revision]]
+            [metabase.models.params.chain-filter :as chain-filter]
+            [metabase.query-processor
+             [error-type :as qp.error-type]
+             [util :as qp-util]]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.query-processor.util :as qp-util]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -187,16 +196,28 @@
   [dashboard]
   (update dashboard :ordered_cards add-query-average-duration-to-dashcards))
 
+(defn- hydrate-non-sandboxed-param-values
+  [{:keys [param_fields] :as dashboard}]
+  ;; We need to do this manually to ensure sandboxing is respected.
+  ;; If the user doesn't have full read access, assume they are sandboxed
+  (assoc dashboard :param_values (->> param_fields
+                                      vals
+                                      (filter mi/can-read?)
+                                      (map u/get-id)
+                                      set
+                                      params/field-ids->param-field-values
+                                      not-empty)))
 
 (defn- get-dashboard
   "Get Dashboard with ID."
   [id]
   (-> (Dashboard id)
       api/check-404
-      (hydrate [:ordered_cards :card :series] :can_write :param_fields :param_values)
+      (hydrate [:ordered_cards :card :series] :can_write :param_fields)
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
+      hydrate-non-sandboxed-param-values
       add-query-average-durations))
 
 
@@ -279,8 +300,8 @@
        (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
 
        (db/update! Dashboard id
-         ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be
-         ;; non-nil
+         ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else
+         ;; must be non-nil
          (u/select-keys-when dash-updates
            :present #{:description :position :collection_id :collection_position}
            :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
@@ -288,7 +309,6 @@
   ;; now publish an event and return the updated Dashboard
   (u/prog1 (Dashboard id)
     (events/publish-event! :dashboard-update (assoc <> :actor_id api/*current-user-id*))))
-
 
 ;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
 ;; be setting `:archived` to `true` via the `PUT` endpoint instead
@@ -450,5 +470,177 @@
     (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
          (events/publish-event! :dashboard-create))))
 
+
+;;; ------------------------------------- Chain-filtering param value endpoints --------------------------------------
+
+(def ^:private ParamMapping
+  {:parameter_id su/NonBlankString
+   #_:target     #_s/Any
+   s/Keyword     s/Any})
+
+(def ^:private ParamWithMapping
+  {:name     su/NonBlankString
+   :id       su/NonBlankString
+   :mappings (s/maybe #{ParamMapping})
+   s/Keyword s/Any})
+
+(s/defn ^{:hydrate :resolved-params} dashboard->resolved-params :- (let [param-id su/NonBlankString]
+                                                                     {param-id ParamWithMapping})
+  "Return map of Dashboard parameter key -> param with resolved `:mappings`.
+
+    (dashboard->resolved-params (Dashboard 62))
+    ;; ->
+    {\"ee876336\" {:name     \"Category Name\"
+                   :slug     \"category_name\"
+                   :id       \"ee876336\"
+                   :type     \"category\"
+                   :mappings #{{:parameter_id \"ee876336\"
+                                :card_id      66
+                                :dashcard     ...
+                                :target       [:dimension [:fk-> [:field-id 263] [:field-id 276]]]}}},
+     \"6f10a41f\" {:name     \"Price\"
+                   :slug     \"price\"
+                   :id       \"6f10a41f\"
+                   :type     \"category\"
+                   :mappings #{{:parameter_id \"6f10a41f\"
+                                :card_id      66
+                                :dashcard     ...
+                                :target       [:dimension [:field-id 264]]}}}}"
+  [dashboard :- {(s/optional-key :parameters) (s/maybe [su/Map])
+                 s/Keyword                    s/Any}]
+  (let [dashboard           (hydrate dashboard [:ordered_cards :card])
+        param-key->mappings (apply
+                             merge-with set/union
+                             (for [dashcard (:ordered_cards dashboard)
+                                   param    (:parameter_mappings dashcard)]
+                               {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
+    (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
+               [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))))
+
+(s/defn ^:private mappings->field-ids :- (s/maybe #{su/IntGreaterThanZero})
+  [parameter-mappings :- (s/maybe (s/cond-pre #{ParamMapping} [ParamMapping]))]
+  (set (for [param parameter-mappings
+             :let  [field-clause (params/param-target->field-clause (:target param) (:dashcard param))]
+             :when field-clause
+             :let  [field-id (mbql.u/field-clause->id-or-literal field-clause)]
+             :when (integer? field-id)]
+         field-id)))
+
+(defn- param-key->field-ids
+  "Get Field ID(s) associated with a parameter in a Dashboard.
+
+    (param-key->field-ids (Dashboard 62) \"ee876336\")
+    ;; -> #{276}"
+  [dashboard param-key]
+  {:pre [(string? param-key)]}
+  (let [{:keys [resolved-params]} (hydrate dashboard :resolved-params)
+        param                     (get resolved-params param-key)]
+    (mappings->field-ids (:mappings param))))
+
+(defn- chain-filter-constraints [dashboard constraint-param-key->value]
+  (into {} (for [[param-key value] constraint-param-key->value
+                 field-id          (param-key->field-ids dashboard param-key)]
+             [field-id value])))
+
+(s/defn chain-filter
+  "C H A I N filters!
+
+    ;; show me categories
+    (chain-filter 62 \"ee876336\" {})
+    ;; -> (\"African\" \"American\" \"Artisan\" ...)
+
+    ;; show me categories that have expensive restaurants
+    (chain-filter 62 \"ee876336\" {\"6f10a41f\" 4})
+    ;; -> (\"Japanese\" \"Steakhouse\")"
+  ([dashboard param-key constraint-param-key->value]
+   (chain-filter dashboard param-key constraint-param-key->value nil))
+
+  ([dashboard                   :- su/Map
+    param-key                   :- su/NonBlankString
+    constraint-param-key->value :- su/Map
+    prefix                      :- (s/maybe su/NonBlankString)]
+   (let [dashboard (hydrate dashboard :resolved-params)]
+     (when-not (get (:resolved-params dashboard) param-key)
+       (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
+                       {:resolved-params (keys (:resolved-params dashboard))})))
+     (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
+           field-ids   (param-key->field-ids dashboard param-key)]
+       (when (empty? field-ids)
+         (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
+                         {:param (get (:resolved-params dashboard) param-key)})))
+       ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
+       ;; separate query for each Field (for parameters that are mapped to more than one Field)
+       (try
+         (let [results (distinct (mapcat (if (seq prefix)
+                                           #(chain-filter/chain-filter-search % constraints prefix)
+                                           #(chain-filter/chain-filter % constraints))
+                                         field-ids))]
+           ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
+           (if (sequential? (first results))
+             (sort-by second results)
+             (sort results)))
+         (catch clojure.lang.ExceptionInfo e
+           (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+             (api/throw-403 e)
+             (throw e))))))))
+
+(api/defendpoint GET "/:id/params/:param-key/values"
+  "Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
+  parameters like `other-parameter=value` e.g.
+
+    ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
+    GET /api/dashboard/1/params/abc/values?def=100"
+  [id param-key :as {:keys [query-params]}]
+  (let [dashboard (api/read-check Dashboard id)]
+    (chain-filter dashboard param-key query-params)))
+
+(api/defendpoint GET "/:id/params/:param-key/search/:prefix"
+  "Fetch possible values of the parameter whose ID is `:param-key` that start with with `:prefix`. Optionally restrict
+  these values by passing query parameters like `other-parameter=value` e.g.
+
+    ;; fetch values for Dashboard 1 parameter 'abc' that start with 'Cam' and are possible when parameter 'def' is set
+    ;; to 100
+     GET /api/dashboard/1/params/abc/search/Cam?def=100"
+  [id param-key prefix :as {:keys [query-params]}]
+  (let [dashboard (api/read-check Dashboard id)]
+    (chain-filter dashboard param-key query-params prefix)))
+
+(api/defendpoint GET "/params/valid-filter-fields"
+  "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in
+  parameters) and a set of `filtering` Field IDs that will be used to restrict values of `filtered` Fields, for each
+  `filtered` Field ID return the subset of `filtering` Field IDs that would actually be used in a chain filter query
+  with these Fields.
+
+  e.g. in a chain filter query like
+
+    GET /api/dashboard/10/params/PARAM_1/values?PARAM_2=100
+
+  Assume `PARAM_1` maps to Field 1 and `PARAM_2` maps to Fields 2 and 3. The underlying MBQL query may or may not
+  filter against Fields 2 and 3, depending on whether an FK relationship that lets us create a join against Field 1
+  can be found. You can use this endpoint to determine which of those Fields is actually used:
+
+    GET /api/dashboard/params/valid-filter-fields?filtered=1&filtering=2&filtering=3
+    ;; ->
+    {1 [2 3]}
+
+  Results are returned as a map of
+
+    `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
+  [:as {{:keys [filtered filtering]} :params}]
+  {filtered  (s/cond-pre su/IntStringGreaterThanZero
+                         (su/non-empty [su/IntStringGreaterThanZero]))
+   filtering (s/maybe (s/cond-pre su/IntStringGreaterThanZero
+                                  (su/non-empty [su/IntStringGreaterThanZero])))}
+    ;; parse IDs for filtered/filtering
+  (letfn [(parse-ids [s]
+            (set (cond
+                   (string? s)     [(Integer/parseUnsignedInt s)]
+                   (sequential? s) (map #(Integer/parseUnsignedInt %) s))))]
+    (let [filtered-field-ids  (parse-ids filtered)
+          filtering-field-ids (parse-ids filtering)]
+      (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]
+        (api/read-check Field field-id))
+      (into {} (for [field-id filtered-field-ids]
+                 [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))])))))
 
 (api/define-routes)

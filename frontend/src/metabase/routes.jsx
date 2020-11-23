@@ -2,6 +2,8 @@
 
 import React from "react";
 
+import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
+
 import { Route } from "metabase/hoc/Title";
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
@@ -46,7 +48,6 @@ import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 import PostSetupApp from "metabase/setup/containers/PostSetupApp";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp";
-import EntityPage from "metabase/components/EntityPage";
 // new question
 import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 
@@ -54,8 +55,6 @@ import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import { NotFound, Unauthorized } from "metabase/containers/ErrorPages";
 
-// Reference Guide
-import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer";
 // Reference Metrics
 import MetricListContainer from "metabase/reference/metrics/MetricListContainer";
 import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer";
@@ -81,9 +80,11 @@ import getAdminRoutes from "metabase/admin/routes";
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
+import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
 import DashboardHistoryModal from "metabase/dashboard/components/DashboardHistoryModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
+import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import CollectionLanding from "metabase/components/CollectionLanding";
@@ -105,16 +106,7 @@ const UserIsAuthenticated = UserAuthWrapper({
   failureRedirectPath: "/auth/login",
   authSelector: state => state.currentUser,
   wrapperDisplayName: "UserIsAuthenticated",
-  redirectAction: location =>
-    // HACK: workaround for redux-auth-wrapper not including hash
-    // https://github.com/mjrussell/redux-auth-wrapper/issues/121
-    routerActions.replace({
-      ...location,
-      query: {
-        ...location.query,
-        redirect: location.query.redirect + (window.location.hash || ""),
-      },
-    }),
+  redirectAction: routerActions.replace,
 });
 
 const UserIsAdmin = UserAuthWrapper({
@@ -147,7 +139,7 @@ const IsNotAuthenticated = MetabaseIsSetup(
 );
 
 export const getRoutes = store => (
-  <Route title="Metabase" component={App}>
+  <Route title={t`Metabase`} component={App}>
     {/* SETUP */}
     <Route
       path="/setup"
@@ -177,6 +169,7 @@ export const getRoutes = store => (
         <IndexRedirect to="/auth/login" />
         <Route component={IsNotAuthenticated}>
           <Route path="login" title={t`Login`} component={LoginApp} />
+          <Route path="login/:provider" title={t`Login`} component={LoginApp} />
         </Route>
         <Route path="logout" component={LogoutApp} />
         <Route path="forgot_password" component={ForgotPasswordApp} />
@@ -187,7 +180,16 @@ export const getRoutes = store => (
       {/* MAIN */}
       <Route component={IsAuthenticated}>
         {/* The global all hands rotues, things in here are for all the folks */}
-        <Route path="/" component={Overworld} />
+        <Route
+          path="/"
+          component={Overworld}
+          onEnter={(nextState, replace) => {
+            const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
+            if (page && page !== "/") {
+              replace(page);
+            }
+          }}
+        />
 
         <Route path="/explore" component={PostSetupApp} />
         <Route path="/explore/:databaseId" component={PostSetupApp} />
@@ -217,6 +219,8 @@ export const getRoutes = store => (
           <ModalRoute path="history" modal={DashboardHistoryModal} />
           <ModalRoute path="move" modal={DashboardMoveModal} />
           <ModalRoute path="copy" modal={DashboardCopyModal} />
+          <ModalRoute path="details" modal={DashboardDetailsModal} />
+          <ModalRoute path="archive" modal={ArchiveDashboardModal} />
         </Route>
 
         <Route path="/question">
@@ -230,7 +234,6 @@ export const getRoutes = store => (
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":cardId" component={QueryBuilder} />
           <Route path=":cardId/notebook" component={QueryBuilder} />
-          <Route path=":cardId/entity" component={EntityPage} />
         </Route>
 
         <Route path="/ready" component={PostSetupApp} />
@@ -253,11 +256,6 @@ export const getRoutes = store => (
       {/* REFERENCE */}
       <Route path="/reference" title={`Data Reference`}>
         <IndexRedirect to="/reference/databases" />
-        <Route
-          path="guide"
-          title={`Getting Started`}
-          component={GettingStartedGuideContainer}
-        />
         <Route path="metrics" component={MetricListContainer} />
         <Route path="metrics/:metricId" component={MetricDetailContainer} />
         <Route

@@ -11,7 +11,7 @@ describe("Reference utils.js", () => {
           1: {
             id: 1,
             display_name: "foo",
-            schema: "PUBLIC",
+            schema_name: "PUBLIC",
             fields: [
               {
                 id: 1,
@@ -24,7 +24,7 @@ describe("Reference utils.js", () => {
           2: {
             id: 2,
             display_name: "bar",
-            schema: "public",
+            schema_name: "public",
             fields: [
               {
                 id: 2,
@@ -37,7 +37,7 @@ describe("Reference utils.js", () => {
           3: {
             id: 3,
             display_name: "boo",
-            schema: "TEST",
+            schema_name: "TEST",
             fields: [
               {
                 id: 3,
@@ -61,15 +61,15 @@ describe("Reference utils.js", () => {
   describe("tablesToSchemaSeparatedTables()", () => {
     it("should add schema separator to appropriate locations", () => {
       const tables = {
-        1: { id: 1, name: "table1", schema: "foo" },
-        2: { id: 2, name: "table2", schema: "bar" },
-        3: { id: 3, name: "table3", schema: "boo" },
-        4: { id: 4, name: "table4", schema: "bar" },
-        5: { id: 5, name: "table5", schema: "foo" },
-        6: { id: 6, name: "table6", schema: "bar" },
+        1: { id: 1, name: "table1", schema_name: "foo" },
+        2: { id: 2, name: "table2", schema_name: "bar" },
+        3: { id: 3, name: "table3", schema_name: "boo" },
+        4: { id: 4, name: "table4", schema_name: "bar" },
+        5: { id: 5, name: "table5", schema_name: "foo" },
+        6: { id: 6, name: "table6", schema_name: "bar" },
       };
 
-      const createSchemaSeparator = table => table.schema;
+      const createSchemaSeparator = table => table.schema_name;
       const createListItem = table => table;
 
       const schemaSeparatedTables = separateTablesBySchema(
@@ -79,12 +79,12 @@ describe("Reference utils.js", () => {
       );
 
       expect(schemaSeparatedTables).toEqual([
-        ["bar", { id: 2, name: "table2", schema: "bar" }],
-        { id: 4, name: "table4", schema: "bar" },
-        { id: 6, name: "table6", schema: "bar" },
-        ["boo", { id: 3, name: "table3", schema: "boo" }],
-        ["foo", { id: 1, name: "table1", schema: "foo" }],
-        { id: 5, name: "table5", schema: "foo" },
+        ["bar", { id: 2, name: "table2", schema_name: "bar" }],
+        { id: 4, name: "table4", schema_name: "bar" },
+        { id: 6, name: "table6", schema_name: "bar" },
+        ["boo", { id: 3, name: "table3", schema_name: "boo" }],
+        ["foo", { id: 1, name: "table1", schema_name: "foo" }],
+        { id: 5, name: "table5", schema_name: "foo" },
       ]);
     });
   });

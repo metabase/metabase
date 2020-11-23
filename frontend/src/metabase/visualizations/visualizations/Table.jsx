@@ -22,6 +22,7 @@ import {
   isImageURL,
   isAvatarURL,
 } from "metabase/lib/schema_metadata";
+
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 import ChartSettingsTableFormatting, {
   isFormattable,
@@ -36,9 +37,9 @@ import cx from "classnames";
 import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
-import type { DatasetData } from "metabase/meta/types/Dataset";
-import type { VisualizationSettings } from "metabase/meta/types/Card";
-import type { Series } from "metabase/meta/types/Visualization";
+import type { DatasetData } from "metabase-types/types/Dataset";
+import type { VisualizationSettings } from "metabase-types/types/Card";
+import type { Series } from "metabase-types/types/Visualization";
 import type { SettingDefs } from "metabase/visualizations/lib/settings";
 
 type Props = {
@@ -235,6 +236,7 @@ export default class Table extends Component {
         widget: "input",
         getDefault: column => formatColumn(column),
       },
+      click_behavior: {},
     };
     if (isNumber(column)) {
       settings["show_mini_bar"] = {
@@ -284,6 +286,7 @@ export default class Table extends Component {
           settings["view_as"] !== "email_link",
       };
     }
+
     return settings;
   };
 

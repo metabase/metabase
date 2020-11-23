@@ -1,37 +1,38 @@
 (ns metabase.driver.common.parameters.dates-test
   (:require [clojure.test :refer :all]
             [java-time :as t]
-            [metabase.driver.common.parameters.dates :as dates]))
+            [metabase.driver.common.parameters.dates :as dates]
+            [metabase.util.date-2 :as u.date]))
 
-(deftest date-string->filter-test)
-(testing "year and month"
-  (is (= [:between
-          [:datetime-field [:field-literal "field" :type/DateTime] :day]
-          "2019-04-01"
-          "2019-04-30"]
-         (dates/date-string->filter "2019-04" [:field-literal "field" :type/DateTime])))
-  (testing "quarter year"
+(deftest date-string->filter-test
+  (testing "year and month"
     (is (= [:between
             [:datetime-field [:field-literal "field" :type/DateTime] :day]
             "2019-04-01"
-            "2019-06-30"]
-           (dates/date-string->filter "Q2-2019" [:field-literal "field" :type/DateTime]))))
-  (testing "single day"
-    (is (= [:=
-            [:datetime-field [:field-literal "field" :type/DateTime] :day]
-            "2019-04-01"]
-           (dates/date-string->filter "2019-04-01" [:field-literal "field" :type/DateTime]))))
-  (testing "day range"
-    (is (= [:between
-            [:datetime-field [:field-literal "field" :type/DateTime] :day]
-            "2019-04-01"
-            "2019-04-03"]
-           (dates/date-string->filter "2019-04-01~2019-04-03" [:field-literal "field" :type/DateTime]))))
-  (testing "after day"
-    (is (= [:>
-            [:datetime-field [:field-literal "field" :type/DateTime] :day]
-            "2019-04-01"]
-           (dates/date-string->filter "2019-04-01~" [:field-literal "field" :type/DateTime])))))
+            "2019-04-30"]
+           (dates/date-string->filter "2019-04" [:field-literal "field" :type/DateTime])))
+    (testing "quarter year"
+      (is (= [:between
+              [:datetime-field [:field-literal "field" :type/DateTime] :day]
+              "2019-04-01"
+              "2019-06-30"]
+             (dates/date-string->filter "Q2-2019" [:field-literal "field" :type/DateTime]))))
+    (testing "single day"
+      (is (= [:=
+              [:datetime-field [:field-literal "field" :type/DateTime] :day]
+              "2019-04-01"]
+             (dates/date-string->filter "2019-04-01" [:field-literal "field" :type/DateTime]))))
+    (testing "day range"
+      (is (= [:between
+              [:datetime-field [:field-literal "field" :type/DateTime] :day]
+              "2019-04-01"
+              "2019-04-03"]
+             (dates/date-string->filter "2019-04-01~2019-04-03" [:field-literal "field" :type/DateTime]))))
+    (testing "after day"
+      (is (= [:>
+              [:datetime-field [:field-literal "field" :type/DateTime] :day]
+              "2019-04-01"]
+             (dates/date-string->filter "2019-04-01~" [:field-literal "field" :type/DateTime]))))))
 
 (deftest date-string->range-test
   (t/with-clock (t/mock-clock #t "2016-06-07T12:00Z")
@@ -72,7 +73,20 @@
              "relative (today/yesterday)" {"yesterday" {:end "2016-06-06", :start "2016-06-06"}
                                            "today"     {:end "2016-06-07", :start "2016-06-07"}}}]
       (testing group
-        (doseq [[s expected] s->expected]
+        (doseq [[s inclusive-range]   s->expected
+                [options range-xform] (letfn [(adjust [m k amount]
+                                                (if-not (get m k)
+                                                  m
+                                                  (update m k #(u.date/format (u.date/add (u.date/parse %) :day amount)))))
+                                              (adjust-start [m]
+                                                (adjust m :start -1))
+                                              (adjust-end [m]
+                                                (adjust m :end 1))]
+                                        {nil                                              identity
+                                         {:inclusive-start? false}                        adjust-start
+                                         {:inclusive-end? false}                          adjust-end
+                                         {:inclusive-start? false, :inclusive-end? false} (comp adjust-start adjust-end)})
+                :let                  [expected (range-xform inclusive-range)]]
           (is (= expected
-                 (dates/date-string->range s nil))
-              (format "%s should parse to %s" (pr-str s) (pr-str expected))))))))
+                 (dates/date-string->range s options))
+              (format "%s with options %s should parse to %s" (pr-str s) (pr-str options) (pr-str expected))))))))

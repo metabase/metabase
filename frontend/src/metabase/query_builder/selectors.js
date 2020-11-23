@@ -29,6 +29,8 @@ export const getUiControls = state => state.qb.uiControls;
 
 export const getIsShowingTemplateTagsEditor = state =>
   getUiControls(state).isShowingTemplateTagsEditor;
+export const getIsShowingSnippetSidebar = state =>
+  getUiControls(state).isShowingSnippetSidebar;
 export const getIsShowingDataReference = state =>
   getUiControls(state).isShowingDataReference;
 export const getIsShowingRawTable = state =>
@@ -50,6 +52,8 @@ export const getSettings = state => state.settings.values;
 
 export const getIsNew = state => state.qb.card && !state.qb.card.id;
 
+export const getQueryStartTime = state => state.qb.queryStartTime;
+
 export const getDatabaseId = createSelector(
   [getCard],
   card => card && card.dataset_query && card.dataset_query.database,
@@ -65,7 +69,7 @@ export const getTableForeignKeyReferences = state =>
 
 export const getDatabasesList = state =>
   Databases.selectors.getList(state, {
-    entityQuery: { include_tables: true, include_cards: true },
+    entityQuery: { include: "tables", saved: true },
   }) || [];
 
 export const getTables = createSelector(
@@ -340,6 +344,58 @@ export const getIsNative = createSelector(
 export const getIsNativeEditorOpen = createSelector(
   [getIsNative, getUiControls],
   (isNative, uiControls) => isNative && uiControls.isNativeEditorOpen,
+);
+
+const getNativeEditorSelectedRange = createSelector(
+  [getUiControls],
+  uiControls => uiControls && uiControls.nativeEditorSelectedRange,
+);
+
+function getOffsetForQueryAndPosition(queryText, { row, column }) {
+  const queryLines = queryText.split("\n");
+  return (
+    // the total length of the previous rows
+    queryLines
+      .slice(0, row)
+      .reduce((sum, rowContent) => sum + rowContent.length, 0) +
+    // the newlines that were removed by split
+    row +
+    // the preceding characters in the row with the cursor
+    column
+  );
+}
+
+export const getNativeEditorCursorOffset = createSelector(
+  [getNativeEditorSelectedRange, getNextRunDatasetQuery],
+  (selectedRange, query) => {
+    if (selectedRange == null || query == null || query.native == null) {
+      return null;
+    }
+    return getOffsetForQueryAndPosition(query.native.query, selectedRange.end);
+  },
+);
+
+export const getNativeEditorSelectedText = createSelector(
+  [getNativeEditorSelectedRange, getNextRunDatasetQuery],
+  (selectedRange, query) => {
+    if (selectedRange == null || query == null || query.native == null) {
+      return null;
+    }
+    const queryText = query.native.query;
+    const start = getOffsetForQueryAndPosition(queryText, selectedRange.start);
+    const end = getOffsetForQueryAndPosition(queryText, selectedRange.end);
+    return queryText.slice(start, end);
+  },
+);
+
+export const getModalSnippet = createSelector(
+  [getUiControls],
+  uiControls => uiControls && uiControls.modalSnippet,
+);
+
+export const getSnippetCollectionId = createSelector(
+  [getUiControls],
+  uiControls => uiControls && uiControls.snippetCollectionId,
 );
 
 /**

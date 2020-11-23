@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import withTableMetadataLoaded from "metabase/admin/datamodel/withTableMetadataLoaded";
+import withTableMetadataLoaded from "metabase/admin/datamodel/hoc/withTableMetadataLoaded";
 import Tables from "metabase/entities/tables";
 
 @Tables.load({ id: (state, { tableId }) => tableId, wrapped: true })

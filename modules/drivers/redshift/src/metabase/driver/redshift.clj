@@ -1,17 +1,27 @@
 (ns metabase.driver.redshift
   "Amazon Redshift Driver."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [public-settings :as pubset]]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import java.sql.Types
+            [metabase.mbql.util :as mbql.u]
+            [metabase.query-processor
+             [store :as qp.store]
+             [util :as qputil]]
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [i18n :refer [trs]]])
+  (:import [java.sql ResultSet Types]
            java.time.OffsetTime))
 
 (driver/register! :redshift, :parent #{:postgres ::legacy/use-legacy-classes-for-read-and-set})
@@ -76,28 +86,75 @@
   [& args]
   (apply driver.common/current-db-time args))
 
+(defmethod driver/db-start-of-week :redshift
+  [_]
+  :sunday)
+
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/date-add :redshift
-  [_ dt amount unit]
-  (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp dt)))
+(defmethod sql.qp/add-interval-honeysql-form :redshift
+  [_ hsql-form amount unit]
+  (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp hsql-form)))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:redshift :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
   (hx/+ (hsql/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
         (hx/* expr
               (hsql/raw "INTERVAL '1 second'"))))
 
-(defmethod sql.qp/current-datetime-fn :redshift
+(defmethod sql.qp/current-datetime-honeysql-form :redshift
   [_]
   :%getdate)
 
 (defmethod sql-jdbc.execute/set-timezone-sql :redshift
   [_]
   "SET TIMEZONE TO %s;")
+
+;; This impl is basically the same as the default impl in `sql-jdbc.execute`, but doesn't attempt to make the
+;; connection read-only, because that seems to be causing problems for people
+(defmethod sql-jdbc.execute/connection-with-timezone :redshift
+  [driver database ^String timezone-id]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+    (try
+      (sql-jdbc.execute/set-best-transaction-level! driver conn)
+      (sql-jdbc.execute/set-time-zone-if-supported! driver conn timezone-id)
+      (try
+        (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
+        (catch Throwable e
+          (log/debug e (trs "Error setting default holdability for connection"))))
+      conn
+      (catch Throwable e
+        (.close conn)
+        (throw e)))))
+
+(defn- splice-raw-string-value
+  [driver s]
+  (hsql/raw (str "'" (sql.qp/->honeysql driver s) "'")))
+
+(defmethod sql.qp/->honeysql [:redshift :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (splice-raw-string-value driver pattern)))
+
+(defmethod sql.qp/->honeysql [:redshift :replace]
+  [driver [_ arg pattern replacement]]
+  (hsql/call :replace (sql.qp/->honeysql driver arg) (splice-raw-string-value driver pattern)
+             (splice-raw-string-value driver replacement)))
+
+(defmethod sql.qp/->honeysql [:redshift :concat]
+  [driver [_ & args]]
+  (->> args
+       (map (partial sql.qp/->honeysql driver))
+       (reduce (partial hsql/call :concat))))
+
+(defmethod sql.qp/->honeysql [:redshift :concat]
+  [driver [_ & args]]
+  (->> args
+       (map (partial sql.qp/->honeysql driver))
+       (reduce (partial hsql/call :concat))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -114,7 +171,7 @@
    (dissoc opts :host :port :db)))
 
 (prefer-method
- sql-jdbc.execute/read-column
+ sql-jdbc.execute/read-column-thunk
  [::legacy/use-legacy-classes-for-read-and-set Types/TIMESTAMP]
  [:postgres Types/TIMESTAMP])
 
@@ -122,3 +179,28 @@
  sql-jdbc.execute/set-parameter
  [::legacy/use-legacy-classes-for-read-and-set OffsetTime]
  [:postgres OffsetTime])
+
+(defn- field->parameter-value
+  "Map fields used in parameters to parameter `:value`s."
+  [{:keys [user-parameters]}]
+  (into {}
+        (keep (fn [param]
+                (if (contains? param :name)
+                  [(:name param) (:value param)]
+
+                  (when-let [field-id (mbql.u/match-one param
+                                        [:field-id field-id] (when (contains? (set &parents) :dimension)
+                                                               field-id))]
+                    [(:name (qp.store/field field-id)) (:value param)]))))
+        user-parameters))
+
+(defmethod qputil/query->remark :redshift
+  [_ {{:keys [executed-by query-hash card-id]} :info, :as query}]
+  (str "/* partner: \"metabase\", "
+       (json/generate-string {:dashboard_id        nil ;; requires metabase/metabase#11909
+                              :chart_id            card-id
+                              :optional_user_id    executed-by
+                              :optional_account_id (pubset/site-uuid)
+                              :filter_values       (field->parameter-value query)})
+       " */ "
+       (qputil/default-query->remark query)))

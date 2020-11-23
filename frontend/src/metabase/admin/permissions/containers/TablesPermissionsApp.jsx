@@ -3,12 +3,7 @@ import { push } from "react-router-redux";
 
 import PermissionsEditor from "../components/PermissionsEditor";
 
-import {
-  getTablesPermissionsGrid,
-  getIsDirty,
-  getSaveError,
-  getDiff,
-} from "../selectors";
+import { getTablesPermissionsGrid, getIsDirty, getDiff } from "../selectors";
 import {
   updatePermission,
   savePermissions,
@@ -19,7 +14,6 @@ const mapStateToProps = (state, props) => {
   return {
     grid: getTablesPermissionsGrid(state, props),
     isDirty: getIsDirty(state, props),
-    saveError: getSaveError(state, props),
     diff: getDiff(state, props),
     tab: "databases",
   };

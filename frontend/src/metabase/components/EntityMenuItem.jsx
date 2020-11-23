@@ -51,6 +51,7 @@ const LinkMenuItem = ({ children, link, onClose, event, externalLink }) => (
     target={externalLink ? "_blank" : null}
     onClick={onClose}
     data-metabase-event={event}
+    style={{ display: "block" }}
   >
     {children}
   </Link>

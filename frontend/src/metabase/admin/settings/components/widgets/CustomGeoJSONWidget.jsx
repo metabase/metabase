@@ -52,12 +52,16 @@ export default class CustomGeoJSONWidget extends Component {
       delete value[id];
     }
 
-    await SettingsApi.put({
-      key: "custom-geojson",
-      value: value,
-    });
+    try {
+      await SettingsApi.put({
+        key: "custom-geojson",
+        value: value,
+      });
 
-    await this.props.reloadSettings();
+      await this.props.reloadSettings();
+    } catch (e) {
+      console.warn("Save failed: ", e);
+    }
   };
 
   _save = async () => {

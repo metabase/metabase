@@ -7,11 +7,12 @@
              [store :as qp.store]
              [test-util :as qp.test-util]]
             [metabase.query-processor.middleware.resolve-source-table :as resolve-source-table]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
             [toucan.util.test :as tt]))
 
 (defn- resolve-source-tables [query]
-  ((resolve-source-table/resolve-source-tables identity) query))
+  (:pre (mt/test-qp-middleware resolve-source-table/resolve-source-tables query)))
 
 (defn- do-with-store-contents [f]
   ;; force creation of test data DB so things don't get left in the cache before running tests below

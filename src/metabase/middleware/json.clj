@@ -10,7 +10,7 @@
              [response :as rr]])
   (:import com.fasterxml.jackson.core.JsonGenerator
            [java.io BufferedWriter OutputStream OutputStreamWriter]
-           [java.nio.charset Charset StandardCharsets]
+           java.nio.charset.StandardCharsets
            java.time.temporal.Temporal))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -20,8 +20,8 @@
 ;; Tell the JSON middleware to use a date format that includes milliseconds (why?)
 (def ^:private default-date-format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 
-(intern 'cheshire.factory 'default-date-format default-date-format)
-(intern 'cheshire.generate '*date-format* default-date-format)
+(alter-var-root #'cheshire.factory/default-date-format (constantly default-date-format))
+(alter-var-root #'cheshire.generate/*date-format* (constantly default-date-format))
 
 ;; ## Custom JSON encoders
 
@@ -75,7 +75,7 @@
   [response-seq opts]
   (rui/piped-input-stream
    (fn [^OutputStream output-stream]
-     (with-open [output-writer   (OutputStreamWriter. ^OutputStream output-stream ^Charset StandardCharsets/UTF_8)
+     (with-open [output-writer   (OutputStreamWriter. output-stream StandardCharsets/UTF_8)
                  buffered-writer (BufferedWriter. output-writer)]
        (json/generate-stream response-seq buffered-writer opts)))))
 

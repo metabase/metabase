@@ -3,8 +3,11 @@
              [string :as str]
              [test :refer :all]]
             [java-time :as t]
+            [metabase.test :as mt]
             [metabase.test.util.timezone :as tu.timezone]
-            [metabase.util.date-2 :as u.date]))
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.date-2.common :as u.date.common])
+  (:import java.time.temporal.ChronoField))
 
 (deftest parse-test
   ;; system timezone should not affect the way strings are parsed
@@ -74,7 +77,8 @@
             ;; The 'UTC' default timezone ID should be ignored entirely since all these literals specify their offset
             (is-parsed? expected s "UTC")))
         (testing "literals with a timezone id"
-          (doseq [[s expected] {"2019-10-28-07:00[America/Los_Angeles]"              (t/zoned-date-time 2019 10 28  0  0  0               0 (t/zone-id "America/Los_Angeles"))
+          (doseq [[s expected] {"2019-12-13T16:31:00-08:00[US/Pacific]"              (t/zoned-date-time 2019 12 13 16 31  0               0 (t/zone-id "US/Pacific"))
+                                "2019-10-28-07:00[America/Los_Angeles]"              (t/zoned-date-time 2019 10 28  0  0  0               0 (t/zone-id "America/Los_Angeles"))
                                 "2019-10-28T13-07:00[America/Los_Angeles]"           (t/zoned-date-time 2019 10 28 13  0  0               0 (t/zone-id "America/Los_Angeles"))
                                 "2019-10-28T13:14-07:00[America/Los_Angeles]"        (t/zoned-date-time 2019 10 28 13 14  0               0 (t/zone-id "America/Los_Angeles"))
                                 "2019-10-28T13:14:15-07:00[America/Los_Angeles]"     (t/zoned-date-time 2019 10 28 13 14 15               0 (t/zone-id "America/Los_Angeles"))
@@ -137,12 +141,19 @@
 ;; TODO - more tests!
 (deftest format-test
   (testing "ZonedDateTime"
-    (is (= "2019-11-01T18:39:00-07:00"
-           (u.date/format (t/zoned-date-time "2019-11-01T18:39:00-07:00[US/Pacific]")))
-        "should get formatted as the same way as an OffsetDateTime"))
+    (testing "should get formatted as the same way as an OffsetDateTime"
+      (is (= "2019-11-01T18:39:00-07:00"
+             (u.date/format (t/zoned-date-time "2019-11-01T18:39:00-07:00[US/Pacific]")))))
+    (testing "make sure it can handle different DST offsets correctly"
+      (is (= "2020-02-13T16:31:00-08:00"
+             (u.date/format (t/zoned-date-time "2020-02-13T16:31:00-08:00[US/Pacific]"))))))
   (testing "Instant"
     (is (= "1970-01-01T00:00:00Z"
-           (u.date/format (t/instant "1970-01-01T00:00:00Z"))))))
+           (u.date/format (t/instant "1970-01-01T00:00:00Z")))))
+  (testing "nil"
+    (is (= nil
+           (u.date/format nil))
+        "Passing `nil` should return `nil`")))
 
 (deftest format-sql-test
   (testing "LocalDateTime"
@@ -392,3 +403,8 @@
             (is (= false
                    (u.date/older-than? t (t/months 2)))
                 (format "%s did not happen before 2019-10-03" (pr-str t)))))))))
+
+(deftest static-instances-locale-test
+  (testing "in the Turkish locale, :minute-of-hour can be found"
+    (mt/with-locale "tr"
+      (is (some? (:minute-of-hour (u.date.common/static-instances ChronoField)))))))

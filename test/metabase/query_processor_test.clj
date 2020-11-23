@@ -14,14 +14,13 @@
             [metabase.models.field :refer [Field]]
             [metabase.test.data :as data]
             [metabase.test.data
-             [datasets :as datasets]
              [env :as tx.env]
              [interface :as tx]]
             [toucan.db :as db]))
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
-;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
+;; Non-"normal" drivers are tested in `timeseries-query-processor-test` and elsewhere
 (def ^:private abnormal-drivers
   "Drivers that are so weird that we can't run the normal driver tests against them."
   #{:druid :googleanalytics})
@@ -30,15 +29,6 @@
   "Drivers that are reasonably normal in the sense that they can participate in the shared driver tests."
   []
   (set/difference (tx.env/test-drivers) abnormal-drivers))
-
-;; TODO - we should make this a function instead to facilitate rebinding with macros like `dev/with-test-drivers`
-(def ^:deprecated non-timeseries-drivers
-  "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`). DEPRECATED — Use `normal-drivers`
-  instead."
-  (reify
-    clojure.lang.IDeref
-    (deref [_]
-      (normal-drivers))))
 
 (defn normal-drivers-with-feature
   "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
@@ -50,71 +40,16 @@
                :when  (set/subset? features (driver.u/features driver))]
            driver))))
 
-(defn ^:deprecated non-timeseries-drivers-with-feature
-  "DEPRECATED — use `normal-drivers-with-feature` instead."
-  [feature & more-features]
-  (apply normal-drivers-with-feature feature more-features))
-
 (defn normal-drivers-without-feature
-  "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."
+  "Return a set of all non-timeseries engines (e.g., everything except Druid and Google Analytics) that DO NOT support
+  `feature`."
   [feature]
   (set/difference (normal-drivers) (normal-drivers-with-feature feature)))
-
-(defn ^:deprecated non-timeseries-drivers-without-feature
-  "DEPRECATED — use `normal-drivers-without-feature` instead."
-  [feature]
-  (normal-drivers-without-feature feature))
-
-(defmacro ^:deprecated expect-with-non-timeseries-dbs
-  "DEPRECATED — Use `deftest` + `test-drivers` + `normal-drivers` instead.
-
-    (deftest my-test
-      (datasets/test-drivers (qp.test/normal-drivers)
-        (is (= ...))))"
-  {:style/indent 0}
-  [expected actual]
-  `(datasets/expect-with-drivers (normal-drivers)
-     ~expected
-     ~actual))
 
 (defn normal-drivers-except
   "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."
   [excluded-drivers]
   (set/difference (normal-drivers) (set excluded-drivers)))
-
-(defn ^:deprecated non-timeseries-drivers-except
-  "DEPRECATED — Use `normal-drivers-except` instead."
-  [excluded-drivers]
-  (normal-drivers-except excluded-drivers))
-
-(defmacro ^:deprecated expect-with-non-timeseries-dbs-except
-  "DEPRECATED — Use `deftest` + `test-drivers` + `normal-drivers-except` instead.
-
-    (deftest my-test
-      (datasets/test-drivers (qp.test/normal-drivers-except #{:snowflake})
-        (is (= ...))))"
-  {:style/indent 1}
-  [excluded-drivers expected actual]
-  `(datasets/expect-with-drivers (normal-drivers-except ~excluded-drivers)
-     ~expected
-     ~actual))
-
-(defmacro ^:deprecated qp-expect-with-all-drivers
-  "Wraps `expected` form in the 'wrapped' query results (includes `:status` and `:row_count`.)
-
-  DEPRECATED — If you don't care about `:status` and `:row_count` (you usually don't) use `qp.test/rows` or
-  `qp.test/rows-and-columns` instead.
-
-  DEPRECATED x2 - You also shouldn't use this because it ultimately uses `expectations`-style `expect` -- see
-  docstring for `expect-with-non-timeseries-dbs` for suggested alternative."
-  {:style/indent 0}
-  [data query-form & post-process-fns]
-  `(expect-with-non-timeseries-dbs
-     {:status    :completed
-      :row_count ~(count (:rows data))
-      :data      ~data}
-     (-> ~query-form
-         ~@post-process-fns)))
 
 ;; Predefinied Column Fns: These are meant for inclusion in the expected output of the QP tests, to save us from
 ;; writing the same results several times
@@ -272,18 +207,22 @@
 
 (defmethod format-rows-fns :categories
   [_]
+  ;; ID NAME
   [int identity])
 
 (defmethod format-rows-fns :checkins
   [_]
+  ;; ID DATE USER_ID VENUE_ID
   [int identity int int])
 
 (defmethod format-rows-fns :users
   [_]
+  ;; ID NAME LAST_LOGIN
   [int identity identity])
 
 (defmethod format-rows-fns :venues
   [_]
+  ;; ID NAME CATEGORY_ID LATITUDE LONGITUDE PRICE
   [int identity int 4.0 4.0 int])
 
 (defn- format-rows-fn
@@ -350,8 +289,7 @@
   "Return the result `data` from a successful query run, or throw an Exception if processing failed."
   {:style/indent 0}
   [results]
-  (when (= (:status results) :failed)
-    (println "Error running query:" (u/pprint-to-str 'red results))
+  (when (#{:failed "failed"} (:status results))
     (throw (ex-info (str (or (:error results) "Error running query"))
              (if (map? results) results {:results results}))))
   (:data results))

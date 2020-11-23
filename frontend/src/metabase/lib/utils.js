@@ -37,7 +37,7 @@ function s4() {
 // provides functions for building urls to things we care about
 const MetabaseUtils = {
   // generate a password that satisfies `complexity` requirements, by default the ones that come back in the
-  // `password_complexity` Setting; must be a map like {total: 6, number: 1}
+  // `password-complexity` Setting; must be a map like {total: 6, number: 1}
   generatePassword(complexity) {
     complexity =
       complexity || MetabaseSettings.passwordComplexityRequirements() || {};
@@ -170,6 +170,10 @@ const MetabaseUtils = {
   // 0.0.9, 0.0.10-snapshot, 0.0.10-alpha1, 0.0.10-rc1, 0.0.10-rc2, 0.0.10-rc10
   // 0.0.10, 0.1.0, 0.2.0, 0.10.0, 1.1.0
   compareVersions(aVersion, bVersion) {
+    if (!aVersion || !bVersion) {
+      return null;
+    }
+
     const SPECIAL_COMPONENTS = {
       snapshot: -4,
       alpha: -3,

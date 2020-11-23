@@ -15,6 +15,7 @@ export type ColorFamily = { [name: ColorName]: ColorString };
 /* eslint-disable no-color-literals */
 const colors = {
   brand: "#509EE3",
+  "brand-light": "#DDECFA",
   accent1: "#88BF4D",
   accent2: "#A989C5",
   accent3: "#EF8C8C",
@@ -37,6 +38,7 @@ const colors = {
   "bg-medium": "#EDF2F5",
   "bg-light": "#F9FBFC",
   "bg-white": "#FFFFFF",
+  "bg-yellow": "#FFFCF2",
   shadow: "rgba(0,0,0,0.08)",
   border: "#F0F0F0",
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
@@ -55,6 +57,7 @@ export const aliases = {
   database: "accent2",
   dashboard: "brand",
   pulse: "accent4",
+  nav: "brand",
 };
 
 export const harmony = [];
@@ -232,7 +235,7 @@ const PREFERRED_COLORS = {
 
 const PREFERRED_COLORS_MAP = {};
 for (const color in PREFERRED_COLORS) {
-  if (PREFERRED_COLORS.hasOwnProperty(color)) {
+  if (Object.prototype.hasOwnProperty.call(PREFERRED_COLORS, color)) {
     const keys = PREFERRED_COLORS[color];
     for (let i = 0; i < keys.length; i++) {
       PREFERRED_COLORS_MAP[keys[i]] = color;

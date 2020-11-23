@@ -46,60 +46,62 @@
                                  :src   (:image-src image-bundle)}])]]]]})))
 
 (defn- number-field?
-  [field]
-  (or (isa? (:base_type field)    :type/Number)
-      (isa? (:special_type field) :type/Number)))
+  [{base-type :base_type, special-type :special_type}]
+  (some #(isa? % :type/Number) [base-type special-type]))
 
-;; TODO - rename to detect-pulse-chart-type
-(defn detect-pulse-card-type
+(defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
-  [card data]
-  (let [col-count                 (-> data :cols count)
-        row-count                 (-> data :rows count)
+  [{display-type :display, card-name :name, :as card} {:keys [cols rows], :as data}]
+  (let [col-sample-count          (delay (count (take 3 cols)))
+        row-sample-count          (delay (count (take 2 rows)))
         [col-1-rowfn col-2-rowfn] (common/graphing-column-row-fns card data)
-        col-1                     (col-1-rowfn (:cols data))
-        col-2                     (col-2-rowfn (:cols data))
-        aggregation               (-> card :dataset_query :query :aggregation first)]
-    (cond
-      (or (zero? row-count)
-          ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
-          (= [[nil]] (-> data :rows)))
-      :empty
+        col-1                     (delay (col-1-rowfn cols))
+        col-2                     (delay (col-2-rowfn cols))]
+    (letfn [(chart-type [tyype reason & args]
+              (log/tracef "Detected chart type %s for Card %s because %s"
+                          tyype (pr-str card-name) (apply format reason args))
+              tyype)
+            (col-description [{col-name :name, base-type :base_type}]
+              (format "%s (%s)" (pr-str col-name) base-type))]
+      (cond
+        (or (empty? rows)
+            ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
+            (= [[nil]] (-> data :rows)))
+        (chart-type :empty "there are no rows in results")
 
-      (contains? #{:pin_map :state :country} (:display card))
-      nil
+        (#{:pin_map :state :country} display-type)
+        (chart-type nil "display-type is %s" display-type)
 
-      (and (= col-count 1)
-           (= row-count 1))
-      :scalar
+        (= @col-sample-count @row-sample-count 1)
+        (chart-type :scalar "result has one row and one column")
 
-      (and (= col-count 2)
-           (> row-count 1)
-           (types/temporal-field? col-1)
-           (number-field? col-2))
-      :sparkline
+        (and (= @col-sample-count 2)
+             (> @row-sample-count 1)
+             (types/temporal-field? @col-1)
+             (number-field? @col-2))
+        (chart-type :sparkline "result has 2 cols (%s (temporal) and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
 
-      (and (= col-count 2)
-           (number-field? col-2))
-      :bar
+        (and (= @col-sample-count 2)
+             (number-field? @col-2))
+        (chart-type :bar "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))
 
-      :else :table)))
+        :else
+        (chart-type :table "no other chart types match")))))
 
 (defn- is-attached?
   [card]
-  (or (:include_csv card)
-      (:include_xls card)))
+  ((some-fn :include_csv :include_xls) card))
 
 (s/defn ^:private render-pulse-card-body :- common/RenderedPulseCard
   [render-type timezone-id :- (s/maybe s/Str) card {:keys [data error], :as results}]
   (try
     (when error
-      (let [^String msg (tru "Card has errors: {0}" error)]
-        (throw (ex-info msg results))))
-    (let [chart-type (or (detect-pulse-card-type card data)
-                          (when (is-attached? card)
-                            :attached)
-                          :unknown)]
+      (throw (ex-info (tru "Card has errors: {0}" error) results)))
+    (let [chart-type (or (detect-pulse-chart-type card data)
+                         (when (is-attached? card)
+                           :attached)
+                         :unknown)]
+      (log/debug (trs "Rendering pulse card with chart-type {0} and render-type {1}" chart-type render-type))
       (body/render chart-type render-type timezone-id card data))
     (catch Throwable e
       (log/error e (trs "Pulse card render error"))
@@ -112,8 +114,8 @@
 (s/defn ^:private render-pulse-card :- common/RenderedPulseCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results."
   [render-type timezone-id :- (s/maybe s/Str) card results]
-  (let [{title :content title-attachments :attachments} (make-title-if-needed render-type card)
-        {pulse-body :content body-attachments :attachments} (render-pulse-card-body render-type timezone-id card results)]
+  (let [{title :content, title-attachments :attachments}     (make-title-if-needed render-type card)
+        {pulse-body :content, body-attachments :attachments} (render-pulse-card-body render-type timezone-id card results)]
     {:attachments (merge title-attachments body-attachments)
      :content     [:a {:href   (card-href card)
                        :target "_blank"
@@ -133,7 +135,7 @@
   (:content (render-pulse-card :inline timezone-id card results)))
 
 (s/defn render-pulse-section :- common/RenderedPulseCard
-  "Render a specific section of a Pulse, i.e. a single Card, to Hiccup HTML."
+  "Render a single Card section of a Pulse to a Hiccup form (representating HTML)."
   [timezone-id {card :card {:keys [data] :as result} :result}]
   (let [{:keys [attachments content]} (binding [*include-title* true]
                                         (render-pulse-card :attachment timezone-id card result))]
@@ -143,7 +145,7 @@
                                                :margin-bottom :20px}
                                               ;; Don't include the border on cards rendered with a table as the table
                                               ;; will be to larger and overrun the border
-                                              (when-not (= :table (detect-pulse-card-type card data))
+                                              (when-not (= :table (detect-pulse-chart-type card data))
                                                 {:border           "1px solid #dddddd"
                                                  :border-radius    :2px
                                                  :background-color :white

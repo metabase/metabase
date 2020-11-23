@@ -15,7 +15,7 @@ import Popover from "metabase/components/Popover";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { DatasetQuery } from "metabase-types/types/Card";
 import type { GuiQueryEditorFeatures } from "./GuiQueryEditor";
 
 type Props = {
@@ -144,8 +144,7 @@ export class ExtendedOptionsPopover extends Component {
     const { query } = this.props;
     return (
       <Expressions
-        expressions={query.expressions()}
-        tableMetadata={query.table()}
+        query={query}
         onAddExpression={() => this.setState({ editExpression: true })}
         onEditExpression={name => {
           this.setState({ editExpression: name });

@@ -11,12 +11,13 @@ import { startTimer } from "metabase/lib/performance";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 type DeregisterFunction = () => void;
 
 type Props = VisualizationProps & {
   renderer: (element: Element, props: VisualizationProps) => DeregisterFunction,
+  style?: any,
 };
 
 // We track this as part of the render loop.
@@ -107,7 +108,6 @@ export default class CardRenderer extends Component {
       });
     } catch (err) {
       console.error(err);
-      this.props.onRenderError(err.message || err);
     }
   }
 

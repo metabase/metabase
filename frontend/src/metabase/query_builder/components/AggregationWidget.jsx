@@ -1,16 +1,15 @@
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
-
-import Clearable from "./Clearable";
+import { t } from "ttag";
 
 import Popover from "metabase/components/Popover";
 
-import AggregationName from "./AggregationName";
+import Clearable from "./Clearable";
 import AggregationPopover from "./AggregationPopover";
 
 // NOTE: lots of duplication between AggregationWidget and BreakoutWidget
 
-export default class AggregationWidget extends Component {
+export default class AggregationWidget extends React.Component {
   constructor(props, context) {
     super(props, context);
 
@@ -48,6 +47,7 @@ export default class AggregationWidget extends Component {
       children,
       className,
     } = this.props;
+    console.log("aggregation", aggregation);
 
     const popover = this.state.isOpen && (
       <Popover onClose={this.handleClose}>
@@ -55,6 +55,7 @@ export default class AggregationWidget extends Component {
           query={query}
           aggregation={aggregation}
           onChangeAggregation={this.handleChangeAggregation}
+          showMetrics={this.props.showMetrics}
         />
       </Popover>
     );
@@ -66,11 +67,9 @@ export default class AggregationWidget extends Component {
             : null
         }
       >
-        <AggregationName
-          query={query}
-          aggregation={aggregation}
-          className={className}
-        />
+        <span className={className}>
+          {isRows(aggregation) ? t`Raw data` : aggregation.displayName()}
+        </span>
       </Clearable>
     ) : (
       children
@@ -88,3 +87,5 @@ export default class AggregationWidget extends Component {
     }
   }
 }
+
+const isRows = aggregation => aggregation && aggregation[0] === "rows";

@@ -94,7 +94,7 @@
            :fields            [{:name        "channel"
                                 :type        "select"
                                 :displayName "Post to"
-                                :options     ["#general"]
+                                :options     []
                                 :required    true}]}})
 
 (defn channel-type?
@@ -128,17 +128,13 @@
                 :order-by [[:u.id :asc]]})]
      (user/add-common-name user))))
 
-(defn- pre-delete [{:keys [id]}]
-  (db/delete! PulseChannelRecipient :pulse_channel_id id))
-
 (u/strict-extend (class PulseChannel)
   models/IModel
   (merge
    models/IModelDefaults
    {:hydration-keys (constantly [:pulse_channel])
     :types          (constantly {:details :json, :channel_type :keyword, :schedule_type :keyword, :schedule_frame :keyword})
-    :properties     (constantly {:timestamped? true})
-    :pre-delete     pre-delete})
+    :properties     (constantly {:timestamped? true})})
 
   i/IObjectPermissions
   (merge
@@ -246,11 +242,12 @@
 (defn create-pulse-channel!
   "Create a new `PulseChannel` along with all related data associated with the channel such as
   `PulseChannelRecipients`."
-  [{:keys [channel_type details pulse_id recipients schedule_type schedule_day schedule_hour schedule_frame]
+  [{:keys [channel_type details enabled pulse_id recipients schedule_type schedule_day schedule_hour schedule_frame]
     :or   {details          {}
            recipients       []}}]
   {:pre [(channel-type? channel_type)
          (integer? pulse_id)
+         (boolean? enabled)
          (schedule-type? schedule_type)
          (valid-schedule? schedule_type schedule_hour schedule_day schedule_frame)
          (coll? recipients)
@@ -261,6 +258,7 @@
                        :channel_type   channel_type
                        :details        (cond-> details
                                          (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
+                       :enabled        enabled
                        :schedule_type  schedule_type
                        :schedule_hour  (when (not= schedule_type :hourly)
                                          schedule_hour)

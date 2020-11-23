@@ -2,20 +2,20 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
-export default class LogoIcon extends Component {
-  static defaultProps = {
-    size: 32,
-  };
+import { PLUGIN_LOGO_ICON_COMPONENTS } from "metabase/plugins";
 
+class DefaultLogoIcon extends Component {
+  static defaultProps = {
+    height: 32,
+  };
   static propTypes = {
-    size: PropTypes.number,
     width: PropTypes.number,
     height: PropTypes.number,
     dark: PropTypes.bool,
   };
 
   render() {
-    const { dark, height, width, size } = this.props;
+    const { dark, height, width } = this.props;
     return (
         <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20px" height="32px"
              viewBox="295.436 554.016 20 32" enableBackground="new 295.436 554.016 20 32">
@@ -33,4 +33,9 @@ export default class LogoIcon extends Component {
         </svg>
     );
   }
+}
+
+export default function LogoIcon(props) {
+  const [Component = DefaultLogoIcon] = PLUGIN_LOGO_ICON_COMPONENTS;
+  return <Component {...props} />;
 }

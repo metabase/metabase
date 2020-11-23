@@ -251,7 +251,7 @@ describe("metabase/visualization/lib/utils", () => {
         getDefaultDimensionsAndMetrics([
           {
             data: {
-              rows: _.range(0, 100).map(v => [0, v, v]),
+              rows: _.range(0, 101).map(v => [0, v, v]),
               cols: [
                 {
                   name: "count",

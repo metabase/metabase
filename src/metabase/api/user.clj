@@ -9,19 +9,23 @@
             [metabase.email.messages :as email]
             [metabase.integrations.ldap :as ldap]
             [metabase.models
+             [collection :as collection :refer [Collection]]
              [permissions-group :as group]
              [user :as user :refer [User]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [tru]]
+             [i18n :as i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
 
+(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
+
 (defn- check-self-or-superuser
-  "Check that USER-ID is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
+  "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
   [user-id]
   {:pre [(integer? user-id)]}
   (api/check-403
@@ -45,6 +49,22 @@
       (api/check-superuser)
       (user/set-permissions-groups! user-or-id new-groups-or-ids))))
 
+(defn- updated-user-name [user-before-update first_name last_name]
+  (let [prev_first_name (:first_name user-before-update)
+        prev_last_name  (:last_name user-before-update)
+        first_name      (or first_name prev_first_name)
+        last_name       (or last_name prev_last_name)]
+    (when (or (not= first_name prev_first_name)
+              (not= last_name prev_last_name))
+      [first_name last_name])))
+
+(defn- maybe-update-user-personal-collection-name! [user-before-update first_name last_name]
+  ;; If the user name is updated, we shall also update the personal collection name (if such collection exists).
+  (when-some [[first_name last_name] (updated-user-name user-before-update first_name last_name)]
+    (when-some [collection (collection/user->existing-personal-collection (u/get-id user-before-update))]
+      (let [new-collection-name (collection/format-personal-collection-name first_name last_name)]
+        (when-not (= new-collection-name (:name collection))
+          (db/update! Collection (:id collection) :name new-collection-name))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
@@ -53,7 +73,7 @@
 (api/defendpoint GET "/"
   "Fetch a list of `Users` for the admin People page or for Pulses. By default returns only active users. If
   `include_deactivated` is true, return all Users (active and inactive). (Using `include_deactivated` requires
-  superuser permissions.)"
+  superuser permissions.). For users with segmented permissions, return only themselves."
   [include_deactivated]
   {include_deactivated (s/maybe su/BooleanString)}
   (when include_deactivated
@@ -64,7 +84,10 @@
             (-> {}
                 (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
                 (hh/merge-where (when-not include_deactivated
-                                  [:= :is_active true]))))
+                                  [:= :is_active true]))
+                (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+                                  (when (segmented-user?)
+                                    [:= :id api/*current-user-id*])))))
     ;; For admins, also include the IDs of the  Users' Personal Collections
     api/*is-superuser?* (hydrate :personal_collection_id :group_ids)))
 
@@ -95,7 +118,7 @@
    group_ids        (s/maybe [su/IntGreaterThanZero])
    login_attributes (s/maybe user/LoginAttributes)}
   (api/check-superuser)
-  (api/checkp (not (db/exists? User :email email))
+  (api/checkp (not (db/exists? User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))
   (db/transaction
     (let [new-user-id (u/get-id (user/create-and-invite-user!
@@ -113,7 +136,7 @@
 
 (defn- valid-email-update?
   "This predicate tests whether or not the user is allowed to update the email address associated with this account."
-  [{:keys [google_auth ldap_auth email] :as foo } maybe-new-email]
+  [{:keys [google_auth ldap_auth email]} maybe-new-email]
   (or
    ;; Admin users can update
    api/*is-superuser?*
@@ -126,31 +149,32 @@
 
 (api/defendpoint PUT "/:id"
   "Update an existing, active `User`."
-  [id :as {{:keys [email first_name last_name group_ids is_superuser login_attributes] :as body} :body}]
+  [id :as {{:keys [email first_name last_name group_ids is_superuser login_attributes locale] :as body} :body}]
   {email            (s/maybe su/Email)
    first_name       (s/maybe su/NonBlankString)
    last_name        (s/maybe su/NonBlankString)
    group_ids        (s/maybe [su/IntGreaterThanZero])
    is_superuser     (s/maybe s/Bool)
-   login_attributes (s/maybe user/LoginAttributes)}
+   login_attributes (s/maybe user/LoginAttributes)
+   locale           (s/maybe su/ValidLocale)}
   (check-self-or-superuser id)
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
     (api/check-403 (valid-email-update? user-before-update email))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-    (api/checkp (not (db/exists? User, :email email, :id [:not= id]))
-      "email" (tru "Email address already associated to another user.")))
-  (db/transaction
-    (api/check-500
-     (db/update! User id
-       (u/select-keys-when body
-         :present (when api/*is-superuser?*
-                    #{:login_attributes})
-         :non-nil (set (concat [:first_name :last_name :email]
-                               (when api/*is-superuser?*
-                                 [:is_superuser]))))))
-    (maybe-set-user-permissions-groups! id group_ids is_superuser))
+    (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
+      "email" (tru "Email address already associated to another user."))
+    (db/transaction
+      (api/check-500
+       (db/update! User id
+         (u/select-keys-when body
+           :present (into #{:locale} (when api/*is-superuser?* [:login_attributes]))
+           :non-nil (set (concat [:first_name :last_name :email]
+                                 (when api/*is-superuser?*
+                                   [:is_superuser]))))))
+      (maybe-set-user-permissions-groups! id group_ids is_superuser)
+      (maybe-update-user-personal-collection-name! user-before-update first_name last_name)))
   (-> (fetch-user :id id)
       (hydrate :group_ids)))
 
@@ -164,7 +188,7 @@
     :is_active     true
     :is_superuser  false
     ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
-    ;; (see Issue #3323)
+    ;; (see metabase#3323)
     :google_auth   (boolean (and (:google_auth existing-user)
                                  ;; if google-auth-client-id is set it means Google Auth is enabled
                                  (session-api/google-auth-client-id)))

@@ -3,6 +3,7 @@
  */
 :root {
   --color-brand: #509ee3;
+  --color-brand-light: #ddecfa;
   --color-accent1: #88bf4d;
   --color-accent2: #a989c5;
   --color-accent3: #ef8c8c;
@@ -25,6 +26,7 @@
   --color-bg-medium: #edf2f5;
   --color-bg-light: #f9fbfc;
   --color-bg-white: #ffffff;
+  --color-bg-yellow: #fffcf2;
   --color-shadow: rgba(0, 0, 0, 0.13);
   --color-border: #f0f0f0;
 
@@ -58,7 +60,7 @@
   --alt-color: var(--color-bg-light);
   --alt-bg-color: var(--color-bg-light);
 
-  --success-color: var(--color-accent1);
+  --success-color: var(--color-success);
   --headsup-color: var(--color-warning);
 
   --gold-color: var(--color-accent4);
@@ -109,7 +111,26 @@
 :local(.text-brand-light),
 .text-brand-light-hover:hover,
 :local(.text-brand-light-hover):hover {
-  color: var(--color-text-light);
+  color: var(--color-brand-light);
+}
+
+.bg-brand-light {
+  background-color: var(--color-brand-light);
+}
+
+.bg-brand-dark,
+.bg-brand-dark-hover:hover {
+  background-color: color(var(--color-brand) blackness(+12%));
+}
+
+.bg-brand-dark,
+.bg-brand-dark-hover:hover {
+  background-color: color(var(--color-brand) blackness(+12%));
+}
+
+.bg-brand-dark,
+.bg-brand-dark-hover:hover {
+  background-color: color(var(--color-brand) blackness(+12%));
 }
 
 .bg-brand,
@@ -127,10 +148,10 @@
 /* success */
 
 .text-success {
-  color: var(--color-accent1);
+  color: var(--color-success);
 }
 .bg-success {
-  background-color: var(--color-accent1);
+  background-color: var(--color-success);
 }
 
 /* error */

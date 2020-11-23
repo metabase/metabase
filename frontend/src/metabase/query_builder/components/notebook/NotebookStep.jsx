@@ -124,6 +124,7 @@ export default class NotebookStep extends React.Component {
             mt={isLastStep ? 2 : null}
             large={largeActionButtons}
             {...(STEP_UI[action.type] || {})}
+            key={`actionButton_${STEP_UI[action.type].title}`}
             onClick={() => action.action({ query: step.query, openStep })}
           />
         ),

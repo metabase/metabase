@@ -19,7 +19,7 @@ import type {
   SettingsWidgetsForObjectGetter,
   NestedObjectKeyGetter,
 } from "metabase/visualizations/lib/settings/nested";
-import type { Series } from "metabase/meta/types/Visualization";
+import type { Series } from "metabase-types/types/Visualization";
 
 export type NestedSettingComponentProps = {
   objects: NestedObject[],

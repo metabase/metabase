@@ -5,7 +5,7 @@ import { t } from "ttag";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -21,7 +21,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     !clicked ||
     dimensions.length === 0 ||
     // xrays must be enabled for this to work
-    !MetabaseSettings.get("enable_xrays")
+    !MetabaseSettings.get("enable-xrays")
   ) {
     return [];
   }

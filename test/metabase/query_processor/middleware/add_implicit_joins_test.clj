@@ -1,6 +1,9 @@
 (ns metabase.query-processor.middleware.add-implicit-joins-test
-  (:require [expectations :refer [expect]]
-            [metabase.driver :as driver]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
+            [metabase
+             [driver :as driver]
+             [test :as mt]]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
@@ -15,7 +18,7 @@
   (driver/with-driver (tx/driver)
     (qp.store/with-store
       (qp.store/fetch-and-store-database! (data/id))
-      ((add-implicit-joins/add-implicit-joins identity) query))))
+      (:pre (mt/test-qp-middleware add-implicit-joins/add-implicit-joins query)))))
 
 ;; make sure `:joins` get added automatically for `:fk->` clauses
 (expect
@@ -51,6 +54,29 @@
      {:source-query
       {:source-table $$venues
        :fields       [$name $category_id->categories.name]}})))
+
+(deftest reuse-existing-joins
+  (is (= (mt/mbql-query venues
+           {:source-query
+            {:source-table $$venues
+             :fields       [$name &CATEGORIES__via__CATEGORY_ID.categories.name]
+             :joins        [{:source-table $$categories
+                             :alias        "CATEGORIES__via__CATEGORY_ID"
+                             :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                             :strategy     :left-join
+                             :fields       [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                             :fk-field-id  %category_id}]}})
+         (add-implicit-joins
+          (mt/mbql-query venues
+            {:source-query
+             {:source-table $$venues
+              :fields       [$name $category_id->categories.name]
+              :joins        [{:source-table $$categories
+                              :alias        "CATEGORIES__via__CATEGORY_ID"
+                              :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                              :strategy     :left-join
+                              :fields       [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                              :fk-field-id  %category_id}]}})))))
 
 ;; we should handle nested-nested queries correctly as well
 (expect

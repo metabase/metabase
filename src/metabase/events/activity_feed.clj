@@ -36,10 +36,9 @@
     :segment-delete
     :user-login}) ; this is only used these days the first time someone logs in to record 'user-joined' events
 
-(def ^:private activity-feed-channel
-  "Channel for receiving event notifications we want to subscribe to for the activity feed."
+(defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for the activity feed."}
+  activity-feed-channel
   (async/chan))
-
 
 ;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
 
@@ -157,7 +156,6 @@
 
 ;;; ---------------------------------------------------- LIFECYLE ----------------------------------------------------
 
-(defn events-init
-  "Automatically called during startup; start the events listener for the activity feed."
-  []
+(defmethod events/init! ::ActivityFeed
+  [_]
   (events/start-event-listener! activity-feed-topics activity-feed-channel process-activity-event!))

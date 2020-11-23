@@ -2,13 +2,25 @@
   (:require [cheshire
              [core :as json]
              [generate :as json.generate]]
-            [clojure.test :refer :all]
+            [clojure
+             [string :as str]
+             [test :refer :all]]
+            [java-time :as t]
             [metabase
              [query-processor :as qp]
              [test :as mt]]
             [metabase.driver.common.parameters :as common.params]
             [metabase.driver.mongo.parameters :as params])
   (:import com.fasterxml.jackson.core.JsonGenerator))
+
+(deftest ->utc-instant-test
+  (doseq [t [#t "2020-03-14"
+             #t "2020-03-14T00:00:00"
+             #t "2020-03-13T17:00:00-07:00"
+             #t "2020-03-13T17:00:00-07:00[America/Los_Angeles]"]]
+    (testing (format "%s %s" (class t) (pr-str t))
+      (is (= (t/instant "2020-03-14T00:00:00Z")
+             (#'params/->utc-instant t))))))
 
 (defn- substitute [param->value xs]
   (#'params/substitute param->value xs))
@@ -78,25 +90,71 @@
            (substitute {:id (comma-separated-numbers [1 2 3])}
                        [(param :id)])))))
 
+(defprotocol ^:private ToBSON
+  (^:private to-bson [this]
+   "Utility method for converting normal Clojure objects to string-serialized 'BSON'."))
+
+(extend-protocol ToBSON
+  nil
+  (to-bson [_] "null")
+
+  Object
+  (to-bson [this] (pr-str this))
+
+  clojure.lang.Keyword
+  (to-bson [this] (name this))
+
+  clojure.lang.Sequential
+  (to-bson [this]
+    (str "["
+         (str/join ", " (map to-bson this))
+         "]"))
+
+  clojure.lang.IPersistentMap
+  (to-bson [this]
+    (str "{"
+         (str/join ", " (for [[k v] this]
+                          (str (to-bson k) ": " (to-bson v))))
+         "}")))
+
+(defn- bson-fn-call [f & args]
+  (reify ToBSON
+    (to-bson [_]
+      (format "%s(%s)" (name f) (str/join "," (map pr-str args))))))
+
+(defn- ISODate [s]
+  (bson-fn-call :ISODate s))
+
 (deftest field-filter-test
   (testing "Date ranges"
     (mt/with-clock #t "2019-12-13T12:00:00.000Z[UTC]"
-      (is (= "[{$match: {$and: [{\"date\": {$gte: ISODate(\"2019-12-08\")}}, {\"date\": {$lt: ISODate(\"2019-12-12\")}}]}}]"
-             (substitute {:date (field-filter "date" :date/range "past5days")}
-                         ["[{$match: " (param :date) "}]"])))))
+      (letfn [(substitute-date-range [s]
+                (substitute {:date (field-filter "date" :date/range s)}
+                            ["[{$match: " (param :date) "}]"]))]
+        (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08")}}
+                                          {"date" {:$lt  (ISODate "2019-12-13")}}]}}])
+               (substitute-date-range "past5days")))
+        (testing "Make sure ranges like last[x]/this[x] include the full range (#11715)"
+          (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-01")}}
+                                            {"date" {:$lt  (ISODate "2020-01-01")}}]}}])
+                 (substitute-date-range "thismonth")))
+          (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-11-01")}}
+                                            {"date" {:$lt  (ISODate "2019-12-01")}}]}}])
+                 (substitute-date-range "lastmonth")))))))
   (testing "multiple values"
     (doseq [[message v] {"values are a vector of numbers" [1 2 3]
                          "comma-separated numbers"        (comma-separated-numbers [1 2 3])}]
       (testing message
-        (is (= "[{$match: {\"id\": {$in: [1, 2, 3]}}}]"
+        (is (= (to-bson [{:$match {"id" {:$in [1 2 3]}}}])
                (substitute {:id (field-filter "id" :number v)}
                            ["[{$match: " (param :id) "}]"]))))))
   (testing "single date"
-    (is (= "[{$match: {$and: [{\"date\": {$gte: ISODate(\"2019-12-08\")}}, {\"date\": {$lt: ISODate(\"2019-12-09\")}}]}}]"
+    (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08")}}
+                                      {"date" {:$lt  (ISODate "2019-12-09")}}]}}])
            (substitute {:date (field-filter "date" :date/single "2019-12-08")}
                        ["[{$match: " (param :date) "}]"]))))
   (testing "parameter not supplied"
-    (is (= "[{$match: {}}]"
+    (is (= (to-bson [{:$match {}}])
            (substitute {:date (common.params/->FieldFilter {:name "date"} common.params/no-value)} ["[{$match: " (param :date) "}]"])))))
 
 (defn- json-raw
@@ -109,9 +167,9 @@
 (deftest e2e-field-filter-test
   (mt/test-driver :mongo
     (testing "date ranges"
-      (is (= [[295 7 97 "2014-03-01T00:00:00Z"]
-              [642 8 9 "2014-03-02T00:00:00Z"]
-              [775 4 13 "2014-03-01T00:00:00Z"]]
+      (is (= [[295 "2014-03-01T00:00:00Z" 7 97]
+              [642 "2014-03-02T00:00:00Z" 8 9]
+              [775 "2014-03-01T00:00:00Z" 4 13]]
              (mt/rows
                (qp/process-query
                  (mt/query checkins
@@ -126,7 +184,7 @@
                                                          :dimension    $date}}}
                     :parameters [{:type   :date/range
                                   :target [:dimension [:template-tag "date"]]
-                                  :value  "2014-03-01~2014-03-03"}]}))))))
+                                  :value  "2014-03-01~2014-03-02"}]}))))))
     (testing "multiple values"
       (is (= [[1 "African"]
               [2 "American"]
@@ -146,17 +204,38 @@
                                   :target [:dimension [:template-tag "id"]]
                                   :value  "1,2,3"}]}))))))
     (testing "param not supplied"
-      (is (= [[1 5 12 "2014-04-07T00:00:00Z"]]
+      (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
              (mt/rows
                (qp/process-query
                  (mt/query checkins
-                   {:type       :native
-                    :native     {:query         (json/generate-string
-                                                 [{:$match (json-raw "{{date}}")}
-                                                  {:$sort {:_id 1}}
-                                                  {:$limit 1}])
-                                 :collection    "checkins"
-                                 :template-tags {"date" {:name         "date"
-                                                         :display-name "Date"
-                                                         :type         :dimension
-                                                         :dimension    $date}}}}))))))))
+                   {:type   :native
+                    :native {:query         (json/generate-string
+                                             [{:$match (json-raw "{{date}}")}
+                                              {:$sort {:_id 1}}
+                                              {:$limit 1}])
+                             :collection    "checkins"
+                             :template-tags {"date" {:name         "date"
+                                                     :display-name "Date"
+                                                     :type         :dimension
+                                                     :dimension    $date}}}}))))))
+    (testing "text params"
+      (testing "using nested fields as parameters (#11597)"
+        (mt/dataset geographical-tips
+          (is (= [[5 "tupac"]]
+                 (mt/rows
+                   (qp/process-query
+                     (mt/query tips
+                       {:type       :native
+                        :native     {:query         (json/generate-string
+                                                     [{:$match (json-raw "{{username}}")}
+                                                      {:$sort {:_id 1}}
+                                                      {:$project {"username" "$source.username"}}
+                                                      {:$limit 1}])
+                                     :collection    "tips"
+                                     :template-tags {"username" {:name         "username"
+                                                                 :display-name "Username"
+                                                                 :type         :dimension
+                                                                 :dimension    $tips.source.username}}}
+                        :parameters [{:type   :text
+                                      :target [:dimension [:template-tag "username"]]
+                                      :value  "tupac"}]}))))))))))

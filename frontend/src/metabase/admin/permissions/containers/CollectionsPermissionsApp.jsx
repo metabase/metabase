@@ -11,7 +11,6 @@ import Collections from "metabase/entities/collections";
 import {
   getCollectionsPermissionsGrid,
   getIsDirty,
-  getSaveError,
   getDiff,
 } from "../selectors";
 import {
@@ -25,7 +24,6 @@ const mapStateToProps = (state, props) => {
   return {
     grid: getCollectionsPermissionsGrid(state, props),
     isDirty: getIsDirty(state, props),
-    saveError: getSaveError(state, props),
     diff: getDiff(state, props),
     tab: "collections",
   };

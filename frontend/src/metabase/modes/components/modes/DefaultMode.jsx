@@ -1,14 +1,12 @@
 /* @flow */
 
-import { DEFAULT_ACTIONS } from "../actions";
-import { DEFAULT_DRILLS } from "../drill";
+import { getDefaultDrills } from "../drill";
 
-import type { QueryMode } from "metabase/meta/types/Visualization";
+import type { QueryMode } from "metabase-types/types/Visualization";
 
 const DefaultMode: QueryMode = {
   name: "default",
-  actions: DEFAULT_ACTIONS,
-  drills: DEFAULT_DRILLS,
+  drills: getDefaultDrills,
 };
 
 export default DefaultMode;

@@ -14,8 +14,8 @@ import * as Urls from "metabase/lib/urls";
 import type {
   Dashboard as DashboardType,
   DashboardId,
-} from "metabase/meta/types/Dashboard";
-import type { Card } from "metabase/meta/types/Card";
+} from "metabase-types/types/Dashboard";
+import type { Card } from "metabase-types/types/Card";
 
 import Dashboard from "metabase/entities/dashboards";
 

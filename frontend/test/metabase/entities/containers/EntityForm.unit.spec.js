@@ -30,17 +30,13 @@ const MULTIPLE_FORM_DEF = {
 
 describe("getForm", () => {
   describe("one form", () => {
-    it("should grab the default form from the entity if no formName is provided", () => {
+    it("should grab the default form from the entity", () => {
       const result = getForm(SINGLE_FORM_DEF);
       expect(result.fields.length).toBe(1);
     });
   });
   describe("multiple forms", () => {
-    it("should pick the proper form if a formName is given", () => {
-      const result = getForm(MULTIPLE_FORM_DEF, "admin");
-      expect(result.fields.length).toBe(2);
-    });
-    it("should pick the first form if no formName is given", () => {
+    it("should pick the first form", () => {
       const result = getForm(MULTIPLE_FORM_DEF);
       expect(result.fields.length).toBe(1);
     });

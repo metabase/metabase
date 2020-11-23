@@ -1,29 +1,32 @@
 (ns metabase.driver.hive-like
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
+  (:require [buddy.core.codecs :as codecs]
             [honeysql.core :as hsql]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
+            [metabase.driver.sql
+             [query-processor :as sql.qp]
+             [util :as sql.u]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
-            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.table :refer [Table]]
             [metabase.util
              [date-2 :as u.date]
              [honeysql-extensions :as hx]]
             [toucan.db :as db])
-  (:import [java.sql PreparedStatement ResultSet Types]
+  (:import [java.sql ResultSet Types]
            [java.time LocalDate OffsetDateTime ZonedDateTime]))
 
 (driver/register! :hive-like
   :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set}
   :abstract? true)
+
+(defmethod driver/db-start-of-week :hive-like
+  [_]
+  :sunday)
 
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :hive-like
   [driver]
@@ -57,9 +60,9 @@
     #"map"              :type/Dictionary
     #".*"               :type/*))
 
-(defmethod sql.qp/current-datetime-fn :hive-like [_] :%now)
+(defmethod sql.qp/current-datetime-honeysql-form :hive-like [_] :%now)
 
-(defmethod sql.qp/unix-timestamp->timestamp [:hive-like :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:hive-like :seconds]
   [_ _ expr]
   (hx/->timestamp (hsql/call :from_unixtime expr)))
 
@@ -83,7 +86,6 @@
 (defmethod sql.qp/date [:hive-like :day]             [_ _ expr] (trunc-with-format "yyyy-MM-dd" (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :day-of-month]    [_ _ expr] (hsql/call :dayofmonth (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :day-of-year]     [_ _ expr] (hx/->integer (date-format "D" (hx/->timestamp expr))))
-(defmethod sql.qp/date [:hive-like :week-of-year]    [_ _ expr] (hsql/call :weekofyear (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :month]           [_ _ expr] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :MM)))
 (defmethod sql.qp/date [:hive-like :month-of-year]   [_ _ expr] (hsql/call :month (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :quarter-of-year] [_ _ expr] (hsql/call :quarter (hx/->timestamp expr)))
@@ -91,18 +93,20 @@
 
 (defmethod sql.qp/date [:hive-like :day-of-week]
   [_ _ expr]
-  (hx/->integer (date-format "u"
-                             (hx/+ (hx/->timestamp expr)
-                                   (hsql/raw "interval '1' day")))))
+  (sql.qp/adjust-day-of-week :hive-like
+                             (hx/->integer (date-format "u"
+                                                        (hx/+ (hx/->timestamp expr)
+                                                              (hsql/raw "interval '1' day"))))))
 
 (defmethod sql.qp/date [:hive-like :week]
   [_ _ expr]
-  (hsql/call :date_sub
-    (hx/+ (hx/->timestamp expr)
-          (hsql/raw "interval '1' day"))
-    (date-format "u"
-                 (hx/+ (hx/->timestamp expr)
-                       (hsql/raw "interval '1' day")))))
+  (let [week-extract-fn (fn [expr]
+                          (hsql/call :date_sub
+                            (hx/+ (hx/->timestamp expr)
+                                  (hsql/raw "interval '1' day"))
+                            (date-format "u" (hx/+ (hx/->timestamp expr)
+                                                   (hsql/raw "interval '1' day")))))]
+    (sql.qp/adjust-start-of-week :hive-like week-extract-fn expr)))
 
 (defmethod sql.qp/date [:hive-like :quarter]
   [_ _ expr]
@@ -112,9 +116,28 @@
                 1)
           3)))
 
-(defmethod driver/date-add :hive-like
-  [_ dt amount unit]
-  (hx/+ (hx/->timestamp dt) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit)))))
+(defmethod sql.qp/->honeysql [:hive-like :replace]
+  [driver [_ arg pattern replacement]]
+  (hsql/call :regexp_replace
+    (sql.qp/->honeysql driver arg)
+    (sql.qp/->honeysql driver pattern)
+    (sql.qp/->honeysql driver replacement)))
+
+(defmethod sql.qp/->honeysql [:hive-like :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
+(defmethod sql.qp/->honeysql [:hive-like :median]
+  [driver [_ arg]]
+  (hsql/call :percentile (sql.qp/->honeysql driver arg) 0.5))
+
+(defmethod sql.qp/->honeysql [:hive-like :percentile]
+  [driver [_ arg p]]
+  (hsql/call :percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
+
+(defmethod sql.qp/add-interval-honeysql-form :hive-like
+  [_ hsql-form amount unit]
+  (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit)))))
 
 ;; ignore the schema when producing the identifier
 (defn qualified-name-components
@@ -126,30 +149,20 @@
   [_ field]
   (apply hsql/qualify (qualified-name-components field)))
 
-(defn- run-query
-  "Run the query itself."
-  [driver {sql :query, :keys [params remark max-rows]} connection]
-  (let [sql     (str "-- " remark "\n" sql)
-        options {:identifiers    identity
-                 :as-arrays?     true
-                 :max-rows       max-rows
-                 :read-columns   (partial sql-jdbc.execute/read-columns driver)
-                 :set-parameters (partial sql-jdbc.execute/set-parameters driver)}]
-    (with-open [connection (jdbc/get-connection connection)]
-      (with-open [^PreparedStatement statement (jdbc/prepare-statement connection sql options)]
-        (let [statement        (into [statement] params)
-              [columns & rows] (jdbc/query connection statement options)]
-          {:rows    (or rows [])
-           :columns (map u/qualified-name columns)})))))
-
-(defn run-query-without-timezone
-  "Runs the given query without trying to set a timezone"
-  [driver _ connection query]
-  (run-query driver query connection))
+(def ^:dynamic *param-splice-style*
+  "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.
+  `:friendly` makes a best-effort attempt to escape strings and generate SQL that is nice to look at, but should not
+  be considered safe against all SQL injection -- use this for 'convert to SQL' functionality. `:paranoid` hex-encodes
+  strings so SQL injection is impossible; this isn't nice to look at, so use this for actually running a query."
+  :friendly)
 
 (defmethod unprepare/unprepare-value [:hive-like String]
-  [_ value]
-  (str \' (str/replace value "'" "\\\\'") \'))
+  [_ ^String s]
+  ;; Because Spark SQL doesn't support parameterized queries (e.g. `?`) convert the entire String to hex and decode.
+  ;; e.g. encode `abc` as `decode(unhex('616263'), 'utf-8')` to prevent SQL injection
+  (case *param-splice-style*
+    :friendly (str \' (sql.u/escape-sql s :backslashes) \')
+    :paranoid (format "decode(unhex('%s'), 'utf-8')" (codecs/bytes->hex (.getBytes s "UTF-8")))))
 
 ;; Hive/Spark SQL doesn't seem to like DATEs so convert it to a DATETIME first
 (defmethod unprepare/unprepare-value [:hive-like LocalDate]
@@ -170,14 +183,20 @@
   (sql-jdbc.execute/set-parameter driver ps i (t/local-date-time t (t/local-time 0))))
 
 ;; TIMEZONE FIXME — not sure what timezone the results actually come back as
-(defmethod sql-jdbc.execute/read-column [:hive-like Types/TIME]
-  [_ _ ^ResultSet rs rsmeta ^Integer i]
-  (t/offset-time (t/local-time (.getTimestamp rs i)) (t/zone-offset 0)))
+(defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/TIME]
+  [_ ^ResultSet rs rsmeta ^Integer i]
+  (fn []
+    (when-let [t (.getTimestamp rs i)]
+      (t/offset-time (t/local-time t) (t/zone-offset 0)))))
 
-(defmethod sql-jdbc.execute/read-column [:hive-like Types/DATE]
-  [_ _ ^ResultSet rs rsmeta ^Integer i]
-  (t/zoned-date-time (t/local-date (.getDate rs i)) (t/local-time 0) (t/zone-id "UTC")))
+(defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/DATE]
+  [_ ^ResultSet rs rsmeta ^Integer i]
+  (fn []
+    (when-let [t (.getDate rs i)]
+      (t/zoned-date-time (t/local-date t) (t/local-time 0) (t/zone-id "UTC")))))
 
-(defmethod sql-jdbc.execute/read-column [:hive-like Types/TIMESTAMP]
-  [_ _ ^ResultSet rs rsmeta ^Integer i]
-  (t/zoned-date-time (t/local-date-time (.getTimestamp rs i)) (t/zone-id "UTC")))
+(defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/TIMESTAMP]
+  [_ ^ResultSet rs rsmeta ^Integer i]
+  (fn []
+    (when-let [t (.getTimestamp rs i)]
+      (t/zoned-date-time (t/local-date-time t) (t/zone-id "UTC")))))

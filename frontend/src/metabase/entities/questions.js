@@ -1,6 +1,7 @@
 /* @flow */
 
 import { assocIn } from "icepick";
+import { t } from "ttag";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
@@ -18,6 +19,7 @@ const UNFAVORITE_ACTION = `metabase/entities/questions/UNFAVORITE`;
 
 const Questions = createEntity({
   name: "questions",
+  nameOne: "question",
   path: "/api/card",
 
   api: {
@@ -79,16 +81,34 @@ const Questions = createEntity({
     return state;
   },
 
-  form: {
-    fields: [
-      { name: "name" },
-      { name: "description", type: "text" },
-      {
-        name: "collection_id",
-        title: "Collection",
-        type: "collection",
-      },
-    ],
+  forms: {
+    details: {
+      fields: [
+        { name: "name", title: t`Name` },
+        {
+          name: "description",
+          title: t`Description`,
+          type: "text",
+          placeholder: t`It's optional but oh, so helpful`,
+        },
+        {
+          name: "collection_id",
+          title: t`Collection`,
+          type: "collection",
+        },
+      ],
+    },
+    details_without_collection: {
+      fields: [
+        { name: "name", title: t`Name` },
+        {
+          name: "description",
+          title: t`Description`,
+          type: "text",
+          placeholder: t`It's optional but oh, so helpful`,
+        },
+      ],
+    },
   },
 
   // NOTE: keep in sync with src/metabase/api/card.clj

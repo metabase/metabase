@@ -2,7 +2,9 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
@@ -19,6 +21,12 @@
   (:import [java.sql ResultSet Types]))
 
 (driver/register! :vertica, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/supports? [:vertica :percentile-aggregations] [_ _] false)
+
+(defmethod driver/db-start-of-week :vertica
+  [_]
+  :monday)
 
 (defmethod sql-jdbc.sync/database-type->base-type :vertica
   [_ database-type]
@@ -52,7 +60,7 @@
              (dissoc details :host :port :dbname :db :ssl))
       (sql-jdbc.common/handle-additional-options details)))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:vertica :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_ _ expr]
   (hsql/call :to_timestamp expr))
 
@@ -71,18 +79,14 @@
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
-(def ^:private one-day (hsql/raw "INTERVAL '1 day'"))
-
 (defmethod sql.qp/date [:vertica :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:vertica :minute]          [_ _ expr] (date-trunc :minute expr))
 (defmethod sql.qp/date [:vertica :minute-of-hour]  [_ _ expr] (extract-integer :minute expr))
 (defmethod sql.qp/date [:vertica :hour]            [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:vertica :hour-of-day]     [_ _ expr] (extract-integer :hour expr))
 (defmethod sql.qp/date [:vertica :day]             [_ _ expr] (hx/->date expr))
-(defmethod sql.qp/date [:vertica :day-of-week]     [_ _ expr] (hx/inc (extract-integer :dow expr)))
 (defmethod sql.qp/date [:vertica :day-of-month]    [_ _ expr] (extract-integer :day expr))
 (defmethod sql.qp/date [:vertica :day-of-year]     [_ _ expr] (extract-integer :doy expr))
-(defmethod sql.qp/date [:vertica :week-of-year]    [_ _ expr] (hx/week expr))
 (defmethod sql.qp/date [:vertica :month]           [_ _ expr] (date-trunc :month expr))
 (defmethod sql.qp/date [:vertica :month-of-year]   [_ _ expr] (extract-integer :month expr))
 (defmethod sql.qp/date [:vertica :quarter]         [_ _ expr] (date-trunc :quarter expr))
@@ -91,13 +95,35 @@
 
 (defmethod sql.qp/date [:vertica :week]
   [_ _ expr]
-  (hx/- (date-trunc :week (hx/+ (cast-timestamp expr)
-                                one-day))
-        one-day))
+  (sql.qp/adjust-start-of-week :vertica (partial date-trunc :week) (cast-timestamp expr)))
 
-(defmethod driver/date-add :vertica
-  [_ dt amount unit]
-  (hx/+ (hx/->timestamp dt) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
+(defmethod sql.qp/date [:vertica :day-of-week]
+  [_ _ expr]
+  (sql.qp/adjust-day-of-week :vertica (hsql/call :dayofweek_iso expr)))
+
+(defmethod sql.qp/->honeysql [:vertica :concat]
+  [driver [_ & args]]
+  (->> args
+       (map (partial sql.qp/->honeysql driver))
+       (reduce (partial hsql/call :concat))))
+
+(defmethod sql.qp/->honeysql [:vertica :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
+(defmethod sql.qp/->honeysql [:vertica :percentile]
+  [driver [_ arg p]]
+  (hsql/raw (format "APPROXIMATE_PERCENTILE(%s USING PARAMETERS percentile=%s)"
+                    (hformat/to-sql (sql.qp/->honeysql driver arg))
+                    (hformat/to-sql (sql.qp/->honeysql driver p)))))
+
+(defmethod sql.qp/->honeysql [:vertica :median]
+  [driver [_ arg]]
+  (hsql/call :approximate_median (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/add-interval-honeysql-form :vertica
+  [_ hsql-form amount unit]
+  (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
 
 (defn- materialized-views
   "Fetch the Materialized Views for a Vertica `database`.
@@ -129,14 +155,14 @@
 
 (defmethod sql-jdbc.execute/read-column [:vertica Types/TIME]
   [_ _ ^ResultSet rs _ ^Integer i]
-  (let [s (.getString rs i)
-        t (u.date/parse s)]
-    (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
-    t))
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
+      t)))
 
 (defmethod sql-jdbc.execute/read-column [:vertica Types/TIME_WITH_TIMEZONE]
   [_ _ ^ResultSet rs _ ^Integer i]
-  (let [s (.getString rs i)
-        t (u.date/parse s)]
-    (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
-    t))
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+      t)))

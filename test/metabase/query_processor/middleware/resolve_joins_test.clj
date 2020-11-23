@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.resolve-joins-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models
              [database :refer [Database]]
              [table :refer [Table]]]
@@ -206,38 +207,34 @@
       :order-by [[:asc $name]]
       :limit    3})))
 
-;; Can we resolve joins using a `:source-query` and `:fields` `:all`??
-(let [source-metadata (delay (get-in (qp/process-query (data/mbql-query categories {:limit 1}))
-                                     [:data :results_metadata :columns]))]
-  (expect
-    {:resolved
-     (data/mbql-query venues
-       {:fields   [[:joined-field "cat" [:field-literal "ID" :type/BigInteger]]
-                   [:joined-field "cat" [:field-literal "NAME" :type/Text]]]
-        :joins    [{:alias           "cat"
-                    :source-query    {:source-table $$categories}
-                    :source-metadata @source-metadata
-                    :strategy        :left-join
-                    :condition       [:=
-                                      $category_id
-                                      [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
-        :order-by [[:asc $name]]
-        :limit    3})
-     :store
-     {:database "test-data",
-      :tables   #{"CATEGORIES" "VENUES"},
-      :fields   #{["VENUES" "CATEGORY_ID"]}}}
-    (resolve-joins-and-inspect-store
-     (data/mbql-query venues
-       {:joins    [{:alias           "cat"
-                    :source-query    {:source-table $$categories}
-                    :source-metadata @source-metadata
-                    :fields          :all
-                    :condition       [:=
-                                      $category_id
-                                      [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
-        :order-by [[:asc $name]]
-        :limit    3}))))
+(deftest resolve-source-query-with-fields-all-test
+  (testing "Can we resolve joins using a `:source-query` and `:fields` `:all`?"
+    (let [source-metadata          (get-in (qp/process-userland-query (data/mbql-query categories {:limit 1}))
+                                           [:data :results_metadata :columns])
+          {:keys [resolved store]} (resolve-joins-and-inspect-store
+                                    (data/mbql-query venues
+                                      {:joins    [{:alias           "cat"
+                                                   :source-query    {:source-table $$categories}
+                                                   :source-metadata source-metadata
+                                                   :fields          :all
+                                                   :condition       [:=
+                                                                     $category_id
+                                                                     [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+                                       :order-by [[:asc $name]]
+                                       :limit    3}))]
+      (is (= (data/mbql-query venues
+               {:fields   [[:joined-field "cat" [:field-literal "ID" :type/BigInteger]]
+                           [:joined-field "cat" [:field-literal "NAME" :type/Text]]]
+                :joins    [{:alias           "cat"
+                            :source-query    {:source-table $$categories}
+                            :source-metadata source-metadata
+                            :strategy        :left-join
+                            :condition       [:= $category_id [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+                :order-by [[:asc $name]]
+                :limit    3})
+             resolved))
+      (is (= {:database "test-data", :tables #{"CATEGORIES" "VENUES"}, :fields #{["VENUES" "CATEGORY_ID"]}}
+             store)))))
 
 ;; if the parent level has a breakout or aggregation, we shouldn't append Join fields to the parent level
 (expect

@@ -38,7 +38,7 @@ const QuestionRowCount = ({
   const message = isResultDirty ? limitMessage : resultMessage;
 
   let content;
-  if (query instanceof StructuredQuery) {
+  if (query instanceof StructuredQuery && query.isEditable()) {
     const limit = query.limit();
     content = (
       <PopoverWithTrigger

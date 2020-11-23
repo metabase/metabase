@@ -15,7 +15,8 @@
   "Update multiple `Settings` values.  You must be a superuser to do this."
   [:as {settings :body}]
   (api/check-superuser)
-  (setting/set-many! settings))
+  (setting/set-many! settings)
+  api/generic-204-no-content)
 
 (api/defendpoint GET "/:key"
   "Fetch a single `Setting`. You must be a superuser to do this."
@@ -30,7 +31,8 @@
   [key :as {{:keys [value]} :body}]
   {key su/NonBlankString}
   (api/check-superuser)
-  (setting/set! key value))
+  (setting/set! key value)
+  api/generic-204-no-content)
 
 
 (api/define-routes)

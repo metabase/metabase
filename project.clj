@@ -2,21 +2,27 @@
 ;; full set of options are here .. https://github.com/technomancy/leiningen/blob/master/sample.project.clj
 
 (defproject metabase-core "1.0.0-SNAPSHOT"
-  :description      "Metabase Community Edition"
+  :description      "Metabase"
   :url              "https://metabase.com/"
   :min-lein-version "2.5.0"
 
   :aliases
-  {"generate-sample-dataset"           ["with-profile" "+generate-sample-dataset" "run"]
-   "profile"                           ["with-profile" "+profile" "run" "profile"]
+  {"profile"                           ["with-profile" "+profile" "run" "profile"]
    "h2"                                ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db"
                                         "-user" "" "-password" "" "-driver" "org.h2.Driver"]
    "generate-automagic-dashboards-pot" ["with-profile" "+generate-automagic-dashboards-pot" "run"]
    "install"                           ["with-profile" "+install" "install"]
+   "install-ee"                        ["with-profile" "+install,+ee" "install"]
    "install-for-building-drivers"      ["with-profile" "install-for-building-drivers" "install"]
+   "install-for-building-drivers-ee"   ["with-profile" "install-for-building-drivers,+ee" "install"]
    "run"                               ["with-profile" "+run" "run"]
+   "run-ee"                            ["with-profile" "+run,+ee" "run"]
+   "run-with-repl"                     ["with-profile" "+run-with-repl" "repl"]
+   "run-with-repl-ee"                  ["with-profile" "+run-with-repl,+ee" "repl"]
    "ring"                              ["with-profile" "+ring" "ring"]
+   "ring-ee"                           ["with-profile" "+ring,+ee" "ring"]
    "test"                              ["with-profile" "+test" "test"]
+   "test-ee"                           ["with-profile" "+test,+ee" "test"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
                                         "--max-line-length" "205"
                                         ;; see https://github.com/dakrone/lein-bikeshed/issues/41
@@ -25,12 +31,15 @@
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
    "docstring-checker"                 ["with-profile" "+docstring-checker" "docstring-checker"]
+   "cloverage"                         ["with-profile" "+cloverage" "cloverage"]
    ;; `lein lint` will run all linters
-   "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"]]
+   "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"] ["cloverage"]]
    "repl"                              ["with-profile" "+repl" "repl"]
-   "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]
-   "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]}
-
+   "repl-ee"                           ["with-profile" "+repl,+ee" "repl"]
+   "strip-and-compress"                ["with-profile" "+strip-and-compress,-user,-dev" "run"]
+   "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]
+   "uberjar"                           ["uberjar"]
+   "uberjar-ee"                        ["with-profile" "+ee" "uberjar"]}
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
@@ -40,15 +49,17 @@
   [[org.clojure/clojure "1.10.1"]
    [org.clojure/core.async "0.4.500"
     :exclusions [org.clojure/tools.reader]]
+   [org.clojure/core.logic "1.0.0"]
    [org.clojure/core.match "0.3.0"]                                   ; optimized pattern matching library for Clojure
-   [org.clojure/core.memoize "0.7.1"]                                 ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
+   [org.clojure/core.memoize "1.0.236"]                               ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
    [org.clojure/data.csv "0.1.4"]                                     ; CSV parsing / generation
-   [org.clojure/java.classpath "0.3.0"]                               ; examine the Java classpath from Clojure programs
-   [org.clojure/java.jdbc "0.7.9"]                                    ; basic JDBC access from Clojure
+   [org.clojure/java.classpath "1.0.0"]                               ; examine the Java classpath from Clojure programs
+   [org.clojure/java.jdbc "0.7.11"]                                   ; basic JDBC access from Clojure
    [org.clojure/math.combinatorics "0.1.4"]                           ; combinatorics functions
    [org.clojure/math.numeric-tower "0.0.4"]                           ; math functions like `ceil`
-   [org.clojure/tools.logging "0.4.1"]                                ; logging framework
-   [org.clojure/tools.namespace "0.2.11"]
+   [org.clojure/tools.logging "1.1.0"]                                ; logging framework
+   [org.clojure/tools.namespace "1.0.0"]
+   [org.clojure/tools.trace "0.7.10"]                                 ; function tracing
    [amalloy/ring-buffer "1.2.2"
     :exclusions [org.clojure/clojure
                  org.clojure/clojurescript]]                          ; fixed length queue implementation, used in log buffering
@@ -58,12 +69,14 @@
    [buddy/buddy-core "1.5.0"                                          ; various cryptograhpic functions
     :exclusions [commons-codec]]
    [buddy/buddy-sign "3.0.0"]                                         ; JSON Web Tokens; High-Level message signing library
-   [cheshire "5.8.1"]                                                 ; fast JSON encoding (used by Ring JSON middleware)
-   [clj-http "3.9.1"                                                  ; HTTP client
+   [cheshire "5.10.0"]                                                ; fast JSON encoding (used by Ring JSON middleware)
+   [clj-http "3.10.3"                                                 ; HTTP client
     :exclusions [commons-codec
                  commons-io
                  slingshot]]
-   [clojure.java-time "0.3.2"]                                        ; Java 8 java.time wrapper
+   ;; fork to address #13102 - see upstream PR: https://github.com/dm3/clojure.java-time/pull/60
+   ;; TODO: switch back to the upstream once a version is released with the above patch
+   [robdaemon/clojure.java-time "0.3.3-SNAPSHOT"]                     ; Java 8 java.time wrapper
    [clojurewerkz/quartzite "2.1.0"                                    ; scheduling library
     :exclusions [c3p0]]
    [colorize "0.1.1" :exclusions [org.clojure/clojure]]               ; string output with ANSI color codes (for logging)
@@ -76,12 +89,10 @@
     :exclusions [org.slf4j/slf4j-api
                  it.unimi.dsi/fastutil]]
    [com.draines/postal "2.0.3"]                                       ; SMTP library
-   [com.jcraft/jsch "0.1.55"]                                         ; SSH client for tunnels
    [com.google.guava/guava "28.2-jre"]                                ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
-   [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
-   [commons-codec/commons-codec "1.12"]                               ; Apache Commons -- useful codec util fns
+   [commons-codec/commons-codec "1.14"]                               ; Apache Commons -- useful codec util fns
    [commons-io/commons-io "2.6"]                                      ; Apache Commons -- useful IO util fns
    [commons-validator/commons-validator "1.6"                         ; Apache Commons -- useful validation util fns
     :exclusions [commons-beanutils
@@ -90,7 +101,7 @@
    [compojure "1.6.1" :exclusions [ring/ring-codec]]                  ; HTTP Routing library built on Ring
    [crypto-random "1.2.0"]                                            ; library for generating cryptographically secure random bytes and strings
    [dk.ative/docjure "1.13.0"]                                        ; Excel export
-   [environ "1.1.0"]                                                  ; easy environment management
+   [environ "1.2.0"]                                                  ; easy environment management
    [hiccup "1.0.5"]                                                   ; HTML templating
    [honeysql "0.9.5" :exclusions [org.clojure/clojurescript]]         ; Transform Clojure data structures to SQL
    [instaparse "1.4.10"]                                              ; Make your own parser
@@ -100,52 +111,60 @@
                  org.yaml/snakeyaml]]
    [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
    [kixi/stats "0.4.4" :exclusions [org.clojure/data.avl]]            ; Various statistic measures implemented as transducers
-   [log4j/log4j "1.2.17"                                              ; logging framework. TODO - consider upgrading to Log4j 2 -- see https://logging.apache.org/log4j/log4j-2.6.1/manual/migration.html
-    :exclusions [javax.mail/mail
-                 javax.jms/jms
-                 com.sun.jdmk/jmxtools
-                 com.sun.jmx/jmxri]]
    [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
-   [medley "1.2.0"]                                                   ; lightweight lib of useful functions
+   [medley "1.3.0"]                                                   ; lightweight lib of useful functions
    [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
-   [metabase/mbql "1.4.3"]                                            ; MBQL language schema & util fns
+   [metabase/saml20-clj "2.0.0"]                                      ; EE SAML integration
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
+   [net.redhogs.cronparser/cron-parser-core "3.4"                     ; describe Cron schedule in human-readable language
+    :exclusions [org.slf4j/slf4j-api]]
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
-   [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
+   [org.apache.commons/commons-lang3 "3.10"]                          ; helper methods for working with java.lang stuff
+   [org.apache.logging.log4j/log4j-api "2.13.3"]                      ; apache logging framework
+   [org.apache.logging.log4j/log4j-1.2-api "2.13.3"]                  ; add compatibility with log4j 1.2
+   [org.apache.logging.log4j/log4j-core "2.13.3"]                     ; apache logging framework
+   [org.apache.logging.log4j/log4j-jcl "2.13.3"]                      ; allows the commons-logging API to work with log4j 2
+   [org.apache.logging.log4j/log4j-liquibase "2.13.3"]                ; liquibase logging via log4j 2
+   [org.apache.logging.log4j/log4j-slf4j-impl "2.13.3"]               ; allows the slf4j API to work with log4j 2
+   [org.apache.sshd/sshd-core "2.4.0"]                                ; ssh tunneling and test server
+   [org.bouncycastle/bcprov-jdk15on "1.65"]                           ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
-   [org.eclipse.jetty/jetty-server "9.4.15.v20190215"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
-   [org.flatland/ordered "1.5.7"]                                     ; ordered maps & sets
+   [org.eclipse.jetty/jetty-server "9.4.32.v20200930"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
+   [org.flatland/ordered "1.5.9"]                                     ; ordered maps & sets
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
-   [org.mariadb.jdbc/mariadb-java-client "2.5.1"]                     ; MySQL/MariaDB driver
+   [org.mariadb.jdbc/mariadb-java-client "2.6.2"]                     ; MySQL/MariaDB driver
    [org.postgresql/postgresql "42.2.8"]                               ; Postgres driver
-   [org.slf4j/slf4j-log4j12 "1.7.25"]                                 ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
-   [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
+   [org.slf4j/slf4j-api "1.7.30"]                                     ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
+   [org.tcrawley/dynapath "1.1.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
    [org.threeten/threeten-extra "1.5.0"]                               ; extra Java 8 java.time classes like DayOfMonth and Quarter
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
-   [potemkin "0.4.5"]                                                 ; utility macros & fns
-   [pretty "1.0.1"]                                                   ; protocol for defining how custom types should be pretty printed
+   [potemkin "0.4.5" :exclusions [riddley]]                           ; utility macros & fns
+   [pretty "1.0.4"]                                                   ; protocol for defining how custom types should be pretty printed
    [prismatic/schema "1.1.11"]                                        ; Data schema declaration and validation library
-   [puppetlabs/i18n "0.8.0"]                                          ; Internationalization library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
-   [ring/ring-core "1.7.1"]
-   [ring/ring-jetty-adapter "1.7.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
-   [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
+   [riddley "0.2.0"]                                                  ; code walking lib -- used interally by Potemkin, manifold, etc.
+   [ring/ring-core "1.8.0"]
+   [ring/ring-jetty-adapter "1.8.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+   [ring/ring-json "0.5.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
-   [toucan "1.15.0" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
+   [toucan "1.15.1" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
+                                 org.clojure/tools.logging
+                                 org.clojure/tools.namespace
+                                 honeysql]]
    [weavejester/dependency "0.2.1"]                                   ; Dependency graphs and topological sorting
    ]
 
   :main ^:skip-aot metabase.core
 
-  ;; TODO - WHAT DOES THIS DO?
+  ;; Liquibase uses this manifest parameter to dynamically find extensions at startup (via classpath scanning, etc)
   :manifest
   {"Liquibase-Package"
    #= (eval
-        (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
-             "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
-             "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
-             "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
+       (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
+            "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
+            "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
+            "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
 
   :jvm-opts
   ["-XX:+IgnoreUnrecognizedVMOptions"                                 ; ignore things not recognized for our Java version instead of refusing to start
@@ -157,19 +176,33 @@
   :javac-options
   ["-target" "1.8", "-source" "1.8"]
 
+  :source-paths
+  ["src" "backend/mbql/src"]
+
+  :java-source-paths
+  ["java"]
+
   :uberjar-name
   "metabase.jar"
 
   :profiles
-  {:dev
+  {:oss ; exists for symmetry with the ee profile
+   {}
+
+   :ee
+   {:source-paths ["enterprise/backend/src"]
+    :test-paths   ["enterprise/backend/test"]}
+
+   :dev
    {:source-paths ["dev/src" "local/src"]
+    :test-paths   ["test" "backend/mbql/test"]
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
-     [jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]      ; to run Eastwood
+     [jonase/eastwood "0.3.11" :exclusions [org.clojure/clojure]]     ; to run Eastwood
      [methodical "0.9.4-alpha"]
-     [pjstadig/humane-test-output "0.9.0"]
-     [ring/ring-mock "0.3.2"]]
+     [pjstadig/humane-test-output "0.10.0"]
+     [ring/ring-mock "0.4.0"]]
 
     :plugins
     [[lein-environ "1.1.0"]] ; easy access to environment variables
@@ -192,6 +225,25 @@
     :repl-options
     {:init-ns user}} ; starting in the user namespace is a lot faster than metabase.core since it has less deps
 
+   ;; output test results in JUnit XML format
+   :junit
+   {:dependencies
+    [[pjstadig/humane-test-output "0.10.0"]
+     [test-report-junit-xml "0.2.0"]]
+
+    :plugins
+    [[lein-test-report-junit-xml "0.2.0"]]
+
+    ;; the custom JUnit formatting logic lives in `backend/junit/test/metabase/junit.clj`
+    :test-paths ["backend/junit/test"]
+
+    :injections
+    [(require 'metabase.junit)]
+
+    :test-report-junit-xml
+    {:output-dir    "target/junit"
+     :format-result metabase.junit/format-result}}
+
    :ci
    {:jvm-opts ["-Xmx2500m"]}
 
@@ -206,7 +258,20 @@
    {:test-paths ^:replace []}
 
    :run
-   [:exclude-tests {}]
+   [:include-all-drivers
+    :exclude-tests {}]
+
+   :run-with-repl
+   [:exclude-tests
+    :include-all-drivers
+
+    {:env
+     {:mb-jetty-join "false"}
+
+     :repl-options
+     {:init    (do (require 'metabase.core)
+                   (metabase.core/-main))
+      :timeout 60000}}]
 
    ;; start the dev HTTP server with 'lein ring server'
    :ring
@@ -229,28 +294,31 @@
 
    :with-include-drivers-middleware
    {:plugins
-    [[metabase/lein-include-drivers "1.0.8"]]
+    [[metabase/lein-include-drivers "1.0.9"]]
 
     :middleware
     [leiningen.include-drivers/middleware]}
 
+   ;; shared config used by various commands that run tests (lein test and lein cloverage)
+   :test-common
+   {:resource-paths
+    ["test_resources"]
+
+    :env
+    {:mb-run-mode     "test"
+     :mb-db-in-memory "true"
+     :mb-jetty-join   "false"
+     :mb-api-key      "test-api-key"
+     ;; use a random port between 3001 and 3501. That way if you run multiple sets of tests at the same time locally
+     ;; they won't stomp on each other
+     :mb-jetty-port   #= (eval (str (+ 3001 (rand-int 500))))}
+
+    :jvm-opts
+    ["-Duser.timezone=UTC"
+     "-Duser.language=en"]}
+
    :test
-   [:with-include-drivers-middleware
-    {:resource-paths
-     ["test_resources"]
-
-     :env
-     {:mb-run-mode "test"}
-
-     :jvm-opts
-     ["-Duser.timezone=UTC"
-      "-Dmb.db.in.memory=true"
-      "-Dmb.jetty.join=false"
-      ;; use a random port between 3001 and 3501. That way if you run multiple sets of tests at the same time locally
-      ;; they won't stomp on each other
-      #=(eval (format "-Dmb.jetty.port=%d" (+ 3001 (rand-int 500))))
-      "-Dmb.api.key=test-api-key"
-      "-Duser.language=en"]}]
+   [:with-include-drivers-middleware :test-common]
 
    :include-all-drivers
    [:with-include-drivers-middleware
@@ -264,13 +332,21 @@
     ;; so running the tests doesn't give you different answers
     {:jvm-opts ["-Duser.timezone=UTC"]}]
 
-   :bikeshed
+   ;; shared stuff between all linter profiles.
+   :linters-common
    [:include-all-drivers
+    :ee
+    :test-common
+    ;; always use in-memory H2 database for linters
+    {:env {:mb-db-type "h2"}}]
+
+   :bikeshed
+   [:linters-common
     {:plugins
      [[lein-bikeshed "0.5.2"]]}]
 
    :eastwood
-   [:include-all-drivers
+   [:linters-common
     {:plugins
      [[jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]]
 
@@ -288,7 +364,7 @@
                            ;; get them to work
                            #_:unused-fn-args
                            #_:unused-locals]
-      :exclude-linters    [; Turn this off temporarily until we finish removing self-deprecated functions & macros
+      :exclude-linters    [    ; Turn this off temporarily until we finish removing self-deprecated functions & macros
                            :deprecations
                            ;; this has a fit in libs that use Potemin `import-vars` such as `java-time`
                            :implicit-dependencies
@@ -298,11 +374,12 @@
    ;; run ./bin/reflection-linter to check for reflection warnings
    :reflection-warnings
    [:include-all-drivers
+    :ee
     {:global-vars {*warn-on-reflection* true}}]
 
    ;; Check that all public vars have docstrings. Run with 'lein docstring-checker'
    :docstring-checker
-   [:include-all-drivers
+   [:linters-common
     {:plugins
      [[docstring-checker "1.1.0"]]
 
@@ -312,10 +389,22 @@
                 #"^metabase\.http-client$"]}}]
 
    :check-namespace-decls
-   [:include-all-drivers
+   [:linters-common
     {:plugins               [[lein-check-namespace-decls "1.0.2"]]
-     :source-paths          ^:replace ["src" "test"]
      :check-namespace-decls {:prefix-rewriting true}}]
+
+   :cloverage
+   [:test-common
+    {:dependencies [[camsaul/cloverage "1.2.1.1" :exclusions [riddley]]]
+     :plugins      [[camsaul/lein-cloverage  "1.2.1.1"]]
+     :source-paths ^:replace ["src" "backend/mbql/src" "enterprise/backend/src"]
+     :test-paths   ^:replace ["test" "backend/mbql/test" "enterprise/backend/test"]
+     :cloverage    {:fail-threshold 69
+                    :exclude-call
+                    [;; don't instrument logging forms, since they won't get executed as part of tests anyway
+                     ;; log calls expand to these
+                     clojure.tools.logging/logf
+                     clojure.tools.logging/logp]}}]
 
    ;; build the uberjar with `lein uberjar`
    :uberjar
@@ -326,8 +415,9 @@
    ;; strips classes from my-plugin.jar that already exist in other JAR and recompresses with higher compression ratio.
    ;; Second arg (other JAR) is optional; defaults to target/uberjar/metabase.jar
    :strip-and-compress
-   {:source-paths ["src"
-                   "lein-commands/strip-and-compress"]
+   {:aliases      ^:replace {"run" ["run"]}
+    :source-paths ^:replace ["lein-commands/strip-and-compress"]
+    :test-paths   ^:replace []
     :main         ^:skip-aot metabase.strip-and-compress-module}
 
    ;; Profile Metabase start time with `lein profile`
@@ -343,5 +433,6 @@
    {:main metabase.automagic-dashboards.rules}
 
    :compare-h2-dbs
-   {:main         ^:skip-aot metabase.cmd.compare-h2-dbs
+   {:aliases      ^:replace  {"run" ["run"]}
+    :main         ^:skip-aot metabase.cmd.compare-h2-dbs
     :source-paths ["test"]}})

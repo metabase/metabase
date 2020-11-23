@@ -2,8 +2,11 @@
   "Common test extension functionality for all SQL drivers."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [query-processor :as qp]]
             [metabase.driver.sql.util :as sql.u]
+            [metabase.test.data :as data]
             [metabase.test.data.interface :as tx])
   (:import metabase.test.data.interface.FieldDefinition))
 
@@ -170,7 +173,6 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-
 (defmulti create-db-sql
   "Return a `CREATE DATABASE` statement."
   {:arglists '([driver dbdef])}
@@ -180,7 +182,6 @@
 (defmethod create-db-sql :sql/test-extensions [driver {:keys [database-name]}]
   (format "CREATE DATABASE %s;" (qualify-and-quote driver database-name)))
 
-
 (defmulti drop-db-if-exists-sql
   "Return a `DROP DATABASE` statement."
   {:arglists '([driver dbdef])}
@@ -189,7 +190,6 @@
 
 (defmethod drop-db-if-exists-sql :sql/test-extensions [driver {:keys [database-name]}]
   (format "DROP DATABASE IF EXISTS %s;" (qualify-and-quote driver database-name)))
-
 
 (defmulti create-table-sql
   "Return a `CREATE TABLE` statement."
@@ -201,8 +201,9 @@
   [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions table-comment]}]
   (let [quot          #(sql.u/quote-name driver :field (tx/format-name driver %))
         pk-field-name (quot (pk-field-name driver))]
-    (format "CREATE TABLE %s (%s, %s %s, PRIMARY KEY (%s)) %s;"
+    (format "CREATE TABLE %s (%s %s, %s, PRIMARY KEY (%s)) %s;"
             (qualify-and-quote driver database-name table-name)
+            pk-field-name (pk-sql-type driver)
             (str/join
              ", "
              (for [{:keys [field-name base-type field-comment]} field-definitions]
@@ -213,7 +214,6 @@
                               (field-base-type->sql-type driver base-type)))
                     (when-let [comment (inline-column-comment-sql driver field-comment)]
                       (str " " comment)))))
-            pk-field-name (pk-sql-type driver)
             pk-field-name
             (or (inline-table-comment-sql driver table-comment) ""))))
 
@@ -253,3 +253,28 @@
             (quot :field field-name)
             (qualify-and-quote driver database-name dest-table-name)
             (quot :field (pk-field-name driver)))))
+
+(defmethod tx/count-with-template-tag-query :sql/test-extensions
+  [driver table field param-type]
+  ;; generate a SQL query like SELECT count(*) ... WHERE last_login = 1
+  ;; then replace 1 with a template tag like {{last_login}}
+  (driver/with-driver driver
+    (let [mbql-query      (data/mbql-query nil
+                            {:source-table (data/id table)
+                             :aggregation  [[:count]]
+                             :filter       [:= [:field-id (data/id table field)] 1]})
+          {:keys [query]} (qp/query->native mbql-query)
+          ;; preserve stuff like cast(1 AS datetime) in the resulting query
+          query           (str/replace query (re-pattern #"= (.*)(?:1)(.*)") (format "= $1{{%s}}$2" (name field)))]
+      {:query query})))
+
+(defmethod tx/count-with-field-filter-query :sql/test-extensions
+  [driver table field]
+  (driver/with-driver driver
+    (let [mbql-query      (data/mbql-query nil
+                            {:source-table (data/id table)
+                             :aggregation  [[:count]]
+                             :filter       [:= [:field-id (data/id table field)] 1]})
+          {:keys [query]} (qp/query->native mbql-query)
+          query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
+      {:query query})))

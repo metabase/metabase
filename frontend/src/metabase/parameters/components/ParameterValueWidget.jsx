@@ -13,7 +13,6 @@ import DateRelativeWidget from "./widgets/DateRelativeWidget";
 import DateMonthYearWidget from "./widgets/DateMonthYearWidget";
 import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget";
 import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
-import CategoryWidget from "./widgets/CategoryWidget";
 import TextWidget from "./widgets/TextWidget";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget";
 
@@ -70,6 +69,8 @@ export default class ParameterValueWidget extends Component {
     focusChanged: PropTypes.func,
     isFullscreen: PropTypes.bool,
     className: PropTypes.string,
+    parameters: PropTypes.array,
+    dashboard: PropTypes.object,
 
     // provided by @connect
     values: PropTypes.array,
@@ -84,22 +85,22 @@ export default class ParameterValueWidget extends Component {
     className: "",
   };
 
-  // this method assumes the parameter is associated with only one field
-  getSingleField() {
-    const { parameter, metadata } = this.props;
-    return parameter.field_id != null
-      ? metadata.fields[parameter.field_id]
-      : null;
+  getFields() {
+    const { metadata } = this.props;
+    if (!metadata) {
+      return [];
+    }
+    return this.fieldIds(this.props)
+      .map(id => metadata.field(id))
+      .filter(f => f != null);
   }
 
   getWidget() {
-    const { parameter, values } = this.props;
+    const { parameter } = this.props;
     if (DATE_WIDGETS[parameter.type]) {
       return DATE_WIDGETS[parameter.type];
-    } else if (this.getSingleField()) {
+    } else if (this.getFields().length > 0 && parameter.hasOnlyFieldTargets) {
       return ParameterFieldWidget;
-    } else if (values && values.length > 0) {
-      return CategoryWidget;
     } else {
       return TextWidget;
     }
@@ -115,7 +116,7 @@ export default class ParameterValueWidget extends Component {
     }
   }
 
-  fieldIds({ parameter: { field_id, field_ids = [] } }) {
+  fieldIds({ parameter: { field_ids = [], field_id } }) {
     return field_id ? [field_id] : field_ids;
   }
 
@@ -228,10 +229,13 @@ export default class ParameterValueWidget extends Component {
         >
           {getParameterTypeIcon()}
           <Widget
+            parameter={parameter}
+            parameters={this.props.parameters}
+            dashboard={this.props.dashboard}
             placeholder={placeholder}
             value={value}
             values={values}
-            field={this.getSingleField()}
+            fields={this.getFields()}
             setValue={setValue}
             isEditing={isEditing}
             commitImmediately={commitImmediately}

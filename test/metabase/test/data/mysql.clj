@@ -39,6 +39,16 @@
    (when (= context :db)
      {:db database-name})))
 
+(defmethod tx/aggregate-column-info :mysql
+  ([driver ag-type]
+   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
+
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (= ag-type :sum)
+      {:base_type :type/Decimal}))))
+
 ;; TODO - we might be able to do SQL all at once by setting `allowMultiQueries=true` on the connection string
 (defmethod execute/execute-sql! :mysql
   [& args]
@@ -47,10 +57,5 @@
 (defmethod load-data/load-data! :mysql
   [& args]
   (apply load-data/load-data-all-at-once! args))
-
-#_(defmethod load-data/do-insert! :mysql
-  [driver spec table-identifier row-or-rows]
-  (jdbc/execute! spec "SET @@session.time_zone = 'UTC'");
-  ((get-method load-data/do-insert! :sql-jdbc/test-extensions) driver spec table-identifier row-or-rows))
 
 (defmethod sql.tx/pk-sql-type :mysql [_] "INTEGER NOT NULL AUTO_INCREMENT")

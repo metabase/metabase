@@ -28,31 +28,18 @@ const MetricImportantFieldsDetail = ({
         </div>
         <div className={cx(D.detailSubtitle, { mt1: true })}>
           <Select
-            key="metricFieldsSelect"
-            triggerClasses="input p1 block"
-            options={table.fields.map(fieldId => allFields[fieldId])}
-            optionNameFn={option => option.display_name || option.name}
             placeholder={t`Select...`}
-            values={formField.value || []}
-            disabledOptionIds={
-              formField.value && formField.value.length === 3
-                ? table.fields
-                    .map(fieldId => allFields[fieldId])
-                    .filter(field => !formField.value.includes(field))
-                    .map(field => field.id)
-                : []
+            multiple
+            value={formField.value || []}
+            onChange={formField.onChange}
+            options={table.fields.map(fieldId => allFields[fieldId])}
+            optionValueFn={field => field.id}
+            optionNameFn={field => field.display_name || field.name}
+            optionDisabledFn={field =>
+              formField.value &&
+              formField.value.length >= 3 &&
+              !formField.value.includes(field.id)
             }
-            onChange={field => {
-              const importantFields = formField.value || [];
-              return importantFields.includes(field)
-                ? formField.onChange(
-                    importantFields.filter(
-                      importantField => importantField !== field,
-                    ),
-                  )
-                : importantFields.length < 3 &&
-                    formField.onChange(importantFields.concat(field));
-            }}
           />
         </div>
       </div>

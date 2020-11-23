@@ -98,7 +98,10 @@ describe("getXValues", () => {
       {
         data: {
           rows: [["foo", "2019-09-01T00:00:00Z"]],
-          cols: [{ name: "other" }, { name: "date" }],
+          cols: [
+            { name: "other" },
+            { name: "date", base_type: "type/DateTime" },
+          ],
         },
       },
     ];
@@ -109,10 +112,10 @@ describe("getXValues", () => {
   });
   it("should sort values according to parsed value", () => {
     expect(
-      getXValuesForRows([
-        [["2019-W33"], ["2019-08-13"]],
-        [["2019-08-11"], ["2019-W33"]],
-      ]).map(x => x.format()),
+      getXValuesForRows(
+        [[["2019-W33"], ["2019-08-13"]], [["2019-08-11"], ["2019-W33"]]],
+        { "graph.x_axis.scale": "timeseries" },
+      ).map(x => x.format()),
     ).toEqual([
       "2019-08-11T00:00:00Z",
       "2019-08-12T00:00:00Z",
@@ -174,5 +177,36 @@ describe("getDatas", () => {
     expect(warn.mock.calls.length).toBe(1);
     const [{ key: warningKey }] = warn.mock.calls[0];
     expect(warningKey).toBe("NULL_DIMENSION_WARNING");
+  });
+
+  it("should not parse timeseries-like data if the scale isn't timeseries", () => {
+    const settings = { "graph.x_axis.scale": "ordinal" };
+    const series = [{ data: { rows: [["2019-01-01"]], cols: [{}] } }];
+    const warn = () => {};
+    const xValues = getDatas({ settings, series }, warn);
+    expect(xValues).toEqual([[["2019-01-01"]]]);
+  });
+
+  it("should parse timeseries-like data if the scale is timeseries", () => {
+    const settings = { "graph.x_axis.scale": "timeseries" };
+    const series = [{ data: { rows: [["2019-01-01"]], cols: [{}] } }];
+    const warn = () => {};
+    const [[[m]]] = getDatas({ settings, series }, warn);
+    expect(moment.isMoment(m)).toBe(true);
+  });
+
+  it("should parse timeseries-like data if column is timeseries", () => {
+    const settings = { "graph.x_axis.scale": "ordinal" };
+    const series = [
+      {
+        data: {
+          rows: [["2019-01-01"]],
+          cols: [{ base_type: "type/DateTime" }],
+        },
+      },
+    ];
+    const warn = () => {};
+    const [[[m]]] = getDatas({ settings, series }, warn);
+    expect(moment.isMoment(m)).toBe(true);
   });
 });

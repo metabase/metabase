@@ -126,7 +126,7 @@
   [{:keys [joins], :as inner-query} :- UnresolvedMBQLQuery]
   (let [join-fields (when (should-add-join-fields? inner-query)
                       (joins->fields joins))
-        inner-query(update inner-query :joins remove-joins-fields)]
+        inner-query (update inner-query :joins remove-joins-fields)]
     (cond-> inner-query
       (seq join-fields) (update :fields (comp vec distinct concat) join-fields))))
 
@@ -179,15 +179,5 @@
 (defn resolve-joins
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
   [qp]
-  (fn
-    ([query]
-     (qp (resolve-joins* query)))
-
-    ;; async-capable version of the middleware for the future when the entire QP is fully async
-    ([query respond raise canceled-chan]
-     (when-let [query (try
-                        (resolve-joins* query)
-                        (catch Throwable e
-                          (raise e)
-                          nil))]
-       (qp query respond raise canceled-chan)))))
+  (fn [query rff context]
+    (qp (resolve-joins* query) rff context)))

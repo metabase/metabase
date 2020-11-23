@@ -36,6 +36,7 @@
 }
 .LineAreaBarChart .dc-chart g.row text.inside {
   fill: white;
+  font-weight: bold;
 }
 
 /* turn off ticks and domain lines */
@@ -53,8 +54,14 @@
   font-weight: 900;
 }
 
+/* disable grid lines */
 .LineAreaBarChart .dc-chart .tick line {
   display: none;
+}
+
+/* enabled grid lines for row charts */
+.LineAreaBarChart .dc-chart .rowChart .tick .grid-line {
+  display: inherit;
 }
 
 /* gridline at 0 overlaps with X axis */
@@ -198,4 +205,29 @@
 
 .LineAreaBarChart .dc-chart .trend .line {
   stroke-dasharray: 5, 5;
+}
+
+text.value-label-outline,
+text.value-label {
+  pointer-events: none;
+}
+
+text.value-label-outline {
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  stroke-width: 3px;
+  stroke: var(--color-text-white);
+}
+
+text.value-label {
+  fill: var(--color-text-dark);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+text.value-label-white {
+  fill: var(--color-text-white);
+  font-weight: 800;
 }

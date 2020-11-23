@@ -12,7 +12,7 @@
             [metabase.util.i18n :refer [trs]])
   (:import java.io.FileNotFoundException
            java.net.URL
-           [java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path StandardCopyOption]
+           [java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path Paths StandardCopyOption]
            java.nio.file.attribute.FileAttribute
            java.util.Collections))
 
@@ -38,7 +38,9 @@
 
 ;;; ----------------------------------------------- Other Basic Utils ------------------------------------------------
 
-(defn- exists? [^Path path]
+(defn exists?
+  "Does file at `path` actually exist?"
+  [^Path path]
   (Files/exists path (u/varargs LinkOption)))
 
 (defn regular-file?
@@ -75,9 +77,9 @@
 (defn- copy-file! [^Path source, ^Path dest]
   (when (or (not (exists? dest))
             (not= (last-modified-timestamp source) (last-modified-timestamp dest)))
-    (u/profile (trs "Extract file {0} -> {1}" source dest)
-      (Files/copy source dest (u/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING
-                                                     StandardCopyOption/COPY_ATTRIBUTES])))))
+    (log/info (trs "Extract file {0} -> {1}" source dest))
+    (Files/copy source dest (u/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING
+                                                   StandardCopyOption/COPY_ATTRIBUTES]))))
 
 (defn copy-files!
   "Copy all files in `source-dir` to `dest-dir`. Overwrites existing files if last modified timestamp is not the same as
@@ -109,7 +111,7 @@
     (if (url-inside-jar? url)
       (with-open [fs (jar-file-system-from-url url)]
         (f (get-path-in-filesystem fs "/" resource)))
-      (f (get-path (.getPath url))))))
+      (f (get-path (.toString (Paths/get (.toURI url))))))))
 
 (defmacro with-open-path-to-resource
   "Execute `body` with an Path to a resource file or directory (i.e. a file in the project `resources/` directory, or

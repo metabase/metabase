@@ -21,6 +21,7 @@ describe("metabase/visualization/lib/table", () => {
         expect(
           getTableCellClickedObject(
             { rows: [[0]], cols: [RAW_COLUMN] },
+            {},
             0,
             0,
             false,
@@ -28,12 +29,20 @@ describe("metabase/visualization/lib/table", () => {
         ).toEqual({
           value: 0,
           column: RAW_COLUMN,
+          settings: {},
+          origin: {
+            cols: [RAW_COLUMN],
+            row: [0],
+            rowIndex: 0,
+          },
+          data: [{ col: { source: "fields" }, value: 0 }],
         });
       });
       it("should work with a dimension cell", () => {
         expect(
           getTableCellClickedObject(
             { rows: [[1, 2]], cols: [DIMENSION_COLUMN, METRIC_COLUMN] },
+            {},
             0,
             0,
             false,
@@ -41,12 +50,23 @@ describe("metabase/visualization/lib/table", () => {
         ).toEqual({
           value: 1,
           column: DIMENSION_COLUMN,
+          origin: {
+            cols: [DIMENSION_COLUMN, METRIC_COLUMN],
+            row: [1, 2],
+            rowIndex: 0,
+          },
+          settings: {},
+          data: [
+            { col: { source: "breakout" }, value: 1 },
+            { col: { source: "aggregation" }, value: 2 },
+          ],
         });
       });
       it("should work with a metric cell", () => {
         expect(
           getTableCellClickedObject(
             { rows: [[1, 2]], cols: [DIMENSION_COLUMN, METRIC_COLUMN] },
+            {},
             0,
             1,
             false,
@@ -59,6 +79,16 @@ describe("metabase/visualization/lib/table", () => {
               value: 1,
               column: DIMENSION_COLUMN,
             },
+          ],
+          origin: {
+            cols: [DIMENSION_COLUMN, METRIC_COLUMN],
+            row: [1, 2],
+            rowIndex: 0,
+          },
+          settings: {},
+          data: [
+            { col: { source: "breakout" }, value: 1 },
+            { col: { source: "aggregation" }, value: 2 },
           ],
         });
       });

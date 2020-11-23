@@ -279,11 +279,22 @@ describe("Question", () => {
 
       it("should not set the display to scalar table was selected", () => {
         const question = new Question(orders_count_card, metadata)
-          .setSelectedDisplay("table")
-          .setSensibleDisplays(["table", "scalar"])
+          .setDisplay("table")
+          .lockDisplay()
+          .maybeUnlockDisplay(["table", "scalar"])
           .setDefaultDisplay();
 
         expect(question.display()).toBe("table");
+      });
+
+      it("should set the display to scalar if funnel was selected", () => {
+        const question = new Question(orders_count_card, metadata)
+          .setDisplay("funnel")
+          .lockDisplay()
+          .maybeUnlockDisplay(["table", "scalar"])
+          .setDefaultDisplay();
+
+        expect(question.display()).toBe("scalar");
       });
     });
   });

@@ -12,6 +12,7 @@
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver.common :as driver.common]
             [metabase.driver.mongo
+             [execute :as execute]
              [parameters :as parameters]
              [query-processor :as qp]
              [util :refer [with-mongo-connection]]]
@@ -70,20 +71,20 @@
     #"^Password can not be null when the authentication mechanism is unspecified$"
     (driver.common/connection-error-messages :password-required)
 
-    #"^com.jcraft.jsch.JSchException: Auth fail$"
+    #"^org.apache.sshd.common.SshException: No more authentication methods available$"
     (driver.common/connection-error-messages :ssh-tunnel-auth-fail)
 
-    #".*JSchException: java.net.ConnectException: Connection refused.*"
+    #"^java.net.ConnectException: Connection refused$"
     (driver.common/connection-error-messages :ssh-tunnel-connection-fail)
+
+    #".*javax.net.ssl.SSLHandshakeException: PKIX path building failed.*"
+    (driver.common/connection-error-messages :certificate-not-trusted)
+
+    #".*MongoSocketReadException: Prematurely reached end of stream.*"
+    (driver.common/connection-error-messages :requires-ssl)
 
     #".*"                               ; default
     message))
-
-(defmethod driver/process-query-in-context :mongo
-  [_ qp]
-  (fn [{database-id :database, :as query}]
-    (with-mongo-connection [_ (qp.store/database)]
-      (qp query))))
 
 
 ;;; ### Syncing
@@ -152,19 +153,28 @@
     :type/MongoBSONID
     (driver.common/class->base-type klass)))
 
-(defn- describe-table-field [field-kw field-info]
-  (let [most-common-object-type (most-common-object-type (vec (:types field-info)))]
-    (cond-> {:name          (name field-kw)
-             :database-type (some-> most-common-object-type .getName)
-             :base-type     (class->base-type most-common-object-type)}
-      (= :_id field-kw)           (assoc :pk? true)
-      (:special-types field-info) (assoc :special-type (->> (vec (:special-types field-info))
-                                                            (filter #(some? (first %)))
-                                                            (sort-by second)
-                                                            last
-                                                            first))
-      (:nested-fields field-info) (assoc :nested-fields (set (for [field (keys (:nested-fields field-info))]
-                                                               (describe-table-field field (field (:nested-fields field-info)))))))))
+(defn- describe-table-field [field-kw field-info idx]
+  (let [most-common-object-type  (most-common-object-type (vec (:types field-info)))
+        [nested-fields idx-next]
+          (reduce
+           (fn [[nested-fields idx] nested-field]
+             (let [[nested-field idx-next] (describe-table-field nested-field
+                                                                 (nested-field (:nested-fields field-info))
+                                                                 idx)]
+               [(conj nested-fields nested-field) idx-next]))
+           [#{} (inc idx)]
+           (keys (:nested-fields field-info)))]
+    [(cond-> {:name              (name field-kw)
+              :database-type     (some-> most-common-object-type .getName)
+              :base-type         (class->base-type most-common-object-type)
+              :database-position idx}
+       (= :_id field-kw)           (assoc :pk? true)
+       (:special-types field-info) (assoc :special-type (->> (:special-types field-info)
+                                                             (filterv #(some? (first %)))
+                                                             (sort-by second)
+                                                             last
+                                                             first))
+       (:nested-fields field-info) (assoc :nested-fields nested-fields)) idx-next]))
 
 (defmethod driver/describe-database :mongo
   [_ database]
@@ -198,8 +208,12 @@
     (let [column-info (table-sample-column-info conn table)]
       {:schema nil
        :name   (:name table)
-       :fields (set (for [[field info] column-info]
-                      (describe-table-field field info)))})))
+       :fields (first
+                (reduce (fn [[fields idx] [field info]]
+                          (let [[described-field new-idx] (describe-table-field field info idx)]
+                            [(conj fields described-field) new-idx]))
+                        [#{} 0]
+                        column-info))})))
 
 (doseq [feature [:basic-aggregations
                  :nested-fields
@@ -210,11 +224,12 @@
   [_ query]
   (qp/mbql->native query))
 
-(defmethod driver/execute-query :mongo
-  [_ query]
-  (qp/execute-query query))
+(defmethod driver/execute-reducible-query :mongo
+  [_ query context respond]
+  (with-mongo-connection [_ (qp.store/database)]
+    (execute/execute-reducible-query query context respond)))
 
-(defmethod driver/substitue-native-parameters :mongo
+(defmethod driver/substitute-native-parameters :mongo
   [driver inner-query]
   (parameters/substitute-native-parameters driver inner-query))
 
@@ -257,3 +272,7 @@
   java.util.Date
   (from-db-object [t _]
     (t/instant t)))
+
+(defmethod driver/db-start-of-week :mongo
+  [_]
+  :sunday)

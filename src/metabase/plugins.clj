@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [environ.core :as env]
+            [metabase.config :as config]
             [metabase.plugins
              [classloader :as classloader]
              [initialize :as initialize]]
@@ -104,6 +105,22 @@
                              (trs "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory."))))]
     path))
 
+(when (or config/is-dev? config/is-test?)
+  (defn- load-local-plugin-manifest! [^Path path]
+    (some-> (slurp (str path)) yaml.core/parse-string initialize/init-plugin-with-info!))
+
+  (defn- load-local-plugin-manifests!
+    "Load local plugin manifest files when running in dev or test mode, to simulate what would happen when loading those
+  same plugins from the uberjar. This is needed because some plugin manifests define driver methods and the like that
+  aren't defined elsewhere."
+    []
+    ;; TODO - this should probably do an actual search in case we ever add any additional directories
+    (doseq [path  (files/files-seq (files/get-path "modules/drivers/"))
+            :let  [manifest-path (files/get-path (str path) "/resources/metabase-plugin.yaml")]
+            :when (files/exists? manifest-path)]
+      (log/info (trs "Loading local plugin manifest at {0}" (str manifest-path)))
+      (load-local-plugin-manifest! manifest-path))))
+
 (defn- has-manifest? ^Boolean [^Path path]
   (boolean (files/file-exists-in-archive? path "metabase-plugin.yaml")))
 
@@ -123,7 +140,9 @@
   (log/info (trs "Loading plugins in {0}..." (str (plugins-dir))))
   (extract-system-modules!)
   (let [paths (plugins-paths)]
-    (init-plugins! paths)))
+    (init-plugins! paths))
+  (when (or config/is-dev? config/is-test?)
+    (load-local-plugin-manifests!)))
 
 (defonce ^:private load!* (delay (load!)))
 

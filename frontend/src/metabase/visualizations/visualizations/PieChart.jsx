@@ -41,7 +41,7 @@ const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
 const PERCENT_REGEX = /percent/i;
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 export default class PieChart extends Component {
   props: VisualizationProps;
@@ -256,6 +256,7 @@ export default class PieChart extends Component {
         value: row[metricIndex],
         displayValue: row[metricIndex],
         percentage: row[metricIndex] / total,
+        rowIndex: index,
         color: settings["pie._colors"][row[dimensionIndex]],
       }))
       .partition(d => d.percentage > sliceThreshold)
@@ -374,16 +375,29 @@ export default class PieChart extends Component {
       value = formatMetric(total);
     }
 
-    const getSliceClickObject = index => ({
-      value: slices[index].value,
-      column: cols[metricIndex],
-      dimensions: [
-        {
-          value: slices[index].key,
-          column: cols[dimensionIndex],
-        },
-      ],
-    });
+    const getSliceClickObject = index => {
+      const slice = slices[index];
+      const sliceRows = slice.rowIndex && rows[slice.rowIndex];
+      const data =
+        sliceRows &&
+        sliceRows.map((value, index) => ({
+          value,
+          col: cols[index],
+        }));
+
+      return {
+        value: slice.value,
+        column: cols[metricIndex],
+        data: data,
+        dimensions: [
+          {
+            value: slice.key,
+            column: cols[dimensionIndex],
+          },
+        ],
+        settings,
+      };
+    };
 
     const isClickable =
       onVisualizationClick && visualizationIsClickable(getSliceClickObject(0));

@@ -59,6 +59,7 @@ export default class QuestionEmbedWidget extends Component {
         getPublicUrl={({ public_uuid }, extension) =>
           Urls.publicQuestion(public_uuid, extension)
         }
+        extensions={Urls.exportFormats}
       />
     );
   }
@@ -67,8 +68,8 @@ export default class QuestionEmbedWidget extends Component {
     question,
     isAdmin,
     // preferably this would come from props
-    isPublicLinksEnabled = MetabaseSettings.get("public_sharing"),
-    isEmbeddingEnabled = MetabaseSettings.get("embedding"),
+    isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing"),
+    isEmbeddingEnabled = MetabaseSettings.get("enable-embedding"),
   }) {
     return (
       (isPublicLinksEnabled && (isAdmin || question.publicUUID())) ||

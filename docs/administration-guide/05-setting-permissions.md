@@ -74,7 +74,7 @@ Lastly, data access levels for tables are almost exactly the same as well:
 - **Unrestricted access:** can ask questions about this table and see saved questions and dashboard cards using this table.
 - **No access:** can’t ask questions about this table or see saved questions or dashboard cards using this table.
 
-_Note: you’ll notice that tables don’t have the option for limited access. In the future, column-level permissions will be added to Metabase, and setting limited access on a table will allow you to choose which columns the group should have access to._
+_Note: you’ll notice that tables don’t have the option for limited access. If need to set column-level or row-level data permissions, check out the [data sandboxing](https://www.metabase.com/docs/latest/enterprise-guide/data-sandboxes.html) feature of the [Enterprise Edition](https://www.metabase.com/enterprise/)._
 
 ### A note about Pulses
 

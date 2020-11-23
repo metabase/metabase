@@ -142,4 +142,32 @@ describe("UnderlyingRecordsDrill", () => {
     });
     expect(q.display()).toEqual("table");
   });
+
+  it("should include the filter that's part of the aggregation (e.x. count-where)", () => {
+    const query = ORDERS.query()
+      .aggregate(["count-where", [">", ORDERS.TOTAL.dimension().mbql(), 42]])
+      .breakout(ORDERS.USER_ID.foreign(PEOPLE.STATE));
+
+    const actions = UnderlyingRecordsDrill(getActionProps(query, "CA"));
+    expect(actions).toHaveLength(1);
+    const q = actions[0].question();
+
+    expect(q.query().query()).toEqual({
+      filter: [
+        "and",
+        [
+          "=",
+          [
+            "fk->",
+            ["field-id", ORDERS.USER_ID.id],
+            ["field-id", PEOPLE.STATE.id],
+          ],
+          "CA",
+        ],
+        [">", ["field-id", ORDERS.TOTAL.id], 42],
+      ],
+      "source-table": 1,
+    });
+    expect(q.display()).toEqual("table");
+  });
 });

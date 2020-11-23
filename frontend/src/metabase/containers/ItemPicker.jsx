@@ -2,6 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
+import { t } from "ttag";
 import { Flex, Box } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -23,11 +24,16 @@ const COLLECTION_ICON_COLOR = color("text-light");
 const isRoot = collection => collection.id === "root" || collection.id == null;
 
 @entityListLoader({
-  entityType: "collections",
+  entityType: (state, props) => {
+    return props.entity ? props.entity.name : "collections";
+  },
   loadingAndErrorWrapper: false,
 })
 @connect((state, props) => ({
-  collectionsById: Collections.selectors.getExpandedCollectionsById(state),
+  collectionsById: (
+    props.entity || Collections
+  ).selectors.getExpandedCollectionsById(state),
+  getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
 }))
 export default class ItemPicker extends React.Component {
   constructor(props) {
@@ -45,6 +51,7 @@ export default class ItemPicker extends React.Component {
     // number = non-root collection id
     value: PropTypes.number,
     types: PropTypes.array,
+    showSearch: PropTypes.boolean,
   };
 
   // returns a list of "crumbs" starting with the "root" collection
@@ -69,7 +76,15 @@ export default class ItemPicker extends React.Component {
   }
 
   render() {
-    const { value, onChange, collectionsById, style, className } = this.props;
+    const {
+      value,
+      onChange,
+      collectionsById,
+      getCollectionIcon,
+      style,
+      className,
+      showSearch = true,
+    } = this.props;
     const { parentId, searchMode, searchString } = this.state;
 
     const models = new Set(this.props.models);
@@ -111,7 +126,7 @@ export default class ItemPicker extends React.Component {
               <input
                 type="search"
                 className="input rounded flex-full"
-                placeholder="Search"
+                placeholder={t`Search`}
                 autoFocus
                 onKeyPress={e => {
                   if (e.key === "Enter") {
@@ -130,11 +145,13 @@ export default class ItemPicker extends React.Component {
           ) : (
             <Box pb={1} mb={2} className="border-bottom flex align-center">
               <Breadcrumbs crumbs={crumbs} />
-              <Icon
-                name="search"
-                className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
-                onClick={() => this.setState({ searchMode: true })}
-              />
+              {showSearch && (
+                <Icon
+                  name="search"
+                  className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
+                  onClick={() => this.setState({ searchMode: true })}
+                />
+              )}
             </Box>
           )}
           <Box className="scroll-y">
@@ -157,7 +174,7 @@ export default class ItemPicker extends React.Component {
                       item={collection}
                       name={collection.name}
                       color={COLLECTION_ICON_COLOR}
-                      icon="all"
+                      icon={getCollectionIcon(collection)}
                       selected={canSelect && isSelected(collection)}
                       canSelect={canSelect}
                       hasChildren={hasChildren}

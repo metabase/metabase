@@ -74,6 +74,9 @@ const SET_PROPAGATE_PERMISSIONS =
   "metabase/admin/permissions/SET_PROPAGATE_PERMISSIONS";
 export const setPropagatePermissions = createAction(SET_PROPAGATE_PERMISSIONS);
 
+const CLEAR_SAVE_ERROR = "metabase/admin/permissions/CLEAR_SAVE_ERROR";
+export const clearSaveError = createAction(CLEAR_SAVE_ERROR);
+
 const save = handleActions(
   {
     [RESET]: { next: (state, { payload }) => payload.save },
@@ -128,6 +131,7 @@ const saveError = handleActions(
     [LOAD_PERMISSIONS]: {
       next: state => null,
     },
+    [CLEAR_SAVE_ERROR]: { next: () => null },
   },
   null,
 );

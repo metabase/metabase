@@ -1,5 +1,24 @@
+.Calendar-weeks {
+  padding-bottom: 14px;
+}
+
 .Calendar-week {
   display: flex;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.Calendar-header {
+  padding: 14px;
+  margin-bottom: 8px;
+}
+
+.Calendar-header h4 {
+  font-weight: 700;
+}
+
+.Calendar-day-names {
+  opacity: 0.12;
 }
 
 .Calendar-day,
@@ -12,7 +31,9 @@
   position: relative;
   border-radius: 99px;
   font-weight: 700;
+  font-size: 12px;
   background-color: transparent;
+  padding: 10px;
 }
 
 .Calendar-day:hover {

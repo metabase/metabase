@@ -2,13 +2,13 @@
   "Create and save models that make up automagic dashboards."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.filters :as filters]
             [metabase.models
              [card :as card]
              [collection :as collection]]
             [metabase.query-processor.util :as qp.util]
-            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
@@ -274,10 +274,10 @@
                                      ;; Height doesn't need to be precise, just some
                                      ;; safe upper bound.
                                      (make-grid grid-width (* n grid-width))]))]
-     (log/info (trs "Adding {0} cards to dashboard {1}:\n{2}"
-                    (count cards)
-                    title
-                    (str/join "; " (map :title cards))))
+     (log/debug (trs "Adding {0} cards to dashboard {1}:\n{2}"
+                     (count cards)
+                     title
+                     (str/join "; " (map :title cards))))
      (cond-> dashboard
        (not-empty filters) (filters/add-filters filters max-filters)))))
 
@@ -323,8 +323,8 @@
                                                      (update :row + offset (if skip-titles?
                                                                              0
                                                                              group-heading-height))
-                                                     (u/update-in-when [:visualization_settings :text]
-                                                                       downsize-titles)
+                                                     (m/update-existing-in [:visualization_settings :text]
+                                                                           downsize-titles)
                                                      (assoc :parameter_mappings
                                                        (when-let [card-id (:card_id %)]
                                                          (for [mapping parameter-mappings]

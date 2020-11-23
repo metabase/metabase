@@ -14,9 +14,9 @@ So, you've [gotten Metabase up and running](../operations-guide/start.md) and [c
 
 Fresh out of the box, Metabase will show you a few things on the home page:
 
-- Some [automatic explorations](14-x-rays.md) of your tables that you can look at and save as a dashboard if you like any of them.
+- Some [automatic explorations](14-x-rays.md) of your tables that you can look at and save as a dashboard if you like any of them. (Administrators can permanently hide this section by clicking the `X` that appears on hover.)
 - An area where things you or your teammates create will show up, along with a link to see all the dashboards, questions, and pulses you have.
-- A list of the databases you've connected to Metabase.
+- A list of the databases you've connected to Metabase. (As with x-rays, administrators can permanently hide this section by clicking the `X` that appears on hover. You can always click on "Browse Data" from the main nav bar to see your databases and tables.)
 
 ![Our data](./images/our-data.png)
 

@@ -73,7 +73,6 @@
               :is_qbnewb    true
               :is_active    active)))))
 
-
 (s/defn fetch-user :- UserInstance
   "Fetch the User object associated with `username`. Creates user if needed.
 
@@ -81,14 +80,20 @@
   [username :- TestUserName]
   (m/mapply fetch-or-create-user! (user->info username)))
 
-(def ^{:arglists '([username])} user->id
-  "Memoized fn that returns the ID of User associated with `username`. Creates user if needed.
+(def ^{:arglists '([] [user-name])} user->id
+  "Creates user if needed. With zero args, returns map of user name to ID. With 1 arg, returns ID of that User. Creates
+  User(s) if needed. Memoized.
 
-    (user->id :rasta) -> 4"
+    (user->id)        ; -> {:rasta 4, ...}
+    (user->id :rasta) ; -> 4"
   (memoize
-   (s/fn :- s/Int [username :- TestUserName]
-     {:pre [(contains? usernames username)]}
-     (u/get-id (fetch-user username)))))
+   (fn
+     ([]
+      (zipmap usernames (map user->id usernames)))
+
+     ([user-name]
+      {:pre [(contains? usernames user-name)]}
+      (u/get-id (fetch-user user-name))))))
 
 (s/defn user->credentials :- {:username (s/pred u/email?), :password s/Str}
   "Return a map with `:username` and `:password` for User with `username`.
@@ -139,20 +144,36 @@
         (clear-cached-session-tokens!)
         (apply client-fn username args)))))
 
-(s/defn user->client :- (s/pred fn?)
+(s/defn ^:deprecated user->client :- (s/pred fn?)
   "Returns a `metabase.http-client/client` partially bound with the credentials for User with `username`.
    In addition, it forces lazy creation of the User if needed.
 
-     ((user->client) :get 200 \"meta/table\")"
+     ((user->client) :get 200 \"meta/table\")
+
+  DEPRECATED -- use `user-http-request` instead, which has proper `:arglists` metadata which makes it a bit easier to
+  use when writing code."
   [username :- TestUserName]
   (fetch-user username) ; force creation of the user if not already created
   (partial client-fn username))
+
+(defn user-http-request
+  "A version of our test HTTP client that issues the request with credentials for `username`."
+  {:arglists '([username credentials? method expected-status-code? endpoint
+                request-options? http-body-map? & {:as query-params}])}
+  [username & args]
+  (fetch-user username)
+  (apply client-fn username args))
 
 (defmacro with-test-user
   "Call `body` with various `metabase.api.common` dynamic vars like `*current-user*` bound to the test User named by
   `user-kwd`."
   {:style/indent 1}
   [user-kwd & body]
-  `(t/testing ~(format "with test user %s" user-kwd)
+  `(t/testing ~(format "with test user %s\n" user-kwd)
      (mw.session/with-current-user (some-> ~user-kwd user->id)
        ~@body)))
+
+(defn test-user?
+  "Does this User or User ID belong to one of the predefined test birds?"
+  [user-or-id]
+  (contains? (set (vals (user->id))) (u/get-id user-or-id)))

@@ -8,7 +8,9 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type {
   ClickAction,
   ClickActionProps,
-} from "metabase/meta/types/Visualization";
+} from "metabase-types/types/Visualization";
+
+import { AggregationDimension } from "metabase-lib/lib/Dimension";
 
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   // removes post-aggregation filter stage
@@ -28,7 +30,21 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   // the metric value should be the number of rows that will be displayed
   const count = typeof clicked.value === "number" ? clicked.value : 2;
 
-  const recordName = query.table().displayName();
+  // special case for aggregations that include a filter, such as share, count-where, and sum-where
+  let extraFilter = null;
+  const dimension =
+    clicked.column && query.parseFieldReference(clicked.column.field_ref);
+  if (dimension instanceof AggregationDimension) {
+    const aggregation = dimension.aggregation();
+    extraFilter =
+      aggregation[0] === "count-where" || aggregation[0] === "share"
+        ? aggregation[1]
+        : aggregation[0] === "sum-where"
+        ? aggregation[2]
+        : null;
+  }
+
+  const recordName = query.table() && query.table().displayName();
   const inflectedTableName = recordName
     ? inflect(recordName, count)
     : ngettext(msgid`record`, `records`, count);
@@ -41,7 +57,20 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
         `View these ${inflectedTableName}`,
         count,
       ),
-      question: () => question.drillUnderlyingRecords(dimensions),
+      question: () => {
+        const q = question.drillUnderlyingRecords(dimensions);
+        if (extraFilter) {
+          return (
+            q
+              .query()
+              // $FlowFixMe: we know this is a StructuredQuery but flow doesn't
+              .filter(extraFilter)
+              .question()
+          );
+        } else {
+          return q;
+        }
+      },
     },
   ];
 };

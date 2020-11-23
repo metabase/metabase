@@ -1,14 +1,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import MetricsList from "./MetricsList";
 import ColumnsList from "./ColumnsList";
-import SegmentsList from "./SegmentsList";
 import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
-import withTableMetadataLoaded from "metabase/admin/datamodel/withTableMetadataLoaded";
+import withTableMetadataLoaded from "metabase/admin/datamodel/hoc/withTableMetadataLoaded";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -17,7 +15,7 @@ import cx from "classnames";
 @Tables.load({
   id: (state, { tableId }) => tableId,
   wrapped: true,
-  selectorName: "getTable",
+  selectorName: "getObjectUnfiltered",
 })
 @withTableMetadataLoaded
 export default class MetadataTable extends Component {
@@ -32,8 +30,6 @@ export default class MetadataTable extends Component {
     table: PropTypes.object,
     idfields: PropTypes.array,
     updateField: PropTypes.func.isRequired,
-    onRetireMetric: PropTypes.func.isRequired,
-    onRetireSegment: PropTypes.func.isRequired,
   };
 
   componentWillMount() {
@@ -116,7 +112,7 @@ export default class MetadataTable extends Component {
   }
 
   render() {
-    const { table, onRetireMetric, onRetireSegment } = this.props;
+    const { table } = this.props;
     if (!table) {
       return false;
     }
@@ -126,12 +122,14 @@ export default class MetadataTable extends Component {
         <div className="MetadataTable-title flex flex-column bordered rounded">
           <InputBlurChange
             className="AdminInput TableEditor-table-name text-bold border-bottom rounded-top"
+            name="display_name"
             type="text"
             value={table.display_name || ""}
             onBlurChange={this.onNameChange}
           />
           <InputBlurChange
             className="AdminInput TableEditor-table-description rounded-bottom"
+            name="description"
             type="text"
             value={table.description || ""}
             onBlurChange={this.onDescriptionChange}
@@ -143,11 +141,9 @@ export default class MetadataTable extends Component {
           {this.renderVisibilityWidget()}
         </div>
         <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>
-          <SegmentsList onRetire={onRetireSegment} tableMetadata={table} />
-          <MetricsList onRetire={onRetireMetric} tableMetadata={table} />
           {this.props.idfields && (
             <ColumnsList
-              fields={table.fields}
+              table={table}
               updateField={this.props.updateField}
               idfields={this.props.idfields}
             />

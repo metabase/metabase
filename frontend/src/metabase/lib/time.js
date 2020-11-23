@@ -1,4 +1,4 @@
-import moment from "moment";
+import moment from "moment-timezone";
 
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
@@ -16,7 +16,7 @@ const NUMERIC_UNIT_FORMATS = {
       .startOf("hour"),
   "day-of-week": value =>
     moment()
-      .day(value - 1)
+      .weekday(value - 1)
       .startOf("day"),
   "day-of-month": value =>
     moment("2016-01-01") // initial date must be in month with 31 days to format properly
@@ -42,16 +42,18 @@ const NUMERIC_UNIT_FORMATS = {
 
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
-export function parseTimestamp(value, unit) {
+export function parseTimestamp(value, unit = null, local = false) {
+  let m;
   if (moment.isMoment(value)) {
-    return value;
+    m = value;
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
-    return moment.parseZone(value);
+    m = moment.parseZone(value);
   } else if (unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
-    return NUMERIC_UNIT_FORMATS[unit](value);
+    m = NUMERIC_UNIT_FORMATS[unit](value);
   } else {
-    return moment.utc(value);
+    m = moment.utc(value);
   }
+  return local ? m.local() : m;
 }
 
 export function parseTime(value) {

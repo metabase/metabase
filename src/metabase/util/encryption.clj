@@ -87,11 +87,12 @@
   (`aes256-block-size`). If it's not divisible by that number it is either not encrypted or it has been corrupted as
   it must always have a multiple of the block size or it won't decrypt."
   [s]
-  (when-let [str-byte-length (and (not (str/blank? s))
-                                  (u/base64-string? s)
-                                  (alength ^bytes (codec/base64-decode s)))]
-    (zero? (mod (- str-byte-length aes256-tag-length)
-                aes256-block-size))))
+  (u/ignore-exceptions
+    (when-let [str-byte-length (and (not (str/blank? s))
+                                    (u/base64-string? s)
+                                    (alength ^bytes (codec/base64-decode s)))]
+      (zero? (mod (- str-byte-length aes256-tag-length)
+                  aes256-block-size)))))
 
 (defn maybe-decrypt
   "If `MB_ENCRYPTION_SECRET_KEY` is set and `s` is encrypted, decrypt `s`; otherwise return `s` as-is."

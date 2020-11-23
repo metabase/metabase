@@ -129,8 +129,8 @@
       (f))))
 
 (defn- sync-in-context
-  "Pass the sync operation defined by BODY to the DATABASE's driver's implementation of `sync-in-context`.
-   This method is used to do things like establish a connection or other driver-specific steps needed for sync
+  "Pass the sync operation defined by `body` to the `database`'s driver's implementation of `sync-in-context`.
+  This method is used to do things like establish a connection or other driver-specific steps needed for sync
   operations."
   {:style/indent 1}
   [database f]
@@ -143,19 +143,17 @@
   "Internal implementation of `with-error-handling`; use that instead of calling this directly."
   ([f]
    (do-with-error-handling "Error running sync step" f))
+
   ([message f]
-   (try (f)
-        (catch Throwable e
-          (log/error (u/format-color 'red "%s: %s\n%s"
-                       message
-                       (or (.getMessage e) (class e))
-                       (u/pprint-to-str (or (seq (u/filtered-stacktrace e))
-                                            (.getStackTrace e)))))
-          e))))
+   (try
+     (f)
+     (catch Throwable e
+       (log/error e message)
+       e))))
 
 (defmacro with-error-handling
-  "Execute BODY in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so.
-   Pass a MESSAGE to help provide information about what failed for the log message."
+  "Execute `body` in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so. Pass a
+  `message` to help provide information about what failed for the log message."
   {:style/indent 1}
   [message & body]
   `(do-with-error-handling ~message (fn [] ~@body)))
@@ -171,7 +169,7 @@
              (partial do-with-error-handling f))))))))
 
 (defmacro sync-operation
-  "Perform the operations in BODY as a sync operation, which wraps the code in several special macros that do things
+  "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
   like error handling, logging, duplicate operation prevention, and event publishing. Intended for use with the
   various top-level sync operations, such as `sync-metadata` or `analyze`."
   {:style/indent 3}

@@ -69,6 +69,8 @@ Click on the `Modify` link under the Monitoring section as seen here:
 
 ![Elastic Beanstalk Monitoring](images/EBMonitoringSelect.png)
 
+The `Health check path` is how Elastic Beanstalk knows when the application is ready to run. This path is also used by the Load Balancer to check application heath. Set this path to `/api/health`.
+
 Then make sure enhanced health checks are enabled. This is a free option, unless you later add specific metrics to CloudWatch.
 
 ![Elastic Beanstalk Monitoring Settings](images/EBMonitoringSettings.png)
@@ -122,7 +124,6 @@ There are many ways to customize your Beanstalk deployment, but commonly modifie
   - Remember that you cannot choose a `t2.*` instance type if you did not check the box to run in a VPC.
 - `EC2 key pair` (`Security` block) is only needed if you want to SSH into your instance directly. We recommend leaving this out.
 - Enter an `Email address` (`Notifications` block) to get notifications about your deployments and changes to your application. This is a very simple way to keep tabs on your Metabase environment, so we recommend putting a valid email in here.
-- The `Application health check URL` is how Elastic Beanstalk knows when the application is ready to run. You must set this to `/api/health`.
 - The remainder of the options can all be safely left to their default values.
 
 ### Permissions

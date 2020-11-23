@@ -12,7 +12,7 @@ const YearPicker = ({ value, onChange }) => (
     options={YEARS}
     optionNameFn={option => option}
     optionValueFn={option => option}
-    onChange={onChange}
+    onChange={({ target: { value } }) => onChange(value)}
   />
 );
 

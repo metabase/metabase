@@ -36,4 +36,5 @@
 (defn pre-alias-aggregations
   "Middleware that generates aliases for all aggregations anywhere in a query, and makes sure they're unique."
   [qp]
-  (comp qp maybe-pre-alias-aggregations))
+  (fn [query rff context]
+    (qp (maybe-pre-alias-aggregations query) rff context)))

@@ -2,7 +2,7 @@
 
 import type { DateSeparator } from "metabase/lib/formatting";
 
-import type { DatetimeUnit } from "metabase/meta/types/Query";
+import type { DatetimeUnit } from "metabase-types/types/Query";
 
 export type DateStyle =
   | "M/D/YYYY"

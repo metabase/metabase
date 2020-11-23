@@ -11,6 +11,8 @@ import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import MiniBar from "./MiniBar";
 
+import ExternalLink from "metabase/components/ExternalLink";
+
 import { formatValue } from "metabase/lib/formatting";
 import {
   getTableCellClickedObject,
@@ -24,12 +26,17 @@ import _ from "underscore";
 
 import { isID, isFK } from "metabase/lib/schema_metadata";
 
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type {
+  ClickObject,
+  VisualizationProps,
+} from "metabase-types/types/Visualization";
 
 type Props = VisualizationProps & {
   height: number,
   className?: string,
   isPivoted: boolean,
+  getColumnTitle: number => string,
+  getExtraDataForClick?: Function,
 };
 
 type State = {
@@ -90,11 +97,19 @@ export default class TableSimple extends Component {
     }
   }
 
+  visualizationIsClickable(clicked: ?ClickObject) {
+    const { onVisualizationClick, visualizationIsClickable } = this.props;
+    return (
+      onVisualizationClick &&
+      visualizationIsClickable &&
+      visualizationIsClickable(clicked)
+    );
+  }
+
   render() {
     const {
       data,
       onVisualizationClick,
-      visualizationIsClickable,
       isPivoted,
       settings,
       getColumnTitle,
@@ -176,14 +191,41 @@ export default class TableSimple extends Component {
                       const column = cols[columnIndex];
                       const clicked = getTableCellClickedObject(
                         data,
+                        settings,
                         rowIndex,
                         columnIndex,
                         isPivoted,
                       );
-                      const isClickable =
-                        onVisualizationClick &&
-                        visualizationIsClickable(clicked);
                       const columnSettings = settings.column(column);
+
+                      const extraData = this.props.getExtraDataForClick
+                        ? this.props.getExtraDataForClick(clicked)
+                        : {};
+
+                      const cellData =
+                        value == null ? (
+                          "-"
+                        ) : columnSettings["show_mini_bar"] ? (
+                          <MiniBar
+                            value={value}
+                            options={columnSettings}
+                            extent={getColumnExtent(cols, rows, columnIndex)}
+                          />
+                        ) : (
+                          formatValue(value, {
+                            ...columnSettings,
+                            clicked: { ...clicked, extraData },
+                            type: "cell",
+                            jsx: true,
+                            rich: true,
+                          })
+                        );
+
+                      // $FlowFixMe: proper test for a React element?
+                      const isLink = cellData && cellData.type === ExternalLink;
+                      const isClickable =
+                        !isLink && this.visualizationIsClickable(clicked);
+
                       return (
                         <td
                           key={columnIndex}
@@ -217,31 +259,13 @@ export default class TableSimple extends Component {
                                     onVisualizationClick({
                                       ...clicked,
                                       element: e.currentTarget,
+                                      extraData,
                                     });
                                   }
                                 : undefined
                             }
                           >
-                            {value == null ? (
-                              "-"
-                            ) : columnSettings["show_mini_bar"] ? (
-                              <MiniBar
-                                value={value}
-                                options={columnSettings}
-                                extent={getColumnExtent(
-                                  cols,
-                                  rows,
-                                  columnIndex,
-                                )}
-                              />
-                            ) : (
-                              formatValue(value, {
-                                ...columnSettings,
-                                type: "cell",
-                                jsx: true,
-                                rich: true,
-                              })
-                            )}
+                            {cellData}
                           </span>
                         </td>
                       );

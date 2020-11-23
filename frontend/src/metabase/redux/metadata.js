@@ -72,34 +72,16 @@ export const updateSegment = segment => {
   return Segments.actions.update(segment);
 };
 
-export const FETCH_DATABASES = Databases.actions.fetchList.toString();
-export const fetchDatabases = (reload = false) => {
-  deprecated("metabase/redux/metadata fetchDatabases");
-  return Databases.actions.fetchList(
-    {
-      include_tables: true,
-      include_cards: true,
-    },
-    { reload },
-  );
-};
-
 export const FETCH_REAL_DATABASES = Databases.actions.fetchList.toString();
 export const fetchRealDatabases = (reload = false) => {
   deprecated("metabase/redux/metadata fetchRealDatabases");
-  return Databases.actions.fetchList(
-    {
-      include_tables: true,
-      include_cards: false,
-    },
-    { reload },
-  );
+  return Databases.actions.fetchList({ include: "tables" }, { reload });
 };
 
 export const FETCH_DATABASE_METADATA = Databases.actions.fetchDatabaseMetadata.toString();
 export const fetchDatabaseMetadata = (dbId, reload = false) => {
   deprecated("metabase/redux/metadata fetchDatabaseMetadata");
-  return Databases.actions.fetchDatabaseMetadata({ id: dbId }, reload);
+  return Databases.actions.fetchDatabaseMetadata({ id: dbId }, { reload });
 };
 
 export const updateDatabase = database => {
@@ -129,7 +111,7 @@ export const fetchTables = (reload = false) => {
 export { FETCH_TABLE_METADATA } from "metabase/entities/tables";
 export const fetchTableMetadata = (id, reload = false) => {
   deprecated("metabase/redux/metadata fetchTableMetadata");
-  return Tables.actions.fetchTableMetadata({ id }, { reload });
+  return Tables.actions.fetchMetadataAndForeignTables({ id }, { reload });
 };
 
 export const fetchField = (id, reload = false) => {
@@ -284,23 +266,6 @@ export const fetchSegmentRevisions = createThunkAction(
   },
 );
 
-const FETCH_DATABASES_WITH_METADATA =
-  "metabase/metadata/FETCH_DATABASES_WITH_METADATA";
-export const fetchDatabasesWithMetadata = createThunkAction(
-  FETCH_DATABASES_WITH_METADATA,
-  (reload = false) => {
-    return async (dispatch, getState) => {
-      await dispatch(fetchDatabases());
-      const databases = getIn(getState(), ["entities", "databases"]);
-      await Promise.all(
-        Object.values(databases).map(database =>
-          dispatch(fetchDatabaseMetadata(database.id)),
-        ),
-      );
-    };
-  },
-);
-
 export const addRemappings = (fieldId, remappings) => {
   deprecated("metabase/redux/metadata addRemappings");
   return Fields.actions.addRemappings({ id: fieldId }, remappings);
@@ -357,3 +322,26 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
     };
   },
 );
+
+export const loadMetadataForQuery = query => loadMetadataForQueries([query]);
+
+export const loadMetadataForQueries = queries => dispatch =>
+  Promise.all(
+    _.chain(queries)
+      .map(q => q.dependentMetadata())
+      .flatten()
+      .uniq(false, dep => dep.type + dep.id)
+      .map(({ type, id, foreignTables }) => {
+        if (type === "table") {
+          return (foreignTables
+            ? Tables.actions.fetchMetadataAndForeignTables
+            : Tables.actions.fetchMetadata)({ id });
+        } else {
+          console.warn(`loadMetadataForQueries: type ${type} not implemented`);
+        }
+      })
+      // unrecognized types would result in undefined, so we filter that out
+      .filter(action => action !== undefined)
+      .map(dispatch)
+      .value(),
+  ).catch(e => console.error("Failed loading metadata for query", e));

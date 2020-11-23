@@ -1,15 +1,18 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
   (:require [clojure.core.memoize :as memoize]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.impl :as impl]
             [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import java.io.ByteArrayInputStream
+           [java.security.cert CertificateFactory X509Certificate]
+           java.security.KeyStore
+           javax.net.SocketFactory
+           [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]))
 
 (def ^:private can-connect-timeout-ms
   "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds.
@@ -69,31 +72,6 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              Loading all Drivers                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn find-and-load-all-drivers!
-  "Search classpath for namespaces that start with `metabase.driver.`, then `require` them, which should register them
-  as a side-effect. Note that this will not load drivers added by 3rd-party plugins; they must register themselves
-  appropriately when initialized by `load-plugins!`.
-
-  This really only needs to be done by the public settings API endpoint to populate the list of available drivers.
-  Please avoid using this function elsewhere, as loading all of these namespaces can be quite expensive!"
-  []
-  (doseq [ns-symb @u/metabase-namespace-symbols
-          :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))
-          :let    [driver (keyword (-> (last (str/split (name ns-symb) #"\."))
-                                       (str/replace #"_" "-")))]
-          ;; let's go ahead and ignore namespaces we know for a fact do not contain drivers
-          :when   (not (#{:common :util :query-processor :google :impl}
-                        driver))]
-    (try
-      (impl/load-driver-namespace-if-needed! driver)
-      (catch Throwable e
-        (log/error e (trs "Error loading namespace"))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Available Drivers Info                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -124,3 +102,44 @@
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
              [driver {:details-fields props
                       :driver-name    (driver/display-name driver)}])))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             TLS Helpers                                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- dn-for-cert
+  [^X509Certificate cert]
+  (.. cert getSubjectX500Principal getName))
+
+(defn generate-keystore-with-cert
+  "Generates a `KeyStore` with custom certificates added"
+  ^KeyStore [cert-string]
+  (let [cert-factory (CertificateFactory/getInstance "X.509")
+        cert-stream (ByteArrayInputStream. (.getBytes ^String cert-string "UTF-8"))
+        certs (.generateCertificates cert-factory cert-stream)
+        keystore (doto (KeyStore/getInstance (KeyStore/getDefaultType))
+                   (.load nil nil))
+        ;; this TrustManagerFactory is used for cloning the default certs into the new TrustManagerFactory
+        base-trust-manager-factory (doto (TrustManagerFactory/getInstance (TrustManagerFactory/getDefaultAlgorithm))
+                                     (.init ^KeyStore (cast KeyStore nil)))]
+    (doseq [cert certs]
+      (.setCertificateEntry keystore (dn-for-cert cert) cert))
+
+    (doseq [^X509TrustManager trust-mgr (.getTrustManagers base-trust-manager-factory)]
+      (when (instance? X509TrustManager trust-mgr)
+        (doseq [issuer (.getAcceptedIssuers trust-mgr)]
+          (.setCertificateEntry keystore (dn-for-cert issuer) issuer))))
+
+    keystore))
+
+(defn socket-factory-for-cert
+  "Generates an `SocketFactory` with the custom certificates added"
+  ^SocketFactory [cert-string]
+  (let [keystore (generate-keystore-with-cert cert-string)
+        ;; this is the final TrustManagerFactory used to initialize the SSLContext
+        trust-manager-factory (TrustManagerFactory/getInstance (TrustManagerFactory/getDefaultAlgorithm))
+        ssl-context (SSLContext/getInstance "TLS")]
+    (.init trust-manager-factory keystore)
+    (.init ssl-context nil (.getTrustManagers trust-manager-factory) nil)
+
+    (.getSocketFactory ssl-context)))

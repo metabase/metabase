@@ -3,7 +3,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [trs]]
+             [i18n :refer [trs tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -22,11 +22,11 @@
   (int 100))
 
 (def ^:private ^Integer entry-max-length
-  "The maximum character length for a stored `FieldValues` entry."
+  "The maximum character length for a stored FieldValues entry."
   (int 100))
 
 (def ^:private ^Integer total-max-length
-  "Maximum total length for a `FieldValues` entry (combined length of all values for the field)."
+  "Maximum total length for a FieldValues entry (combined length of all values for the field)."
   (int (* auto-list-cardinality-threshold entry-max-length)))
 
 
@@ -34,19 +34,56 @@
 
 (models/defmodel FieldValues :metabase_fieldvalues)
 
+(defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
+  (when (s/check (s/maybe [(s/maybe su/NonBlankString)]) human-readable-values)
+    (throw (ex-info (tru "Invalid human-readable-values: values must be a sequence; each item must be nil or a string")
+                    {:human-readable-values human-readable-values
+                     :status-code           400}))))
+
+(defn- pre-insert [field-values]
+  (u/prog1 field-values
+    (assert-valid-human-readable-values field-values)))
+
+(defn- pre-update [field-values]
+  (u/prog1 field-values
+    (assert-valid-human-readable-values field-values)))
+
+(defn- post-select [field-values]
+  (cond-> field-values
+    (contains? field-values :human_readable_values)
+    (update :human_readable_values (fn [human-readable-values]
+                                     (cond
+                                       (sequential? human-readable-values)
+                                       human-readable-values
+
+                                       ;; in some places human readable values were incorrectly saved as a map. If
+                                       ;; that's the case, convert them back to a sequence
+                                       (map? human-readable-values)
+                                       (do
+                                         (assert (:values field-values)
+                                                 (tru ":values must be present to fetch :human_readable_values"))
+                                         (mapv human-readable-values (:values field-values)))
+
+                                       ;; if the `:human_readable_values` key is present (i.e., if we are fetching the
+                                       ;; whole row), but `nil`, then replace the `nil` value with an empty vector. The
+                                       ;; client likes this better.
+                                       :else
+                                       [])))))
+
 (u/strict-extend (class FieldValues)
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true})
-          :types       (constantly {:human_readable_values :json, :values :json})
-          :post-select (u/rpartial update :human_readable_values #(or % {}))}))
+          :types       (constantly {:human_readable_values :json-no-keywordization, :values :json})
+          :pre-insert  pre-insert
+          :pre-update  pre-update
+          :post-select post-select}))
 
 
-;; ## `FieldValues` Helper Functions
+;; ## FieldValues Helper Functions
 
 (s/defn field-should-have-field-values? :- s/Bool
-  "Should this `field` be backed by a corresponding `FieldValues` object?"
-  {:arglists '([field])}
+  "Should this `field` be backed by a corresponding FieldValues object?" {:arglists '([field])}
   [{base-type :base_type, visibility-type :visibility_type, has-field-values :has_field_values, :as field}
    :- {:visibility_type  su/KeywordOrString
        :base_type        (s/maybe su/KeywordOrString)
@@ -62,28 +99,40 @@
   "`true` if the combined length of all the values in `distinct-values` is below the threshold for what we'll allow in a
   FieldValues entry. Does some logging as well."
   [distinct-values]
-  (let [total-length (reduce + (map (comp count str)
-                                    distinct-values))]
+  ;; only consume enough values to determine whether the total length is > `total-max-length` -- if it is, we can stop
+  (let [total-length (reduce
+                      (fn [total-length v]
+                        (let [new-total (+ total-length (count (str v)))]
+                          (if (>= new-total total-max-length)
+                            (reduced new-total)
+                            new-total)))
+                      0
+                      distinct-values)]
     (u/prog1 (<= total-length total-max-length)
-      (log/debug (trs "Field values total length is {0} (max {1})." total-length total-max-length)
+      (log/debug (trs "Field values total length is > {0}." total-max-length)
                  (if <>
                    (trs "FieldValues are allowed for this Field.")
                    (trs "FieldValues are NOT allowed for this Field."))))))
 
-
-(defn- distinct-values
+(defn distinct-values
   "Fetch a sequence of distinct values for `field` that are below the `total-max-length` threshold. If the values are
-  past the threshold, this returns `nil`."
+  past the threshold, this returns `nil`. (This function provides the values that normally get saved as a Field's
+  FieldValues. You most likely should not be using this directly in code outside of this namespace, unless it's for a
+  very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
   [field]
   (classloader/require 'metabase.db.metadata-queries)
-  (let [values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)]
-    (when (values-less-than-total-max-length? values)
-      values)))
+  (try
+    (let [values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)]
+      (when (values-less-than-total-max-length? values)
+        values))
+    (catch Throwable e
+      (log/error e (trs "Error fetching field values"))
+      nil)))
 
 (defn- fixup-human-readable-values
   "Field values and human readable values are lists that are zipped together. If the field values have changes, the
   human readable values will need to change too. This function reconstructs the `human_readable_values` to reflect
-  `NEW-VALUES`. If a new field value is found, a string version of that is used"
+  `new-values`. If a new field value is found, a string version of that is used"
   [{old-values :values, old-hrv :human_readable_values} new-values]
   (when (seq old-hrv)
     (let [orig-remappings (zipmap old-values old-hrv)]
@@ -144,28 +193,27 @@
         (db/delete! FieldValues :field_id (u/get-id field))
         ::fv-deleted))))
 
-
 (defn field-values->pairs
   "Returns a list of pairs (or single element vectors if there are no human_readable_values) for the given
-  `FIELD-VALUES` instance."
+  `field-values` instance."
   [{:keys [values human_readable_values] :as field-values}]
   (if (seq human_readable_values)
     (map vector values human_readable_values)
     (map vector values)))
 
 (defn create-field-values-if-needed!
-  "Create `FieldValues` for a `Field` if they *should* exist but don't already exist.
-   Returns the existing or newly created `FieldValues` for `Field`."
+  "Create FieldValues for a `Field` if they *should* exist but don't already exist.
+   Returns the existing or newly created FieldValues for `Field`."
   {:arglists '([field] [field human-readable-values])}
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
     (or (FieldValues :field_id field-id)
-        (when (contains? #{::fv-created ::fv-updated} (create-or-update-field-values! field human-readable-values))
+        (when (#{::fv-created ::fv-updated} (create-or-update-field-values! field human-readable-values))
           (FieldValues :field_id field-id)))))
 
 (defn save-field-values!
-  "Save the `FieldValues` for FIELD-ID, creating them if needed, otherwise updating them."
+  "Save the FieldValues for `field-id`, creating them if needed, otherwise updating them."
   [field-id values]
   {:pre [(integer? field-id) (coll? values)]}
   (if-let [field-values (FieldValues :field_id field-id)]
@@ -173,13 +221,12 @@
     (db/insert! FieldValues :field_id field-id, :values values)))
 
 (defn clear-field-values!
-  "Remove the `FieldValues` for FIELD-OR-ID."
+  "Remove the FieldValues for `field-or-id`."
   [field-or-id]
   (db/delete! FieldValues :field_id (u/get-id field-or-id)))
 
-
 (defn- table-ids->table-id->is-on-demand?
-  "Given a collection of TABLE-IDS return a map of Table ID to whether or not its Database is subject to 'On Demand'
+  "Given a collection of `table-ids` return a map of Table ID to whether or not its Database is subject to 'On Demand'
   FieldValues updating. This means the FieldValues for any Fields belonging to the Database should be updated only
   when they are used in new Dashboard or Card parameters."
   [table-ids]
@@ -193,7 +240,7 @@
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
 
 (defn update-field-values-for-on-demand-dbs!
-  "Update the FieldValues for any Fields with FIELD-IDS if the Field should have FieldValues and it belongs to a
+  "Update the FieldValues for any Fields with `field-ids` if the Field should have FieldValues and it belongs to a
   Database that is set to do 'On-Demand' syncing."
   [field-ids]
   (let [fields (when (seq field-ids)

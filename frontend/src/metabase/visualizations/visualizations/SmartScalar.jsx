@@ -39,13 +39,19 @@ export default class Smart extends React.Component {
         ],
         settings,
       ) => [
-        _.find(cols, col => col.name === settings["scalar.field"]) || cols[1],
+        // try and find a selected field setting
+        cols.find(col => col.name === settings["scalar.field"]) ||
+          // fall back to the second column
+          cols[1] ||
+          // but if there's only one column use that
+          cols[0],
       ],
     }),
     "scalar.switch_positive_negative": {
       title: t`Switch positive / negative colors?`,
       widget: "toggle",
     },
+    click_behavior: {},
   };
 
   static isSensible({ insights }) {
@@ -145,6 +151,11 @@ export default class Smart extends React.Component {
           column: cols[dimensionIndex],
         },
       ],
+      data: rows[rows.length - 1].map((value, index) => ({
+        value,
+        col: cols[index],
+      })),
+      settings,
     };
 
     const isClickable = visualizationIsClickable(clicked);
@@ -188,7 +199,11 @@ export default class Smart extends React.Component {
           ) : (
             <Flex align="center" mt={1} flexWrap="wrap">
               <Flex align="center" color={changeColor}>
-                <Icon name={isNegative ? "arrow_down" : "arrow_up"} />
+                <Icon
+                  size={13}
+                  pr={1}
+                  name={isNegative ? "arrow_down" : "arrow_up"}
+                />
                 {changeDisplay}
               </Flex>
               <h4

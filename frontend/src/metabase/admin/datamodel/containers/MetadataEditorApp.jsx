@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 
 import { t } from "ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -13,7 +13,6 @@ import MetadataTable from "../components/database/MetadataTable";
 import MetadataSchema from "../components/database/MetadataSchema";
 import {
   metrics as Metrics,
-  segments as Segments,
   databases as Databases,
   fields as Fields,
 } from "metabase/entities";
@@ -31,14 +30,15 @@ const mapStateToProps = (state, { params }) => {
 };
 
 const mapDispatchToProps = {
-  selectDatabase: ({ id }) => push("/admin/datamodel/database/" + id),
+  selectDatabase: ({ id }, shouldReplace) =>
+    shouldReplace
+      ? replace(`/admin/datamodel/database/${id}`)
+      : push(`/admin/datamodel/database/${id}`),
   selectTable: ({ id, db_id }) =>
     push(`/admin/datamodel/database/${db_id}/table/${id}`),
   updateField: field => Fields.actions.update(field),
   onRetireMetric: ({ id, ...rest }) =>
     Metrics.actions.setArchived({ id }, true, rest),
-  onRetireSegment: ({ id, ...rest }) =>
-    Segments.actions.setArchived({ id }, true, rest),
 };
 
 @connect(
@@ -63,7 +63,6 @@ export default class MetadataEditor extends Component {
     idfields: PropTypes.array,
     updateField: PropTypes.func.isRequired,
     onRetireMetric: PropTypes.func.isRequired,
-    onRetireSegment: PropTypes.func.isRequired,
   };
 
   toggleShowSchema() {
@@ -78,7 +77,7 @@ export default class MetadataEditor extends Component {
   render() {
     const { databaseId, tableId } = this.props;
     return (
-      <div className="p3">
+      <div className="p4">
         <MetadataHeader
           ref="header"
           databaseId={databaseId}
@@ -107,7 +106,6 @@ export default class MetadataEditor extends Component {
                 idfields={this.props.idfields}
                 updateField={this.props.updateField}
                 onRetireMetric={this.props.onRetireMetric}
-                onRetireSegment={this.props.onRetireSegment}
               />
             )
           ) : (

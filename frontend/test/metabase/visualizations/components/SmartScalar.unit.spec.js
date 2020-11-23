@@ -1,9 +1,10 @@
 import React from "react";
-import { render, cleanup } from "@testing-library/react";
+import { render } from "@testing-library/react";
 
 import { NumberColumn, DateTimeColumn } from "../__support__/visualizations";
 
 import Visualization from "metabase/visualizations/components/Visualization";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 const series = ({ rows, insights }) => {
   const cols = [
@@ -14,8 +15,6 @@ const series = ({ rows, insights }) => {
 };
 
 describe("SmartScalar", () => {
-  afterEach(cleanup);
-
   it("should show 20% increase", () => {
     const rows = [["2019-10-01T00:00:00", 100], [("2019-11-01T00:00:00", 120)]];
     const insights = [
@@ -92,5 +91,11 @@ describe("SmartScalar", () => {
       <Visualization rawSeries={series({ rows, insights })} />,
     );
     getAllByText("8,000%");
+  });
+
+  it("shouldn't throw an error getting settings for single-column data", () => {
+    const card = { display: "smartscalar", visualization_settings: {} };
+    const data = { cols: [NumberColumn({ name: "Count" })], rows: [[100]] };
+    expect(() => getSettingsWidgetsForSeries([{ card, data }])).not.toThrow();
   });
 });

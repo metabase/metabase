@@ -38,7 +38,7 @@
   (when (seq text)
     (second (re-matches #"^mea?ta?boa?t\s*(.*)$" text)))) ; handle typos like metaboat or meatbot
 
-(defn- respond-to-message! [message response]
+(defn- respond-to-message! [response]
   (when response
     (let [response (if (coll? response) (str "```\n" (u/pprint-to-str response) "```")
                        (str response))]
@@ -46,7 +46,7 @@
         (metabot.slack/post-chat-message! response)))))
 
 (defn- handle-slack-message [message]
-  (respond-to-message! message (eval-command-str (message->command-str message))))
+  (respond-to-message! (eval-command-str (message->command-str message))))
 
 (defn- human-message?
   "Was this Slack WebSocket event one about a *human* sending a message?"

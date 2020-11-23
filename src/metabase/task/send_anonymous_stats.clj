@@ -25,7 +25,8 @@
 (def ^:private job-key     "metabase.task.anonymous-stats.job")
 (def ^:private trigger-key "metabase.task.anonymous-stats.trigger")
 
-(defmethod task/init! ::SendAnonymousUsageStats [_]
+(defmethod task/init! ::SendAnonymousUsageStats
+  [_]
   (let [job     (jobs/build
                  (jobs/of-type SendAnonymousUsageStats)
                  (jobs/with-identity (jobs/key job-key)))

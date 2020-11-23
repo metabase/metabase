@@ -1,5 +1,6 @@
 (ns metabase.driver.presto-test
   (:require [clj-http.client :as http]
+            [clojure.core.async :as a]
             [clojure.test :refer :all]
             [expectations :refer [expect]]
             [java-time :as t]
@@ -15,10 +16,13 @@
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]))
 
-(use-fixtures :once (mt/initialize-if-needed! :db))
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest details->uri-test
   (is (= "http://localhost:8080/"
@@ -53,19 +57,22 @@
 (deftest parse-results-test
   (driver/with-driver :presto
     (mt/with-everything-store
-      (is (= [["2017-04-03"
-               (t/zoned-date-time "2017-04-03T10:19:17.417-04:00[America/Toronto]")
-               (t/zoned-date-time "2017-04-03T10:19:17.417Z[UTC]")
-               3.1416M
-               "test"]]
-             (#'presto/parse-presto-results
-              [{:type "date"} {:type "timestamp with time zone"} {:type "timestamp"} {:type "decimal(10,4)"} {:type "varchar(255)"}]
-              [["2017-04-03", "2017-04-03 10:19:17.417 America/Toronto", "2017-04-03 10:19:17.417", "3.1416", "test"]])))
-      (is (=
-           [[0, false, "", nil]]
-           (#'presto/parse-presto-results
-            [{:type "integer"} {:type "boolean"} {:type "varchar(255)"} {:type "date"}]
-            [[0, false, "", nil]]))))))
+      (is (= ["2017-04-03"
+              (t/zoned-date-time "2017-04-03T10:19:17.417-04:00[America/Toronto]")
+              (t/zoned-date-time "2017-04-03T10:19:17.417Z[UTC]")
+              3.1416M
+              "test"]
+             ((#'presto/parse-row-fn
+               [{:type "date"}
+                {:type "timestamp with time zone"}
+                {:type "timestamp"}
+                {:type "decimal(10,4)"}
+                {:type "varchar(255)"}])
+              ["2017-04-03" "2017-04-03 10:19:17.417 America/Toronto" "2017-04-03 10:19:17.417" "3.1416" "test"])))
+      (is (= [0 false "" nil]
+             ((#'presto/parse-row-fn
+               [{:type "integer"} {:type "boolean"} {:type "varchar(255)"} {:type "date"}])
+              [0 false "" nil]))))))
 
 (deftest describe-database-test
   (mt/test-driver :presto
@@ -86,22 +93,28 @@
             :schema "default"
             :fields #{{:name          "name",
                        :database-type "varchar(255)"
-                       :base-type     :type/Text}
+                       :base-type     :type/Text
+                       :database-position 1}
                       {:name          "latitude"
                        :database-type "double"
-                       :base-type     :type/Float}
+                       :base-type     :type/Float
+                       :database-position 3}
                       {:name          "longitude"
                        :database-type "double"
-                       :base-type     :type/Float}
+                       :base-type     :type/Float
+                       :database-position 4}
                       {:name          "price"
                        :database-type "integer"
-                       :base-type     :type/Integer}
+                       :base-type     :type/Integer
+                       :database-position 5}
                       {:name          "category_id"
                        :database-type "integer"
-                       :base-type     :type/Integer}
+                       :base-type     :type/Integer
+                       :database-position 2}
                       {:name          "id"
                        :database-type "integer"
-                       :base-type     :type/Integer}}}
+                       :base-type     :type/Integer
+                       :database-position 0}}}
            (driver/describe-table :presto (mt/db) (db/select-one 'Table :id (mt/id :venues)))))))
 
 (deftest table-rows-sample-test
@@ -112,7 +125,8 @@
             ["Wurstküche"]
             ["Brite Spot Family Restaurant"]]
            (take 5 (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                     [(Field (mt/id :venues :name))]))))))
+                     [(Field (mt/id :venues :name))]
+                     (constantly conj)))))))
 
 
 ;;; APPLY-PAGE
@@ -132,43 +146,59 @@
     {:page {:page  2
             :items 5}}))
 
-(expect
-  "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
-  (try
-    (let [details {:ssl            false
-                   :password       "changeme"
-                   :tunnel-host    "localhost"
-                   :tunnel-pass    "BOGUS-BOGUS"
-                   :catalog        "BOGUS"
-                   :host           "localhost"
-                   :port           9999
-                   :tunnel-enabled true
-                   :tunnel-port    22
-                   :tunnel-user    "bogus"}]
-      (tu.log/suppress-output
-        (driver.u/can-connect-with-details? :presto details :throw-exceptions)))
-    (catch Exception e
-      (.getMessage e))))
+(deftest test-connect-via-tunnel
+  (testing "connection fails as expected"
+    (mt/test-driver
+     :presto
+     (is (thrown?
+          java.net.ConnectException
+          (try
+            (let [engine :presto
+                  details {:ssl            false
+                           :password       "changeme"
+                           :tunnel-host    "localhost"
+                           :tunnel-pass    "BOGUS-BOGUS"
+                           :catalog        "BOGUS"
+                           :host           "localhost"
+                           :port           9999
+                           :tunnel-enabled true
+                           ;; we want to use a bogus port here on purpose -
+                           ;; so that locally, it gets a ConnectionRefused,
+                           ;; and in CI it does too. Apache's SSHD library
+                           ;; doesn't wrap every exception in an SshdException
+                           :tunnel-port    21212
+                           :tunnel-user    "bogus"}]
+              (tu.log/suppress-output
+               (driver.u/can-connect-with-details? engine details :throw-exceptions)))
+            (catch Throwable e
+              (loop [^Throwable e e]
+                (or (when (instance? java.net.ConnectException e)
+                      (throw e))
+                    (some-> (.getCause e) recur))))))))))
 
 (deftest db-default-timezone-test
   (mt/test-driver :presto
     (is (= "UTC"
-           (metabase.driver/db-default-timezone :presto (mt/db))))))
+           (tu/db-timezone-id)))))
 
-;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
-;; everything works correctly together
 (deftest query-cancelation-test
   (mt/test-driver :presto
-    (let [called-cancel-promise (atom nil)]
-      (with-redefs [http/delete (fn [& _]
-                                  (deliver @called-cancel-promise true))]
-        (is (= ::mt/success
-               (mt/call-with-paused-query
-                (fn [query-thunk called-query? called-cancel? pause-query]
-                  (reset! called-cancel-promise called-cancel?)
-                  (future
-                    (with-redefs [presto/fetch-presto-results! (fn [_ _ _] (deliver called-query? true) @pause-query)]
-                      (query-thunk)))))))))))
+    (let [query (mt/mbql-query venues)]
+      (mt/with-open-channels [running-chan (a/promise-chan)
+                              cancel-chan  (a/promise-chan)]
+        (with-redefs [http/delete            (fn [& _]
+                                               (a/>!! cancel-chan ::cancel))
+                      presto/fetch-next-page (fn [& _]
+                                               (a/>!! running-chan ::running)
+                                               (Thread/sleep 5000)
+                                               (throw (Exception. "Don't actually run!")))]
+          (let [out-chan (qp/process-query-async query)]
+            ;; wait for query to start running, then close `out-chan`
+            (a/go
+              (a/<! running-chan)
+              (a/close! out-chan)))
+          (is (= ::cancel
+                 (mt/wait-for-result cancel-chan 2000))))))))
 
 (deftest template-tag-timezone-test
   (mt/test-driver :presto
@@ -184,3 +214,29 @@
                     :parameters [{:type   "date/single"
                                   :target ["variable" ["template-tag" "date"]]
                                   :value  "2014-08-02"}]}))))))))
+
+(deftest splice-strings-test
+  (mt/test-driver :presto
+    (let [query (mt/mbql-query venues
+                  {:aggregation [[:count]]
+                   :filter      [:= $name "wow"]})]
+      (testing "The native query returned in query results should use user-friendly splicing"
+        (is (= (str "SELECT count(*) AS \"count\" "
+                    "FROM \"default\".\"test_data_venues\" "
+                    "WHERE \"default\".\"test_data_venues\".\"name\" = 'wow'")
+               (:query (qp/query->native-with-spliced-params query))
+               (-> (qp/process-query query) :data :native_form :query))))
+
+      (testing "When actually running the query we should use paranoid splicing and hex-encode strings"
+        (let [orig    @#'presto/execute-presto-query
+              the-sql (atom nil)]
+          (with-redefs [presto/execute-presto-query (fn [details sql canceled-chan respond]
+                                                      (reset! the-sql sql)
+                                                      (with-redefs [presto/execute-presto-query orig]
+                                                        (orig details sql canceled-chan respond)))]
+            (qp/process-query query)
+            (is (= (str "-- Metabase\n"
+                        "SELECT count(*) AS \"count\" "
+                        "FROM \"default\".\"test_data_venues\" "
+                        "WHERE \"default\".\"test_data_venues\".\"name\" = from_utf8(from_hex('776f77'))")
+                   @the-sql))))))))

@@ -8,9 +8,12 @@ import { t, ngettext, msgid } from "ttag";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Popover from "metabase/components/Popover";
 import Button from "metabase/components/Button";
-import RemappedValue from "metabase/containers/RemappedValue";
+import Value from "metabase/components/Value";
 
 import Field from "metabase-lib/lib/metadata/Field";
+
+import type { Parameter } from "metabase-types/types/Parameter";
+import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 
 type Props = {
   value: any,
@@ -18,8 +21,12 @@ type Props = {
 
   isEditing: boolean,
 
-  field: Field,
+  fields: Field[],
   parentFocusChanged: boolean => void,
+
+  dashboard?: DashboardWithCards,
+  parameter?: Parameter,
+  parameters?: Parameter[],
 };
 
 type State = {
@@ -51,13 +58,21 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
 
   static noPopover = true;
 
-  static format(value, field) {
+  static format(value, fields) {
     value = normalizeValue(value);
     if (value.length > 1) {
       const n = value.length;
       return ngettext(msgid`${n} selection`, `${n} selections`, n);
     } else {
-      return <RemappedValue value={value[0]} column={field} />;
+      return (
+        <Value
+          // If there are multiple fields, turn off remapping since they might
+          // be remapped to different fields.
+          remap={fields.length === 1}
+          value={value[0]}
+          column={fields[0]}
+        />
+      );
     }
   }
 
@@ -78,7 +93,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
   }
 
   render() {
-    const { setValue, isEditing, field, parentFocusChanged } = this.props;
+    const { setValue, isEditing, fields, parentFocusChanged } = this.props;
     const { isFocused } = this.state;
 
     const savedValue = normalizeValue(this.props.value);
@@ -107,7 +122,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
           onClick={() => focusChanged(true)}
         >
           {savedValue.length > 0 ? (
-            ParameterFieldWidget.format(savedValue, field)
+            ParameterFieldWidget.format(savedValue, fields)
           ) : (
             <span>{placeholder}</span>
           )}
@@ -127,12 +142,14 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
         >
           <FieldValuesWidget
             value={unsavedValue}
+            parameter={this.props.parameter}
+            parameters={this.props.parameters}
+            dashboard={this.props.dashboard}
             onChange={value => {
               this.setState({ value });
             }}
             placeholder={placeholder}
-            field={field}
-            searchField={field.parameterSearchField()}
+            fields={fields}
             multi
             autoFocus
             color="brand"

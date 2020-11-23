@@ -12,9 +12,10 @@
              [collection :as collection]
              [permissions :as perms]
              [permissions-group :as group]
-             [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]]
+             [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
+             [session :refer [Session]]]
             [metabase.util
-             [i18n :refer [trs]]
+             [i18n :as i18n :refer [deferred-tru trs]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -26,13 +27,14 @@
 
 (models/defmodel User :core_user)
 
-(defn- pre-insert [{:keys [email password reset_token] :as user}]
-  (assert (u/email? email)
-    (format "Not a valid email: '%s'" email))
-  (assert (and (string? password)
-               (not (str/blank? password))))
+(defn- pre-insert [{:keys [email password reset_token locale], :as user}]
+  ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
+  (assert (u/email? email))
+  (assert ((every-pred string? (complement str/blank?)) password))
   (assert (not (:password_salt user))
-    "Don't try to pass an encrypted password to (insert! User). Password encryption is handled by pre-insert.")
+          "Don't try to pass an encrypted password to (insert! User). Password encryption is handled by pre-insert.")
+  (when locale
+    (assert (i18n/available-locale? locale)))
   (let [salt     (str (UUID/randomUUID))
         defaults {:date_joined  :%now
                   :last_login   nil
@@ -40,12 +42,19 @@
                   :is_superuser false}]
     ;; always salt + encrypt the password before putting new User in the DB
     ;; TODO - we should do password encryption in pre-update too instead of in the session code
-    (merge defaults user
-           {:password_salt salt
-            :password      (creds/hash-bcrypt (str salt password))}
-           ;; if there's a reset token encrypt that as well
-           (when reset_token
-             {:reset_token (creds/hash-bcrypt reset_token)}))))
+    (merge
+     defaults
+     user
+     {:password_salt salt
+      :password      (creds/hash-bcrypt (str salt password))}
+     ;; lower-case the email before saving
+     {:email (u/lower-case-en email)}
+     ;; if there's a reset token encrypt that as well
+     (when reset_token
+       {:reset_token (creds/hash-bcrypt reset_token)})
+     ;; normalize the locale
+     (when locale
+       {:locale (i18n/normalized-locale-string locale)}))))
 
 (defn- post-insert [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
@@ -61,7 +70,7 @@
         :user_id  user-id
         :group_id (:id (group/admin))))))
 
-(defn- pre-update [{:keys [email reset_token is_superuser id] :as user}]
+(defn- pre-update [{:keys [email reset_token is_superuser id locale] :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
   (when-not (nil? is_superuser)
     (let [membership-exists? (db/exists? PermissionsGroupMembership
@@ -84,9 +93,13 @@
           :user_id  id))))
   (when email
     (assert (u/email? email)))
+  (when locale
+    (assert (i18n/available-locale? locale)))
   ;; If we're setting the reset_token then encrypt it before it goes into the DB
   (cond-> user
-    reset_token (assoc :reset_token (creds/hash-bcrypt reset_token))))
+    reset_token (update :reset_token creds/hash-bcrypt)
+    locale      (update :locale i18n/normalized-locale-string)
+    email       (update :email u/lower-case-en)))
 
 (defn add-common-name
   "Add a `:common_name` key to `user` by combining their first and last names."
@@ -97,28 +110,6 @@
 (defn- post-select [user]
   (add-common-name user))
 
-;; `pre-delete` is more for the benefit of tests than anything else since these days we archive users instead of fully
-;; deleting them. In other words the following code is only ever called by tests
-(defn- pre-delete [{:keys [id]}]
-  (binding [perm-membership/*allow-changing-all-users-group-members* true
-            collection/*allow-deleting-personal-collections*         true]
-    (doseq [[model k] [['Activity                   :user_id]
-                       ['Card                       :creator_id]
-                       ['Card                       :made_public_by_id]
-                       ['Collection                 :personal_owner_id]
-                       ['Dashboard                  :creator_id]
-                       ['Dashboard                  :made_public_by_id]
-                       ['Metric                     :creator_id]
-                       ['Pulse                      :creator_id]
-                       ['QueryExecution             :executor_id]
-                       ['Revision                   :user_id]
-                       ['Segment                    :creator_id]
-                       ['Session                    :user_id]
-                       [PermissionsGroupMembership :user_id]
-                       ['PermissionsRevision        :user_id]
-                       ['ViewLog                    :user_id]]]
-      (db/delete! model k id))))
-
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
   [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
@@ -126,7 +117,7 @@
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
   fetching themselves. Needed to power the admin page."
-  (vec (concat default-user-columns [:google_auth :ldap_auth :is_active :updated_at :login_attributes])))
+  (into default-user-columns [:google_auth :ldap_auth :is_active :updated_at :login_attributes :locale]))
 
 (def non-admin-or-self-visible-columns
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
@@ -144,7 +135,6 @@
           :post-insert    post-insert
           :pre-update     pre-update
           :post-select    post-select
-          :pre-delete     pre-delete
           :types          (constantly {:login_attributes :json-no-keywordization})}))
 
 (defn group-ids
@@ -176,7 +166,9 @@
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
-  {su/KeywordOrString s/Any})
+  (su/with-api-error-message
+      {su/KeywordOrString s/Any}
+    (deferred-tru "login attribute keys must be a keyword or string")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
@@ -229,6 +221,8 @@
   [user-id password]
   (let [salt     (str (UUID/randomUUID))
         password (creds/hash-bcrypt (str salt password))]
+    ;; when changing/resetting the password, kill any existing sessions
+    (db/simple-delete! Session :user_id user-id)
     ;; NOTE: any password change expires the password reset token
     (db/update! User user-id
       :password_salt   salt
@@ -274,7 +268,7 @@
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (defn permissions-set
-  "Return a set of all permissions object paths that USER-OR-ID has been granted access to. (2 DB Calls)"
+  "Return a set of all permissions object paths that `user-or-id` has been granted access to. (2 DB Calls)"
   [user-or-id]
   (set (when-let [user-id (u/get-id user-or-id)]
          (concat

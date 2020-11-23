@@ -12,9 +12,13 @@ import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
 import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import EmbedFrame from "../components/EmbedFrame";
+import title from "metabase/hoc/Title";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
+import { getMetadata } from "metabase/selectors/metadata";
+
+import PublicMode from "metabase/modes/components/modes/PublicMode";
 
 import {
   getDashboardComplete,
@@ -31,13 +35,14 @@ import {
   setEmbedDashboardEndpoints,
 } from "metabase/services";
 
-import type { Dashboard } from "metabase/meta/types/Dashboard";
-import type { Parameter } from "metabase/meta/types/Parameter";
+import type { Dashboard } from "metabase-types/types/Dashboard";
+import type { Parameter } from "metabase-types/types/Parameter";
 
 import _ from "underscore";
 
 const mapStateToProps = (state, props) => {
   return {
+    metadata: getMetadata(state, props),
     dashboardId:
       props.params.dashboardId || props.params.uuid || props.params.token,
     dashboard: getDashboardComplete(state, props),
@@ -84,6 +89,7 @@ type Props = {
   mapStateToProps,
   mapDispatchToProps,
 )
+@title(({ dashboard }) => dashboard && dashboard.name)
 @DashboardControls
 // NOTE: this should use DashboardData HoC
 export default class PublicDashboard extends Component {
@@ -101,9 +107,9 @@ export default class PublicDashboard extends Component {
     } = this.props;
 
     if (uuid) {
-      setPublicDashboardEndpoints(uuid);
+      setPublicDashboardEndpoints();
     } else if (token) {
-      setEmbedDashboardEndpoints(token);
+      setEmbedDashboardEndpoints();
     }
 
     initialize();
@@ -141,6 +147,7 @@ export default class PublicDashboard extends Component {
       <EmbedFrame
         name={dashboard && dashboard.name}
         description={dashboard && dashboard.description}
+        dashboard={dashboard}
         parameters={parameters}
         parameterValues={parameterValues}
         setParameterValue={this.props.setParameterValue}
@@ -167,8 +174,10 @@ export default class PublicDashboard extends Component {
             <DashboardGrid
               {...this.props}
               className={"spread"}
-              // Don't allow clicking titles on public dashboards
-              navigateToNewCardFromDashboard={null}
+              mode={PublicMode}
+              // $FlowFixMe: metadata provided by @connect
+              metadata={this.props.metadata}
+              navigateToNewCardFromDashboard={() => {}}
             />
           )}
         </LoadingAndErrorWrapper>

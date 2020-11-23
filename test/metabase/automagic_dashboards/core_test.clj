@@ -1,25 +1,24 @@
 (ns metabase.automagic-dashboards.core-test
   (:require [clojure.core.async :as a]
             [clojure.test :refer :all]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [java-time :as t]
+            [metabase
+             [models :refer [Card Collection Database Field Metric Table]]
+             [test :as mt]]
+            [metabase.api.common :as api]
             [metabase.automagic-dashboards
              [core :as magic :refer :all]
              [rules :as rules]]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
-             [card :refer [Card]]
-             [collection :refer [Collection]]
-             [database :refer [Database]]
-             [field :as field :refer [Field]]
-             [metric :refer [Metric]]
+             [field :as field]
              [permissions :as perms]
              [permissions-group :as perms-group]
-             [query :as query]
-             [table :as table :refer [Table]]]
+             [query :as query]]
             [metabase.query-processor.async :as qp.async]
             [metabase.test
              [automagic-dashboards :refer :all]
-             [data :as data]
              [util :as tu]]
             [metabase.util
              [date-2 :as u.date]
@@ -49,7 +48,7 @@
 
 (expect
   [:entity/UserTable :entity/GenericTable :entity/*]
-  (->> (data/id :users)
+  (->> (mt/id :users)
        Table
        (#'magic/->root)
        (#'magic/matching-rules (rules/get-rules ["table"]))
@@ -58,7 +57,7 @@
 ;; Test fallback to GenericTable
 (expect
   [:entity/GenericTable :entity/*]
-  (->> (-> (data/id :users)
+  (->> (-> (mt/id :users)
            Table
            (assoc :entity_type nil)
            (#'magic/->root))
@@ -77,45 +76,53 @@
         (valid-dashboard? (automagic-analysis entity {:cell-query cell-query :show 1})))))
 
 (expect
-  (with-rasta
+  (mt/with-test-user :rasta
     (with-dashboard-cleanup
-      (->> (db/select Table :db_id (data/id))
+      (->> (db/select Table :db_id (mt/id))
            (every? test-automagic-analysis)))))
 
 (expect
-  (with-rasta
+  (mt/with-test-user :rasta
     (with-dashboard-cleanup
-      (->> (automagic-analysis (Table (data/id :venues)) {:show 1})
+      (->> (automagic-analysis (Table (mt/id :venues)) {:show 1})
            :ordered_cards
            (filter :card)
            count
            (= 1)))))
 
+(deftest wierd-characters-in-names-test
+  (mt/with-log-level :info
+    (mt/with-test-user :rasta
+      (with-dashboard-cleanup
+        (-> (Table (mt/id :venues))
+            (assoc :display_name "%Venues")
+            test-automagic-analysis)))))
+
 (expect
-  (with-rasta
+  (mt/with-test-user :rasta
     (with-dashboard-cleanup
       (->> (db/select Field
-             :table_id [:in (db/select-field :id Table :db_id (data/id))]
+             :table_id [:in (db/select-field :id Table :db_id (mt/id))]
              :visibility_type "normal")
            (every? test-automagic-analysis)))))
 
 (expect
-  (tt/with-temp* [Metric [metric {:table_id (data/id :venues)
+  (tt/with-temp* [Metric [metric {:table_id (mt/id :venues)
                                   :definition {:aggregation [[:count]]}}]]
-    (with-rasta
+    (mt/with-test-user :rasta
       (with-dashboard-cleanup
         (test-automagic-analysis metric)))))
 
 (expect
   (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (data/id :venues)
+                    Card [{card-id :id} {:table_id      (mt/id :venues)
                                          :collection_id collection-id
-                                         :dataset_query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
-                                                                 :source-table (data/id :venues)}
+                                         :dataset_query {:query {:filter [:> [:field-id (mt/id :venues :price)] 10]
+                                                                 :source-table (mt/id :venues)}
                                                          :type :query
-                                                         :database (data/id)}}]]
-      (with-rasta
+                                                         :database (mt/id)}}]]
+      (mt/with-test-user :rasta
         (with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id Card test-automagic-analysis))))))
@@ -123,14 +130,14 @@
 (expect
   (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (data/id :venues)
+                    Card [{card-id :id} {:table_id      (mt/id :venues)
                                          :collection_id collection-id
                                          :dataset_query {:query {:aggregation [[:count]]
-                                                                 :breakout [[:field-id (data/id :venues :category_id)]]
-                                                                 :source-table (data/id :venues)}
+                                                                 :breakout [[:field-id (mt/id :venues :category_id)]]
+                                                                 :source-table (mt/id :venues)}
                                                          :type :query
-                                                         :database (data/id)}}]]
-      (with-rasta
+                                                         :database (mt/id)}}]]
+      (mt/with-test-user :rasta
         (with-dashboard-cleanup
           (-> card-id Card test-automagic-analysis))))))
 
@@ -141,8 +148,8 @@
                                          :collection_id collection-id
                                          :dataset_query {:native {:query "select * from users"}
                                                          :type :native
-                                                         :database (data/id)}}]]
-      (with-rasta
+                                                         :database (mt/id)}}]]
+      (mt/with-test-user :rasta
         (with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id Card test-automagic-analysis))))))
@@ -155,21 +162,21 @@
 
 (expect
   (tu/with-non-admin-groups-no-root-collection-perms
-    (let [source-query {:query    {:source-table (data/id :venues)}
+    (let [source-query {:query    {:source-table (mt/id :venues)}
                         :type     :query
-                        :database (data/id)}]
+                        :database (mt/id)}]
       (tt/with-temp* [Collection [{collection-id :id}]
-                      Card [{source-id :id} {:table_id      (data/id :venues)
+                      Card [{source-id :id} {:table_id      (mt/id :venues)
                                              :collection_id   collection-id
                                              :dataset_query   source-query
-                                             :result_metadata (with-rasta (result-metadata-for-query source-query))}]
-                      Card [{card-id :id} {:table_id      (data/id :venues)
+                                             :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}]
+                      Card [{card-id :id} {:table_id      (mt/id :venues)
                                            :collection_id collection-id
                                            :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]
                                                                       :source-table (str "card__" source-id)}
                                                            :type     :query
-                                                           :database -1337}}]]
-        (with-rasta
+                                                           :database mbql.s/saved-questions-virtual-database-id}}]]
+        (mt/with-test-user :rasta
           (with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (-> card-id Card test-automagic-analysis)))))))
@@ -177,13 +184,13 @@
 (expect
   (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (data/id :venues)
+                    Card [{card-id :id} {:table_id      (mt/id :venues)
                                          :collection_id collection-id
-                                         :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
-                                                                    :source-table (data/id :venues)}
+                                         :dataset_query {:query    {:filter       [:> [:field-id (mt/id :venues :price)] 10]
+                                                                    :source-table (mt/id :venues)}
                                                          :type     :query
-                                                         :database (data/id)}}]]
-      (with-rasta
+                                                         :database (mt/id)}}]]
+      (mt/with-test-user :rasta
         (with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id Card test-automagic-analysis))))))
@@ -192,19 +199,19 @@
   (tu/with-non-admin-groups-no-root-collection-perms
     (let [source-query {:native   {:query "select * from venues"}
                         :type     :native
-                        :database (data/id)}]
+                        :database (mt/id)}]
       (tt/with-temp* [Collection [{collection-id :id}]
                       Card [{source-id :id} {:table_id        nil
                                              :collection_id   collection-id
                                              :dataset_query   source-query
-                                             :result_metadata (with-rasta (result-metadata-for-query source-query))}]
+                                             :result_metadata (mt/with-test-user :rasta (result-metadata-for-query source-query))}]
                       Card [{card-id :id} {:table_id      nil
                                            :collection_id collection-id
                                            :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]
                                                                       :source-table (str "card__" source-id)}
                                                            :type     :query
-                                                           :database -1337}}]]
-        (with-rasta
+                                                           :database mbql.s/saved-questions-virtual-database-id}}]]
+        (mt/with-test-user :rasta
           (with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (-> card-id Card test-automagic-analysis)))))))
@@ -212,14 +219,14 @@
 (expect
   (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (data/id :venues)
+                    Card [{card-id :id} {:table_id      (mt/id :venues)
                                          :collection_id collection-id
                                          :dataset_query {:query    {:aggregation  [[:count]]
-                                                                    :breakout     [[:field-id (data/id :venues :category_id)]]
-                                                                    :source-table (data/id :venues)}
+                                                                    :breakout     [[:field-id (mt/id :venues :category_id)]]
+                                                                    :source-table (mt/id :venues)}
                                                          :type     :query
-                                                         :database (data/id)}}]]
-      (with-rasta
+                                                         :database (mt/id)}}]]
+      (mt/with-test-user :rasta
         (with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id Card test-automagic-analysis))))))
@@ -231,8 +238,8 @@
                                          :collection_id collection-id
                                          :dataset_query {:native   {:query "select * from users"}
                                                          :type     :native
-                                                         :database (data/id)}}]]
-      (with-rasta
+                                                         :database (mt/id)}}]]
+      (mt/with-test-user :rasta
         (with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id Card test-automagic-analysis))))))
@@ -244,8 +251,8 @@
                                          :collection_id collection-id
                                          :dataset_query {:native   {:query "select * from users"}
                                                          :type     :native
-                                                         :database (data/id)}}]]
-      (with-rasta
+                                                         :database (mt/id)}}]]
+      (mt/with-test-user :rasta
         (with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id Card test-automagic-analysis))))))
@@ -253,82 +260,82 @@
 (expect
   (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (data/id :venues)
+                    Card [{card-id :id} {:table_id      (mt/id :venues)
                                          :collection_id collection-id
-                                         :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
-                                                                    :source-table (data/id :venues)}
+                                         :dataset_query {:query    {:filter       [:> [:field-id (mt/id :venues :price)] 10]
+                                                                    :source-table (mt/id :venues)}
                                                          :type     :query
-                                                         :database (data/id)}}]]
-      (with-rasta
+                                                         :database (mt/id)}}]]
+      (mt/with-test-user :rasta
         (with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id
               Card
-              (test-automagic-analysis [:= [:field-id (data/id :venues :category_id)] 2])))))))
+              (test-automagic-analysis [:= [:field-id (mt/id :venues :category_id)] 2])))))))
 
 
 (expect
   (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (data/id :venues)
+                    Card [{card-id :id} {:table_id      (mt/id :venues)
                                          :collection_id collection-id
-                                         :dataset_query {:query    {:filter       [:> [:field-id (data/id :venues :price)] 10]
-                                                                    :source-table (data/id :venues)}
+                                         :dataset_query {:query    {:filter       [:> [:field-id (mt/id :venues :price)] 10]
+                                                                    :source-table (mt/id :venues)}
                                                          :type     :query
-                                                         :database (data/id)}}]]
-      (with-rasta
+                                                         :database (mt/id)}}]]
+      (mt/with-test-user :rasta
         (with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id
               Card
-              (test-automagic-analysis [:= [:field-id (data/id :venues :category_id)] 2])))))))
+              (test-automagic-analysis [:= [:field-id (mt/id :venues :category_id)] 2])))))))
 
 
 (expect
-  (with-rasta
+  (mt/with-test-user :rasta
     (with-dashboard-cleanup
-      (let [q (query/adhoc-query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
-                                          :source-table (data/id :venues)}
+      (let [q (query/adhoc-query {:query {:filter [:> [:field-id (mt/id :venues :price)] 10]
+                                          :source-table (mt/id :venues)}
                                   :type :query
-                                  :database (data/id)})]
+                                  :database (mt/id)})]
         (test-automagic-analysis q)))))
 
 (expect
-  (with-rasta
+  (mt/with-test-user :rasta
     (with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:aggregation [[:count]]
-                                          :breakout [[:field-id (data/id :venues :category_id)]]
-                                          :source-table (data/id :venues)}
+                                          :breakout [[:field-id (mt/id :venues :category_id)]]
+                                          :source-table (mt/id :venues)}
                                   :type :query
-                                  :database (data/id)})]
+                                  :database (mt/id)})]
         (test-automagic-analysis q)))))
 
 (expect
-  (with-rasta
+  (mt/with-test-user :rasta
     (with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:aggregation [[:count]]
-                                          :breakout [[:fk-> (data/id :checkins) (data/id :venues :category_id)]]
-                                          :source-table (data/id :checkins)}
+                                          :breakout [[:fk-> (mt/id :checkins) (mt/id :venues :category_id)]]
+                                          :source-table (mt/id :checkins)}
                                   :type :query
-                                  :database (data/id)})]
+                                  :database (mt/id)})]
         (test-automagic-analysis q)))))
 
 (expect
-  (with-rasta
+  (mt/with-test-user :rasta
     (with-dashboard-cleanup
-      (let [q (query/adhoc-query {:query {:filter [:> [:field-id (data/id :venues :price)] 10]
-                                          :source-table (data/id :venues)}
+      (let [q (query/adhoc-query {:query {:filter [:> [:field-id (mt/id :venues :price)] 10]
+                                          :source-table (mt/id :venues)}
                                   :type :query
-                                  :database (data/id)})]
-        (test-automagic-analysis q [:= [:field-id (data/id :venues :category_id)] 2])))))
+                                  :database (mt/id)})]
+        (test-automagic-analysis q [:= [:field-id (mt/id :venues :category_id)] 2])))))
 
 
 ;;; ------------------- /candidates -------------------
 
 (expect
   4
-  (with-rasta
-    (->> (data/db) candidate-tables first :tables count)))
+  (mt/with-test-user :rasta
+    (->> (mt/db) candidate-tables first :tables count)))
 
 ;; /candidates should work with unanalyzed tables
 (expect
@@ -337,36 +344,46 @@
                   Table    [{table-id :id} {:db_id db-id}]
                   Field    [_ {:table_id table-id}]
                   Field    [_ {:table_id table-id}]]
-    (with-rasta
+    (mt/with-test-user :rasta
       (with-dashboard-cleanup
         (count (candidate-tables (Database db-id)))))))
 
-(expect
-  4
+(deftest call-count-test
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
                   Field    [_ {:table_id table-id}]
                   Field    [_ {:table_id table-id}]]
-    (with-rasta
+    (mt/with-test-user :rasta
+      ;; make sure the current user permissions set is already fetched so it's not included in the DB call count below
+      @api/*current-user-permissions-set*
       (with-dashboard-cleanup
         (let [database (Database db-id)]
           (db/with-call-counting [call-count]
             (candidate-tables database)
-            (call-count)))))))
+            (is (= 4
+                   (call-count)))))))))
+
+(deftest empty-table-test
+  (testing "candidate-tables should work with an empty Table (no Fields)"
+    (mt/with-temp* [Database [db]
+                    Table    [_ {:db_id (:id db)}]]
+      (mt/with-test-user :rasta
+        (is (= []
+               (candidate-tables db)))))))
 
 (expect
-  {:list-like?  true
-   :link-table? false
-   :num-fields 2}
-  (tt/with-temp* [Database [{db-id :id}]
-                  Table    [{table-id :id} {:db_id db-id}]
-                  Field    [_ {:table_id table-id :special_type :type/PK}]
-                  Field    [_ {:table_id table-id}]]
-    (with-rasta
-      (with-dashboard-cleanup
-        (-> (#'magic/enhance-table-stats [(Table table-id)])
-            first
-            :stats)))))
+ {:list-like?  true
+  :link-table? false
+  :num-fields 2}
+ (tt/with-temp* [Database [{db-id :id}]
+                 Table    [{table-id :id} {:db_id db-id}]
+                 Field    [_ {:table_id table-id :special_type :type/PK}]
+                 Field    [_ {:table_id table-id}]]
+   (mt/with-test-user :rasta
+     (with-dashboard-cleanup
+       (-> (#'magic/enhance-table-stats [(Table table-id)])
+           first
+           :stats)))))
 
 (expect
   {:list-like?  false
@@ -377,7 +394,7 @@
                   Field    [_ {:table_id table-id :special_type :type/PK}]
                   Field    [_ {:table_id table-id :special_type :type/FK}]
                   Field    [_ {:table_id table-id :special_type :type/FK}]]
-    (with-rasta
+    (mt/with-test-user :rasta
       (with-dashboard-cleanup
         (-> (#'magic/enhance-table-stats [(Table table-id)])
             first
