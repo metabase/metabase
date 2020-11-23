@@ -15,7 +15,7 @@ describe("scenarios > question > saved", () => {
 
     // filter to only orders with quantity=100
     cy.findByText("Quantity").click();
-    popover().within(() => cy.findByText("Filter").click());
+    popover().within(() => cy.findByText("Filter by this column").click());
     popover().within(() => {
       cy.findByPlaceholderText("Search the list").type("100");
       cy.findByText("Update filter").click();
