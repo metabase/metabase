@@ -49,7 +49,7 @@ export function generateQuestions(users) {
 export function generateDashboards(users) {
   users.forEach(user => {
     signIn(user);
-    cy.visit("/");
+    cy.visit("/collection/root");
     cy.get(".Icon-add").click();
     cy.findByText("New dashboard").click();
     cy.findByLabelText("Name").type(user + " test dash");

@@ -10,7 +10,7 @@ import CheckBox from "metabase/components/CheckBox";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 
 const EntityItemWrapper = Flex.extend`
   border-bottom: 1px solid ${color("bg-medium")};
@@ -39,10 +39,14 @@ const EntityItem = ({
   item,
   buttons,
   extraInfo,
+  pinned,
 }) => {
   const actions = [
     onPin && {
-      title: t`Pin this item`,
+      title:
+        item.collection_position != null
+          ? t`Unpin this item`
+          : t`Pin this item`,
       icon: "pin",
       action: onPin,
       event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
@@ -83,6 +87,24 @@ const EntityItem = ({
       break;
   }
 
+  function getPinnedBackground(model) {
+    return model === "dashboard"
+      ? color("accent4")
+      : lighten(color("accent4"), 0.28);
+  }
+
+  function getPinnedForeground(model) {
+    return model === "dashboard" ? color("white") : color("accent4");
+  }
+
+  function getBackground(model) {
+    return model === "dashboard" ? color("brand") : color("brand-light");
+  }
+
+  function getForeground(model) {
+    return model === "dashboard" ? color("white") : color("brand");
+  }
+
   return (
     <EntityItemWrapper
       {...spacing}
@@ -91,10 +113,15 @@ const EntityItem = ({
       })}
     >
       <IconWrapper
-        p={1}
+        p={"12px 13px"}
         mr={2}
-        align="center"
-        justify="center"
+        bg={
+          pinned ? getPinnedBackground(item.model) : getBackground(item.model)
+        }
+        color={
+          pinned ? getPinnedForeground(item.model) : getForeground(item.model)
+        }
+        borderRadius={"99px"}
         onClick={
           selectable
             ? e => {
@@ -108,12 +135,12 @@ const EntityItem = ({
           <Swapper
             startSwapped={selected}
             defaultElement={
-              <Icon name={iconName} color={iconColor} size={18} />
+              <Icon name={iconName} color={"inherit"} size={18} />
             }
             swappedElement={<CheckBox checked={selected} size={18} />}
           />
         ) : (
-          <Icon name={iconName} color={iconColor} size={18} />
+          <Icon name={iconName} color={"inherit"} size={18} />
         )}
       </IconWrapper>
       <Box>

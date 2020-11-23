@@ -12,7 +12,7 @@ import { clearCurrentUser } from "metabase/redux/user";
 // If any of these receives a 403, we should display the "not authorized" page.
 const NOT_AUTHORIZED_TRIGGERS = [
   /\/api\/dashboard\/\d+$/,
-  /\/api\/collection\/\d+$/,
+  /\/api\/collection\/\d+(?:\/items)?$/,
   /\/api\/card\/\d+$/,
   /\/api\/pulse\/\d+$/,
   /\/api\/dataset$/,

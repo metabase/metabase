@@ -13,6 +13,7 @@ describe("snapshots", () => {
       setup();
       updateSettings();
       addUsersAndGroups();
+      createCollections();
       withSampleDataset(SAMPLE_DATASET => {
         createQuestionAndDashboard(SAMPLE_DATASET);
       });
@@ -109,6 +110,25 @@ describe("snapshots", () => {
         [COLLECTION_GROUP]: { root: "write" },
       },
     });
+  }
+
+  function createCollections() {
+    function postCollection(name, parent_id, callback) {
+      cy.request("POST", "/api/collection", {
+        name,
+        color: "#509ee3",
+        description: `Collection ${name}`,
+        parent_id,
+      }).then(({ body }) => callback && callback(body));
+    }
+    postCollection("First collection", undefined, firstCollection =>
+      postCollection(
+        "Second collection",
+        firstCollection.id,
+        secondCollection =>
+          postCollection("Third collection", secondCollection.id),
+      ),
+    );
   }
 
   function createQuestionAndDashboard({ ORDERS, ORDERS_ID }) {
