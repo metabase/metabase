@@ -721,6 +721,7 @@ jobs:
         default: clojure-and-node
       cypress-group:
         type: string
+      <<: *Params
     executor: << parameters.e >>
     environment:
       CYPRESS_GROUP: << parameters.cypress-group >>
@@ -732,10 +733,7 @@ jobs:
           before-steps:
             - restore_cache:
                 keys:
-                  - uberjar-oss-{{ checksum "./backend-checksums.txt" }}
-            - run:
-                name: Generate version file
-                command: ./bin/build version
+                  - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
       - store_artifacts:
           path: /home/circleci/metabase/metabase/cypress
       - store_test_results:
