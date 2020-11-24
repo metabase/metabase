@@ -49,11 +49,70 @@ export function multiLevelPivot(
     rowHeaderFormatters,
     valueFormatters,
   });
+  const valueColumns = valueColumnIndexes.map(index => data.cols[index]);
 
   return {
     headerRows,
     bodyRows,
+    rowColumnTree,
+    topIndex: getIndex(columnColumnTree, { valueColumns }),
+    leftIndex: getIndex(rowColumnTree, {}),
+    getRowSection: createRowSectionGetter({
+      valuesByKey,
+      columnColumnTree,
+      rowColumnTree,
+      valueFormatters,
+    }),
   };
+}
+
+function createRowSectionGetter({
+  valuesByKey,
+  columnColumnTree,
+  rowColumnTree,
+  valueFormatters,
+}) {
+  return (topValue, leftValue) => {
+    const rows = enumerate(
+      rowColumnTree.find(node => node.value === leftValue),
+    );
+    const columns = enumerate(
+      columnColumnTree.find(node => node.value === topValue),
+    );
+    return rows.map(row =>
+      columns.flatMap(col => {
+        const valueKey = JSON.stringify(col.concat(row));
+        const values = valuesByKey[valueKey];
+        if (values === undefined) {
+          return new Array(valueFormatters).fill(null);
+        }
+        return values.map((v, i) => valueFormatters[i](v));
+      }),
+    );
+  };
+}
+
+function enumerate({ value, children }, path = []) {
+  const pathWithValue = [...path, value];
+  if (children.length === 0) {
+    return [pathWithValue];
+  }
+  return children.flatMap(child => enumerate(child, pathWithValue));
+}
+
+function getIndex(values, { valueColumns = [] } = {}) {
+  if (values.length === 0) {
+    if (valueColumns.length > 1) {
+      // if we have multiple value columns include their column names
+      const colNames = valueColumns.map(col => ({ value: col.display_name }));
+      return [[colNames]];
+    }
+    return [];
+  }
+  return values.map(({ value, children }) => [
+    [{ value }],
+    ..._.zip(...getIndex(children, { valueColumns })).map(a => a.flat()),
+  ]);
 }
 
 function getHeaderRows(values, { valueColumns, formatters }) {

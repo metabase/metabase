@@ -11,6 +11,7 @@ function makeData(rows) {
       { name: "M", display_name: "Metric", base_type: TYPE.Integer },
     ],
   };
+  n;
 }
 
 describe("data_grid", () => {
@@ -122,7 +123,12 @@ describe("data_grid", () => {
       ["b", "z", 6],
     ]);
     it("should produce header rows with spans", () => {
-      const { headerRows } = multiLevelPivot(data, [0, 1], [], [2]);
+      const { headerRows, topIndex, leftIndex } = multiLevelPivot(
+        data,
+        [0, 1],
+        [],
+        [2],
+      );
       expect(headerRows).toEqual([
         [{ span: 3, value: "a" }, { span: 3, value: "b" }],
         [
@@ -134,9 +140,19 @@ describe("data_grid", () => {
           { span: 1, value: "z" },
         ],
       ]);
+      expect(topIndex).toEqual([
+        [[{ value: "a" }], [{ value: "x" }, { value: "y" }, { value: "z" }]],
+        [[{ value: "b" }], [{ value: "x" }, { value: "y" }, { value: "z" }]],
+      ]);
+      expect(leftIndex).toEqual([]);
     });
     it("should produce body rows with spans", () => {
-      const { bodyRows } = multiLevelPivot(data, [], [0, 1], [2]);
+      const { bodyRows, topIndex, leftIndex } = multiLevelPivot(
+        data,
+        [],
+        [0, 1],
+        [2],
+      );
       expect(bodyRows).toEqual([
         [
           { span: 3, value: "a" },
@@ -153,6 +169,11 @@ describe("data_grid", () => {
         [{ span: 1, value: "y" }, { span: 1, value: "5" }],
         [{ span: 1, value: "z" }, { span: 1, value: "6" }],
       ]);
+      expect(leftIndex).toEqual([
+        [[{ value: "a" }], [{ value: "x" }, { value: "y" }, { value: "z" }]],
+        [[{ value: "b" }], [{ value: "x" }, { value: "y" }, { value: "z" }]],
+      ]);
+      expect(topIndex).toEqual([]);
     });
     it("should allow unspecified values", () => {
       const data = makeData([
@@ -161,7 +182,12 @@ describe("data_grid", () => {
         ["b", "x", 3],
         // ["b", "y", ...], not present
       ]);
-      const { headerRows, bodyRows } = multiLevelPivot(data, [0], [1], [2]);
+      const { headerRows, bodyRows, leftIndex, topIndex } = multiLevelPivot(
+        data,
+        [0],
+        [1],
+        [2],
+      );
       expect(headerRows).toEqual([
         [{ span: 1, value: "a" }, { span: 1, value: "b" }],
       ]);
@@ -177,6 +203,8 @@ describe("data_grid", () => {
           { span: 1, value: null },
         ],
       ]);
+      expect(leftIndex).toEqual([[[{ value: "x" }]], [[{ value: "y" }]]]);
+      expect(topIndex).toEqual([[[{ value: "a" }]], [[{ value: "b" }]]]);
     });
     it("should handle multiple value columns", () => {
       const data = {
@@ -189,7 +217,12 @@ describe("data_grid", () => {
         ],
       };
 
-      const { headerRows, bodyRows } = multiLevelPivot(data, [0], [1], [2, 3]);
+      const { headerRows, bodyRows, topIndex, leftIndex } = multiLevelPivot(
+        data,
+        [0],
+        [1],
+        [2, 3],
+      );
       expect(headerRows).toEqual([
         [{ span: 2, value: "a" }],
         [{ span: 1, value: "Metric" }, { span: 1, value: "Metric" }],
@@ -201,6 +234,10 @@ describe("data_grid", () => {
           { span: 1, value: "2" },
         ],
       ]);
+      expect(topIndex).toEqual([
+        [[{ value: "a" }], [{ value: "Metric" }, { value: "Metric" }]],
+      ]);
+      expect(leftIndex).toEqual([[[{ value: "b" }]]]);
     });
     it("should work with three levels of row grouping", () => {
       // three was picked because there was a bug during development that showed up with at least three
@@ -223,7 +260,7 @@ describe("data_grid", () => {
         ],
       };
 
-      const { headerRows, bodyRows } = multiLevelPivot(
+      const { headerRows, bodyRows, topIndex, leftIndex } = multiLevelPivot(
         data,
         [],
         [0, 1, 2],
@@ -257,6 +294,19 @@ describe("data_grid", () => {
           { span: 1, value: "1" },
         ],
         [{ span: 1, value: "c2" }, { span: 1, value: "1" }],
+      ]);
+      expect(topIndex).toEqual([]);
+      expect(leftIndex).toEqual([
+        [
+          [{ value: "a1" }],
+          [{ value: "b1" }, { value: "b2" }],
+          [{ value: "c1" }, { value: "c2" }, { value: "c1" }, { value: "c2" }],
+        ],
+        [
+          [{ value: "a2" }],
+          [{ value: "b1" }, { value: "b2" }],
+          [{ value: "c1" }, { value: "c2" }, { value: "c1" }, { value: "c2" }],
+        ],
       ]);
     });
     it("should format values", () => {

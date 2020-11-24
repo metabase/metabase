@@ -1,11 +1,14 @@
 import React, { Component } from "react";
 import { t } from "ttag";
+import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
+import { Grid, List, ScrollSync } from "react-virtualized";
 
+import Ellipsified from "metabase/components/Ellipsified";
 import { isDimension } from "metabase/lib/schema_metadata";
 import { multiLevelPivot } from "metabase/lib/data_grid";
-// import { formatColumn } from "metabase/lib/formatting";
+import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
@@ -92,15 +95,8 @@ export default class PivotTable extends Component {
     },
   };
 
-  componentDidMount() {
-    this.element.setAttribute("border", "1");
-  }
-  componentDidUpdate() {
-    this.element.setAttribute("border", "1");
-  }
-
   render() {
-    const { settings, data } = this.props;
+    const { settings, data, width, height } = this.props;
     const {
       rows: rowIndexes,
       columns: columnIndexes,
@@ -121,40 +117,154 @@ export default class PivotTable extends Component {
     } catch (e) {
       console.warn(e);
     }
-    if (!pivoted) {
-      return <div>no data - check for error</div>;
+    const { topIndex, leftIndex, getRowSection } = pivoted;
+    const cellWidth = 80;
+    const cellHeight = 25;
+    const topHeaderHeight = topIndex[0].length * cellHeight + 8; // the extravertical padding
+    const leftHeaderWidth = leftIndex[0].length * cellWidth;
+
+    function columnWidth({ index }) {
+      const indexItem = topIndex[index];
+      return indexItem[indexItem.length - 1].length * cellWidth;
     }
-    const { headerRows, bodyRows } = pivoted;
+
+    function rowHeight({ index }) {
+      const indexItem = leftIndex[index];
+      return indexItem[indexItem.length - 1].length * cellHeight;
+    }
 
     return (
       <div className="overflow-scroll">
-        <table ref={e => (this.element = e)}>
-          <thead>
-            {headerRows.map((row, rowIndex) => (
-              <tr>
-                {rowIndex === 0 &&
-                  rowIndexes.map(index => (
-                    <th rowSpan={headerRows.length}>
-                      {data.cols[index].display_name}
-                    </th>
+        <ScrollSync>
+          {({ onScroll, scrollLeft, scrollTop }) => (
+            <div>
+              <div
+                style={{ display: "grid", gridTemplateColumns: "200px auto" }}
+              >
+                <div className="flex align-end border-right border-bottom border-medium">
+                  {rowIndexes.map(index => (
+                    <div
+                      style={{ height: cellHeight, width: cellWidth }}
+                      className="px1"
+                    >
+                      <Ellipsified>
+                        {formatColumn(data.cols[index])}
+                      </Ellipsified>
+                    </div>
                   ))}
-
-                {row.map(({ value, span }) => (
-                  <th colSpan={span}>{value}</th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {bodyRows.map(row => (
-              <tr>
-                {row.map(({ value, span }) => (
-                  <td rowSpan={span}>{value}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+                <Grid
+                  className="border-bottom border-medium scroll-hide-all text-medium"
+                  width={width - leftHeaderWidth}
+                  height={topHeaderHeight}
+                  rowCount={1}
+                  rowHeight={topHeaderHeight}
+                  columnCount={topIndex.length}
+                  columnWidth={columnWidth}
+                  cellRenderer={({ key, style, columnIndex }) => {
+                    const rows = topIndex[columnIndex];
+                    return (
+                      <div
+                        key={key}
+                        style={style}
+                        className="flex-column px1 pt1"
+                      >
+                        {rows.map((row, index) => (
+                          <div className="flex" style={{ height: cellHeight }}>
+                            {row.map(r => (
+                              <div
+                                style={{ width: `${100 / row.length}%` }}
+                                className={cx({
+                                  "border-bottom": index < rows.length - 1,
+                                })}
+                              >
+                                <Ellipsified>
+                                  {formatValue(r.value, {
+                                    column: data.cols[columnIndexes[index]],
+                                  })}
+                                </Ellipsified>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }}
+                  onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
+                  scrollLeft={scrollLeft}
+                />
+                <div className="border-right border-medium">
+                  <List
+                    width={cellWidth * rowIndexes.length}
+                    height={height - topHeaderHeight}
+                    className="scroll-hide-all text-dark"
+                    rowCount={leftIndex.length}
+                    rowHeight={rowHeight}
+                    rowRenderer={({ key, style, index }) => (
+                      <div key={key} style={style} className="flex">
+                        {leftIndex[index].map((col, index) => (
+                          <div className="flex flex-column">
+                            {col.map(c => (
+                              <div
+                                style={{
+                                  width: cellWidth,
+                                  height: cellHeight,
+                                }}
+                                className="p1"
+                              >
+                                {formatValue(c.value, {
+                                  column: data.cols[rowIndexes[index]],
+                                })}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    scrollTop={scrollTop}
+                    onScroll={({ scrollTop }) => onScroll({ scrollTop })}
+                  />
+                </div>
+                <Grid
+                  width={width - leftHeaderWidth}
+                  height={height - topHeaderHeight}
+                  className="text-dark"
+                  rowCount={leftIndex.length}
+                  rowHeight={rowHeight}
+                  columnCount={topIndex.length}
+                  columnWidth={columnWidth}
+                  cellRenderer={({ key, style, rowIndex, columnIndex }) => {
+                    const rows = getRowSection(
+                      topIndex[columnIndex][0][0].value,
+                      leftIndex[rowIndex][0][0].value,
+                    );
+                    return (
+                      <div key={key} style={style} className="flex flex-column">
+                        {rows.map(row => (
+                          <div className="flex">
+                            {row.map(value => (
+                              <div
+                                style={{ width: cellWidth, height: cellHeight }}
+                                className="p1"
+                              >
+                                {value}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }}
+                  onScroll={({ scrollLeft, scrollTop }) =>
+                    onScroll({ scrollLeft, scrollTop })
+                  }
+                  scrollTop={scrollTop}
+                  scrollLeft={scrollLeft}
+                />
+              </div>
+            </div>
+          )}
+        </ScrollSync>
       </div>
     );
   }
