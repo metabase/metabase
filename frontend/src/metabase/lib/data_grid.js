@@ -37,24 +37,10 @@ export function multiLevelPivot(
       formatValue(value, { column: data.cols[index] }),
     ),
   );
-  const headerRows = getHeaderRows(columnColumnTree, {
-    valueColumns: valueColumnIndexes.map(index => data.cols[index]),
-    formatters: headerFormatters,
-  });
 
-  const bodyRows = getBodyRows(rowColumnTree, {
-    columnValueLists: valueLists(columnColumnTree),
-    valuesByKey,
-    valueColumnCount: valueColumnIndexes.length,
-    rowHeaderFormatters,
-    valueFormatters,
-  });
   const valueColumns = valueColumnIndexes.map(index => data.cols[index]);
 
   return {
-    headerRows,
-    bodyRows,
-    rowColumnTree,
     topIndex: getIndex(columnColumnTree, { valueColumns }),
     leftIndex: getIndex(rowColumnTree, {}),
     getRowSection: createRowSectionGetter({
@@ -113,68 +99,6 @@ function getIndex(values, { valueColumns = [] } = {}) {
     [{ value }],
     ..._.zip(...getIndex(children, { valueColumns })).map(a => a.flat()),
   ]);
-}
-
-function getHeaderRows(values, { valueColumns, formatters }) {
-  if (values.length === 0) {
-    // if we have multiple value columns include their column names
-    return valueColumns.length > 1
-      ? [valueColumns.map(c => ({ value: c.display_name, span: 1 }))]
-      : [];
-  }
-  const [currentFormatter, ...otherFormatters] = formatters;
-  const rowLists = [];
-  const currentRow = values.map(({ value, children }) => {
-    const rows = getHeaderRows(children, {
-      valueColumns,
-      formatters: otherFormatters,
-    });
-    rowLists.push(rows);
-    const span =
-      rows.length === 0 ? 1 : rows[0].reduce((sum, { span }) => sum + span, 0);
-    return { value: currentFormatter(value), span };
-  });
-  const followingRows = _.zip(...rowLists).map(a => a.flat());
-  return [currentRow, ...followingRows];
-}
-
-function valueLists(tree, currentList = []) {
-  if (tree.length === 0) {
-    return [currentList];
-  }
-
-  return tree.flatMap(({ value, children }) =>
-    valueLists(children, [...currentList, value]),
-  );
-}
-
-function getBodyRows(tree, context, valueList = []) {
-  if (tree.length === 0 && valueList.length > 0) {
-    const rowValues = context.columnValueLists.flatMap(list => {
-      const valueKey = JSON.stringify(list.concat(valueList));
-      const values = context.valuesByKey[valueKey];
-      if (values === undefined) {
-        return new Array(context.valueColumnCount).fill({
-          value: null,
-          span: 1,
-        });
-      }
-      return values.map((value, index) => ({
-        value: context.valueFormatters[index](value),
-        span: 1,
-      }));
-    });
-    return [rowValues];
-  }
-  return tree.flatMap(({ value, children }, index) => {
-    const rows = getBodyRows(children, context, [...valueList, value]);
-    const item = {
-      value: context.rowHeaderFormatters[valueList.length](value),
-      span: rows.length,
-    };
-    const [first, ...rest] = rows;
-    return [[item, ...first], ...rest];
-  });
 }
 
 function updateValueObject(row, indexes, seenValues) {
