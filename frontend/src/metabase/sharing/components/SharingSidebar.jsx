@@ -3,23 +3,21 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { t, jt, ngettext, msgid } from "ttag";
 
-import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import Card from "metabase/components/Card";
+import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Radio from "metabase/components/Radio";
+import RecipientPicker from "metabase/pulse/components/RecipientPicker";
+import SchedulePicker from "metabase/components/SchedulePicker";
 import Select, { Option } from "metabase/components/Select";
-import Collections from "metabase/entities/collections";
+import SendTestEmail from "metabase/components/SendTestEmail";
+import Sidebar from "metabase/dashboard/components/Sidebar";
 import Toggle from "metabase/components/Toggle";
 import Tooltip from "metabase/components/Tooltip";
 
-import RecipientPicker from "metabase/pulse/components/RecipientPicker";
-
-import SchedulePicker from "metabase/components/SchedulePicker";
-
-import Sidebar from "metabase/dashboard/components/Sidebar";
-
+import Collections from "metabase/entities/collections";
 import Pulses from "metabase/entities/pulses";
 import User from "metabase/entities/users";
 
@@ -35,6 +33,7 @@ import {
   getPulseFormInput,
   getPulseList,
 } from "metabase/pulse/selectors";
+
 import { getUser } from "metabase/selectors/user";
 
 import {
@@ -61,9 +60,18 @@ const CHANNEL_NOUN_PLURAL = {
 
 const Heading = ({ children }) => <h4>{children}</h4>;
 
+const getEditingPulseWithDefaults = (state, props) => {
+  const pulse = getEditingPulse(state, props);
+  const dashboardWrapper = state.dashboard;
+  if (!pulse.name) {
+    pulse.name = dashboardWrapper.dashboards[dashboardWrapper.dashboardId].name;
+  }
+  return pulse;
+};
+
 const mapStateToProps = (state, props) => ({
   pulseId: getPulseId(state, props),
-  pulse: getEditingPulse(state, props),
+  pulse: getEditingPulseWithDefaults(state, props),
   cardPreviews: getPulseCardPreviews(state, props),
   formInput: getPulseFormInput(state, props),
   user: getUser(state),
@@ -98,24 +106,21 @@ class SharingSidebar extends React.Component {
   };
 
   static propTypes = {
+    dashboard: PropTypes.object.isRequired,
+    fetchPulseFormInput: PropTypes.func.isRequired,
+    fetchPulsesByDashboardId: PropTypes.func.isRequired,
+    formInput: PropTypes.object.isRequired,
+    goBack: PropTypes.func,
+    initialCollectionId: PropTypes.number,
+    onChangeLocation: PropTypes.func.isRequired,
     pulse: PropTypes.object.isRequired,
     pulseId: PropTypes.number,
-    dashboard: PropTypes.object.isRequired,
-    formInput: PropTypes.object.isRequired,
-    setEditingPulse: PropTypes.func.isRequired,
-    fetchPulseFormInput: PropTypes.func.isRequired,
-    updateEditingPulse: PropTypes.func.isRequired,
-    saveEditingPulse: PropTypes.func.isRequired,
-    onChangeLocation: PropTypes.func.isRequired,
-    goBack: PropTypes.func,
-    fetchPulsesByDashboardId: PropTypes.func.isRequired,
     pulseList: PropTypes.array.isRequired,
-    initialCollectionId: PropTypes.number,
+    saveEditingPulse: PropTypes.func.isRequired,
+    setEditingPulse: PropTypes.func.isRequired,
+    testPulse: PropTypes.func.isRequired,
+    updateEditingPulse: PropTypes.func.isRequired,
   };
-
-  constructor(props) {
-    super(props);
-  }
 
   setPulse = pulse => {
     this.props.updateEditingPulse(pulse);
@@ -708,6 +713,14 @@ class SharingSidebar extends React.Component {
               ] || t`Messages`} will be sent at`}
               onScheduleChange={this.onChannelScheduleChange.bind(this, index)}
             />
+            <div className="pt2">
+              <SendTestEmail
+                channel={channel}
+                pulse={pulse}
+                testPulse={this.props.testPulse}
+              />
+            </div>
+
             <div className="text-bold py2 mt2 flex justify-between align-center border-top">
               <Heading>{t`Don't send if there aren't results`}</Heading>
               <Toggle
