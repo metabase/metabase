@@ -718,7 +718,6 @@ class SharingSidebar extends React.Component {
                 channel={channel}
                 pulse={pulse}
                 testPulse={this.props.testPulse}
-                isValid={true}
               />
             </div>
 

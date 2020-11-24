@@ -7,7 +7,6 @@ import ActionButton from "metabase/components/ActionButton";
 export default class SendTestEmail extends Component {
   static propTypes = {
     channel: PropTypes.object.isRequired,
-    isValid: PropTypes.bool,
     pulse: PropTypes.object.isRequired,
     testPulse: PropTypes.func.isRequired,
   };
@@ -18,11 +17,13 @@ export default class SendTestEmail extends Component {
   }
 
   render() {
-    const { isValid, channel } = this.props;
+    const { channel } = this.props;
     return (
       <ActionButton
         actionFn={this.onTestPulseChannel.bind(this, channel)}
-        disabled={!isValid}
+        disabled={
+          channel.channel_type === "email" && channel.recipients.length === 0
+        }
         normalText={t`Send email now`}
         activeText={t`Sending…`}
         failedText={t`Sending failed`}
