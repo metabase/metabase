@@ -12,15 +12,16 @@ export default class SendTestEmail extends Component {
   };
   static defaultProps = {};
 
-  onTestPulseChannel(channel) {
-    return this.props.testPulse({ ...this.props.pulse, channels: [channel] });
-  }
+  onTestPulseChannel = () => {
+    const { pulse, channel, testPulse } = this.props;
+    return testPulse({ ...pulse, channels: [channel] });
+  };
 
   render() {
     const { channel } = this.props;
     return (
       <ActionButton
-        actionFn={this.onTestPulseChannel.bind(this, channel)}
+        actionFn={this.onTestPulseChannel}
         disabled={
           channel.channel_type === "email" && channel.recipients.length === 0
         }
