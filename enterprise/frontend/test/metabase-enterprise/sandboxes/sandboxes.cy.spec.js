@@ -7,7 +7,7 @@ import {
   signInAsNormalUser,
   signOut,
   withSampleDataset,
-} from "../../../../../frontend/test/__support__/cypress";
+} from "__support__/cypress";
 
 const new_user = {
   first_name: "Barb",
@@ -265,11 +265,117 @@ describeWithToken("formatting > sandboxes", () => {
     });
   });
 
-  describe("Sandboxed drill-through", () => {
-    before(() => {
+  describe("Sandboxing reproductions", () => {
+    beforeEach(() => {
       restore();
       signInAsAdmin();
-      createUser(sandboxed_user);
+      createUser(sandboxed_user).then(({ body: { id: USER_ID } }) => {
+        // dismiss the "it's ok to play around" modal
+        cy.request("PUT", `/api/user/${USER_ID}/qbnewb`, {});
+      });
+    });
+
+    it.skip("SB question with `case` CC should substitue the `else` argument's table (metabase-enterprise#548)", () => {
+      const QUESTION_NAME = "EE_548";
+      const CC_NAME = "CC_548"; // Custom column
+      const COLLECTION_GROUP_ID = 4;
+
+      withSampleDataset(({ ORDERS, ORDERS_ID }) => {
+        cy.log("**-- 1. Sandbox `Orders` table on `user_id` attribute --**");
+
+        cy.request("POST", "/api/mt/gtap", {
+          attribute_remappings: {
+            user_id: ["dimension", ["field-id", ORDERS.USER_ID]],
+          },
+          card_id: null,
+          group_id: COLLECTION_GROUP_ID,
+          table_id: ORDERS_ID,
+        });
+
+        /**
+         * As per definition for `PUT /graph` from `permissions.clj`:
+         *
+         * This should return the same graph, in the same format,
+         * that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary.
+         * This modified graph must correspond to the `PermissionsGraph` schema.
+         *
+         * That's why we must chain GET and PUT requests one after the other.
+         */
+
+        cy.log("**-- 2. Fetch permissions graph --**");
+
+        cy.request("GET", "/api/permissions/graph", {}).then(
+          ({ body: { groups, revision } }) => {
+            // Update permissions for `collections` group [id: 4]
+            // This mutates the original `groups` object => we'll pass it next to the `PUT` request
+            groups[COLLECTION_GROUP_ID] = {
+              1: {
+                schemas: {
+                  PUBLIC: {
+                    [ORDERS_ID]: { query: "segmented", read: "all" },
+                  },
+                },
+              },
+            };
+
+            cy.log("**-- 3. Update/save permissions --**");
+
+            cy.request("PUT", "/api/permissions/graph", {
+              groups,
+              revision,
+            });
+          },
+        );
+
+        cy.log("**-- 4. Create and save a question --**");
+
+        cy.request("POST", "/api/card", {
+          name: QUESTION_NAME,
+          dataset_query: {
+            database: 1,
+            query: {
+              expressions: {
+                [CC_NAME]: [
+                  "case",
+                  [
+                    [
+                      [">", ["field-id", ORDERS.DISCOUNT], 0],
+                      ["field-id", ORDERS.DISCOUNT],
+                    ],
+                  ],
+                  { default: ["field-id", ORDERS.TOTAL] },
+                ],
+              },
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        }).then(({ body: { id: QUESTION_ID } }) => {
+          signOut();
+
+          cy.log("**-- Logging in as sandboxed user --**");
+          cy.request("POST", "/api/session", {
+            username: sandboxed_user.email,
+            password: sandboxed_user.password,
+          });
+
+          cy.server();
+          cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+          // Assertion phase starts here
+          cy.visit(`/question/${QUESTION_ID}`);
+          cy.findByText(QUESTION_NAME);
+
+          cy.log("**Reported failing since v1.36.4**");
+          cy.wait("@cardQuery").then(xhr => {
+            expect(xhr.response.body.error).to.not.exist;
+          });
+
+          cy.findByText(CC_NAME);
+        });
+      });
     });
 
     it.skip("Should allow drill-through for sandboxed user (metabase-enterprise#535)", () => {
@@ -362,8 +468,7 @@ describeWithToken("formatting > sandboxes", () => {
       // Find saved question in "Our analytics"
       cy.findByText("Browse all items").click();
       cy.findByText(questionTitle).click();
-      // Close the first-time popup saying: "It is ok to play with saved questions"
-      cy.findByText("Okay").click();
+
       // The question is originally displayed as table
       // Set its visualization/graph to "Bar"
       cy.findByText("Visualization").click();
