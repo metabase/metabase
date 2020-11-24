@@ -28,14 +28,8 @@ export function multiLevelPivot(
     valuesByKey[valueKey] = valueColumnIndexes.map(index => row[index]);
   }
 
-  const [headerFormatters, valueFormatters, rowHeaderFormatters] = [
-    columnColumnIndexes,
-    valueColumnIndexes,
-    rowColumnIndexes,
-  ].map(indexes =>
-    indexes.map(index => value =>
-      formatValue(value, { column: data.cols[index] }),
-    ),
+  const valueFormatters = valueColumnIndexes.map(index => value =>
+    formatValue(value, { column: data.cols[index] }),
   );
 
   const valueColumns = valueColumnIndexes.map(index => data.cols[index]);
