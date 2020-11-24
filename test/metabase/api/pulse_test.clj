@@ -716,7 +716,7 @@
                                            (u/get-id pulse-2)}])
           (is (= [(assoc (pulse-details pulse-1) :can_write false, :collection_id true)
                   (assoc (pulse-details pulse-2) :can_write false, :collection_id true)]
-                 (for [pulse ((mt/user->client :rasta) :get 200 "pulse")]
+                 (for [pulse (mt/user-http-request :rasta :get 200 "pulse")]
                    (-> pulse
                        (update :collection_id boolean)))))))
 

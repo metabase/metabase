@@ -1024,7 +1024,7 @@ const isSharing = handleActions(
   {
     [INITIALIZE]: { next: state => false },
     [SET_SHARING]: {
-      next: (state, { payload }) => (payload || false),
+      next: (state, { payload }) => payload || false,
     },
   },
   {},

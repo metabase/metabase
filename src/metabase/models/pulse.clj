@@ -102,10 +102,10 @@
 (def CardRef
   "Schema for the map we use to internally represent the fact that a Card is in a Notification and the details about its
   presence there."
-  (su/with-api-error-message {:id                su/IntGreaterThanZero
-                              :include_csv       s/Bool
-                              :include_xls       s/Bool
-                              :dashboard_card_id (s/maybe su/IntGreaterThanZero)}
+  (su/with-api-error-message {:id                                 su/IntGreaterThanZero
+                              :include_csv                        s/Bool
+                              :include_xls                        s/Bool
+                              (s/optional-key :dashboard_card_id) (s/maybe su/IntGreaterThanZero)}
     (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
 
 (def HybridPulseCard
@@ -240,20 +240,20 @@
   ([{:keys [archived? dashboard_id]
      :or   {archived?    false
             dashboard_id nil}}]
-   (let [base-query {:select    [:p.*]
+   (let [base-query {:select    [:p.* [:%lower.p.name :lower-name]]
                      :modifiers [:distinct]
                      :from      [[Pulse :p]]
                      :where     [:and
                                  [:= :p.alert_condition nil]
                                  [:= :p.archived archived?]]
-                     ;; :order-by  [[:%lower.name :asc]]
-                     }
+                     :order-by  [[:lower-name :asc]]}
          query      (merge-with conj base-query (when dashboard_id
                                                   {:join      [[PulseCard :pc]     [:= :p.id :pc.pulse_id]]
                                                    :left-join [[DashboardCard :dc] [:= :pc.dashboard_card_id :dc.id]]
                                                    :where     [:= :dc.dashboard_id dashboard_id]}))]
      (for [pulse (query-as Pulse query)]
        (-> pulse
+           (dissoc :lower-name)
            hydrate-notification
            notification->pulse)))))
 

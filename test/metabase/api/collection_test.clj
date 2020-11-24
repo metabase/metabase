@@ -102,33 +102,18 @@
                        (filter #(#{normal-id coins-id} (:id %)))
                        (map :name)))]
           (testing "shouldn't show Collections of a different `:namespace` by default"
-            (mt/with-discarded-collections-perms-changes coins-id
-              (perms/grant-collection-read-permissions! (group/all-users) coins-id)
-              (is (= ["Normal Collection"]
-                     (collection-names (mt/user-http-request :rasta :get 200 "collection"))))))
+            (is (= ["Normal Collection"]
+                   (collection-names (mt/user-http-request :rasta :get 200 "collection")))))
 
-          (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`\n"
-            (testing "?namespace=currency\n"
-              (testing "w/o permissions"
-                (is (= []
-                       (collection-names (mt/user-http-request :rasta :get 200 "collection?namespace=currency")))))
-
-              (perms/grant-collection-read-permissions! (group/all-users) coins-id)
-              (testing "w/ permissions"
-                (is (= ["Coin Collection"]
-                       (collection-names (mt/user-http-request :rasta :get 200 "collection?namespace=currency"))))))
+          (perms/grant-collection-read-permissions! (group/all-users) coins-id)
+          (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`"
+            (testing "?namespace=currency"
+              (is (= ["Coin Collection"]
+                     (collection-names (mt/user-http-request :rasta :get 200 "collection?namespace=currency")))))
 
             (testing "?namespace=stamps"
               (is (= []
-                     (collection-names (mt/user-http-request :rasta :get 200 "collection?namespace=stamps")))))
-
-            (testing "Root Collection should have a different name for the 'snippets' Collection"
-              (is (= "Top folder"
-                     (some (fn [{collection-id :id, collection-name :name}]
-                             (when (= collection-id "root")
-                               collection-name))
-                           (mt/user-http-request :crowberto :get 200 "collection?namespace=snippets")))))))))))
-
+                     (collection-names (mt/user-http-request :rasta :get 200 "collection?namespace=stamps")))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/tree                                              |
@@ -490,21 +475,15 @@
 
 (deftest fetch-root-collection-test
   (testing "GET /api/collection/root"
-    (testing "\nCheck that we can see stuff that isn't in any Collection -- meaning they're in the so-called \"Root\" Collection"
-      (doseq [collection-namespace [nil "snippets"]]
-        (testing (format "namespace = %s" (pr-str collection-namespace))
-          (is (= {:name                (case collection-namespace
-                                         ;; Snippets use a different name for the Root Collection
-                                         "snippets" "Top folder"
-                                         "Our analytics")
-                  :id                  "root"
-                  :can_write           true
-                  :effective_location  nil
-                  :effective_ancestors []
-                  :parent_id           nil}
-                 (with-some-children-of-collection nil
-                   (mt/user-http-request :crowberto :get 200
-                                         (str "collection/root" (when collection-namespace (str "?namespace=" collection-namespace))))))))))
+    (testing "Check that we can see stuff that isn't in any Collection -- meaning they're in the so-called \"Root\" Collection"
+      (is (= {:name                "Our analytics"
+              :id                  "root"
+              :can_write           true
+              :effective_location  nil
+              :effective_ancestors []
+              :parent_id           nil}
+             (with-some-children-of-collection nil
+               (mt/user-http-request :crowberto :get 200 "collection/root")))))
     (testing "Make sure you can see everything for Users that can see everything"
       (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
               (collection-item "Crowberto Corv's Personal Collection")
@@ -635,6 +614,7 @@
 
           (perms/grant-collection-read-permissions! (group/all-users) coins-id)
           (testing "By passing `:namespace` we should be able to see Collections in that `:namespace`"
+            (perms/grant-collection-read-permissions! (group/all-users) coins-id)
             (testing "?namespace=currency"
               (is (= ["Coin Collection"]
                      (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=currency")))))
@@ -765,11 +745,11 @@
       (mt/with-temp Collection [collection]
         (is (= (merge
                 (mt/object-defaults Collection)
-                {:id        (u/get-id collection)
-                 :name      "My Beautiful Collection"
-                 :slug      "my_beautiful_collection"
-                 :color     "#ABCDEF"
-                 :location  "/"
+                {:id       (u/get-id collection)
+                 :name     "My Beautiful Collection"
+                 :slug     "my_beautiful_collection"
+                 :color    "#ABCDEF"
+                 :location "/"
                  :parent_id nil})
                (mt/user-http-request :crowberto :put 200 (str "collection/" (u/get-id collection))
                                      {:name "My Beautiful Collection", :color "#ABCDEF"})))))
@@ -836,11 +816,11 @@
       (with-collection-hierarchy [a b e]
         (is (= (merge
                 (mt/object-defaults Collection)
-                {:id        true
-                 :name      "E"
-                 :slug      "e"
-                 :color     "#ABCDEF"
-                 :location  "/A/B/"
+                {:id       true
+                 :name     "E"
+                 :slug     "e"
+                 :color    "#ABCDEF"
+                 :location "/A/B/"
                  :parent_id (u/get-id b)})
                (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/get-id e))
                                          {:parent_id (u/get-id b)})
