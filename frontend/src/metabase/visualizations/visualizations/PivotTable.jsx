@@ -139,7 +139,10 @@ export default class PivotTable extends Component {
           {({ onScroll, scrollLeft, scrollTop }) => (
             <div>
               <div
-                style={{ display: "grid", gridTemplateColumns: "200px auto" }}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: `${leftHeaderWidth}px auto`,
+                }}
               >
                 <div className="flex align-end border-right border-bottom border-medium">
                   {rowIndexes.map(index => (

@@ -11,7 +11,6 @@ function makeData(rows) {
       { name: "M", display_name: "Metric", base_type: TYPE.Integer },
     ],
   };
-  n;
 }
 
 describe("data_grid", () => {
