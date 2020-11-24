@@ -144,6 +144,7 @@ export default class PivotTable extends Component {
                   gridTemplateColumns: `${leftHeaderWidth}px auto`,
                 }}
               >
+                {/* top left corner - displays left header columns */}
                 <div className="flex align-end border-right border-bottom border-medium">
                   {rowIndexes.map(index => (
                     <div
@@ -156,6 +157,7 @@ export default class PivotTable extends Component {
                     </div>
                   ))}
                 </div>
+                {/* top header */}
                 <Grid
                   className="border-bottom border-medium scroll-hide-all text-medium"
                   width={width - leftHeaderWidth}
@@ -196,38 +198,38 @@ export default class PivotTable extends Component {
                   onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                   scrollLeft={scrollLeft}
                 />
-                <div className="border-right border-medium">
-                  <List
-                    width={cellWidth * rowIndexes.length}
-                    height={height - topHeaderHeight}
-                    className="scroll-hide-all text-dark"
-                    rowCount={leftIndex.length}
-                    rowHeight={rowHeight}
-                    rowRenderer={({ key, style, index }) => (
-                      <div key={key} style={style} className="flex">
-                        {leftIndex[index].map((col, index) => (
-                          <div className="flex flex-column">
-                            {col.map(c => (
-                              <div
-                                style={{
-                                  width: cellWidth,
-                                  height: cellHeight,
-                                }}
-                                className="p1"
-                              >
-                                {formatValue(c.value, {
-                                  column: data.cols[rowIndexes[index]],
-                                })}
-                              </div>
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    scrollTop={scrollTop}
-                    onScroll={({ scrollTop }) => onScroll({ scrollTop })}
-                  />
-                </div>
+                {/* left header */}
+                <List
+                  width={leftHeaderWidth}
+                  height={height - topHeaderHeight}
+                  className="scroll-hide-all text-dark border-right border-medium"
+                  rowCount={leftIndex.length}
+                  rowHeight={rowHeight}
+                  rowRenderer={({ key, style, index }) => (
+                    <div key={key} style={style} className="flex">
+                      {leftIndex[index].map((col, index) => (
+                        <div className="flex flex-column">
+                          {col.map(c => (
+                            <div
+                              style={{
+                                width: cellWidth,
+                                height: cellHeight,
+                              }}
+                              className="p1"
+                            >
+                              {formatValue(c.value, {
+                                column: data.cols[rowIndexes[index]],
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  scrollTop={scrollTop}
+                  onScroll={({ scrollTop }) => onScroll({ scrollTop })}
+                />
+                {/* pivot table body */}
                 <Grid
                   width={width - leftHeaderWidth}
                   height={height - topHeaderHeight}
