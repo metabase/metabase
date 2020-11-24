@@ -275,6 +275,62 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
+    it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
+      const COLLECTION_GROUP_ID = 4;
+      withSampleDataset(({ PEOPLE, PEOPLE_ID }) => {
+        cy.log("**-- 1. Sandbox `People` table on `user_id` attribute --**");
+
+        cy.request("POST", "/api/mt/gtap", {
+          attribute_remappings: {
+            user_id: ["dimension", ["field-id", PEOPLE.ID]],
+          },
+          card_id: null,
+          group_id: COLLECTION_GROUP_ID,
+          table_id: PEOPLE_ID,
+        });
+
+        cy.log("**-- 2. Fetch permissions graph --**");
+
+        cy.request("GET", "/api/permissions/graph", {}).then(
+          ({ body: { groups, revision } }) => {
+            // Update permissions for `collections` group [id: 4]
+            // This mutates the original `groups` object => we'll pass it next to the `PUT` request
+            groups[COLLECTION_GROUP_ID] = {
+              1: {
+                schemas: {
+                  PUBLIC: {
+                    [PEOPLE_ID]: { query: "segmented", read: "all" },
+                  },
+                },
+              },
+            };
+
+            cy.log("**-- 3. Update/save permissions --**");
+
+            cy.request("PUT", "/api/permissions/graph", {
+              groups,
+              revision,
+            });
+          },
+        );
+      });
+
+      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      cy.findByText("Summarize").click();
+      cy.findByText("Count of rows").click();
+      cy.findByText("Pick a column to group by").click();
+      cy.log(
+        "**-- Original issue reported failure to find 'User' group / foreign key--**",
+      );
+      cy.get(".ReactVirtualized__Grid")
+        .scrollTo("bottom") // Cypress scroll sometimes doesn't work; We should disable virtualization for Popover
+        .contains("User")
+        .click({ force: true });
+      cy.findByText("Count by User ID");
+      cy.findByText("Visualize").click();
+      cy.findAllByText("10");
+    });
+
     it.skip("SB question with `case` CC should substitue the `else` argument's table (metabase-enterprise#548)", () => {
       const QUESTION_NAME = "EE_548";
       const CC_NAME = "CC_548"; // Custom column
