@@ -1,0 +1,18 @@
+.token {
+  padding: 5px 14px;
+  border-radius: 100px;
+  line-height: 16px;
+}
+.token-blue {
+  color: var(--color-brand);
+  border: 1px solid color(var(--color-brand) alpha(-65%));
+}
+.token-filter {
+  padding: 2px 16px;
+  border-radius: 100px;
+  color: var(--color-accent7);
+  border: 1px solid color(var(--color-accent7) alpha(-50%));
+}
+.token-filter:hover {
+  background-color: var(--color-accent7);
+}

@@ -1,4 +1,10 @@
-import { signInAsAdmin, withSampleDataset, restore } from "__support__/cypress";
+import {
+  signInAsAdmin,
+  withSampleDataset,
+  restore,
+  popover,
+  createNativeQuestion,
+} from "__support__/cypress";
 
 describe("scenarios > question > nested (metabase#12568)", () => {
   before(() => {
@@ -14,7 +20,9 @@ describe("scenarios > question > nested (metabase#12568)", () => {
           query: {
             "source-table": 2,
             aggregation: [["count"]],
-            breakout: [["datetime-field", ORDERS.CREATED_AT, "week"]],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "week"],
+            ],
           },
           type: "query",
         },
@@ -140,5 +148,195 @@ describe("scenarios > question > nested (metabase#12568)", () => {
     cy.contains("Distribution").click();
     cy.contains("Count by Items Sold: Auto binned");
     cy.get(".bar").should("have.length.of.at.least", 10);
+  });
+});
+
+describe("scenarios > question > nested", () => {
+  before(() => {
+    restore();
+    signInAsAdmin();
+  });
+
+  it("should handle duplicate column names in nested queries (metabase#10511)", () => {
+    withSampleDataset(({ ORDERS, PRODUCTS }) => {
+      cy.request("POST", "/api/card", {
+        name: "10511",
+        dataset_query: {
+          database: 1,
+          query: {
+            filter: [">", ["field-literal", "count", "type/Integer"], 5],
+            "source-query": {
+              "source-table": 2,
+              aggregation: [["count"]],
+              breakout: [
+                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+                [
+                  "datetime-field",
+                  [
+                    "fk->",
+                    ["field-id", ORDERS.PRODUCT_ID],
+                    ["field-id", PRODUCTS.CREATED_AT],
+                  ],
+                  "month",
+                ],
+              ],
+            },
+          },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {},
+      }).then(({ body: { id: questionId } }) => {
+        cy.visit(`/question/${questionId}`);
+        cy.findByText("10511");
+        cy.findAllByText("June, 2016");
+        cy.findAllByText("13");
+      });
+    });
+  });
+
+  it.skip("should display granularity for aggregated fields in nested questions (metabase#13764)", () => {
+    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    // add initial aggregation ("Average of Total by Order ID")
+    cy.findByText("Summarize").click();
+    cy.findByText("Average of ...").click();
+    cy.findByText("Total").click();
+    cy.findByText("Pick a column to group by").click();
+    cy.findByText("ID").click();
+    // add another aggregation ("Count by Average of Total")
+    cy.get(".Button")
+      .contains("Summarize")
+      .click();
+    cy.findByText("Count of rows").click();
+    cy.findByText("Pick a column to group by").click();
+    cy.log("**Reported failing on v0.34.3 - v0.37.0.2**");
+    popover()
+      .contains("Average of Total")
+      .closest(".List-item")
+      .contains("Auto binned");
+  });
+
+  it.skip("should show all filter options for a nested question (metabase#13186)", () => {
+    cy.log("**-- 1. Create and save native question Q1 --**");
+
+    createNativeQuestion("13816_Q1", "SELECT * FROM PRODUCTS").then(
+      ({ body: { id: Q1_ID } }) => {
+        cy.log("**-- 2. Convert it to `query` and save as Q2 --**");
+
+        cy.request("POST", "/api/card", {
+          name: "13816_Q2",
+          dataset_query: {
+            database: 1,
+            query: {
+              "source-table": `card__${Q1_ID}`,
+            },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        });
+      },
+    );
+
+    cy.log("**-- 3. Create a brand new dashboard --**");
+
+    cy.request("POST", "/api/dashboard", {
+      name: "13186D",
+    }).then(({ body: { id: DASBOARD_ID } }) => {
+      cy.visit(`/dashboard/${DASBOARD_ID}`);
+    });
+
+    // Add Q2 to that dashboard
+    cy.get(".Icon-pencil").click();
+    cy.get(".Icon-add")
+      .last()
+      .click();
+    cy.findByText("13816_Q2").click();
+
+    // Add filter to the dashboard...
+    cy.get(".Icon-filter").click();
+    cy.findByText("Other Categories").click();
+    // ...and try to connect it to the question
+    cy.findByText("Select…").click();
+
+    cy.log("**Reported failing in v0.36.4 (`Category` is missing)**");
+    popover().within(() => {
+      cy.findByText(/Category/i);
+      cy.findByText(/Title/i);
+      cy.findByText(/Vendor/i);
+    });
+  });
+
+  it.skip("should apply metrics including filter to the nested question (metabase#12507)", () => {
+    const METRIC_NAME = "Discount Applied";
+
+    withSampleDataset(({ ORDERS }) => {
+      cy.log("**-- 1. Create a metric with a filter --**");
+
+      cy.request("POST", "/api/metric", {
+        name: METRIC_NAME,
+        description: "Discounted orders.",
+        definition: {
+          aggregation: [["count"]],
+          filter: ["not-null", ["field-id", ORDERS.DISCOUNT]],
+          "source-table": 2,
+        },
+        table_id: 2,
+      }).then(({ body: { id: METRIC_ID } }) => {
+        // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
+        const ORIGINAL_QUERY = {
+          aggregation: ["metric", METRIC_ID],
+          breakout: [
+            ["binning-strategy", ["field-id", ORDERS.TOTAL], "default"],
+          ],
+          "source-table": 2,
+        };
+
+        cy.log(
+          "**-- 2. Create new question which uses previously defined metric --**",
+        );
+
+        cy.request("POST", "/api/card", {
+          name: "Orders with discount applied",
+          dataset_query: {
+            database: 1,
+            query: ORIGINAL_QUERY,
+            type: "query",
+          },
+          display: "bar",
+          visualization_settings: {
+            "graph.dimension": ["TOTAL"],
+            "graph.metrics": [METRIC_NAME],
+          },
+        }).then(({ body: { id: QUESTION_ID } }) => {
+          cy.server();
+          cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+          cy.log(
+            "**-- 3. Create a nested question based on the previous one --**",
+          );
+
+          // we're adding filter and saving/overwriting the original question, keeping the same ID
+          cy.request("PUT", `/api/card/${QUESTION_ID}`, {
+            dataset_query: {
+              database: 1,
+              query: {
+                filter: [">", ["field-literal", "TOTAL", "type/Float"], 50],
+                "source-query": ORIGINAL_QUERY,
+              },
+              type: "query",
+            },
+          });
+
+          cy.log("**Reported failing since v0.35.2**");
+          cy.visit(`/question/${QUESTION_ID}`);
+          cy.wait("@cardQuery").then(xhr => {
+            expect(xhr.response.body.error).not.to.exist;
+          });
+          cy.findByText(METRIC_NAME);
+          cy.get(".bar");
+        });
+      });
+    });
   });
 });

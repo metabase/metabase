@@ -46,6 +46,16 @@
         :type/Name     ["first_name"]
         :type/Name     ["name"]
         :type/Quantity ["quantity" :type/Integer]))
+    (testing "name and type matches"
+      (testing "matches \"updated at\" style columns"
+        (let [classify (fn [table-name table-type] (-> {:name table-name :base_type table-type}
+                                                       table/map->TableInstance
+                                                       classify.names/infer-special-type))]
+          (doseq [[col-type expected] [[:type/Date :type/UpdatedDate]
+                                       [:type/DateTime :type/UpdatedTimestamp]
+                                       [:type/Time :type/UpdatedTime]]]
+            (doseq [column-name ["updated_at" "updated" "updated-at"]]
+              (is (= expected (classify column-name col-type))))))))
     (testing "Doesn't mark state columns (#2735)"
       (doseq [column-name ["state" "order_state" "state_of_order"]]
         (is (not= :type/State (infer column-name)))))))

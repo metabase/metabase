@@ -28,6 +28,7 @@ fi
 JAVA_OPTS="${JAVA_OPTS} -XX:+IgnoreUnrecognizedVMOptions"
 JAVA_OPTS="${JAVA_OPTS} -Dfile.encoding=UTF-8"
 JAVA_OPTS="${JAVA_OPTS} -Dlogfile.path=target/log"
+JAVA_OPTS="${JAVA_OPTS} -XX:+ExitOnOutOfMemoryError"
 JAVA_OPTS="${JAVA_OPTS} -server"
 
 if [ ! -z "$JAVA_TIMEZONE" ]; then

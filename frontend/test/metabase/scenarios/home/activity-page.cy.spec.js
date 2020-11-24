@@ -25,7 +25,7 @@ describe("metabase > scenarios > home > activity-page", () => {
     openProductsTable();
     cy.findByText("Rating").click();
     popover().within(() => {
-      cy.findByText("Filter").click();
+      cy.findByText("Filter by this column").click();
       cy.findByPlaceholderText("Enter a number").type("5");
       cy.findByText("Update filter").click();
     });

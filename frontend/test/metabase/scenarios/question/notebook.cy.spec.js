@@ -3,15 +3,16 @@ import {
   restore,
   signInAsAdmin,
   openOrdersTable,
-  openProductsTable,
   popover,
   modal,
-  typeAndBlurUsingLabel,
+  withSampleDataset,
 } from "__support__/cypress";
 
 describe("scenarios > question > notebook", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it.skip("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
     openOrdersTable();
@@ -150,108 +151,41 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should allow joins based on saved questions (metabase#13000)", () => {
-      cy.server();
-      cy.route("POST", "/api/card/*/query").as("card");
+      // pass down a joined question alias
+      joinTwoSavedQuestions("13000");
+    });
 
-      cy.log("**Prepare Question 1**");
-      openOrdersTable();
+    // NOTE: - This repro is really tightly coupled to the `joinTwoSavedQuestions()` function.
+    //       - Be extremely careful when changing any of the steps within that function.
+    //       - The alternative approach would have been to write one longer repro instead of two separate ones.
+    it.skip("joined questions should create custom column (metabase#13649)", () => {
+      // pass down a joined question alias
+      joinTwoSavedQuestions("13649");
 
-      cy.findByText("Summarize").click();
-      cy.findByText("Count").click();
+      // add a custom column on top of the steps from the #13000 repro which was simply asserting
+      // that a question could be made by joining two previously saved questions
+      cy.findByText("Custom column").click();
       popover().within(() => {
-        cy.findByText("Sum of ...").click();
-        cy.findByText("Total").click();
+        cy.get("[contenteditable='true']").type(
+          // reference joined question by previously set alias
+          "[13649 → Sum of Rating] / [Sum of Rating]",
+        );
+        cy.findByPlaceholderText("Something nice and descriptive")
+          .click()
+          .type("Sum Divide");
+
+        cy.findAllByRole("button")
+          .contains("Done")
+          .should("not.be.disabled")
+          .click();
       });
+      cy.route("POST", "/api/dataset").as("visualization");
+      cy.findByText("Visualize").click();
 
-      cy.findByText("Group by")
-        .parent()
-        .contains("Product ID")
-        .click();
-
-      // Mid-point check - generated title should be:
-      cy.contains("Sum of Total by Product ID");
-
-      cy.findByText("Done").click();
-      cy.findByText("Save").click();
-      // Save as Q1
-      modal().within(() => {
-        typeAndBlurUsingLabel("Name", "Q1");
-        cy.findByText("Save").click();
+      cy.wait("@visualization").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
       });
-      cy.findByText("Not now").click();
-
-      cy.log("**Prepare Question 2**");
-      openProductsTable();
-
-      cy.findByText("Summarize").click();
-      cy.findByText("Count").click();
-
-      popover().within(() => {
-        cy.findByText("Sum of ...").click();
-        cy.findByText("Rating").click();
-      });
-
-      cy.findByText("Group by")
-        .parent()
-        .contains("ID")
-        .click();
-
-      // Mid-point check - generated title should be:
-      cy.contains("Sum of Rating by ID");
-
-      cy.findByText("Done").click();
-      cy.findByText("Save").click();
-      // Save as Q2
-      modal().within(() => {
-        typeAndBlurUsingLabel("Name", "Q2");
-        cy.findByText("Save").click();
-      });
-      cy.findByText("Not now").click();
-
-      cy.log("**Create Question 3 based on 2 previously saved questions**");
-
-      cy.findByText("Ask a question").click();
-      cy.findByText("Custom question").click();
-      // Choose Q1
-      popover().within(() => {
-        cy.findByText("Saved Questions").click();
-        cy.findByText("Q1").click();
-      });
-      // and join it
-      cy.get(".Icon-join_left_outer").click();
-      // with Q2
-      popover().within(() => {
-        cy.findByText("Sample Dataset").click();
-        cy.findByText("Saved Questions").click();
-        cy.findByText("Q2").click();
-      });
-      // on Product ID = ID
-      popover()
-        .contains("Product ID")
-        .click();
-      popover()
-        .contains("ID")
-        .click();
-      // Save as Q3
-      cy.findByText("Save").click();
-      cy.get(".Modal").within(() => {
-        typeAndBlurUsingLabel("Name", "Q3");
-        cy.findByText("Save").click();
-      });
-      cy.findByText("Not now").click();
-
-      cy.log("**Assert that the Q3 is in 'Our analytics'**");
-
-      cy.visit("/");
-      cy.findByText("Browse all items").click();
-
-      cy.contains("Q3").click({ force: true });
-      cy.wait("@card");
-
-      cy.log("**The point where bug originated in v0.36.0**");
-      cy.get(".Icon-notebook").click();
-      cy.url().should("contain", "/notebook");
-      cy.findByText("Visualize").should("exist");
+      cy.findByText("Sum Divide");
     });
 
     it("should show correct column title with foreign keys (metabase#11452)", () => {
@@ -283,6 +217,179 @@ describe("scenarios > question > notebook", () => {
           // this name COULD be "normalized" to "Review - Product" instead of "Reviews - Products" - that's why we use Regex match here
           .invoke("text")
           .should("match", /reviews? - products?/i);
+      });
+    });
+
+    it.skip("should join saved questions that themselves contain joins (metabase#12928)", () => {
+      withSampleDataset(({ ORDERS, PRODUCTS, PEOPLE, REVIEWS }) => {
+        // Save Question 1
+        cy.request("POST", "/api/card", {
+          name: "12928_Q1",
+          dataset_query: {
+            database: 1,
+            query: {
+              "source-table": 2,
+              aggregation: [["count"]],
+              breakout: [
+                ["joined-field", "Products", ["field-id", PRODUCTS.CATEGORY]],
+                ["joined-field", "People - User", ["field-id", PEOPLE.SOURCE]],
+              ],
+              joins: [
+                {
+                  alias: "Products",
+                  condition: [
+                    "=",
+                    ["field-id", ORDERS.PRODUCT_ID],
+                    ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                  ],
+                  fields: "all",
+                  "source-table": 1,
+                },
+                {
+                  alias: "People - User",
+                  condition: [
+                    "=",
+                    ["field-id", ORDERS.USER_ID],
+                    ["joined-field", "People - User", ["field-id", PEOPLE.ID]],
+                  ],
+                  fields: "all",
+                  "source-table": 3,
+                },
+              ],
+            },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        });
+
+        // Save Question 2
+        cy.request("POST", "/api/card", {
+          name: "12928_Q2",
+          dataset_query: {
+            database: 1,
+            query: {
+              "source-table": 4,
+              aggregation: [["avg", ["field-id", REVIEWS.RATING]]],
+              breakout: [
+                ["joined-field", "Products", ["field-id", PRODUCTS.CATEGORY]],
+              ],
+              joins: [
+                {
+                  alias: "Products",
+                  condition: [
+                    "=",
+                    ["field-id", REVIEWS.PRODUCT_ID],
+                    ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                  ],
+                  fields: "all",
+                  "source-table": 1,
+                },
+              ],
+            },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        });
+
+        // Join two previously saved questions
+        cy.visit("/");
+        cy.findByText("Ask a question").click();
+        cy.findByText("Custom question").click();
+        cy.findByText("Saved Questions").click();
+        cy.findByText("12928_Q1").click();
+        cy.get(".Icon-join_left_outer").click();
+        popover().within(() => {
+          cy.findByText("Sample Dataset").click();
+          cy.findByText("Saved Questions").click();
+        });
+        cy.findByText("12928_Q2").click();
+        cy.contains(/Products? → Category/).click();
+        popover()
+          .contains(/Products? → Category/)
+          .click();
+        cy.findByText("Visualize").click();
+
+        cy.log(
+          "**Reported failing in v1.35.4.1 and `master` on July, 16 2020**",
+        );
+        cy.findByText("12928_Q1 + 12928_Q2");
+        // TODO: Add a positive assertion once this issue is fixed
+        cy.findByText("There was a problem with your question").should(
+          "not.exist",
+        );
+      });
+    });
+
+    it.skip("should join saved question with sorted metric (metabase#13744)", () => {
+      cy.server();
+      // create first question based on repro steps in #13744
+      withSampleDataset(({ PRODUCTS }) => {
+        cy.request("POST", "/api/card", {
+          name: "13744",
+          dataset_query: {
+            database: 1,
+            query: {
+              "source-table": 1,
+              aggregation: [["count"]],
+              breakout: [["field-id", PRODUCTS.CATEGORY]],
+              "order-by": [["asc", ["aggregation", 0]]],
+            },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        }).then(({ body: { id: questionId } }) => {
+          const ALIAS = `Question ${questionId}`;
+
+          // create new question and join it with a previous one
+          cy.request("POST", "/api/card", {
+            name: "13744_joined",
+            dataset_query: {
+              database: 1,
+              query: {
+                joins: [
+                  {
+                    alias: ALIAS,
+                    fields: "all",
+                    condition: [
+                      "=",
+                      ["field-id", PRODUCTS.CATEGORY],
+                      [
+                        "joined-field",
+                        ALIAS,
+                        ["field-literal", "CATEGORY", "type/Text"],
+                      ],
+                    ],
+                    "source-table": `card__${questionId}`,
+                  },
+                ],
+                "source-table": 1,
+              },
+              type: "query",
+            },
+            display: "table",
+            visualization_settings: {},
+          }).then(({ body: { id: joinedQuestionId } }) => {
+            // listen on the final card query which means the data for this question loaded
+            cy.route("POST", `/api/card/${joinedQuestionId}/query`).as(
+              "cardQuery",
+            );
+
+            // Assert phase begins here
+            cy.visit(`/question/${joinedQuestionId}`);
+            cy.findByText("13744_joined");
+
+            cy.log("**Reported failing on v0.34.3 - v0.37.0.2**");
+            cy.log("**Reported error log: 'No aggregation at index: 0'**");
+            // assert directly on XHR instead of relying on UI
+            cy.wait("@cardQuery").then(xhr => {
+              expect(xhr.response.body.error).not.to.exist;
+            });
+            cy.findAllByText("Gizmo");
+          });
+        });
       });
     });
   });
@@ -394,3 +501,84 @@ describe("scenarios > question > notebook", () => {
     });
   });
 });
+
+// Extracted repro steps for #13000
+function joinTwoSavedQuestions(ALIAS = "Joined Question") {
+  cy.server();
+
+  withSampleDataset(({ ORDERS, PRODUCTS }) => {
+    cy.log("**-- Prepare Question 1 --**");
+    cy.request("POST", "/api/card", {
+      name: "Q1",
+      dataset_query: {
+        database: 1,
+        query: {
+          aggregation: ["sum", ["field-id", ORDERS.TOTAL]],
+          breakout: [["field-id", ORDERS.PRODUCT_ID]],
+          "source-table": 2,
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: Q1_ID } }) => {
+      cy.log("**-- Prepare Question 2 --**");
+      cy.request("POST", "/api/card", {
+        name: "Q2",
+        dataset_query: {
+          database: 1,
+          query: {
+            aggregation: ["sum", ["field-id", PRODUCTS.RATING]],
+            breakout: [["field-id", PRODUCTS.ID]],
+            "source-table": 1,
+          },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {},
+      }).then(({ body: { id: Q2_ID } }) => {
+        cy.log(
+          "**-- Create Question 3 based on 2 previously saved questions --**",
+        );
+        cy.request("POST", "/api/card", {
+          name: "Q3",
+          dataset_query: {
+            database: 1,
+            query: {
+              joins: [
+                {
+                  alias: ALIAS,
+                  condition: [
+                    "=",
+                    ["field-literal", "PRODUCT_ID", "type/Integer"],
+                    [
+                      "joined-field",
+                      ALIAS,
+                      ["field-literal", "ID", "type/BigInteger"],
+                    ],
+                  ],
+                  fields: "all",
+                  "source-table": `card__${Q2_ID}`,
+                },
+              ],
+              "source-table": `card__${Q1_ID}`,
+            },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        }).then(({ body: { id: Q3_ID } }) => {
+          cy.route("POST", `/api/card/${Q3_ID}/query`).as("cardQuery");
+          cy.visit(`/question/${Q3_ID}`);
+
+          cy.wait("@cardQuery");
+
+          cy.log("**Reported in v0.36.0**");
+          cy.get(".Icon-notebook").click();
+          cy.url().should("contain", "/notebook");
+          cy.findByText("Visualize").should("exist");
+        });
+      });
+    });
+  });
+}

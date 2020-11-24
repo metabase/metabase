@@ -20,9 +20,8 @@ type ColumnSetting = {
   enabled: boolean,
 };
 
-// Many aggregations result in [[null]] if there are no rows to aggregate after filters
 export const datasetContainsNoResults = (data: DatasetData): boolean =>
-  data.rows.length === 0 || _.isEqual(data.rows, [[null]]);
+  data.rows == null || data.rows.length === 0;
 
 /**
  * @returns min and max for a value in a column

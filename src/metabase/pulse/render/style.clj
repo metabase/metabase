@@ -71,6 +71,11 @@
   []
   (public-settings/application-color))
 
+(defn secondary-color
+  "Secondary color to use in Pulse charts; normally red, but customizable when whitelabeling is enabled."
+  []
+  (public-settings/secondary-chart-color))
+
 (defn font-style
   "Font family to use in rendered Pulses."
   []
