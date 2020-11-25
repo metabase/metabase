@@ -12,9 +12,15 @@ Follow Google's Cloud Platform Help on [how to create an OAuth client ID](https:
 
 > In order to avoid a `redirect_uri_mismatch` when requesting **Auth Codes** in later steps, ensure to set `Application Type: Desktop App`.
 
+##### Enabling Google Analytics API
+Go to [APIs & Services](https://console.developers.google.com/apis/). The **Enable APIs and Services** button, opens the **API Library**, where you can search for **Google Analytics API** and enable it.
+If further details are needed, you can follow this Google [API Console Help](https://support.google.com/googleapi/answer/6158841?hl=en) article instead.
+
+
 ##### Adding the API scopes
 Refer to Google's Analytics API documentation for the required [scopes](https://developers.google.com/identity/protocols/oauth2/scopes).
 Depending on your Google Analytics API version, you may need to use [Google Analytics API, v3](https://developers.google.com/identity/protocols/oauth2/scopes#analytics) scopes or [Analytics Reporting API, v4](https://developers.google.com/identity/protocols/oauth2/scopes#analyticsreporting) ones.
+
 
 ## Metabase: Adding a Google Analytics Dataset
 
