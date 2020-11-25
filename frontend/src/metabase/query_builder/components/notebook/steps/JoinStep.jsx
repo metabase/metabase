@@ -72,22 +72,12 @@ class JoinClause extends React.Component {
       return null;
     }
 
-    let lhsTable;
-    if (join.index() === 0) {
-      // first join's lhs is always the parent table
-      lhsTable = join.parentTable();
-    } else if (join.parentDimension()) {
-      // subsequent can be one of the previously joined tables
-      // NOTE: `lhsDimension` would probably be a better name for `parentDimension`
-      lhsTable = join.parentDimension().field().table;
-    }
-
     const joinedTable = join.joinedTable();
     const strategyOption = join.strategyOption();
     return (
       <Flex align="center" flex="1 1 auto" {...props}>
         <NotebookCellItem color={color} icon="table2">
-          {(lhsTable && lhsTable.displayName()) || `Previous results`}
+          {t`Previous results`}
         </NotebookCellItem>
 
         <PopoverWithTrigger
