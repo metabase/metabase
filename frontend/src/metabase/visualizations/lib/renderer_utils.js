@@ -252,12 +252,15 @@ export function syntheticStackedBarsForWaterfallChart(datas) {
   };
 
   const values = [...mainValues, totalValue];
-  let offset = 0;
-  const beams = [];
-  for (let i = 0; i < values.length - 1; ++i) {
-    beams.push(offset);
-    offset += values[i];
-  }
+  const { beams } = mainValues.reduce(
+    (t, value) => {
+      return {
+        beams: [...t.beams, t.offset],
+        offset: t.offset + value,
+      };
+    },
+    { beams: [], offset: 0 },
+  );
   // The last one is the total bar, anchor it at 0
   beams.push(0);
 
