@@ -603,6 +603,7 @@
     (testing "\n?namespace= parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
                       Collection [{coins-id :id}  {:name "Coin Collection", :namespace "currency"}]]
+        (perms/grant-collection-read-permissions! (group/all-users) coins-id)
         (letfn [(collection-names [items]
                   (->> items
                        (filter #(and (= (:model %) "collection")
@@ -612,9 +613,7 @@
             (is (= ["Normal Collection"]
                    (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items")))))
 
-          (perms/grant-collection-read-permissions! (group/all-users) coins-id)
           (testing "By passing `:namespace` we should be able to see Collections in that `:namespace`"
-            (perms/grant-collection-read-permissions! (group/all-users) coins-id)
             (testing "?namespace=currency"
               (is (= ["Coin Collection"]
                      (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=currency")))))
