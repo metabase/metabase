@@ -19,7 +19,7 @@ import cx from "classnames";
 import pure from "recompose/pure";
 
 const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
-  <div className={cx(S.item)}>
+  <div className={cx(S.item, "pt1", "border-top")}>
     <div className={S.itemBody} style={{ maxWidth: "100%", borderTop: "none" }}>
       <div className={F.field}>
         <div className={cx(S.itemTitle, F.fieldName)}>
@@ -116,6 +116,11 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         </div>
         <div className={F.fieldOther} />
       </div>
+      {field.description && (
+        <div className={cx(S.itemSubtitle, "mb2", { mt1: isEditing })}>
+          {field.description}
+        </div>
+      )}
     </div>
   </div>
 );
