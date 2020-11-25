@@ -339,15 +339,17 @@ describeWithToken("formatting > sandboxes", () => {
       cy.log(
         "**-- Original issue reported failure to find 'User' group / foreign key--**",
       );
-      cy.get(".ReactVirtualized__Grid").scrollTo("bottom"); // Cypress scroll sometimes doesn't work; We should disable virtualization for Popover
+
       popover().within(() => {
+        // Collapse "Order/s/" in order to bring "User" into view (trick to get around virtualization - credits: @flamber)
+        cy.get(".List-section-header")
+          .contains(/Orders?/)
+          .click();
+
         cy.get(".List-section-header")
           .contains("User")
           .click();
-      });
 
-      cy.get(".ReactVirtualized__Grid").scrollTo(0, 0); // This is needed again because of the virtualization
-      popover().within(() => {
         cy.get(".List-item")
           .contains("ID")
           .click();
@@ -355,7 +357,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.findByText("Visualize").click();
       cy.findByText("Count by User → ID");
-      cy.findAllByText("10");
+      cy.findByText("11"); // Sum of orders for user with ID #1
     });
 
     it.skip("SB question with `case` CC should substitue the `else` argument's table (metabase-enterprise#548)", () => {
