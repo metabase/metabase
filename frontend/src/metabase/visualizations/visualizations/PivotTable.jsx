@@ -176,15 +176,15 @@ export default class PivotTable extends Component {
                       >
                         {rows.map((row, index) => (
                           <div className="flex" style={{ height: cellHeight }}>
-                            {row.map(r => (
+                            {row.map(({ value, span }) => (
                               <div
-                                style={{ width: `${100 / row.length}%` }}
+                                style={{ width: cellWidth * span }}
                                 className={cx({
                                   "border-bottom": index < rows.length - 1,
                                 })}
                               >
                                 <Ellipsified>
-                                  {formatValue(r.value, {
+                                  {formatValue(value, {
                                     column: data.cols[columnIndexes[index]],
                                   })}
                                 </Ellipsified>
@@ -209,17 +209,19 @@ export default class PivotTable extends Component {
                     <div key={key} style={style} className="flex">
                       {leftIndex[index].map((col, index) => (
                         <div className="flex flex-column">
-                          {col.map(c => (
+                          {col.map(({ value, span = 1 }) => (
                             <div
                               style={{
+                                height: cellHeight * span,
                                 width: cellWidth,
-                                height: cellHeight,
                               }}
                               className="p1"
                             >
-                              {formatValue(c.value, {
-                                column: data.cols[rowIndexes[index]],
-                              })}
+                              <Ellipsified>
+                                {formatValue(value, {
+                                  column: data.cols[rowIndexes[index]],
+                                })}
+                              </Ellipsified>
                             </div>
                           ))}
                         </div>

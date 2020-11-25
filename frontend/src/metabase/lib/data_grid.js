@@ -84,15 +84,21 @@ function getIndex(values, { valueColumns = [] } = {}) {
   if (values.length === 0) {
     if (valueColumns.length > 1) {
       // if we have multiple value columns include their column names
-      const colNames = valueColumns.map(col => ({ value: col.display_name }));
+      const colNames = valueColumns.map(col => ({
+        value: col.display_name,
+        span: 1,
+      }));
       return [[colNames]];
     }
     return [];
   }
-  return values.map(({ value, children }) => [
-    [{ value }],
-    ..._.zip(...getIndex(children, { valueColumns })).map(a => a.flat()),
-  ]);
+  return values.map(({ value, children }) => {
+    const foo = _.zip(...getIndex(children, { valueColumns })).map(a =>
+      a.flat(),
+    );
+    const span = foo.length === 0 ? 1 : foo[foo.length - 1].length;
+    return [[{ value, span }], ...foo];
+  });
 }
 
 function updateValueObject(row, indexes, seenValues) {

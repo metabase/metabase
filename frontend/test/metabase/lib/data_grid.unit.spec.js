@@ -124,16 +124,44 @@ describe("data_grid", () => {
     it("should produce multi-level top index", () => {
       const { topIndex, leftIndex } = multiLevelPivot(data, [0, 1], [], [2]);
       expect(topIndex).toEqual([
-        [[{ value: "a" }], [{ value: "x" }, { value: "y" }, { value: "z" }]],
-        [[{ value: "b" }], [{ value: "x" }, { value: "y" }, { value: "z" }]],
+        [
+          [{ value: "a", span: 3 }],
+          [
+            { value: "x", span: 1 },
+            { value: "y", span: 1 },
+            { value: "z", span: 1 },
+          ],
+        ],
+        [
+          [{ value: "b", span: 3 }],
+          [
+            { value: "x", span: 1 },
+            { value: "y", span: 1 },
+            { value: "z", span: 1 },
+          ],
+        ],
       ]);
       expect(leftIndex).toEqual([]);
     });
     it("should produce multi-level left index", () => {
       const { topIndex, leftIndex } = multiLevelPivot(data, [], [0, 1], [2]);
       expect(leftIndex).toEqual([
-        [[{ value: "a" }], [{ value: "x" }, { value: "y" }, { value: "z" }]],
-        [[{ value: "b" }], [{ value: "x" }, { value: "y" }, { value: "z" }]],
+        [
+          [{ value: "a", span: 3 }],
+          [
+            { value: "x", span: 1 },
+            { value: "y", span: 1 },
+            { value: "z", span: 1 },
+          ],
+        ],
+        [
+          [{ value: "b", span: 3 }],
+          [
+            { value: "x", span: 1 },
+            { value: "y", span: 1 },
+            { value: "z", span: 1 },
+          ],
+        ],
       ]);
       expect(topIndex).toEqual([]);
     });
@@ -145,8 +173,14 @@ describe("data_grid", () => {
         // ["b", "y", ...], not present
       ]);
       const { leftIndex, topIndex } = multiLevelPivot(data, [0], [1], [2]);
-      expect(leftIndex).toEqual([[[{ value: "x" }]], [[{ value: "y" }]]]);
-      expect(topIndex).toEqual([[[{ value: "a" }]], [[{ value: "b" }]]]);
+      expect(leftIndex).toEqual([
+        [[{ value: "x", span: 1 }]],
+        [[{ value: "y", span: 1 }]],
+      ]);
+      expect(topIndex).toEqual([
+        [[{ value: "a", span: 1 }]],
+        [[{ value: "b", span: 1 }]],
+      ]);
     });
     it("should handle multiple value columns", () => {
       const data = {
@@ -166,9 +200,12 @@ describe("data_grid", () => {
         [2, 3],
       );
       expect(topIndex).toEqual([
-        [[{ value: "a" }], [{ value: "Metric" }, { value: "Metric" }]],
+        [
+          [{ value: "a", span: 2 }],
+          [{ value: "Metric", span: 1 }, { value: "Metric", span: 1 }],
+        ],
       ]);
-      expect(leftIndex).toEqual([[[{ value: "b" }]]]);
+      expect(leftIndex).toEqual([[[{ value: "b", span: 1 }]]]);
       expect(getRowSection("a", "b")).toEqual([["1", "2"]]);
     });
     it("should work with three levels of row grouping", () => {
@@ -196,14 +233,24 @@ describe("data_grid", () => {
       expect(topIndex).toEqual([]);
       expect(leftIndex).toEqual([
         [
-          [{ value: "a1" }],
-          [{ value: "b1" }, { value: "b2" }],
-          [{ value: "c1" }, { value: "c2" }, { value: "c1" }, { value: "c2" }],
+          [{ span: 4, value: "a1" }],
+          [{ span: 2, value: "b1" }, { span: 2, value: "b2" }],
+          [
+            { span: 1, value: "c1" },
+            { span: 1, value: "c2" },
+            { span: 1, value: "c1" },
+            { span: 1, value: "c2" },
+          ],
         ],
         [
-          [{ value: "a2" }],
-          [{ value: "b1" }, { value: "b2" }],
-          [{ value: "c1" }, { value: "c2" }, { value: "c1" }, { value: "c2" }],
+          [{ span: 4, value: "a2" }],
+          [{ span: 2, value: "b1" }, { span: 2, value: "b2" }],
+          [
+            { span: 1, value: "c1" },
+            { span: 1, value: "c2" },
+            { span: 1, value: "c1" },
+            { span: 1, value: "c2" },
+          ],
         ],
       ]);
     });
