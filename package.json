@@ -121,7 +121,6 @@
     "cypress": "^5.5.0",
     "documentation": "^4.0.0-rc.1",
     "enzyme": "^3.8.0",
-    "enzyme-2": "npm:enzyme@2",
     "enzyme-adapter-react-15": "^1.3.0",
     "eslint": "7.12.1",
     "eslint-import-resolver-webpack": "^0.8.3",
@@ -171,8 +170,8 @@
     "webpack-notifier": "^1.8.0",
     "webpack-postcss-tools": "^1.1.2",
     "xhr-mock": "^2.4.1",
-    "yaml-lint": "^1.2.4",
-    "xlsx": "^0.16.8"
+    "xlsx": "^0.16.8",
+    "yaml-lint": "^1.2.4"
   },
   "scripts": {
     "dev": "concurrently --kill-others -p name -n 'backend,frontend,docs' -c 'blue,green,yellow' 'lein run' 'yarn build-hot' 'yarn docs'",
