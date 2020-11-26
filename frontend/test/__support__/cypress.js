@@ -255,5 +255,7 @@ function addQADatabase(engine, db_display_name, port) {
         schedule_type: "hourly",
       },
     },
+  }).then(({ status }) => {
+    expect(status).to.equal(200);
   });
 }
