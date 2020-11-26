@@ -5,11 +5,13 @@ import {
   popover,
 } from "__support__/cypress";
 
+const PG_DB_NAME = "QA Postgres12";
+
 describe("postgres > question > custom columns", () => {
   before(() => {
     restore();
     signInAsAdmin();
-    addPostgresDatabase();
+    addPostgresDatabase(PG_DB_NAME);
   });
 
   it.skip("should allow using strings in filter based on a custom column (metabase#13751)", () => {
@@ -17,7 +19,7 @@ describe("postgres > question > custom columns", () => {
 
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText("QA Postgres12").click();
+    cy.findByText(PG_DB_NAME).click();
     cy.findByText("People").click();
 
     cy.log("**-- 1. Create custom column using `regexextract()` --**");

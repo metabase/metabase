@@ -6,11 +6,13 @@ import {
   addMongoDatabase,
 } from "__support__/cypress";
 
+const MONGO_DB_NAME = "QA Mongo4";
+
 describe("mongodb > user > query", () => {
   before(() => {
     restore();
     signInAsAdmin();
-    addMongoDatabase();
+    addMongoDatabase(MONGO_DB_NAME);
   });
 
   context("as an admin", () => {
@@ -31,7 +33,7 @@ describe("mongodb > user > query", () => {
     it("can write a native MongoDB query", () => {
       cy.visit("/question/new");
       cy.contains("Native query").click();
-      cy.contains("QA Mongo4").click();
+      cy.contains(MONGO_DB_NAME).click();
 
       cy.get(".ace_content").type(`[ { $count: "Total" } ]`, {
         parseSpecialCharSequences: false,
@@ -46,7 +48,7 @@ describe("mongodb > user > query", () => {
 
       cy.visit("/question/new");
       cy.contains("Native query").click();
-      cy.contains("QA Mongo4").click();
+      cy.contains(MONGO_DB_NAME).click();
 
       cy.get(".ace_content").type(`[ { $count: "Total" } ]`, {
         parseSpecialCharSequences: false,
@@ -81,7 +83,7 @@ describe("mongodb > user > query", () => {
 function queryMongoDB() {
   cy.visit("/question/new");
   cy.contains("Simple question").click();
-  cy.contains("QA Mongo4").click();
+  cy.contains(MONGO_DB_NAME).click();
   cy.contains("Orders").click();
   cy.contains("37.65");
 }
