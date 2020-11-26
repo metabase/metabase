@@ -56,6 +56,7 @@ import {
   getDatas,
   getFirstNonEmptySeries,
   getXValues,
+  syntheticStackedBarsForWaterfallChart,
   isDimensionTimeseries,
   isRemappedToString,
   isMultiCardSeries,
@@ -227,82 +228,6 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
   return { dimension, groups };
 }
 
-// ASSERT(datas.length === 1)
-// ASSERT(datas[0].length > 0)
-function getDimensionsAndGroupsForWaterfallChart(props, originalDatas, warn) {
-  const datas = originalDatas.slice();
-  const mainSeries = datas[0];
-  const totalValue = mainSeries.reduce((t, d) => t + d[1], 0);
-  const total = ["Total", totalValue];
-  // $FlowFixMe cloning for the total bar
-  total._origin = {
-    seriesIndex: mainSeries[0]._origin.seriesIndex,
-    rowIndex: mainSeries.length,
-    cols: mainSeries[0]._origin.cols,
-    row: total,
-  };
-  datas[0] = [...mainSeries, total];
-  datas.push(datas[0].map(k => k.slice())); // negatives
-  datas.push(datas[0].map(k => k.slice())); // positives
-
-  /*
-  A waterfall chart is essentially a stacked bar chart.
-  It consists of the following (from the topmost):
-  - the "green bar", when the current value is greater than the previous one
-  - the "red bar", when the current value is smaller than the previous one
-  - the "invisible beam" supporting either the positive or negative bar
-
-  Note the green and red bars are mutually exclusive (i.e. if one has
-  a positive value, the other is zero). This is done so we need not have
-  conditional fill color.
-  */
-
-  const values = datas[0].map(d => d[1]);
-  const positives = values.map(v => (v > 0 ? v : 0));
-  const negatives = values.map(v => (v < 0 ? -v : 0));
-  const beams = [0];
-  for (let i = 1; i < values.length; ++i) {
-    beams[i] =
-      positives[i - 1] > 0
-        ? beams[i - 1] + positives[i - 1] - negatives[i]
-        : beams[i - 1];
-  }
-  for (let k = 0; k < values.length; ++k) {
-    datas[0][k]._waterfallValue = datas[0][k][1];
-    datas[0][k][1] = beams[k];
-    datas[1][k][1] = negatives[k];
-    datas[2][k][1] = positives[k];
-  }
-
-  // The last one is the total bar, treat it as either a positive or negative bar
-  const last = values.length - 1;
-  datas[0][last][1] = 0;
-  datas[1][last][1] = totalValue < 0 ? totalValue : 0;
-  datas[2][last][1] = totalValue > 0 ? totalValue : 0;
-
-  // The subsequent steps are exactly like any other stacked bar chart
-
-  const dataset = crossfilter();
-  datas.map((data, i) => {
-    const xyz = data.map(d => ({
-      [0]: d[0],
-      [i + 1]: d[1],
-    }));
-    dataset.add(xyz);
-  });
-
-  const dimension = dataset.dimension(d => d[0]);
-  const groups = [
-    datas.map((_, seriesIndex) =>
-      reduceGroup(dimension.group(), seriesIndex + 1, () =>
-        warn(unaggregatedDataWarning(props.series[seriesIndex].data.cols[0])),
-      ),
-    ),
-  ];
-
-  return { dimension, groups };
-}
-
 function getDimensionsAndGroupsForOther({ series }, datas, warn) {
   const dataset = crossfilter();
   datas.map(data => dataset.add(data));
@@ -344,17 +269,20 @@ function getYExtentsForGroups(groups) {
 /// This is only exported for testing.
 export function getDimensionsAndGroupsAndUpdateSeriesDisplayNames(
   props,
-  datas,
+  originalDatas,
   warn,
 ) {
   const { settings, chartType } = props;
+  const datas =
+    chartType === "waterfall"
+      ? syntheticStackedBarsForWaterfallChart(originalDatas)
+      : originalDatas;
+  const isStackedBar = isStacked(settings, datas) || chartType === "waterfall";
 
   const { groups, dimension } =
-    chartType === "waterfall"
-      ? getDimensionsAndGroupsForWaterfallChart(props, datas, warn)
-      : chartType === "scatter"
+    chartType === "scatter"
       ? getDimensionsAndGroupsForScatterChart(datas)
-      : isStacked(settings, datas)
+      : isStackedBar
       ? getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
           props,
           datas,
