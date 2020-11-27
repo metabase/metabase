@@ -326,12 +326,7 @@ describeWithToken("formatting > sandboxes", () => {
       );
 
       signOut();
-
-      cy.log("**-- Logging in as sandboxed user --**");
-      cy.request("POST", "/api/session", {
-        username: sandboxed_user.email,
-        password: sandboxed_user.password,
-      });
+      signInAsSandboxedUser();
 
       // Go straight to orders table in custom questions
       cy.visit("/question/new?database=1&table=2&mode=notebook");
@@ -442,12 +437,7 @@ describeWithToken("formatting > sandboxes", () => {
           visualization_settings: {},
         }).then(({ body: { id: QUESTION_ID } }) => {
           signOut();
-
-          cy.log("**-- Logging in as sandboxed user --**");
-          cy.request("POST", "/api/session", {
-            username: sandboxed_user.email,
-            password: sandboxed_user.password,
-          });
+          signInAsSandboxedUser();
 
           cy.server();
           cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
@@ -546,12 +536,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("Not now").click();
 
       signOut();
-
-      // Sign in as newly created sandboxed_user ("User 1")
-      cy.visit("/");
-      cy.findByLabelText("Email address").type(sandboxed_user.email);
-      cy.findByLabelText("Password").type(sandboxed_user.password);
-      cy.findByText("Sign in").click();
+      signInAsSandboxedUser();
 
       // Find saved question in "Our analytics"
       cy.findByText("Browse all items").click();
@@ -734,12 +719,7 @@ describeWithToken("formatting > sandboxes", () => {
             );
 
             signOut();
-
-            cy.log("**-- Logging in as sandboxed user --**");
-            cy.request("POST", "/api/session", {
-              username: sandboxed_user.email,
-              password: sandboxed_user.password,
-            });
+            signInAsSandboxedUser();
 
             // Go straight to orders table in custom questions
             cy.visit("/question/new?database=1&table=2&mode=notebook");
@@ -887,12 +867,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
 
       signOut();
-
-      cy.log("**-- Logging in as sandboxed user --**");
-      cy.request("POST", "/api/session", {
-        username: sandboxed_user.email,
-        password: sandboxed_user.password,
-      });
+      signInAsSandboxedUser();
 
       openOrdersTable();
 
@@ -914,3 +889,11 @@ describeWithToken("formatting > sandboxes", () => {
     });
   });
 });
+
+function signInAsSandboxedUser() {
+  cy.log("**-- Logging in as sandboxed user --**");
+  cy.request("POST", "/api/session", {
+    username: sandboxed_user.email,
+    password: sandboxed_user.password,
+  });
+}
