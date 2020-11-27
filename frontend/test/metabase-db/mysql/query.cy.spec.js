@@ -39,7 +39,7 @@ describe("mysql > user > query", () => {
 
     // Write Native query that includes a filter
     cy.get(".ace_content").type(
-      `SELECT PRODUCT_ID, TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.CATEGORY = {{category}}]];`,
+      `SELECT TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.ID = {{id}}]];`,
       {
         parseSpecialCharSequences: false,
       },
@@ -49,10 +49,10 @@ describe("mysql > user > query", () => {
 
     cy.get("@queryPreview").contains("Widget");
 
-    // Filter by Gizmo
-    cy.findByPlaceholderText("Category")
+    // Filter by Product ID = 1 (its category is Gizmo)
+    cy.findByPlaceholderText(/Id/i)
       .click()
-      .type("Gizmo");
+      .type("1");
     cy.get(".NativeQueryEditor .Icon-play").click();
 
     cy.get("@queryPreview")
