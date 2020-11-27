@@ -35,6 +35,13 @@ export const USERS = {
   },
 };
 
+export const USER_GROUPS = {
+  ALL_USERS_GROUP: 1,
+  ADMIN_GROUP: 2,
+  COLLECTION_GROUP: 4,
+  DATA_GROUP: 5,
+};
+
 export function signIn(user = "admin") {
   cy.log(`**--- Logging in as ${user} ---**`);
   cy.request("POST", "/api/session", USERS[user]);
