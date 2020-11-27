@@ -747,9 +747,9 @@ describeWithToken("formatting > sandboxes", () => {
               .contains(/Products?/i)
               .click();
 
-            // Where `Orders.User ID` = `Products.ID`
+            // Where `Orders.Product ID` = `Products.ID`
             popover()
-              .contains("User ID")
+              .contains("Product ID")
               .click();
 
             popover()
