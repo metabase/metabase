@@ -7,7 +7,15 @@ import {
   signInAsNormalUser,
   signOut,
   withSampleDataset,
+  USER_GROUPS,
 } from "__support__/cypress";
+
+const {
+  ALL_USERS_GROUP,
+  ADMIN_GROUP,
+  DATA_GROUP,
+  COLLECTION_GROUP,
+} = USER_GROUPS;
 
 const new_user = {
   first_name: "Barb",
@@ -27,7 +35,7 @@ const sandboxed_user = {
   },
   // Because of the specific restrictions and the way testing dataset was set up,
   // this user needs to also have access to "collections" (group_id: 4) in order to see saved questions
-  group_ids: [1, 4],
+  group_ids: [ALL_USERS_GROUP, COLLECTION_GROUP],
 };
 
 const [ATTR_UID, ATTR_CAT] = Object.keys(sandboxed_user.login_attributes);
@@ -128,8 +136,6 @@ describeWithToken("formatting > sandboxes", () => {
     it("should change sandbox permissions as admin", () => {
       signOut();
       signInAsAdmin();
-      const ADMIN_GROUP = 2;
-      const DATA_GROUP = 5;
 
       // Changes Orders permssions to use filter and People to use SQL filter
       withSampleDataset(
@@ -279,7 +285,6 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it.skip("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
-      const COLLECTION_GROUP_ID = 4;
       withSampleDataset(
         ({ PEOPLE, PEOPLE_ID, ORDERS_ID, PRODUCTS_ID, REVIEWS_ID }) => {
           cy.log(
@@ -291,7 +296,7 @@ describeWithToken("formatting > sandboxes", () => {
               user_id: ["dimension", ["field-id", PEOPLE.ID]],
             },
             card_id: null,
-            group_id: COLLECTION_GROUP_ID,
+            group_id: COLLECTION_GROUP,
             table_id: PEOPLE_ID,
           });
 
@@ -301,7 +306,7 @@ describeWithToken("formatting > sandboxes", () => {
             ({ body: { groups, revision } }) => {
               // Update permissions for `collections` group [id: 4]
               // This mutates the original `groups` object => we'll pass it next to the `PUT` request
-              groups[COLLECTION_GROUP_ID] = {
+              groups[COLLECTION_GROUP] = {
                 1: {
                   schemas: {
                     PUBLIC: {
@@ -361,7 +366,6 @@ describeWithToken("formatting > sandboxes", () => {
     it.skip("SB question with `case` CC should substitue the `else` argument's table (metabase-enterprise#548)", () => {
       const QUESTION_NAME = "EE_548";
       const CC_NAME = "CC_548"; // Custom column
-      const COLLECTION_GROUP_ID = 4;
 
       withSampleDataset(({ ORDERS, ORDERS_ID }) => {
         cy.log("**-- 1. Sandbox `Orders` table on `user_id` attribute --**");
@@ -371,7 +375,7 @@ describeWithToken("formatting > sandboxes", () => {
             user_id: ["dimension", ["field-id", ORDERS.USER_ID]],
           },
           card_id: null,
-          group_id: COLLECTION_GROUP_ID,
+          group_id: COLLECTION_GROUP,
           table_id: ORDERS_ID,
         });
 
@@ -391,7 +395,7 @@ describeWithToken("formatting > sandboxes", () => {
           ({ body: { groups, revision } }) => {
             // Update permissions for `collections` group [id: 4]
             // This mutates the original `groups` object => we'll pass it next to the `PUT` request
-            groups[COLLECTION_GROUP_ID] = {
+            groups[COLLECTION_GROUP] = {
               1: {
                 schemas: {
                   PUBLIC: {
@@ -564,7 +568,6 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it.skip("advanced sandboxing based on saved question with joins should allow sandboxed user to use joins (metabase-enterprise#524)", () => {
-      const COLLECTION_GROUP_ID = 4;
       const [ORDERS_ALIAS, PRODUCTS_ALIAS, REVIEWS_ALIAS] = [
         "Orders",
         "Products",
@@ -668,7 +671,7 @@ describeWithToken("formatting > sandboxes", () => {
                 ],
               },
               card_id: CARD_ID,
-              group_id: COLLECTION_GROUP_ID,
+              group_id: COLLECTION_GROUP,
               table_id: ORDERS_ID,
             });
 
@@ -688,7 +691,7 @@ describeWithToken("formatting > sandboxes", () => {
                 ],
               },
               card_id: CARD_ID,
-              group_id: COLLECTION_GROUP_ID,
+              group_id: COLLECTION_GROUP,
               table_id: PRODUCTS_ID,
             });
 
@@ -698,7 +701,7 @@ describeWithToken("formatting > sandboxes", () => {
               ({ body: { groups, revision } }) => {
                 // Update permissions for `collections` group [id: 4]
                 // This mutates the original `groups` object => we'll pass it next to the `PUT` request
-                groups[COLLECTION_GROUP_ID] = {
+                groups[COLLECTION_GROUP] = {
                   1: {
                     schemas: {
                       PUBLIC: {
@@ -757,8 +760,6 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it.skip("advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)", () => {
-      const COLLECTION_GROUP_ID = 4;
-
       withSampleDataset(({ PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID }) => {
         cy.log("**-- Remap Product ID's display value to `title` --**");
 
@@ -798,7 +799,7 @@ describeWithToken("formatting > sandboxes", () => {
               [ATTR_UID]: ["variable", ["template-tag", "sandbox"]],
             },
             card_id: CARD_ID,
-            group_id: COLLECTION_GROUP_ID,
+            group_id: COLLECTION_GROUP,
             table_id: ORDERS_ID,
           });
         });
@@ -834,7 +835,7 @@ describeWithToken("formatting > sandboxes", () => {
               [ATTR_CAT]: ["variable", ["template-tag", "sandbox"]],
             },
             card_id: CARD_ID,
-            group_id: COLLECTION_GROUP_ID,
+            group_id: COLLECTION_GROUP,
             table_id: PRODUCTS_ID,
           });
         });
@@ -845,7 +846,7 @@ describeWithToken("formatting > sandboxes", () => {
           ({ body: { groups, revision } }) => {
             // Update permissions for `collections` group [id: 4]
             // This mutates the original `groups` object => we'll pass it next to the `PUT` request
-            groups[COLLECTION_GROUP_ID] = {
+            groups[COLLECTION_GROUP] = {
               1: {
                 schemas: {
                   PUBLIC: {
