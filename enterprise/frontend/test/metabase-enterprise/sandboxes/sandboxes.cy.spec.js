@@ -794,7 +794,7 @@ describeWithToken("formatting > sandboxes", () => {
                   "display-name": "Sandbox",
                   id: "1115dc4f-6b9d-812e-7f72-b87ab885c88a",
                   name: "sandbox",
-                  type: "text",
+                  type: "number",
                 },
               },
             },
