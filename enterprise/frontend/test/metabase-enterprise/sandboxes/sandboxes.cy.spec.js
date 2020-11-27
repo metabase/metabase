@@ -293,7 +293,7 @@ describeWithToken("formatting > sandboxes", () => {
 
           cy.request("POST", "/api/mt/gtap", {
             attribute_remappings: {
-              user_id: ["dimension", ["field-id", PEOPLE.ID]],
+              [ATTR_UID]: ["dimension", ["field-id", PEOPLE.ID]],
             },
             card_id: null,
             group_id: COLLECTION_GROUP,
@@ -372,7 +372,7 @@ describeWithToken("formatting > sandboxes", () => {
 
         cy.request("POST", "/api/mt/gtap", {
           attribute_remappings: {
-            user_id: ["dimension", ["field-id", ORDERS.USER_ID]],
+            [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
           },
           card_id: null,
           group_id: COLLECTION_GROUP,
@@ -665,7 +665,7 @@ describeWithToken("formatting > sandboxes", () => {
 
             cy.request("POST", "/api/mt/gtap", {
               attribute_remappings: {
-                user_id: [
+                [ATTR_UID]: [
                   "dimension",
                   ["joined-field", ORDERS_ALIAS, ["field-id", ORDERS.USER_ID]],
                 ],
@@ -681,7 +681,7 @@ describeWithToken("formatting > sandboxes", () => {
 
             cy.request("POST", "/api/mt/gtap", {
               attribute_remappings: {
-                user_id: [
+                [ATTR_UID]: [
                   "dimension",
                   [
                     "joined-field",
