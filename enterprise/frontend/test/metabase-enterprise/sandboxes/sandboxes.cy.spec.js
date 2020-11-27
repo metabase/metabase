@@ -779,7 +779,15 @@ describeWithToken("formatting > sandboxes", () => {
     it.skip("advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)", () => {
       const COLLECTION_GROUP_ID = 4;
 
-      withSampleDataset(({ PRODUCTS_ID, ORDERS_ID }) => {
+      withSampleDataset(({ PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID }) => {
+        cy.log("**-- Remap Product ID's display value to `title` --**");
+
+        cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
+          field_id: ORDERS.PRODUCT_ID,
+          name: "Product ID",
+          human_readable_field_id: PRODUCTS.TITLE,
+          type: "external",
+        });
         cy.log("**-- 1. Create the first native question with a filter --**");
 
         cy.request("POST", "/api/card", {
@@ -888,13 +896,16 @@ describeWithToken("formatting > sandboxes", () => {
 
       openOrdersTable();
 
-      // View details for Product ID #14
+      cy.log("**-- Reported failing on v1.36.x --**");
+
+      cy.log(
+        "**It should show remapped Display Values instead of Product ID**",
+      );
       cy.get(".cellData")
-        .contains("14")
+        .contains("Awesome Concrete Shoes")
         .click();
       cy.findByText(/View details/i).click();
 
-      cy.log("**-- Reported failing on v1.36.x --**");
       cy.log(
         "**It should show object details instead of filtering by this Product ID**",
       );
