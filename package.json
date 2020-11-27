@@ -203,10 +203,10 @@
     "ci": "yarn ci-frontend && yarn ci-backend",
     "ci-frontend": "yarn lint && yarn test",
     "ci-backend": "lein docstring-checker && lein bikeshed && lein eastwood && lein test",
-    "test-cypress": "yarn build && ./bin/build-for-test && yarn test-cypress-no-build",
+    "test-cypress": "yarn build && ./bin/build-for-test && yarn test-cypress-no-build && yarn test-cypress-smoketest",
     "test-cypress-open": "./bin/build-for-test && yarn test-cypress-no-build --open",
     "test-cypress-no-build": "yarn && CONFIG_FILE=frontend/test/cypress.json babel-node ./frontend/test/__runner__/run_cypress_tests.js",
-    "test-cypress-smoketest": "yarn run test-cypress-no-build --testFiles frontend/test/metabase-smoketest"
+    "test-cypress-smoketest": "yarn test-cypress-no-build --testFiles frontend/test/metabase-smoketest"
   },
   "lint-staged": {
     "frontend/**/*.{js,jsx,css}": [
