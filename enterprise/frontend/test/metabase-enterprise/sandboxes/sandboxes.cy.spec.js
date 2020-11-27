@@ -898,8 +898,8 @@ describeWithToken("formatting > sandboxes", () => {
       cy.log(
         "**It should show object details instead of filtering by this Product ID**",
       );
-      // The name of this product is visible in "details" only
-      cy.findByText("Awesome Concrete Shoes");
+      // The name of this Vendor is visible in "details" only
+      cy.findByText("McClure-Lockman");
     });
   });
 });
