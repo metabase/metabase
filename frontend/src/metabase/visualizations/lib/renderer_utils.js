@@ -243,13 +243,15 @@ export function syntheticStackedBarsForWaterfallChart(datas) {
   const mainValues = mainSeries.map(d => d[1]);
   const totalValue = mainValues.reduce((total, value) => total + value, 0);
   const total = ["Total", totalValue];
-  // $FlowFixMe cloning for the total bar
-  total._origin = {
-    seriesIndex: mainSeries[0]._origin.seriesIndex,
-    rowIndex: mainSeries.length,
-    cols: mainSeries[0]._origin.cols,
-    row: total,
-  };
+  if (mainSeries[0]._origin) {
+    // $FlowFixMe cloning for the total bar
+    total._origin = {
+      seriesIndex: mainSeries[0]._origin.seriesIndex,
+      rowIndex: mainSeries.length,
+      cols: mainSeries[0]._origin.cols,
+      row: total,
+    };
+  }
 
   const values = [...mainValues, totalValue];
   const { beams } = mainValues.reduce(
