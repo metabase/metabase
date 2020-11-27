@@ -618,6 +618,7 @@ describeWithToken("formatting > sandboxes", () => {
                     ],
                     fields: "all",
                     "source-table": ORDERS_ID,
+                    strategy: "inner-join",
                   },
                   // b. Previous results join Products
                   {
@@ -637,6 +638,7 @@ describeWithToken("formatting > sandboxes", () => {
                     ],
                     fields: "all",
                     "source-table": PRODUCTS_ID,
+                    strategy: "inner-join",
                   },
                   // c. Previous results join Reviews
                   {
@@ -656,6 +658,7 @@ describeWithToken("formatting > sandboxes", () => {
                     ],
                     fields: "all",
                     "source-table": REVIEWS_ID,
+                    strategy: "inner-join",
                   },
                 ],
                 "source-table": PEOPLE_ID,
