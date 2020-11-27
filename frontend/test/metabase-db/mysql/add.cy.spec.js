@@ -5,7 +5,7 @@ import {
   typeAndBlurUsingLabel,
 } from "__support__/cypress";
 
-describe("postgres > admin > add", () => {
+describe("mysql > admin > add", () => {
   beforeEach(() => {
     restore();
     signInAsAdmin();
@@ -20,19 +20,26 @@ describe("postgres > admin > add", () => {
       .closest(".Form-field")
       .find("a")
       .click();
-    cy.contains("PostgreSQL").click({ force: true });
+    cy.contains("MySQL").click({ force: true });
     cy.contains("Additional JDBC connection string options");
 
-    typeAndBlurUsingLabel("Name", "QA Postgres12");
+    typeAndBlurUsingLabel("Name", "QA MySQL8");
     typeAndBlurUsingLabel("Host", "localhost");
     // TODO: "Port" label and input field are misconfigured (input field is missing `aria-labeledby` attribute)
-    // typeAndBlurUsingLabel("Port", "5432") => this will not work (switching to placeholder temporarily)
-    cy.findByPlaceholderText("5432")
+    // typeAndBlurUsingLabel("Port", "3306") => this will not work (switching to placeholder temporarily)
+    cy.findByPlaceholderText("3306")
       .click()
-      .type("5432");
+      .type("3306");
     typeAndBlurUsingLabel("Database name", "sample");
     typeAndBlurUsingLabel("Username", "metabase");
     typeAndBlurUsingLabel("Password", "metasample123");
+
+    // Bypass the RSA public key error for MySQL database
+    // https://github.com/metabase/metabase/issues/12545
+    typeAndBlurUsingLabel(
+      "Additional JDBC connection string options",
+      "allowPublicKeyRetrieval=true",
+    );
 
     cy.findByText("Save")
       .should("not.be.disabled")
@@ -41,7 +48,7 @@ describe("postgres > admin > add", () => {
     cy.wait("@createDatabase");
 
     cy.url().should("match", /\/admin\/databases\?created=\d+$/);
-    cy.findByText("Your database has been added!");
+    cy.contains("Your database has been added!");
     modal()
       .contains("I'm good thanks")
       .click();

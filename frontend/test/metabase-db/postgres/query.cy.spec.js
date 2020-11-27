@@ -4,17 +4,19 @@ import {
   addPostgresDatabase,
 } from "__support__/cypress";
 
+const PG_DB_NAME = "QA Postgres12";
+
 describe("postgres > user > query", () => {
   before(() => {
     restore();
     signInAsAdmin();
-    addPostgresDatabase();
+    addPostgresDatabase(PG_DB_NAME);
   });
 
   it("should show row details when clicked on its entity key (metabase#13263)", () => {
     cy.visit("/question/new");
     cy.findByText("Simple question").click();
-    cy.findByText("QA Postgres12").click();
+    cy.findByText(PG_DB_NAME).click();
     cy.findByText("Orders").click();
 
     // We're clicking on ID: 1 (the first order) => do not change!
