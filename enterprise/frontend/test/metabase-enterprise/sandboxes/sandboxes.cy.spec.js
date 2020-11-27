@@ -455,7 +455,7 @@ describeWithToken("formatting > sandboxes", () => {
 
           cy.log("**Reported failing since v1.36.4**");
           cy.wait("@cardQuery").then(xhr => {
-            expect(xhr.response.body.error).to.not.exist;
+            expect(xhr.response.body.error).not.to.exist;
           });
 
           cy.findByText(CC_NAME);
@@ -463,7 +463,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
-    it.skip("Should allow drill-through for sandboxed user (metabase-enterprise#535)", () => {
+    it.skip("should allow drill-through for sandboxed user (metabase-enterprise#535)", () => {
       cy.visit("/");
 
       cy.get(".Icon-gear")
@@ -572,6 +572,204 @@ describeWithToken("formatting > sandboxes", () => {
 
       cy.findByText("There was a problem with your question").should(
         "not.exist",
+      );
+    });
+
+    it.skip("advanced sandboxing based on saved question with joins should allow sandboxed user to use joins (metabase-enterprise#524)", () => {
+      const COLLECTION_GROUP_ID = 4;
+      const [ORDERS_ALIAS, PRODUCTS_ALIAS, REVIEWS_ALIAS] = [
+        "Orders",
+        "Products",
+        "Reviews",
+      ];
+
+      withSampleDataset(
+        ({
+          ORDERS,
+          ORDERS_ID,
+          PEOPLE,
+          PEOPLE_ID,
+          PRODUCTS,
+          PRODUCTS_ID,
+          REVIEWS,
+          REVIEWS_ID,
+        }) => {
+          cy.log(
+            "**-- 1. Create question based on repro steps in [#524](https://github.com/metabase/metabase-enterprise/issues/524) --**",
+          );
+
+          cy.request("POST", "/api/card", {
+            name: "EE_524",
+            dataset_query: {
+              database: 1,
+              query: {
+                joins: [
+                  // a. People join Orders
+                  {
+                    alias: ORDERS_ALIAS,
+                    condition: [
+                      "=",
+                      ["field-id", PEOPLE.ID],
+                      [
+                        "joined-field",
+                        ORDERS_ALIAS,
+                        ["field-id", ORDERS.USER_ID],
+                      ],
+                    ],
+                    fields: "all",
+                    "source-table": ORDERS_ID,
+                    strategy: "inner-join",
+                  },
+                  // b. Previous results join Products
+                  {
+                    alias: PRODUCTS_ALIAS,
+                    condition: [
+                      "=",
+                      [
+                        "joined-field",
+                        ORDERS_ALIAS,
+                        ["field-id", ORDERS.PRODUCT_ID],
+                      ],
+                      [
+                        "joined-field",
+                        PRODUCTS_ALIAS,
+                        ["field-id", PRODUCTS.ID],
+                      ],
+                    ],
+                    fields: "all",
+                    "source-table": PRODUCTS_ID,
+                    strategy: "inner-join",
+                  },
+                  // c. Previous results join Reviews
+                  {
+                    alias: REVIEWS_ALIAS,
+                    condition: [
+                      "=",
+                      [
+                        "joined-field",
+                        PRODUCTS_ALIAS,
+                        ["field-id", PRODUCTS.ID],
+                      ],
+                      [
+                        "joined-field",
+                        REVIEWS_ALIAS,
+                        ["field-id", REVIEWS.PRODUCT_ID],
+                      ],
+                    ],
+                    fields: "all",
+                    "source-table": REVIEWS_ID,
+                    strategy: "inner-join",
+                  },
+                ],
+                "source-table": PEOPLE_ID,
+              },
+              type: "query",
+            },
+            display: "table",
+            visualization_settings: {},
+          }).then(({ body: { id: CARD_ID } }) => {
+            cy.log(
+              "**-- 2. Sandbox `Orders` table based on previous question --**",
+            );
+
+            cy.request("POST", "/api/mt/gtap", {
+              attribute_remappings: {
+                user_id: [
+                  "dimension",
+                  ["joined-field", ORDERS_ALIAS, ["field-id", ORDERS.USER_ID]],
+                ],
+              },
+              card_id: CARD_ID,
+              group_id: COLLECTION_GROUP_ID,
+              table_id: ORDERS_ID,
+            });
+
+            cy.log(
+              "**-- 3. Sandbox `Products` table based on previous question --**",
+            );
+
+            cy.request("POST", "/api/mt/gtap", {
+              attribute_remappings: {
+                user_id: [
+                  "dimension",
+                  [
+                    "joined-field",
+                    REVIEWS_ALIAS,
+                    ["field-id", REVIEWS.PRODUCT_ID],
+                  ],
+                ],
+              },
+              card_id: CARD_ID,
+              group_id: COLLECTION_GROUP_ID,
+              table_id: PRODUCTS_ID,
+            });
+
+            cy.log("**-- 4. Fetch permissions graph --**");
+
+            cy.request("GET", "/api/permissions/graph", {}).then(
+              ({ body: { groups, revision } }) => {
+                // Update permissions for `collections` group [id: 4]
+                // This mutates the original `groups` object => we'll pass it next to the `PUT` request
+                groups[COLLECTION_GROUP_ID] = {
+                  1: {
+                    schemas: {
+                      PUBLIC: {
+                        [PRODUCTS_ID]: { query: "segmented", read: "all" },
+                        [ORDERS_ID]: { query: "segmented", read: "all" },
+                      },
+                    },
+                  },
+                };
+
+                cy.log("**-- 5. Update/save permissions --**");
+
+                cy.request("PUT", "/api/permissions/graph", {
+                  groups,
+                  revision,
+                });
+              },
+            );
+
+            signOut();
+
+            cy.log("**-- Logging in as sandboxed user --**");
+            cy.request("POST", "/api/session", {
+              username: sandboxed_user.email,
+              password: sandboxed_user.password,
+            });
+
+            // Go straight to orders table in custom questions
+            cy.visit("/question/new?database=1&table=2&mode=notebook");
+
+            // `Orders` join `Products`
+            cy.findByText("Join data").click();
+            popover()
+              .contains(/Products?/i)
+              .click();
+
+            // Where `Orders.Product ID` = `Products.ID`
+            popover()
+              .contains("Product ID")
+              .click();
+
+            popover()
+              .contains("ID")
+              .click();
+
+            // Prepare to wait for dataset XHR
+            cy.server();
+            cy.route("POST", "/api/dataset").as("dataset");
+
+            cy.findByText("Visualize").click();
+
+            cy.log("**-- Reported failing on v1.36.4 --**");
+            cy.wait("@dataset").then(xhr => {
+              expect(xhr.response.body.error).not.to.exist;
+            });
+
+            // TODO: Add positive assertion once this issue is fixed!
+          });
+        },
       );
     });
   });
