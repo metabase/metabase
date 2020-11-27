@@ -876,14 +876,14 @@ describeWithToken("formatting > sandboxes", () => {
             });
           },
         );
+      });
 
-        signOut();
+      signOut();
 
-        cy.log("**-- Logging in as sandboxed user --**");
-        cy.request("POST", "/api/session", {
-          username: sandboxed_user.email,
-          password: sandboxed_user.password,
-        });
+      cy.log("**-- Logging in as sandboxed user --**");
+      cy.request("POST", "/api/session", {
+        username: sandboxed_user.email,
+        password: sandboxed_user.password,
       });
 
       openOrdersTable();
