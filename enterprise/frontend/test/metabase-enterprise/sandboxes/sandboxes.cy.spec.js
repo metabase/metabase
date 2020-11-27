@@ -23,11 +23,14 @@ const sandboxed_user = {
   password: "12341234",
   login_attributes: {
     user_id: "1",
+    user_cat: "Widget",
   },
   // Because of the specific restrictions and the way testing dataset was set up,
   // this user needs to also have access to "collections" (group_id: 4) in order to see saved questions
   group_ids: [1, 4],
 };
+
+const [ATTR_UID, ATTR_CAT] = Object.keys(sandboxed_user.login_attributes);
 
 function createUser(user) {
   return cy.request("POST", "/api/user", user);
@@ -771,6 +774,132 @@ describeWithToken("formatting > sandboxes", () => {
           });
         },
       );
+    });
+
+    it.skip("advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)", () => {
+      const COLLECTION_GROUP_ID = 4;
+
+      withSampleDataset(({ PRODUCTS_ID, ORDERS_ID }) => {
+        cy.log("**-- 1. Create the first native question with a filter --**");
+
+        cy.request("POST", "/api/card", {
+          name: "EE_520_Q1",
+          dataset_query: {
+            database: 1,
+            native: {
+              query:
+                "SELECT * FROM ORDERS WHERE USER_ID={{sandbox}} AND TOTAL>10",
+              "template-tags": {
+                sandbox: {
+                  "display-name": "Sandbox",
+                  id: "1115dc4f-6b9d-812e-7f72-b87ab885c88a",
+                  name: "sandbox",
+                  type: "text",
+                },
+              },
+            },
+            type: "native",
+          },
+          display: "table",
+          visualization_settings: {},
+        }).then(({ body: { id: CARD_ID } }) => {
+          cy.log("**-- 1a. Sandbox `Orders` table based on this question --**");
+
+          cy.request("POST", "/api/mt/gtap", {
+            attribute_remappings: {
+              [ATTR_UID]: ["variable", ["template-tag", "sandbox"]],
+            },
+            card_id: CARD_ID,
+            group_id: COLLECTION_GROUP_ID,
+            table_id: ORDERS_ID,
+          });
+        });
+        cy.log("**-- 2. Create the second native question with a filter --**");
+
+        cy.request("POST", "/api/card", {
+          name: "EE_520_Q2",
+          dataset_query: {
+            database: 1,
+            native: {
+              query:
+                "SELECT * FROM PRODUCTS↵WHERE CATEGORY={{sandbox}} AND PRICE>10",
+              "template-tags": {
+                sandbox: {
+                  "display-name": "Sandbox",
+                  id: "3d69ba99-7076-2252-30bd-0bb8810ba895",
+                  name: "sandbox",
+                  type: "text",
+                },
+              },
+            },
+            type: "native",
+          },
+          display: "table",
+          visualization_settings: {},
+        }).then(({ body: { id: CARD_ID } }) => {
+          cy.log(
+            "**-- 2a. Sandbox `Products` table based on this question --**",
+          );
+
+          cy.request("POST", "/api/mt/gtap", {
+            attribute_remappings: {
+              [ATTR_CAT]: ["variable", ["template-tag", "sandbox"]],
+            },
+            card_id: CARD_ID,
+            group_id: COLLECTION_GROUP_ID,
+            table_id: PRODUCTS_ID,
+          });
+        });
+
+        cy.log("**-- 3. Fetch permissions graph --**");
+
+        cy.request("GET", "/api/permissions/graph", {}).then(
+          ({ body: { groups, revision } }) => {
+            // Update permissions for `collections` group [id: 4]
+            // This mutates the original `groups` object => we'll pass it next to the `PUT` request
+            groups[COLLECTION_GROUP_ID] = {
+              1: {
+                schemas: {
+                  PUBLIC: {
+                    [PRODUCTS_ID]: { query: "segmented", read: "all" },
+                    [ORDERS_ID]: { query: "segmented", read: "all" },
+                  },
+                },
+              },
+            };
+
+            cy.log("**-- 4. Update/save permissions --**");
+
+            cy.request("PUT", "/api/permissions/graph", {
+              groups,
+              revision,
+            });
+          },
+        );
+
+        signOut();
+
+        cy.log("**-- Logging in as sandboxed user --**");
+        cy.request("POST", "/api/session", {
+          username: sandboxed_user.email,
+          password: sandboxed_user.password,
+        });
+      });
+
+      openOrdersTable();
+
+      // View details for Product ID #14
+      cy.get(".cellData")
+        .contains("14")
+        .click();
+      cy.findByText(/View details/i).click();
+
+      cy.log("**-- Reported failing on v1.36.x --**");
+      cy.log(
+        "**It should show object details instead of filtering by this Product ID**",
+      );
+      // The name of this product is visible in "details" only
+      cy.findByText("Awesome Concrete Shoes");
     });
   });
 });
