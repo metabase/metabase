@@ -180,7 +180,7 @@
     "lint-prettier": "yarn && prettier -l '{enterprise/,}frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
     "lint-flow": "yarn && flow check",
     "lint-docs-links": "yarn && ./bin/verify-doc-links",
-    "lint-yaml": "yamllint",
+    "lint-yaml": "yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}",
     "test": "yarn test-unit && yarn test-timezones && yarn test-integration && yarn test-cypress",
     "test-unit": "yarn && jest --maxWorkers=2 --config jest.unit.conf.json",
     "test-unit-watch": "yarn test-unit --watch",
