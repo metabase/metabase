@@ -3,47 +3,16 @@ import {
   restore,
   modal,
   signInAsNormalUser,
+  addMySQLDatabase,
 } from "__support__/cypress";
 
-function addMySqlDatabase() {
-  cy.request("POST", "/api/database", {
-    engine: "mysql",
-    name: "MySQL",
-    details: {
-      host: "localhost",
-      dbname: "sample",
-      port: 3306,
-      user: "metabase",
-      password: "metasample123",
-      authdb: null,
-      "additional-options": null,
-      "use-srv": false,
-      "tunnel-enabled": false,
-    },
-    auto_run_queries: true,
-    is_full_sync: true,
-    schedules: {
-      cache_field_values: {
-        schedule_day: null,
-        schedule_frame: null,
-        schedule_hour: 0,
-        schedule_type: "daily",
-      },
-      metadata_sync: {
-        schedule_day: null,
-        schedule_frame: null,
-        schedule_hour: null,
-        schedule_type: "hourly",
-      },
-    },
-  });
-}
+const MYSQL_DB_NAME = "QA MySQL8";
 
 describe("mysql > user > query", () => {
   before(() => {
     restore();
     signInAsAdmin();
-    addMySqlDatabase();
+    addMySQLDatabase(MYSQL_DB_NAME);
   });
 
   beforeEach(() => {
@@ -51,35 +20,45 @@ describe("mysql > user > query", () => {
   });
 
   it("can query a MySQL database as a user", () => {
+    cy.server();
+    cy.route("POST", "/api/dataset").as("dataset");
+
     cy.visit("/question/new");
-    cy.contains("Simple question").click();
-    cy.contains("MySQL").click();
-    cy.contains("Orders").click();
-    cy.contains("Showing first");
+    cy.findByText("Simple question").click();
+    cy.findByText(MYSQL_DB_NAME).click();
+    cy.findByText("Orders").click();
+
+    cy.wait("@dataset");
+    cy.contains("37.65");
   });
 
   it("can write a native MySQL query with a field filter", () => {
     cy.visit("/question/new");
     cy.contains("Native query").click();
-    cy.contains("MySQL").click();
+    cy.contains(MYSQL_DB_NAME).click();
 
     // Write Native query that includes a filter
     cy.get(".ace_content").type(
-      `SELECT PRODUCT_ID, TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.CATEGORY = {{category}}]];`,
+      `SELECT TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.ID = {{id}}]];`,
       {
         parseSpecialCharSequences: false,
       },
     );
     cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("Widget");
+    cy.get(".Visualization").as("queryPreview");
 
-    // Filter by Doohickey
-    cy.findByPlaceholderText("Category")
+    cy.get("@queryPreview").contains("Widget");
+
+    // Filter by Product ID = 1 (its category is Gizmo)
+    cy.findByPlaceholderText(/Id/i)
       .click()
-      .type("Doohickey");
+      .type("1");
     cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("Widget").should("not.exist");
-    cy.contains("Doohickey");
+
+    cy.get("@queryPreview")
+      .contains("Widget")
+      .should("not.exist");
+    cy.get("@queryPreview").contains("Gizmo");
   });
 
   it("can save a native MySQL query", () => {
@@ -88,16 +67,11 @@ describe("mysql > user > query", () => {
 
     cy.visit("/question/new");
     cy.contains("Native query").click();
-    cy.contains("MySQL").click();
+    cy.contains(MYSQL_DB_NAME).click();
 
-    cy.get(".ace_content").type(`SELECT * FROM ORDERS`, {
-      parseSpecialCharSequences: false,
-    });
+    cy.get(".ace_content").type(`SELECT * FROM ORDERS`);
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("37.65");
-
-    // Close the Ace editor because it interferes with the modal for some reason
-    cy.get(".Icon-contract").click();
 
     // Save the query
     cy.contains("Save").click();

@@ -65,7 +65,7 @@ describe("postgres > admin > add", () => {
     cy.wait("@createDatabase");
 
     cy.url().should("match", /\/admin\/databases\?created=\d+$/);
-    cy.contains("Your database has been added!");
+    cy.findByText("Your database has been added!");
     modal()
       .contains("I'm good thanks")
       .click();

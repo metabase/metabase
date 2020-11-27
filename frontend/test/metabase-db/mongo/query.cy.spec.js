@@ -6,11 +6,13 @@ import {
   addMongoDatabase,
 } from "__support__/cypress";
 
+const MONGO_DB_NAME = "QA Mongo4";
+
 describe("mongodb > user > query", () => {
   before(() => {
     restore();
     signInAsAdmin();
-    addMongoDatabase();
+    addMongoDatabase(MONGO_DB_NAME);
   });
 
   context("as an admin", () => {
@@ -29,35 +31,16 @@ describe("mongodb > user > query", () => {
     });
 
     it("can write a native MongoDB query", () => {
-      cy.visit("/question/new");
-      cy.contains("Native query").click();
-      cy.contains("QA Mongo4").click();
-
-      cy.get(".ace_content").type(`[ { $count: "Total" } ]`, {
-        parseSpecialCharSequences: false,
-      });
-      cy.get(".NativeQueryEditor .Icon-play").click();
-      cy.contains("1");
+      writeNativeMongoQuery();
     });
 
     it("can save a native MongoDB query", () => {
       cy.server();
       cy.route("POST", "/api/card").as("createQuestion");
 
-      cy.visit("/question/new");
-      cy.contains("Native query").click();
-      cy.contains("QA Mongo4").click();
+      writeNativeMongoQuery();
 
-      cy.get(".ace_content").type(`[ { $count: "Total" } ]`, {
-        parseSpecialCharSequences: false,
-      });
-      cy.get(".NativeQueryEditor .Icon-play").click();
-      cy.contains("1");
-
-      // Close the Ace editor because it interferes with the modal for some reason
-      cy.get(".Icon-contract").click();
-
-      cy.contains("Save").click();
+      cy.findByText("Save").click();
       modal()
         .findByLabelText("Name")
         .focus()
@@ -80,8 +63,20 @@ describe("mongodb > user > query", () => {
 
 function queryMongoDB() {
   cy.visit("/question/new");
-  cy.contains("Simple question").click();
-  cy.contains("QA Mongo4").click();
-  cy.contains("Orders").click();
+  cy.findByText("Simple question").click();
+  cy.findByText(MONGO_DB_NAME).click();
+  cy.findByText("Orders").click();
   cy.contains("37.65");
+}
+
+function writeNativeMongoQuery() {
+  cy.visit("/question/new");
+  cy.findByText("Native query").click();
+  cy.findByText(MONGO_DB_NAME).click();
+
+  cy.get(".ace_content").type(`[ { $count: "Total" } ]`, {
+    parseSpecialCharSequences: false,
+  });
+  cy.get(".NativeQueryEditor .Icon-play").click();
+  cy.findByText("18,760");
 }
