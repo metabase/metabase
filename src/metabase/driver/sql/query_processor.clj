@@ -948,6 +948,7 @@
                                          (concat (expressions->expression-definitions expressions))
                                          vec)))]
     (-> query
+        (mbql.u/replace [:joined-field _ field] field)
         (dissoc :source-table :joins :expressions :source-metadata)
         (assoc :source-query subselect))))
 
