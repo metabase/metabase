@@ -136,7 +136,7 @@ function getXAxisProps(props, datas, warn) {
   // This compensates for the barshifting we do align ticks
   const xValues = isHistogram
     ? [...rawXValues, Math.max(...rawXValues) + xInterval]
-    : props.chartType === "waterfall"
+    : props.chartType === "waterfall" && props.settings["waterfall.show_total"]
     ? [...rawXValues, t`Total`]
     : rawXValues;
 
@@ -275,7 +275,7 @@ export function getDimensionsAndGroupsAndUpdateSeriesDisplayNames(
   const { settings, chartType } = props;
   const datas =
     chartType === "waterfall"
-      ? syntheticStackedBarsForWaterfallChart(originalDatas)
+      ? syntheticStackedBarsForWaterfallChart(originalDatas, settings)
       : originalDatas;
   const isStackedBar = isStacked(settings, datas) || chartType === "waterfall";
 
