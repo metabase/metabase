@@ -181,6 +181,12 @@ executors:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: metabase/qa-databases:postgres-sample-12
 
+  fe-mysql-8:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: metabase/qa-databases:mysql-sample-8
+
 ########################################################################################################################
 #                                                       COMMANDS                                                       #
 ########################################################################################################################
@@ -1076,6 +1082,17 @@ workflows:
           cypress-group: "postgres"
           only-single-database: true
           test-files-location: frontend/test/metabase-db/postgres
+          <<: *Matrix
+
+      - fe-tests-cypress:
+          name: fe-tests-cypres-mysql-8-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+            - fe-deps
+          e: fe-mysql-8
+          cypress-group: "mysql"
+          only-single-database: true
+          test-files-location: frontend/test/metabase-db/mysql
           <<: *Matrix
 
   nightly:
