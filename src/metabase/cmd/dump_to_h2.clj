@@ -77,11 +77,16 @@
     (insert-chunk! target-db-conn table-name chunk))
   (println-ok))
 
+(def ^:private table-select-fragments
+  {"metabase_field" "ORDER BY id ASC"}) ; ensure ID order to ensure that parent fields are inserted before children
+
 (defn- load-data! [target-db-conn]
   (println "Source db:" (dissoc (mdb/jdbc-spec) :password))
   (jdbc/with-db-connection [db-conn (mdb/jdbc-spec)]
     (doseq [{table-name :table, :as e} entities
-            :let [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
+            :let [fragment (table-select-fragments (str/lower-case (name table-name)))
+                  rows     (jdbc/query db-conn [(str "SELECT * FROM " (name table-name)
+                                                     (when fragment (str " " fragment)))])]
             :when (seq rows)]
       (insert-entity! target-db-conn e rows))))
 
