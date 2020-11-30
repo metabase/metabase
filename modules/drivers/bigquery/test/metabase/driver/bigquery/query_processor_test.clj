@@ -188,7 +188,6 @@
                (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))))
         "Similar to the above test, but covers a positive offset")))
 
-
 ;; if I run a BigQuery query, does it get a remark added to it?
 (defn- query->native [query]
   (let [native-query (atom nil)]
