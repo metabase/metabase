@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { t } from "ttag";
 import { COMPACT_CURRENCY_OPTIONS } from "metabase/lib/formatting";
 import { moveToFront } from "metabase/lib/dom";
 import { isHistogramBar } from "./renderer_utils";
@@ -101,12 +102,16 @@ export function onRenderValueLabels(
       })
       .filter(d => !(isBarLike(display) && d.y === 0));
 
-    if (display === "waterfall") {
+    if (display === "waterfall" && data.length > 0) {
       let total = 0;
       data.forEach(d => {
         d.cumulativeY = d.y + total;
         total += d.y;
       });
+      data = [
+        ...data,
+        { ...data[0], x: t`Total`, y: total, cumulativeY: total },
+      ];
     }
 
     return data;
