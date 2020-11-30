@@ -236,7 +236,13 @@ describe("syntheticStackedBarsForWaterfallChart", () => {
 
   it("should create the stacked bars for 1 row", () => {
     const datas = prepareDatas(["Apples", 10]);
-    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(datas);
+    const settings = {
+      "waterfall.show_total": true,
+    };
+    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(
+      datas,
+      settings,
+    );
     expect(typeof stackedBarsDatas.length).toEqual("number");
     expect(stackedBarsDatas.length).toEqual(3);
     const [beams, negatives, positives] = stackedBarsDatas.map(stacked =>
@@ -249,7 +255,13 @@ describe("syntheticStackedBarsForWaterfallChart", () => {
 
   it("should create the stacked bars for 2 rows", () => {
     const datas = prepareDatas(["Apples", 10], ["Bananas", 4]);
-    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(datas);
+    const settings = {
+      "waterfall.show_total": true,
+    };
+    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(
+      datas,
+      settings,
+    );
     expect(typeof stackedBarsDatas.length).toEqual("number");
     expect(stackedBarsDatas.length).toEqual(3);
     const [beams, negatives, positives] = stackedBarsDatas.map(stacked =>
@@ -262,7 +274,13 @@ describe("syntheticStackedBarsForWaterfallChart", () => {
 
   it("should create the stacked bars for 3 rows", () => {
     const datas = prepareDatas(["Apples", 10], ["Bananas", 4], ["Oranges", 5]);
-    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(datas);
+    const settings = {
+      "waterfall.show_total": true,
+    };
+    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(
+      datas,
+      settings,
+    );
     expect(typeof stackedBarsDatas.length).toEqual("number");
     expect(stackedBarsDatas.length).toEqual(3);
     const [beams, negatives, positives] = stackedBarsDatas.map(stacked =>
@@ -275,7 +293,13 @@ describe("syntheticStackedBarsForWaterfallChart", () => {
 
   it("should work with all-negative values", () => {
     const datas = prepareDatas(["X", -14], ["Y", -3], ["Z", -10]);
-    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(datas);
+    const settings = {
+      "waterfall.show_total": true,
+    };
+    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(
+      datas,
+      settings,
+    );
     expect(typeof stackedBarsDatas.length).toEqual("number");
     expect(stackedBarsDatas.length).toEqual(3);
     const [beams, negatives, positives] = stackedBarsDatas.map(stacked =>
@@ -288,7 +312,13 @@ describe("syntheticStackedBarsForWaterfallChart", () => {
 
   it("should work with mixed (positives & negatives) values", () => {
     const datas = prepareDatas(["P", -2], ["Q", 24], ["R", -5]);
-    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(datas);
+    const settings = {
+      "waterfall.show_total": true,
+    };
+    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(
+      datas,
+      settings,
+    );
     expect(typeof stackedBarsDatas.length).toEqual("number");
     expect(stackedBarsDatas.length).toEqual(3);
     const [beams, negatives, positives] = stackedBarsDatas.map(stacked =>
@@ -297,5 +327,24 @@ describe("syntheticStackedBarsForWaterfallChart", () => {
     expect(beams).toEqual([0, -2, 22, 0]);
     expect(negatives).toEqual([-2, 0, -5, 0]);
     expect(positives).toEqual([0, 24, 0, 17]);
+  });
+
+  it("should work even when the total bar is not meant to shown", () => {
+    const datas = prepareDatas(["A", 3], ["B", 5], ["C", 7]);
+    const settings = {
+      "waterfall.show_total": false,
+    };
+    const stackedBarsDatas = syntheticStackedBarsForWaterfallChart(
+      datas,
+      settings,
+    );
+    expect(typeof stackedBarsDatas.length).toEqual("number");
+    expect(stackedBarsDatas.length).toEqual(3);
+    const [beams, negatives, positives] = stackedBarsDatas.map(stacked =>
+      stacked.map(e => e[1]),
+    );
+    expect(beams).toEqual([0, 3, 8]);
+    expect(negatives).toEqual([0, 0, 0]);
+    expect(positives).toEqual([3, 5, 7]);
   });
 });

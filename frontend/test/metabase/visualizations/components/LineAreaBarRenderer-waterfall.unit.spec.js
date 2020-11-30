@@ -153,6 +153,21 @@ describe("LineAreaBarRenderer-waterfall", () => {
     ]);
   });
 
+  it("should render a waterfall chart without the total bar", () => {
+    const onHoverChange = jest.fn();
+    const settings = {
+      "waterfall.show_total": false,
+    };
+    const rows = [["A", 3], ["B", 5], ["C", 7]];
+    renderLineAreaBar(element, [MainSeries(settings, rows)], {
+      onHoverChange,
+    });
+
+    // 9 elements: 3 stacked bars for (3 rows, no total)
+    const barElements = qsa(".bar, .dot");
+    expect(barElements.length).toEqual(9);
+  });
+
   function getDataKeyValues(hover) {
     return hover.data.map(({ key, value }) => ({ key, value }));
   }
