@@ -21,7 +21,7 @@ describe("scenarios > dashboard", () => {
 
   it("should create new dashboard", () => {
     // Create dashboard
-    cy.visit("/");
+    cy.visit("/collection/root");
     cy.get(".Icon-add").click();
     cy.findByText("New dashboard").click();
     cy.findByLabelText("Name").type("Test Dash");
@@ -182,6 +182,89 @@ describe("scenarios > dashboard", () => {
 
     cy.findByText("Save").click();
     cy.findByText("You're editing this dashboard.").should("not.exist");
+  });
+
+  it.skip("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
+    // 1. create a question based on repro steps in #13597
+    withSampleDataset(({ PEOPLE }) => {
+      cy.request("POST", "/api/card", {
+        name: "13597",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": 3,
+            limit: 2,
+          },
+          type: "query",
+        },
+        display: "map",
+        visualization_settings: {},
+      }).then(({ body: { id: questionId } }) => {
+        // 2. create a dashboard
+        cy.request("POST", "/api/dashboard", {
+          name: "13597D",
+        }).then(({ body: { id: dashboardId } }) => {
+          // add filter (ID) to the dashboard
+          cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+            parameters: [
+              {
+                id: "92eb69ea",
+                name: "ID",
+                slug: "id",
+                type: "id",
+              },
+            ],
+          });
+
+          // add previously created question to the dashboard
+          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+            cardId: questionId,
+          }).then(({ body: { id: dashCardId } }) => {
+            // connect filter to that question
+            cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+              cards: [
+                {
+                  id: dashCardId,
+                  card_id: questionId,
+                  row: 0,
+                  col: 0,
+                  sizeX: 10,
+                  sizeY: 8,
+                  parameter_mappings: [
+                    {
+                      parameter_id: "92eb69ea",
+                      card_id: questionId,
+                      target: ["dimension", ["field-id", PEOPLE.ID]],
+                    },
+                  ],
+                  visualization_settings: {
+                    // set click behavior to update filter (ID)
+                    click_behavior: {
+                      type: "crossfilter",
+                      parameterMapping: {
+                        id: "92eb69ea",
+                        source: { id: "ID", name: "ID", type: "column" },
+                        target: {
+                          id: "92eb69ea",
+                          type: "parameter",
+                        },
+                      },
+                    },
+                  },
+                },
+              ],
+            });
+          });
+
+          cy.visit(`/dashboard/${dashboardId}`);
+          cy.get(".leaflet-marker-icon") // pin icon
+            .eq(0)
+            .click({ force: true });
+          cy.url().should("include", `/dashboard/${dashboardId}?id=1`);
+          cy.contains("Hudson Borer - 1");
+        });
+      });
+    });
   });
 
   describe("revisions screen", () => {

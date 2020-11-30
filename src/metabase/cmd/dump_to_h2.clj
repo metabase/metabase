@@ -69,7 +69,7 @@
       (throw e))))
 
 (defn- insert-entity! [target-db-conn {table-name :table, entity-name :name} objs]
-  (print (u/format-color 'blue "Transferring %d instances of %s..." (count objs) entity-name))
+  (print (u/format-color 'blue "Transferring %s data..." entity-name))
   (flush)
   ;; The connection closes prematurely on occasion when we're inserting thousands of rows at once. Break into
   ;; smaller chunks so connection stays alive

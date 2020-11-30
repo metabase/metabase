@@ -1,0 +1,16 @@
+.sort {
+  padding: 4px 6px 4px 12px;
+  border-radius: 100px;
+}
+.sort:hover > svg {
+  color: white;
+}
+.horizontal-button {
+  border-radius: 4px;
+}
+.horizontal-button:hover > svg {
+  color: white;
+}
+.formatting-button {
+  color: color(var(--color-text-light) alpha(-35%));
+}

@@ -171,7 +171,8 @@
                 [5 "Brite Spot Family Restaurant"]]
                (vec (take 5 (metadata-queries/table-rows-sample (Table (mt/id :venues))
                               [(Field (mt/id :venues :id))
-                               (Field (mt/id :venues :name))])))))))))
+                               (Field (mt/id :venues :name))]
+                              (constantly conj))))))))))
 
 
 ;; ## Big-picture tests for the way data should look post-sync

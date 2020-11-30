@@ -423,6 +423,78 @@ exports[`CheckBox should render "Yellow" correctly 1`] = `
 </div>
 `;
 
+exports[`ColorPicker should render "" correctly 1`] = `
+<div
+  className="inline-block"
+>
+  <a
+    className="no-decoration"
+    id={undefined}
+    onClick={[Function]}
+    style={undefined}
+  >
+    <div
+      className="bordered rounded flex align-center"
+      style={
+        Object {
+          "padding": 8,
+        }
+      }
+    >
+      <div
+        style={
+          Object {
+            "backgroundColor": undefined,
+            "borderRadius": 4,
+            "height": 32,
+            "width": 32,
+          }
+        }
+      />
+    </div>
+    <span
+      className="hide"
+    />
+  </a>
+</div>
+`;
+
+exports[`ColorPicker should render "with value" correctly 1`] = `
+<div
+  className="inline-block"
+>
+  <a
+    className="no-decoration"
+    id={undefined}
+    onClick={[Function]}
+    style={undefined}
+  >
+    <div
+      className="bordered rounded flex align-center"
+      style={
+        Object {
+          "padding": 8,
+        }
+      }
+    >
+      <div
+        style={
+          Object {
+            "backgroundColor": "#509ee3",
+            "borderRadius": 4,
+            "height": 32,
+            "width": 32,
+          }
+        }
+      />
+    </div>
+    <span
+      className="hide"
+    />
+  </a>
+</div>
+`;
+
 exports[`EntityMenu should render "Edit menu" correctly 1`] = `
 <div
   className="flex flex-full"

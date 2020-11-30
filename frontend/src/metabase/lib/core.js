@@ -209,6 +209,21 @@ export const field_special_types = [
     section: t`Date and Time`,
   },
   {
+    id: TYPE.UpdatedDate,
+    name: t`Updated date`,
+    section: t`Date and Time`,
+  },
+  {
+    id: TYPE.UpdatedTime,
+    name: t`Updated time`,
+    section: t`Date and Time`,
+  },
+  {
+    id: TYPE.UpdatedTimestamp,
+    name: t`Updated timestamp`,
+    section: t`Date and Time`,
+  },
+  {
     id: TYPE.JoinDate,
     name: t`Join date`,
     section: t`Date and Time`,

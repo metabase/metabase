@@ -50,7 +50,7 @@ const EmptyState = ({
         <LegacyIcon {...rest} />
         <LegacyImage {...rest} />
       </Box>
-      {title && <h2>{title}</h2>}
+      {title && <h2 className="text-medium">{title}</h2>}
       {message && <Text color="medium">{message}</Text>}
     </Flex>
     {/* TODO - we should make this children or some other more flexible way to
