@@ -111,8 +111,8 @@ export function getClickHoverObject(
           col: col,
         };
       });
+      dimensions = rawCols.map((column, i) => ({ column, value: rawRow[i] }));
     }
-    dimensions = rawCols.map((column, i) => ({ column, value: rawRow[i] }));
   } else if (isBreakoutMultiseries) {
     // an area doesn't have any data, but might have a breakout series to show
     const { _breakoutValue: value, _breakoutColumn: column } = card;
