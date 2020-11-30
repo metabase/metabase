@@ -706,6 +706,10 @@ jobs:
       driver:
         type: string
         default: ""
+      # Not actually used here, but it's used in the workflow so we can use a matrix to define multiple test nodes
+      node:
+        type: string
+        default: ""
       <<: *Params
     executor: << parameters.e >>
     environment:
@@ -1054,34 +1058,16 @@ workflows:
       - fe-tests-timezones:
           requires:
             - fe-deps
+
       - fe-tests-cypress:
-          name: fe-tests-cypress-1-<< matrix.edition >>
+          matrix:
+            parameters:
+              node: ["1", "2", "3", "4"]
+              edition: ["ee", "oss"]
+          name: fe-tests-cypress-<< matrix.node >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - fe-deps
           cypress-group: "default"
-          <<: *Matrix
-      - fe-tests-cypress:
-          name: fe-tests-cypress-2-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-            - fe-deps
-          cypress-group: "default"
-          <<: *Matrix
-      - fe-tests-cypress:
-          name: fe-tests-cypress-3-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-            - fe-deps
-          cypress-group: "default"
-          <<: *Matrix
-      - fe-tests-cypress:
-          name: fe-tests-cypress-4-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-            - fe-deps
-          cypress-group: "default"
-          <<: *Matrix
 
       - fe-tests-cypress:
           name: fe-tests-cypress-mongo-4-<< matrix.edition >>
