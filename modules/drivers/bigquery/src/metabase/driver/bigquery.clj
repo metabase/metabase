@@ -291,7 +291,10 @@
   (let [database (qp.store/database)]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
-      (let [sql (str "-- " (qputil/query->remark :bigquery outer-query) "\n" sql)]
+      (let [remark (str "-- " (qputil/query->remark :bigquery outer-query))
+            include-user-id-and-hash (get-in database [:details :include-user-id-and-hash])
+            sql (cond->> (str "\n" sql)
+                         (if (nil? include-user-id-and-hash) true include-user-id-and-hash) (str remark))]
         (process-native* respond database sql params)))))
 
 

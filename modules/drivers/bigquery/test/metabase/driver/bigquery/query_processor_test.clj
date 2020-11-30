@@ -8,7 +8,7 @@
             [java-time :as t]
             [metabase
              [driver :as driver]
-             [models :refer [Database Field]]
+             [models :refer [Database Field Table]]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
              [sync :as sync]
@@ -196,12 +196,7 @@
                                              (reset! native-query sql)
                                              (throw (Exception. "Done.")))]
       (u/ignore-exceptions
-        (qp/process-query {:database (mt/id)
-                           :type     :query
-                           :query    {:source-table (mt/id :venues)
-                                      :limit        1}
-                           :info     {:executed-by 1000
-                                      :query-hash  (byte-array [1 2 3 4])}}))
+        (qp/process-query query))
       @native-query)))
 
 (deftest remark-test
@@ -225,6 +220,32 @@
              :info     {:executed-by 1000
                         :query-hash  (byte-array [1 2 3 4])}}))
         "if I run a BigQuery query, does it get a remark added to it?")))
+
+;; if I run a BigQuery query with include-user-id-and-hash set to false, does it get a remark added to it?
+(deftest remove-remark-test
+  (mt/test-driver :bigquery
+    (is (=  (str
+            "SELECT `test_data.venues`.`id` AS `id`,"
+            " `test_data.venues`.`name` AS `name` "
+            "FROM `test_data.venues` "
+            "LIMIT 1")
+    (tt/with-temp* [Database [db {:engine :bigquery
+                                  :details (assoc (:details (mt/db))
+                                                  :include-user-id-and-hash false)}]
+                    Table    [table {:name "venues" :db_id (u/get-id db)}]
+                    Field    [_     {:table_id (u/get-id table)
+                                    :name "id"
+                                    :base_type "type/Integer"}]
+                    Field    [_     {:table_id (u/get-id table)
+                                    :name "name"
+                                    :base_type "type/Text"}]]
+      (query->native
+        {:database (u/get-id db)
+        :type     :query
+        :query    {:source-table (u/get-id table)
+                    :limit        1}
+        :info     {:executed-by 1000
+                    :query-hash  (byte-array [1 2 3 4])}}))))))
 
 (deftest unprepare-params-test
   (mt/test-driver :bigquery

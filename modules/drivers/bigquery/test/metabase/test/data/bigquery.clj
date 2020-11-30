@@ -61,7 +61,7 @@
   (partial deref (delay (#'bigquery/database->client {:details @details}))))
 
 (defmethod tx/dbdef->connection-details :bigquery [_ _ {:keys [database-name]}]
-  (assoc @details :dataset-id (normalize-name :db database-name)))
+  (assoc @details :dataset-id (normalize-name :db database-name) :include-user-id-and-hash true))
 
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
