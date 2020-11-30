@@ -578,17 +578,13 @@ jobs:
           command-name: Run frontend timezone tests
           command: run test-timezones
 
-  build-uberjar:
-    parameters:
-      <<: *Params
+  # Unlike the other build-uberjar steps, this step should be run once overall and the results can be shared between
+  # OSS and EE uberjars.
+  build-uberjar-drivers:
     executor: metabase-ci
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      # restore already-built uberjar
-      - restore_cache:
-          keys:
-            - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
       # restore the local maven installation of Metabase which is needed for building drivers
       - restore_cache:
           keys:
@@ -599,40 +595,10 @@ jobs:
             - drivers-v4-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
             - drivers-v4-{{ checksum "./modules-checksums.txt" }}
             - drivers-v4-
-      # restore already-built frontend
-      - restore_cache:
-          keys:
-            - frontend-v4-{{ checksum "./frontend-checksums.txt" }}
       - run:
-          name: Build frontend if needed
-          environment:
-            MB_EDITION: << parameters.edition >>
-          command: >
-            if [ ! -f './resources/frontend_client/index.html' ];
-              then ./bin/build version frontend;
-            fi
+          name: Build drivers if needed
+          command: ./bin/build-drivers.sh
           no_output_timeout: 5m
-      - run:
-          name: Build uberjar if needed
-          environment:
-            MB_EDITION: << parameters.edition >>
-          command: >
-            if [ ! -f './target/uberjar/metabase.jar' ]; then
-              # INTERACTIVE=false will tell the clojure build scripts not to do interactive retries etc.
-              export INTERACTIVE=false;
-              ./bin/build version drivers uberjar;
-            fi
-          no_output_timeout: 10m
-      - store_artifacts:
-          path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
-      - store_artifacts:
-          path: /home/circleci/metabase/metabase/resources/version.properties
-      # Cache the built uberjar & version.properties
-      - save_cache:
-          key: uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
-          paths:
-            - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
-            - /home/circleci/metabase/metabase/resources/version.properties
       # Cache the maven installation of metabase-core
       - save_cache:
           key: metabase-core-{{ checksum "./backend-checksums.txt" }}
@@ -655,11 +621,74 @@ jobs:
             - /home/circleci/metabase/metabase/modules/drivers/sqlite/target
             - /home/circleci/metabase/metabase/modules/drivers/sqlserver/target
             - /home/circleci/metabase/metabase/modules/drivers/vertica/target
+
+  # Build the frontend client. parameters.edition determines whether we build the OSS or EE version.
+  build-uberjar-frontend:
+    parameters:
+      <<: *Params
+    executor: metabase-ci
+    steps:
+      - attach-workspace
+      - restore-fe-deps-cache
+      # restore already-built frontend
+      - restore_cache:
+          keys:
+            - frontend-v4-{{ checksum "./frontend-checksums.txt" }}
+      - run:
+          name: Build frontend if needed
+          environment:
+            MB_EDITION: << parameters.edition >>
+          command: >
+            if [ ! -f './resources/frontend_client/index.html' ];
+              then ./bin/build version frontend;
+            fi
+          no_output_timeout: 5m
       # Cache the built frontend
       - save_cache:
           key: frontend-v4-{{ checksum "./frontend-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/resources/frontend_client
+
+  # Build the uberjar. parmeters.edition determines whether we build the OSS or EE version.
+  build-uberjar:
+    parameters:
+      <<: *Params
+    executor: metabase-ci
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      # restore drivers & FE client build in previous steps.
+      - restore_cache:
+          keys:
+            - drivers-v4-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+      - restore_cache:
+          keys:
+            - frontend-v4-{{ checksum "./frontend-checksums.txt" }}
+      # restore already-built uberjar
+      - restore_cache:
+          keys:
+            - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
+      - run:
+          name: Build uberjar if needed
+          environment:
+            MB_EDITION: << parameters.edition >>
+          command: >
+            if [ ! -f './target/uberjar/metabase.jar' ]; then
+              # INTERACTIVE=false will tell the clojure build scripts not to do interactive retries etc.
+              export INTERACTIVE=false;
+              ./bin/build version drivers uberjar;
+            fi
+          no_output_timeout: 10m
+      - store_artifacts:
+          path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+      - store_artifacts:
+          path: /home/circleci/metabase/metabase/resources/version.properties
+      # Cache the built uberjar & version.properties
+      - save_cache:
+          key: uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
+          paths:
+            - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+            - /home/circleci/metabase/metabase/resources/version.properties
 
   fe-tests-cypress:
     parameters:
@@ -984,6 +1013,23 @@ workflows:
           requires:
             - be-deps
 
+      - build-uberjar-drivers:
+          requires:
+            - be-deps
+
+      - build-uberjar-frontend:
+          name: build-uberjar-frontend-<< matrix.edition >>
+          requires:
+            - fe-deps
+          <<: *Matrix
+
+      - build-uberjar:
+          name: build-uberjar-<< matrix.edition >>
+          requires:
+            - build-uberjar-drivers
+            - build-uberjar-frontend-<< matrix.edition >>
+          <<: *Matrix
+
       - fe-deps:
           requires:
             - checkout
@@ -1008,12 +1054,6 @@ workflows:
       - fe-tests-timezones:
           requires:
             - fe-deps
-      - build-uberjar:
-          name: build-uberjar-<< matrix.edition >>
-          requires:
-            - be-deps
-          <<: *Matrix
-
       - fe-tests-cypress:
           name: fe-tests-cypress-1-<< matrix.edition >>
           requires:
@@ -1096,9 +1136,17 @@ workflows:
           requires:
             - checkout
 
-      - build-uberjar:
+      # Build the OSS version of the uberjar.
+      - build-uberjar-drivers:
           requires:
             - be-deps
+      - build-uberjar-frontend:
+          requires:
+            - fe-deps
+      - build-uberjar:
+          requires:
+            - build-uberjar-drivers
+            - build-uberjar-frontend
 
       - fe-tests-cypress-smoketest:
           name: fe-tests-cypress-smoketest
