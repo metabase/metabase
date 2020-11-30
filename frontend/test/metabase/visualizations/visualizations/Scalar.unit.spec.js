@@ -51,4 +51,16 @@ describe("MetricForm", () => {
     );
     getByText("12.3k");
   });
+
+  it("should render null", () => {
+    const { getByText } = render(
+      <Scalar
+        isDashboard // displays title
+        series={series(null)}
+        settings={settings}
+        visualizationIsClickable={() => false}
+      />,
+    );
+    getByText("Scalar Title"); // just confirms that it rendered
+  });
 });

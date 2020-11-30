@@ -80,7 +80,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn db-metadata :- #{i/TableMetadataField}
-  "Fetch metadata about Fields belonging to a given TABLE directly from an external database by calling its
-   driver's implementation of `describe-table`."
-  [database :- i/DatabaseInstance, table :- i/TableInstance]
+  "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
+  implementation of `describe-table`."
+  [database :- i/DatabaseInstance table :- i/TableInstance]
   (:fields (fetch-metadata/table-metadata database table)))

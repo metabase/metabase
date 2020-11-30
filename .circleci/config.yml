@@ -169,17 +169,23 @@ executors:
           ACCEPT_EULA: Y
           SA_PASSWORD: 'P@ssw0rd'
 
-  fe-mongo:
+  fe-mongo-4:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/mongo:4.0
+      - image: metabase/qa-databases:mongo-sample-4.0
 
   fe-postgres-12:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: metabase/qa-databases:postgres-sample-12
+
+  fe-mysql-8:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: metabase/qa-databases:mysql-sample-8
 
 ########################################################################################################################
 #                                                       COMMANDS                                                       #
@@ -481,6 +487,38 @@ jobs:
             ./bin/test-load-and-dump.sh
           no_output_timeout: 5m
 
+  test-build-scripts:
+    executor: clojure-and-node
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - run:
+          name: Install Clojure CLI
+          command: >
+            curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
+            chmod +x linux-install-1.10.1.708.sh &&
+            sudo ./linux-install-1.10.1.708.sh
+      - run:
+          name: Run metabuild-common build script tests
+          command: >
+            cd /home/circleci/metabase/metabase/bin/common && clojure -M:test
+          no_output_timeout: 5m
+      - run:
+          name: Run build-drivers build script tests
+          command: >
+            cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
+          no_output_timeout: 5m
+      - run:
+          name: Run build-mb build script tests
+          command: >
+            cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
+          no_output_timeout: 5m
+      - run:
+          name: Run release script tests
+          command: >
+            cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
+          no_output_timeout: 5m
+
 
 ########################################################################################################################
 #                                                       FRONTEND                                                       #
@@ -667,7 +705,9 @@ jobs:
       <<: *Params
     executor: << parameters.e >>
     environment:
+      MB_EDITION: << parameters.edition >>
       CYPRESS_GROUP:  << parameters.cypress-group >>
+      DISPLAY: ""
     steps:
       - run-yarn-command:
           command-name: Run Cypress tests
@@ -676,6 +716,33 @@ jobs:
             - restore_cache:
                 keys:
                   - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}
+      - store_artifacts:
+          path: /home/circleci/metabase/metabase/cypress
+      - store_test_results:
+          path: cypress/results
+
+  fe-tests-cypress-smoketest:
+    parameters:
+      e:
+        type: executor
+        default: clojure-and-node
+      cypress-group:
+        type: string
+    executor: << parameters.e >>
+    environment:
+      CYPRESS_GROUP: << parameters.cypress-group >>
+      DISPLAY: ""
+    steps:
+      - run-yarn-command:
+          command-name: Run Cypress tests
+          command: run test-cypress-smoketest
+          before-steps:
+            - restore_cache:
+                keys:
+                  - uberjar-oss-{{ checksum "./backend-checksums.txt" }}
+            - run:
+                name: Generate version file
+                command: ./bin/build version
       - store_artifacts:
           path: /home/circleci/metabase/metabase/cypress
       - store_test_results:
@@ -939,6 +1006,10 @@ workflows:
           db-type: mysql
           <<: *Matrix
 
+      - test-build-scripts:
+          requires:
+            - be-deps
+
       - fe-deps:
           requires:
             - checkout
@@ -999,13 +1070,12 @@ workflows:
           <<: *Matrix
 
       - fe-tests-cypress:
-          name: fe-tests-cypress-mongo-<< matrix.edition >>
+          name: fe-tests-cypress-mongo-4-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
             - fe-deps
-          e: fe-mongo
+          e: fe-mongo-4
           cypress-group: "mongo"
-          driver: mongo
           only-single-database: true
           test-files-location: frontend/test/metabase-db/mongo
           <<: *Matrix
@@ -1020,3 +1090,45 @@ workflows:
           only-single-database: true
           test-files-location: frontend/test/metabase-db/postgres
           <<: *Matrix
+
+      - fe-tests-cypress:
+          name: fe-tests-cypres-mysql-8-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+            - fe-deps
+          e: fe-mysql-8
+          cypress-group: "mysql"
+          only-single-database: true
+          test-files-location: frontend/test/metabase-db/mysql
+          <<: *Matrix
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 9 * * *"
+          filters:
+            branches:
+              only:
+                - master
+                - /release-*/
+    jobs:
+      - checkout
+
+      - be-deps:
+          requires:
+            - checkout
+
+      - fe-deps:
+          requires:
+            - checkout
+
+      - build-uberjar:
+          requires:
+            - be-deps
+
+      - fe-tests-cypress-smoketest:
+          name: fe-tests-cypress-smoketest
+          requires:
+            - build-uberjar
+            - fe-deps
+          cypress-group: "default"

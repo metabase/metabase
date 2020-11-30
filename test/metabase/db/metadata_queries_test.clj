@@ -73,4 +73,21 @@
         (testing "doesnt' use substrings if driver doesn't support expressions"
           (with-redefs [driver/supports? (constantly false)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
+              (is (empty? (get-in query [:query :expressions])))))))
+      (testing "pre-existing json fields are still marked as `:type/Text`"
+        (let [table (table/map->TableInstance {:id 1234})
+              fields [(field/map->FieldInstance {:id 4321, :base_type :type/Text, :special_type :type/SerializedJSON})]]
+          (with-redefs [driver/supports? (constantly true)]
+            (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions]))))))))))
+
+(deftest text-field?-test
+  (testing "recognizes fields suitable for fingerprinting"
+    (doseq [field [{:base_type :type/Text}
+                   {:base_type :type/Text :special_type :type/State}
+                   {:base_type :type/Text :special_type :type/URL}]]
+      (is (#'metadata-queries/text-field? field)))
+    (doseq [field [{:base_type :type/Structured} ; json fields in pg
+                   {:base_type :type/Text :special_type :type/SerializedJSON} ; "legacy" json fields in pg
+                   {:base_type :type/Text :special_type :type/XML}]]
+      (is (not (#'metadata-queries/text-field? field))))))

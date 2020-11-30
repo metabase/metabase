@@ -44,6 +44,43 @@ describe("scenarios > question > new", () => {
       cy.findByText("Convert this question to SQL").click();
       cy.url().should("include", "question#");
     });
+
+    it.skip("should display date granularity on Summarize when opened from saved question (metabase#11439)", () => {
+      // save "Orders" as question
+      cy.request("POST", "/api/card", {
+        name: "11439",
+        dataset_query: {
+          database: 1,
+          query: { "source-table": 2 },
+          type: "query",
+        },
+        type: "query",
+        display: "table",
+        visualization_settings: {},
+      });
+      // it is essential for this repro to find question following these exact steps
+      // (for example, visiting `/collection/root` would yield different result)
+      cy.visit("/");
+      cy.findByText("Ask a question").click();
+      cy.findByText("Simple question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("11439").click();
+      cy.findByText("Summarize").click();
+      cy.findByText("Group by")
+        .parent()
+        .within(() => {
+          cy.log("**Reported failing since v0.33.5.1**");
+          cy.log(
+            "**Marked as regression of [#10441](https://github.com/metabase/metabase/issues/10441)**",
+          );
+          cy.findByText("Created At")
+            .closest(".List-item")
+            .contains("by month")
+            .click();
+        });
+      // this step is maybe redundant since it fails to even find "by month"
+      cy.findByText("Hour of day");
+    });
   });
 
   describe("ask a (custom) question", () => {

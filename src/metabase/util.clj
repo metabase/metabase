@@ -204,7 +204,7 @@
    and [Common Lisp](http://www.lispworks.com/documentation/HyperSpec/Body/m_prog1c.htm#prog1).
 
   Style note: Prefer `doto` when appropriate, e.g. when dealing with Java objects."
-  {:style/indent 1}
+  {:style/indent :defn}
   [first-form & body]
   `(let [~'<> ~first-form]
      ~@body

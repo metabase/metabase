@@ -62,23 +62,20 @@ export function generateDashboards(users) {
 }
 
 describeWithToken("audit > auditing", () => {
-  before(restore);
   const users = ["admin", "normal"];
+  before(() => {
+    restore();
+    generateQuestions(users);
+    generateDashboards(users);
+  });
 
   describe("Generate data to audit", () => {
     beforeEach(signOut);
 
-    it("should create questions and dashboards", () => {
-      generateQuestions(users);
-      generateDashboards(users);
-    });
-
     it("should view a dashboard", () => {
       signIn("nodata");
       cy.visit("/collection/root?type=dashboard");
-      cy.wait(3000)
-        .findByText(users[1] + " test dash")
-        .click();
+      cy.findByText(users[1] + " test dash").click();
 
       cy.findByText("This dashboard is looking empty.");
       cy.findByText("My personal collection").should("not.exist");
@@ -87,18 +84,14 @@ describeWithToken("audit > auditing", () => {
     it("should view old question and new question", () => {
       signIn("nodata");
       cy.visit("/collection/root?type");
-      cy.wait(2000)
-        .findByText("Orders, Count")
-        .click();
+      cy.findByText("Orders, Count").click();
 
       cy.findByText("18,760");
 
       cy.visit("/collection/root?type");
-      cy.wait(2000)
-        .findByText(users[0] + " test q")
-        .click();
+      cy.findByText(users[0] + " test q").click();
 
-      cy.findByText("ID");
+      cy.get('[placeholder="ID"]');
     });
 
     it("should download a question", () => {
@@ -124,13 +117,20 @@ describeWithToken("audit > auditing", () => {
     it("should load the Overview tab", () => {
       cy.visit("/admin/audit/members/overview");
 
+      // We haven't created any new members yet so this should be empty
       cy.findByText("Active members and new members per day");
       cy.findByText("No results!");
-      cy.wait(1000)
-        .get(".LineAreaBarChart")
+
+      // Wait for both of the charts to show up
+      cy.get(".dc-chart").should("have.length", 2);
+
+      // For queries viewed, we have 2 users that haven't viewed anything
+      cy.get(".LineAreaBarChart")
         .first()
         .find("[width='0']")
         .should("have.length", 2);
+
+      // For queries created, we have 3 users that haven't created anything
       cy.get("svg")
         .last()
         .find("[width='0']")
@@ -183,7 +183,7 @@ describeWithToken("audit > auditing", () => {
       // Overview tab
       cy.visit("/admin/audit/schemas/overview");
       cy.get("svg").should("have.length", 2);
-      cy.wait(1000).findAllByText("Sample Dataset PUBLIC");
+      cy.findAllByText("Sample Dataset PUBLIC");
       cy.findAllByText("No results!").should("not.exist");
 
       // All schemas tab
@@ -197,7 +197,7 @@ describeWithToken("audit > auditing", () => {
       cy.visit("/admin/audit/tables/overview");
       cy.findByText("Most-queried tables");
       cy.findAllByText("No results!").should("not.exist");
-      cy.wait(1000).findAllByText("Sample Dataset PUBLIC ORDERS");
+      cy.findAllByText("Sample Dataset PUBLIC ORDERS");
 
       // *** Will fail when code below works again
       cy.findAllByText("Sample Dataset PUBLIC PRODUCTS").should("not.exist");
@@ -237,9 +237,7 @@ describeWithToken("audit > auditing", () => {
       // All questions tab
       cy.visit("/admin/audit/questions/all");
       cy.findByPlaceholderText("Question name");
-      cy.wait(1000)
-        .findAllByText("Sample Dataset")
-        .should("have.length", 5);
+      cy.findAllByText("Sample Dataset").should("have.length", 5);
       cy.findByText("normal test q");
       cy.findByText("Orders, Count, Grouped by Created At (year)");
       cy.findByText("4").should("not.exist");
@@ -275,9 +273,7 @@ describeWithToken("audit > auditing", () => {
 
       // All downloads tab
       cy.visit("/admin/audit/downloads/all");
-      cy.wait(2000)
-        .findByText("No results")
-        .should("not.exist");
+      cy.findByText("No results").should("not.exist");
       cy.get("tr")
         .last()
         .children()

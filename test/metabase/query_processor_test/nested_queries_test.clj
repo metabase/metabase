@@ -702,7 +702,7 @@
 
 ;; https://github.com/metabase/metabase/issues/10511
 (deftest correctly-alias-duplicate-names-in-breakout-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :foreign-keys)
     (testing "Do we correctly alias name clashes in breakout"
       (is (= [[ "20th Century Cafe" "Café" 1 ]
               [ "25°" "Burger" 1 ]

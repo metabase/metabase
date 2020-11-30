@@ -17,6 +17,7 @@
              [field :as field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor
+             [error-type :as qp.error-type]
              [interface :as i]
              [store :as qp.store]]
             [metabase.query-processor.middleware
@@ -24,7 +25,7 @@
              [wrap-value-literals :as value-literal]]
             [metabase.util
              [honeysql-extensions :as hx]
-             [i18n :refer [deferred-tru]]
+             [i18n :refer [deferred-tru tru]]
              [schema :as su]]
             [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]
@@ -815,7 +816,11 @@
                             "\n"
                             (u/pprint-to-str honeysql-form))))
         (finally
-          (throw e))))))
+          (throw (ex-info (tru "Error compiling HoneySQL form")
+                          {:driver driver
+                           :form   honeysql-form
+                           :type   qp.error-type/driver}
+                          e)))))))
 
 (defn- add-default-select
   "Add `SELECT *` to `honeysql-form` if no `:select` clause is present."
