@@ -6,6 +6,7 @@
              [core :as hsql]
              [format :as hformat]
              [helpers :as h]]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -510,6 +511,15 @@
 ;;; |                                            Field Aliases (AS Forms)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- fully-unique-field-alias
+  [driver field-id]
+  (let [alias (field->alias driver (qp.store/field field-id))]
+    (if (> *nested-query-level* 0)
+      (if-let [prefix (:source_alias (m/find-first (comp #{field-id} :id) (metabase.query-processor.middleware.annotate/cols-for-mbql-query *query*)))]
+        (str prefix  "__" alias)
+        alias)
+      alias)))
+
 (defn field-clause->alias
   "Generate HoneySQL for an approriate alias (e.g., for use with SQL `AS`) for a Field clause of any type, or `nil` if
   the Field should not be aliased (e.g. if `field->alias` returns `nil`).
@@ -524,7 +534,7 @@
                       [:expression expression-name]              expression-name
                       [:expression-definition expression-name _] expression-name
                       [:field-literal field-name _]              field-name
-                      [:field-id id]                             (field->alias driver (qp.store/field id)))]
+                      [:field-id field-id]                       (fully-unique-field-alias driver field-id))]
      (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
 
 (defn as

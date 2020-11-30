@@ -184,10 +184,12 @@
     (let [{:keys [fk-field-id], :as join} (join-with-alias inner-query join-alias)]
       (let [recursive-info (col-info-for-field-clause inner-query field)]
         (-> recursive-info
-            (merge (when fk-field-id {:fk_field_id fk-field-id}))
+            (merge (when fk-field-id
+                     {:fk_field_id fk-field-id}))
             (assoc :field_ref (if fk-field-id
                                 [:fk-> [:field-id fk-field-id] field]
-                                (assoc (vec &match) 2 (:field_ref recursive-info))))
+                                (assoc (vec &match) 2 (:field_ref recursive-info)))
+                   :source_alias join-alias)
             (update :display_name display-name-for-joined-field join))))
 
     ;; TODO - should be able to remove this now
