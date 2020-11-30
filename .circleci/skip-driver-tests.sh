@@ -24,11 +24,11 @@ else
     echo "Branch is NOT master or a release-* branch"
 fi
 
-if [[ "$COMMIT_MESSAGE" == *"[ci all]"* ]]; then
+if [[ "$commit_message" == *"[ci all]"* ]]; then
     has_ci_drivers_commit_message=true;
-elif [[ "$COMMIT_MESSAGE" == *"[ci drivers]"* ]]; then
+elif [[ "$commit_message" == *"[ci drivers]"* ]]; then
     has_ci_drivers_commit_message=true;
-elif [[ "$COMMIT_MESSAGE" == *"[ci $driver]"* ]]; then
+elif [[ "$commit_message" == *"[ci $driver]"* ]]; then
     has_ci_drivers_commit_message=true;
 else
     has_ci_drivers_commit_message=false;
@@ -42,7 +42,7 @@ else
     echo "Commit message does NOT include [ci all], [ci drivers], or [ci $driver]"
 fi
 
-if [[ "$COMMIT_MESSAGE" == *"[ci quick]"* ]]; then
+if [[ "$commit_message" == *"[ci quick]"* ]]; then
     has_ci_quick_message=true;
 else
     has_ci_quick_message=false;

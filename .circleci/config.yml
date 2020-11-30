@@ -285,12 +285,13 @@ jobs:
           paths:
             - .git
       # The basic idea here is to generate a file with checksums for all the backend source files, and save it as
-      # `./backend-checksums.txt`. Then we'll use the checksum of that files for uberjar caching; thus we can reuse
-      # the same uberjar for integration tests across any build where the backend files are the same
+      # `./backend-checksums.txt`. Then we'll use the checksum of those files for uberjar caching and for determining
+      # whether we need to run driver tests again; thus we can reuse the same uberjar for integration tests across any
+      # build where the backend files are the same
       - run:
-          name: Generate checksums of all backend source files to use as Uberjar cache key
+          name: Generate checksums of all backend source files to use as cache key
           command: >
-            for file in `find ./src ./backend ./enterprise/backend/src -type f -name '*.clj' | sort`;
+            for file in `find . -type f -name '*.clj' | sort`;
               do echo `md5sum $file` >> backend-checksums.txt;
             done;
             echo `md5sum project.clj` >> backend-checksums.txt
@@ -303,7 +304,7 @@ jobs:
             done;
             echo `md5sum yarn.lock` >> frontend-checksums.txt
             echo `md5sum webpack.config.js` >> frontend-checksums.txt
-      # As well as driver modules (database drivers)
+      # As well as driver modules (database drivers) -- used only for caching the built drivers
       - run:
           name: Generate checksums of all driver module source files to use as Uberjar cache key
           command: >
@@ -595,7 +596,7 @@ jobs:
       # restore already-built uberjar
       - restore_cache:
           keys:
-            - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
+            - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
       # restore the local maven installation of Metabase which is needed for building drivers
       - restore_cache:
           keys:
@@ -642,7 +643,7 @@ jobs:
           path: /home/circleci/metabase/metabase/resources/version.properties
       # Cache the built uberjar & version.properties
       - save_cache:
-          key: uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
+          key: uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
             - /home/circleci/metabase/metabase/resources/version.properties
