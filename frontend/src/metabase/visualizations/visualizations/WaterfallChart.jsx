@@ -19,6 +19,12 @@ export default class WaterfallChart extends LineAreaBarChart {
   static settings = {
     ...GRAPH_COLORS_SETTINGS,
     ...GRAPH_AXIS_SETTINGS,
+    "waterfall.show_total": {
+      section: t`Display`,
+      title: t`Show total`,
+      widget: "toggle",
+      default: true,
+    },
     ...GRAPH_DISPLAY_VALUES_SETTINGS,
     ...GRAPH_DATA_SETTINGS,
   };
