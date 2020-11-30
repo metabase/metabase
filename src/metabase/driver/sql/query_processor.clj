@@ -290,12 +290,21 @@
   [driver [_ field-id]]
   (prefix-field-name-with-source driver (qp.store/field field-id)))
 
+(defn- nesting-depth
+  [query]
+  (loop [depth 0
+         query (:query query query)]
+    (if-let [source-query (:source-query query)]
+      (recur (inc depth) source-query)
+      depth)))
+
 (defmethod prefix-field-name-with-source (class Field)
   [driver field]
   (if-let [alias (field->alias driver field)] ; Respect field->alias semantics: if it returns nil,
                                         ; don't alias
     (if (and (> (nesting-depth *query*) 0)
-             (not *joined-field?*))
+             (not *joined-field?*)
+             false)
         (str/join "__" [(str "field" (Math/abs (hash field))) alias])
       alias) ; abs so we don't get - in names
     (:name field)))
@@ -311,14 +320,6 @@
 (defmethod prefix-field-name-with-source :expression-definition
   [_ [_ expression-name _ :as expression-form]]
   (str/join "__" [(->> expression-form hash Math/abs (str "expression")) expression-name]))
-
-(defn- nesting-depth
-  [query]
-  (loop [depth 0
-         query (:query query query)]
-    (if-let [source-query (:source-query query)]
-      (recur (inc depth) source-query)
-      depth)))
 
 (defmethod ->honeysql [:sql (class Field)]
   [driver {field-name :name, table-id :table_id, :as field}]
