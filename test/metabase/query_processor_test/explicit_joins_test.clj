@@ -455,7 +455,7 @@
                 data/format-name
                 ["id"     "date"   "user_id"     "venue_id"                       ; checkins
                  "id_2"   "name"   "last_login"                                   ; users
-                 "id_2_2" "name_2" "category_id" "latitude" "longitude" "price"]) ; venues
+                 "id_3" "name_2" "category_id" "latitude" "longitude" "price"]) ; venues
                columns))
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12
                  5 "Quentin Sören" "2014-10-03T17:30:00Z"
@@ -478,6 +478,7 @@
                    {:joins    [{:fields       :all
                                 :source-table (str "card__" card-id)
                                 :alias        "card"
-                                :condition    [:= $venue_id &card.*venues.id]}]
+                                :condition    [:= $venue_id &card.venues.id]}]
                     :order-by [[:asc $id]]
-                    :limit    2}))))))))
+                    :limit    2})))))
+      )))

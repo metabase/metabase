@@ -293,25 +293,38 @@
 (defmethod prefix-field-name-with-source (class Field)
   [driver field]
   (if-let [alias (field->alias driver field)] ; Respect field->alias semantics: if it returns nil,
-                                              ; don't alias
-    (str/join "__" [(str "field" (Math/abs (hash field))) alias]) ; abs so we don't get - in names
+                                        ; don't alias
+    (if (and (> (nesting-depth *query*) 0)
+             (not *joined-field?*))
+        (str/join "__" [(str "field" (Math/abs (hash field))) alias])
+      alias) ; abs so we don't get - in names
     (:name field)))
 
 (defmethod prefix-field-name-with-source :field-literal
-  [_ [_ field-name _ :as field-literal]]
-  (str/join "__" [(->> field-literal hash (str "form")) field-name]))
+  [_ [_ field-name _]]
+  (str "literal__" field-name))
+
+(defmethod prefix-field-name-with-source :expression
+  [_ [_ expression-name :as expression-form]]
+  (str/join "__" [(->> expression-form hash Math/abs (str "expression")) expression-name]))
+
+(defmethod prefix-field-name-with-source :expression-definition
+  [_ [_ expression-name _ :as expression-form]]
+  (str/join "__" [(->> expression-form hash Math/abs (str "expression")) expression-name]))
+
+(defn- nesting-depth
+  [query]
+  (loop [depth 0
+         query (:query query query)]
+    (if-let [source-query (:source-query query)]
+      (recur (inc depth) source-query)
+      depth)))
 
 (defmethod ->honeysql [:sql (class Field)]
   [driver {field-name :name, table-id :table_id, :as field}]
-  ;; `indentifer` will automatically unnest nested calls to `identifier`
-  (->> (cond
-         (and *joined-field?* (= *table-alias* source-query-alias))
-         [*table-alias* (prefix-field-name-with-source driver field)]
-
-         *table-alias*
+  ;; `indentifer` will automatically unnest nested calls to `
+  (->> (if *table-alias*
          [*table-alias* field-name]
-
-         :else
          (let [{schema :schema, table-name :name} (qp.store/table table-id)]
            [schema table-name field-name]))
        (apply hx/identifier :field)
@@ -324,10 +337,12 @@
 
 (defmethod ->honeysql [:sql :field-literal]
   [driver [_ field-name :as field-clause]]
-  (->> (if (and *joined-field?* (= *table-alias* source-query-alias))
+  (->> (if (and (= *table-alias* source-query-alias)
+                (> *nested-query-level* 1)
+                false)
          (prefix-field-name-with-source driver field-clause)
          field-name)
-       (hx/identifier :field *table-alias* )
+       (hx/identifier :field *table-alias*)
        (->honeysql driver)))
 
 (defmethod ->honeysql [:sql :joined-field]
@@ -515,7 +530,7 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (mbql.u/match-one (mbql.u/aggregation-at-index *query* index *nested-query-level*)
+  (mbql.u/match-one (nth (:aggregation *query*) index) ;(mbql.u/aggregation-at-index *query* index *nested-query-level*)
     [:aggregation-options ag (options :guard :name)]
     (->honeysql driver (hx/identifier :field-alias (:name options)))
 
@@ -565,11 +580,11 @@
 
   ([driver field-clause unique-name-fn]
    (when-let [alias (mbql.u/match-one field-clause
-                      [:joined-field _ inner-clause]             (prefix-field-name-with-source driver inner-clause)
-                      [:expression expression-name]              expression-name
-                      [:expression-definition expression-name _] expression-name
-                      [:field-literal field-name _]              field-name
-                      [:field-id id]                             (field->alias driver (qp.store/field id)))]
+                      ;[:joined-field _ inner-clause]             (prefix-field-name-with-source driver inner-clause)
+                      [:expression expression-name]              expression-name ;(prefix-field-name-with-source driver &match)
+                      [:expression-definition expression-name _] expression-name ;(prefix-field-name-with-source driver &match)
+                      [:field-literal field-name _]              field-name;(prefix-field-name-with-source driver &match)
+                      [:field-id _]                      (prefix-field-name-with-source driver &match))]
      (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
 
 (defn as
@@ -939,18 +954,19 @@
   "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
   because it is aliased."
   [driver honeysql-form {:keys [source-query expressions], :as inner-query}]
-  (cond
-    (not-empty expressions)
-    (apply-clauses driver honeysql-form (expressions->subselect inner-query))
+  (binding [*query* inner-query]
+    (cond
+      (not-empty expressions)
+      (apply-clauses driver honeysql-form (expressions->subselect inner-query))
 
-    source-query
-    (apply-clauses-with-aliased-source-query-table
-     driver
-     (apply-source-query driver honeysql-form inner-query)
-     inner-query)
+      source-query
+      (apply-clauses-with-aliased-source-query-table
+       driver
+       (apply-source-query driver honeysql-form inner-query)
+       inner-query)
 
-    :else
-    (apply-top-level-clauses driver honeysql-form inner-query)))
+      :else
+      (apply-top-level-clauses driver honeysql-form inner-query))))
 
 (s/defn build-honeysql-form
   "Build the HoneySQL form we will compile to SQL and execute."
@@ -966,13 +982,12 @@
 
 (defn- mbql->honeysql [driver outer-query]
   (binding [*query* outer-query]
-    (build-honeysql-form driver outer-query)))
+  (build-honeysql-form driver outer-query)))
 
 (defn mbql->native
   "Transpile MBQL query into a native SQL statement."
   {:style/indent 1}
   [driver {inner-query :query, database :database, :as outer-query}]
-  (println inner-query)
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))
