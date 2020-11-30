@@ -17,7 +17,7 @@ else
 fi
 
 # ALWAYS run driver tests for master or release branches.
-if is_master_or_release_branch; then
+if [ "$is_master_or_release_branch" = true ]; then
     echo "Running drivers tests: this is master or a release-* branch"
     exit 1;
 else
@@ -35,7 +35,7 @@ else
 fi
 
 # ALWAYS run driver tests if the commit includes [ci all], [ci drivers], or [ci <driver>]
-if has_ci_drivers_commit_message; then
+if [ "$has_ci_drivers_commit_message" = true ]; then
     echo "Running driver tests: commit message includes [ci all], [ci drivers], or [ci $driver]"
     exit 2;
 else
@@ -56,12 +56,12 @@ fi
 
 # If tests have already passed for this set of backend changes, we can skip tests.
 # If tests have not yet passed, run driver tests *unless* the commit includes [ci quick]
-if tests_already_passed; then
+if [ "$tests_already_passed" = true ]; then
     echo "Not running driver tests: tests have already passed for current backend source"
     exit 0
 else
     echo "Tests have not yet passed for current backend source"
-    if has_ci_quick_message; then
+    if [ "$has_ci_quick_message" = true ]; then
         echo "Not running driver tests: commit message includes [ci quick]"
         exit 0;
     else
