@@ -26,10 +26,14 @@ executors:
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
 
-  build:
+  # This is a special image that is based on clojure-and-node but includes extras like gettext and the Clojure CLI
+  # tools. See https://github.com/metabase/metabase-docker-ci for more information. You shouldn't use this image
+  # unless you need the extra stuff -- because it's not an official Circle image, the extra layers won't get cached
+  # and it might take longer to spin this up.
+  metabase-ci:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci-build:latest
+      - image: metabase/ci:2020-11-30
 
   # Java 11 tests also test Metabase with the at-rest encryption enabled. See
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
@@ -306,7 +310,7 @@ jobs:
             echo `md5sum webpack.config.js` >> frontend-checksums.txt
       # As well as driver modules (database drivers) -- used only for caching the built drivers
       - run:
-          name: Generate checksums of all driver module source files to use as Uberjar cache key
+          name: Generate checksums of all driver module source files to use as cache key
           command: >
             for file in `find ./modules -type f -name '*.clj' -or -name '*.yaml' | sort`;
               do echo `md5sum $file` >> modules-checksums.txt;
@@ -333,16 +337,10 @@ jobs:
           command: lint-yaml `find resources -name '*.yaml'`
 
   verify-i18n-files:
-    executor: node
+    executor: metabase-ci
     steps:
       - attach-workspace
       - restore-fe-deps-cache
-      - run:
-          name: Update apt
-          command: sudo apt-get update
-      - run:
-          name: Install gettext
-          command: sudo apt-get install gettext
       - run:
           name: Check i18n tags/make sure template can be built
           # fix OOM when running -- see https://stackoverflow.com/a/59572966/1198455
@@ -477,16 +475,10 @@ jobs:
           no_output_timeout: 5m
 
   test-build-scripts:
-    executor: clojure-and-node
+    executor: metabase-ci
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - run:
-          name: Install Clojure CLI
-          command: >
-            curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
-            chmod +x linux-install-1.10.1.708.sh &&
-            sudo ./linux-install-1.10.1.708.sh
       - run:
           name: Run metabuild-common build script tests
           command: >
@@ -589,7 +581,7 @@ jobs:
   build-uberjar:
     parameters:
       <<: *Params
-    executor: clojure-and-node
+    executor: metabase-ci
     steps:
       - attach-workspace
       - restore-be-deps-cache
@@ -611,12 +603,6 @@ jobs:
       - restore_cache:
           keys:
             - frontend-v4-{{ checksum "./frontend-checksums.txt" }}
-      - run:
-          name: Install Clojure CLI
-          command: >
-            curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
-            chmod +x linux-install-1.10.1.708.sh &&
-            sudo ./linux-install-1.10.1.708.sh
       - run:
           name: Build frontend if needed
           environment:
