@@ -284,7 +284,7 @@
   (->honeysql driver (qp.store/field field-id)))
 
 (defmethod ->honeysql [:sql :field-literal]
-  [driver [_ field-name :as field-clause]]
+  [driver [_ field-name]]
   (->honeysql driver (hx/identifier :field *table-alias* field-name)))
 
 (defmethod ->honeysql [:sql :joined-field]
@@ -523,7 +523,7 @@
                       [:expression expression-name]              expression-name
                       [:expression-definition expression-name _] expression-name
                       [:field-literal field-name _]              field-name
-                      [:field-id id]                              (field->alias driver (qp.store/field id)))]
+                      [:field-id id]                             (field->alias driver (qp.store/field id)))]
      (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
 
 (defn as
@@ -844,6 +844,8 @@
 
 ;;; -------------------------------------------- Handling source queries ---------------------------------------------
 
+(declare apply-clauses)
+
 ;; TODO - it seems to me like we could actually properly handle nested nested queries by giving each level of nesting
 ;; a different alias
 (def source-query-alias
@@ -852,8 +854,6 @@
     SELECT source.*
     FROM ( SELECT * FROM some_table ) source"
   :source)
-
-(declare apply-clauses)
 
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all
