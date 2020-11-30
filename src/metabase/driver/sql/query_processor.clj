@@ -45,15 +45,6 @@
   Each nested query increments this counter by 1."
   0)
 
-;; TODO - it seems to me like we could actually properly handle nested nested queries by giving each level of nesting
-;; a different alias
-(def source-query-alias
-  "Alias to use for source queries, e.g.:
-
-    SELECT source.*
-    FROM ( SELECT * FROM some_table ) source"
-  :source)
-
 (p.types/deftype+ SQLSourceQuery [sql params]
   hformat/ToSql
   (to-sql [_]
@@ -279,7 +270,7 @@
 
 (defmethod ->honeysql [:sql (class Field)]
   [driver {field-name :name, table-id :table_id, :as field}]
-  ;; `indentifer` will automatically unnest nested calls to `
+  ;; `indentifer` will automatically unnest nested calls to `identifier`
   (->> (if *table-alias*
          [*table-alias* field-name]
          (let [{schema :schema, table-name :name} (qp.store/table table-id)]
@@ -294,9 +285,7 @@
 
 (defmethod ->honeysql [:sql :field-literal]
   [driver [_ field-name :as field-clause]]
-  (->> field-name
-       (hx/identifier :field *table-alias*)
-       (->honeysql driver)))
+  (->honeysql driver (hx/identifier :field *table-alias* field-name)))
 
 (defmethod ->honeysql [:sql :joined-field]
   [driver [_ alias field]]
@@ -481,7 +470,7 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (mbql.u/match-one (nth (:aggregation *query*) index) ;(mbql.u/aggregation-at-index *query* index *nested-query-level*)
+  (mbql.u/match-one (nth (:aggregation *query*) index)
     [:aggregation-options ag (options :guard :name)]
     (->honeysql driver (hx/identifier :field-alias (:name options)))
 
@@ -534,7 +523,7 @@
                       [:expression expression-name]              expression-name
                       [:expression-definition expression-name _] expression-name
                       [:field-literal field-name _]              field-name
-                      [:field-id _]                              (field->alias driver &match))]
+                      [:field-id id]                              (field->alias driver (qp.store/field id)))]
      (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
 
 (defn as
@@ -854,6 +843,15 @@
 
 
 ;;; -------------------------------------------- Handling source queries ---------------------------------------------
+
+;; TODO - it seems to me like we could actually properly handle nested nested queries by giving each level of nesting
+;; a different alias
+(def source-query-alias
+  "Alias to use for source queries, e.g.:
+
+    SELECT source.*
+    FROM ( SELECT * FROM some_table ) source"
+  :source)
 
 (declare apply-clauses)
 
