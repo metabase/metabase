@@ -592,9 +592,9 @@ jobs:
       # restore already-built drivers
       - restore_cache:
           keys:
-            - drivers-v4-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
-            - drivers-v4-{{ checksum "./modules-checksums.txt" }}
-            - drivers-v4-
+            - drivers-v5-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+            - drivers-v5-{{ checksum "./modules-checksums.txt" }}
+            - drivers-v5-
       - run:
           name: Build drivers if needed
           command: ./bin/build-drivers.sh
@@ -606,7 +606,7 @@ jobs:
             - /home/circleci/.m2/repository/metabase-core
       # Cache the built drivers
       - save_cache:
-          key: drivers-v4-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+          key: drivers-v5-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
             - /home/circleci/metabase/metabase/modules/drivers/druid/target
@@ -660,7 +660,7 @@ jobs:
       # restore drivers & FE client build in previous steps.
       - restore_cache:
           keys:
-            - drivers-v4-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+            - drivers-v5-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
       - restore_cache:
           keys:
             - frontend-v4-{{ checksum "./frontend-checksums.txt" }}
