@@ -121,38 +121,49 @@ describe("data_grid", () => {
       ["b", "y", 5],
       ["b", "z", 6],
     ]);
-    it("should produce header rows with spans", () => {
-      const { headerRows } = multiLevelPivot(data, [0, 1], [], [2]);
-      expect(headerRows).toEqual([
-        [{ span: 3, value: "a" }, { span: 3, value: "b" }],
+    it("should produce multi-level top index", () => {
+      const { topIndex, leftIndex } = multiLevelPivot(data, [0, 1], [], [2]);
+      expect(topIndex).toEqual([
         [
-          { span: 1, value: "x" },
-          { span: 1, value: "y" },
-          { span: 1, value: "z" },
-          { span: 1, value: "x" },
-          { span: 1, value: "y" },
-          { span: 1, value: "z" },
+          [{ value: "a", span: 3 }],
+          [
+            { value: "x", span: 1 },
+            { value: "y", span: 1 },
+            { value: "z", span: 1 },
+          ],
+        ],
+        [
+          [{ value: "b", span: 3 }],
+          [
+            { value: "x", span: 1 },
+            { value: "y", span: 1 },
+            { value: "z", span: 1 },
+          ],
         ],
       ]);
+      expect(leftIndex).toEqual([]);
     });
-    it("should produce body rows with spans", () => {
-      const { bodyRows } = multiLevelPivot(data, [], [0, 1], [2]);
-      expect(bodyRows).toEqual([
+    it("should produce multi-level left index", () => {
+      const { topIndex, leftIndex } = multiLevelPivot(data, [], [0, 1], [2]);
+      expect(leftIndex).toEqual([
         [
-          { span: 3, value: "a" },
-          { span: 1, value: "x" },
-          { span: 1, value: "1" },
+          [{ value: "a", span: 3 }],
+          [
+            { value: "x", span: 1 },
+            { value: "y", span: 1 },
+            { value: "z", span: 1 },
+          ],
         ],
-        [{ span: 1, value: "y" }, { span: 1, value: "2" }],
-        [{ span: 1, value: "z" }, { span: 1, value: "3" }],
         [
-          { span: 3, value: "b" },
-          { span: 1, value: "x" },
-          { span: 1, value: "4" },
+          [{ value: "b", span: 3 }],
+          [
+            { value: "x", span: 1 },
+            { value: "y", span: 1 },
+            { value: "z", span: 1 },
+          ],
         ],
-        [{ span: 1, value: "y" }, { span: 1, value: "5" }],
-        [{ span: 1, value: "z" }, { span: 1, value: "6" }],
       ]);
+      expect(topIndex).toEqual([]);
     });
     it("should allow unspecified values", () => {
       const data = makeData([
@@ -161,21 +172,14 @@ describe("data_grid", () => {
         ["b", "x", 3],
         // ["b", "y", ...], not present
       ]);
-      const { headerRows, bodyRows } = multiLevelPivot(data, [0], [1], [2]);
-      expect(headerRows).toEqual([
-        [{ span: 1, value: "a" }, { span: 1, value: "b" }],
+      const { leftIndex, topIndex } = multiLevelPivot(data, [0], [1], [2]);
+      expect(leftIndex).toEqual([
+        [[{ value: "x", span: 1 }]],
+        [[{ value: "y", span: 1 }]],
       ]);
-      expect(bodyRows).toEqual([
-        [
-          { span: 1, value: "x" },
-          { span: 1, value: "1" },
-          { span: 1, value: "3" },
-        ],
-        [
-          { span: 1, value: "y" },
-          { span: 1, value: "2" },
-          { span: 1, value: null },
-        ],
+      expect(topIndex).toEqual([
+        [[{ value: "a", span: 1 }]],
+        [[{ value: "b", span: 1 }]],
       ]);
     });
     it("should handle multiple value columns", () => {
@@ -189,18 +193,20 @@ describe("data_grid", () => {
         ],
       };
 
-      const { headerRows, bodyRows } = multiLevelPivot(data, [0], [1], [2, 3]);
-      expect(headerRows).toEqual([
-        [{ span: 2, value: "a" }],
-        [{ span: 1, value: "Metric" }, { span: 1, value: "Metric" }],
-      ]);
-      expect(bodyRows).toEqual([
+      const { topIndex, leftIndex, getRowSection } = multiLevelPivot(
+        data,
+        [0],
+        [1],
+        [2, 3],
+      );
+      expect(topIndex).toEqual([
         [
-          { span: 1, value: "b" },
-          { span: 1, value: "1" },
-          { span: 1, value: "2" },
+          [{ value: "a", span: 2 }],
+          [{ value: "Metric", span: 1 }, { value: "Metric", span: 1 }],
         ],
       ]);
+      expect(leftIndex).toEqual([[[{ value: "b", span: 1 }]]]);
+      expect(getRowSection("a", "b")).toEqual([["1", "2"]]);
     });
     it("should work with three levels of row grouping", () => {
       // three was picked because there was a bug during development that showed up with at least three
@@ -223,40 +229,29 @@ describe("data_grid", () => {
         ],
       };
 
-      const { headerRows, bodyRows } = multiLevelPivot(
-        data,
-        [],
-        [0, 1, 2],
-        [3],
-      );
-      expect(headerRows).toEqual([]);
-      expect(bodyRows).toEqual([
+      const { topIndex, leftIndex } = multiLevelPivot(data, [], [0, 1, 2], [3]);
+      expect(topIndex).toEqual([]);
+      expect(leftIndex).toEqual([
         [
-          { span: 4, value: "a1" },
-          { span: 2, value: "b1" },
-          { span: 1, value: "c1" },
-          { span: 1, value: "1" },
+          [{ span: 4, value: "a1" }],
+          [{ span: 2, value: "b1" }, { span: 2, value: "b2" }],
+          [
+            { span: 1, value: "c1" },
+            { span: 1, value: "c2" },
+            { span: 1, value: "c1" },
+            { span: 1, value: "c2" },
+          ],
         ],
-        [{ span: 1, value: "c2" }, { span: 1, value: "1" }],
         [
-          { span: 2, value: "b2" },
-          { span: 1, value: "c1" },
-          { span: 1, value: "1" },
+          [{ span: 4, value: "a2" }],
+          [{ span: 2, value: "b1" }, { span: 2, value: "b2" }],
+          [
+            { span: 1, value: "c1" },
+            { span: 1, value: "c2" },
+            { span: 1, value: "c1" },
+            { span: 1, value: "c2" },
+          ],
         ],
-        [{ span: 1, value: "c2" }, { span: 1, value: "1" }],
-        [
-          { span: 4, value: "a2" },
-          { span: 2, value: "b1" },
-          { span: 1, value: "c1" },
-          { span: 1, value: "1" },
-        ],
-        [{ span: 1, value: "c2" }, { span: 1, value: "1" }],
-        [
-          { span: 2, value: "b2" },
-          { span: 1, value: "c1" },
-          { span: 1, value: "1" },
-        ],
-        [{ span: 1, value: "c2" }, { span: 1, value: "1" }],
       ]);
     });
     it("should format values", () => {
@@ -279,14 +274,57 @@ describe("data_grid", () => {
         ],
       };
 
-      const { headerRows, bodyRows } = multiLevelPivot(data, [0], [1], [2]);
-      expect(headerRows).toEqual([[{ span: 1, value: "1  –  11" }]]);
-      expect(bodyRows).toEqual([
-        [
-          { span: 1, value: "January 1, 2020, 12:00 AM" },
-          { span: 1, value: "1,000" },
+      const { getRowSection } = multiLevelPivot(data, [0], [1], [2]);
+      expect(getRowSection(1, "2020-01-01T00:00:00")).toEqual([["1,000"]]);
+    });
+    it("should format values without a pivoted column or row", () => {
+      const data = {
+        rows: [[1, 1000]],
+        cols: [
+          {
+            name: "D1",
+            display_name: "Dimension 1",
+            base_type: TYPE.Float,
+          },
+          {
+            name: "M1",
+            display_name: "Metric",
+            base_type: TYPE.Integer,
+            special_type: "type/Currency",
+          },
         ],
+      };
+      let getRowSection;
+      ({ getRowSection } = multiLevelPivot(data, [0], [], [1]));
+      expect(getRowSection(1)).toEqual([["1,000"]]);
+      ({ getRowSection } = multiLevelPivot(data, [], [0], [1]));
+      expect(getRowSection(undefined, 1)).toEqual([["1,000"]]);
+    });
+    it("should format multiple values", () => {
+      const data = {
+        rows: [
+          [1, 1, "2020-01-01T00:00:00", 1000],
+          [1, 2, "2020-01-01T00:00:00", 1000],
+          [2, 1, "2020-01-01T00:00:00", 1000],
+        ],
+        cols: [
+          { name: "D1", display_name: "Dimension 1", base_type: TYPE.Float },
+          { name: "D2", display_name: "Dimension 2", base_type: TYPE.Float },
+          { name: "D3", display_name: "Dimension 3", base_type: TYPE.DateTime },
+          {
+            name: "M1",
+            display_name: "Metric",
+            base_type: TYPE.Integer,
+            special_type: "type/Currency",
+          },
+        ],
+      };
+
+      const { getRowSection } = multiLevelPivot(data, [0], [1], [2, 3]);
+      expect(getRowSection(1, 1)).toEqual([
+        ["January 1, 2020, 12:00 AM", "1,000"],
       ]);
+      expect(getRowSection(2, 2)).toEqual([[null, null]]);
     });
   });
 });

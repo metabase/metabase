@@ -28,93 +28,78 @@ export function multiLevelPivot(
     valuesByKey[valueKey] = valueColumnIndexes.map(index => row[index]);
   }
 
-  const [headerFormatters, valueFormatters, rowHeaderFormatters] = [
-    columnColumnIndexes,
-    valueColumnIndexes,
-    rowColumnIndexes,
-  ].map(indexes =>
-    indexes.map(index => value =>
-      formatValue(value, { column: data.cols[index] }),
-    ),
+  const valueFormatters = valueColumnIndexes.map(index => value =>
+    formatValue(value, { column: data.cols[index] }),
   );
-  const headerRows = getHeaderRows(columnColumnTree, {
-    valueColumns: valueColumnIndexes.map(index => data.cols[index]),
-    formatters: headerFormatters,
-  });
 
-  const bodyRows = getBodyRows(rowColumnTree, {
-    columnValueLists: valueLists(columnColumnTree),
-    valuesByKey,
-    valueColumnCount: valueColumnIndexes.length,
-    rowHeaderFormatters,
-    valueFormatters,
-  });
+  const valueColumns = valueColumnIndexes.map(index => data.cols[index]);
 
   return {
-    headerRows,
-    bodyRows,
+    topIndex: getIndex(columnColumnTree, { valueColumns }),
+    leftIndex: getIndex(rowColumnTree, {}),
+    getRowSection: createRowSectionGetter({
+      valuesByKey,
+      columnColumnTree,
+      rowColumnTree,
+      valueFormatters,
+    }),
   };
 }
 
-function getHeaderRows(values, { valueColumns, formatters }) {
+function createRowSectionGetter({
+  valuesByKey,
+  columnColumnTree,
+  rowColumnTree,
+  valueFormatters,
+}) {
+  return (topValue, leftValue) => {
+    const rows =
+      leftValue === undefined
+        ? [[]]
+        : enumerate(rowColumnTree.find(node => node.value === leftValue));
+    const columns =
+      topValue === undefined
+        ? [[]]
+        : enumerate(columnColumnTree.find(node => node.value === topValue));
+    return rows.map(row =>
+      columns.flatMap(col => {
+        const valueKey = JSON.stringify(col.concat(row));
+        const values = valuesByKey[valueKey];
+        if (values === undefined) {
+          return new Array(valueFormatters.length).fill(null);
+        }
+        return values.map((v, i) => valueFormatters[i](v));
+      }),
+    );
+  };
+}
+
+function enumerate({ value, children }, path = []) {
+  const pathWithValue = [...path, value];
+  if (children.length === 0) {
+    return [pathWithValue];
+  }
+  return children.flatMap(child => enumerate(child, pathWithValue));
+}
+
+function getIndex(values, { valueColumns = [] } = {}) {
   if (values.length === 0) {
-    // if we have multiple value columns include their column names
-    return valueColumns.length > 1
-      ? [valueColumns.map(c => ({ value: c.display_name, span: 1 }))]
-      : [];
-  }
-  const [currentFormatter, ...otherFormatters] = formatters;
-  const rowLists = [];
-  const currentRow = values.map(({ value, children }) => {
-    const rows = getHeaderRows(children, {
-      valueColumns,
-      formatters: otherFormatters,
-    });
-    rowLists.push(rows);
-    const span =
-      rows.length === 0 ? 1 : rows[0].reduce((sum, { span }) => sum + span, 0);
-    return { value: currentFormatter(value), span };
-  });
-  const followingRows = _.zip(...rowLists).map(a => a.flat());
-  return [currentRow, ...followingRows];
-}
-
-function valueLists(tree, currentList = []) {
-  if (tree.length === 0) {
-    return [currentList];
-  }
-
-  return tree.flatMap(({ value, children }) =>
-    valueLists(children, [...currentList, value]),
-  );
-}
-
-function getBodyRows(tree, context, valueList = []) {
-  if (tree.length === 0 && valueList.length > 0) {
-    const rowValues = context.columnValueLists.flatMap(list => {
-      const valueKey = JSON.stringify(list.concat(valueList));
-      const values = context.valuesByKey[valueKey];
-      if (values === undefined) {
-        return new Array(context.valueColumnCount).fill({
-          value: null,
-          span: 1,
-        });
-      }
-      return values.map((value, index) => ({
-        value: context.valueFormatters[index](value),
+    if (valueColumns.length > 1) {
+      // if we have multiple value columns include their column names
+      const colNames = valueColumns.map(col => ({
+        value: col.display_name,
         span: 1,
       }));
-    });
-    return [rowValues];
+      return [[colNames]];
+    }
+    return [];
   }
-  return tree.flatMap(({ value, children }, index) => {
-    const rows = getBodyRows(children, context, [...valueList, value]);
-    const item = {
-      value: context.rowHeaderFormatters[valueList.length](value),
-      span: rows.length,
-    };
-    const [first, ...rest] = rows;
-    return [[item, ...first], ...rest];
+  return values.map(({ value, children }) => {
+    const foo = _.zip(...getIndex(children, { valueColumns })).map(a =>
+      a.flat(),
+    );
+    const span = foo.length === 0 ? 1 : foo[foo.length - 1].length;
+    return [[{ value, span }], ...foo];
   });
 }
 
