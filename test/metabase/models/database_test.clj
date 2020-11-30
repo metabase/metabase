@@ -127,18 +127,3 @@
                   "id"          2
                   "engine"      "bigquery"}
                  (encode-decode bq-db))))))))
-
-(deftest disallow-duplicate-databases-with-same-name-and-engine
-  (testing "Shouldn't be able to create two Databases with the same name and engine"
-    (try
-      (letfn [(create-database! [db-name]
-                (db/insert! Database
-                  :name db-name
-                  :engine "h2"
-                  :details {:db "test-database"}))]
-        (create-database! "TestDatabase")
-        (is (thrown?
-             Exception
-             (create-database! "TestDatabase"))))
-      (finally
-        (db/delete! Database :name "TestDatabase")))))
