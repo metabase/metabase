@@ -10,9 +10,6 @@ driver="$1"
 
 commit_message=`cat commit.txt`
 
-parent_branch=`git log --decorate --simplify-by-decoration --oneline | grep -v "HEAD" | head -n 1 | sed -r 's/^\w+\s\(origin\/([^,)]+).+$/\1/'`
-files_with_changes=`git diff --name-only "$parent_branch" | grep '.clj'`
-
 if [[ "$CIRCLE_BRANCH" =~ ^master|release-.+$ ]]; then
     is_master_or_release_branch=true;
 else
@@ -51,15 +48,19 @@ else
     has_ci_quick_message=false;
 fi
 
-if [ -n "$files_with_changes" ]; then
-    has_backend_changes=true;
+if [ -f "$driver.success" ]; then
+    tests_already_passed=true;
 else
-    has_backend_changes=false;
+    tests_already_passed=false;
 fi
 
-# If any backend files have changed, run driver tests *unless* the commit includes [ci quick]
-if has_backend_changes; then
-    echo "Branch has backend changes"
+# If tests have already passed for this set of backend changes, we can skip tests.
+# If tests have not yet passed, run driver tests *unless* the commit includes [ci quick]
+if tests_already_passed; then
+    echo "Not running driver tests: tests have already passed for current backend source"
+    exit 0
+else
+    echo "Tests have not yet passed for current backend source"
     if has_ci_quick_message; then
         echo "Not running driver tests: commit message includes [ci quick]"
         exit 0;
@@ -67,7 +68,4 @@ if has_backend_changes; then
         echo "Running driver tests: commit message does not include [ci quick] "
         exit 3;
     fi
-else
-    echo "Not running driver tests: branch has no backend changes"
-    exit 0
 fi

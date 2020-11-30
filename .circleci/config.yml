@@ -310,16 +310,9 @@ jobs:
             for file in `find ./modules -type f -name '*.clj' -or -name '*.yaml' | sort`;
               do echo `md5sum $file` >> modules-checksums.txt;
             done;
-      # The .git directory includes a lot of info that dramatically increases the size that get saved by the
-      # `persist_to_workspace` command. It's a lot faster if we just determine the info we need now and toss the .git
-      # directory
       - run:
           name: Save last git commit message
           command: git log -1 > commit.txt
-      - run:
-          name: Save list of files that have changes relative to the parent branch
-          command: >
-            /home/circleci/metabase/metabase/.circleci/save-files-with-changes.sh
       - run:
           name: Remove .git directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/.git
@@ -427,9 +420,6 @@ jobs:
       before-steps:
         type: steps
         default: []
-      auto-retry:
-        type: boolean
-        default: false
       description:
         type: string
         default: ""
@@ -438,31 +428,29 @@ jobs:
       - attach-workspace
       - restore-be-deps-cache
       - steps: << parameters.before-steps >>
-      - unless:
-          condition: << parameters.auto-retry >>
-          steps:
-            - run:
-                name: Test << parameters.driver >> driver << parameters.description >>
-                environment:
-                  DRIVERS: h2,<< parameters.driver >>
-                  MB_EDITION: ee
-                command: >
-                  /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-                  lein with-profile +ci,+junit,+$MB_EDITION test
-                no_output_timeout: << parameters.timeout >>
-      # This is exactly the same as without auto-retry but will try running the tests a second time if they fail
-      - when:
-          condition: << parameters.auto-retry >>
-          steps:
-            - run:
-                name: Test << parameters.driver >> driver
-                environment:
-                  DRIVERS: h2,<< parameters.driver >>
-                  MB_EDITION: ee
-                command: >
-                  /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-                  lein with-profile +ci,+junit,+$MB_EDITION test || lein with-profile +ci,+junit,+$MB_EDITION test
-                no_output_timeout: << parameters.timeout >>
+      # If we run driver tests, and they pass, we'll create a dummy file called DRIVER.success and then cache that
+      # with the key driver-tests-DRIVER-BACKEND_CHECKSUM
+      #
+      # Next time we run driver tests, we'll try to restore the cache with the key; if the dummy success file is
+      # present, we'll know that tests passed given the current backend source files and that we can skip tests. If
+      # the file isn't present, we'll know we need to run tests
+      - restore_cache:
+          keys:
+            - driver-tests-<< parameters.driver >>-{{ checksum "./backend-checksums.txt" }}
+      - run:
+          name: Test << parameters.driver >> driver << parameters.description >>
+          environment:
+            DRIVERS: h2,<< parameters.driver >>
+            MB_EDITION: ee
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
+            ( lein with-profile +ci,+junit,+$MB_EDITION test &&
+              touch /home/circleci/metabase/metabase/<< parameters.driver >>.success )
+          no_output_timeout: << parameters.timeout >>
+      - save_cache:
+          key: driver-tests-<< parameters.driver >>-{{ checksum "./backend-checksums.txt" }}
+          paths:
+            - /home/circleci/metabase/metabase/<< parameters.driver >>.success
       - store_test_results:
           path: /home/circleci/metabase/metabase/target/junit
 
@@ -988,7 +976,6 @@ workflows:
                 dest: vertica-jdbc-7.1.2-0.jar
                 driver: vertica
           driver: vertica
-          auto-retry: true
 
       - test-migrate-from-h2:
           name: be-tests-migrate-to-postgres-<< matrix.edition >>
