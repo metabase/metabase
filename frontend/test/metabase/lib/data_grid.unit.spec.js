@@ -277,5 +277,54 @@ describe("data_grid", () => {
       const { getRowSection } = multiLevelPivot(data, [0], [1], [2]);
       expect(getRowSection(1, "2020-01-01T00:00:00")).toEqual([["1,000"]]);
     });
+    it("should format values without a pivoted column or row", () => {
+      const data = {
+        rows: [[1, 1000]],
+        cols: [
+          {
+            name: "D1",
+            display_name: "Dimension 1",
+            base_type: TYPE.Float,
+          },
+          {
+            name: "M1",
+            display_name: "Metric",
+            base_type: TYPE.Integer,
+            special_type: "type/Currency",
+          },
+        ],
+      };
+      let getRowSection;
+      ({ getRowSection } = multiLevelPivot(data, [0], [], [1]));
+      expect(getRowSection(1)).toEqual([["1,000"]]);
+      ({ getRowSection } = multiLevelPivot(data, [], [0], [1]));
+      expect(getRowSection(undefined, 1)).toEqual([["1,000"]]);
+    });
+    it("should format multiple values", () => {
+      const data = {
+        rows: [
+          [1, 1, "2020-01-01T00:00:00", 1000],
+          [1, 2, "2020-01-01T00:00:00", 1000],
+          [2, 1, "2020-01-01T00:00:00", 1000],
+        ],
+        cols: [
+          { name: "D1", display_name: "Dimension 1", base_type: TYPE.Float },
+          { name: "D2", display_name: "Dimension 2", base_type: TYPE.Float },
+          { name: "D3", display_name: "Dimension 3", base_type: TYPE.DateTime },
+          {
+            name: "M1",
+            display_name: "Metric",
+            base_type: TYPE.Integer,
+            special_type: "type/Currency",
+          },
+        ],
+      };
+
+      const { getRowSection } = multiLevelPivot(data, [0], [1], [2, 3]);
+      expect(getRowSection(1, 1)).toEqual([
+        ["January 1, 2020, 12:00 AM", "1,000"],
+      ]);
+      expect(getRowSection(2, 2)).toEqual([[null, null]]);
+    });
   });
 });

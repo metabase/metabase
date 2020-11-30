@@ -53,18 +53,20 @@ function createRowSectionGetter({
   valueFormatters,
 }) {
   return (topValue, leftValue) => {
-    const rows = enumerate(
-      rowColumnTree.find(node => node.value === leftValue),
-    );
-    const columns = enumerate(
-      columnColumnTree.find(node => node.value === topValue),
-    );
+    const rows =
+      leftValue === undefined
+        ? [[]]
+        : enumerate(rowColumnTree.find(node => node.value === leftValue));
+    const columns =
+      topValue === undefined
+        ? [[]]
+        : enumerate(columnColumnTree.find(node => node.value === topValue));
     return rows.map(row =>
       columns.flatMap(col => {
         const valueKey = JSON.stringify(col.concat(row));
         const values = valuesByKey[valueKey];
         if (values === undefined) {
-          return new Array(valueFormatters).fill(null);
+          return new Array(valueFormatters.length).fill(null);
         }
         return values.map((v, i) => valueFormatters[i](v));
       }),
