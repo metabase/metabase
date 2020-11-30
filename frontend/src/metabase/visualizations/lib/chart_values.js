@@ -108,10 +108,12 @@ export function onRenderValueLabels(
         d.cumulativeY = d.y + total;
         total += d.y;
       });
-      data = [
-        ...data,
-        { ...data[0], x: t`Total`, y: total, cumulativeY: total },
-      ];
+      if (chart.settings["waterfall.show_total"]) {
+        data = [
+          ...data,
+          { ...data[0], x: t`Total`, y: total, cumulativeY: total },
+        ];
+      }
     }
 
     return data;

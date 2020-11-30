@@ -236,7 +236,8 @@ a positive value, the other is zero). This is done so we need not have
 conditional fill color.
 
 */
-export function syntheticStackedBarsForWaterfallChart(datas) {
+export function syntheticStackedBarsForWaterfallChart(datas, settings = {}) {
+  const showTotal = settings && settings["waterfall.show_total"];
   const stackedBarsDatas = datas.slice();
 
   const mainSeries = stackedBarsDatas[0];
@@ -253,7 +254,6 @@ export function syntheticStackedBarsForWaterfallChart(datas) {
     };
   }
 
-  const values = [...mainValues, totalValue];
   const { beams } = mainValues.reduce(
     (t, value) => {
       return {
@@ -263,10 +263,16 @@ export function syntheticStackedBarsForWaterfallChart(datas) {
     },
     { beams: [], offset: 0 },
   );
-  // The last one is the total bar, anchor it at 0
-  beams.push(0);
 
-  stackedBarsDatas[0] = [...mainSeries, total];
+  const values = mainValues.slice();
+  if (showTotal) {
+    values.push(totalValue);
+    stackedBarsDatas[0] = [...mainSeries, total];
+    // The last one is the total bar, anchor it at 0
+    beams.push(0);
+  } else {
+    stackedBarsDatas[0] = mainSeries;
+  }
   stackedBarsDatas.push(stackedBarsDatas[0].map(k => k.slice())); // negatives
   stackedBarsDatas.push(stackedBarsDatas[0].map(k => k.slice())); // positives
   for (let k = 0; k < values.length; ++k) {
