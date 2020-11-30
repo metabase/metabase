@@ -251,10 +251,6 @@
   schema + Table name. Used to implement things like `:joined-field`s."
   nil)
 
-(def ^:dynamic ^:private *joined-field?*
-  "Are we in the midst of processing a joined field?"
-  false)
-
 (defmethod ->honeysql [:sql nil]    [_ _]    nil)
 (defmethod ->honeysql [:sql Object] [_ this] this)
 
@@ -281,46 +277,6 @@
   [_ identifier]
   identifier)
 
-(defmulti prefix-field-name-with-source
-  {:arglists '([driver field-clause]), :private true}
-  (fn [_ field-clause]
-    (mbql.u/dispatch-by-clause-name-or-class field-clause)))
-
-(defmethod prefix-field-name-with-source :field-id
-  [driver [_ field-id]]
-  (prefix-field-name-with-source driver (qp.store/field field-id)))
-
-(defn- nesting-depth
-  [query]
-  (loop [depth 0
-         query (:query query query)]
-    (if-let [source-query (:source-query query)]
-      (recur (inc depth) source-query)
-      depth)))
-
-(defmethod prefix-field-name-with-source (class Field)
-  [driver field]
-  (if-let [alias (field->alias driver field)] ; Respect field->alias semantics: if it returns nil,
-                                        ; don't alias
-    (if (and (> (nesting-depth *query*) 0)
-             (not *joined-field?*)
-             false)
-        (str/join "__" [(str "field" (Math/abs (hash field))) alias])
-      alias) ; abs so we don't get - in names
-    (:name field)))
-
-(defmethod prefix-field-name-with-source :field-literal
-  [_ [_ field-name _]]
-  (str "literal__" field-name))
-
-(defmethod prefix-field-name-with-source :expression
-  [_ [_ expression-name :as expression-form]]
-  (str/join "__" [(->> expression-form hash Math/abs (str "expression")) expression-name]))
-
-(defmethod prefix-field-name-with-source :expression-definition
-  [_ [_ expression-name _ :as expression-form]]
-  (str/join "__" [(->> expression-form hash Math/abs (str "expression")) expression-name]))
-
 (defmethod ->honeysql [:sql (class Field)]
   [driver {field-name :name, table-id :table_id, :as field}]
   ;; `indentifer` will automatically unnest nested calls to `
@@ -338,19 +294,13 @@
 
 (defmethod ->honeysql [:sql :field-literal]
   [driver [_ field-name :as field-clause]]
-  (->> (if (and (= *table-alias* source-query-alias)
-                (> *nested-query-level* 1)
-                false)
-         (prefix-field-name-with-source driver field-clause)
-         field-name)
+  (->> field-name
        (hx/identifier :field *table-alias*)
        (->honeysql driver)))
 
 (defmethod ->honeysql [:sql :joined-field]
   [driver [_ alias field]]
-  (binding [*table-alias*     alias;(or *table-alias* alias) ; if *table-alias* is already set we're
-                                                     ; referencing a source query, so leave it as is
-            *joined-field?* true]
+  (binding [*table-alias* alias]
     (->honeysql driver field)))
 
 ;; (p.types/defrecord+ AtTimezone [expr timezone-id]
@@ -581,11 +531,10 @@
 
   ([driver field-clause unique-name-fn]
    (when-let [alias (mbql.u/match-one field-clause
-                      ;[:joined-field _ inner-clause]             (prefix-field-name-with-source driver inner-clause)
-                      [:expression expression-name]              expression-name ;(prefix-field-name-with-source driver &match)
-                      [:expression-definition expression-name _] expression-name ;(prefix-field-name-with-source driver &match)
-                      [:field-literal field-name _]              field-name;(prefix-field-name-with-source driver &match)
-                      [:field-id _]                      (prefix-field-name-with-source driver &match))]
+                      [:expression expression-name]              expression-name
+                      [:expression-definition expression-name _] expression-name
+                      [:field-literal field-name _]              field-name
+                      [:field-id _]                              (field->alias driver &match))]
      (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
 
 (defn as
@@ -982,9 +931,9 @@
 ;;; |                                                 MBQL -> Native                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- mbql->honeysql [driver outer-query]
-  (binding [*query* outer-query]
-  (build-honeysql-form driver outer-query)))
+(defn- mbql->honeysql
+  [driver outer-query]
+  (build-honeysql-form driver outer-query))
 
 (defn mbql->native
   "Transpile MBQL query into a native SQL statement."
