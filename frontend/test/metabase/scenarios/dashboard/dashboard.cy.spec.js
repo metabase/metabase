@@ -21,7 +21,7 @@ describe("scenarios > dashboard", () => {
 
   it("should create new dashboard", () => {
     // Create dashboard
-    cy.visit("/");
+    cy.visit("/collection/root");
     cy.get(".Icon-add").click();
     cy.findByText("New dashboard").click();
     cy.findByLabelText("Name").type("Test Dash");
@@ -116,13 +116,21 @@ describe("scenarios > dashboard", () => {
           filter: [">", ["field-literal", "sum", "type/Float"], 100],
           query: {
             "source-table": 2,
-            aggregation: [["sum", ORDERS.TOTAL]],
+            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
             breakout: [
-              ["datetime-field", ORDERS.CREATED_AT, "day"],
-              ["fk->", ORDERS.PRODUCT_ID, PRODUCTS.ID],
-              ["fk->", ORDERS.PRODUCT_ID, PRODUCTS.CATEGORY],
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.ID],
+              ],
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.CATEGORY],
+              ],
             ],
-            filter: ["=", ORDERS.USER_ID, 1],
+            filter: ["=", ["field-id", ORDERS.USER_ID], 1],
           },
           type: "query",
         },
@@ -176,25 +184,115 @@ describe("scenarios > dashboard", () => {
     cy.findByText("You're editing this dashboard.").should("not.exist");
   });
 
+  it.skip("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
+    // 1. create a question based on repro steps in #13597
+    withSampleDataset(({ PEOPLE }) => {
+      cy.request("POST", "/api/card", {
+        name: "13597",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": 3,
+            limit: 2,
+          },
+          type: "query",
+        },
+        display: "map",
+        visualization_settings: {},
+      }).then(({ body: { id: questionId } }) => {
+        // 2. create a dashboard
+        cy.request("POST", "/api/dashboard", {
+          name: "13597D",
+        }).then(({ body: { id: dashboardId } }) => {
+          // add filter (ID) to the dashboard
+          cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+            parameters: [
+              {
+                id: "92eb69ea",
+                name: "ID",
+                slug: "id",
+                type: "id",
+              },
+            ],
+          });
+
+          // add previously created question to the dashboard
+          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+            cardId: questionId,
+          }).then(({ body: { id: dashCardId } }) => {
+            // connect filter to that question
+            cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+              cards: [
+                {
+                  id: dashCardId,
+                  card_id: questionId,
+                  row: 0,
+                  col: 0,
+                  sizeX: 10,
+                  sizeY: 8,
+                  parameter_mappings: [
+                    {
+                      parameter_id: "92eb69ea",
+                      card_id: questionId,
+                      target: ["dimension", ["field-id", PEOPLE.ID]],
+                    },
+                  ],
+                  visualization_settings: {
+                    // set click behavior to update filter (ID)
+                    click_behavior: {
+                      type: "crossfilter",
+                      parameterMapping: {
+                        id: "92eb69ea",
+                        source: { id: "ID", name: "ID", type: "column" },
+                        target: {
+                          id: "92eb69ea",
+                          type: "parameter",
+                        },
+                      },
+                    },
+                  },
+                },
+              ],
+            });
+          });
+
+          cy.visit(`/dashboard/${dashboardId}`);
+          cy.get(".leaflet-marker-icon") // pin icon
+            .eq(0)
+            .click({ force: true });
+          cy.url().should("include", `/dashboard/${dashboardId}?id=1`);
+          cy.contains("Hudson Borer - 1");
+        });
+      });
+    });
+  });
+
   describe("revisions screen", () => {
     it("should open and close", () => {
       cy.visit("/dashboard/1");
       cy.get(".Icon-ellipsis").click();
       cy.findByText("Revision history").click();
 
-      cy.findByText("What");
-      cy.findByText("First revision.");
+      cy.get(".Modal").within(() => {
+        cy.get(".LoadingSpinner").should("not.exist");
+      });
+
+      cy.findAllByText("Bobby Tables");
+      cy.contains(/revert/i);
 
       cy.get(".Modal .Icon-close").click();
-      cy.findByText("First revision.").should("not.exist");
+      cy.findAllByText("Bobby Tables").should("not.exist");
     });
 
     it("should open with url", () => {
       cy.visit("/dashboard/1/history");
+      cy.get(".Modal").within(() => {
+        cy.get(".LoadingSpinner").should("not.exist");
+        cy.findByText("Revision history");
+      });
 
-      cy.findByText("Revision history");
-      cy.findByText("What");
-      cy.findByText("First revision.");
+      cy.findAllByText("Bobby Tables");
+      cy.contains(/revert/i);
     });
   });
 });

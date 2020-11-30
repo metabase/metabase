@@ -160,7 +160,12 @@ export class ObjectDetail extends Component {
       if (value === null || value === undefined || value === "") {
         cellValue = <span className="text-light">{t`Empty`}</span>;
       } else if (isa(column.special_type, TYPE.SerializedJSON)) {
-        const formattedJson = JSON.stringify(JSON.parse(value), null, 2);
+        let formattedJson;
+        try {
+          formattedJson = JSON.stringify(JSON.parse(value), null, 2);
+        } catch (e) {
+          formattedJson = value;
+        }
         cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
       } else if (typeof value === "object") {
         const formattedJson = JSON.stringify(value, null, 2);

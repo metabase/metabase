@@ -21,8 +21,9 @@
              [4 "Wurstküche"]
              [5 "Brite Spot Family Restaurant"]]
             (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                                                     [(Field (mt/id :venues :id))
-                                                      (Field (mt/id :venues :name))])
+                   [(Field (mt/id :venues :id))
+                    (Field (mt/id :venues :name))]
+                   (constantly conj))
                  (sort-by first)
                  (take 5)))))
 
@@ -36,7 +37,8 @@
                        #'bigquery/page-callback        page-callback}
          (let [actual (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
                              [(Field (mt/id :venues :id))
-                              (Field (mt/id :venues :name))])
+                              (Field (mt/id :venues :name))]
+                             (constantly conj))
                            (sort-by first)
                            (take 5))]
          (is (= [[1 "Red Medicine"]
@@ -60,11 +62,11 @@
       (mt/with-temp-copy-of-db
         (try
           (bigquery.tx/execute!
-           (str "CREATE VIEW `v2_test_data.%s` "
+           (str "CREATE VIEW `v3_test_data.%s` "
                 "AS "
                 "SELECT v.id AS id, v.name AS venue_name, c.name AS category_name "
-                "FROM `%s.v2_test_data.venues` v "
-                "LEFT JOIN `%s.v2_test_data.categories` c "
+                "FROM `%s.v3_test_data.venues` v "
+                "LEFT JOIN `%s.v3_test_data.categories` c "
                 "ON v.category_id = c.id "
                 "ORDER BY v.id ASC "
                 "LIMIT 3")
@@ -73,7 +75,7 @@
            (bigquery.tx/project-id))
           (f view-name)
           (finally
-            (bigquery.tx/execute! "DROP VIEW IF EXISTS `v2_test_data.%s`" view-name)))))))
+            (bigquery.tx/execute! "DROP VIEW IF EXISTS `v3_test_data.%s`" view-name)))))))
 
 (defmacro ^:private with-view [[view-name-binding] & body]
   `(do-with-view (fn [~(or view-name-binding '_)] ~@body)))

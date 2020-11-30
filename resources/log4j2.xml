@@ -23,6 +23,7 @@
 
   <Loggers>
     <Logger name="metabase" level="INFO"/>
+    <Logger name="metabase-enterprise" level="INFO"/>
     <Logger name="metabase.plugins" level="DEBUG"/>
     <Logger name="metabase.middleware" level="DEBUG"/>
     <Logger name="metabase.query-processor.async" level="DEBUG"/>

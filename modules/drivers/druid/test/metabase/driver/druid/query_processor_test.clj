@@ -234,7 +234,8 @@
   (->> (metadata-queries/table-rows-sample (Table (mt/id :checkins))
          [(Field (mt/id :checkins :id))
           (Field (mt/id :checkins :venue_name))
-          (Field (mt/id :checkins :timestamp))])
+          (Field (mt/id :checkins :timestamp))]
+         (constantly conj))
        (sort-by first)
        (take 5)))
 

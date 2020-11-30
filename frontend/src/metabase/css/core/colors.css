@@ -215,7 +215,12 @@
   background-color: var(--color-accent2);
 }
 
-.bg-green {
+.bg-purple-light {
+  background-color: color(var(--color-accent7) alpha(-85%));
+}
+
+.bg-green,
+.bg-green-hover:hover {
   background-color: var(--color-accent1);
 }
 .bg-green-saturated,

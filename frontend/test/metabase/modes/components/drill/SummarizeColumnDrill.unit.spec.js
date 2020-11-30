@@ -17,7 +17,7 @@ describe("SummarizeColumnDrill", () => {
         column: ORDERS.TOTAL.column({ source: "fields" }),
       },
     });
-    expect(actions.length).toEqual(5);
+    expect(actions.length).toEqual(3);
     let newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
       "source-table": ORDERS.id,

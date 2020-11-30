@@ -102,7 +102,7 @@
             fields (db/select Field :table_id (u/id table) :name "year_column")]
         (testing "Can select from this table"
           (is (= [[#t "2001-01-01"] [#t "2002-01-01"] [#t "1999-01-01"]]
-                 (metadata-queries/table-rows-sample table fields))))
+                 (metadata-queries/table-rows-sample table fields (constantly conj)))))
         (testing "We can fingerprint this table"
           (is (= 1
                  (:updated-fingerprints (#'fingerprint/fingerprint-table! table fields)))))))))
