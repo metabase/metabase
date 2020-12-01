@@ -1,3 +1,10 @@
+# Version modifié de Metabase sous AGPL 
+Modification du logo et des couleurs. faite le 01/12/2020. => branche "release-x.37.x"
+
+- ./frontend/src/metabase/bin/color.jsx
+
+- ./frontend/src/metabase/components/LogoIcon.jsx
+
 # Metabase
 
 Metabase is the easy, open source way for everyone in your company to ask questions and learn from data.
