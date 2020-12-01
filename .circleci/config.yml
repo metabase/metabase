@@ -269,7 +269,7 @@ commands:
             done
             if [ ! -f "<< parameters.filename >>" ]; then
                 echo 'Error: no matching files. Did you remember to attach the workspace?'
-                exit -1
+                exit 1
             fi
             echo "Created checksums for $(cat << parameters.filename >> | wc -l) files"
 
