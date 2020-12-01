@@ -363,16 +363,7 @@ jobs:
   checkout:
     executor: basic
     steps:
-      - restore_cache:
-          keys:
-            - source-{{ .Branch }}-{{ .Revision }}
-            - source-{{ .Branch }}
-            - source-
       - checkout
-      - save_cache:
-          key: source-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - .git
       # The basic idea here is to generate a file with checksums for all the backend source files, and save it as
       # `./.BACKEND-CHECKSUMS`. Then we'll use the checksum of those files for uberjar caching and for determining
       # whether we need to run driver tests again; thus we can reuse the same uberjar for integration tests across any
