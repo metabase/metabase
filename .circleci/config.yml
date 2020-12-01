@@ -1071,7 +1071,6 @@ workflows:
           name: fe-tests-cypress-mongo-4-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - fe-deps
           e: fe-mongo-4
           cypress-group: "mongo"
           only-single-database: true
@@ -1082,7 +1081,6 @@ workflows:
           name: fe-tests-cypress-postgres-12-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - fe-deps
           e: fe-postgres-12
           cypress-group: "postgres"
           only-single-database: true
@@ -1093,7 +1091,6 @@ workflows:
           name: fe-tests-cypres-mysql-8-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - fe-deps
           e: fe-mysql-8
           cypress-group: "mysql"
           only-single-database: true
@@ -1136,5 +1133,4 @@ workflows:
           name: fe-tests-cypress-smoketest
           requires:
             - build-uberjar
-            - fe-deps
           cypress-group: "default"
