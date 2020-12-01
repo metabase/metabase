@@ -115,6 +115,12 @@ export default function getFieldsForBigQuery(details) {
         default: false,
         type: "boolean",
       },
+      {
+        name: "include-user-id-and-hash",
+        "display-name": "Include User ID and query hash in queries",
+        default: true,
+        type: "boolean",
+      },
     ],
   };
 }
