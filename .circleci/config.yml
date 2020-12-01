@@ -464,6 +464,13 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
+      # Similar to what we do with driver tests, if these tests have passed previously with identical backend code
+      # there's no point in running them again. When the tests pass, create a dummy file called
+      # load-and-dump.DB_TYPE.success and cache it using the backend checksums. If that file exists next time around,
+      # we can skip the tests
+      - restore_cache:
+          keys:
+            - load-and-dump-v1-<< parameters.db-type >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./bin/test-load-and-dump.sh" }}
       - run:
           name: Test migrating from H2 -> << parameters.db-type >> -> H2
           environment:
@@ -471,8 +478,15 @@ jobs:
             MB_DB_HOST: localhost
             MB_EDITION: << parameters.edition >>
           command: >
-            ./bin/test-load-and-dump.sh
+            if [ -f "/home/circleci/metabase/metabase/load-and-dump.<< parameters.db-type >>.success" ]; then
+                ./bin/test-load-and-dump.sh &&
+                touch /home/circleci/metabase/metabase/load-and-dump.<< parameters.db-type >>.success
+            fi
           no_output_timeout: 5m
+      - save_cache:
+          key: load-and-dump-v1-<< parameters.db-type >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./bin/test-load-and-dump.sh" }}
+          paths:
+            - /home/circleci/metabase/metabase/load-and-dump.<< parameters.db-type >>.success
 
   test-build-scripts:
     executor: metabase-ci
@@ -511,22 +525,16 @@ jobs:
       - attach-workspace
       - restore-fe-deps-cache
       - run:
-          name: Run yarn if yarn.lock checksum has changed
+          name: Run yarn to install deps
           command: >
-            if [ ! -f yarn.lock.checksum ] || [ "$(md5sum yarn.lock)" != "$(cat yarn.lock.checksum)" ];
-              then SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
-            fi
+            SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
           no_output_timeout: 5m
-      - run:
-          name: Save yarn checksum
-          command: md5sum yarn.lock > yarn.lock.checksum
       - save_cache:
           key: fe-deps-v4-{{ checksum "yarn.lock" }}
           paths:
             - /home/circleci/.yarn
             - /home/circleci/.yarn-cache
             - /home/circleci/metabase/metabase/node_modules
-            - /home/circleci/yarn.lock.checksum
             - /home/circleci/.cache/Cypress
 
   fe-linter-eslint:
@@ -723,7 +731,7 @@ jobs:
           before-steps:
             - restore_cache:
                 keys:
-                  - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
+                  - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
       - store_artifacts:
           path: /home/circleci/metabase/metabase/cypress
       - store_test_results:
