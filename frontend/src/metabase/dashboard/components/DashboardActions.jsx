@@ -4,6 +4,7 @@ import { t } from "ttag";
 import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
 import Icon from "metabase/components/Icon";
+import MetabaseSettings from "metabase/lib/settings";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
@@ -13,6 +14,7 @@ export const getDashboardActions = (
   self,
   {
     dashboard,
+    isAdmin,
     isEditing = false,
     isEmpty = false,
     isFullscreen,
@@ -26,6 +28,9 @@ export const getDashboardActions = (
     onEmbeddingClick,
   },
 ) => {
+  const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
+  const isEmbeddingEnabled = MetabaseSettings.get("enable-embedding");
+
   const buttons = [];
 
   if (!isEditing && !isEmpty) {
@@ -56,8 +61,14 @@ export const getDashboardActions = (
           </div>
           <div>
             <DashboardSharingEmbeddingModal
-              additionalClickActions={ () => self.refs.popover.close() }
+              additionalClickActions={() => self.refs.popover.close()}
               dashboard={dashboard}
+              enabled={
+                !isEditing &&
+                !isFullscreen &&
+                ((isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) ||
+                  (isEmbeddingEnabled && isAdmin))
+              }
               linkClassNames={extraButtonClassNames}
               linkText={t`Sharing and embedding`}
               key="dashboard-embed"

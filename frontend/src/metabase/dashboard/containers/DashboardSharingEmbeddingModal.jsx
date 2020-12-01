@@ -1,7 +1,5 @@
 /* @flow */
 
-// TODO: This should be sensibly combined with DashboardEmbedWidget.jsx
-
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -40,15 +38,19 @@ export default class DashboardSharingEmbeddingModal extends Component {
     const {
       additionalClickActions,
       className,
-      dashboard,
       createPublicLink,
+      dashboard,
       deletePublicLink,
+      enabled,
       linkClassNames,
       linkText,
       updateEnableEmbedding,
       updateEmbeddingParams,
       ...props
     } = this.props;
+    if (!enabled) {
+      return null;
+    }
     return (
       <ModalWithTrigger
         ref={m => (this._modal = m)}
