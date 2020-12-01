@@ -478,7 +478,7 @@ jobs:
             MB_DB_HOST: localhost
             MB_EDITION: << parameters.edition >>
           command: >
-            if [ -f "/home/circleci/metabase/metabase/load-and-dump.<< parameters.db-type >>.success" ]; then
+            if [ ! -f "/home/circleci/metabase/metabase/load-and-dump.<< parameters.db-type >>.success" ]; then
                 ./bin/test-load-and-dump.sh &&
                 touch /home/circleci/metabase/metabase/load-and-dump.<< parameters.db-type >>.success
             fi
