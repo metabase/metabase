@@ -267,7 +267,6 @@ commands:
             for file in `find << parameters.find-args >> | sort`; do
                 echo `md5sum "$file"` >> "<< parameters.filename >>";
             done
-            # Make sure we actually matched some files and were able to create a checksum file
             if [ ! -f "<< parameters.filename >>" ]; then
                 echo 'Error: no matching files. Did you remember to attach the workspace?'
                 exit -1
