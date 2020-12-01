@@ -559,7 +559,7 @@ jobs:
           keys:
             - driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
       - run:
-          name: Skip rest of job if not running << parameters.driver >> tests (cache key: driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }})
+          name: Skip rest of job if not running << parameters.driver >> tests (cache key = driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }})
           command: |
             ( .circleci/skip-driver-tests.sh << parameters.driver >> && circleci-agent step halt ) || true
       - run:
