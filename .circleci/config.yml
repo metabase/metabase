@@ -766,7 +766,7 @@ jobs:
       # restore already-built uberjar
       - restore_cache:
           keys:
-            - uberjar-v4-<< parameters.edition >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+            - uberjar-v5-<< parameters.edition >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
       - run:
           name: Skip rest of job if uberjar already exists
           command: >
@@ -780,7 +780,7 @@ jobs:
             - drivers-v5-{{ checksum "./.MODULES-CHECKSUMS" }}-{{ checksum "./.BACKEND-CHECKSUMS" }}
       - restore_cache:
           keys:
-            - frontend-v4-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+            - frontend-v4-<< parameters.edition >>-{{ checksum "./.FRONTEND-CHECKSUMS" }}
       - run:
           name: Build uberjar
           environment:
@@ -795,7 +795,7 @@ jobs:
           path: /home/circleci/metabase/metabase/resources/version.properties
       # Cache the built uberjar & version.properties
       - save_cache:
-          key: uberjar-v4-<< parameters.edition >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+          key: uberjar-v5-<< parameters.edition >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
             - /home/circleci/metabase/metabase/resources/version.properties
@@ -832,7 +832,7 @@ jobs:
                 before-steps:
                   - restore_cache:
                       keys:
-                        - uberjar-v4-<< parameters.edition >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+                        - uberjar-v5-<< parameters.edition >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
                 command: >
                   run test-cypress-no-build <<# parameters.only-single-database >> --testFiles << parameters.test-files-location >> <</ parameters.only-single-database >>
                 after-steps:
