@@ -268,7 +268,7 @@ commands:
           name: lein << parameters.lein-command >>
           command: >
             lein with-profile +ci,+<< parameters.edition >> << parameters.lein-command >>
-            no_output_timeout: 5m
+          no_output_timeout: 5m
       - steps: << parameters.after-steps >>
       - store_test_results:
           path: /home/circleci/metabase/metabase/target/junit
@@ -721,7 +721,7 @@ jobs:
       # restore already-built frontend
       - restore_cache:
           keys:
-            - frontend-v4-{{ checksum "./frontend-checksums.txt" }}
+            - frontend-v4-<< parameters.edition >>-{{ checksum "./frontend-checksums.txt" }}
       - run:
           name: Build frontend if needed
           environment:
@@ -733,7 +733,7 @@ jobs:
           no_output_timeout: 5m
       # Cache the built frontend
       - save_cache:
-          key: frontend-v4-{{ checksum "./frontend-checksums.txt" }}
+          key: frontend-v4-<< parameters.edition >>-{{ checksum "./frontend-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/resources/frontend_client
 
