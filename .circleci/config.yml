@@ -340,7 +340,7 @@ commands:
           keys:
             - driver-tests-<< parameters.driver >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
       - run:
-          name: Skip rest of job if not running << parameter.driver >> tests
+          name: Skip rest of job if not running << parameters.driver >> tests
           command: >
             if [ .circleci/skip-driver-tests.sh << parameters.driver >> ]; then
                 circleci-agent step halt
@@ -535,7 +535,7 @@ jobs:
           keys:
             - driver-tests-<< parameters.driver >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
       - run:
-          name: Skip rest of job if not running << parameter.driver >> tests
+          name: Skip rest of job if not running << parameters.driver >> tests
           command: >
             if [ .circleci/skip-driver-tests.sh << parameters.driver >> ]; then
                 circleci-agent step halt
@@ -555,6 +555,7 @@ jobs:
             - /home/circleci/metabase/metabase/<< parameters.driver >>.success
       - store_test_results:
           path: /home/circleci/metabase/metabase/target/junit
+
 
   test-migrate-from-h2:
     parameters:
