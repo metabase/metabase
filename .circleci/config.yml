@@ -407,9 +407,18 @@ jobs:
   yaml-linter:
     executor: node
     steps:
-      - run-yarn-command:
-          command-name: Lint YAML files
-          command: lint-yaml `find resources -name '*.yaml'`
+      - run:
+          name: Create checksum of YAML files
+          command: >
+            for file in `find . -name '*.yaml' -or -name '*.yml' | sort`; do
+                echo `md5sum "$file"` >> .YAML-CHECKSUMS
+            done
+      - run-on-change:
+          cache-key: lint-yaml-{{ checksum "./.YAML-CHECKSUMS" }}
+          steps:
+            - run-yarn-command:
+                command-name: Lint YAML files
+                command: lint-yaml `find resources -name '*.yaml'`
 
   verify-i18n-files:
     executor: metabase-ci
