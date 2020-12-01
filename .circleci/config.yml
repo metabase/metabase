@@ -224,6 +224,9 @@ commands:
 
   # Only run steps if changes have happened since the last time this was ran successfully (determined by the cache key)
   # Cache key should be unique for job and relevant source files -- use a checksum.
+  #
+  # Important! If this step is skipped because no changes have happened, the entire JOB will halt with a success
+  # status -- no steps that happen AFTER run-on-change will be ran. Keep this in mind!
   run-on-change:
     parameters:
       cache-key:
@@ -238,8 +241,6 @@ commands:
           name: Skip rest of job if .SUCCESS exists for cache key << parameters.cache-key >>
           command: |
             if [ -f .SUCCESS ]; then
-                # Delete dummy file so any subsequent steps don't see it
-                rm /home/circleci/metabase/metabase/.SUCCESS
                 circleci-agent step halt
             fi
       - steps: << parameters.steps >>
