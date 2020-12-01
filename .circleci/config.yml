@@ -799,42 +799,45 @@ jobs:
     executor: metabase-ci
     steps:
       - attach-workspace
-      # restore already-built uberjar
-      - restore_cache:
-          keys:
-            - uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
-      - run:
-          name: Skip rest of job if uberjar already exists
-          command: |
-             if [ -f './target/uberjar/metabase.jar' ]; then
-                 circleci-agent step halt
-             fi
-      - restore-be-deps-cache
-      # restore drivers & FE client build in previous steps.
-      - restore_cache:
-          keys:
-            - drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
-      - restore_cache:
-          keys:
-            - frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
-      - run:
-          name: Build uberjar
-          environment:
-            # INTERACTIVE=false will tell the clojure build scripts not to do interactive retries etc.
-            INTERACTIVE: "false"
-            MB_EDITION: << parameters.edition >>
-          command: ./bin/build version drivers uberjar
-          no_output_timeout: 10m
-      - store_artifacts:
-          path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
-      - store_artifacts:
-          path: /home/circleci/metabase/metabase/resources/version.properties
-      # Cache the built uberjar & version.properties
-      - save_cache:
-          key: uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
-          paths:
-            - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
-            - /home/circleci/metabase/metabase/resources/version.properties
+      - run-on-change:
+          cache-key: uberjar-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
+          steps:
+            # restore already-built uberjar
+            - restore_cache:
+                keys:
+                  - uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
+            - run:
+                name: Skip rest of job if uberjar already exists
+                command: |
+                   if [ -f './target/uberjar/metabase.jar' ]; then
+                       circleci-agent step halt
+                   fi
+            - restore-be-deps-cache
+            # restore drivers & FE client build in previous steps.
+            - restore_cache:
+                keys:
+                  - drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+            - restore_cache:
+                keys:
+                  - frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
+            - run:
+                name: Build uberjar
+                environment:
+                  # INTERACTIVE=false will tell the clojure build scripts not to do interactive retries etc.
+                  INTERACTIVE: "false"
+                  MB_EDITION: << parameters.edition >>
+                command: ./bin/build version drivers uberjar
+                no_output_timeout: 10m
+            - store_artifacts:
+                path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+            - store_artifacts:
+                path: /home/circleci/metabase/metabase/resources/version.properties
+            # Cache the built uberjar & version.properties
+            - save_cache:
+                key: uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
+                paths:
+                  - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+                  - /home/circleci/metabase/metabase/resources/version.properties
 
   fe-tests-cypress:
     parameters:
