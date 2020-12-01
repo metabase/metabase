@@ -221,6 +221,58 @@ commands:
             - fe-deps-v4-{{ checksum "yarn.lock" }}
             - fe-deps-v4-
 
+  # Only run steps if changes have happened since the last time this was ran successfully (determined by the cache key)
+  # Cache key should be unique for job and relevant source files -- use a checksum.
+  run-on-change:
+    parameters:
+      cache-key:
+        type: string
+      steps:
+        type: steps
+    steps:
+      - attach-workspace
+      - restore_cache:
+          keys:
+            - run-on-change-<< parameters.cache-key >>
+      - run:
+          name: Skip rest of job if .SUCCESS exists
+          command: >
+            if [ -f .SUCCESS ]; then
+                circleci-agent step halt
+            fi
+      - steps: << parameters.steps >>
+      - run:
+          name: Create dummy file .SUCCESS
+          command: touch .SUCCESS
+      - save_cache:
+          key: run-on-change-<< parameters.cache-key >>
+          paths:
+            - /home/circleci/metabase/metabase/.SUCCESS
+
+  run-lein-command:
+    parameters:
+      before-steps:
+        type: steps
+        default: []
+      lein-command:
+        type: string
+      after-steps:
+        type: steps
+        default: []
+      <<: *Params
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - steps: << parameters.before-steps >>
+      - run:
+          name: lein << parameters.lein-command >>
+          command: >
+            lein with-profile +ci,+<< parameters.edition >> << parameters.lein-command >>
+            no_output_timeout: 5m
+      - steps: << parameters.after-steps >>
+      - store_test_results:
+          path: /home/circleci/metabase/metabase/target/junit
+
   run-yarn-command:
     parameters:
       command-name:
@@ -230,14 +282,33 @@ commands:
       before-steps:
         type: steps
         default: []
+      skip-key:
+        type: string
+        default: ""
     steps:
       - attach-workspace
       - restore-fe-deps-cache
-      - steps: << parameters.before-steps >>
-      - run:
-          name: << parameters.command-name >>
-          command: yarn << parameters.command >>
-          no_output_timeout: 10m
+      - when:
+          condition: << parameters.skip-key >>
+          steps:
+            - run-on-change:
+                cache-key: yarn-<< parameters.skip-key >>-{{ checksum "frontend-checksums.txt" }}
+                steps:
+                  - restore-fe-deps-cache
+                  - steps: << parameters.before-steps >>
+                  - run:
+                      name: << parameters.command-name >>
+                      command: yarn << parameters.command >>
+                      no_output_timeout: 10m
+      - unless:
+          condition: << parameters.skip-key >>
+          steps:
+            - restore-fe-deps-cache
+            - steps: << parameters.before-steps >>
+            - run:
+                name: << parameters.command-name >>
+                command: yarn << parameters.command >>
+                no_output_timeout: 10m
 
   wait-for-port:
     parameters:
@@ -295,7 +366,7 @@ jobs:
       - run:
           name: Generate checksums of all backend source files to use as cache key
           command: >
-            for file in `find . -type f -name '*.clj' | sort`;
+            for file in `find . -type f -name '*.clj' -or -name 'deps.edn' | sort`;
               do echo `md5sum $file` >> backend-checksums.txt;
             done;
             echo `md5sum project.clj` >> backend-checksums.txt
@@ -383,28 +454,47 @@ jobs:
       after-steps:
         type: steps
         default: []
+      skip-key:
+        type: string
+        default: ""
       <<: *Params
     executor: << parameters.e >>
     steps:
       - attach-workspace
-      - restore-be-deps-cache
-      - steps: << parameters.before-steps >>
-      - run:
-          command: lein with-profile +ci,+<< parameters.edition >> << parameters.lein-command >>
-          no_output_timeout: 5m
-      - steps: << parameters.after-steps >>
-      - store_test_results:
-          path: /home/circleci/metabase/metabase/target/junit
+      - when:
+          condition: << parameters.skip-key >>
+          steps:
+            - run-on-change:
+                cache-key: lein-v1-<< parameters.skip-key >>-{{ checksum "./backend-checksums.txt" }}
+                steps:
+                  - restore-be-deps-cache
+                  - run-lein-command:
+                      before-steps: << parameters.before-steps >>
+                      lein-command: << parameters.lein-command >>
+                      after-steps: << parameters.after-steps >>
+                      edition: << parameters.edition >>
+      - unless:
+          condition: << parameters.skip-key >>
+          steps:
+            - restore-be-deps-cache
+            - run-lein-command:
+                before-steps: << parameters.before-steps >>
+                lein-command: << parameters.lein-command >>
+                after-steps: << parameters.after-steps >>
+                edition: << parameters.edition >>
 
   be-linter-reflection-warnings:
     executor: clojure
     steps:
       - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run reflection warnings checker
-          command: ./bin/reflection-linter
-          no_output_timeout: 5m
+      - run-on-change:
+          cache-key: reflection-warnings-{{ checksum "./backend-checksums.txt" }}
+          steps:
+            - restore-be-deps-cache
+            - run:
+                name: Run reflection warnings checker
+                command: ./bin/reflection-linter
+                no_output_timeout: 5m
 
   test-driver:
     parameters:
@@ -427,12 +517,6 @@ jobs:
       - attach-workspace
       - restore-be-deps-cache
       - steps: << parameters.before-steps >>
-      # If we run driver tests, and they pass, we'll create a dummy file called DRIVER.success and then cache that
-      # with the key driver-tests-DRIVER-BACKEND_CHECKSUM
-      #
-      # Next time we run driver tests, we'll try to restore the cache with the key; if the dummy success file is
-      # present, we'll know that tests passed given the current backend source files and that we can skip tests. If
-      # the file isn't present, we'll know we need to run tests
       - restore_cache:
           keys:
             - driver-tests-<< parameters.driver >>-{{ checksum "./backend-checksums.txt" }}
@@ -442,9 +526,9 @@ jobs:
             DRIVERS: h2,<< parameters.driver >>
             MB_EDITION: ee
           command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
+            .circleci/skip-driver-tests.sh << parameters.driver >> ||
             ( lein with-profile +ci,+junit,+$MB_EDITION test &&
-              touch /home/circleci/metabase/metabase/<< parameters.driver >>.success )
+              touch << parameters.driver >>.success )
           no_output_timeout: << parameters.timeout >>
       - save_cache:
           key: driver-tests-<< parameters.driver >>-{{ checksum "./backend-checksums.txt" }}
@@ -463,56 +547,47 @@ jobs:
     executor: << parameters.e >>
     steps:
       - attach-workspace
-      - restore-be-deps-cache
-      # Similar to what we do with driver tests, if these tests have passed previously with identical backend code
-      # there's no point in running them again. When the tests pass, create a dummy file called
-      # load-and-dump.DB_TYPE.success and cache it using the backend checksums. If that file exists next time around,
-      # we can skip the tests
-      - restore_cache:
-          keys:
-            - load-and-dump-v1-<< parameters.db-type >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./bin/test-load-and-dump.sh" }}
-      - run:
-          name: Test migrating from H2 -> << parameters.db-type >> -> H2
-          environment:
-            MB_DB_TYPE: << parameters.db-type >>
-            MB_DB_HOST: localhost
-            MB_EDITION: << parameters.edition >>
-          command: >
-            if [ -f "/home/circleci/metabase/metabase/load-and-dump.<< parameters.db-type >>.success" ]; then
-                ./bin/test-load-and-dump.sh &&
-                touch /home/circleci/metabase/metabase/load-and-dump.<< parameters.db-type >>.success
-            fi
-          no_output_timeout: 5m
-      - save_cache:
-          key: load-and-dump-v1-<< parameters.db-type >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./bin/test-load-and-dump.sh" }}
-          paths:
-            - /home/circleci/metabase/metabase/load-and-dump.<< parameters.db-type >>.success
+      - run-on-change:
+          cache-key: load-and-dump-<< parameters.db-type >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./bin/test-load-and-dump.sh" }}
+          steps:
+            - restore-be-deps-cache
+            - run:
+                name: Test migrating from H2 -> << parameters.db-type >> -> H2
+                environment:
+                  MB_DB_TYPE: << parameters.db-type >>
+                  MB_DB_HOST: localhost
+                  MB_EDITION: << parameters.edition >>
+                command: ./bin/test-load-and-dump.sh
+                no_output_timeout: 5m
 
   test-build-scripts:
     executor: metabase-ci
     steps:
       - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run metabuild-common build script tests
-          command: >
-            cd /home/circleci/metabase/metabase/bin/common && clojure -M:test
-          no_output_timeout: 5m
-      - run:
-          name: Run build-drivers build script tests
-          command: >
-            cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
-          no_output_timeout: 5m
-      - run:
-          name: Run build-mb build script tests
-          command: >
-            cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
-          no_output_timeout: 5m
-      - run:
-          name: Run release script tests
-          command: >
-            cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
-          no_output_timeout: 5m
+      - run-on-change:
+          cache-key: build-scripts-{{ checksum "./backend-checksums.txt" }}
+          steps:
+            - restore-be-deps-cache
+            - run:
+                name: Run metabuild-common build script tests
+                command: >
+                  cd /home/circleci/metabase/metabase/bin/common && clojure -M:test
+                no_output_timeout: 5m
+            - run:
+                name: Run build-drivers build script tests
+                command: >
+                  cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
+                no_output_timeout: 5m
+            - run:
+                name: Run build-mb build script tests
+                command: >
+                  cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
+                no_output_timeout: 5m
+            - run:
+                name: Run release script tests
+                command: >
+                  cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
+                no_output_timeout: 5m
 
 
 ########################################################################################################################
@@ -526,8 +601,7 @@ jobs:
       - restore-fe-deps-cache
       - run:
           name: Run yarn to install deps
-          command: >
-            SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
+          command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
           no_output_timeout: 5m
       - save_cache:
           key: fe-deps-v4-{{ checksum "yarn.lock" }}
@@ -543,6 +617,7 @@ jobs:
       - run-yarn-command:
           command-name: Run ESLint linter
           command: lint-eslint
+          skip-key: eslint
 
   fe-linter-prettier:
     executor: node
@@ -550,6 +625,7 @@ jobs:
       - run-yarn-command:
           command-name: Run Prettier formatting linter
           command: lint-prettier
+          skip-key: prettier
 
   fe-linter-flow:
     executor: node
@@ -557,6 +633,7 @@ jobs:
       - run-yarn-command:
           command-name: Run Flow type checker
           command: lint-flow
+          skip-key: flow
 
   fe-linter-docs-links:
     executor: node
@@ -571,6 +648,7 @@ jobs:
       - run-yarn-command:
           command-name: Run frontend unit tests
           command: run test-unit
+          skip-key: unit
 
   fe-tests-integration:
     executor: node
@@ -578,6 +656,7 @@ jobs:
       - run-yarn-command:
           command-name: Run frontend integration tests
           command: run test-integration
+          skip-key: integration
 
   fe-tests-timezones:
     executor: node
@@ -585,6 +664,7 @@ jobs:
       - run-yarn-command:
           command-name: Run frontend timezone tests
           command: run test-timezones
+          skip-key: timezones
 
   # Unlike the other build-uberjar steps, this step should be run once overall and the results can be shared between
   # OSS and EE uberjars.
@@ -725,6 +805,9 @@ jobs:
       CYPRESS_GROUP:  << parameters.cypress-group >>
       DISPLAY: ""
     steps:
+      - restore_cache:
+          keys:
+            - cypress-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
       - run-yarn-command:
           command-name: Run Cypress tests
           command: run test-cypress-no-build <<# parameters.only-single-database >> --testFiles << parameters.test-files-location >> <</ parameters.only-single-database >>
@@ -808,6 +891,7 @@ workflows:
           requires:
             - be-deps
           lein-command: with-profile +junit test
+          skip-key: tests
           <<: *Matrix
 
       - lein:
@@ -816,6 +900,7 @@ workflows:
             - be-deps
           e: java-11
           lein-command: with-profile +junit test
+          skip-key: tests-java-11
           <<: *Matrix
 
       - lein:
@@ -823,24 +908,28 @@ workflows:
           requires:
             - be-deps
           lein-command: eastwood
+          skip-key: eastwood
 
       - lein:
           name: be-linter-docstring-checker
           requires:
             - be-deps
           lein-command: docstring-checker
+          skip-key: docstring-checker
 
       - lein:
           name: be-linter-namespace-decls
           requires:
             - be-deps
           lein-command: check-namespace-decls
+          skip-key: namespace-decls
 
       - lein:
           name: be-linter-bikeshed
           requires:
             - be-deps
           lein-command: bikeshed
+          skip-key: bikeshed
 
       - lein:
           name: be-linter-cloverage
@@ -851,6 +940,7 @@ workflows:
             - run:
                 name: Upload code coverage to codecov.io
                 command: bash <(curl -s https://codecov.io/bash)
+          skip-key: cloverage
 
       - be-linter-reflection-warnings:
           requires:
