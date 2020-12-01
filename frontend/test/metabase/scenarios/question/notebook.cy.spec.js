@@ -58,6 +58,40 @@ describe("scenarios > question > notebook", () => {
   });
 
   describe("joins", () => {
+    it("should always display 'Previous results' for subsequent joins (metabase#13894)", () => {
+      // Go straight to orders table in custom questions
+      cy.visit("/question/new?database=1&table=2&mode=notebook");
+
+      // Orders (parent table) join People
+      cy.findByText("Join data").click();
+      popover()
+        .contains("People")
+        .click();
+
+      cy.log("**First join should display the parent table name**");
+      cy.findAllByText("Orders").should("have.length", 2);
+
+      cy.get(".Button")
+        .contains("Join data")
+        .as("joinButton");
+
+      // Add subsequent joins and assert on the UI
+      cy.get("@joinButton").click();
+
+      cy.log(
+        "**All subsequent joins should always display 'Previous results'**",
+      );
+      cy.findByText("Previous results");
+      popover()
+        .contains(/Products?/i)
+        .click();
+      cy.get("@joinButton").click();
+      popover()
+        .contains("People")
+        .click();
+      cy.findAllByText("Previous results").should("have.length", 2);
+    });
+
     it("should allow joins", () => {
       // start a custom question with orders
       cy.visit("/question/new");

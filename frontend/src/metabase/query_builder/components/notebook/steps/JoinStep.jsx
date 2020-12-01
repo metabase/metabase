@@ -72,22 +72,16 @@ class JoinClause extends React.Component {
       return null;
     }
 
-    let lhsTable;
-    if (join.index() === 0) {
-      // first join's lhs is always the parent table
-      lhsTable = join.parentTable();
-    } else if (join.parentDimension()) {
-      // subsequent can be one of the previously joined tables
-      // NOTE: `lhsDimension` would probably be a better name for `parentDimension`
-      lhsTable = join.parentDimension().field().table;
-    }
-
+    // first join's lhs is always the parent table
+    // subsequent should always be a string "Previous results" as per:
+    // https://github.com/metabase/metabase/pull/13895#issuecomment-735933018
+    const lhsTable = join.index() === 0 ? join.parentTable() : null;
     const joinedTable = join.joinedTable();
     const strategyOption = join.strategyOption();
     return (
       <Flex align="center" flex="1 1 auto" {...props}>
         <NotebookCellItem color={color} icon="table2">
-          {(lhsTable && lhsTable.displayName()) || `Previous results`}
+          {(lhsTable && lhsTable.displayName()) || t`Previous results`}
         </NotebookCellItem>
 
         <PopoverWithTrigger
@@ -101,7 +95,7 @@ class JoinClause extends React.Component {
               />
             ) : (
               <NotebookCellItem color={color}>
-                {`Choose a join type`}
+                {t`Choose a join type`}
               </NotebookCellItem>
             )
           }
