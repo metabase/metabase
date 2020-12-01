@@ -250,6 +250,20 @@ commands:
           paths:
             - /home/circleci/metabase/metabase/.SUCCESS
 
+  create-checksum-file:
+    parameters:
+      filename:
+        type: string
+      find-args:
+        type: string
+    steps:
+      - run:
+          name: Create << parameters.filename >> checksum file
+          command: >
+            for file in `find << parameters.find-args >> | sort`; do
+                echo `md5sum "$file"` >> "<< parameters.filename >>";
+            done
+
   run-lein-command:
     parameters:
       before-steps:
@@ -363,33 +377,15 @@ jobs:
     executor: basic
     steps:
       - checkout
-      # The basic idea here is to generate a file with checksums for all the backend source files, and save it as
-      # `./.BACKEND-CHECKSUMS`. Then we'll use the checksum of those files for uberjar caching and for determining
-      # whether we need to run driver tests again; thus we can reuse the same uberjar for integration tests across any
-      # build where the backend files are the same
-      - run:
-          name: Generate checksums of all backend source files to use as cache key
-          command: >
-            for file in `find . -type f -name '*.clj' -or -name 'deps.edn' | sort`; do
-                echo `md5sum $file` >> .BACKEND-CHECKSUMS;
-            done;
-            echo `md5sum project.clj` >> .BACKEND-CHECKSUMS
-      # Do the same for the frontend
-      - run:
-          name: Generate checksums of all frontend source files to use as Uberjar cache key
-          command: >
-            for file in `find ./frontend ./enterpise/frontend -type f | sort`; do
-                echo `md5sum $file` >> .FRONTEND-CHECKSUMS;
-            done;
-            echo `md5sum yarn.lock` >> .FRONTEND-CHECKSUMS
-            echo `md5sum webpack.config.js` >> .FRONTEND-CHECKSUMS
-      # As well as driver modules (database drivers) -- used only for caching the built drivers
-      - run:
-          name: Generate checksums of all driver module source files to use as cache key
-          command: >
-            for file in `find ./modules -type f -name '*.clj' -or -name '*.yaml' | sort`; do
-                echo `md5sum $file` >> .MODULES-CHECKSUMS;
-            done;
+      - create-checksum-file:
+          filename: .BACKEND-CHECKSUMS
+          find-args: ". -type f -name '*.clj' -or -name 'deps.edn'"
+      - create-checksum-file:
+          filename: .FRONTEND-CHECKSUMS
+          find-args: ". -type f -name '*.js' -or -name '*.jsx' -or -name yarn.lock -or -name webpack.config.js"
+      - create-checksum-file:
+          filename: .MODULES-CHECKSUMS
+          find-args: "./modules -type f -name '*.clj' -or -name '*.yaml'"
       - run:
           name: Save last git commit message
           command: git log -1 > commit.txt
@@ -407,12 +403,9 @@ jobs:
   yaml-linter:
     executor: node
     steps:
-      - run:
-          name: Create checksum of YAML files
-          command: >
-            for file in `find . -name '*.yaml' -or -name '*.yml' | sort`; do
-                echo `md5sum "$file"` >> .YAML-CHECKSUMS
-            done
+      - create-checksum-file:
+          filename: .YAML-CHECKSUMS
+          find-args: ". -type f -name '*.yaml' -or -name '*.yml'"
       - run-on-change:
           cache-key: lint-yaml-{{ checksum "./.YAML-CHECKSUMS" }}
           steps:
@@ -424,16 +417,13 @@ jobs:
     executor: metabase-ci
     steps:
       - attach-workspace
-      - restore-fe-deps-cache
-      - run:
-          name: Generate checksum for i18n files
-          command: >
-            for file in `find locales -name '*.po' | sort`; do
-                echo `md5sum "$file"` >> .I18N-CHECKSUMS
-            done
+      - create-checksum-file:
+          filename: .I18N-CHECKSUMS
+          find-args: "locales -type f -name '*.po'"
       - run-on-change:
           cache-key: verify-i18n-{{ checksum "./.I18N-CHECKSUMS" }}
           steps:
+            - restore-fe-deps-cache
             - run:
                 name: Check i18n tags/make sure template can be built
                 # fix OOM when running -- see https://stackoverflow.com/a/59572966/1198455
@@ -666,9 +656,15 @@ jobs:
   fe-linter-docs-links:
     executor: node
     steps:
-      - run-yarn-command:
-          command-name: Run docs links checker
-          command: lint-docs-links
+      - create-checksum-file:
+          filename: ".MARKDOWN-CHECKSUMS"
+          find-args: ". -type f -name '*.md'"
+      - run-on-change:
+          cache-key: docs-links-{{ checksum "./.MARKDOWN-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+          steps:
+            - run-yarn-command:
+                command-name: Run docs links checker
+                command: lint-docs-links
 
   fe-tests-unit:
     executor: node
