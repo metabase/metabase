@@ -377,15 +377,18 @@ jobs:
     executor: basic
     steps:
       - checkout
+      # .BACKEND-CHECKSUMS is every Clojure source file as well as dependency files like deps.edn and plugin manifests
       - create-checksum-file:
           filename: .BACKEND-CHECKSUMS
-          find-args: ". -type f -name '*.clj' -or -name 'deps.edn'"
+          find-args: ". -type f -name '*.clj' -or -name deps.edn -or -name metabase-plugin.yaml"
+      # .FRONTEND-CHECKSUMS is every JavaScript source file as well as dependency files like yarn.lock
       - create-checksum-file:
           filename: .FRONTEND-CHECKSUMS
-          find-args: ". -type f -name '*.js' -or -name '*.jsx' -or -name yarn.lock -or -name webpack.config.js"
+          find-args: ". -type f -name '*.js' -or -name '*.jsx' -or -name yarn.lock -or -name webpack.config.js -or -name package.json"
+      # .MODULES-CHECKSUMS is every Clojure source file in the modules/ directory as well as plugin manifests
       - create-checksum-file:
           filename: .MODULES-CHECKSUMS
-          find-args: "./modules -type f -name '*.clj' -or -name '*.yaml'"
+          find-args: "./modules -type f -name '*.clj' -or -name metabase-plugin.yaml"
       - run:
           name: Save last git commit message
           command: git log -1 > commit.txt
@@ -407,7 +410,8 @@ jobs:
           filename: .YAML-CHECKSUMS
           find-args: ". -type f -name '*.yaml' -or -name '*.yml'"
       - run-on-change:
-          cache-key: lint-yaml-{{ checksum "./.YAML-CHECKSUMS" }}
+          # package.json is included in the cache key in case the yamllint dependency changes
+          cache-key: lint-yaml-{{ checksum "./.YAML-CHECKSUMS" }}-{{ checksum "./package.json" }}
           steps:
             - run-yarn-command:
                 command-name: Lint YAML files
@@ -420,8 +424,12 @@ jobs:
       - create-checksum-file:
           filename: .I18N-CHECKSUMS
           find-args: "locales -type f -name '*.po'"
+      # In case the i18n scripts themselves change
+      - create-checksum-file:
+          filename: .I18N-SCRIPT-CHECKSUMS
+          find-args: "bin/i18n -type f"
       - run-on-change:
-          cache-key: verify-i18n-{{ checksum "./.I18N-CHECKSUMS" }}
+          cache-key: verify-i18n-{{ checksum "./.I18N-CHECKSUMS" }}-{{ checksum "./.I18N-SCRIPT-CHECKSUMS" }}
           steps:
             - restore-fe-deps-cache
             - run:
@@ -479,7 +487,7 @@ jobs:
           condition: << parameters.skip-key >>
           steps:
             - run-on-change:
-                cache-key: lein-v1-<< parameters.skip-key >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
+                cache-key: lein-<< parameters.skip-key >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
                 steps:
                   - restore-be-deps-cache
                   - run-lein-command:
@@ -502,7 +510,7 @@ jobs:
     steps:
       - attach-workspace
       - run-on-change:
-          cache-key: reflection-warnings-{{ checksum "./.BACKEND-CHECKSUMS" }}
+          cache-key: reflection-warnings-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./bin/reflection-linter" }}
           steps:
             - restore-be-deps-cache
             - run:
