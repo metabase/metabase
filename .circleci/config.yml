@@ -729,6 +729,13 @@ jobs:
     steps:
       - attach-workspace
       - run-on-change:
+          # .MODULES-CHECKSUMS is a subset of .BACKEND-CHECKSUMS.
+          #
+          # We have both versions so we can try to load cached drivers that match MODULES-CHECKSUMS but not
+          # BACKEND-CHECKSUMS as a whole.
+          #
+          # The build-drivers script is smart enough to only rebuild drivers if needed -- there's a chance we won't
+          # need to rebuild them.
           cache-key: drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
           steps:
             - restore-be-deps-cache
