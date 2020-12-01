@@ -558,11 +558,11 @@ jobs:
           keys:
             - driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
       - run:
-          name: Skip rest of job if not running << parameters.driver >> tests
+          name: Skip rest of job if not running << parameters.driver >> tests (cache key: driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }})
           command: |
             ( .circleci/skip-driver-tests.sh << parameters.driver >> && circleci-agent step halt ) || true
       - run:
-          name: Test << parameters.driver >> driver << parameters.description >> if dummy file doesn't exist for key driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
+          name: Test << parameters.driver >> driver << parameters.description >>
           environment:
             DRIVERS: h2,<< parameters.driver >>
           command: lein with-profile +ci,+junit,+ee test
