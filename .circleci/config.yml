@@ -13,18 +13,18 @@ executors:
   clojure:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1
+      - image: circleci/clojure:lein-2.9.3
 
   node:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       # - image: circleci/node:7-browsers
-      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/clojure:lein-2.9.3-node-browsers
 
   clojure-and-node:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/clojure:lein-2.9.3-node-browsers
 
   # This is a special image that is based on clojure-and-node but includes extras like gettext and the Clojure CLI
   # tools. See https://github.com/metabase/metabase-docker-ci for more information. You shouldn't use this image
@@ -41,14 +41,14 @@ executors:
   java-11:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:openjdk-11-lein-2.8.1
+      - image: circleci/clojure:openjdk-11-lein-2.9.3
         environment:
           MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
 
   postgres-9-6:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1
+      - image: circleci/clojure:lein-2.9.3
         environment:
           MB_DB_TYPE: postgres
           MB_DB_PORT: 5432
@@ -64,7 +64,7 @@ executors:
   postgres-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1
+      - image: circleci/clojure:lein-2.9.3
         environment:
           MB_DB_TYPE: postgres
           MB_DB_PORT: 5432
@@ -81,7 +81,7 @@ executors:
   mysql-5-7:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1
+      - image: circleci/clojure:lein-2.9.3
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -94,7 +94,7 @@ executors:
   mysql-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1
+      - image: circleci/clojure:lein-2.9.3
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -107,7 +107,7 @@ executors:
   mariadb-10-2:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1
+      - image: circleci/clojure:lein-2.9.3
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -120,7 +120,7 @@ executors:
   mariadb-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1
+      - image: circleci/clojure:lein-2.9.3
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -137,13 +137,13 @@ executors:
   mongo:
      working_directory: /home/circleci/metabase/metabase/
      docker:
-       - image: circleci/clojure:lein-2.8.1
+       - image: circleci/clojure:lein-2.9.3
        - image: circleci/mongo:4.0
 
   presto:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1
+      - image: circleci/clojure:lein-2.9.3
       - image: metabase/presto-mb-ci
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
@@ -151,19 +151,19 @@ executors:
   sparksql:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1
+      - image: circleci/clojure:lein-2.9.3
       - image: metabase/spark:2.1.1
 
   vertica:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1
+      - image: circleci/clojure:lein-2.9.3
       - image: sumitchawla/vertica
 
   sqlserver:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1
+      - image: circleci/clojure:lein-2.9.3
         environment:
           MB_SQLSERVER_TEST_HOST: localhost
           MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
@@ -176,19 +176,19 @@ executors:
   fe-mongo-4:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/clojure:lein-2.9.3-node-browsers
       - image: metabase/qa-databases:mongo-sample-4.0
 
   fe-postgres-12:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/clojure:lein-2.9.3-node-browsers
       - image: metabase/qa-databases:postgres-sample-12
 
   fe-mysql-8:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/clojure:lein-2.9.3-node-browsers
       - image: metabase/qa-databases:mysql-sample-8
 
 ########################################################################################################################
@@ -207,19 +207,20 @@ commands:
       - attach_workspace:
           at: /home/circleci/
 
+  # For the restore-deps-cache commands below, only restore the cache if there's an exact match. This means whatever
+  # is in the cache will be exactly what's used and the cache won't keep growing uncontrollably going forward.
+
   restore-be-deps-cache:
     steps:
       - restore_cache:
           keys:
             - be-deps-v4-{{ checksum "project.clj" }}
-            - be-deps-v4-
 
   restore-fe-deps-cache:
     steps:
       - restore_cache:
           keys:
             - fe-deps-v4-{{ checksum "yarn.lock" }}
-            - fe-deps-v4-
 
   # Only run steps if changes have happened since the last time this was ran successfully (determined by the cache key)
   # Cache key should be unique for job and relevant source files -- use a checksum.
@@ -235,14 +236,14 @@ commands:
           keys:
             - run-on-change-<< parameters.cache-key >>
       - run:
-          name: Skip rest of job if .SUCCESS exists
+          name: Skip rest of job if .SUCCESS exists for cache key << parameters.cache-key >>
           command: >
             if [ -f .SUCCESS ]; then
                 circleci-agent step halt
             fi
       - steps: << parameters.steps >>
       - run:
-          name: Create dummy file .SUCCESS
+          name: Create dummy file .SUCCESS for cache key << parameters.cache-key >>
           command: touch .SUCCESS
       - save_cache:
           key: run-on-change-<< parameters.cache-key >>
@@ -282,6 +283,9 @@ commands:
       before-steps:
         type: steps
         default: []
+      after-steps:
+        type: steps
+        default: []
       skip-key:
         type: string
         default: ""
@@ -292,7 +296,7 @@ commands:
           condition: << parameters.skip-key >>
           steps:
             - run-on-change:
-                cache-key: yarn-<< parameters.skip-key >>-{{ checksum "frontend-checksums.txt" }}
+                cache-key: yarn-<< parameters.skip-key >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
                 steps:
                   - restore-fe-deps-cache
                   - steps: << parameters.before-steps >>
@@ -300,6 +304,7 @@ commands:
                       name: << parameters.command-name >>
                       command: yarn << parameters.command >>
                       no_output_timeout: 10m
+                  - steps: << parameters.after-steps >>
       - unless:
           condition: << parameters.skip-key >>
           steps:
@@ -309,6 +314,7 @@ commands:
                 name: << parameters.command-name >>
                 command: yarn << parameters.command >>
                 no_output_timeout: 10m
+            - steps: << parameters.after-steps >>
 
   wait-for-port:
     parameters:
@@ -330,13 +336,21 @@ commands:
       driver:
         type: string
     steps:
+      - restore_cache:
+          keys:
+            - driver-tests-<< parameters.driver >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
+      - run:
+          name: Skip rest of job if not running << parameter.driver >> tests
+          command: >
+            if [ .circleci/skip-driver-tests.sh << parameters.driver >> ]; then
+                circleci-agent step halt
+            fi
       - run:
           name: Make plugins dir
           command: mkdir /home/circleci/metabase/metabase/plugins
       - run:
           name: Download JDBC driver JAR << parameters.dest >>
           command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
             wget --output-document=plugins/<< parameters.dest >> ${<< parameters.source >>}
           no_output_timeout: 5m
 
@@ -360,31 +374,31 @@ jobs:
           paths:
             - .git
       # The basic idea here is to generate a file with checksums for all the backend source files, and save it as
-      # `./backend-checksums.txt`. Then we'll use the checksum of those files for uberjar caching and for determining
+      # `./.BACKEND-CHECKSUMS`. Then we'll use the checksum of those files for uberjar caching and for determining
       # whether we need to run driver tests again; thus we can reuse the same uberjar for integration tests across any
       # build where the backend files are the same
       - run:
           name: Generate checksums of all backend source files to use as cache key
           command: >
             for file in `find . -type f -name '*.clj' -or -name 'deps.edn' | sort`;
-              do echo `md5sum $file` >> backend-checksums.txt;
+              do echo `md5sum $file` >> .BACKEND-CHECKSUMS;
             done;
-            echo `md5sum project.clj` >> backend-checksums.txt
+            echo `md5sum project.clj` >> .BACKEND-CHECKSUMS
       # Do the same for the frontend
       - run:
           name: Generate checksums of all frontend source files to use as Uberjar cache key
           command: >
             for file in `find ./frontend ./enterpise/frontend -type f | sort`;
-              do echo `md5sum $file` >> frontend-checksums.txt;
+              do echo `md5sum $file` >> .FRONTEND-CHECKSUMS;
             done;
-            echo `md5sum yarn.lock` >> frontend-checksums.txt
-            echo `md5sum webpack.config.js` >> frontend-checksums.txt
+            echo `md5sum yarn.lock` >> .FRONTEND-CHECKSUMS
+            echo `md5sum webpack.config.js` >> .FRONTEND-CHECKSUMS
       # As well as driver modules (database drivers) -- used only for caching the built drivers
       - run:
           name: Generate checksums of all driver module source files to use as cache key
           command: >
             for file in `find ./modules -type f -name '*.clj' -or -name '*.yaml' | sort`;
-              do echo `md5sum $file` >> modules-checksums.txt;
+              do echo `md5sum $file` >> .MODULES-CHECKSUMS;
             done;
       - run:
           name: Save last git commit message
@@ -465,7 +479,7 @@ jobs:
           condition: << parameters.skip-key >>
           steps:
             - run-on-change:
-                cache-key: lein-v1-<< parameters.skip-key >>-{{ checksum "./backend-checksums.txt" }}
+                cache-key: lein-v1-<< parameters.skip-key >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
                 steps:
                   - restore-be-deps-cache
                   - run-lein-command:
@@ -488,7 +502,7 @@ jobs:
     steps:
       - attach-workspace
       - run-on-change:
-          cache-key: reflection-warnings-{{ checksum "./backend-checksums.txt" }}
+          cache-key: reflection-warnings-{{ checksum "./.BACKEND-CHECKSUMS" }}
           steps:
             - restore-be-deps-cache
             - run:
@@ -519,19 +533,24 @@ jobs:
       - steps: << parameters.before-steps >>
       - restore_cache:
           keys:
-            - driver-tests-<< parameters.driver >>-{{ checksum "./backend-checksums.txt" }}
+            - driver-tests-<< parameters.driver >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
       - run:
-          name: Test << parameters.driver >> driver << parameters.description >>
+          name: Skip rest of job if not running << parameter.driver >> tests
+          command: >
+            if [ .circleci/skip-driver-tests.sh << parameters.driver >> ]; then
+                circleci-agent step halt
+            fi
+      - run:
+          name: Test << parameters.driver >> driver << parameters.description >> if dummy file doesn't exist for key driver-tests-<< parameters.driver >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
           environment:
             DRIVERS: h2,<< parameters.driver >>
-            MB_EDITION: ee
-          command: >
-            .circleci/skip-driver-tests.sh << parameters.driver >> ||
-            ( lein with-profile +ci,+junit,+$MB_EDITION test &&
-              touch << parameters.driver >>.success )
+          command: lein with-profile +ci,+junit,+ee test
           no_output_timeout: << parameters.timeout >>
+      - run:
+          name: Create dummy file << parameters.driver >>.success for cache key driver-tests-<< parameters.driver >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
+          command: touch << parameters.driver >>.success
       - save_cache:
-          key: driver-tests-<< parameters.driver >>-{{ checksum "./backend-checksums.txt" }}
+          key: driver-tests-<< parameters.driver >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
           paths:
             - /home/circleci/metabase/metabase/<< parameters.driver >>.success
       - store_test_results:
@@ -548,7 +567,7 @@ jobs:
     steps:
       - attach-workspace
       - run-on-change:
-          cache-key: load-and-dump-<< parameters.db-type >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./bin/test-load-and-dump.sh" }}
+          cache-key: load-and-dump-<< parameters.db-type >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./bin/test-load-and-dump.sh" }}
           steps:
             - restore-be-deps-cache
             - run:
@@ -565,7 +584,7 @@ jobs:
     steps:
       - attach-workspace
       - run-on-change:
-          cache-key: build-scripts-{{ checksum "./backend-checksums.txt" }}
+          cache-key: build-scripts-{{ checksum "./.BACKEND-CHECKSUMS" }}
           steps:
             - restore-be-deps-cache
             - run:
@@ -676,25 +695,25 @@ jobs:
       # restore the local maven installation of Metabase which is needed for building drivers
       - restore_cache:
           keys:
-            - metabase-core-{{ checksum "./backend-checksums.txt" }}
+            - metabase-core-{{ checksum "./.BACKEND-CHECKSUMS" }}
       # restore already-built drivers
       - restore_cache:
           keys:
-            - drivers-v5-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
-            - drivers-v5-{{ checksum "./modules-checksums.txt" }}
+            - drivers-v5-{{ checksum "./.MODULES-CHECKSUMS" }}-{{ checksum "./.BACKEND-CHECKSUMS" }}
+            - drivers-v5-{{ checksum "./.MODULES-CHECKSUMS" }}
             - drivers-v5-
       - run:
-          name: Build drivers if needed
+          name: Build drivers if needed for cache key drivers-v5-{{ checksum "./.MODULES-CHECKSUMS" }}-{{ checksum "./.BACKEND-CHECKSUMS" }}
           command: ./bin/build-drivers.sh
           no_output_timeout: 5m
       # Cache the maven installation of metabase-core
       - save_cache:
-          key: metabase-core-{{ checksum "./backend-checksums.txt" }}
+          key: metabase-core-{{ checksum "./.BACKEND-CHECKSUMS" }}
           paths:
             - /home/circleci/.m2/repository/metabase-core
       # Cache the built drivers
       - save_cache:
-          key: drivers-v5-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+          key: drivers-v5-{{ checksum "./.MODULES-CHECKSUMS" }}-{{ checksum "./.BACKEND-CHECKSUMS" }}
           paths:
             - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
             - /home/circleci/metabase/metabase/modules/drivers/druid/target
@@ -714,16 +733,16 @@ jobs:
   build-uberjar-frontend:
     parameters:
       <<: *Params
-    executor: metabase-ci
+    executor: node
     steps:
       - attach-workspace
       - restore-fe-deps-cache
       # restore already-built frontend
       - restore_cache:
           keys:
-            - frontend-v4-<< parameters.edition >>-{{ checksum "./frontend-checksums.txt" }}
+            - frontend-v4-<< parameters.edition >>-{{ checksum "./.FRONTEND-CHECKSUMS" }}
       - run:
-          name: Build frontend if needed
+          name: Build frontend if needed for cache key frontend-v4-<< parameters.edition >>-{{ checksum "./.FRONTEND-CHECKSUMS" }}
           environment:
             MB_EDITION: << parameters.edition >>
           command: >
@@ -733,7 +752,7 @@ jobs:
           no_output_timeout: 5m
       # Cache the built frontend
       - save_cache:
-          key: frontend-v4-<< parameters.edition >>-{{ checksum "./frontend-checksums.txt" }}
+          key: frontend-v4-<< parameters.edition >>-{{ checksum "./.FRONTEND-CHECKSUMS" }}
           paths:
             - /home/circleci/metabase/metabase/resources/frontend_client
 
@@ -748,14 +767,14 @@ jobs:
       # restore drivers & FE client build in previous steps.
       - restore_cache:
           keys:
-            - drivers-v5-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+            - drivers-v5-{{ checksum "./.MODULES-CHECKSUMS" }}-{{ checksum "./.BACKEND-CHECKSUMS" }}
       - restore_cache:
           keys:
-            - frontend-v4-{{ checksum "./frontend-checksums.txt" }}
+            - frontend-v4-{{ checksum "./.FRONTEND-CHECKSUMS" }}
       # restore already-built uberjar
       - restore_cache:
           keys:
-            - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
+            - uberjar-v4-<< parameters.edition >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
       - run:
           name: Build uberjar if needed
           environment:
@@ -773,7 +792,7 @@ jobs:
           path: /home/circleci/metabase/metabase/resources/version.properties
       # Cache the built uberjar & version.properties
       - save_cache:
-          key: uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
+          key: uberjar-v4-<< parameters.edition >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
             - /home/circleci/metabase/metabase/resources/version.properties
@@ -791,10 +810,7 @@ jobs:
       test-files-location:
         type: string
         default: ""
-      driver:
-        type: string
-        default: ""
-      # Not actually used here, but it's used in the workflow so we can use a matrix to define multiple test nodes
+      # Node number e.g. 1
       node:
         type: string
         default: ""
@@ -805,20 +821,22 @@ jobs:
       CYPRESS_GROUP:  << parameters.cypress-group >>
       DISPLAY: ""
     steps:
-      - restore_cache:
-          keys:
-            - cypress-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
-      - run-yarn-command:
-          command-name: Run Cypress tests
-          command: run test-cypress-no-build <<# parameters.only-single-database >> --testFiles << parameters.test-files-location >> <</ parameters.only-single-database >>
-          before-steps:
-            - restore_cache:
-                keys:
-                  - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
-      - store_artifacts:
-          path: /home/circleci/metabase/metabase/cypress
-      - store_test_results:
-          path: cypress/results
+      - run-on-change:
+          cache-key: cypress-<< parameters.edition >>-<< parameters.cypress-group >>-<< parameters.only-single-database >>-<< parameters.test-files-location >>-<< parameters.node >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+          steps:
+            - run-yarn-command:
+                command-name: Run Cypress tests
+                before-steps:
+                  - restore_cache:
+                      keys:
+                        - uberjar-v4-<< parameters.edition >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+                command: >
+                  run test-cypress-no-build <<# parameters.only-single-database >> --testFiles << parameters.test-files-location >> <</ parameters.only-single-database >>
+                after-steps:
+                  - store_artifacts:
+                      path: /home/circleci/metabase/metabase/cypress
+                  - store_test_results:
+                      path: cypress/results
 
   fe-tests-cypress-smoketest:
     parameters:
@@ -838,7 +856,7 @@ jobs:
           before-steps:
             - restore_cache:
                 keys:
-                  - uberjar-oss-{{ checksum "./backend-checksums.txt" }}
+                  - uberjar-oss-{{ checksum "./.BACKEND-CHECKSUMS" }}
             - run:
                 name: Generate version file
                 command: ./bin/build version
