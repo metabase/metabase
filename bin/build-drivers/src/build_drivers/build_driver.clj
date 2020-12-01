@@ -140,8 +140,8 @@
       ;; even if we're not rebuilding the driver, copy the artifact from `modules/drivers/<driver>/target/uberjar/`
       ;; to `resources/modules` so we can be sure we have the most up-to-date version there.
       (try
-        (verify/verify-driver driver)
         (copy-driver! driver)
+        (verify/verify-driver driver)
         ;; if verification fails, delete all the existing artifacts and just rebuild the driver from scratch.
         (catch Throwable e
           (u/error "Error verifying existing driver:\n%s" (pr-str e))

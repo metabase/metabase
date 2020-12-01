@@ -71,7 +71,9 @@
              [db :as mdb]
              [models :refer [Database Dimension Field FieldValues Table]]
              [query-processor :as qp]
+             [types :as types]
              [util :as u]]
+            [metabase.driver.common.parameters.dates :as params.dates]
             [metabase.mbql.util :as mbql.u]
             [metabase.models
              [field :as field]
@@ -97,6 +99,14 @@
 (defn- joined-table-alias [table-id]
   (format "table_%d" table-id))
 
+(def ^:private ^{:arglists '([field-id])} temporal-field?
+  "Whether Field with `field-id` is a temporal Field such as a Date or Datetime. Cached for 10 minutes to avoid hitting
+  the DB too much since this is unlike to change often, if ever."
+  (memoize/ttl
+   (fn [field-id]
+     (types/temporal-field? (db/select-one [Field :base_type :special_type] :id field-id)))
+   :ttl/threshold (u/minutes->ms 10)))
+
 (defn- filter-clause
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
   [source-table-id field-id value]
@@ -108,15 +118,20 @@
                          [:joined-field (joined-table-alias this-field-table-id) [:field-id field-id]]))]
     (cond
       ;; e.g. {$$venues.price [:between 2 3]} -> [:between $venues.price 2 3]
-      ;; TODO -- how is this supposed to work via the API???
+      ;; this is not really supported by the API directly
       (and (sequential? value) (keyword? (first value)))
       (into [(first value) field-clause] (rest value))
       ;; e.g. {$$venues.price #{2 3}} -> [:= $$venues.price 2 3]
       (and (coll? value) (not (map? value)))
       (into [:= field-clause] value)
-      ;; e.g. {$$venues.price 2} -> [:= $$venues.price 2]
       :else
-      [:= field-clause value])))
+      ;; e.g. {$$venues.price "past32weeks"} -> [:time-interval $checkins.date -32 :week]
+      (or (when (and (temporal-field? field-id)
+                     (string? value))
+            (u/ignore-exceptions
+              (params.dates/date-string->filter value field-id)))
+          ;; e.g. {$$venues.price 2} -> [:= $$venues.price 2]
+          [:= field-clause value]))))
 
 (defn- name-for-logging [model id]
   (format "%s %d %s" (name model) id (u/format-color 'blue (pr-str (db/select-one-field :name model :id id)))))
