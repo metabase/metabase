@@ -746,8 +746,8 @@ jobs:
           environment:
             MB_EDITION: << parameters.edition >>
           command: >
-            if [ ! -f './resources/frontend_client/index.html' ];
-              then ./bin/build version frontend;
+            if [ ! -f './resources/frontend_client/index.html' ]; then
+                ./bin/build version frontend;
             fi
           no_output_timeout: 5m
       # Cache the built frontend
@@ -778,12 +778,12 @@ jobs:
       - run:
           name: Build uberjar if needed
           environment:
+            # INTERACTIVE=false will tell the clojure build scripts not to do interactive retries etc.
+            INTERACTIVE: "false"
             MB_EDITION: << parameters.edition >>
           command: >
             if [ ! -f './target/uberjar/metabase.jar' ]; then
-              # INTERACTIVE=false will tell the clojure build scripts not to do interactive retries etc.
-              export INTERACTIVE=false;
-              ./bin/build version drivers uberjar;
+              ./bin/build version drivers uberjar
             fi
           no_output_timeout: 10m
       - store_artifacts:
