@@ -214,13 +214,13 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - be-deps-v4-{{ checksum "project.clj" }}
+            - be-deps-v5-{{ checksum "project.clj" }}
 
   restore-fe-deps-cache:
     steps:
       - restore_cache:
           keys:
-            - fe-deps-v4-{{ checksum "yarn.lock" }}
+            - fe-deps-v5-{{ checksum "yarn.lock" }}
 
   # Only run steps if changes have happened since the last time this was ran successfully (determined by the cache key)
   # Cache key should be unique for job and relevant source files -- use a checksum.
@@ -442,7 +442,7 @@ jobs:
       - restore-be-deps-cache
       - run: lein with-profile +include-all-drivers,+cloverage,+junit,+<< parameters.edition >> deps
       - save_cache:
-          key: be-deps-v4-{{ checksum "project.clj" }}
+          key: be-deps-v5-{{ checksum "project.clj" }}
           paths:
             - /home/circleci/.m2
 
@@ -528,9 +528,7 @@ jobs:
       - run:
           name: Skip rest of job if not running << parameters.driver >> tests
           command: >
-            if [ .circleci/skip-driver-tests.sh << parameters.driver >> ]; then
-                circleci-agent step halt
-            fi
+            ( .circleci/skip-driver-tests.sh << parameters.driver >> && circleci-agent step halt ) || true
       - run:
           name: Test << parameters.driver >> driver << parameters.description >> if dummy file doesn't exist for key driver-tests-<< parameters.driver >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
           environment:
@@ -615,7 +613,7 @@ jobs:
           command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
           no_output_timeout: 5m
       - save_cache:
-          key: fe-deps-v4-{{ checksum "yarn.lock" }}
+          key: fe-deps-v5-{{ checksum "yarn.lock" }}
           paths:
             - /home/circleci/.yarn
             - /home/circleci/.yarn-cache
