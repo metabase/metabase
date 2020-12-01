@@ -231,7 +231,6 @@ commands:
       steps:
         type: steps
     steps:
-      - attach-workspace
       - restore_cache:
           keys:
             - run-on-change-<< parameters.cache-key >>
@@ -268,6 +267,12 @@ commands:
             for file in `find << parameters.find-args >> | sort`; do
                 echo `md5sum "$file"` >> "<< parameters.filename >>";
             done
+            # Make sure we actually matched some files and were able to create a checksum file
+            if [ ! -f "<< parameters.filename >>" ]; then
+                echo 'Error: no matching files. Did you remember to attach the workspace?'
+                exit -1
+            fi
+            echo "Created checksums for $(cat << parameters.filename >> | wc -l) files"
 
   run-lein-command:
     parameters:
@@ -411,6 +416,7 @@ jobs:
   yaml-linter:
     executor: node
     steps:
+      - attach-workspace
       - create-checksum-file:
           filename: .YAML-CHECKSUMS
           find-args: ". -type f -name '*.yaml' -or -name '*.yml'"
@@ -678,6 +684,7 @@ jobs:
   fe-linter-docs-links:
     executor: node
     steps:
+      - attach-workspace
       - create-checksum-file:
           filename: ".MARKDOWN-CHECKSUMS"
           find-args: ". -type f -name '*.md'"
@@ -851,6 +858,7 @@ jobs:
       CYPRESS_GROUP:  << parameters.cypress-group >>
       DISPLAY: ""
     steps:
+      - attach-workspace
       - run-on-change:
           cache-key: cypress-<< parameters.edition >>-<< parameters.cypress-group >>-<< parameters.only-single-database >>-<< parameters.test-files-location >>-<< parameters.node >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
           steps:
