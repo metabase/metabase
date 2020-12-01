@@ -728,43 +728,46 @@ jobs:
     executor: metabase-ci
     steps:
       - attach-workspace
-      - restore-be-deps-cache
-      # restore the local maven installation of Metabase which is needed for building drivers
-      - restore_cache:
-          keys:
-            - metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
-      # restore already-built drivers
-      - restore_cache:
-          keys:
-            - drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
-            - drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}
-            - drivers-v5-
-      - run:
-          name: Build drivers if needed for cache key drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
-          command: ./bin/build-drivers.sh
-          no_output_timeout: 5m
-      # Cache the maven installation of metabase-core
-      - save_cache:
-          key: metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
-          paths:
-            - /home/circleci/.m2/repository/metabase-core
-      # Cache the built drivers
-      - save_cache:
-          key: drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
-          paths:
-            - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
-            - /home/circleci/metabase/metabase/modules/drivers/druid/target
-            - /home/circleci/metabase/metabase/modules/drivers/google/target
-            - /home/circleci/metabase/metabase/modules/drivers/googleanalytics/target
-            - /home/circleci/metabase/metabase/modules/drivers/mongo/target
-            - /home/circleci/metabase/metabase/modules/drivers/oracle/target
-            - /home/circleci/metabase/metabase/modules/drivers/presto/target
-            - /home/circleci/metabase/metabase/modules/drivers/redshift/target
-            - /home/circleci/metabase/metabase/modules/drivers/snowflake/target
-            - /home/circleci/metabase/metabase/modules/drivers/sparksql/target
-            - /home/circleci/metabase/metabase/modules/drivers/sqlite/target
-            - /home/circleci/metabase/metabase/modules/drivers/sqlserver/target
-            - /home/circleci/metabase/metabase/modules/drivers/vertica/target
+      - run-on-change:
+          cache-key: drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+          steps:
+            - restore-be-deps-cache
+            # restore the local maven installation of Metabase which is needed for building drivers
+            - restore_cache:
+                keys:
+                  - metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
+            # restore already-built drivers
+            - restore_cache:
+                keys:
+                  - drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+                  - drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}
+                  - drivers-v5-
+            - run:
+                name: Build drivers if needed for cache key drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+                command: ./bin/build-drivers.sh
+                no_output_timeout: 5m
+            # Cache the maven installation of metabase-core
+            - save_cache:
+                key: metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
+                paths:
+                  - /home/circleci/.m2/repository/metabase-core
+            # Cache the built drivers
+            - save_cache:
+                key: drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+                paths:
+                  - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
+                  - /home/circleci/metabase/metabase/modules/drivers/druid/target
+                  - /home/circleci/metabase/metabase/modules/drivers/google/target
+                  - /home/circleci/metabase/metabase/modules/drivers/googleanalytics/target
+                  - /home/circleci/metabase/metabase/modules/drivers/mongo/target
+                  - /home/circleci/metabase/metabase/modules/drivers/oracle/target
+                  - /home/circleci/metabase/metabase/modules/drivers/presto/target
+                  - /home/circleci/metabase/metabase/modules/drivers/redshift/target
+                  - /home/circleci/metabase/metabase/modules/drivers/snowflake/target
+                  - /home/circleci/metabase/metabase/modules/drivers/sparksql/target
+                  - /home/circleci/metabase/metabase/modules/drivers/sqlite/target
+                  - /home/circleci/metabase/metabase/modules/drivers/sqlserver/target
+                  - /home/circleci/metabase/metabase/modules/drivers/vertica/target
 
   # Build the frontend client. parameters.edition determines whether we build the OSS or EE version.
   build-uberjar-frontend:
@@ -773,25 +776,21 @@ jobs:
     executor: metabase-ci
     steps:
       - attach-workspace
-      - restore-fe-deps-cache
-      # restore already-built frontend
-      - restore_cache:
-          keys:
-            - frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
-      - run:
-          name: Build frontend if needed for cache key frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
-          environment:
-            MB_EDITION: << parameters.edition >>
-          command: |
-            if [ ! -f './resources/frontend_client/index.html' ]; then
-                ./bin/build version frontend;
-            fi
-          no_output_timeout: 5m
-      # Cache the built frontend
-      - save_cache:
-          key: frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
-          paths:
-            - /home/circleci/metabase/metabase/resources/frontend_client
+      - run-on-change:
+          cache-key: frontend-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
+          steps:
+            - restore-fe-deps-cache
+            - run:
+                name: Build frontend
+                environment:
+                  MB_EDITION: << parameters.edition >>
+                command: ./bin/build version frontend
+                no_output_timeout: 5m
+            # Cache the built frontend
+            - save_cache:
+                key: frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
+                paths:
+                  - /home/circleci/metabase/metabase/resources/frontend_client
 
   # Build the uberjar. parmeters.edition determines whether we build the OSS or EE version.
   build-uberjar:
