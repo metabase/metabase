@@ -26,10 +26,14 @@ executors:
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
 
-  build:
+  # This is a special image that is based on clojure-and-node but includes extras like gettext and the Clojure CLI
+  # tools. See https://github.com/metabase/metabase-docker-ci for more information. You shouldn't use this image
+  # unless you need the extra stuff -- because it's not an official Circle image, the extra layers won't get cached
+  # and it might take longer to spin this up.
+  metabase-ci:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci-build:latest
+      - image: metabase/ci:2020-11-30
 
   # Java 11 tests also test Metabase with the at-rest encryption enabled. See
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
@@ -285,12 +289,13 @@ jobs:
           paths:
             - .git
       # The basic idea here is to generate a file with checksums for all the backend source files, and save it as
-      # `./backend-checksums.txt`. Then we'll use the checksum of that files for uberjar caching; thus we can reuse
-      # the same uberjar for integration tests across any build where the backend files are the same
+      # `./backend-checksums.txt`. Then we'll use the checksum of those files for uberjar caching and for determining
+      # whether we need to run driver tests again; thus we can reuse the same uberjar for integration tests across any
+      # build where the backend files are the same
       - run:
-          name: Generate checksums of all backend source files to use as Uberjar cache key
+          name: Generate checksums of all backend source files to use as cache key
           command: >
-            for file in `find ./src ./backend ./enterprise/backend/src -type f -name '*.clj' | sort`;
+            for file in `find . -type f -name '*.clj' | sort`;
               do echo `md5sum $file` >> backend-checksums.txt;
             done;
             echo `md5sum project.clj` >> backend-checksums.txt
@@ -303,9 +308,9 @@ jobs:
             done;
             echo `md5sum yarn.lock` >> frontend-checksums.txt
             echo `md5sum webpack.config.js` >> frontend-checksums.txt
-      # As well as driver modules (database drivers)
+      # As well as driver modules (database drivers) -- used only for caching the built drivers
       - run:
-          name: Generate checksums of all driver module source files to use as Uberjar cache key
+          name: Generate checksums of all driver module source files to use as cache key
           command: >
             for file in `find ./modules -type f -name '*.clj' -or -name '*.yaml' | sort`;
               do echo `md5sum $file` >> modules-checksums.txt;
@@ -332,16 +337,10 @@ jobs:
           command: lint-yaml `find resources -name '*.yaml'`
 
   verify-i18n-files:
-    executor: node
+    executor: metabase-ci
     steps:
       - attach-workspace
       - restore-fe-deps-cache
-      - run:
-          name: Update apt
-          command: sudo apt-get update
-      - run:
-          name: Install gettext
-          command: sudo apt-get install gettext
       - run:
           name: Check i18n tags/make sure template can be built
           # fix OOM when running -- see https://stackoverflow.com/a/59572966/1198455
@@ -420,9 +419,6 @@ jobs:
       before-steps:
         type: steps
         default: []
-      auto-retry:
-        type: boolean
-        default: false
       description:
         type: string
         default: ""
@@ -431,31 +427,29 @@ jobs:
       - attach-workspace
       - restore-be-deps-cache
       - steps: << parameters.before-steps >>
-      - unless:
-          condition: << parameters.auto-retry >>
-          steps:
-            - run:
-                name: Test << parameters.driver >> driver << parameters.description >>
-                environment:
-                  DRIVERS: h2,<< parameters.driver >>
-                  MB_EDITION: ee
-                command: >
-                  /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-                  lein with-profile +ci,+junit,+$MB_EDITION test
-                no_output_timeout: << parameters.timeout >>
-      # This is exactly the same as without auto-retry but will try running the tests a second time if they fail
-      - when:
-          condition: << parameters.auto-retry >>
-          steps:
-            - run:
-                name: Test << parameters.driver >> driver
-                environment:
-                  DRIVERS: h2,<< parameters.driver >>
-                  MB_EDITION: ee
-                command: >
-                  /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-                  lein with-profile +ci,+junit,+$MB_EDITION test || lein with-profile +ci,+junit,+$MB_EDITION test
-                no_output_timeout: << parameters.timeout >>
+      # If we run driver tests, and they pass, we'll create a dummy file called DRIVER.success and then cache that
+      # with the key driver-tests-DRIVER-BACKEND_CHECKSUM
+      #
+      # Next time we run driver tests, we'll try to restore the cache with the key; if the dummy success file is
+      # present, we'll know that tests passed given the current backend source files and that we can skip tests. If
+      # the file isn't present, we'll know we need to run tests
+      - restore_cache:
+          keys:
+            - driver-tests-<< parameters.driver >>-{{ checksum "./backend-checksums.txt" }}
+      - run:
+          name: Test << parameters.driver >> driver << parameters.description >>
+          environment:
+            DRIVERS: h2,<< parameters.driver >>
+            MB_EDITION: ee
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
+            ( lein with-profile +ci,+junit,+$MB_EDITION test &&
+              touch /home/circleci/metabase/metabase/<< parameters.driver >>.success )
+          no_output_timeout: << parameters.timeout >>
+      - save_cache:
+          key: driver-tests-<< parameters.driver >>-{{ checksum "./backend-checksums.txt" }}
+          paths:
+            - /home/circleci/metabase/metabase/<< parameters.driver >>.success
       - store_test_results:
           path: /home/circleci/metabase/metabase/target/junit
 
@@ -470,6 +464,13 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
+      # Similar to what we do with driver tests, if these tests have passed previously with identical backend code
+      # there's no point in running them again. When the tests pass, create a dummy file called
+      # load-and-dump.DB_TYPE.success and cache it using the backend checksums. If that file exists next time around,
+      # we can skip the tests
+      - restore_cache:
+          keys:
+            - load-and-dump-v1-<< parameters.db-type >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./bin/test-load-and-dump.sh" }}
       - run:
           name: Test migrating from H2 -> << parameters.db-type >> -> H2
           environment:
@@ -477,20 +478,21 @@ jobs:
             MB_DB_HOST: localhost
             MB_EDITION: << parameters.edition >>
           command: >
-            ./bin/test-load-and-dump.sh
+            if [ -f "/home/circleci/metabase/metabase/load-and-dump.<< parameters.db-type >>.success" ]; then
+                ./bin/test-load-and-dump.sh &&
+                touch /home/circleci/metabase/metabase/load-and-dump.<< parameters.db-type >>.success
+            fi
           no_output_timeout: 5m
+      - save_cache:
+          key: load-and-dump-v1-<< parameters.db-type >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./bin/test-load-and-dump.sh" }}
+          paths:
+            - /home/circleci/metabase/metabase/load-and-dump.<< parameters.db-type >>.success
 
   test-build-scripts:
-    executor: clojure-and-node
+    executor: metabase-ci
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - run:
-          name: Install Clojure CLI
-          command: >
-            curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
-            chmod +x linux-install-1.10.1.708.sh &&
-            sudo ./linux-install-1.10.1.708.sh
       - run:
           name: Run metabuild-common build script tests
           command: >
@@ -523,22 +525,16 @@ jobs:
       - attach-workspace
       - restore-fe-deps-cache
       - run:
-          name: Run yarn if yarn.lock checksum has changed
+          name: Run yarn to install deps
           command: >
-            if [ ! -f yarn.lock.checksum ] || [ "$(md5sum yarn.lock)" != "$(cat yarn.lock.checksum)" ];
-              then SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
-            fi
+            SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
           no_output_timeout: 5m
-      - run:
-          name: Save yarn checksum
-          command: md5sum yarn.lock > yarn.lock.checksum
       - save_cache:
           key: fe-deps-v4-{{ checksum "yarn.lock" }}
           paths:
             - /home/circleci/.yarn
             - /home/circleci/.yarn-cache
             - /home/circleci/metabase/metabase/node_modules
-            - /home/circleci/yarn.lock.checksum
             - /home/circleci/.cache/Cypress
 
   fe-linter-eslint:
@@ -590,17 +586,13 @@ jobs:
           command-name: Run frontend timezone tests
           command: run test-timezones
 
-  build-uberjar:
-    parameters:
-      <<: *Params
-    executor: clojure-and-node
+  # Unlike the other build-uberjar steps, this step should be run once overall and the results can be shared between
+  # OSS and EE uberjars.
+  build-uberjar-drivers:
+    executor: metabase-ci
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      # restore already-built uberjar
-      - restore_cache:
-          keys:
-            - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
       # restore the local maven installation of Metabase which is needed for building drivers
       - restore_cache:
           keys:
@@ -608,19 +600,48 @@ jobs:
       # restore already-built drivers
       - restore_cache:
           keys:
-            - drivers-v4-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
-            - drivers-v4-{{ checksum "./modules-checksums.txt" }}
-            - drivers-v4-
+            - drivers-v5-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+            - drivers-v5-{{ checksum "./modules-checksums.txt" }}
+            - drivers-v5-
+      - run:
+          name: Build drivers if needed
+          command: ./bin/build-drivers.sh
+          no_output_timeout: 5m
+      # Cache the maven installation of metabase-core
+      - save_cache:
+          key: metabase-core-{{ checksum "./backend-checksums.txt" }}
+          paths:
+            - /home/circleci/.m2/repository/metabase-core
+      # Cache the built drivers
+      - save_cache:
+          key: drivers-v5-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+          paths:
+            - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
+            - /home/circleci/metabase/metabase/modules/drivers/druid/target
+            - /home/circleci/metabase/metabase/modules/drivers/google/target
+            - /home/circleci/metabase/metabase/modules/drivers/googleanalytics/target
+            - /home/circleci/metabase/metabase/modules/drivers/mongo/target
+            - /home/circleci/metabase/metabase/modules/drivers/oracle/target
+            - /home/circleci/metabase/metabase/modules/drivers/presto/target
+            - /home/circleci/metabase/metabase/modules/drivers/redshift/target
+            - /home/circleci/metabase/metabase/modules/drivers/snowflake/target
+            - /home/circleci/metabase/metabase/modules/drivers/sparksql/target
+            - /home/circleci/metabase/metabase/modules/drivers/sqlite/target
+            - /home/circleci/metabase/metabase/modules/drivers/sqlserver/target
+            - /home/circleci/metabase/metabase/modules/drivers/vertica/target
+
+  # Build the frontend client. parameters.edition determines whether we build the OSS or EE version.
+  build-uberjar-frontend:
+    parameters:
+      <<: *Params
+    executor: metabase-ci
+    steps:
+      - attach-workspace
+      - restore-fe-deps-cache
       # restore already-built frontend
       - restore_cache:
           keys:
             - frontend-v4-{{ checksum "./frontend-checksums.txt" }}
-      - run:
-          name: Install Clojure CLI
-          command: >
-            curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
-            chmod +x linux-install-1.10.1.708.sh &&
-            sudo ./linux-install-1.10.1.708.sh
       - run:
           name: Build frontend if needed
           environment:
@@ -630,6 +651,31 @@ jobs:
               then ./bin/build version frontend;
             fi
           no_output_timeout: 5m
+      # Cache the built frontend
+      - save_cache:
+          key: frontend-v4-{{ checksum "./frontend-checksums.txt" }}
+          paths:
+            - /home/circleci/metabase/metabase/resources/frontend_client
+
+  # Build the uberjar. parmeters.edition determines whether we build the OSS or EE version.
+  build-uberjar:
+    parameters:
+      <<: *Params
+    executor: metabase-ci
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      # restore drivers & FE client build in previous steps.
+      - restore_cache:
+          keys:
+            - drivers-v5-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
+      - restore_cache:
+          keys:
+            - frontend-v4-{{ checksum "./frontend-checksums.txt" }}
+      # restore already-built uberjar
+      - restore_cache:
+          keys:
+            - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
       - run:
           name: Build uberjar if needed
           environment:
@@ -647,37 +693,10 @@ jobs:
           path: /home/circleci/metabase/metabase/resources/version.properties
       # Cache the built uberjar & version.properties
       - save_cache:
-          key: uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
+          key: uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
             - /home/circleci/metabase/metabase/resources/version.properties
-      # Cache the maven installation of metabase-core
-      - save_cache:
-          key: metabase-core-{{ checksum "./backend-checksums.txt" }}
-          paths:
-            - /home/circleci/.m2/repository/metabase-core
-      # Cache the built drivers
-      - save_cache:
-          key: drivers-v4-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
-          paths:
-            - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
-            - /home/circleci/metabase/metabase/modules/drivers/druid/target
-            - /home/circleci/metabase/metabase/modules/drivers/google/target
-            - /home/circleci/metabase/metabase/modules/drivers/googleanalytics/target
-            - /home/circleci/metabase/metabase/modules/drivers/mongo/target
-            - /home/circleci/metabase/metabase/modules/drivers/oracle/target
-            - /home/circleci/metabase/metabase/modules/drivers/presto/target
-            - /home/circleci/metabase/metabase/modules/drivers/redshift/target
-            - /home/circleci/metabase/metabase/modules/drivers/snowflake/target
-            - /home/circleci/metabase/metabase/modules/drivers/sparksql/target
-            - /home/circleci/metabase/metabase/modules/drivers/sqlite/target
-            - /home/circleci/metabase/metabase/modules/drivers/sqlserver/target
-            - /home/circleci/metabase/metabase/modules/drivers/vertica/target
-      # Cache the built frontend
-      - save_cache:
-          key: frontend-v4-{{ checksum "./frontend-checksums.txt" }}
-          paths:
-            - /home/circleci/metabase/metabase/resources/frontend_client
 
   fe-tests-cypress:
     parameters:
@@ -695,6 +714,10 @@ jobs:
       driver:
         type: string
         default: ""
+      # Not actually used here, but it's used in the workflow so we can use a matrix to define multiple test nodes
+      node:
+        type: string
+        default: ""
       <<: *Params
     executor: << parameters.e >>
     environment:
@@ -708,7 +731,7 @@ jobs:
           before-steps:
             - restore_cache:
                 keys:
-                  - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}
+                  - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
       - store_artifacts:
           path: /home/circleci/metabase/metabase/cypress
       - store_test_results:
@@ -770,12 +793,10 @@ workflows:
 
       - yaml-linter:
           requires:
-            - checkout
             - fe-deps
 
       - verify-i18n-files:
           requires:
-            - checkout
             - fe-deps
 
       - be-deps:
@@ -981,7 +1002,6 @@ workflows:
                 dest: vertica-jdbc-7.1.2-0.jar
                 driver: vertica
           driver: vertica
-          auto-retry: true
 
       - test-migrate-from-h2:
           name: be-tests-migrate-to-postgres-<< matrix.edition >>
@@ -1002,6 +1022,23 @@ workflows:
       - test-build-scripts:
           requires:
             - be-deps
+
+      - build-uberjar-drivers:
+          requires:
+            - be-deps
+
+      - build-uberjar-frontend:
+          name: build-uberjar-frontend-<< matrix.edition >>
+          requires:
+            - fe-deps
+          <<: *Matrix
+
+      - build-uberjar:
+          name: build-uberjar-<< matrix.edition >>
+          requires:
+            - build-uberjar-drivers
+            - build-uberjar-frontend-<< matrix.edition >>
+          <<: *Matrix
 
       - fe-deps:
           requires:
@@ -1027,46 +1064,21 @@ workflows:
       - fe-tests-timezones:
           requires:
             - fe-deps
-      - build-uberjar:
-          name: build-uberjar-<< matrix.edition >>
-          requires:
-            - be-deps
-          <<: *Matrix
 
       - fe-tests-cypress:
-          name: fe-tests-cypress-1-<< matrix.edition >>
+          matrix:
+            parameters:
+              node: ["1", "2", "3", "4"]
+              edition: ["ee", "oss"]
+          name: fe-tests-cypress-<< matrix.node >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - fe-deps
           cypress-group: "default"
-          <<: *Matrix
-      - fe-tests-cypress:
-          name: fe-tests-cypress-2-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-            - fe-deps
-          cypress-group: "default"
-          <<: *Matrix
-      - fe-tests-cypress:
-          name: fe-tests-cypress-3-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-            - fe-deps
-          cypress-group: "default"
-          <<: *Matrix
-      - fe-tests-cypress:
-          name: fe-tests-cypress-4-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-            - fe-deps
-          cypress-group: "default"
-          <<: *Matrix
 
       - fe-tests-cypress:
           name: fe-tests-cypress-mongo-4-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - fe-deps
           e: fe-mongo-4
           cypress-group: "mongo"
           only-single-database: true
@@ -1077,7 +1089,6 @@ workflows:
           name: fe-tests-cypress-postgres-12-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - fe-deps
           e: fe-postgres-12
           cypress-group: "postgres"
           only-single-database: true
@@ -1088,7 +1099,6 @@ workflows:
           name: fe-tests-cypres-mysql-8-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - fe-deps
           e: fe-mysql-8
           cypress-group: "mysql"
           only-single-database: true
@@ -1115,13 +1125,20 @@ workflows:
           requires:
             - checkout
 
-      - build-uberjar:
+      # Build the OSS version of the uberjar.
+      - build-uberjar-drivers:
           requires:
             - be-deps
+      - build-uberjar-frontend:
+          requires:
+            - fe-deps
+      - build-uberjar:
+          requires:
+            - build-uberjar-drivers
+            - build-uberjar-frontend
 
       - fe-tests-cypress-smoketest:
           name: fe-tests-cypress-smoketest
           requires:
             - build-uberjar
-            - fe-deps
           cypress-group: "default"
