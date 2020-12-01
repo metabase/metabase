@@ -370,16 +370,16 @@ jobs:
       - run:
           name: Generate checksums of all backend source files to use as cache key
           command: >
-            for file in `find . -type f -name '*.clj' -or -name 'deps.edn' | sort`;
-              do echo `md5sum $file` >> .BACKEND-CHECKSUMS;
+            for file in `find . -type f -name '*.clj' -or -name 'deps.edn' | sort`; do
+                echo `md5sum $file` >> .BACKEND-CHECKSUMS;
             done;
             echo `md5sum project.clj` >> .BACKEND-CHECKSUMS
       # Do the same for the frontend
       - run:
           name: Generate checksums of all frontend source files to use as Uberjar cache key
           command: >
-            for file in `find ./frontend ./enterpise/frontend -type f | sort`;
-              do echo `md5sum $file` >> .FRONTEND-CHECKSUMS;
+            for file in `find ./frontend ./enterpise/frontend -type f | sort`; do
+                echo `md5sum $file` >> .FRONTEND-CHECKSUMS;
             done;
             echo `md5sum yarn.lock` >> .FRONTEND-CHECKSUMS
             echo `md5sum webpack.config.js` >> .FRONTEND-CHECKSUMS
@@ -387,8 +387,8 @@ jobs:
       - run:
           name: Generate checksums of all driver module source files to use as cache key
           command: >
-            for file in `find ./modules -type f -name '*.clj' -or -name '*.yaml' | sort`;
-              do echo `md5sum $file` >> .MODULES-CHECKSUMS;
+            for file in `find ./modules -type f -name '*.clj' -or -name '*.yaml' | sort`; do
+                echo `md5sum $file` >> .MODULES-CHECKSUMS;
             done;
       - run:
           name: Save last git commit message
@@ -417,15 +417,26 @@ jobs:
       - attach-workspace
       - restore-fe-deps-cache
       - run:
-          name: Check i18n tags/make sure template can be built
-          # fix OOM when running -- see https://stackoverflow.com/a/59572966/1198455
-          # without this option, sometimes this step will fail with an OOM error.
-          command: NODE_OPTIONS='--max-old-space-size=2048' ./bin/i18n/update-translation-template
-          no_output_timeout: 2m
-      - run:
-          name: Verify i18n translations (.po files)
-          command: ./bin/i18n/build-translation-resources
-          no_output_timeout: 2m
+          name: Generate checksum for i18n files
+          command: >
+            for file in `find locales -name '*.po' | sort`; do
+                echo `md5sum "$file"` >> .I18N-CHECKSUMS
+            done
+      - run-on-change:
+          cache-key: verify-i18n-{{ checksum "./.I18N-CHECKSUMS" }}
+          steps:
+            - run:
+                name: Check i18n tags/make sure template can be built
+                # fix OOM when running -- see https://stackoverflow.com/a/59572966/1198455
+                # without this option, sometimes this step will fail with an OOM error.
+                environment:
+                  NODE_OPTIONS: '--max-old-space-size=2048'
+                command: ./bin/i18n/update-translation-template
+                no_output_timeout: 2m
+            - run:
+                name: Verify i18n translations (.po files)
+                command: ./bin/i18n/build-translation-resources
+                no_output_timeout: 2m
 
 
 ########################################################################################################################
@@ -752,6 +763,16 @@ jobs:
     executor: metabase-ci
     steps:
       - attach-workspace
+      # restore already-built uberjar
+      - restore_cache:
+          keys:
+            - uberjar-v4-<< parameters.edition >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+      - run:
+          name: Skip rest of job if uberjar already exists
+          command: >
+             if [ -f './target/uberjar/metabase.jar' ]; then
+                 circleci-agent step halt
+             fi
       - restore-be-deps-cache
       # restore drivers & FE client build in previous steps.
       - restore_cache:
@@ -760,20 +781,13 @@ jobs:
       - restore_cache:
           keys:
             - frontend-v4-{{ checksum "./.FRONTEND-CHECKSUMS" }}
-      # restore already-built uberjar
-      - restore_cache:
-          keys:
-            - uberjar-v4-<< parameters.edition >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
       - run:
-          name: Build uberjar if needed
+          name: Build uberjar
           environment:
             # INTERACTIVE=false will tell the clojure build scripts not to do interactive retries etc.
             INTERACTIVE: "false"
             MB_EDITION: << parameters.edition >>
-          command: >
-            if [ ! -f './target/uberjar/metabase.jar' ]; then
-              ./bin/build version drivers uberjar
-            fi
+          command: ./bin/build version drivers uberjar
           no_output_timeout: 10m
       - store_artifacts:
           path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
