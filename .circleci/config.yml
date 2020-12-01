@@ -241,12 +241,15 @@ commands:
           name: Skip rest of job if .SUCCESS exists for cache key << parameters.cache-key >>
           command: |
             if [ -f .SUCCESS ]; then
+                echo "Job previously succeeded for cache key << parameters.cache-key >>"
+                echo "Link to last successful run: $(cat .SUCCESS)"
                 circleci-agent step halt
             fi
       - steps: << parameters.steps >>
       - run:
           name: Create dummy file .SUCCESS for cache key << parameters.cache-key >>
-          command: touch .SUCCESS
+          command: |
+            echo "$CIRCLE_BUILD_URL" > .SUCCESS
       - save_cache:
           key: run-on-change-<< parameters.cache-key >>
           paths:
