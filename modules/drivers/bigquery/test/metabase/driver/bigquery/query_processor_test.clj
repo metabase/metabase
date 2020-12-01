@@ -224,9 +224,9 @@
 (deftest remove-remark-test
   (mt/test-driver :bigquery
     (is (=  (str
-            "SELECT `test_data.venues`.`id` AS `id`,"
-            " `test_data.venues`.`name` AS `name` "
-            "FROM `test_data.venues` "
+            "SELECT `v3_test_data.venues`.`id` AS `id`,"
+            " `v3_test_data.venues`.`name` AS `name` "
+            "FROM `v3_test_data.venues` "
             "LIMIT 1")
     (tt/with-temp* [Database [db {:engine :bigquery
                                   :details (assoc (:details (mt/db))
