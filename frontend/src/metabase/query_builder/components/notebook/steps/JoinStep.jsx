@@ -72,12 +72,16 @@ class JoinClause extends React.Component {
       return null;
     }
 
+    // first join's lhs is always the parent table
+    // subsequent should always be a string "Previous results" as per:
+    // https://github.com/metabase/metabase/pull/13895#issuecomment-735933018
+    const lhsTable = join.index() === 0 ? join.parentTable() : null;
     const joinedTable = join.joinedTable();
     const strategyOption = join.strategyOption();
     return (
       <Flex align="center" flex="1 1 auto" {...props}>
         <NotebookCellItem color={color} icon="table2">
-          {t`Previous results`}
+          {(lhsTable && lhsTable.displayName()) || t`Previous results`}
         </NotebookCellItem>
 
         <PopoverWithTrigger
