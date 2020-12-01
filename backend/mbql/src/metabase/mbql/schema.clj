@@ -868,33 +868,39 @@
 (def MBQLQuery
   "Schema for a valid, normalized MBQL [inner] query."
   (->
-   {(s/optional-key :source-query) SourceQuery
-    (s/optional-key :source-table) SourceTable
-    (s/optional-key :aggregation)  (su/non-empty [Aggregation])
-    (s/optional-key :breakout)     (su/non-empty [Field])
+   {(s/optional-key :source-query)    SourceQuery
+    (s/optional-key :source-table)    SourceTable
+    (s/optional-key :aggregation)     (su/non-empty [Aggregation])
+    (s/optional-key :breakout)        (su/non-empty [Field])
     ;; TODO - expressions keys should be strings; fix this when we get a chance
-    (s/optional-key :expressions)  {s/Keyword FieldOrExpressionDef}
-    (s/optional-key :fields)       Fields
-    (s/optional-key :filter)       Filter
-    (s/optional-key :limit)        su/IntGreaterThanZero
-    (s/optional-key :order-by)     (su/distinct (su/non-empty [OrderBy]))
+    (s/optional-key :expressions)     {s/Keyword FieldOrExpressionDef}
+    (s/optional-key :fields)          Fields
+    (s/optional-key :filter)          Filter
+    (s/optional-key :limit)           su/IntGreaterThanZero
+    (s/optional-key :order-by)        (su/distinct (su/non-empty [OrderBy]))
     ;; page = page num, starting with 1. items = number of items per page.
     ;; e.g.
     ;; {:page 1, :items 10} = items 1-10
     ;; {:page 2, :items 10} = items 11-20
-    (s/optional-key :page)         {:page  su/IntGreaterThanZero
-                                    :items su/IntGreaterThanZero}
+    (s/optional-key :page)            {:page  su/IntGreaterThanZero
+                                       :items su/IntGreaterThanZero}
     ;;
     ;; Various bits of middleware add additonal keys, such as `fields-is-implicit?`, to record bits of state or pass
     ;; info to other pieces of middleware. Everyone else can ignore them.
-    (s/optional-key :joins)        Joins
+    (s/optional-key :joins)           Joins
     ;;
     ;; Info about the columns of the source query. Added in automatically by middleware. This metadata is primarily
     ;; used to let power things like binning when used with Field Literals instead of normal Fields
     (s/optional-key :source-metadata) (s/maybe [SourceQueryMetadata])
     ;;
+    ;; Unions
+    ;; TODO: this assertion needs to ensure it has the same shape as the outer query
+    (s/optional-key :unions)          (s/named
+                                       (su/non-empty [(s/recursive #'MBQLQuery)])
+                                       "All UNIONs must be a valid MBQLQuery")
+    ;;
     ;; Other keys are added by middleware or frontend client for various purposes
-    s/Keyword                      s/Any}
+    s/Keyword                         s/Any}
 
    (s/constrained
     (fn [query]

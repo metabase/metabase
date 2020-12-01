@@ -414,8 +414,8 @@
     ;; Does the driver support percentile calculations (including median)
     :percentile-aggregations
 
-    ;; Does this driver support pivot table pushdown? (executing a pivot table in a driver-specific way)
-    :pivot-table-pushdown})
+    ;; Does this driver support UNION queries?
+    :union})
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in

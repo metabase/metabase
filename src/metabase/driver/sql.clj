@@ -24,7 +24,8 @@
                  :binning
                  :advanced-math-expressions
                  :percentile-aggregations
-                 :regex]]
+                 :regex
+                 :union]]
   (defmethod driver/supports? [:sql feature] [_ _] true))
 
 (doseq [join-feature [:left-join
