@@ -239,6 +239,8 @@ commands:
           name: Skip rest of job if .SUCCESS exists for cache key << parameters.cache-key >>
           command: >
             if [ -f .SUCCESS ]; then
+                # Delete dummy file so any subsequent steps don't see it
+                rm /home/circleci/metabase/metabase/.SUCCESS
                 circleci-agent step halt
             fi
       - steps: << parameters.steps >>
@@ -249,6 +251,9 @@ commands:
           key: run-on-change-<< parameters.cache-key >>
           paths:
             - /home/circleci/metabase/metabase/.SUCCESS
+      - run:
+          name: Delete dummy file .SUCCESS so subsequent steps don't see it
+          command: rm /home/circleci/metabase/metabase/.SUCCESS
 
   create-checksum-file:
     parameters:
@@ -351,7 +356,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - driver-tests-<< parameters.driver >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
+            - driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
       - run:
           name: Skip rest of job if not running << parameters.driver >> tests
           command: >
@@ -411,7 +416,7 @@ jobs:
           find-args: ". -type f -name '*.yaml' -or -name '*.yml'"
       - run-on-change:
           # package.json is included in the cache key in case the yamllint dependency changes
-          cache-key: lint-yaml-{{ checksum "./.YAML-CHECKSUMS" }}-{{ checksum "./package.json" }}
+          cache-key: lint-yaml-{{ checksum ".YAML-CHECKSUMS" }}-{{ checksum "package.json" }}
           steps:
             - run-yarn-command:
                 command-name: Lint YAML files
@@ -429,7 +434,7 @@ jobs:
           filename: .I18N-SCRIPT-CHECKSUMS
           find-args: "bin/i18n -type f"
       - run-on-change:
-          cache-key: verify-i18n-{{ checksum "./.I18N-CHECKSUMS" }}-{{ checksum "./.I18N-SCRIPT-CHECKSUMS" }}
+          cache-key: verify-i18n-{{ checksum ".I18N-CHECKSUMS" }}-{{ checksum ".I18N-SCRIPT-CHECKSUMS" }}
           steps:
             - restore-fe-deps-cache
             - run:
@@ -456,12 +461,17 @@ jobs:
       <<: *Params
     steps:
       - attach-workspace
-      - restore-be-deps-cache
-      - run: lein with-profile +include-all-drivers,+cloverage,+junit,+<< parameters.edition >> deps
-      - save_cache:
-          key: be-deps-v5-{{ checksum "project.clj" }}
-          paths:
-            - /home/circleci/.m2
+      # This step is pretty slow, even with the cache, so only run it if project.clj has changed
+      # TODO -- we should cache the build script deps as well, and driver deps?
+      - run-on-change:
+          cache-key: be-deps-skip-{{ checksum "project.clj" }}
+          steps:
+            - restore-be-deps-cache
+            - run: lein with-profile +include-all-drivers,+cloverage,+junit,+<< parameters.edition >> deps
+            - save_cache:
+                key: be-deps-v5-{{ checksum "project.clj" }}
+                paths:
+                  - /home/circleci/.m2
 
   lein:
     parameters:
@@ -487,7 +497,7 @@ jobs:
           condition: << parameters.skip-key >>
           steps:
             - run-on-change:
-                cache-key: lein-<< parameters.skip-key >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
+                cache-key: lein-<< parameters.skip-key >>-{{ checksum ".BACKEND-CHECKSUMS" }}
                 steps:
                   - restore-be-deps-cache
                   - run-lein-command:
@@ -510,7 +520,7 @@ jobs:
     steps:
       - attach-workspace
       - run-on-change:
-          cache-key: reflection-warnings-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./bin/reflection-linter" }}
+          cache-key: reflection-warnings-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum "bin/reflection-linter" }}
           steps:
             - restore-be-deps-cache
             - run:
@@ -541,22 +551,22 @@ jobs:
       - steps: << parameters.before-steps >>
       - restore_cache:
           keys:
-            - driver-tests-<< parameters.driver >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
+            - driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
       - run:
           name: Skip rest of job if not running << parameters.driver >> tests
           command: >
             ( .circleci/skip-driver-tests.sh << parameters.driver >> && circleci-agent step halt ) || true
       - run:
-          name: Test << parameters.driver >> driver << parameters.description >> if dummy file doesn't exist for key driver-tests-<< parameters.driver >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
+          name: Test << parameters.driver >> driver << parameters.description >> if dummy file doesn't exist for key driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
           environment:
             DRIVERS: h2,<< parameters.driver >>
           command: lein with-profile +ci,+junit,+ee test
           no_output_timeout: << parameters.timeout >>
       - run:
-          name: Create dummy file << parameters.driver >>.success for cache key driver-tests-<< parameters.driver >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
+          name: Create dummy file << parameters.driver >>.success for cache key driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
           command: touch << parameters.driver >>.success
       - save_cache:
-          key: driver-tests-<< parameters.driver >>-{{ checksum "./.BACKEND-CHECKSUMS" }}
+          key: driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
           paths:
             - /home/circleci/metabase/metabase/<< parameters.driver >>.success
       - store_test_results:
@@ -574,7 +584,7 @@ jobs:
     steps:
       - attach-workspace
       - run-on-change:
-          cache-key: load-and-dump-<< parameters.db-type >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./bin/test-load-and-dump.sh" }}
+          cache-key: load-and-dump-<< parameters.db-type >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum "bin/test-load-and-dump.sh" }}
           steps:
             - restore-be-deps-cache
             - run:
@@ -591,7 +601,7 @@ jobs:
     steps:
       - attach-workspace
       - run-on-change:
-          cache-key: build-scripts-{{ checksum "./.BACKEND-CHECKSUMS" }}
+          cache-key: build-scripts-{{ checksum ".BACKEND-CHECKSUMS" }}
           steps:
             - restore-be-deps-cache
             - run:
@@ -624,18 +634,22 @@ jobs:
     executor: node
     steps:
       - attach-workspace
-      - restore-fe-deps-cache
-      - run:
-          name: Run yarn to install deps
-          command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
-          no_output_timeout: 5m
-      - save_cache:
-          key: fe-deps-v5-{{ checksum "yarn.lock" }}
-          paths:
-            - /home/circleci/.yarn
-            - /home/circleci/.yarn-cache
-            - /home/circleci/metabase/metabase/node_modules
-            - /home/circleci/.cache/Cypress
+      # This step is *really* slow, so we can skip it if yarn.lock hasn't changed since last time we ran it
+      - run-on-change:
+          cache-key: fe-deps-skip-{{ checksum "yarn.lock" }}
+          steps:
+            - restore-fe-deps-cache
+            - run:
+                name: Run yarn to install deps
+                command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
+                no_output_timeout: 5m
+            - save_cache:
+                key: fe-deps-v5-{{ checksum "yarn.lock" }}
+                paths:
+                  - /home/circleci/.yarn
+                  - /home/circleci/.yarn-cache
+                  - /home/circleci/metabase/metabase/node_modules
+                  - /home/circleci/.cache/Cypress
 
   fe-linter-eslint:
     executor: node
@@ -668,7 +682,7 @@ jobs:
           filename: ".MARKDOWN-CHECKSUMS"
           find-args: ". -type f -name '*.md'"
       - run-on-change:
-          cache-key: docs-links-{{ checksum "./.MARKDOWN-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+          cache-key: docs-links-{{ checksum ".MARKDOWN-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
           steps:
             - run-yarn-command:
                 command-name: Run docs links checker
@@ -708,25 +722,25 @@ jobs:
       # restore the local maven installation of Metabase which is needed for building drivers
       - restore_cache:
           keys:
-            - metabase-core-{{ checksum "./.BACKEND-CHECKSUMS" }}
+            - metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
       # restore already-built drivers
       - restore_cache:
           keys:
-            - drivers-v5-{{ checksum "./.MODULES-CHECKSUMS" }}-{{ checksum "./.BACKEND-CHECKSUMS" }}
-            - drivers-v5-{{ checksum "./.MODULES-CHECKSUMS" }}
+            - drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+            - drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}
             - drivers-v5-
       - run:
-          name: Build drivers if needed for cache key drivers-v5-{{ checksum "./.MODULES-CHECKSUMS" }}-{{ checksum "./.BACKEND-CHECKSUMS" }}
+          name: Build drivers if needed for cache key drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
           command: ./bin/build-drivers.sh
           no_output_timeout: 5m
       # Cache the maven installation of metabase-core
       - save_cache:
-          key: metabase-core-{{ checksum "./.BACKEND-CHECKSUMS" }}
+          key: metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
           paths:
             - /home/circleci/.m2/repository/metabase-core
       # Cache the built drivers
       - save_cache:
-          key: drivers-v5-{{ checksum "./.MODULES-CHECKSUMS" }}-{{ checksum "./.BACKEND-CHECKSUMS" }}
+          key: drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
           paths:
             - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
             - /home/circleci/metabase/metabase/modules/drivers/druid/target
@@ -746,16 +760,16 @@ jobs:
   build-uberjar-frontend:
     parameters:
       <<: *Params
-    executor: node
+    executor: metabase-ci
     steps:
       - attach-workspace
       - restore-fe-deps-cache
       # restore already-built frontend
       - restore_cache:
           keys:
-            - frontend-v4-<< parameters.edition >>-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+            - frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
       - run:
-          name: Build frontend if needed for cache key frontend-v4-<< parameters.edition >>-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+          name: Build frontend if needed for cache key frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
           environment:
             MB_EDITION: << parameters.edition >>
           command: >
@@ -765,7 +779,7 @@ jobs:
           no_output_timeout: 5m
       # Cache the built frontend
       - save_cache:
-          key: frontend-v4-<< parameters.edition >>-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+          key: frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
           paths:
             - /home/circleci/metabase/metabase/resources/frontend_client
 
@@ -779,7 +793,7 @@ jobs:
       # restore already-built uberjar
       - restore_cache:
           keys:
-            - uberjar-v5-<< parameters.edition >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+            - uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
       - run:
           name: Skip rest of job if uberjar already exists
           command: >
@@ -790,10 +804,10 @@ jobs:
       # restore drivers & FE client build in previous steps.
       - restore_cache:
           keys:
-            - drivers-v5-{{ checksum "./.MODULES-CHECKSUMS" }}-{{ checksum "./.BACKEND-CHECKSUMS" }}
+            - drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
       - restore_cache:
           keys:
-            - frontend-v4-<< parameters.edition >>-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+            - frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
       - run:
           name: Build uberjar
           environment:
@@ -808,7 +822,7 @@ jobs:
           path: /home/circleci/metabase/metabase/resources/version.properties
       # Cache the built uberjar & version.properties
       - save_cache:
-          key: uberjar-v5-<< parameters.edition >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+          key: uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
             - /home/circleci/metabase/metabase/resources/version.properties
@@ -838,14 +852,14 @@ jobs:
       DISPLAY: ""
     steps:
       - run-on-change:
-          cache-key: cypress-<< parameters.edition >>-<< parameters.cypress-group >>-<< parameters.only-single-database >>-<< parameters.test-files-location >>-<< parameters.node >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+          cache-key: cypress-<< parameters.edition >>-<< parameters.cypress-group >>-<< parameters.only-single-database >>-<< parameters.test-files-location >>-<< parameters.node >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
           steps:
             - run-yarn-command:
                 command-name: Run Cypress tests
                 before-steps:
                   - restore_cache:
                       keys:
-                        - uberjar-v5-<< parameters.edition >>-{{ checksum "./.BACKEND-CHECKSUMS" }}-{{ checksum "./.FRONTEND-CHECKSUMS" }}
+                        - uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
                 command: >
                   run test-cypress-no-build <<# parameters.only-single-database >> --testFiles << parameters.test-files-location >> <</ parameters.only-single-database >>
                 after-steps:
@@ -872,7 +886,7 @@ jobs:
           before-steps:
             - restore_cache:
                 keys:
-                  - uberjar-oss-{{ checksum "./.BACKEND-CHECKSUMS" }}
+                  - uberjar-oss-{{ checksum ".BACKEND-CHECKSUMS" }}
             - run:
                 name: Generate version file
                 command: ./bin/build version
