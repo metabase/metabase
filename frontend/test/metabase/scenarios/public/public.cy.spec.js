@@ -144,7 +144,7 @@ describe("scenarios > public", () => {
         });
     });
 
-    it.skip("should allow users to create embedded questions", () => {
+    it("should allow users to create embedded questions", () => {
       cy.request("PUT", "/api/setting/enable-embedding", { value: true });
       cy.request("PUT", "/api/setting/site-url", {
         value: "http://localhost:4000/", // Cypress.config().baseUrl
@@ -167,12 +167,13 @@ describe("scenarios > public", () => {
       });
     });
 
-    it.skip("should allow users to create public dashboards", () => {
+    it("should allow users to create public dashboards", () => {
       cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
 
       cy.visit(`/dashboard/${dashboardId}`);
 
       cy.get(".Icon-share").click();
+      cy.contains("Sharing and embedding").click();
 
       cy.contains("Enable sharing")
         .parent()
@@ -188,7 +189,7 @@ describe("scenarios > public", () => {
         });
     });
 
-    it.skip("should allow users to create embedded dashboards", () => {
+    it("should allow users to create embedded dashboards", () => {
       cy.request("PUT", "/api/setting/enable-embedding", { value: true });
       cy.request("PUT", "/api/setting/site-url", {
         value: "http://localhost:4000/", // Cypress.config().baseUrl
@@ -197,6 +198,7 @@ describe("scenarios > public", () => {
       cy.visit(`/dashboard/${dashboardId}`);
 
       cy.get(".Icon-share").click();
+      cy.contains("Sharing and embedding").click();
 
       cy.contains(".cursor-pointer", "Embed this dashboard")
         .should("not.be.disabled")
@@ -227,7 +229,7 @@ describe("scenarios > public", () => {
         });
 
         // [quarantine]: failing almost consistently in CI
-        it.skip(`should be able to view embedded questions`, () => {
+        it(`should be able to view embedded questions`, () => {
           cy.visit(questionEmbedUrl);
           cy.contains(COUNT_ALL);
 
@@ -238,7 +240,7 @@ describe("scenarios > public", () => {
           cy.contains(COUNT_DOOHICKEY);
         });
 
-        it.skip(`should be able to view public dashboards`, () => {
+        it(`should be able to view public dashboards`, () => {
           cy.visit(dashboardPublicLink);
           cy.contains(COUNT_ALL);
 
@@ -249,7 +251,7 @@ describe("scenarios > public", () => {
           cy.contains(COUNT_DOOHICKEY);
         });
 
-        it.skip(`should be able to view embedded dashboards`, () => {
+        it(`should be able to view embedded dashboards`, () => {
           cy.visit(dashboardEmbedUrl);
           cy.contains(COUNT_ALL);
 
