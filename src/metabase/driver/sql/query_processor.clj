@@ -210,6 +210,16 @@
   (fn [driver seconds-or-milliseconds _] [(driver/dispatch-on-initialized-driver driver) seconds-or-milliseconds])
   :hierarchy #'driver/hierarchy)
 
+(defmulti cast-temporal-string
+  "Cast a string representing "
+  {:arglists '([driver special_type expr]), :added "0.38.0"}
+  (fn [driver special_type _] [(driver/dispatch-on-initialized-driver driver) special_type])
+  :hierarchy #'driver/hierarchy)
+
+(defmethod cast-temporal-string :default
+  [driver special_type _expr]
+  (throw (Exception. (tru "Driver {0} does not support {1}" driver special_type))))
+
 (defmethod unix-timestamp->honeysql [:sql :milliseconds]
   [driver _ expr]
   (unix-timestamp->honeysql driver :seconds (hx// expr 1000)))
@@ -263,7 +273,7 @@
   (match [(:base_type field) (:special_type field)]
     [_ (:isa? :type/UNIXTimestampSeconds)]      (unix-timestamp->honeysql driver :seconds      field-identifier)
     [_ (:isa? :type/UNIXTimestampMilliseconds)] (unix-timestamp->honeysql driver :milliseconds field-identifier)
-    [:type/Text (:isa? :type/TextDate)]  (hx/cast :datetime field-identifier)
+    [:type/Text (:isa? :type/TemporalString)]   (cast-temporal-string driver (:special_type field) field-identifier)
     :else field-identifier))
 
 ;; default implmentation is a no-op; other drivers can override it as needed

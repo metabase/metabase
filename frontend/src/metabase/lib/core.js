@@ -224,8 +224,18 @@ export const field_special_types = [
     section: t`Date and Time`,
   },
   {
-    id: TYPE.TextDate,
-    name: t`Text as a timestamp`,
+    id: TYPE.ISO8601DateTimeString,
+    name: t`Text as a ISO-8601 timestamp`,
+    section: t`Date and Time`,
+  },
+  {
+    id: TYPE.ISO8601TimeString,
+    name: t`Text as a ISO-8601 time`,
+    section: t`Date and Time`,
+  },
+  {
+    id: TYPE.ISO8601DateString,
+    name: t`Text as a ISO-8601 date`,
     section: t`Date and Time`,
   },
   {

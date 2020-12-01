@@ -126,6 +126,10 @@
   [_ _ expr]
   (hsql/call :to_timestamp expr))
 
+(defmethod sql.qp/cast-temporal-string [:postgres :type/ISO8601DateTimeString]
+  [_driver _special_type expr]
+  (hx/->timestamp expr))
+
 (defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
 (defn- extract    [unit expr] (hsql/call :extract    unit              (hx/->timestamp expr)))
 
