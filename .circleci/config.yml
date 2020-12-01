@@ -236,7 +236,7 @@ commands:
             - run-on-change-<< parameters.cache-key >>
       - run:
           name: Skip rest of job if .SUCCESS exists for cache key << parameters.cache-key >>
-          command: >
+          command: |
             if [ -f .SUCCESS ]; then
                 # Delete dummy file so any subsequent steps don't see it
                 rm /home/circleci/metabase/metabase/.SUCCESS
@@ -263,9 +263,9 @@ commands:
     steps:
       - run:
           name: Create << parameters.filename >> checksum file
-          command: >
+          command: |
             for file in `find << parameters.find-args >> | sort`; do
-                echo `md5sum "$file"` >> "<< parameters.filename >>";
+                echo `md5sum "$file"` >> "<< parameters.filename >>"
             done
             if [ ! -f "<< parameters.filename >>" ]; then
                 echo 'Error: no matching files. Did you remember to attach the workspace?'
@@ -290,7 +290,7 @@ commands:
       - steps: << parameters.before-steps >>
       - run:
           name: lein << parameters.lein-command >>
-          command: >
+          command: |
             lein with-profile +ci,+<< parameters.edition >> << parameters.lein-command >>
           no_output_timeout: 5m
       - steps: << parameters.after-steps >>
@@ -345,7 +345,7 @@ commands:
     steps:
       - run:
           name: Wait for port << parameters.port >> to be ready
-          command: >
+          command: |
             while ! nc -z localhost << parameters.port >>; do sleep 0.1; done
           no_output_timeout: 5m
 
@@ -363,7 +363,7 @@ commands:
             - driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
       - run:
           name: Skip rest of job if not running << parameters.driver >> tests
-          command: >
+          command: |
             if [ .circleci/skip-driver-tests.sh << parameters.driver >> ]; then
                 circleci-agent step halt
             fi
@@ -372,7 +372,7 @@ commands:
           command: mkdir /home/circleci/metabase/metabase/plugins
       - run:
           name: Download JDBC driver JAR << parameters.dest >>
-          command: >
+          command: |
             wget --output-document=plugins/<< parameters.dest >> ${<< parameters.source >>}
           no_output_timeout: 5m
 
@@ -559,7 +559,7 @@ jobs:
             - driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
       - run:
           name: Skip rest of job if not running << parameters.driver >> tests
-          command: >
+          command: |
             ( .circleci/skip-driver-tests.sh << parameters.driver >> && circleci-agent step halt ) || true
       - run:
           name: Test << parameters.driver >> driver << parameters.description >> if dummy file doesn't exist for key driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
@@ -611,22 +611,22 @@ jobs:
             - restore-be-deps-cache
             - run:
                 name: Run metabuild-common build script tests
-                command: >
+                command: |
                   cd /home/circleci/metabase/metabase/bin/common && clojure -M:test
                 no_output_timeout: 5m
             - run:
                 name: Run build-drivers build script tests
-                command: >
+                command: |
                   cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
                 no_output_timeout: 5m
             - run:
                 name: Run build-mb build script tests
-                command: >
+                command: |
                   cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
                 no_output_timeout: 5m
             - run:
                 name: Run release script tests
-                command: >
+                command: |
                   cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
                 no_output_timeout: 5m
 
@@ -778,7 +778,7 @@ jobs:
           name: Build frontend if needed for cache key frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
           environment:
             MB_EDITION: << parameters.edition >>
-          command: >
+          command: |
             if [ ! -f './resources/frontend_client/index.html' ]; then
                 ./bin/build version frontend;
             fi
@@ -802,7 +802,7 @@ jobs:
             - uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
       - run:
           name: Skip rest of job if uberjar already exists
-          command: >
+          command: |
              if [ -f './target/uberjar/metabase.jar' ]; then
                  circleci-agent step halt
              fi
@@ -867,7 +867,7 @@ jobs:
                   - restore_cache:
                       keys:
                         - uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
-                command: >
+                command: |
                   run test-cypress-no-build <<# parameters.only-single-database >> --testFiles << parameters.test-files-location >> <</ parameters.only-single-database >>
                 after-steps:
                   - store_artifacts:
