@@ -1,6 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
+import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
 import Icon from "metabase/components/Icon";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
@@ -11,6 +12,7 @@ import Tooltip from "metabase/components/Tooltip";
 export const getDashboardActions = (
   self,
   {
+    dashboard,
     isEditing = false,
     isEmpty = false,
     isFullscreen,
@@ -53,16 +55,13 @@ export const getDashboardActions = (
             </a>
           </div>
           <div>
-            <a
-              className={extraButtonClassNames}
-              data-metabase-event={"Dashboard;Sharing"}
-              onClick={() => {
-                self.refs.popover.close();
-                onEmbeddingClick();
-              }}
-            >
-              {t`Sharing and embedding`}
-            </a>
+            <DashboardSharingEmbeddingModal
+              additionalClickActions={ () => self.refs.popover.close() }
+              dashboard={dashboard}
+              linkClassNames={extraButtonClassNames}
+              linkText={t`Sharing and embedding`}
+              key="dashboard-embed"
+            />
           </div>
         </div>
       </PopoverWithTrigger>,
