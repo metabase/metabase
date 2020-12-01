@@ -723,7 +723,7 @@ jobs:
           before-steps:
             - restore_cache:
                 keys:
-                  - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}
+                  - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
       - store_artifacts:
           path: /home/circleci/metabase/metabase/cypress
       - store_test_results:
