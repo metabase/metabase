@@ -671,11 +671,11 @@ jobs:
             - drivers-v5-{{ checksum "./modules-checksums.txt" }}-{{ checksum "./backend-checksums.txt" }}
       - restore_cache:
           keys:
-            - frontend-v4-{{ checksum "./frontend-checksums.txt" }}
+            - frontend-v4-<< parameters.edition >>-{{ checksum "./frontend-checksums.txt" }}
       # restore already-built uberjar
       - restore_cache:
           keys:
-            - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
+            - uberjar-v5-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
       - run:
           name: Build uberjar if needed
           environment:
@@ -693,7 +693,7 @@ jobs:
           path: /home/circleci/metabase/metabase/resources/version.properties
       # Cache the built uberjar & version.properties
       - save_cache:
-          key: uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
+          key: uberjar-v5-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
             - /home/circleci/metabase/metabase/resources/version.properties
@@ -731,7 +731,7 @@ jobs:
           before-steps:
             - restore_cache:
                 keys:
-                  - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
+                  - uberjar-v5-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
       - store_artifacts:
           path: /home/circleci/metabase/metabase/cypress
       - store_test_results:
