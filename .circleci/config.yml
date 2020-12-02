@@ -383,18 +383,7 @@ commands:
         type: string
       dest:
         type: string
-      driver:
-        type: string
     steps:
-      - restore_cache:
-          keys:
-            - driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
-      - run:
-          name: Skip rest of job if not running << parameters.driver >> tests
-          command: |
-            if [ .circleci/skip-driver-tests.sh << parameters.driver >> ]; then
-                circleci-agent step halt
-            fi
       - run:
           name: Make plugins dir
           command: mkdir /home/circleci/metabase/metabase/plugins
@@ -1112,7 +1101,6 @@ workflows:
             - fetch-jdbc-driver:
                 source: ORACLE_JDBC_JAR
                 dest: ojdbc8.jar
-                driver: oracle
           driver: oracle
 
       - test-driver:
@@ -1187,7 +1175,6 @@ workflows:
             - fetch-jdbc-driver:
                 source: VERTICA_JDBC_JAR
                 dest: vertica-jdbc-7.1.2-0.jar
-                driver: vertica
           driver: vertica
 
       - test-migrate-from-h2:
