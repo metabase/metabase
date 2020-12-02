@@ -64,7 +64,7 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`Email Address for Help Requests`,
         type: "string",
       },
-      
+
       {
         key: "anon-tracking-enabled",
         display_name: t`Anonymous Tracking`,
