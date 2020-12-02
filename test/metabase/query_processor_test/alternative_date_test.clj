@@ -1,5 +1,6 @@
-(ns metabase.query-processor-test.unix-timestamp-test
-  "Tests for UNIX timestamp support."
+(ns metabase.query-processor-test.alternative-date-test
+  "Tests for columns that mimic dates: integral types as UNIX timestamps and string columns as ISO8601DateTimeString and
+  related types."
   (:require [clojure.test :refer :all]
             [metabase
              [driver :as driver]
@@ -100,3 +101,18 @@
             (is (= [[41]]
                    (mt/formatted-rows [int]
                      (qp/process-query query))))))))))
+
+
+;;; :type/ISO8601DateTimeString tests
+
+(deftest queryable-as-dates
+  (testing "when text fields are marked as special_type :type/ISO8601DateTimeString then they work as dates"
+    (mt/test-drivers (mt/normal-drivers)
+      (is (= [[1 "foo" #t "2004-10-19T10:23:54" #t "2004-10-19" #t "10:23:54"]
+              [2 "bar" #t "2008-10-19T10:23:54" #t "2008-10-19" #t "10:23:54"]
+              [3 "baz" #t "2012-10-19T10:23:54" #t "2012-10-19" #t "10:23:54"]]
+             ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
+             (mt/rows (mt/dataset string-times
+                        (qp/process-query
+                          (assoc (mt/mbql-query times)
+                                 :middleware {:format-rows? false})))))))))

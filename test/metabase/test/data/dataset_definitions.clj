@@ -22,6 +22,10 @@
 (tx/defdataset-edn sad-toucan-incidents
   "Times when the Toucan cried. Timestamps are UNIX timestamps in milliseconds.")
 
+(tx/defdataset-edn string-times
+  "Fields ds, d, and t which are strings but with special types ISO8601DateTimestring, ISO8601DateString, and
+  ISO8601TimeString respectively.")
+
 (tx/defdataset-edn tupac-sightings
   "Places, times, and circumstances where Tupac was sighted. Sighting timestamps are UNIX Timestamps in seconds.")
 

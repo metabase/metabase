@@ -1,0 +1,14 @@
+[["times" [{:field-name "name"
+             :base-type :type/Text}
+            {:field-name "ts"
+             :base-type :type/Text
+             :special-type :type/ISO8601DateTimeString}
+            {:field-name "d"
+             :base-type :type/Text
+             :special-type :type/ISO8601DateString}
+            {:field-name "t"
+             :base-type :type/Text
+             :special-type :type/ISO8601TimeString}]
+  [["foo" "2004-10-19 10:23:54" "2004-10-19" "10:23:54"]
+   ["bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
+   ["baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]]]
