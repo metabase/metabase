@@ -281,7 +281,7 @@ commands:
           name: "Force test run (delete dummy file .SUCCESS) if commit message includes [ci noskip]"
           command: |
             if [[ `cat commit.txt` == *"[ci noskip]"* ]]; then
-                echo 'Commit message includes [ci noskip]'
+                echo 'Commit message includes [ci noskip] -- forcing test run (delete .SUCCESS)'
                 rm -f .SUCCESS
             else
                 echo 'Commit message does not include [ci noskip]'
@@ -341,7 +341,6 @@ commands:
         default: []
       <<: *Params
     steps:
-      - attach-workspace
       - restore-be-deps-cache
       - steps: << parameters.before-steps >>
       - run:
@@ -558,7 +557,6 @@ jobs:
             - run-on-change:
                 cache-key: lein-<< parameters.skip-key >>-{{ checksum ".BACKEND-CHECKSUMS" }}
                 steps:
-                  - restore-be-deps-cache
                   - run-lein-command:
                       before-steps: << parameters.before-steps >>
                       lein-command: << parameters.lein-command >>
@@ -567,7 +565,6 @@ jobs:
       - unless:
           condition: << parameters.skip-key >>
           steps:
-            - restore-be-deps-cache
             - run-lein-command:
                 before-steps: << parameters.before-steps >>
                 lein-command: << parameters.lein-command >>
