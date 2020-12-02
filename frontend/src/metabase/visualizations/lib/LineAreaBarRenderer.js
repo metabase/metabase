@@ -469,10 +469,10 @@ function applyChartLineBarSettings(
         .style("fill", "transparent");
       chart
         .selectAll("svg g g.chart-body g.stack._1 rect.bar")
-        .style("fill", "red");
+        .style("fill", settings["waterfall.decrease_color"]);
       chart
         .selectAll("svg g g.chart-body g.stack._2 rect.bar")
-        .style("fill", "green");
+        .style("fill", settings["waterfall.increase_color"]);
     });
   }
 }
