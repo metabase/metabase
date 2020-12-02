@@ -324,3 +324,15 @@
       (is (thrown?
            clojure.lang.ExceptionInfo
            (values/query->params-map query))))))
+
+(deftest dont-be-too-strict-test
+  (testing "values-for-tag should allow unknown keys (used only by FE) (#13868)"
+    (is (= "2"
+           (#'values/value-for-tag
+            {:name                "id"
+             :display-name        "ID"
+             :type                :text
+             :required            true
+             :default             "100"
+             :filteringParameters "222b245f"}
+            [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}])))))
