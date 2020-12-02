@@ -222,11 +222,28 @@ commands:
           keys:
             - fe-deps-v5-{{ checksum "yarn.lock" }}
 
-  # Only run steps if changes have happened since the last time this was ran successfully (determined by the cache key)
-  # Cache key should be unique for job and relevant source files -- use a checksum.
+  # run-on-change lets you only run steps if changes have happened to relevant files since the last time it was run
+  # successfully. Uses a cache key to record successful runs -- cache key should be unique for job and relevant source
+  # files -- use a checksum! It works like this:
   #
-  # Important! If this step is skipped because no changes have happened, the entire JOB will halt with a success
-  # status -- no steps that happen AFTER run-on-change will be ran. Keep this in mind!
+  # 1. Calculate a cache key using a checksum of relevant files for the step in question, e.g. a backend linter step
+  #    might use a checksum of all .clj files
+  #
+  # 2. When the step completes successfully, create a dummy file .SUCCESS and cache it with that cache key.
+  #
+  # 3. On subsequent runs:
+  #
+  #    a. Attempt to restore the cache using an exact match for this cache key
+  #
+  #    b. If we have a cache entry for that key, .SUCCESS will get restored
+  #
+  #    c. If .SUCCESS is present, we can skip the rest of the job, including potentially slow steps like restoring
+  #       dependency caches or the like. This logs a link to the last successful (not skipped) run of the job
+  #
+  #       Important! If this step is skipped because no changes have happened, the entire JOB will halt with a success
+  #       status -- no steps that happen AFTER run-on-change will be ran. Keep this in mind!
+  #
+  #   d. If .SUCCESS is not present, proceed as normal, and create and cache .SUCCESS if the job succeeds
   run-on-change:
     parameters:
       cache-key:
@@ -258,6 +275,8 @@ commands:
           name: Delete dummy file .SUCCESS so subsequent steps don't see it
           command: rm /home/circleci/metabase/metabase/.SUCCESS
 
+  # Creates a file that contains checksums for all the files found using the find command with supplied arguments.
+  # You can use a checksum of the checksum file for cache keys including run-on-change cache-keys.
   create-checksum-file:
     parameters:
       filename:
@@ -313,6 +332,11 @@ commands:
       after-steps:
         type: steps
         default: []
+      # If skip-key is passed, run this command using run-on-change; skip-key is used as part of the cache key used by
+      # it (.FRONTEND-CHECKSUMS is automatically used as well). It should be something unique for the job, e.g.
+      # "linter" or "unit-tests"
+      #
+      # If skip-key is not passed, the step will always be ran
       skip-key:
         type: string
         default: ""
@@ -397,7 +421,7 @@ jobs:
       # .FRONTEND-CHECKSUMS is every JavaScript source file as well as dependency files like yarn.lock
       - create-checksum-file:
           filename: .FRONTEND-CHECKSUMS
-          find-args: ". -type f -name '*.js' -or -name '*.jsx' -or -name yarn.lock -or -name webpack.config.js -or -name package.json"
+          find-args: ". -type f -name '*.js' -or -name '*.jsx' -or -name '*.json' -or -name yarn.lock"
       # .MODULES-CHECKSUMS is every Clojure source file in the modules/ directory as well as plugin manifests
       - create-checksum-file:
           filename: .MODULES-CHECKSUMS
@@ -495,6 +519,9 @@ jobs:
       after-steps:
         type: steps
         default: []
+      # If skip-key is present, this job is ran with run-on-change which means it will be skipped if nothing has
+      # changed. It works the same way as the skip-key command used for run-yarn-command: see comments there for more
+      # details
       skip-key:
         type: string
         default: ""
@@ -556,8 +583,10 @@ jobs:
     executor: << parameters.e >>
     steps:
       - attach-workspace
-      - restore-be-deps-cache
       - steps: << parameters.before-steps >>
+      # Driver tests are skipped when there are no changes, similar to the run-on-change stuff used everywhere else,
+      # but the logic is a bit more complicated. Instead of .SUCCESS the file is named <driver>.success;
+      # skip-driver-tests.sh determines the rest of the logic. Refer to that for details
       - restore_cache:
           keys:
             - driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
@@ -565,6 +594,7 @@ jobs:
           name: Skip rest of job if not running << parameters.driver >> tests (cache key = driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }})
           command: |
             ( .circleci/skip-driver-tests.sh << parameters.driver >> && circleci-agent step halt ) || true
+      - restore-be-deps-cache
       - run:
           name: Test << parameters.driver >> driver << parameters.description >>
           environment:
@@ -580,7 +610,6 @@ jobs:
             - /home/circleci/metabase/metabase/<< parameters.driver >>.success
       - store_test_results:
           path: /home/circleci/metabase/metabase/target/junit
-
 
   test-migrate-from-h2:
     parameters:
