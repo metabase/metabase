@@ -429,7 +429,7 @@ jobs:
           steps:
             - run-yarn-command:
                 command-name: Lint YAML files
-                command: lint-yaml `find resources -name '*.yaml'`
+                command: lint-yaml `find resources -name '*.yaml' -or -name '*.yml'`
 
   verify-i18n-files:
     executor: metabase-ci
