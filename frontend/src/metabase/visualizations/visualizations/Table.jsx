@@ -386,6 +386,7 @@ export default class Table extends Component {
     } = this.props;
     const { data } = this.state;
     const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
+    const limit = getIn(card, ["dataset_query", "query", "limit"]) || null;
     const isPivoted = settings["table.pivot"];
     const isColumnsDisabled =
       (settings["table.columns"] || []).filter(f => f.enabled).length < 1;
@@ -420,6 +421,7 @@ export default class Table extends Component {
           data={data}
           isPivoted={isPivoted}
           sort={sort}
+          limit={limit}
           getColumnTitle={this.getColumnTitle}
         />
       );

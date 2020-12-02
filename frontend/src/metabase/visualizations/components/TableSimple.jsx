@@ -37,6 +37,7 @@ type Props = VisualizationProps & {
   isPivoted: boolean,
   getColumnTitle: number => string,
   getExtraDataForClick?: Function,
+  limit?: number,
 };
 
 type State = {
@@ -113,7 +114,9 @@ export default class TableSimple extends Component {
       isPivoted,
       settings,
       getColumnTitle,
+      limit,
     } = this.props;
+
     const { rows, cols } = data;
     const getCellBackgroundColor = settings["table._cell_background_getter"];
 
@@ -135,6 +138,13 @@ export default class TableSimple extends Component {
       if (sortDescending) {
         rowIndexes.reverse();
       }
+    }
+
+    let paginateMessage;
+    if (!limit || limit >= 2000) {
+      paginateMessage = t`Rows ${start + 1}-${end + 1} of first ${rows.length}`;
+    } else {
+      paginateMessage = t`Rows ${start + 1}-${end + 1} of ${rows.length}`;
     }
 
     return (
@@ -281,9 +291,7 @@ export default class TableSimple extends Component {
             ref="footer"
             className="p1 flex flex-no-shrink flex-align-right fullscreen-normal-text fullscreen-night-text"
           >
-            <span className="text-bold">{t`Rows ${start + 1}-${end + 1} of ${
-              rows.length
-            }`}</span>
+            <span className="text-bold">{paginateMessage}</span>
             <span
               className={cx("text-brand-hover px1 cursor-pointer", {
                 disabled: start === 0,
