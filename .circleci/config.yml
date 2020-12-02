@@ -213,21 +213,21 @@ commands:
   restore-be-deps-cache:
     steps:
       - restore_cache:
-          keys:
-            - be-deps-v5-{{ checksum "project.clj" }}
+          name: Restore cached backend dependencies
+          key: be-deps-v5-{{ checksum "project.clj" }}
 
   restore-fe-deps-cache:
     steps:
       - restore_cache:
-          keys:
-            - fe-deps-v5-{{ checksum "yarn.lock" }}
+          name: Restore cached frontend dependencies
+          key: fe-deps-v5-{{ checksum "yarn.lock" }}
 
   # run-on-change lets you only run steps if changes have happened to relevant files since the last time it was run
   # successfully. Uses a cache key to record successful runs -- cache key should be unique for job and relevant source
   # files -- use a checksum! It works like this:
   #
   # 1. Calculate a cache key using a checksum of relevant files for the step in question, e.g. a backend linter step
-  #    might use a checksum of all .clj files
+  #    might use a checksum of all .clj files.
   #
   # 2. When the step completes successfully, create a dummy file .SUCCESS and cache it with that cache key.
   #
@@ -237,37 +237,87 @@ commands:
   #
   #    b. If we have a cache entry for that key, .SUCCESS will get restored
   #
-  #    c. If .SUCCESS is present, we can skip the rest of the job, including potentially slow steps like restoring
+  #    c. If this command has the skip-if-commit-message-includes-ci-quick option enabled, and commit message includes
+  #       [ci quick], create a dummy file .SUCCESS if not already present
+  #
+  #    d. If commit message includes [ci noskip], delete .SUCCESS so the job will be forced to run.
+  #
+  #    e. If command has the always-run-on-master-or-release option enabled, and this is a commit on the master or a
+  #       release-* branch, delete .SUCCESS so the job will be forced to run.
+  #
+  #    f. If .SUCCESS is present, we can skip the rest of the job, including potentially slow steps like restoring
   #       dependency caches or the like. This logs a link to the last successful (not skipped) run of the job
   #
   #       Important! If this step is skipped because no changes have happened, the entire JOB will halt with a success
   #       status -- no steps that happen AFTER run-on-change will be ran. Keep this in mind!
   #
-  #   d. If .SUCCESS is not present, proceed as normal, and create and cache .SUCCESS if the job succeeds
+  #   g. If .SUCCESS is not present, proceed as normal, and create and cache .SUCCESS if the job succeeds
   run-on-change:
     parameters:
       cache-key:
         type: string
       steps:
         type: steps
+      # Whether to always run the job no matter what on master or release-* branches.
+      always-run-on-master-or-release:
+        type: boolean
+        default: false
+      # Whether to skip the rest of the job if commit message includes [ci quick]
+      skip-if-commit-message-includes-ci-quick:
+        type: boolean
+        default: false
     steps:
       - restore_cache:
-          keys:
-            - run-on-change-<< parameters.cache-key >>
+          name: Restore dummy file .SUCCESS if it exists for cache key << parameters.cache-key >>
+          key: run-on-change-<< parameters.cache-key >>
+      - when:
+          condition: << parameters.skip-if-commit-message-includes-ci-quick >>
+          steps:
+            - run:
+                name: "Create dummy file .SUCCESS if commit message contains [ci quick]"
+                command: |
+                  if [[ `cat commit.txt` == *"[ci quick]"* ]]; then
+                      echo 'Commit message includes [ci quick]. Creating dummy file .SUCCESS'
+                      touch .SUCCESS
+                  else
+                      echo 'Commit message does not include [ci quick]'
+                  fi
       - run:
-          name: Skip rest of job if .SUCCESS exists for cache key << parameters.cache-key >>
+          name: "Force test run (delete dummy file .SUCCESS) if commit message includes [ci noskip]"
+          command: |
+            if [[ `cat commit.txt` == *"[ci noskip]"* ]]; then
+                echo 'Commit message includes [ci noskip]'
+                rm -f .SUCCESS
+            else
+                echo 'Commit message does not include [ci noskip]'
+            fi
+      - when:
+          condition: << parameters.always-run-on-master-or-release >>
+          steps:
+            - run:
+                name: "Force test run (delete dummy file .SUCCESS) if this is a master or release-* branch"
+                command: |
+                  if [[ "$CIRCLE_BRANCH" =~ ^master|release-.+$ ]]; then
+                      echo "branch '$CIRCLE_BRANCH' is a master or release branch."
+                      rm -f .SUCCESS
+                  else
+                      echo "branch '$CIRCLE_BRANCH' is NOT a master or release branch"
+                  fi
+      - run:
+          name: Skip rest of job if .SUCCESS exists
           command: |
             if [ -f .SUCCESS ]; then
-                echo "Job previously succeeded for cache key << parameters.cache-key >>"
-                echo "Link to last successful run: $(cat .SUCCESS)"
+                echo '.SUCCESS is present: skipping rest of job.'
+                echo "Link to last successful run (if available): $(cat .SUCCESS)"
                 circleci-agent step halt
             fi
       - steps: << parameters.steps >>
       - run:
-          name: Create dummy file .SUCCESS for cache key << parameters.cache-key >>
+          name: Create dummy file .SUCCESS
           command: |
             echo "$CIRCLE_BUILD_URL" > .SUCCESS
       - save_cache:
+          name: Persist dummy file .SUCCESS to cache with key << parameters.cache-key >>
           key: run-on-change-<< parameters.cache-key >>
           paths:
             - /home/circleci/metabase/metabase/.SUCCESS
@@ -491,6 +541,7 @@ jobs:
             - restore-be-deps-cache
             - run: lein with-profile +include-all-drivers,+cloverage,+junit,+<< parameters.edition >> deps
             - save_cache:
+                name: Cache backend dependencies
                 key: be-deps-v5-{{ checksum "project.clj" }}
                 paths:
                   - /home/circleci/.m2
@@ -572,33 +623,21 @@ jobs:
     executor: << parameters.e >>
     steps:
       - attach-workspace
-      # Driver tests are skipped when there are no changes, similar to the run-on-change stuff used everywhere else,
-      # but the logic is a bit more complicated. Instead of .SUCCESS the file is named <driver>.success;
-      # skip-driver-tests.sh determines the rest of the logic. Refer to that for details
-      - restore_cache:
-          keys:
-            - driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
-      - run:
-          name: Skip rest of job if not running << parameters.driver >> tests (cache key = driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }})
-          command: |
-            ( .circleci/skip-driver-tests.sh << parameters.driver >> && circleci-agent step halt ) || true
-      - restore-be-deps-cache
-      - steps: << parameters.before-steps >>
-      - run:
-          name: Test << parameters.driver >> driver << parameters.description >>
-          environment:
-            DRIVERS: h2,<< parameters.driver >>
-          command: lein with-profile +ci,+junit,+ee test
-          no_output_timeout: << parameters.timeout >>
-      - run:
-          name: Create dummy file << parameters.driver >>.success for cache key driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
-          command: touch << parameters.driver >>.success
-      - save_cache:
-          key: driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
-          paths:
-            - /home/circleci/metabase/metabase/<< parameters.driver >>.success
-      - store_test_results:
-          path: /home/circleci/metabase/metabase/target/junit
+      - run-on-change:
+          cache-key: driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
+          always-run-on-master-or-release: true
+          skip-if-commit-message-includes-ci-quick: true
+          steps:
+            - restore-be-deps-cache
+            - steps: << parameters.before-steps >>
+            - run:
+                name: Test << parameters.driver >> driver << parameters.description >>
+                environment:
+                  DRIVERS: h2,<< parameters.driver >>
+                command: lein with-profile +ci,+junit,+ee test
+                no_output_timeout: << parameters.timeout >>
+            - store_test_results:
+                path: /home/circleci/metabase/metabase/target/junit
 
   test-migrate-from-h2:
     parameters:
@@ -671,6 +710,7 @@ jobs:
                 command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
                 no_output_timeout: 5m
             - save_cache:
+                name: Cache frontend dependencies
                 key: fe-deps-v5-{{ checksum "yarn.lock" }}
                 paths:
                   - /home/circleci/.yarn
@@ -756,13 +796,12 @@ jobs:
           # need to rebuild them.
           cache-key: drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
           steps:
-            - restore-be-deps-cache
-            # restore the local maven installation of Metabase which is needed for building drivers
+            - restore-be-deps-cache            #
             - restore_cache:
-                keys:
-                  - metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
-            # restore already-built drivers
+                name: Restore cached local Maven installation of metabase-core
+                key: metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
             - restore_cache:
+                name: Restore cached drivers uberjars from previous runs
                 keys:
                   - drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
                   - drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}
@@ -771,13 +810,13 @@ jobs:
                 name: Build drivers if needed for cache key drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
                 command: ./bin/build-drivers.sh
                 no_output_timeout: 5m
-            # Cache the maven installation of metabase-core
             - save_cache:
+                name: Cache local Maven installation of metabase-core
                 key: metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
                 paths:
                   - /home/circleci/.m2/repository/metabase-core
-            # Cache the built drivers
             - save_cache:
+                name: Cache the built drivers
                 key: drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
                 paths:
                   - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
@@ -811,8 +850,8 @@ jobs:
                   MB_EDITION: << parameters.edition >>
                 command: ./bin/build version frontend
                 no_output_timeout: 5m
-            # Cache the built frontend
             - save_cache:
+                name: Cache the built frontend
                 key: frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
                 paths:
                   - /home/circleci/metabase/metabase/resources/frontend_client
@@ -827,10 +866,9 @@ jobs:
       - run-on-change:
           cache-key: uberjar-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
           steps:
-            # restore already-built uberjar
             - restore_cache:
-                keys:
-                  - uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
+                name: Restore cached uberjar from previous runs
+                key: uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
             - run:
                 name: Skip rest of job if uberjar already exists
                 command: |
@@ -838,13 +876,12 @@ jobs:
                        circleci-agent step halt
                    fi
             - restore-be-deps-cache
-            # restore drivers & FE client build in previous steps.
             - restore_cache:
-                keys:
-                  - drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+                name: Restore cached drivers built by previous step
+                key: drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
             - restore_cache:
-                keys:
-                  - frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
+                name: Restore cached FE built by previous step
+                key: frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
             - run:
                 name: Build uberjar
                 environment:
@@ -857,8 +894,8 @@ jobs:
                 path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
             - store_artifacts:
                 path: /home/circleci/metabase/metabase/resources/version.properties
-            # Cache the built uberjar & version.properties
             - save_cache:
+                name: Cache the built uberjar & version.properties
                 key: uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
                 paths:
                   - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
@@ -896,8 +933,8 @@ jobs:
                 command-name: Run Cypress tests
                 before-steps:
                   - restore_cache:
-                      keys:
-                        - uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
+                      name: Restore cached uberjar built in previous step
+                      key: uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
                 command: |
                   run test-cypress-no-build <<# parameters.only-single-database >> --testFiles << parameters.test-files-location >> <</ parameters.only-single-database >>
                 after-steps:
@@ -923,8 +960,8 @@ jobs:
           command: run test-cypress-smoketest
           before-steps:
             - restore_cache:
-                keys:
-                  - uberjar-oss-{{ checksum ".BACKEND-CHECKSUMS" }}
+                name: Restore cached uberjar built in previous step
+                key: uberjar-oss-{{ checksum ".BACKEND-CHECKSUMS" }}
             - run:
                 name: Generate version file
                 command: ./bin/build version
