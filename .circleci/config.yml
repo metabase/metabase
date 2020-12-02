@@ -583,7 +583,6 @@ jobs:
     executor: << parameters.e >>
     steps:
       - attach-workspace
-      - steps: << parameters.before-steps >>
       # Driver tests are skipped when there are no changes, similar to the run-on-change stuff used everywhere else,
       # but the logic is a bit more complicated. Instead of .SUCCESS the file is named <driver>.success;
       # skip-driver-tests.sh determines the rest of the logic. Refer to that for details
@@ -595,6 +594,7 @@ jobs:
           command: |
             ( .circleci/skip-driver-tests.sh << parameters.driver >> && circleci-agent step halt ) || true
       - restore-be-deps-cache
+      - steps: << parameters.before-steps >>
       - run:
           name: Test << parameters.driver >> driver << parameters.description >>
           environment:
