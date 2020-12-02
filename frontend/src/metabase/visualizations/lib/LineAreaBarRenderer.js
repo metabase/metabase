@@ -512,6 +512,9 @@ function setChartColor({ series, settings, chartType }, chart, groups, index) {
     chart.on("pretransition", function(chart) {
       chart.selectAll("g.stack._0 rect.bar").style("fill", "transparent");
       chart
+        .selectAll("g.stack._3 rect.bar")
+        .style("fill", settings["waterfall.total_color"]);
+      chart
         .selectAll("g.stack._1 rect.bar")
         .style("fill", settings["waterfall.decrease_color"]);
       chart
