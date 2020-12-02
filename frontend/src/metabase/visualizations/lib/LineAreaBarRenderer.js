@@ -459,22 +459,6 @@ function applyChartLineBarSettings(
         forceCenterBar || settings["graph.x_axis.scale"] !== "ordinal",
       );
   }
-
-  // FIXME scoped the chart-body
-  // FIXME should this be done in PostRender.js?
-  if (chartType === "waterfall") {
-    chart.on("pretransition", function(chart) {
-      chart
-        .selectAll("svg g g.chart-body g.stack._0 rect.bar")
-        .style("fill", "transparent");
-      chart
-        .selectAll("svg g g.chart-body g.stack._1 rect.bar")
-        .style("fill", settings["waterfall.decrease_color"]);
-      chart
-        .selectAll("svg g g.chart-body g.stack._2 rect.bar")
-        .style("fill", settings["waterfall.increase_color"]);
-    });
-  }
 }
 
 // TODO - give this a good name when I figure out what it does
@@ -522,6 +506,18 @@ function setChartColor({ series, settings, chartType }, chart, groups, index) {
     chart.ordinalColors(
       series.map(single => colorsByKey[keyForSingleSeries(single)]),
     );
+  }
+
+  if (chartType === "waterfall") {
+    chart.on("pretransition", function(chart) {
+      chart.selectAll("g.stack._0 rect.bar").style("fill", "transparent");
+      chart
+        .selectAll("g.stack._1 rect.bar")
+        .style("fill", settings["waterfall.decrease_color"]);
+      chart
+        .selectAll("g.stack._2 rect.bar")
+        .style("fill", settings["waterfall.increase_color"]);
+    });
   }
 }
 
