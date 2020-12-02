@@ -237,33 +237,26 @@ commands:
   #
   #    b. If we have a cache entry for that key, .SUCCESS will get restored
   #
-  #    c. If this command has the skip-if-commit-message-includes-ci-quick option enabled, and commit message includes
-  #       [ci quick], create a dummy file .SUCCESS if not already present
+  #    c. If this command has the skip-job-if-commit-message-includes-ci-quick option enabled, and commit message includes
+  #       [ci quick], create a dummy file .SUCCESS if not already present. Ignored for master/release branches.
   #
   #    d. If commit message includes [ci noskip], delete .SUCCESS so the job will be forced to run.
   #
-  #    e. If command has the always-run-on-master-or-release option enabled, and this is a commit on the master or a
-  #       release-* branch, delete .SUCCESS so the job will be forced to run.
-  #
-  #    f. If .SUCCESS is present, we can skip the rest of the job, including potentially slow steps like restoring
+  #    e. If .SUCCESS is present, we can skip the rest of the job, including potentially slow steps like restoring
   #       dependency caches or the like. This logs a link to the last successful (not skipped) run of the job
   #
   #       Important! If this step is skipped because no changes have happened, the entire JOB will halt with a success
   #       status -- no steps that happen AFTER run-on-change will be ran. Keep this in mind!
   #
-  #   g. If .SUCCESS is not present, proceed as normal, and create and cache .SUCCESS if the job succeeds
+  #   f. If .SUCCESS is not present, proceed as normal, and create and cache .SUCCESS if the job succeeds
   run-on-change:
     parameters:
       cache-key:
         type: string
       steps:
         type: steps
-      # Whether to always run the job no matter what on master or release-* branches.
-      always-run-on-master-or-release:
-        type: boolean
-        default: false
       # Whether to skip the rest of the job if commit message includes [ci quick]
-      skip-if-commit-message-includes-ci-quick:
+      skip-job-if-commit-message-includes-ci-quick:
         type: boolean
         default: false
     steps:
@@ -271,12 +264,14 @@ commands:
           name: Restore dummy file .SUCCESS if it exists for cache key << parameters.cache-key >>
           key: run-on-change-<< parameters.cache-key >>
       - when:
-          condition: << parameters.skip-if-commit-message-includes-ci-quick >>
+          condition: << parameters.skip-job-if-commit-message-includes-ci-quick >>
           steps:
             - run:
-                name: "Create dummy file .SUCCESS if commit message contains [ci quick]"
+                name: "Skip tests (create dummy file .SUCCESS) if commit message contains [ci quick] and branch isn't a master/release branch"
                 command: |
-                  if [[ `cat commit.txt` == *"[ci quick]"* ]]; then
+                  if [[ "$CIRCLE_BRANCH" =~ ^master|release-.+$ ]]; then
+                      echo "branch '$CIRCLE_BRANCH' is a master or release branch: ignoring [ci quick]"
+                  elif [[ `cat commit.txt` == *"[ci quick]"* ]]; then
                       echo 'Commit message includes [ci quick]. Creating dummy file .SUCCESS'
                       touch .SUCCESS
                   else
@@ -291,18 +286,6 @@ commands:
             else
                 echo 'Commit message does not include [ci noskip]'
             fi
-      - when:
-          condition: << parameters.always-run-on-master-or-release >>
-          steps:
-            - run:
-                name: "Force test run (delete dummy file .SUCCESS) if this is a master or release-* branch"
-                command: |
-                  if [[ "$CIRCLE_BRANCH" =~ ^master|release-.+$ ]]; then
-                      echo "branch '$CIRCLE_BRANCH' is a master or release branch."
-                      rm -f .SUCCESS
-                  else
-                      echo "branch '$CIRCLE_BRANCH' is NOT a master or release branch"
-                  fi
       - run:
           name: Skip rest of job if .SUCCESS exists
           command: |
@@ -625,8 +608,7 @@ jobs:
       - attach-workspace
       - run-on-change:
           cache-key: driver-tests-<< parameters.driver >>-{{ checksum ".BACKEND-CHECKSUMS" }}
-          always-run-on-master-or-release: true
-          skip-if-commit-message-includes-ci-quick: true
+          skip-job-if-commit-message-includes-ci-quick: true
           steps:
             - restore-be-deps-cache
             - steps: << parameters.before-steps >>
