@@ -303,7 +303,7 @@ jobs:
       - run:
           name: Generate checksums of all frontend source files to use as Uberjar cache key
           command: >
-            for file in `find ./frontend ./enterpise/frontend -type f | sort`;
+            for file in `find ./frontend ./enterprise/frontend -type f | sort`;
               do echo `md5sum $file` >> frontend-checksums.txt;
             done;
             echo `md5sum yarn.lock` >> frontend-checksums.txt
