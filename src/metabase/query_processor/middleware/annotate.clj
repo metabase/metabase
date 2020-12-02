@@ -447,9 +447,12 @@
 (s/defn cols-for-mbql-query
   "Return results metadata about the expected columns in an 'inner' MBQL query."
   [inner-query :- su/Map]
-  (concat
-   (cols-for-ags-and-breakouts inner-query)
-   (cols-for-fields inner-query)))
+  (maybe-merge-source-metadata
+                                        ;(:source-query inner-query)
+   nil
+   (concat
+    (cols-for-ags-and-breakouts inner-query)
+    (cols-for-fields inner-query))))
 
 (declare mbql-cols)
 
@@ -466,7 +469,7 @@
   [{:keys [source-metadata], {native-source-query :native, :as source-query} :source-query} results]
   (if native-source-query
     (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
-    (mbql-cols source-query results)))
+    (maybe-merge-source-metadata source-metadata (mbql-cols source-query results))))
 
 (s/defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the

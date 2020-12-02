@@ -270,11 +270,21 @@
   [_ identifier]
   identifier)
 
+(defn- fully-unique-field-alias
+  [driver field-id]
+  (let [alias (field->alias driver (qp.store/field field-id))]
+    (if-let [prefix (:source_alias (m/find-first (comp #{field-id} :id) (or (:source-metadata *query*) (metabase.query-processor.middleware.annotate/cols-for-mbql-query *query*))))]
+      (if (not= prefix *table-alias*)
+        (str prefix  "__" alias)
+        alias)
+      alias)
+    ))
+
 (defmethod ->honeysql [:sql (class Field)]
   [driver {field-name :name, table-id :table_id, :as field}]
   ;; `indentifer` will automatically unnest nested calls to `identifier`
   (->> (if *table-alias*
-         [*table-alias* field-name]
+         [*table-alias* (fully-unique-field-alias driver (:id field))]
          (let [{schema :schema, table-name :name} (qp.store/table table-id)]
            [schema table-name field-name]))
        (apply hx/identifier :field)
@@ -510,15 +520,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Field Aliases (AS Forms)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- fully-unique-field-alias
-  [driver field-id]
-  (let [alias (field->alias driver (qp.store/field field-id))]
-    (if (> *nested-query-level* 0)
-      (if-let [prefix (:source_alias (m/find-first (comp #{field-id} :id) (metabase.query-processor.middleware.annotate/cols-for-mbql-query *query*)))]
-        (str prefix  "__" alias)
-        alias)
-      alias)))
 
 (defn field-clause->alias
   "Generate HoneySQL for an approriate alias (e.g., for use with SQL `AS`) for a Field clause of any type, or `nil` if
@@ -941,7 +942,6 @@
     (when-not i/*disable-qp-logging*
       (log/tracef "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>)))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 MBQL -> Native                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -954,6 +954,7 @@
   "Transpile MBQL query into a native SQL statement."
   {:style/indent 1}
   [driver {inner-query :query, database :database, :as outer-query}]
+  (println inner-query)
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))

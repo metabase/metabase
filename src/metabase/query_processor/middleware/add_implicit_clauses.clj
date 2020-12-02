@@ -96,7 +96,7 @@
       ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
       (when-not (seq fields)
         (throw (ex-info (tru "Table ''{0}'' has no Fields associated with it." (:name (qp.store/table source-table-id)))
-                 {:type error-type/invalid-query})))
+                        {:type error-type/invalid-query})))
       ;; add the fields & expressions under the `:fields` clause
       (assoc inner-query :fields (vec (concat fields expressions))))))
 
