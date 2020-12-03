@@ -149,6 +149,8 @@ export function seriesSetting({
   return {
     ...nestedSettings(settingId, {
       objectName: "series",
+      getHidden: ([{ card }], settings, extraProps) =>
+        card.display === "waterfall",
       getObjects: (series, settings) => series,
       getObjectKey: keyForSingleSeries,
       getSettingDefintionsForObject: getSettingDefintionsForSingleSeries,
