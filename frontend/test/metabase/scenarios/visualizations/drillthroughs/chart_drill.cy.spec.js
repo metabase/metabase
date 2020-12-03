@@ -3,6 +3,7 @@ import {
   restore,
   withSampleDataset,
   openProductsTable,
+  openOrdersTable,
   popover,
   sidebar,
 } from "__support__/cypress";
@@ -155,8 +156,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it.skip("should drill-through on filtered aggregated results (metabase#13504)", () => {
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
     cy.findByText("Summarize").click();
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();

@@ -6,6 +6,7 @@ import {
   _typeUsingPlaceholder,
   signInAsAdmin,
   withSampleDataset,
+  openOrdersTable,
 } from "__support__/cypress";
 
 const customFormulas = [
@@ -70,8 +71,7 @@ describe("scenarios > question > custom columns", () => {
 
   it("can create a custom column (metabase#13241)", () => {
     const columnName = "Simple Math";
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
     cy.get(".Icon-add_data").click();
 
     popover().within(() => {
@@ -92,7 +92,7 @@ describe("scenarios > question > custom columns", () => {
 
   it("can create a custom column with an existing column name", () => {
     customFormulas.forEach(({ customFormula, columnName }) => {
-      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      openOrdersTable({ mode: "notebook" });
       cy.get(".Icon-add_data").click();
 
       popover().within(() => {
@@ -112,8 +112,7 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it("should create custom column with fields from aggregated data (metabase#12762)", () => {
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
 
     cy.findByText("Summarize").click();
 
@@ -162,8 +161,7 @@ describe("scenarios > question > custom columns", () => {
 
   it.skip("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289)", () => {
     const columnName = "TestColumn";
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
 
     // Add custom column that will be used later in summarize (group by)
     cy.findByText("Custom column").click();
@@ -214,8 +212,7 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it.skip("should not return same results for columns with the same name (metabase#12649)", () => {
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
     // join with Products
     cy.findByText("Join data").click();
     cy.findByText("Products").click();

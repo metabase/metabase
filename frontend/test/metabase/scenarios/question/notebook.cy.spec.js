@@ -3,6 +3,7 @@ import {
   restore,
   signInAsAdmin,
   openOrdersTable,
+  openProductsTable,
   popover,
   modal,
   withSampleDataset,
@@ -59,8 +60,7 @@ describe("scenarios > question > notebook", () => {
 
   describe("joins", () => {
     it("should always display 'Previous results' for subsequent joins (metabase#13894)", () => {
-      // Go straight to orders table in custom questions
-      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      openOrdersTable({ mode: "notebook" });
 
       // Orders (parent table) join People
       cy.findByText("Join data").click();
@@ -257,8 +257,7 @@ describe("scenarios > question > notebook", () => {
 
   describe("nested", () => {
     it("should create a nested question with post-aggregation filter", () => {
-      // start a custom question with orders
-      cy.visit("/question/new?database=1&table=1&mode=notebook");
+      openProductsTable({ mode: "notebook" });
 
       cy.findByText("Summarize").click();
       popover().within(() => {
@@ -302,7 +301,7 @@ describe("scenarios > question > notebook", () => {
   // TODO: add positive assertions to all 4 tests when we figure out implementation details
   describe.skip("arithmetic (metabase#13175)", () => {
     beforeEach(() => {
-      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      openOrdersTable({ mode: "notebook" });
     });
 
     it("should work on custom column with `case`", () => {
