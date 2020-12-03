@@ -118,9 +118,8 @@ export default class TableSimple extends Component {
       getColumnTitle,
       card,
     } = this.props;
-
     const { rows, cols } = data;
-    const limit = getIn(card, ["dataset_query", "query", "limit"]) || null;
+    const limit = getIn(card, ["dataset_query", "query", "limit"]) || undefined;
     const getCellBackgroundColor = settings["table._cell_background_getter"];
 
     const { page, pageSize, sortColumn, sortDescending } = this.state;
