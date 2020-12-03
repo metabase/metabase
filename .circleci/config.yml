@@ -5,11 +5,6 @@ version: 2.1
 ########################################################################################################################
 
 executors:
-  basic:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: alpine/git
-
   clojure:
     working_directory: /home/circleci/metabase/metabase/
     docker:
@@ -201,30 +196,52 @@ default_parameters: &Params
     type: string
     default: "oss"
 
+# .BACKEND-CHECKSUMS, .FRONTEND-CHECKSUMS, and .MODULE-CHECKSUMS are created during the checkout step; see that step
+# for exact details as to what they contain.
+#
+# To support cache busting, we create a file named .CACHE-PREFIX in the checkout step and use its checksum as the
+# prefix for every cache key. If the commit message DOES NOT include [ci nocache], we create an empty file; the
+# checksum will always be the same for this file. If the commit message DOES include [ci nocache], we'll write the
+# unique ID of the current pipeline to .CACHE-PREFIX which will effectively bust our caches whenever it's used.
+
+### Deps Keys ###
+
+# Why don't we use fallback keys for backend/frontend deps? We used to, but it allowed the cache to grow
+# uncontrollably since old deps would continue to accumulate. Restoring big caches is really slow in Circle. It's
+# actually faster to recreate the deps cache from scratch whenever we need to which keeps the size down.
 cache-key-backend-deps: &CacheKeyBackendDeps
   key: v1-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "project.clj" }}
 
 cache-key-frontend-deps: &CacheKeyFrontendDeps
   key: v1-{{ checksum ".CACHE-PREFIX" }}-fe-deps-{{ checksum "yarn.lock" }}
 
+# Key used for implementation of run-on-change -- this is the cache key that contains the .SUCCESS dummy file
 cache-key-run-on-change: &CacheKeyRunOnChange
   key: v1-{{ checksum ".CACHE-PREFIX" }}-run-on-change-<< parameters.cache-key >>
 
+# Key for the local maven installation of metabase-core (used by build-uberjar-drivers)
 cache-key-metabase-core: &CacheKeyMetabaseCore
   key: v1-{{ checksum ".CACHE-PREFIX" }}-metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
 
+# Key for the drivers built by build-uberjar-drivers
 cache-key-drivers: &CacheKeyDrivers
   key: v1-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
 
+# This is also used by the uberjar-build-drivers step; this is a unique situation because the build-drivers script has
+# logic to determine whether to rebuild drivers or not that is quite a bit more sophisticated that the run-on-change
+# stuff in this file. e.g. if I only change the bigquery driver, the script is smart enough to not rebuild the
+# redshift driver.
 cache-keys-drivers-with-fallback-keys: &CacheKeyDrivers_WithFallbackKeys
   keys:
     - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
     - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}
     - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-
 
+# Key for frontend client built by uberjar-build-frontend step
 cache-key-frontend: &CacheKeyFrontend
   key: v1-{{ checksum ".CACHE-PREFIX" }}-frontend-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
 
+# Key for uberjar built by build-uberjar
 cache-key-uberjar: &CacheKeyUberjar
   key: v1-{{ checksum ".CACHE-PREFIX" }}-uberjar-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
 
@@ -303,7 +320,7 @@ commands:
                 command: |
                   if [[ "$CIRCLE_BRANCH" =~ ^master|release-.+$ ]]; then
                       echo "branch '$CIRCLE_BRANCH' is a master or release branch: ignoring [ci quick]"
-                  elif [[ `cat commit.txt` == *"[ci quick]"* ]]; then
+                  elif [[ `cat .COMMIT` == *"[ci quick]"* ]]; then
                       echo 'Commit message includes [ci quick]. Creating dummy file .SUCCESS'
                       touch .SUCCESS
                   else
@@ -312,7 +329,7 @@ commands:
       - run:
           name: "Force test run (delete dummy file .SUCCESS) if commit message includes [ci noskip]"
           command: |
-            if [[ `cat commit.txt` == *"[ci noskip]"* ]]; then
+            if [[ `cat .COMMIT` == *"[ci noskip]"* ]]; then
                 echo 'Commit message includes [ci noskip] -- forcing test run (delete .SUCCESS)'
                 rm -f .SUCCESS
             else
@@ -464,7 +481,7 @@ jobs:
 ########################################################################################################################
 
   checkout:
-    executor: basic
+    executor: clojure
     steps:
       - checkout
       # .BACKEND-CHECKSUMS is every Clojure source file as well as dependency files like deps.edn and plugin manifests
@@ -480,18 +497,19 @@ jobs:
           filename: .MODULES-CHECKSUMS
           find-args: "./modules -type f -name '*.clj' -or -name metabase-plugin.yaml"
       - run:
-          name: Save last git commit message
-          command: git log -1 > commit.txt
+          name: Save last git commit message to .COMMIT
+          command: git log -1 > .COMMIT
       - run:
           name: Remove .git directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/.git
       - run:
           name: Remove ./OSX directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/OSX
+      # .CACHE-PREFIX is described above in the Cache Keys section of this file
       - run:
           name: 'Create cache key prefix .CACHE-PREFIX to bust caches if commit message includes [ci nocache]'
           command: |
-            if [[ `cat commit.txt` == *"[ci nocache]"* ]]; then
+            if [[ `cat .COMMIT` == *"[ci nocache]"* ]]; then
                 echo 'Commit message includes [ci nocache]; using cache-busting prefix'
                 echo '<< pipeline.id >>' > .CACHE-PREFIX
             else
@@ -559,7 +577,7 @@ jobs:
       # This step is pretty slow, even with the cache, so only run it if project.clj has changed
       # TODO -- we should cache the build script deps as well, and driver deps?
       - run-on-change:
-          cache-key: be-deps-skip-{{ checksum "project.clj" }}
+          cache-key: be-deps-{{ checksum "project.clj" }}
           steps:
             - restore-be-deps-cache
             - run: lein with-profile +include-all-drivers,+cloverage,+junit,+<< parameters.edition >> deps
@@ -722,7 +740,7 @@ jobs:
       - attach-workspace
       # This step is *really* slow, so we can skip it if yarn.lock hasn't changed since last time we ran it
       - run-on-change:
-          cache-key: fe-deps-skip-{{ checksum "yarn.lock" }}
+          cache-key: fe-deps-{{ checksum "yarn.lock" }}
           steps:
             - restore-fe-deps-cache
             - run:
