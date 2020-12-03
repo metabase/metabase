@@ -35,7 +35,7 @@ export default class PivotTable extends Component {
   props: VisualizationProps;
   static uiName = t`Pivot Table`;
   static identifier = "pivot";
-  static iconName = "table";
+  static iconName = "pivot_table";
 
   static isSensible({ cols }) {
     return (
