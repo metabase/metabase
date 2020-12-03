@@ -2,6 +2,7 @@ import React from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import { DragSource, DropTarget } from "react-dnd";
+import _ from "underscore";
 
 import Grabber from "metabase/components/Grabber";
 
@@ -11,7 +12,12 @@ class ChartSettingFieldsPartition extends React.Component {
     this.state = { displayedValue: null };
   }
 
-  updateDisplayedValue = displayedValue => this.setState({ displayedValue });
+  updateDisplayedValue = displayedValue =>
+    this.setState({
+      displayedValue: _.mapObject(displayedValue, cols =>
+        cols.map(col => col.field_ref),
+      ),
+    });
   commitDisplayedValue = () => {
     const { displayedValue } = this.state;
     if (displayedValue != null) {
@@ -21,7 +27,15 @@ class ChartSettingFieldsPartition extends React.Component {
   };
 
   render() {
-    const value = this.state.displayedValue || this.props.value || {};
+    const value = _.mapObject(
+      this.state.displayedValue || this.props.value || {},
+      fieldRefs =>
+        fieldRefs
+          .map(field_ref =>
+            this.props.columns.find(col => _.isEqual(col.field_ref, field_ref)),
+          )
+          .filter(col => col != null),
+    );
     return (
       <div>
         {this.props.partitions.map(({ name, title, columnFilter }, index) => (

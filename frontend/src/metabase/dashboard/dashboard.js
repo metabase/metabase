@@ -61,6 +61,7 @@ import {
   EmbedApi,
   AutoApi,
   MetabaseApi,
+  maybeUsePivotEndpoint,
 } from "metabase/services";
 
 import {
@@ -594,14 +595,14 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = await fetchDataOrError(
-        MetabaseApi.dataset(
+        maybeUsePivotEndpoint(MetabaseApi.dataset, card)(
           { ...datasetQuery, ignore_cache: ignoreCache },
           queryOptions,
         ),
       );
     } else {
       result = await fetchDataOrError(
-        CardApi.query(
+        maybeUsePivotEndpoint(CardApi.query, card)(
           {
             cardId: card.id,
             parameters: datasetQuery.parameters,

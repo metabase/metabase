@@ -66,7 +66,11 @@ export default class PivotTable extends Component {
     "pivot_table.column_split": {
       section: null,
       widget: "fieldsPartition",
-      getProps: ([{ data }], settings) => ({ partitions }),
+      persistDefault: true,
+      getProps: ([{ data }], settings) => ({
+        partitions,
+        columns: data == null ? [] : data.cols,
+      }),
       getValue: ([{ data }], settings = {}) => {
         const storedValue = settings["pivot_table.column_split"];
         let setting;
@@ -74,7 +78,7 @@ export default class PivotTable extends Component {
           const [dimensions, values] = _.partition(data.cols, isDimension);
           const [first, second, ...rest] = _.sortBy(dimensions, col =>
             getIn(col, ["fingerprint", "global", "distinct-count"]),
-          );
+          ).map(col => col.field_ref);
           let rows, columns;
           if (dimensions.length < 2) {
             columns = [];
@@ -103,10 +107,8 @@ export default class PivotTable extends Component {
       values: valueIndexes,
     } = _.mapObject(settings["pivot_table.column_split"], columns =>
       columns
-        .map(column =>
-          data.cols.findIndex(col =>
-            _.isEqual(col.field_ref, column.field_ref),
-          ),
+        .map(field_ref =>
+          data.cols.findIndex(col => _.isEqual(col.field_ref, field_ref)),
         )
         .filter(index => index !== -1),
     );
@@ -120,15 +122,23 @@ export default class PivotTable extends Component {
     const { topIndex, leftIndex, getRowSection } = pivoted;
     const cellWidth = 80;
     const cellHeight = 25;
-    const topHeaderHeight = topIndex[0].length * cellHeight + 8; // the extravertical padding
-    const leftHeaderWidth = leftIndex[0].length * cellWidth;
+    const topHeaderHeight =
+      topIndex.length === 0 ? cellHeight : topIndex[0].length * cellHeight + 8; // the extravertical padding
+    const leftHeaderWidth =
+      leftIndex.length === 0 ? 0 : leftIndex[0].length * cellWidth;
 
     function columnWidth({ index }) {
+      if (topIndex.length === 0) {
+        return cellWidth;
+      }
       const indexItem = topIndex[index];
       return indexItem[indexItem.length - 1].length * cellWidth;
     }
 
     function rowHeight({ index }) {
+      if (leftIndex.length === 0) {
+        return cellWidth;
+      }
       const indexItem = leftIndex[index];
       return indexItem[indexItem.length - 1].length * cellHeight;
     }
@@ -279,15 +289,17 @@ export default class PivotTable extends Component {
 
 function updateValueWithCurrentColumns(storedValue, columns) {
   const currentQueryFieldRefs = columns.map(c => JSON.stringify(c.field_ref));
-  const currentSettingFieldRefs = Object.values(storedValue).flatMap(columns =>
-    columns.map(c => JSON.stringify(c.field_ref)),
+  const currentSettingFieldRefs = Object.values(storedValue).flatMap(
+    fieldRefs => fieldRefs.map(field_ref => JSON.stringify(field_ref)),
   );
   const toAdd = _.difference(currentQueryFieldRefs, currentSettingFieldRefs);
   const toRemove = _.difference(currentSettingFieldRefs, currentQueryFieldRefs);
 
   // remove toRemove
-  const value = _.mapObject(storedValue, columns =>
-    columns.filter(col => !toRemove.includes(JSON.stringify(col.field_ref))),
+  const value = _.mapObject(storedValue, fieldRefs =>
+    fieldRefs.filter(
+      field_ref => !toRemove.includes(JSON.stringify(field_ref)),
+    ),
   );
   // add toAdd to first partitions where it matches the filter
   for (const fieldRef of toAdd) {
@@ -296,7 +308,7 @@ function updateValueWithCurrentColumns(storedValue, columns) {
         c => JSON.stringify(c.field_ref) === fieldRef,
       );
       if (filter == null || filter(column)) {
-        value[name] = [...value[name], column];
+        value[name] = [...value[name], column.field_ref];
         break;
       }
     }

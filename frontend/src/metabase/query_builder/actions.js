@@ -833,6 +833,22 @@ export const updateQuestion = (
       run = false;
     }
 
+    if (
+      // switching to pivot
+      (newQuestion.display() === "pivot" &&
+        oldQuestion.display() !== "pivot") ||
+      // switching away from pivot
+      (newQuestion.display() !== "pivot" &&
+        oldQuestion.display() === "pivot") ||
+      // updating the pivot rows/cols
+      !_.isEqual(
+        newQuestion.setting("pivot_table.column_split"),
+        oldQuestion.setting("pivot_table.column_split"),
+      )
+    ) {
+      run = true; // force a run when switching to/from pivot or updating it's setting
+    }
+
     // Replace the current question with a new one
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 

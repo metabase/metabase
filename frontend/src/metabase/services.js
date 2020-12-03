@@ -1,4 +1,6 @@
 /* @flow */
+import { getIn } from "icepick";
+import _ from "underscore";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
@@ -28,6 +30,38 @@ export const GTAPApi = {
   attributes: GET("/api/mt/user/attributes"),
 };
 
+export function maybeUsePivotEndpoint(api, card) {
+  function wrap(api) {
+    return (params, ...rest) => {
+      // TODO use metabase-lib instead of getIn
+      const setting = getIn(card, [
+        "visualization_settings",
+        "pivot_table.column_split",
+      ]);
+      const breakout = getIn(card, ["dataset_query", "query", "breakout"]);
+      const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
+        setting,
+        fieldRefs =>
+          fieldRefs.map(field_ref =>
+            breakout.findIndex(b => _.isEqual(b, field_ref)),
+          ),
+      );
+      return api({ ...params, pivot_rows, pivot_cols }, ...rest);
+    };
+  }
+  if (card.display !== "pivot") {
+    return api;
+  }
+  switch (api) {
+    case CardApi.query:
+      return wrap(CardApi.query_pivot);
+    case MetabaseApi.dataset:
+      return wrap(MetabaseApi.dataset_pivot);
+    default:
+      return api;
+  }
+}
+
 export const CardApi = {
   list: GET("/api/card", (cards, { data }) =>
     // HACK: support for the "q" query param until backend implements it
@@ -41,6 +75,7 @@ export const CardApi = {
   update: PUT("/api/card/:id"),
   delete: DELETE("/api/card/:cardId"),
   query: POST("/api/card/:cardId/query"),
+  query_pivot: POST("/api/card/:cardId/query"), // same for now
   // isfavorite:                  GET("/api/card/:cardId/favorite"),
   favorite: POST("/api/card/:cardId/favorite"),
   unfavorite: DELETE("/api/card/:cardId/favorite"),
@@ -217,6 +252,7 @@ export const MetabaseApi = {
   field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
+  dataset_pivot: POST("/api/dataset"), // same for now
   dataset_duration: POST("/api/dataset/duration"),
   native: POST("/api/dataset/native"),
 
