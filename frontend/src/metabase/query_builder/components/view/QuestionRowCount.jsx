@@ -29,9 +29,7 @@ const QuestionRowCount = ({
   // Shown based on a query that has been altered
   const limitMessage =
     query instanceof StructuredQuery
-      ? query.limit() == null
-        ? cappedMessage
-        : query.limit() >= HARD_ROW_LIMIT
+      ? query.limit() == null || query.limit() >= HARD_ROW_LIMIT
         ? cappedMessage
         : t`Show ${formatRowCount(query.limit())}`
       : null;
