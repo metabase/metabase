@@ -109,10 +109,19 @@
 (deftest iso-8601-text-fields
   (testing "text fields with special_type :type/ISO8601DateTimeString"
     (testing "return as dates"
-      (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+      (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite)
         (is (= [[1 "foo" #t "2004-10-19T10:23:54" #t "2004-10-19" #t "10:23:54"]
                 [2 "bar" #t "2008-10-19T10:23:54" #t "2008-10-19" #t "10:23:54"]
                 [3 "baz" #t "2012-10-19T10:23:54" #t "2012-10-19" #t "10:23:54"]]
+               ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
+               (mt/rows (mt/dataset string-times
+                          (qp/process-query
+                            (assoc (mt/mbql-query times)
+                                   :middleware {:format-rows? false})))))))
+      (mt/test-drivers #{:sqlite}
+        (is (= [[1 "foo" "2004-10-19 10:23:54" "2004-10-19" "10:23:54"]
+                [2 "bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
+                [3 "baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]
                ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
                (mt/rows (mt/dataset string-times
                           (qp/process-query
