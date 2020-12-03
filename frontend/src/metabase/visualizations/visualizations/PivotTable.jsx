@@ -78,7 +78,7 @@ export default class PivotTable extends Component {
           const [dimensions, values] = _.partition(data.cols, isDimension);
           const [first, second, ...rest] = _.sortBy(dimensions, col =>
             getIn(col, ["fingerprint", "global", "distinct-count"]),
-          ).map(col => col.field_ref);
+          );
           let rows, columns;
           if (dimensions.length < 2) {
             columns = [];
@@ -90,7 +90,9 @@ export default class PivotTable extends Component {
             columns = [first, second];
             rows = rest;
           }
-          setting = { rows, columns, values };
+          setting = _.mapObject({ rows, columns, values }, cols =>
+            cols.map(col => col.field_ref),
+          );
         } else {
           setting = updateValueWithCurrentColumns(storedValue, data.cols);
         }
