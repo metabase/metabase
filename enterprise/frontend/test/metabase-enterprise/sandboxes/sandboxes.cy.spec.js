@@ -1,6 +1,7 @@
 import {
   describeWithToken,
   openOrdersTable,
+  openPeopleTable,
   popover,
   restore,
   signInAsAdmin,
@@ -261,7 +262,7 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should filter categories on saved SQL question (for a new question - column number)", () => {
-      cy.visit("/question/new?database=1&table=3");
+      openPeopleTable();
       cy.get(".TableInteractive-cellWrapper--firstColumn").should(
         "have.length",
         2,
@@ -269,7 +270,7 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should filter categories on saved SQL question (for a new question - row number)", () => {
-      cy.visit("/question/new?database=1&table=3");
+      openPeopleTable();
       cy.get(".TableInteractive-headerCellData").should("have.length", 4);
     });
   });
@@ -314,8 +315,7 @@ describeWithToken("formatting > sandboxes", () => {
       signOut();
       signInAsSandboxedUser();
 
-      // Go straight to orders table in custom questions
-      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      openOrdersTable({ mode: "notebook" });
       cy.findByText("Summarize").click();
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
@@ -366,7 +366,7 @@ describeWithToken("formatting > sandboxes", () => {
           },
         });
 
-        cy.log("**-- 4. Create and save a question --**");
+        cy.log("**-- 2. Create and save a question --**");
 
         cy.request("POST", "/api/card", {
           name: QUESTION_NAME,
@@ -637,8 +637,7 @@ describeWithToken("formatting > sandboxes", () => {
             signOut();
             signInAsSandboxedUser();
 
-            // Go straight to orders table in custom questions
-            cy.visit("/question/new?database=1&table=2&mode=notebook");
+            openOrdersTable({ mode: "notebook" });
 
             // `Orders` join `Products`
             cy.findByText("Join data").click();
