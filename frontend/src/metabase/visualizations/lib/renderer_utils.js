@@ -227,6 +227,7 @@ function parseTimestampAndWarn(value, unit) {
 
 A waterfall chart is essentially a stacked bar chart.
 It consists of the following (from the topmost):
+- the "total bar" which has a value only for the last one
 - the "green bar" for the positives/increases
 - the "red bar" for the negatives/decreases
 - the "invisible beam" supporting either the green or red bar
@@ -266,20 +267,23 @@ export function syntheticStackedBarsForWaterfallChart(datas, settings = {}) {
 
   const values = mainValues.slice();
   if (showTotal) {
-    values.push(totalValue);
     stackedBarsDatas[0] = [...mainSeries, total];
     // The last one is the total bar, anchor it at 0
     beams.push(0);
+    values.push(0);
   } else {
     stackedBarsDatas[0] = mainSeries;
   }
   stackedBarsDatas.push(stackedBarsDatas[0].map(k => k.slice())); // negatives
   stackedBarsDatas.push(stackedBarsDatas[0].map(k => k.slice())); // positives
+  stackedBarsDatas.push(stackedBarsDatas[0].map(k => k.slice())); // total
   for (let k = 0; k < values.length; ++k) {
     stackedBarsDatas[0][k]._waterfallValue = stackedBarsDatas[0][k][1];
     stackedBarsDatas[0][k][1] = beams[k];
     stackedBarsDatas[1][k][1] = values[k] < 0 ? values[k] : 0;
     stackedBarsDatas[2][k][1] = values[k] > 0 ? values[k] : 0;
+    stackedBarsDatas[3][k][1] =
+      !showTotal || k < values.length - 1 ? 0 : totalValue;
   }
 
   return stackedBarsDatas;
