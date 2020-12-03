@@ -19,7 +19,10 @@ const USERS = {
   "anonymous user": () => signOut(),
 };
 
-describe("scenarios > public", () => {
+// [quarantine]: failing almost consistently in CI
+// Skipping the whole spec because it needs to be refactored.
+// If possible, re-use as much code as possible but let test run in isolation.
+describe.skip("scenarios > public", () => {
   let questionId;
   before(() => {
     restore();
@@ -226,8 +229,7 @@ describe("scenarios > public", () => {
           cy.contains(COUNT_DOOHICKEY);
         });
 
-        // [quarantine]: failing almost consistently in CI
-        it.skip(`should be able to view embedded questions`, () => {
+        it(`should be able to view embedded questions`, () => {
           cy.visit(questionEmbedUrl);
           cy.contains(COUNT_ALL);
 
