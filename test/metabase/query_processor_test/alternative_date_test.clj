@@ -130,10 +130,4 @@
           (is (= 1
                  (count (mt/rows (mt/dataset string-times
                                    (mt/run-mbql-query times
-                                     {:filter   [:= [:datetime-field $d :day] "2008-10-19"]}))))))))
-      (testing "a date field"
-        (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
-          (is (= 3
-                 (count (mt/rows (mt/dataset string-times
-                                   (mt/run-mbql-query times
-                                     {:filter   [:= [:datetime-field $t :hour] "10"]})))))))))))
+                                     {:filter   [:= [:datetime-field $d :day] "2008-10-19"]})))))))))))

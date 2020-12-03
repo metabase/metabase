@@ -66,7 +66,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :type/ISO8601DateTimeString]
   [_driver _special_type expr]
-  (hx/->datetime expr))
+  (hx/->timestamp expr))
 
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :type/ISO8601DateString]
   [_driver _special_type expr]
