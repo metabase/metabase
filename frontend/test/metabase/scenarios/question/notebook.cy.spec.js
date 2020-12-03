@@ -255,7 +255,7 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
-  describe.only("nested", () => {
+  describe("nested", () => {
     it("should create a nested question with post-aggregation filter", () => {
       openProductsTable({ mode: "notebook" });
 
