@@ -74,9 +74,9 @@ describe("LineAreaBarRenderer-waterfall", () => {
       onHoverChange,
     });
 
-    // 6 elements: 3 stacked bars for (1 row, 1 total)
+    // 8 elements: 4 stacked bars for (1 row, 1 total)
     const barElements = qsa(".bar, .dot");
-    expect(barElements.length).toEqual(6);
+    expect(barElements.length).toEqual(8);
 
     // hover over each bar
     dispatchUIEvent(barElements[0], "mousemove");
@@ -98,9 +98,9 @@ describe("LineAreaBarRenderer-waterfall", () => {
       onHoverChange,
     });
 
-    // 9 elements: 3 stacked bars for (2 rows, 1 total)
+    // 12 elements: 4 stacked bars for (2 rows, 1 total)
     const barElements = qsa(".bar, .dot");
-    expect(barElements.length).toEqual(9);
+    expect(barElements.length).toEqual(12);
 
     // hover over each bar
     dispatchUIEvent(barElements[0], "mousemove");
@@ -127,9 +127,9 @@ describe("LineAreaBarRenderer-waterfall", () => {
       onHoverChange,
     });
 
-    // 12 elements: 3 stacked bars for (3 rows, 1 total)
+    // 16 elements: 4 stacked bars for (3 rows, 1 total)
     const barElements = qsa(".bar, .dot");
-    expect(barElements.length).toEqual(12);
+    expect(barElements.length).toEqual(16);
 
     // hover over each bar
     dispatchUIEvent(barElements[0], "mousemove");
@@ -163,9 +163,9 @@ describe("LineAreaBarRenderer-waterfall", () => {
       onHoverChange,
     });
 
-    // 9 elements: 3 stacked bars for (3 rows, no total)
+    // 12 elements: 4 stacked bars for (3 rows, no total)
     const barElements = qsa(".bar, .dot");
-    expect(barElements.length).toEqual(9);
+    expect(barElements.length).toEqual(12);
   });
 
   function getDataKeyValues(hover) {
