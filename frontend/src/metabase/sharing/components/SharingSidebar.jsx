@@ -6,11 +6,11 @@ import { Flex } from "grid-styled";
 
 import Card from "metabase/components/Card";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
+import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 import Link from "metabase/components/Link";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import ButtonGroup from "metabase/components/ButtonGroup";
 import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 import SchedulePicker from "metabase/components/SchedulePicker";
 import Select, { Option } from "metabase/components/Select";
@@ -62,12 +62,51 @@ const CHANNEL_NOUN_PLURAL = {
 
 const Heading = ({ children }) => <h4>{children}</h4>;
 
+const cardsFromDashboard = dashboard => {
+  if (dashboard === undefined) {
+    return [];
+  }
+
+  return dashboard.ordered_cards.map(card => ({
+    id: card.card.id,
+    collection_id: card.card.collection_id,
+    description: card.card.description,
+    display: card.card.display,
+    name: card.card.name,
+    include_csv: false,
+    include_xls: false,
+    dashboard_card_id: card.id,
+    dashboard_id: dashboard.id,
+    parameter_mappings: [], // card.parameter_mappings, //TODO: this ended up as "[]" ?
+  }));
+};
+
+const nonTextCardsFromDashboard = dashboard => {
+  return cardsFromDashboard(dashboard).filter(card => card.display !== "text");
+};
+
+const cardsToPulseCards = (cards, pulseCards) => {
+  return cards.map(card => {
+    const pulseCard = pulseCards.find(pc => pc.id === card.id) || card;
+    return {
+      ...card,
+      include_csv: pulseCard.include_csv,
+      include_xls: pulseCard.include_xls,
+    };
+  });
+};
+
 const getEditingPulseWithDefaults = (state, props) => {
   const pulse = getEditingPulse(state, props);
   const dashboardWrapper = state.dashboard;
   if (!pulse.name) {
     pulse.name = dashboardWrapper.dashboards[dashboardWrapper.dashboardId].name;
   }
+  pulse.cards = cardsToPulseCards(
+    nonTextCardsFromDashboard(props.dashboard),
+    pulse.cards,
+  );
+
   return pulse;
 };
 
@@ -129,7 +168,7 @@ class SharingSidebar extends React.Component {
   };
 
   addChannel(type) {
-    const { pulse, formInput } = this.props;
+    const { dashboard, pulse, formInput } = this.props;
 
     const channelSpec = formInput.channels[type];
     if (!channelSpec) {
@@ -141,7 +180,7 @@ class SharingSidebar extends React.Component {
     const newPulse = {
       ...pulse,
       channels: pulse.channels.concat(channel),
-      cards: this.cardsFromDashboard(),
+      cards: nonTextCardsFromDashboard(dashboard),
     };
     this.setPulse(newPulse);
   }
@@ -168,23 +207,6 @@ class SharingSidebar extends React.Component {
         this.createSubscription();
       }
     }
-  }
-
-  cardsFromDashboard() {
-    const { dashboard } = this.props;
-
-    return dashboard.ordered_cards.map(card => ({
-      id: card.card.id,
-      collection_id: card.card.collection_id,
-      description: card.card.description,
-      display: card.card.display,
-      name: card.card.name,
-      include_csv: false,
-      include_xls: false,
-      dashboard_card_id: card.id,
-      dashboard_id: dashboard.id,
-      parameter_mappings: [], // card.parameter_mappings, //TODO: this ended up as "[]" ?
-    }));
   }
 
   onChannelPropertyChange(index, name, value) {
@@ -248,42 +270,6 @@ class SharingSidebar extends React.Component {
     this.setPulse({ ...pulse, skip_if_empty: !pulse.skip_if_empty });
   };
 
-  toggleAttach = value => {
-    if (value) {
-      // if any are set, use that value, otherwise use "csv", our default
-      const existingValue = this.attachmentTypeValue();
-      this.setAttachmentType(existingValue || "csv");
-    } else {
-      this.setAttachmentType(null);
-    }
-  };
-
-  setAttachmentType(value) {
-    const { pulse } = this.props;
-
-    const newPulse = {
-      ...pulse,
-      cards: pulse.cards.map(card => {
-        card.include_xls = value === "xls";
-        card.include_csv = value === "csv";
-        return card;
-      }),
-    };
-    this.setPulse(newPulse);
-  }
-
-  attachmentTypeValue() {
-    const { pulse } = this.props;
-
-    if (pulse.cards.some(c => c.include_xls)) {
-      return "xls";
-    } else if (pulse.cards.some(c => c.include_csv)) {
-      return "csv";
-    } else {
-      return null;
-    }
-  }
-
   handleSave = async () => {
     const { pulse, dashboard, formInput } = this.props;
 
@@ -304,7 +290,9 @@ class SharingSidebar extends React.Component {
 
   editPulse = (pulse, channelType) => {
     this.setPulse(pulse);
-    this.setState({ editingMode: "add-edit-" + channelType });
+    this.setState({
+      editingMode: "add-edit-" + channelType,
+    });
   };
 
   formatHourAMPM(hour) {
@@ -764,23 +752,12 @@ class SharingSidebar extends React.Component {
                   tooltip={t`Attachments can contain up to 2,000 rows of data.`}
                 />
               </div>
-              <Toggle
-                value={this.attachmentTypeValue() != null}
-                onChange={this.toggleAttach}
-              />
             </div>
-            {this.attachmentTypeValue() != null && (
-              <div className="pb3 flex">
-                <ButtonGroup
-                  options={[
-                    { name: ".csv", value: "csv" },
-                    { name: ".xlsx", value: "xls" },
-                  ]}
-                  onChange={value => this.setAttachmentType(value)}
-                  value={this.attachmentTypeValue()}
-                />
-              </div>
-            )}
+            <EmailAttachmentPicker
+              cards={pulse.cards}
+              pulse={pulse}
+              setPulse={this.setPulse.bind(this)}
+            />
             {pulse.id != null && this.renderDeleteSubscription()}
           </div>
         </Sidebar>
