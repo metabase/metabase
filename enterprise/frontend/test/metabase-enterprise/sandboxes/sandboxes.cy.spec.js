@@ -413,6 +413,8 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it.skip("drill-through should work on implicit joined tables with sandboxes (metabase#13641)", () => {
+      const QUESTION_NAME = "13641";
+
       withSampleDataset(({ ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID }) => {
         cy.log(ORDERS);
         cy.log(PRODUCTS);
@@ -439,7 +441,7 @@ describeWithToken("formatting > sandboxes", () => {
           "**-- 2. Create question based on steps in [#13641](https://github.com/metabase/metabase/issues/13641)--**",
         );
         cy.request("POST", "/api/card", {
-          name: "13641",
+          name: QUESTION_NAME,
           dataset_query: {
             database: 1,
             query: {
@@ -469,7 +471,7 @@ describeWithToken("formatting > sandboxes", () => {
 
       // Find saved question in "Our analytics"
       cy.visit("/collection/root");
-      cy.findByText("13641").click();
+      cy.findByText(QUESTION_NAME).click();
 
       cy.wait("@cardQuery");
       // Drill-through
