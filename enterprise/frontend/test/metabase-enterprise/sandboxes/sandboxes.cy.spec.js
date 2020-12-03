@@ -412,111 +412,91 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
-    it.skip("should allow drill-through for sandboxed user (metabase-enterprise#535)", () => {
-      cy.visit("/");
+    it("should allow drill-through for sandboxed user (metabase-enterprise#535)", () => {
+      const PRODUCTS_ALIAS = "Products";
+      const QUESTION_NAME = "EE_535";
 
-      cy.get(".Icon-gear")
-        .first()
-        .click();
-      cy.findByText("Admin").click();
-      cy.findByText("Permissions").click();
-      cy.findByText("View tables").click();
+      withSampleDataset(({ ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID }) => {
+        cy.log("**-- 1. Sandbox `Orders` table on `user_id` attribute --**");
 
-      /**
-       * Give sandboxed access for Orders (first x)
-       * 
-       |          | All users | collection |
-       |----------|-----------|------------|
-       | Orders   |     x     |      x     |
-       | People   |     x     |      x     |
-       | Products |     x     |      x     |
-       | Reviews  |     x     |      x     |
-       */
-      cy.get(".Icon-close")
-        .eq(0)
-        .click();
-      cy.findByText("Grant sandboxed access").click();
-      cy.findByText("Change").click();
-      cy.findByText("Pick a column").click();
-      cy.findByText("User ID").click();
-      cy.findByText("Pick a user attribute").click();
-      cy.findByText("user_id").click();
-      cy.findByText("Save").click();
+        cy.request("POST", "/api/mt/gtap", {
+          attribute_remappings: {
+            [ATTR_UID]: ["dimension", ["field-id", ORDERS.USER_ID]],
+          },
+          card_id: null,
+          group_id: COLLECTION_GROUP,
+          table_id: ORDERS_ID,
+        });
 
-      /**
-       * Give unrestricted access for Products (fourth x)
-       * 
-       |          | All users | collection |
-       |----------|-----------|------------|
-       | Orders   |     s     |      x     |
-       | People   |     x     |      x     |
-       | Products |     x     |      x     |
-       | Reviews  |     x     |      x     |
-       */
-      cy.get(".Icon-close")
-        .eq(3)
-        .click();
-      cy.findByText("Grant unrestricted access").click();
-      cy.findByText("Save Changes").click();
+        updatePermissionsGraph({
+          schema: {
+            [PRODUCTS_ID]: "all",
+            [ORDERS_ID]: { query: "segmented", read: "all" },
+          },
+        });
 
-      // Save all changes to permissions
-      cy.get(".Modal").within(() => {
-        cy.findByText("Save permissions?");
-        cy.findByText("Yes").click();
+        cy.log(
+          "**-- 2. Create question based on steps in [#535](https://github.com/metabase/metabase-enterprise/issues/535)--**",
+        );
+        cy.request("POST", "/api/card", {
+          name: QUESTION_NAME,
+          dataset_query: {
+            database: 1,
+            query: {
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "joined-field",
+                  PRODUCTS_ALIAS,
+                  ["field-id", PRODUCTS.CATEGORY],
+                ],
+              ],
+              joins: [
+                {
+                  alias: PRODUCTS_ALIAS,
+                  condition: [
+                    "=",
+                    ["field-id", ORDERS.PRODUCT_ID],
+                    ["joined-field", PRODUCTS_ALIAS, ["field-id", PRODUCTS.ID]],
+                  ],
+                  fields: "all",
+                  "source-table": PRODUCTS_ID,
+                },
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+          display: "bar",
+          visualization_settings: {},
+        });
       });
-
-      // Go straight to orders table in custom questions
-      cy.visit("/question/new?database=1&table=2&mode=notebook");
-
-      // Orders join Products, Count by Category
-      cy.get(".Icon-join_left_outer").click();
-      popover().within(() => cy.findByText("Products").click());
-      cy.findByText("Summarize").click();
-      popover().within(() => cy.findByText("Count of rows").click());
-      cy.findByText("Pick a column to group by").click();
-      popover().within(() => {
-        cy.findByText("Product").click();
-        cy.findByText("Category").click();
-      });
-
-      const questionTitle = "Question 1";
-      // Save question,
-      cy.findByText("Save").click();
-      cy.findByLabelText("Name")
-        .clear() // clear pre-populated name,
-        .type(questionTitle);
-      cy.get(".Modal").within(() => {
-        cy.findByText("Save").click();
-      });
-      // and don't save it to a dashboard
-      cy.findByText("Not now").click();
 
       signOut();
       signInAsSandboxedUser();
 
-      // Find saved question in "Our analytics"
-      cy.findByText("Browse all items").click();
-      cy.findByText(questionTitle).click();
+      cy.server();
+      cy.route("POST", "/api/card/*/query").as("cardQuery");
+      cy.route("POST", "/api/dataset").as("dataset");
 
-      // The question is originally displayed as table
-      // Set its visualization/graph to "Bar"
-      cy.findByText("Visualization").click();
-      cy.get(".Icon-bar").click();
-      cy.findByText("Done").click();
+      // Find saved question in "Our analytics"
+      cy.visit("/collection/root");
+      cy.findByText(QUESTION_NAME).click();
+
+      cy.wait("@cardQuery");
+      // Drill-through
       cy.get(".Visualization").within(() => {
-        // and click on any of the 4 bars in the graph
+        // Click on the first bar in a graph (Category: "Doohickey")
         cy.get(".bar")
-          .eq(0) // there is no special reason we chose the first one
+          .eq(0)
           .click({ force: true });
       });
-      cy.server();
-      cy.route("POST", "/api/dataset").as("view-dataset");
-      popover().within(() => cy.findByText("View these Orders").click());
-      cy.wait("@view-dataset");
+      cy.findByText("View these Orders").click();
 
-      cy.findByText("There was a problem with your question").should(
-        "not.exist",
-      );
+      cy.wait("@dataset");
+      cy.log("**Reported failing on v1.36.4**");
+      cy.findByText("Category is Doohickey");
+      cy.findByText("97.44"); // Subtotal for order #10
     });
 
     it.skip("advanced sandboxing based on saved question with joins should allow sandboxed user to use joins (metabase-enterprise#524)", () => {
