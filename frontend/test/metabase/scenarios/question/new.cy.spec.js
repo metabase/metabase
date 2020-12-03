@@ -3,6 +3,7 @@ import {
   signInAsAdmin,
   popover,
   openOrdersTable,
+  openReviewsTable,
 } from "__support__/cypress";
 
 // test various entry points into the query builder
@@ -95,8 +96,7 @@ describe("scenarios > question > new", () => {
     });
 
     it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
-      // go straight to "orders" in custom questions
-      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      openOrdersTable({ mode: "notebook" });
       cy.findByText("Summarize").click();
       popover()
         .contains("Custom Expression")
@@ -114,7 +114,7 @@ describe("scenarios > question > new", () => {
       const FORMULA =
         "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))";
 
-      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      openOrdersTable({ mode: "notebook" });
       cy.findByText("Summarize").click();
       popover()
         .contains("Custom Expression")
@@ -131,8 +131,7 @@ describe("scenarios > question > new", () => {
     });
 
     it.skip("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
-      // go directly to custom question in "Reviews" table
-      cy.visit("/question/new?database=1&table=4&mode=notebook");
+      openReviewsTable({ mode: "notebook" });
       cy.findByText("Summarize").click();
       popover()
         .contains("Custom Expression")
