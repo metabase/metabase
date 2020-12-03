@@ -19,6 +19,7 @@ import {
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
+import { HARD_ROW_LIMIT } from "metabase/lib/query";
 
 import { t } from "ttag";
 import cx from "classnames";
@@ -141,7 +142,7 @@ export default class TableSimple extends Component {
     }
 
     let paginateMessage;
-    if (!limit || limit >= 2000) {
+    if (limit === undefined && rows.length >= HARD_ROW_LIMIT) {
       paginateMessage = t`Rows ${start + 1}-${end + 1} of first ${rows.length}`;
     } else {
       paginateMessage = t`Rows ${start + 1}-${end + 1} of ${rows.length}`;
