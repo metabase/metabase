@@ -244,13 +244,14 @@ describe("syntheticStackedBarsForWaterfallChart", () => {
       settings,
     );
     expect(typeof stackedBarsDatas.length).toEqual("number");
-    expect(stackedBarsDatas.length).toEqual(3);
-    const [beams, negatives, positives] = stackedBarsDatas.map(stacked =>
+    expect(stackedBarsDatas.length).toEqual(4);
+    const [beams, negatives, positives, total] = stackedBarsDatas.map(stacked =>
       stacked.map(e => e[1]),
     );
     expect(beams).toEqual([0, 0]);
     expect(negatives).toEqual([0, 0]);
-    expect(positives).toEqual([10, 10]);
+    expect(positives).toEqual([10, 0]);
+    expect(total).toEqual([0, 10]);
   });
 
   it("should create the stacked bars for 2 rows", () => {
@@ -263,13 +264,14 @@ describe("syntheticStackedBarsForWaterfallChart", () => {
       settings,
     );
     expect(typeof stackedBarsDatas.length).toEqual("number");
-    expect(stackedBarsDatas.length).toEqual(3);
-    const [beams, negatives, positives] = stackedBarsDatas.map(stacked =>
+    expect(stackedBarsDatas.length).toEqual(4);
+    const [beams, negatives, positives, total] = stackedBarsDatas.map(stacked =>
       stacked.map(e => e[1]),
     );
     expect(beams).toEqual([0, 10, 0]);
     expect(negatives).toEqual([0, 0, 0]);
-    expect(positives).toEqual([10, 4, 14]);
+    expect(positives).toEqual([10, 4, 0]);
+    expect(total).toEqual([0, 0, 14]);
   });
 
   it("should create the stacked bars for 3 rows", () => {
@@ -282,13 +284,14 @@ describe("syntheticStackedBarsForWaterfallChart", () => {
       settings,
     );
     expect(typeof stackedBarsDatas.length).toEqual("number");
-    expect(stackedBarsDatas.length).toEqual(3);
-    const [beams, negatives, positives] = stackedBarsDatas.map(stacked =>
+    expect(stackedBarsDatas.length).toEqual(4);
+    const [beams, negatives, positives, total] = stackedBarsDatas.map(stacked =>
       stacked.map(e => e[1]),
     );
     expect(beams).toEqual([0, 10, 14, 0]);
     expect(negatives).toEqual([0, 0, 0, 0]);
-    expect(positives).toEqual([10, 4, 5, 19]);
+    expect(positives).toEqual([10, 4, 5, 0]);
+    expect(total).toEqual([0, 0, 0, 19]);
   });
 
   it("should work with all-negative values", () => {
@@ -301,13 +304,14 @@ describe("syntheticStackedBarsForWaterfallChart", () => {
       settings,
     );
     expect(typeof stackedBarsDatas.length).toEqual("number");
-    expect(stackedBarsDatas.length).toEqual(3);
-    const [beams, negatives, positives] = stackedBarsDatas.map(stacked =>
+    expect(stackedBarsDatas.length).toEqual(4);
+    const [beams, negatives, positives, total] = stackedBarsDatas.map(stacked =>
       stacked.map(e => e[1]),
     );
     expect(beams).toEqual([0, -14, -17, 0]);
-    expect(negatives).toEqual([-14, -3, -10, -27]);
+    expect(negatives).toEqual([-14, -3, -10, 0]);
     expect(positives).toEqual([0, 0, 0, 0]);
+    expect(total).toEqual([0, 0, 0, -27]);
   });
 
   it("should work with mixed (positives & negatives) values", () => {
@@ -320,13 +324,14 @@ describe("syntheticStackedBarsForWaterfallChart", () => {
       settings,
     );
     expect(typeof stackedBarsDatas.length).toEqual("number");
-    expect(stackedBarsDatas.length).toEqual(3);
-    const [beams, negatives, positives] = stackedBarsDatas.map(stacked =>
+    expect(stackedBarsDatas.length).toEqual(4);
+    const [beams, negatives, positives, total] = stackedBarsDatas.map(stacked =>
       stacked.map(e => e[1]),
     );
     expect(beams).toEqual([0, -2, 22, 0]);
     expect(negatives).toEqual([-2, 0, -5, 0]);
-    expect(positives).toEqual([0, 24, 0, 17]);
+    expect(positives).toEqual([0, 24, 0, 0]);
+    expect(total).toEqual([0, 0, 0, 17]);
   });
 
   it("should work even when the total bar is not meant to shown", () => {
@@ -339,12 +344,13 @@ describe("syntheticStackedBarsForWaterfallChart", () => {
       settings,
     );
     expect(typeof stackedBarsDatas.length).toEqual("number");
-    expect(stackedBarsDatas.length).toEqual(3);
-    const [beams, negatives, positives] = stackedBarsDatas.map(stacked =>
+    expect(stackedBarsDatas.length).toEqual(4);
+    const [beams, negatives, positives, total] = stackedBarsDatas.map(stacked =>
       stacked.map(e => e[1]),
     );
     expect(beams).toEqual([0, 3, 8]);
     expect(negatives).toEqual([0, 0, 0]);
     expect(positives).toEqual([3, 5, 7]);
+    expect(total).toEqual([0, 0, 0]);
   });
 });
