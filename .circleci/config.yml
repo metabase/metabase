@@ -192,7 +192,7 @@ executors:
       - image: metabase/qa-databases:mysql-sample-8
 
 ########################################################################################################################
-#                                                       COMMANDS                                                       #
+#                                             MAP FRAGMENTS AND CACHE KEYS                                             #
 ########################################################################################################################
 
 # `default_parameters` isn't a key that CircleCI uses, but this form lets us reuse parameter definitions
@@ -200,6 +200,38 @@ default_parameters: &Params
   edition:
     type: string
     default: "oss"
+
+cache-key-backend-deps: &CacheKeyBackendDeps
+  key: v1-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "project.clj" }}
+
+cache-key-frontend-deps: &CacheKeyFrontendDeps
+  key: v1-{{ checksum ".CACHE-PREFIX" }}-fe-deps-{{ checksum "yarn.lock" }}
+
+cache-key-run-on-change: &CacheKeyRunOnChange
+  key: v1-{{ checksum ".CACHE-PREFIX" }}-run-on-change-<< parameters.cache-key >>
+
+cache-key-metabase-core: &CacheKeyMetabaseCore
+  key: v1-{{ checksum ".CACHE-PREFIX" }}-metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
+
+cache-key-drivers: &CacheKeyDrivers
+  key: v1-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+
+cache-keys-drivers-with-fallback-keys: &CacheKeyDrivers_WithFallbackKeys
+  keys:
+    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}
+    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-
+
+cache-key-frontend: &CacheKeyFrontend
+  key: v1-{{ checksum ".CACHE-PREFIX" }}-frontend-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
+
+cache-key-uberjar: &CacheKeyUberjar
+  key: v1-{{ checksum ".CACHE-PREFIX" }}-uberjar-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
+
+
+########################################################################################################################
+#                                                       COMMANDS                                                       #
+########################################################################################################################
 
 commands:
   attach-workspace:
@@ -214,13 +246,13 @@ commands:
     steps:
       - restore_cache:
           name: Restore cached backend dependencies
-          key: be-deps-v5-{{ checksum "project.clj" }}
+          <<: *CacheKeyBackendDeps
 
   restore-fe-deps-cache:
     steps:
       - restore_cache:
           name: Restore cached frontend dependencies
-          key: fe-deps-v5-{{ checksum "yarn.lock" }}
+          <<: *CacheKeyFrontendDeps
 
   # run-on-change lets you only run steps if changes have happened to relevant files since the last time it was run
   # successfully. Uses a cache key to record successful runs -- cache key should be unique for job and relevant source
@@ -262,7 +294,7 @@ commands:
     steps:
       - restore_cache:
           name: Restore dummy file .SUCCESS if it exists for cache key << parameters.cache-key >>
-          key: run-on-change-<< parameters.cache-key >>
+          <<: *CacheKeyRunOnChange
       - when:
           condition: << parameters.skip-job-if-commit-message-includes-ci-quick >>
           steps:
@@ -301,7 +333,7 @@ commands:
             echo "$CIRCLE_BUILD_URL" > .SUCCESS
       - save_cache:
           name: Persist dummy file .SUCCESS to cache with key << parameters.cache-key >>
-          key: run-on-change-<< parameters.cache-key >>
+          <<: *CacheKeyRunOnChange
           paths:
             - /home/circleci/metabase/metabase/.SUCCESS
       - run:
@@ -456,6 +488,15 @@ jobs:
       - run:
           name: Remove ./OSX directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/OSX
+      - run:
+          name: 'Create cache key prefix .CACHE-PREFIX to bust caches if commit message includes [ci nocache]'
+          command: |
+            if [[ `cat commit.txt` == *"[ci nocache]"* ]]; then
+                echo 'Commit message includes [ci nocache]; using cache-busting prefix'
+                echo '<< pipeline.id >>' > .CACHE-PREFIX
+            else
+               echo '' > .CACHE-PREFIX
+            fi
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -524,7 +565,7 @@ jobs:
             - run: lein with-profile +include-all-drivers,+cloverage,+junit,+<< parameters.edition >> deps
             - save_cache:
                 name: Cache backend dependencies
-                key: be-deps-v5-{{ checksum "project.clj" }}
+                <<: *CacheKeyBackendDeps
                 paths:
                   - /home/circleci/.m2
 
@@ -690,7 +731,7 @@ jobs:
                 no_output_timeout: 5m
             - save_cache:
                 name: Cache frontend dependencies
-                key: fe-deps-v5-{{ checksum "yarn.lock" }}
+                <<: *CacheKeyFrontendDeps
                 paths:
                   - /home/circleci/.yarn
                   - /home/circleci/.yarn-cache
@@ -777,26 +818,22 @@ jobs:
           steps:
             - restore-be-deps-cache            #
             - restore_cache:
-                name: Restore cached local Maven installation of metabase-core
-                key: metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
+                <<: *CacheKeyMetabaseCore
             - restore_cache:
                 name: Restore cached drivers uberjars from previous runs
-                keys:
-                  - drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
-                  - drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}
-                  - drivers-v5-
+                <<: *CacheKeyDrivers_WithFallbackKeys
             - run:
                 name: Build drivers if needed for cache key drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
                 command: ./bin/build-drivers.sh
                 no_output_timeout: 5m
             - save_cache:
                 name: Cache local Maven installation of metabase-core
-                key: metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
+                <<: *CacheKeyMetabaseCore
                 paths:
                   - /home/circleci/.m2/repository/metabase-core
             - save_cache:
                 name: Cache the built drivers
-                key: drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+                <<: *CacheKeyDrivers
                 paths:
                   - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
                   - /home/circleci/metabase/metabase/modules/drivers/druid/target
@@ -831,7 +868,7 @@ jobs:
                 no_output_timeout: 5m
             - save_cache:
                 name: Cache the built frontend
-                key: frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
+                <<: *CacheKeyFrontend
                 paths:
                   - /home/circleci/metabase/metabase/resources/frontend_client
 
@@ -847,7 +884,7 @@ jobs:
           steps:
             - restore_cache:
                 name: Restore cached uberjar from previous runs
-                key: uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
+                <<: *CacheKeyUberjar
             - run:
                 name: Skip rest of job if uberjar already exists
                 command: |
@@ -857,10 +894,10 @@ jobs:
             - restore-be-deps-cache
             - restore_cache:
                 name: Restore cached drivers built by previous step
-                key: drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+                <<: *CacheKeyDrivers
             - restore_cache:
                 name: Restore cached FE built by previous step
-                key: frontend-v4-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
+                <<: *CacheKeyFrontend
             - run:
                 name: Build uberjar
                 environment:
@@ -875,7 +912,7 @@ jobs:
                 path: /home/circleci/metabase/metabase/resources/version.properties
             - save_cache:
                 name: Cache the built uberjar & version.properties
-                key: uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
+                <<: *CacheKeyUberjar
                 paths:
                   - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
                   - /home/circleci/metabase/metabase/resources/version.properties
@@ -913,7 +950,7 @@ jobs:
                 before-steps:
                   - restore_cache:
                       name: Restore cached uberjar built in previous step
-                      key: uberjar-v5-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
+                      <<: *CacheKeyUberjar
                 command: |
                   run test-cypress-no-build <<# parameters.only-single-database >> --testFiles << parameters.test-files-location >> <</ parameters.only-single-database >>
                 after-steps:
@@ -929,6 +966,7 @@ jobs:
         default: clojure-and-node
       cypress-group:
         type: string
+      <<: *Params
     executor: << parameters.e >>
     environment:
       CYPRESS_GROUP: << parameters.cypress-group >>
@@ -940,7 +978,7 @@ jobs:
           before-steps:
             - restore_cache:
                 name: Restore cached uberjar built in previous step
-                key: uberjar-oss-{{ checksum ".BACKEND-CHECKSUMS" }}
+                <<: *CacheKeyUberjar
             - run:
                 name: Generate version file
                 command: ./bin/build version
