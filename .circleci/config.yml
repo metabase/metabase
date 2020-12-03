@@ -403,7 +403,7 @@ commands:
           name: lein << parameters.lein-command >>
           command: |
             lein with-profile +ci,+<< parameters.edition >> << parameters.lein-command >>
-          no_output_timeout: 5m
+          no_output_timeout: 10m
       - steps: << parameters.after-steps >>
       - store_test_results:
           path: /home/circleci/metabase/metabase/target/junit
@@ -463,7 +463,7 @@ commands:
           name: Wait for port << parameters.port >> to be ready
           command: |
             while ! nc -z localhost << parameters.port >>; do sleep 0.1; done
-          no_output_timeout: 5m
+          no_output_timeout: 10m
 
   fetch-jdbc-driver:
     parameters:
@@ -479,7 +479,7 @@ commands:
           name: Download JDBC driver JAR << parameters.dest >>
           command: |
             wget --output-document=plugins/<< parameters.dest >> ${<< parameters.source >>}
-          no_output_timeout: 5m
+          no_output_timeout: 10m
 
 jobs:
 
@@ -648,7 +648,7 @@ jobs:
             - run:
                 name: Run reflection warnings checker
                 command: ./bin/reflection-linter
-                no_output_timeout: 5m
+                no_output_timeout: 10m
 
   test-driver:
     parameters:
@@ -659,7 +659,7 @@ jobs:
         type: string
       timeout:
         type: string
-        default: 5m
+        default: 10m
       before-steps:
         type: steps
         default: []
@@ -705,7 +705,7 @@ jobs:
                   MB_DB_HOST: localhost
                   MB_EDITION: << parameters.edition >>
                 command: ./bin/test-load-and-dump.sh
-                no_output_timeout: 5m
+                no_output_timeout: 10m
 
   test-build-scripts:
     executor: metabase-ci
@@ -719,22 +719,22 @@ jobs:
                 name: Run metabuild-common build script tests
                 command: |
                   cd /home/circleci/metabase/metabase/bin/common && clojure -M:test
-                no_output_timeout: 5m
+                no_output_timeout: 10m
             - run:
                 name: Run build-drivers build script tests
                 command: |
                   cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
-                no_output_timeout: 5m
+                no_output_timeout: 10m
             - run:
                 name: Run build-mb build script tests
                 command: |
                   cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
-                no_output_timeout: 5m
+                no_output_timeout: 10m
             - run:
                 name: Run release script tests
                 command: |
                   cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
-                no_output_timeout: 5m
+                no_output_timeout: 10m
 
 
 ########################################################################################################################
@@ -753,7 +753,7 @@ jobs:
             - run:
                 name: Run yarn to install deps
                 command: SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn;
-                no_output_timeout: 5m
+                no_output_timeout: 10m
             - save_cache:
                 name: Cache frontend dependencies
                 <<: *CacheKeyFrontendDeps
@@ -850,7 +850,7 @@ jobs:
             - run:
                 name: Build drivers if needed for cache key drivers-v5-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
                 command: ./bin/build-drivers.sh
-                no_output_timeout: 5m
+                no_output_timeout: 10m
             - save_cache:
                 name: Cache local Maven installation of metabase-core
                 <<: *CacheKeyMetabaseCore
@@ -890,7 +890,7 @@ jobs:
                 environment:
                   MB_EDITION: << parameters.edition >>
                 command: ./bin/build version frontend
-                no_output_timeout: 5m
+                no_output_timeout: 10m
             - save_cache:
                 name: Cache the built frontend
                 <<: *CacheKeyFrontend
@@ -1220,7 +1220,7 @@ workflows:
           requires:
             - be-tests-ee
           driver: snowflake
-          timeout: 15m
+          timeout: 110m
 
       - test-driver:
           name: be-tests-sparksql-ee
