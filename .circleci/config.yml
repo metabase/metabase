@@ -5,6 +5,13 @@ version: 2.1
 ########################################################################################################################
 
 executors:
+  # Basic executor with git and bash and not much else.
+  basic:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      # CircleCI base image
+      - image: cimg/base:2020.01
+
   clojure:
     working_directory: /home/circleci/metabase/metabase/
     docker:
@@ -481,7 +488,7 @@ jobs:
 ########################################################################################################################
 
   checkout:
-    executor: clojure
+    executor: basic
     steps:
       - checkout
       # .BACKEND-CHECKSUMS is every Clojure source file as well as dependency files like deps.edn and plugin manifests
