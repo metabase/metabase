@@ -24,6 +24,7 @@ import { HARD_ROW_LIMIT } from "metabase/lib/query";
 import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
+import { getIn } from "icepick";
 
 import { isID, isFK } from "metabase/lib/schema_metadata";
 
@@ -115,10 +116,11 @@ export default class TableSimple extends Component {
       isPivoted,
       settings,
       getColumnTitle,
-      limit,
+      card,
     } = this.props;
 
     const { rows, cols } = data;
+    const limit = getIn(card, ["dataset_query", "query", "limit"]) || null;
     const getCellBackgroundColor = settings["table._cell_background_getter"];
 
     const { page, pageSize, sortColumn, sortDescending } = this.state;
