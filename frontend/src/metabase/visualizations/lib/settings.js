@@ -9,6 +9,7 @@ import ChartSettingToggle from "metabase/visualizations/components/settings/Char
 import ChartSettingButtonGroup from "metabase/visualizations/components/settings/ChartSettingButtonGroup";
 import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
+import ChartSettingFieldsPartition from "metabase/visualizations/components/settings/ChartSettingFieldsPartition";
 import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 
@@ -73,6 +74,7 @@ const WIDGETS = {
   buttonGroup: ChartSettingButtonGroup,
   field: ChartSettingFieldPicker,
   fields: ChartSettingFieldsPicker,
+  fieldsPartition: ChartSettingFieldsPartition,
   color: ChartSettingColorPicker,
   colors: ChartSettingColorsPicker,
 };

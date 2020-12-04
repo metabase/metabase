@@ -1,4 +1,119 @@
+import _ from "underscore";
+
 import { formatValue } from "metabase/lib/formatting";
+
+export function multiLevelPivot(
+  data,
+  columnColumnIndexes,
+  rowColumnIndexes,
+  valueColumnIndexes,
+) {
+  // we build a tree for each tuple of pivoted column/row values seen in the data
+  const columnColumnTree = [];
+  const rowColumnTree = [];
+
+  // this stores pivot table values keyed by all pivoted columns
+  const valuesByKey = {};
+
+  // loop over the rows to build trees of column/row header data
+  for (const row of data.rows) {
+    // mutate the trees to add the tuple from the current row
+    updateValueObject(row, columnColumnIndexes, columnColumnTree);
+    updateValueObject(row, rowColumnIndexes, rowColumnTree);
+
+    // save the value columns keyed by the values in the column/row pivoted columns
+    const valueKey = JSON.stringify(
+      columnColumnIndexes.concat(rowColumnIndexes).map(index => row[index]),
+    );
+    valuesByKey[valueKey] = valueColumnIndexes.map(index => row[index]);
+  }
+
+  const valueFormatters = valueColumnIndexes.map(index => value =>
+    formatValue(value, { column: data.cols[index] }),
+  );
+
+  const valueColumns = valueColumnIndexes.map(index => data.cols[index]);
+
+  return {
+    topIndex: getIndex(columnColumnTree, { valueColumns }),
+    leftIndex: getIndex(rowColumnTree, {}),
+    getRowSection: createRowSectionGetter({
+      valuesByKey,
+      columnColumnTree,
+      rowColumnTree,
+      valueFormatters,
+    }),
+  };
+}
+
+function createRowSectionGetter({
+  valuesByKey,
+  columnColumnTree,
+  rowColumnTree,
+  valueFormatters,
+}) {
+  return (topValue, leftValue) => {
+    const rows =
+      leftValue === undefined
+        ? [[]]
+        : enumerate(rowColumnTree.find(node => node.value === leftValue));
+    const columns =
+      topValue === undefined
+        ? [[]]
+        : enumerate(columnColumnTree.find(node => node.value === topValue));
+    return rows.map(row =>
+      columns.flatMap(col => {
+        const valueKey = JSON.stringify(col.concat(row));
+        const values = valuesByKey[valueKey];
+        if (values === undefined) {
+          return new Array(valueFormatters.length).fill(null);
+        }
+        return values.map((v, i) => valueFormatters[i](v));
+      }),
+    );
+  };
+}
+
+function enumerate({ value, children }, path = []) {
+  const pathWithValue = [...path, value];
+  if (children.length === 0) {
+    return [pathWithValue];
+  }
+  return children.flatMap(child => enumerate(child, pathWithValue));
+}
+
+function getIndex(values, { valueColumns = [] } = {}) {
+  if (values.length === 0) {
+    if (valueColumns.length > 1) {
+      // if we have multiple value columns include their column names
+      const colNames = valueColumns.map(col => ({
+        value: col.display_name,
+        span: 1,
+      }));
+      return [[colNames]];
+    }
+    return [];
+  }
+  return values.map(({ value, children }) => {
+    const foo = _.zip(...getIndex(children, { valueColumns })).map(a =>
+      a.flat(),
+    );
+    const span = foo.length === 0 ? 1 : foo[foo.length - 1].length;
+    return [[{ value, span }], ...foo];
+  });
+}
+
+function updateValueObject(row, indexes, seenValues) {
+  let currentLevelSeenValues = seenValues;
+  for (const value of indexes.map(index => row[index])) {
+    let seenValue = currentLevelSeenValues.find(d => d.value === value);
+    if (seenValue === undefined) {
+      seenValue = { value, children: [] };
+      currentLevelSeenValues.push(seenValue);
+    }
+    currentLevelSeenValues = seenValue.children;
+  }
+}
 
 export function pivot(data, normalCol, pivotCol, cellCol) {
   const { pivotValues, normalValues } = distinctValuesSorted(
@@ -57,7 +172,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
   };
 }
 
-export function distinctValuesSorted(rows, pivotColIdx, normalColIdx) {
+function distinctValuesSorted(rows, pivotColIdx, normalColIdx) {
   const normalSet = new Set();
   const pivotSet = new Set();
 
