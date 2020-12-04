@@ -19,7 +19,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ModalContent from "metabase/components/ModalContent";
 import Subhead from "metabase/components/type/Subhead";
-import Text from "metabase/components/Text";
+import Text from "metabase/components/type/Text";
 
 import { color } from "metabase/lib/colors";
 import MetabaseSettings from "metabase/lib/settings";
