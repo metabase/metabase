@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
+import { Box, Flex } from "grid-styled";
 import PropTypes from "prop-types";
 import { t, jt, ngettext, msgid } from "ttag";
 
@@ -12,11 +13,15 @@ import WhatsAPulse from "./WhatsAPulse";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
+import Icon from "metabase/components/Icon";
+import Link from "metabase/components/Link";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ModalContent from "metabase/components/ModalContent";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 
+import { color } from "metabase/lib/colors";
+import MetabaseSettings from "metabase/lib/settings";
 import { pulseIsValid, cleanPulse, emailIsEnabled } from "metabase/lib/pulse";
 import * as Urls from "metabase/lib/urls";
 
@@ -123,6 +128,12 @@ export default class PulseEdit extends Component {
     const { pulse, formInput } = this.props;
     const isValid = pulseIsValid(pulse, formInput.channels);
     const attachmentsEnabled = emailIsEnabled(pulse);
+    const link = (
+      <a
+        className="link"
+        href={MetabaseSettings.docsUrl("users-guide/07-dashboards")}
+      >{t`dashboard subscriptions`}</a>
+    );
     return (
       <div className="PulseEdit">
         <div className="PulseEdit-header flex align-center border-bottom py3">
@@ -148,6 +159,27 @@ export default class PulseEdit extends Component {
           </ModalWithTrigger>
         </div>
         <div className="PulseEdit-content pt2 pb4">
+          <Flex
+            bg={color("bg-medium")}
+            p={2}
+            my={2}
+            align="top"
+            style={{ borderRadius: 8 }}
+            className="hover-parent hover--visibility"
+          >
+            <Icon name="warning" color={color("warning")} size={24} mr={1} />
+            <Box ml={1}>
+              <h3>{t`Pulses are being phased out`}</h3>
+              <p className="m0 mt1 text-medium text-bold">{jt`You can now set up ${link} instead. We'll remove Pulses in a future release, and help you migrate any that you still have.`}</p>
+            </Box>
+            <Icon
+              className="hover-child text-brand-hover cursor-pointer bg-medium"
+              name="close"
+              ml="auto"
+              onClick={() => this.dismissPinMessage()}
+            />
+          </Flex>
+
           <PulseEditName {...this.props} setPulse={this.setPulse} />
           <PulseEditCollection {...this.props} setPulse={this.setPulse} />
           <PulseEditCards
