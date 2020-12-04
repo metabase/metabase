@@ -14,7 +14,6 @@ import WhatsAPulse from "./WhatsAPulse";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ModalContent from "metabase/components/ModalContent";
