@@ -283,7 +283,9 @@ describeWithToken("formatting > sandboxes", () => {
       restore();
       signInAsAdmin();
       createUser(sandboxed_user).then(({ body: { id: USER_ID } }) => {
-        // dismiss the "it's ok to play around" modal
+        cy.log(
+          "**-- Dismiss `it's ok to play around` modal for new users --**",
+        );
         cy.request("PUT", `/api/user/${USER_ID}/qbnewb`, {});
       });
     });
