@@ -18,7 +18,7 @@ import Icon from "metabase/components/Icon";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ModalContent from "metabase/components/ModalContent";
-import Subhead from "metabase/components/Subhead";
+import Subhead from "metabase/components/type/Subhead";
 import Text from "metabase/components/Text";
 
 import { color } from "metabase/lib/colors";
