@@ -78,6 +78,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
     });
 
+    // TODO: Remove manual waiting
     it("should make a JOINs table", () => {
       openOrdersTable();
       cy.wait(1000)
@@ -184,6 +185,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.visit("/browse/1");
       cy.findByText("Orders").click();
 
+      // TODO: Refactor - asserting on the number of rows proved to be risky.
       // Table filter - only 10 rows should show up
       cy.contains("Showing 10");
 
@@ -232,6 +234,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("10");
     });
 
+    // TODO: Restore before each test and avoid using hard coded question IDs
     it("should be sandboxed with a filter (on a saved JOINed question)", () => {
       cy.visit("/question/5");
 
