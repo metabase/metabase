@@ -171,7 +171,7 @@ export default class PulseEdit extends Component {
             <Icon name="warning" color={color("warning")} size={24} mr={1} />
             <Box ml={1}>
               <Subhead>{t`Pulses are being phased out`}</Subhead>
-              <Text className="m0 mt1 text-medium text-bold">{jt`You can now set up ${link} instead. We'll remove Pulses in a future release, and help you migrate any that you still have.`}</Text>
+              <Text>{jt`You can now set up ${link} instead. We'll remove Pulses in a future release, and help you migrate any that you still have.`}</Text>
             </Box>
           </Flex>
 
