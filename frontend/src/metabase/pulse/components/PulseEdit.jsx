@@ -13,11 +13,13 @@ import WhatsAPulse from "./WhatsAPulse";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
+import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import Icon from "metabase/components/Icon";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ModalContent from "metabase/components/ModalContent";
-import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
+import Subhead from "metabase/components/Subhead";
+import Text from "metabase/components/Text";
 
 import { color } from "metabase/lib/colors";
 import MetabaseSettings from "metabase/lib/settings";
@@ -161,22 +163,16 @@ export default class PulseEdit extends Component {
           <Flex
             bg={color("bg-medium")}
             p={2}
-            my={2}
+            my={3}
             align="top"
             style={{ borderRadius: 8 }}
             className="hover-parent hover--visibility"
           >
             <Icon name="warning" color={color("warning")} size={24} mr={1} />
             <Box ml={1}>
-              <h3>{t`Pulses are being phased out`}</h3>
-              <p className="m0 mt1 text-medium text-bold">{jt`You can now set up ${link} instead. We'll remove Pulses in a future release, and help you migrate any that you still have.`}</p>
+              <Subhead>{t`Pulses are being phased out`}</Subhead>
+              <Text className="m0 mt1 text-medium text-bold">{jt`You can now set up ${link} instead. We'll remove Pulses in a future release, and help you migrate any that you still have.`}</Text>
             </Box>
-            <Icon
-              className="hover-child text-brand-hover cursor-pointer bg-medium"
-              name="close"
-              ml="auto"
-              onClick={() => this.dismissPinMessage()}
-            />
           </Flex>
 
           <PulseEditName {...this.props} setPulse={this.setPulse} />
