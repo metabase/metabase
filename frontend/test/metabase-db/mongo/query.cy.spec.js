@@ -58,14 +58,43 @@ describe("mongodb > user > query", () => {
 
       cy.url().should("match", /\/question\/\d+$/);
     });
+
+    it.skip("should correctly apply distinct count on multiple columns (metabase#13097)", () => {
+      askMongoQuestion({ table_name: "People", mode: "notebook" });
+      cy.findByText("Pick the metric you want to see").click();
+      cy.findByText("Number of distinct values of ...").click();
+      cy.findByText("City").click();
+      cy.get("[class*=NotebookCell]").within(() => {
+        cy.get(".Icon-add").click();
+      });
+      cy.findByText("Number of distinct values of ...").click();
+      cy.findByText("State").click();
+
+      cy.server();
+      cy.route("POST", "/api/dataset").as("dataset");
+
+      cy.findByText("Visualize").click();
+      cy.wait("@dataset");
+
+      cy.log("**Reported failing on stats ~v0.36.3**");
+      cy.findAllByText("1,966").should("have.length", 1); // City
+      cy.findByText("49"); // State
+    });
   });
 });
 
-function queryMongoDB() {
+function askMongoQuestion({ table_name, mode } = {}) {
+  const QUESTION_MODE =
+    mode === "notebook" ? "Custom question" : "Simple question";
+
   cy.visit("/question/new");
-  cy.findByText("Simple question").click();
+  cy.findByText(QUESTION_MODE).click();
   cy.findByText(MONGO_DB_NAME).click();
-  cy.findByText("Orders").click();
+  cy.findByText(table_name).click();
+}
+
+function queryMongoDB() {
+  askMongoQuestion({ table_name: "Orders" });
   cy.contains("37.65");
 }
 
