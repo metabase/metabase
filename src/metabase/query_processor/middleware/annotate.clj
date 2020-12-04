@@ -186,9 +186,9 @@
         (-> recursive-info
             (merge (when fk-field-id
                      {:fk_field_id fk-field-id}))
-            (assoc :field_ref (if fk-field-id
-                                [:fk-> [:field-id fk-field-id] field]
-                                (assoc (vec &match) 2 (:field_ref recursive-info)))
+            (assoc :field_ref    (if fk-field-id
+                                   [:fk-> [:field-id fk-field-id] field]
+                                   (assoc (vec &match) 2 (:field_ref recursive-info)))
                    :source_alias join-alias)
             (update :display_name display-name-for-joined-field join))))
 
@@ -240,7 +240,7 @@
     ;; something the user should expect to see
     _
     (throw (ex-info (tru "Don''t know how to get information about Field: {0}" &match)
-             {:field &match}))))
+                    {:field &match}))))
 
 
 ;;; ---------------------------------------------- Aggregate Field Info ----------------------------------------------
