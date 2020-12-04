@@ -56,6 +56,7 @@ import {
   getDatas,
   getFirstNonEmptySeries,
   getXValues,
+  syntheticStackedBarsForWaterfallChart,
   isDimensionTimeseries,
   isRemappedToString,
   isMultiCardSeries,
@@ -135,7 +136,10 @@ function getXAxisProps(props, datas, warn) {
   // This compensates for the barshifting we do align ticks
   const xValues = isHistogram
     ? [...rawXValues, Math.max(...rawXValues) + xInterval]
+    : props.chartType === "waterfall" && props.settings["waterfall.show_total"]
+    ? [...rawXValues, t`Total`]
     : rawXValues;
+
   return {
     isHistogramBar: isHistogram,
     xDomain: d3.extent(xValues),
@@ -265,15 +269,20 @@ function getYExtentsForGroups(groups) {
 /// This is only exported for testing.
 export function getDimensionsAndGroupsAndUpdateSeriesDisplayNames(
   props,
-  datas,
+  originalDatas,
   warn,
 ) {
   const { settings, chartType } = props;
+  const datas =
+    chartType === "waterfall"
+      ? syntheticStackedBarsForWaterfallChart(originalDatas, settings)
+      : originalDatas;
+  const isStackedBar = isStacked(settings, datas) || chartType === "waterfall";
 
   const { groups, dimension } =
     chartType === "scatter"
       ? getDimensionsAndGroupsForScatterChart(datas)
-      : isStacked(settings, datas)
+      : isStackedBar
       ? getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
           props,
           datas,
@@ -411,6 +420,7 @@ function getDcjsChart(cardType, parent) {
     case "area":
       return lineAddons(dc.lineChart(parent));
     case "bar":
+    case "waterfall":
       return dc.barChart(parent);
     case "scatter":
       return dc.bubbleChart(parent);
@@ -496,6 +506,21 @@ function setChartColor({ series, settings, chartType }, chart, groups, index) {
     chart.ordinalColors(
       series.map(single => colorsByKey[keyForSingleSeries(single)]),
     );
+  }
+
+  if (chartType === "waterfall") {
+    chart.on("pretransition", function(chart) {
+      chart.selectAll("g.stack._0 rect.bar").style("fill", "transparent");
+      chart
+        .selectAll("g.stack._3 rect.bar")
+        .style("fill", settings["waterfall.total_color"]);
+      chart
+        .selectAll("g.stack._1 rect.bar")
+        .style("fill", settings["waterfall.decrease_color"]);
+      chart
+        .selectAll("g.stack._2 rect.bar")
+        .style("fill", settings["waterfall.increase_color"]);
+    });
   }
 }
 
@@ -785,7 +810,7 @@ function doHistogramBarStuff(parent) {
 /************************************************************ PUTTING IT ALL TOGETHER ************************************************************/
 
 type LineAreaBarProps = VisualizationProps & {
-  chartType: "line" | "area" | "bar" | "scatter",
+  chartType: "line" | "area" | "bar" | "waterfall" | "scatter",
   isScalarSeries: boolean,
   maxSeries: number,
 };
@@ -875,10 +900,9 @@ export default function lineAreaBar(
 
   // HACK: compositeChart + ordinal X axis shenanigans. See https://github.com/dc-js/dc.js/issues/678 and https://github.com/dc-js/dc.js/issues/662
   if (!isHistogram(props.settings)) {
-    const hasBar = _.any(
-      series,
-      single => getSeriesDisplay(settings, single) === "bar",
-    );
+    const hasBar =
+      _.any(series, single => getSeriesDisplay(settings, single) === "bar") ||
+      props.chartType === "waterfall";
     parent._rangeBandPadding(hasBar ? BAR_PADDING_RATIO : 1);
   }
 
@@ -889,6 +913,14 @@ export default function lineAreaBar(
   setupTooltips(props, datas, parent, brushChangeFunctions);
 
   parent.render();
+
+  datas.map(data => {
+    data.map(d => {
+      if (d._waterfallValue) {
+        d[1] = d._waterfallValue;
+      }
+    });
+  });
 
   // apply any on-rendering functions (this code lives in `LineAreaBarPostRenderer`)
   lineAndBarOnRender(parent, {
@@ -926,6 +958,8 @@ export const areaRenderer = (element, props) =>
   lineAreaBar(element, { ...props, chartType: "area" });
 export const barRenderer = (element, props) =>
   lineAreaBar(element, { ...props, chartType: "bar" });
+export const waterfallRenderer = (element, props) =>
+  lineAreaBar(element, { ...props, chartType: "waterfall" });
 export const comboRenderer = (element, props) =>
   lineAreaBar(element, { ...props, chartType: "combo" });
 export const scatterRenderer = (element, props) =>
