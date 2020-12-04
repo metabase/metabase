@@ -57,6 +57,7 @@ import {
   getFirstNonEmptySeries,
   getXValues,
   syntheticStackedBarsForWaterfallChart,
+  xValueForWaterfallTotal,
   isDimensionTimeseries,
   isRemappedToString,
   isMultiCardSeries,
@@ -137,7 +138,7 @@ function getXAxisProps(props, datas, warn) {
   const xValues = isHistogram
     ? [...rawXValues, Math.max(...rawXValues) + xInterval]
     : props.chartType === "waterfall" && props.settings["waterfall.show_total"]
-    ? [...rawXValues, t`Total`]
+    ? [...rawXValues, xValueForWaterfallTotal(props)]
     : rawXValues;
 
   return {
@@ -272,10 +273,10 @@ export function getDimensionsAndGroupsAndUpdateSeriesDisplayNames(
   originalDatas,
   warn,
 ) {
-  const { settings, chartType } = props;
+  const { settings, chartType, series } = props;
   const datas =
     chartType === "waterfall"
-      ? syntheticStackedBarsForWaterfallChart(originalDatas, settings)
+      ? syntheticStackedBarsForWaterfallChart(originalDatas, settings, series)
       : originalDatas;
   const isStackedBar = isStacked(settings, datas) || chartType === "waterfall";
 

@@ -9,8 +9,10 @@ import { parseTimestamp } from "metabase/lib/time";
 
 import { dimensionIsNumeric } from "./numeric";
 import {
+  computeTimeseriesDataInverval,
   dimensionIsTimeseries,
   dimensionIsExplicitTimeseries,
+  minTimeseriesUnit,
 } from "./timeseries";
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
 import { invalidDateWarning, nullDimensionWarning } from "./warnings";
@@ -237,23 +239,17 @@ a positive value, the other is zero). This is done so we need not have
 conditional fill color.
 
 */
-export function syntheticStackedBarsForWaterfallChart(datas, settings = {}) {
+
+export function syntheticStackedBarsForWaterfallChart(
+  datas,
+  settings = {},
+  series = {},
+) {
   const showTotal = settings && settings["waterfall.show_total"];
   const stackedBarsDatas = datas.slice();
-
   const mainSeries = stackedBarsDatas[0];
   const mainValues = mainSeries.map(d => d[1]);
   const totalValue = mainValues.reduce((total, value) => total + value, 0);
-  const total = ["Total", totalValue];
-  if (mainSeries[0]._origin) {
-    // $FlowFixMe cloning for the total bar
-    total._origin = {
-      seriesIndex: mainSeries[0]._origin.seriesIndex,
-      rowIndex: mainSeries.length,
-      cols: mainSeries[0]._origin.cols,
-      row: total,
-    };
-  }
 
   const { beams } = mainValues.reduce(
     (t, value) => {
@@ -267,6 +263,16 @@ export function syntheticStackedBarsForWaterfallChart(datas, settings = {}) {
 
   const values = mainValues.slice();
   if (showTotal) {
+    const total = [xValueForWaterfallTotal({ settings, series }), totalValue];
+    if (mainSeries[0]._origin) {
+      // $FlowFixMe cloning for the total bar
+      total._origin = {
+        seriesIndex: mainSeries[0]._origin.seriesIndex,
+        rowIndex: mainSeries.length,
+        cols: mainSeries[0]._origin.cols,
+        row: total,
+      };
+    }
     stackedBarsDatas[0] = [...mainSeries, total];
     // The last one is the total bar, anchor it at 0
     beams.push(0);
@@ -287,6 +293,18 @@ export function syntheticStackedBarsForWaterfallChart(datas, settings = {}) {
   }
 
   return stackedBarsDatas;
+}
+
+export function xValueForWaterfallTotal({ settings, series }) {
+  if (isTimeseries(settings)) {
+    const xValues = getXValues({ settings, series });
+    const unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
+    const { count, interval } = computeTimeseriesDataInverval(xValues, unit);
+    const lastXValue = xValues[xValues.length - 1];
+    return lastXValue.clone().add(count, interval);
+  }
+
+  return t`Total`;
 }
 
 /************************************************************ PROPERTIES ************************************************************/
