@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 import { extractQueryParams } from "metabase/lib/urls";
 
 import Icon from "metabase/components/Icon";
-import Text from "metabase/components/Text";
+import Text from "metabase/components/type/Text";
 
 function colorForType(type) {
   switch (type) {

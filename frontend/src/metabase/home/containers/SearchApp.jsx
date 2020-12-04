@@ -12,7 +12,7 @@ import Database from "metabase/entities/databases";
 import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
 import EntityItem from "metabase/components/EntityItem";
-import Subhead from "metabase/components/Subhead";
+import Subhead from "metabase/components/type/Subhead";
 import { FILTERS } from "metabase/components/ItemTypeFilterBar";
 
 import { color } from "metabase/lib/colors";

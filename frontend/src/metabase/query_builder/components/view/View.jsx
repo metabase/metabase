@@ -6,7 +6,7 @@ import cx from "classnames";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
-import Subhead from "metabase/components/Subhead";
+import Subhead from "metabase/components/type/Subhead";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import NativeQueryEditor from "../NativeQueryEditor";
