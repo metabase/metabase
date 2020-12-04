@@ -169,11 +169,11 @@ executors:
           ACCEPT_EULA: Y
           SA_PASSWORD: 'P@ssw0rd'
 
-  fe-mongo:
+  fe-mongo-4:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/mongo:4.0
+      - image: metabase/qa-databases:mongo-sample-4.0
 
   fe-postgres-12:
     working_directory: /home/circleci/metabase/metabase/
@@ -708,7 +708,7 @@ jobs:
           before-steps:
             - restore_cache:
                 keys:
-                  - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}
+                  - uberjar-v4-<< parameters.edition >>-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
       - store_artifacts:
           path: /home/circleci/metabase/metabase/cypress
       - store_test_results:
@@ -1073,13 +1073,12 @@ workflows:
           <<: *Matrix
 
       - fe-tests-cypress:
-          name: fe-tests-cypress-mongo-<< matrix.edition >>
+          name: fe-tests-cypress-mongo-4-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
             - fe-deps
-          e: fe-mongo
+          e: fe-mongo-4
           cypress-group: "mongo"
-          driver: mongo
           only-single-database: true
           test-files-location: frontend/test/metabase-db/mongo
           <<: *Matrix

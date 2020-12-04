@@ -21,6 +21,8 @@ import type { DatasetQuery } from "metabase-types/types/Card";
 
 import type { ParameterValues } from "metabase-types/types/Parameter";
 
+import { HARD_ROW_LIMIT } from "metabase/lib/query";
+
 type Props = {
   question: Question,
   originalQuestion: Question,
@@ -62,7 +64,7 @@ export default class QueryVisualization extends Component {
 
   static defaultProps = {
     // NOTE: this should be more dynamic from the backend, it's set based on the query lang
-    maxTableRows: 2000,
+    maxTableRows: HARD_ROW_LIMIT,
   };
 
   _getStateFromProps(props) {

@@ -4,6 +4,8 @@ import { t } from "ttag";
 import cx from "classnames";
 import Input from "metabase/components/Input";
 import Radio from "metabase/components/Radio";
+import { HARD_ROW_LIMIT } from "metabase/lib/query";
+import { formatNumber } from "metabase/lib/formatting";
 
 const CustomRowLimit = ({ limit, onChangeLimit, onClose }) => {
   return (
@@ -35,7 +37,10 @@ const LimitPopover = ({ limit, onChangeLimit, onClose, className }) => (
       vertical
       value={limit == null ? "maximum" : "custom"}
       options={[
-        { name: t`Show maximum`, value: "maximum" },
+        {
+          name: t`Show maximum (first ${formatNumber(HARD_ROW_LIMIT)})`,
+          value: "maximum",
+        },
         {
           name: (
             <CustomRowLimit

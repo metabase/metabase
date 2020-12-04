@@ -251,29 +251,17 @@
   (copy-db-tables! old-db-id new-db-id)
   (copy-db-fks! old-db-id new-db-id))
 
-(defn- unique-db-name
-  [s]
-  (loop [i 1]
-    (let [suffix    (str " - Copy " i)
-          max-len   (min (count s) (- 254 (count suffix)))
-          next-name (str (subs s 0 max-len) suffix)]
-      (if-not (db/select-one-field :id 'Database :name next-name)
-        next-name
-        (recur (inc i))))))
-
 (defn do-with-temp-copy-of-db
   "Internal impl of `data/with-temp-copy-of-db`. Run `f` with a temporary Database that copies the details from the
   standard test database, and syncs it."
   [f]
-  (let [{old-db-id :id, :as old-db} (*get-db*)
-        original-db                 (select-keys old-db [:details :engine :name])
-        new-db                      (assoc original-db :name (unique-db-name (:name original-db)))
-        {new-db-id :id, :as new-db} (db/insert! Database new-db)]
-    (try
-     (copy-db-tables-and-fields! old-db-id new-db-id)
-     (do-with-db new-db f)
-     (finally
-      (db/delete! Database :id new-db-id)))))
+  (let [{old-db-id :id, :as old-db}                            (*get-db*)
+        {:keys [engine], original-name :name, :as original-db} (select-keys old-db [:details :engine :name])]
+    (let [{new-db-id :id, :as new-db} (db/insert! Database original-db)]
+      (try
+        (copy-db-tables-and-fields! old-db-id new-db-id)
+        (do-with-db new-db f)
+        (finally (db/delete! Database :id new-db-id))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
