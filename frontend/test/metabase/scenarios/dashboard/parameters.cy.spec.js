@@ -106,7 +106,7 @@ describe("scenarios > dashboard > parameters", () => {
       .contains("4,939");
   });
 
-  it.skip("should remove previously deleted dashboard parameter from URL (metabase#10829)", () => {
+  it("should remove previously deleted dashboard parameter from URL (metabase#10829)", () => {
     // Mirrored issue in metabase-enterprise#275
 
     // Go directly to "Orders in a dashboard" dashboard
@@ -132,6 +132,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.get(".Dashboard .Icon-gear").click();
     cy.findByText("Remove").click();
     cy.findByText("Save").click();
+    cy.findByText("You're editing this dashboard.").should("not.exist");
 
     cy.log("**URL should not include deleted parameter**");
     cy.url().should("not.include", "category=Gizmo");
