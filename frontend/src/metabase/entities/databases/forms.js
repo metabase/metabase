@@ -18,6 +18,10 @@ const DATABASE_DETAIL_OVERRIDES = {
     title: t`Use the Java Virtual Machine (JVM) timezone`,
     description: t`We suggest you leave this off unless you're doing manual timezone casting in many or most of your queries with this data.`,
   }),
+  "include-user-id-and-hash": (engine, details, id) => ({
+    title: t`Include User ID and query hash in queries`,
+    description: t`When on, Metabase User ID and query hash get appended to queries on this database, which can be useful for auditing and debugging. However, this causes each query to look distinct, preventing BigQuery from returning cached results, which may increase your costs.`,
+  }),
   "use-srv": (engine, details, id) => ({
     title: t`Use DNS SRV when connecting`,
     description: t`Using this option requires that provided host is a FQDN.  If connecting to an Atlas cluster, you might need to enable this option.  If you don't know what this means, leave this disabled.`,

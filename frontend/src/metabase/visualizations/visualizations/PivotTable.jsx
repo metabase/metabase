@@ -13,6 +13,14 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
+// These aren't used yet, but we want to add them to the codebase now to get translations
+// eslint-disable-next-line
+const _moreStrings = [
+  columnName => t`Totals for ${columnName}`,
+  t`Grand totals`,
+  t`Row totals`,
+];
+
 const partitions = [
   {
     name: "rows",
@@ -35,7 +43,7 @@ export default class PivotTable extends Component {
   props: VisualizationProps;
   static uiName = t`Pivot Table`;
   static identifier = "pivot";
-  static iconName = "table";
+  static iconName = "pivot_table";
 
   static isSensible({ cols }) {
     return (
