@@ -2,8 +2,10 @@ import { signInAsAdmin, modal, popover, restore } from "__support__/cypress";
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 
 describe("scenarios > dashboard > parameters", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should be visible if previously added", () => {
     cy.visit("/dashboard/1");
