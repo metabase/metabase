@@ -4,6 +4,7 @@ import {
   modal,
   popover,
   withSampleDataset,
+  createNativeQuestion,
 } from "__support__/cypress";
 
 describe("scenarios > dashboard > dashboard drill", () => {
@@ -47,6 +48,80 @@ describe("scenarios > dashboard > dashboard drill", () => {
     // click value and confirm url updates
     cy.findByText("column value: 111").click();
     cy.location("pathname").should("eq", "/foo/111/param-value");
+  });
+
+  it.skip("should insert values from hidden column on custom destination URL click through (metabase#13927)", () => {
+    cy.log("**-- 1. Create a question --**");
+
+    createNativeQuestion(
+      "13927",
+      `SELECT PEOPLE.STATE, PEOPLE.CITY from PEOPLE;`,
+    ).then(({ body: { id: QUESTION_ID } }) => {
+      cy.log("**-- 2. Create a dashboard --**");
+
+      cy.request("POST", "/api/dashboard", {
+        name: "13927D",
+      }).then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.log("**-- 3. Add question to the dashboard --**");
+
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          cy.log("**-- 4. Set card parameters --**");
+
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 6,
+                sizeY: 8,
+                series: [],
+                visualization_settings: {
+                  "table.cell_column": "CITY",
+                  "table.pivot_column": "STATE",
+                  column_settings: {
+                    '["name","CITY"]': {
+                      click_behavior: {
+                        type: "link",
+                        linkType: "url",
+                        linkTextTemplate:
+                          "Click to find out which state does {{CITY}} belong to.",
+                        linkTemplate: "/test/{{STATE}}",
+                      },
+                    },
+                  },
+                  "table.columns": [
+                    {
+                      name: "STATE",
+                      fieldRef: ["field-literal", "STATE", "type/Text"],
+                      enabled: false,
+                    },
+                    {
+                      name: "CITY",
+                      fieldRef: ["field-literal", "CITY", "type/Text"],
+                      enabled: true,
+                    },
+                  ],
+                },
+                parameter_mappings: [],
+              },
+            ],
+          });
+        });
+
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+
+        cy.findByText(
+          "Click to find out which state does Rye belong to.",
+        ).click();
+
+        cy.log("**Reported failing on v0.37.2**");
+        cy.location("pathname").should("eq", "/test/CO");
+      });
+    });
   });
 
   it("should handle question click through on a table", () => {
