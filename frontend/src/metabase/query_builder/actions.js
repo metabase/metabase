@@ -1086,6 +1086,7 @@ export const queryCompleted = (question, queryResults) => {
     const dirty =
       !originalQuestion ||
       (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+    console.log({ data, originalQuestion, dirty, question });
     if (dirty) {
       // Only update the display if the question is new or has been changed.
       // Otherwise, trust that the question was saved with the correct display.

@@ -4,6 +4,7 @@ import { formatValue } from "metabase/lib/formatting";
 
 export function multiLevelPivot(
   data,
+  subtotals,
   columnColumnIndexes,
   rowColumnIndexes,
   valueColumnIndexes,
@@ -28,6 +29,25 @@ export function multiLevelPivot(
     valuesByKey[valueKey] = valueColumnIndexes.map(index => row[index]);
   }
 
+  const subtotalValues = {};
+  console.log({ subtotals });
+  for (const [subtotalName, subtotal] of Object.entries(subtotals)) {
+    const indexes = {
+      totals: [],
+      bottomTotals: columnColumnIndexes,
+      rightTotals: rowColumnIndexes,
+    }[subtotalName];
+    console.log({ subtotalName, indexes });
+    subtotalValues[subtotalName] = {};
+    for (const row of subtotal.rows) {
+      const valueKey = JSON.stringify(indexes.map(index => row[index]));
+      subtotalValues[subtotalName][valueKey] = valueColumnIndexes.map(
+        index => row[index],
+      );
+    }
+  }
+  console.log({ subtotalValues });
+
   const valueFormatters = valueColumnIndexes.map(index => value =>
     formatValue(value, { column: data.cols[index] }),
   );
@@ -37,6 +57,8 @@ export function multiLevelPivot(
   return {
     topIndex: getIndex(columnColumnTree, { valueColumns }),
     leftIndex: getIndex(rowColumnTree, {}),
+    getSubtotalSection: (subtotalId, rowIndexValues, columnIndexValues) => {},
+    subtotalValues,
     getRowSection: createRowSectionGetter({
       valuesByKey,
       columnColumnTree,

@@ -1,9 +1,10 @@
 /* @flow */
-import { getIn } from "icepick";
 import _ from "underscore";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Question from "metabase-lib/lib/Question";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
@@ -11,8 +12,9 @@ const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 // $FlowFixMe: Flow doesn't understand webpack loader syntax
 import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
-import type { Data, Options } from "metabase/lib/api";
+import type { Data, Options, APIMethod } from "metabase/lib/api";
 
+import type { Card } from "metabase-types/types/Card";
 import type { DatabaseId } from "metabase-types/types/Database";
 import type { DatabaseCandidates } from "metabase-types/types/Auto";
 import type { DashboardWithCards } from "metabase-types/types/Dashboard";
@@ -30,15 +32,12 @@ export const GTAPApi = {
   attributes: GET("/api/mt/user/attributes"),
 };
 
-export function maybeUsePivotEndpoint(api, card) {
+export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
   function wrap(api) {
-    return (params, ...rest) => {
-      // TODO use metabase-lib instead of getIn
-      const setting = getIn(card, [
-        "visualization_settings",
-        "pivot_table.column_split",
-      ]);
-      const breakout = getIn(card, ["dataset_query", "query", "breakout"]);
+    return (params: ?Data, ...rest: any) => {
+      const question = new Question(card, new Metadata());
+      const setting = question.setting("pivot_table.column_split");
+      const breakout = question.query().breakouts();
       const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
         setting,
         fieldRefs =>
@@ -252,7 +251,7 @@ export const MetabaseApi = {
   field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
-  dataset_pivot: POST("/api/dataset"), // same for now
+  dataset_pivot: POST("/api/advanced_computation/pivot/dataset"), // same for now
   dataset_duration: POST("/api/dataset/duration"),
   native: POST("/api/dataset/native"),
 
