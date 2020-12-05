@@ -583,7 +583,10 @@
                   (u/emoji "💾"))
         ttl-seconds))))
 
-(defn- query-for-card [{query :dataset_query, :as card} parameters constraints middleware]
+(defn query-for-card
+  "Generate a query for a saved Card"
+  [{query :dataset_query
+    :as   card} parameters constraints middleware]
   (let [query (-> query
                   ;; don't want default constraints overridding anything that's already there
                   (m/dissoc-in [:middleware :add-default-userland-constraints?])
@@ -611,7 +614,8 @@
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card  (api/read-check (Card card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware)
-                         :async? true)
+                         ;; this should be true
+                         :async? false)
                   (assoc-in [:middleware :js-int-to-string?] true))
         info  {:executed-by  api/*current-user-id*
                :context      context
