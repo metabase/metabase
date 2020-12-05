@@ -9,6 +9,6 @@ Allows users to pick from a set of colors. If no custom set of colors is defined
 export const category = "pickers";
 
 export const examples = {
-  "": <ColorPicker />,
-  "with value": <ColorPicker value="#509ee3" />,
+  "": <ColorPicker onChange={() => {}} />,
+  "with value": <ColorPicker value="#509ee3" onChange={() => {}} />,
 };

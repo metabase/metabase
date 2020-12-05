@@ -55,7 +55,7 @@ describe("Icon", () => {
     });
 
     it("should render an image if `img` attribute is present in `ICON_PATHS`", () => {
-      render(<Icon name="slack" />);
+      render(<Icon name="slack_colorized" />);
       expect(screen.getByRole("img")).toHaveAttribute("src");
     });
   });
