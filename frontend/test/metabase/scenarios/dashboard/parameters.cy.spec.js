@@ -125,13 +125,9 @@ describe("scenarios > dashboard > parameters", () => {
     cy.log(
       "**URL is updated correctly with the given parameter at this point**",
     );
-    cy.url().should("include", "category=Gizmo");
 
-    // Remove filter and save dashboard
-    cy.get(".Icon-pencil").click();
-    cy.get(".Dashboard .Icon-gear").click();
-    cy.findByText("Remove").click();
-    cy.findByText("Save").click();
+    cy.url().should("include", "category=Gizmo");
+    cy.get(".Icon-close").click();
     cy.findByText("You're editing this dashboard.").should("not.exist");
 
     cy.log("**URL should not include deleted parameter**");
