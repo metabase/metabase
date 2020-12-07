@@ -35,6 +35,13 @@ export const USERS = {
   },
 };
 
+export const USER_GROUPS = {
+  ALL_USERS_GROUP: 1,
+  ADMIN_GROUP: 2,
+  COLLECTION_GROUP: 4,
+  DATA_GROUP: 5,
+};
+
 export function signIn(user = "admin") {
   cy.log(`**--- Logging in as ${user} ---**`);
   cy.request("POST", "/api/session", USERS[user]);
@@ -92,12 +99,31 @@ export function selectDashboardFilter(selection, filterName) {
     .click({ force: true });
 }
 
-export function openOrdersTable() {
-  cy.visit("/question/new?database=1&table=2");
+export function openTable({ database = 1, table, mode = null } = {}) {
+  const url = "/question/new?";
+  const params = new URLSearchParams({ database, table });
+
+  if (mode === "notebook") {
+    params.append("mode", mode);
+  }
+
+  cy.visit(url + params.toString());
 }
 
-export function openProductsTable() {
-  cy.visit("/question/new?database=1&table=1");
+export function openProductsTable({ mode } = {}) {
+  return openTable({ table: 1, mode });
+}
+
+export function openOrdersTable({ mode } = {}) {
+  return openTable({ table: 2, mode });
+}
+
+export function openPeopleTable({ mode } = {}) {
+  return openTable({ table: 3, mode });
+}
+
+export function openReviewsTable({ mode } = {}) {
+  return openTable({ table: 4, mode });
 }
 
 export function setupLocalHostEmail() {
