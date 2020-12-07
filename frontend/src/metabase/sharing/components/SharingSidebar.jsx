@@ -2,13 +2,15 @@ import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import { t, jt, ngettext, msgid } from "ttag";
+import { Flex } from "grid-styled";
 
 import Card from "metabase/components/Card";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
+import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
 import Icon from "metabase/components/Icon";
+import Label from "metabase/components/type/Label";
 import Link from "metabase/components/Link";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Radio from "metabase/components/Radio";
 import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 import SchedulePicker from "metabase/components/SchedulePicker";
 import Select, { Option } from "metabase/components/Select";
@@ -60,12 +62,51 @@ const CHANNEL_NOUN_PLURAL = {
 
 const Heading = ({ children }) => <h4>{children}</h4>;
 
+const cardsFromDashboard = dashboard => {
+  if (dashboard === undefined) {
+    return [];
+  }
+
+  return dashboard.ordered_cards.map(card => ({
+    id: card.card.id,
+    collection_id: card.card.collection_id,
+    description: card.card.description,
+    display: card.card.display,
+    name: card.card.name,
+    include_csv: false,
+    include_xls: false,
+    dashboard_card_id: card.id,
+    dashboard_id: dashboard.id,
+    parameter_mappings: [], // card.parameter_mappings, //TODO: this ended up as "[]" ?
+  }));
+};
+
+const nonTextCardsFromDashboard = dashboard => {
+  return cardsFromDashboard(dashboard).filter(card => card.display !== "text");
+};
+
+const cardsToPulseCards = (cards, pulseCards) => {
+  return cards.map(card => {
+    const pulseCard = pulseCards.find(pc => pc.id === card.id) || card;
+    return {
+      ...card,
+      include_csv: pulseCard.include_csv,
+      include_xls: pulseCard.include_xls,
+    };
+  });
+};
+
 const getEditingPulseWithDefaults = (state, props) => {
   const pulse = getEditingPulse(state, props);
   const dashboardWrapper = state.dashboard;
   if (!pulse.name) {
     pulse.name = dashboardWrapper.dashboards[dashboardWrapper.dashboardId].name;
   }
+  pulse.cards = cardsToPulseCards(
+    nonTextCardsFromDashboard(props.dashboard),
+    pulse.cards,
+  );
+
   return pulse;
 };
 
@@ -127,7 +168,7 @@ class SharingSidebar extends React.Component {
   };
 
   addChannel(type) {
-    const { pulse, formInput } = this.props;
+    const { dashboard, pulse, formInput } = this.props;
 
     const channelSpec = formInput.channels[type];
     if (!channelSpec) {
@@ -139,7 +180,7 @@ class SharingSidebar extends React.Component {
     const newPulse = {
       ...pulse,
       channels: pulse.channels.concat(channel),
-      cards: this.cardsFromDashboard(),
+      cards: nonTextCardsFromDashboard(dashboard),
     };
     this.setPulse(newPulse);
   }
@@ -166,23 +207,6 @@ class SharingSidebar extends React.Component {
         this.createSubscription();
       }
     }
-  }
-
-  cardsFromDashboard() {
-    const { dashboard } = this.props;
-
-    return dashboard.ordered_cards.map(card => ({
-      id: card.card.id,
-      collection_id: card.card.collection_id,
-      description: card.card.description,
-      display: card.card.display,
-      name: card.card.name,
-      include_csv: false,
-      include_xls: false,
-      dashboard_card_id: card.id,
-      dashboard_id: dashboard.id,
-      parameter_mappings: [], // card.parameter_mappings, //TODO: this ended up as "[]" ?
-    }));
   }
 
   onChannelPropertyChange(index, name, value) {
@@ -246,42 +270,6 @@ class SharingSidebar extends React.Component {
     this.setPulse({ ...pulse, skip_if_empty: !pulse.skip_if_empty });
   };
 
-  toggleAttach = value => {
-    if (value) {
-      // if any are set, use that value, otherwise use "csv", our default
-      const existingValue = this.attachmentTypeValue();
-      this.setAttachmentType(existingValue || "csv");
-    } else {
-      this.setAttachmentType(null);
-    }
-  };
-
-  setAttachmentType(value) {
-    const { pulse } = this.props;
-
-    const newPulse = {
-      ...pulse,
-      cards: pulse.cards.map(card => {
-        card.include_xls = value === "xls";
-        card.include_csv = value === "csv";
-        return card;
-      }),
-    };
-    this.setPulse(newPulse);
-  }
-
-  attachmentTypeValue() {
-    const { pulse } = this.props;
-
-    if (pulse.cards.some(c => c.include_xls)) {
-      return "xls";
-    } else if (pulse.cards.some(c => c.include_csv)) {
-      return "csv";
-    } else {
-      return null;
-    }
-  }
-
   handleSave = async () => {
     const { pulse, dashboard, formInput } = this.props;
 
@@ -302,7 +290,9 @@ class SharingSidebar extends React.Component {
 
   editPulse = (pulse, channelType) => {
     this.setPulse(pulse);
-    this.setState({ editingMode: "add-edit-" + channelType });
+    this.setState({
+      editingMode: "add-edit-" + channelType,
+    });
   };
 
   formatHourAMPM(hour) {
@@ -403,11 +393,16 @@ class SharingSidebar extends React.Component {
     }
 
     return (
-      <li className={cx("flex align-center mr1 mb1 p1 text-medium")}>
-        <span className="text-medium">
-          <Icon name="person" />
-        </span>
-        <span className="ml1 text-medium">
+      <li className="flex align-center mr1 text-bold text-medium hover-child hover--inherit">
+        <Icon
+          name="group"
+          className="text-medium hover-child hover--inherit"
+          size={12}
+        />
+        <span
+          className="ml1 text-medium hover-child hover--inherit"
+          style={{ fontSize: "12px" }}
+        >
           {first.common_name || first.email}
           {text !== "" && text}
         </span>
@@ -417,11 +412,9 @@ class SharingSidebar extends React.Component {
 
   renderRecipients(pulse) {
     return (
-      <div className="text-medium">
+      <div className="text-medium hover-child">
         <ul
-          className={cx(
-            "pl1 pt1 pb0 pr0 flex flex-wrap bg-white scroll-x scroll-y",
-          )}
+          className="flex flex-wrap scroll-x scroll-y"
           style={{ maxHeight: 130 }}
         >
           {this.renderEmailRecipients(pulse.channels[0].recipients)}
@@ -470,21 +463,23 @@ class SharingSidebar extends React.Component {
 
     if (pulse.id != null && !pulse.archived) {
       return (
-        <ModalWithTrigger
-          triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
-          triggerElement={t`Delete this subscription`}
-        >
-          {({ onClose }) => (
-            <DeleteModalWithConfirm
-              objectType="pulse"
-              title={t`Archive` + ' "' + pulse.name + '"?'}
-              buttonText={t`Archive`}
-              confirmItems={this.getConfirmItems()}
-              onClose={onClose}
-              onDelete={this.handleArchive}
-            />
-          )}
-        </ModalWithTrigger>
+        <div className="border-top pt1 pb3 flex justify-end">
+          <ModalWithTrigger
+            triggerClasses="Button Button--borderless text-light text-error-hover flex-align-right flex-no-shrink"
+            triggerElement={t`Delete this subscription`}
+          >
+            {({ onClose }) => (
+              <DeleteModalWithConfirm
+                objectType="pulse"
+                title={t`Archive` + ' "' + pulse.name + '"?'}
+                buttonText={t`Archive`}
+                confirmItems={this.getConfirmItems()}
+                onClose={onClose}
+                onDelete={this.handleArchive}
+              />
+            )}
+          </ModalWithTrigger>
+        </div>
       );
     }
 
@@ -512,44 +507,49 @@ class SharingSidebar extends React.Component {
           <div className="p4 flex justify-between align-center">
             <h3>{t`Schedules`}</h3>
 
-            <Tooltip tooltip={t`Set up a new schedule`}>
-              <Icon
-                name="add"
-                className="text-brand bg-light-hover rounded p1 cursor-pointer"
-                size={20}
-                onClick={() => this.createSubscription()}
-              />
-            </Tooltip>
-            <Tooltip tooltip={t`Close`}>
-              <Icon
-                name="close"
-                className="text-brand bg-light-hover rounded p1 cursor-pointer"
-                size={20}
-                onClick={onCancel}
-              />
-            </Tooltip>
+            <Flex align="center">
+              <Tooltip tooltip={t`Set up a new schedule`}>
+                <Icon
+                  name="add"
+                  className="text-brand bg-light-hover rounded p1 cursor-pointer mr1"
+                  size={18}
+                  onClick={() => this.createSubscription()}
+                />
+              </Tooltip>
+              <Tooltip tooltip={t`Close`}>
+                <Icon
+                  name="close"
+                  className="text-light bg-light-hover rounded p1 cursor-pointer"
+                  size={22}
+                  onClick={onCancel}
+                />
+              </Tooltip>
+            </Flex>
           </div>
-          <div className="myb mx4">
+          <div className="my2 mx4">
             {pulseList.map(pulse => (
               <Card
                 flat
-                hoverable
-                className="mt1 mb3 cursor-pointer"
+                className="mb3 cursor-pointer bg-brand-hover"
                 onClick={() =>
                   this.editPulse(pulse, pulse.channels[0].channel_type)
                 }
               >
-                <div className="p3">
-                  <div className="flex align-center mb1">
+                <div className="px3 py2 hover-parent hover--inherit text-white-hover">
+                  <div className="flex align-center hover-child hover--inherit">
                     <Icon
                       name={
                         pulse.channels[0].channel_type === "email"
                           ? "mail"
                           : "slack"
                       }
-                      className="mr1 text-brand"
+                      className="mr1"
+                      style={{ paddingBottom: "5px" }}
+                      size={16}
                     />
-                    <h3>{this.friendlySchedule(pulse.channels[0])}</h3>
+                    <Label className="hover-child hover--inherit">
+                      {this.friendlySchedule(pulse.channels[0])}
+                    </Label>
                   </div>
                   {pulse.channels[0].channel_type === "email" &&
                     this.renderRecipients(pulse)}
@@ -573,9 +573,9 @@ class SharingSidebar extends React.Component {
           <div className="my1 mx4">
             <Card
               flat
-              hoverable={emailSpec.configured}
               className={cx("mt1 mb3", {
-                "cursor-pointer": slackSpec.configured,
+                "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
+                  emailSpec.configured,
               })}
               onClick={() => {
                 if (emailSpec.configured) {
@@ -590,7 +590,10 @@ class SharingSidebar extends React.Component {
                     name="mail"
                     className={cx(
                       "mr1",
-                      { "text-brand": emailSpec.configured },
+                      {
+                        "text-brand hover-child hover--inherit":
+                          emailSpec.configured,
+                      },
                       { "text-light": !emailSpec.configured },
                     )}
                   />
@@ -598,7 +601,11 @@ class SharingSidebar extends React.Component {
                     className={cx({ "text-light": !emailSpec.configured })}
                   >{t`Email it`}</h3>
                 </div>
-                <div className="text-medium">
+                <div
+                  className={cx("text-medium", {
+                    "hover-child hover--inherit": emailSpec.configured,
+                  })}
+                >
                   {!emailSpec.configured &&
                     jt`You'll need to ${(
                       <Link to="/admin/settings/email" className="link">
@@ -612,8 +619,10 @@ class SharingSidebar extends React.Component {
             </Card>
             <Card
               flat
-              hoverable={slackSpec.configured}
-              className={cx({ "cursor-pointer": slackSpec.configured })}
+              className={cx({
+                "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
+                  slackSpec.configured,
+              })}
               onClick={() => {
                 if (slackSpec.configured) {
                   this.setState({ editingMode: "add-edit-slack" });
@@ -628,13 +637,18 @@ class SharingSidebar extends React.Component {
                     size={24}
                     className={cx("mr1", {
                       "text-light": !slackSpec.configured,
+                      "hover-child hover--inherit": slackSpec.configured,
                     })}
                   />
                   <h3
                     className={cx({ "text-light": !slackSpec.configured })}
                   >{t`Send it to Slack`}</h3>
                 </div>
-                <div className="text-medium">
+                <div
+                  className={cx("text-medium", {
+                    "hover-child hover--inherit": slackSpec.configured,
+                  })}
+                >
                   {!slackSpec.configured &&
                     jt`First, you'll have to ${(
                       <Link to="/admin/settings/slack" className="link">
@@ -713,7 +727,7 @@ class SharingSidebar extends React.Component {
               ] || t`Messages`} will be sent at`}
               onScheduleChange={this.onChannelScheduleChange.bind(this, index)}
             />
-            <div className="pt2">
+            <div className="pt2 pb1">
               <SendTestEmail
                 channel={channel}
                 pulse={pulse}
@@ -721,7 +735,7 @@ class SharingSidebar extends React.Component {
               />
             </div>
 
-            <div className="text-bold py2 mt2 flex justify-between align-center border-top">
+            <div className="text-bold py3 mt2 flex justify-between align-center border-top">
               <Heading>{t`Don't send if there aren't results`}</Heading>
               <Toggle
                 value={pulse.skip_if_empty || false}
@@ -738,23 +752,12 @@ class SharingSidebar extends React.Component {
                   tooltip={t`Attachments can contain up to 2,000 rows of data.`}
                 />
               </div>
-              <Toggle
-                value={this.attachmentTypeValue() != null}
-                onChange={this.toggleAttach}
-              />
             </div>
-            {this.attachmentTypeValue() != null && (
-              <div className="text-bold py2 flex justify-between align-center">
-                <Radio
-                  options={[
-                    { name: "CSV", value: "csv" },
-                    { name: "XLSX", value: "xls" },
-                  ]}
-                  onChange={value => this.setAttachmentType(value)}
-                  value={this.attachmentTypeValue()}
-                />
-              </div>
-            )}
+            <EmailAttachmentPicker
+              cards={pulse.cards}
+              pulse={pulse}
+              setPulse={this.setPulse.bind(this)}
+            />
             {pulse.id != null && this.renderDeleteSubscription()}
           </div>
         </Sidebar>
