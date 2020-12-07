@@ -13,14 +13,14 @@
              [permissions-group :as group]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
              [session :refer [Session]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util
              [i18n :as i18n :refer [deferred-tru trs]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
              [db :as db]
-             [models :as models]]
-            [metabase.plugins.classloader :as classloader])
+             [models :as models]])
   (:import java.util.UUID))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
