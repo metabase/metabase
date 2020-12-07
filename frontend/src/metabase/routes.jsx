@@ -190,7 +190,9 @@ export const getRoutes = store => (
               replace(page);
             }
           }}
-        />
+        >
+          <IndexRedirect to="/collection/root" />
+        </Route>
 
         <Route path="/explore" component={PostSetupApp} />
         <Route path="/explore/:databaseId" component={PostSetupApp} />
