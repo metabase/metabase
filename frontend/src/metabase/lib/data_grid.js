@@ -30,14 +30,8 @@ export function multiLevelPivot(
   }
 
   const subtotalValues = {};
-  console.log({ subtotals });
   for (const [subtotalName, subtotal] of Object.entries(subtotals)) {
-    const indexes = {
-      totals: [],
-      bottomTotals: columnColumnIndexes,
-      rightTotals: rowColumnIndexes,
-    }[subtotalName];
-    console.log({ subtotalName, indexes });
+    const indexes = JSON.parse(subtotalName);
     subtotalValues[subtotalName] = {};
     for (const row of subtotal.rows) {
       const valueKey = JSON.stringify(indexes.map(index => row[index]));
@@ -46,7 +40,6 @@ export function multiLevelPivot(
       );
     }
   }
-  console.log({ subtotalValues });
 
   const valueFormatters = valueColumnIndexes.map(index => value =>
     formatValue(value, { column: data.cols[index] }),
