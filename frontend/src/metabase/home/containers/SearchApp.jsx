@@ -9,26 +9,23 @@ import { Box, Flex } from "grid-styled";
 import Search from "metabase/entities/search";
 import Database from "metabase/entities/databases";
 
-import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
 import EntityItem from "metabase/components/EntityItem";
-import Subhead from "metabase/components/Subhead";
+import PageHeading from "metabase/components/PageHeading";
 import { FILTERS } from "metabase/components/ItemTypeFilterBar";
 
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import NoResults from "assets/img/no_results.svg";
 
-const PAGE_PADDING = [1, 2, 4];
-
 export default class SearchApp extends React.Component {
   render() {
     const { location } = this.props;
     return (
-      <Box mx={PAGE_PADDING}>
+      <Box w={"80%"} mx="auto" pt={2}>
         {location.query.q && (
           <Flex align="center" py={[2, 3]}>
-            <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
+            <PageHeading>{jt`Results for "${location.query.q}"`}</PageHeading>
           </Flex>
         )}
         <Box>
@@ -36,13 +33,11 @@ export default class SearchApp extends React.Component {
             {({ list }) => {
               if (list.length === 0) {
                 return (
-                  <Card>
-                    <EmptyState
-                      title={t`No results`}
-                      message={t`Metabase couldn't find any results for your search.`}
-                      illustrationElement={<img src={NoResults} />}
-                    />
-                  </Card>
+                  <EmptyState
+                    title={t`No results`}
+                    message={t`Metabase couldn't find any results for your search.`}
+                    illustrationElement={<img src={NoResults} />}
+                  />
                 );
               }
 
@@ -145,7 +140,7 @@ export default class SearchApp extends React.Component {
 }
 
 const SearchResultSection = ({ title, items }) => (
-  <Card>
+  <Box>
     {items.map(item => {
       let extraInfo;
       switch (item.model) {
@@ -197,5 +192,5 @@ const SearchResultSection = ({ title, items }) => (
         </Link>
       );
     })}
-  </Card>
+  </Box>
 );

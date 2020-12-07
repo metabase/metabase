@@ -51,11 +51,11 @@ const ANALYTICS_CONTEXT = "Collection Landing";
 const ROW_HEIGHT = 72;
 
 @Search.loadList({
-  query: (state, props) => ({ collection: props.collectionId }),
+  query: (state, props) => ({ collection: props.params.collectionId }),
   wrapped: true,
 })
 @Collection.load({
-  id: (state, props) => props.collectionId,
+  id: (state, props) => props.params.collectionId,
   reload: true,
 })
 @connect((state, props) => {
@@ -144,6 +144,7 @@ export default class CollectionContent extends React.Component {
       selection,
       onToggleSelected,
       location,
+      children,
     } = this.props;
     const { selectedItems, selectedAction } = this.state;
 
@@ -160,7 +161,7 @@ export default class CollectionContent extends React.Component {
 
     return (
       <Box pt={2}>
-        <Box w={"80%"} ml="auto" mr="auto">
+        <Box w={"80%"} mx="auto">
           <Flex
             align="center"
             py={3}
@@ -440,6 +441,10 @@ export default class CollectionContent extends React.Component {
           </Modal>
         )}
         <ItemsDragLayer selected={selected} />
+        {
+          // Need to have this here so the child modals will show up
+          children
+        }
       </Box>
     );
   }
