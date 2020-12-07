@@ -904,9 +904,12 @@
 (defn- apply-clauses
   "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
   because it is aliased."
-  [driver honeysql-form {:keys [source-query expressions], :as inner-query}]
-  (binding [*query* (assoc inner-query :field-metadata (u/key-by :id (or (:source-metadata inner-query)
-                                                                         (metabase.query-processor.middleware.annotate/mbql-cols inner-query  nil))))]
+  [driver honeysql-form {:keys [source-query expressions source-metadata native], :as inner-query}]
+  (binding [*query* (->> (or source-metadata
+                             (when-not native
+                               (annotate/mbql-cols inner-query nil)))
+                         (u/key-by :id)
+                         (assoc inner-query :field-metadata))]
     (if source-query
       (apply-clauses-with-aliased-source-query-table
        driver

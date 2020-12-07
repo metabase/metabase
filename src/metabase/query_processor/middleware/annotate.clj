@@ -58,10 +58,9 @@
 ;;; |                                      Adding :cols info for native queries                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- check-driver-native-columns
+(s/defn ^:private check-driver-native-columns
   "Double-check that the *driver* returned the correct number of `columns` for native query results."
-  [cols rows]
-  {:pre [(sequential? cols) (every? map? cols)]}
+  [cols :- [{s/Any s/Any}], rows]
   (when (seq rows)
     (let [expected-count (count cols)
           actual-count   (count (first rows))]
@@ -464,6 +463,7 @@
 
 (defn- cols-for-source-query
   [{:keys [source-metadata], {native-source-query :native, :as source-query} :source-query} results]
+  (println source-query)
   (if native-source-query
     (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
     (mbql-cols source-query results)))
