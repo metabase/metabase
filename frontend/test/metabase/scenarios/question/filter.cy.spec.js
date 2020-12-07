@@ -81,8 +81,7 @@ describe("scenarios > question > filter", () => {
     // NOTE: the original issue mentions "Is not" and "Does not contain" filters
     // we're testing for one filter only to keep things simple
 
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
     // join with Products
     cy.findByText("Join data").click();
     cy.findByText("Products").click();
