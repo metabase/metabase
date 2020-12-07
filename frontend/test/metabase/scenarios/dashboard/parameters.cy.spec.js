@@ -122,16 +122,28 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByPlaceholderText("Category")
       .click()
       .type("Gizmo{enter}");
+
     cy.log(
       "**URL is updated correctly with the given parameter at this point**",
     );
-
     cy.url().should("include", "category=Gizmo");
-    cy.get(".Icon-close").click();
+
+    // Remove filter name
+    cy.get(".Icon-pencil").click();
+    cy.get(".Dashboard")
+      .find(".Icon-gear")
+      .click();
+    cy.findByDisplayValue("Category")
+      .click()
+      .clear();
+    cy.findByText("Save").click();
     cy.findByText("You're editing this dashboard.").should("not.exist");
 
-    cy.log("**URL should not include deleted parameter**");
-    cy.url().should("not.include", "category=Gizmo");
+    cy.log("**Filter name should be 'unnamed' and the value cleared**");
+    cy.findByPlaceholderText(/unnamed/i);
+
+    cy.log("**URL should reset**");
+    cy.location("pathname").should("eq", "/dashboard/1");
   });
 
   it("should allow linked question to be changed without breaking (metabase#9299)", () => {
