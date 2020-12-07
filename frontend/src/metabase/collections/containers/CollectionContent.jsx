@@ -160,8 +160,8 @@ export default class CollectionContent extends React.Component {
     const collectionHasPins = pinned.length > 0;
 
     return (
-      <Box pt={2}>
-        <Box w={"80%"} mx="auto">
+      <Box>
+        <Box>
           <Flex
             align="center"
             py={3}

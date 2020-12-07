@@ -21,7 +21,9 @@ const HomeLayout = ({ params: { collectionId }, children }) => {
         ml={340}
         pb={4}
       >
-        {children}
+        <Box w={"80%"} mx="auto" pt={2}>
+          {children}
+        </Box>
       </Box>
     </PageWrapper>
   );
