@@ -1,9 +1,8 @@
 import _ from "underscore";
 
-import { t } from "ttag";
 import { COMPACT_CURRENCY_OPTIONS } from "metabase/lib/formatting";
 import { moveToFront } from "metabase/lib/dom";
-import { isHistogramBar } from "./renderer_utils";
+import { isHistogramBar, xValueForWaterfallTotal } from "./renderer_utils";
 
 /*
 There's a lot of messy logic in this function. Its purpose is to place text labels at the appropriate place over a chart.
@@ -111,7 +110,15 @@ export function onRenderValueLabels(
       if (chart.settings["waterfall.show_total"]) {
         data = [
           ...data,
-          { ...data[0], x: t`Total`, y: total, cumulativeY: total },
+          {
+            ...data[0],
+            x: xValueForWaterfallTotal({
+              settings: chart.settings,
+              series: chart.series,
+            }),
+            y: total,
+            cumulativeY: total,
+          },
         ];
       }
     }
