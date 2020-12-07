@@ -2,9 +2,8 @@
   (:require [cheshire.core :as json]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
-            [metabase.query-processor.middleware.format-rows :as qp.format-rows]
+            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.streaming.interface :as i]
-            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util
              [date-2 :as u.date]
              [i18n :refer [tru]]])
@@ -61,11 +60,11 @@
 
 (defn- set-cell! [^Cell cell format-string date]
   (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
-  (.setCellValue cell ^Date date)
+  (.setCellValue cell ^java.util.Date date)
   (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) format-string)))
 
 (defn- apply-timezone [t]
-  (qp.format-rows/with-time-zone-same-instant t (t/zone-id *results-timezone-id*)))
+  (u.date/with-time-zone-same-instant t (t/zone-id *results-timezone-id*)))
 
 (defmethod spreadsheet/set-cell! LocalDate
   [^Cell cell t]
@@ -111,7 +110,9 @@
         results-timezone (atom nil)]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [cols]} :data}]
-        (reset! results-timezone (qp.timezone/results-timezone-id))
+        ;; avoid circular refs
+        (classloader/require 'metabase.query-processor.timezone)
+        (reset! results-timezone ((resolve 'metabase.query-processor.timezone/results-timezone-id)))
         (spreadsheet/add-row! sheet (map (some-fn :display_name :name) cols)))
 
       (write-row! [_ row _]
