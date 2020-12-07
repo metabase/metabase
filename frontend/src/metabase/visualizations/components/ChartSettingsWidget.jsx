@@ -7,15 +7,12 @@ const ChartSettingsWidget = ({
   description,
   hidden,
   disabled,
-  set,
   widget: Widget,
   value,
   onChange,
   props,
   // disables X padding for certain widgets so divider line extends to edge
   noPadding,
-  // disable reset button
-  noReset,
   // NOTE: pass along special props to support:
   // * adding additional fields
   // * substituting widgets
