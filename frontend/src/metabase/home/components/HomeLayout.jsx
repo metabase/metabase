@@ -6,7 +6,7 @@ import CollectionSidebar from "metabase/collections/containers/CollectionSidebar
 
 import { PageWrapper } from "metabase/collections/components/Layout";
 
-const CollectionLanding = ({ params: { collectionId }, children }) => {
+const HomeLayout = ({ params: { collectionId }, children }) => {
   const isRoot = collectionId === "root";
 
   return (
@@ -32,4 +32,4 @@ const CollectionLanding = ({ params: { collectionId }, children }) => {
   );
 };
 
-export default CollectionLanding;
+export default HomeLayout;
