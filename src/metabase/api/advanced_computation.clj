@@ -24,7 +24,7 @@
   [query rf init context]
   (if (a/poll! (qp.context/canceled-chan context))
     (ensure-reduced init)
-    (qp/process-query
+    (qp/process-query-sync
      query
      {:canceled-chan (qp.context/canceled-chan context)
       :rff           (fn [_]
@@ -53,13 +53,7 @@
                      (let [rf (rff metadata)]
                        (fn
                          ([]        (rf))
-                         ([acc]     (try 
-                                      (println (str "acc is of type " (type acc)))
-                                      (println (str "metadata is of type " (type metadata)))
-                                      (println (str "rf is " rf))
-                                      (rf (process-queries-append-results more-queries rf acc context))
-                                      (catch Exception ex
-                                        (.printStackTrace ex))))
+                         ([acc]     (rf (process-queries-append-results more-queries rf acc context)))
                          ([acc row] (rf acc row)))))))))
 
 (defn process-multiple-queries

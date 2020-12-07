@@ -50,7 +50,6 @@
     (testing "POST /api/advanced_computation/pivot/card/id"
       (with-temp-pivot-card [_ card]
         (let [result (mt/user-http-request :rasta :post 202 (format "advanced_computation/pivot/card/%d/query" (u/get-id card)))
-              _ (clojure.pprint/pprint result)
               rows   (mt/rows result)]
           (is (= 1384 (:row_count result)))
           (is (= "completed" (:status result)))
