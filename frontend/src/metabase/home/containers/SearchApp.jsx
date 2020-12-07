@@ -9,7 +9,6 @@ import { Box, Flex } from "grid-styled";
 import Search from "metabase/entities/search";
 import Database from "metabase/entities/databases";
 
-import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
 import EntityItem from "metabase/components/EntityItem";
 import Subhead from "metabase/components/Subhead";
@@ -36,13 +35,11 @@ export default class SearchApp extends React.Component {
             {({ list }) => {
               if (list.length === 0) {
                 return (
-                  <Card>
-                    <EmptyState
-                      title={t`No results`}
-                      message={t`Metabase couldn't find any results for your search.`}
-                      illustrationElement={<img src={NoResults} />}
-                    />
-                  </Card>
+                  <EmptyState
+                    title={t`No results`}
+                    message={t`Metabase couldn't find any results for your search.`}
+                    illustrationElement={<img src={NoResults} />}
+                  />
                 );
               }
 
@@ -145,7 +142,7 @@ export default class SearchApp extends React.Component {
 }
 
 const SearchResultSection = ({ title, items }) => (
-  <Card>
+  <Box>
     {items.map(item => {
       let extraInfo;
       switch (item.model) {
@@ -197,5 +194,5 @@ const SearchResultSection = ({ title, items }) => (
         </Link>
       );
     })}
-  </Card>
+  </Box>
 );
