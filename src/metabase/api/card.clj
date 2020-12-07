@@ -614,8 +614,7 @@
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card  (api/read-check (Card card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware)
-                         ;; this should be true
-                         :async? false)
+                         :async? true)
                   (assoc-in [:middleware :js-int-to-string?] true))
         info  {:executed-by  api/*current-user-id*
                :context      context

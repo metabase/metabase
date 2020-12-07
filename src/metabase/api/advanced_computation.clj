@@ -53,7 +53,13 @@
                      (let [rf (rff metadata)]
                        (fn
                          ([]        (rf))
-                         ([acc]     (rf (process-queries-append-results more-queries rf acc context)))
+                         ([acc]     (try 
+                                      (println (str "acc is of type " (type acc)))
+                                      (println (str "metadata is of type " (type metadata)))
+                                      (println (str "rf is " rf))
+                                      (rf (process-queries-append-results more-queries rf acc context))
+                                      (catch Exception ex
+                                        (.printStackTrace ex))))
                          ([acc row] (rf acc row)))))))))
 
 (defn process-multiple-queries
@@ -113,7 +119,7 @@
     (throw (Exception. (str (tru "`database` is required for all queries.")))))
   (api/read-check Database database)
 
-  (run-query query))
+  (run-query (assoc query :async? true)))
 
 (api/defendpoint ^:streaming POST "/pivot/card/:card-id/query"
   "Run the query associated with a Card."
