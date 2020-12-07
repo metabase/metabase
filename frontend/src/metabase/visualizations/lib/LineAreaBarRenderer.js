@@ -18,14 +18,6 @@ import {
 } from "./utils";
 
 import {
-  minTimeseriesUnit,
-  computeTimeseriesDataInverval,
-  getTimezone,
-} from "./timeseries";
-
-import { computeNumericDataInverval } from "./numeric";
-
-import {
   applyChartTimeseriesXAxis,
   applyChartQuantitativeXAxis,
   applyChartOrdinalXAxis,
@@ -56,6 +48,7 @@ import {
   getDatas,
   getFirstNonEmptySeries,
   getXValues,
+  getXInterval,
   syntheticStackedBarsForWaterfallChart,
   xValueForWaterfallTotal,
   isDimensionTimeseries,
@@ -101,30 +94,6 @@ function checkSeriesIsValid({ series, maxSeries }) {
     throw new Error(
       t`This chart type doesn't support more than ${maxSeries} series of data.`,
     );
-  }
-}
-
-function getXInterval({ settings, series }, xValues, warn) {
-  if (isTimeseries(settings)) {
-    // We need three pieces of information to define a timeseries range:
-    // 1. interval - it's really the "unit": month, day, etc
-    // 2. count - how many intervals per tick?
-    // 3. timezone - what timezone are values in? days vary in length by timezone
-    const unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
-    const timezone = getTimezone(series, warn);
-    const { count, interval } = computeTimeseriesDataInverval(xValues, unit);
-    return { count, interval, timezone };
-  } else if (isQuantitative(settings) || isHistogram(settings)) {
-    // Get the bin width from binning_info, if available
-    // TODO: multiseries?
-    const binningInfo = getFirstNonEmptySeries(series).data.cols[0]
-      .binning_info;
-    if (binningInfo) {
-      return binningInfo.bin_width;
-    }
-
-    // Otherwise try to infer from the X values
-    return computeNumericDataInverval(xValues);
   }
 }
 

@@ -7,13 +7,15 @@ import { t } from "ttag";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { parseTimestamp } from "metabase/lib/time";
 
-import { dimensionIsNumeric } from "./numeric";
 import {
   computeTimeseriesDataInverval,
   dimensionIsTimeseries,
   dimensionIsExplicitTimeseries,
+  getTimezone,
   minTimeseriesUnit,
 } from "./timeseries";
+import { computeNumericDataInverval, dimensionIsNumeric } from "./numeric";
+
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
 import { invalidDateWarning, nullDimensionWarning } from "./warnings";
 
@@ -295,11 +297,34 @@ export function syntheticStackedBarsForWaterfallChart(
   return stackedBarsDatas;
 }
 
+export function getXInterval({ settings, series }, xValues, warn) {
+  if (isTimeseries(settings)) {
+    // We need three pieces of information to define a timeseries range:
+    // 1. interval - it's really the "unit": month, day, etc
+    // 2. count - how many intervals per tick?
+    // 3. timezone - what timezone are values in? days vary in length by timezone
+    const unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
+    const timezone = getTimezone(series, warn);
+    const { count, interval } = computeTimeseriesDataInverval(xValues, unit);
+    return { count, interval, timezone };
+  } else if (isQuantitative(settings) || isHistogram(settings)) {
+    // Get the bin width from binning_info, if available
+    // TODO: multiseries?
+    const binningInfo = getFirstNonEmptySeries(series).data.cols[0]
+      .binning_info;
+    if (binningInfo) {
+      return binningInfo.bin_width;
+    }
+
+    // Otherwise try to infer from the X values
+    return computeNumericDataInverval(xValues);
+  }
+}
+
 export function xValueForWaterfallTotal({ settings, series }) {
   if (isTimeseries(settings)) {
     const xValues = getXValues({ settings, series });
-    const unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
-    const { count, interval } = computeTimeseriesDataInverval(xValues, unit);
+    const { count, interval } = getXInterval({ settings, series }, xValues);
     const lastXValue = xValues[xValues.length - 1];
     return lastXValue.clone().add(count, interval);
   }
