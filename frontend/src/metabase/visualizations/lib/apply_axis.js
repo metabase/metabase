@@ -5,6 +5,8 @@ import d3 from "d3";
 import dc from "dc";
 import moment from "moment-timezone";
 
+import { t } from "ttag";
+
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
 
@@ -115,6 +117,11 @@ export function applyChartTimeseriesXAxis(
     if (dimensionColumn.unit == null) {
       dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
     }
+    const waterfallTotalX =
+      firstSeries.card.display === "waterfall" &&
+      chart.settings["waterfall.show_total"]
+        ? xValues[xValues.length - 1]
+        : null;
 
     // extract xInterval timezone for updating tickInterval
     const { timezone } = tickInterval;
@@ -126,12 +133,14 @@ export function applyChartTimeseriesXAxis(
       const { column, ...columnSettings } = chart.settings.column(
         dimensionColumn,
       );
-      return formatValue(timestamp, {
-        ...columnSettings,
-        column: { ...column, unit: tickFormatUnit },
-        type: "axis",
-        compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
-      });
+      return waterfallTotalX && waterfallTotalX.isSame(timestamp)
+        ? t`Total`
+        : formatValue(timestamp, {
+            ...columnSettings,
+            column: { ...column, unit: tickFormatUnit },
+            type: "axis",
+            compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
+          });
     };
     if (dataInterval.interval === "week") {
       // if tick interval is compressed then show months instead of weeks because they're nicer formatted
