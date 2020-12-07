@@ -109,7 +109,7 @@
 (deftest iso-8601-text-fields
   (testing "text fields with special_type :type/ISO8601DateTimeString"
     (testing "return as dates"
-      (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite)
+      (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :oracle)
         (is (= [[1 "foo" #t "2004-10-19T10:23:54" #t "2004-10-19" #t "10:23:54"]
                 [2 "bar" #t "2008-10-19T10:23:54" #t "2008-10-19" #t "10:23:54"]
                 [3 "baz" #t "2012-10-19T10:23:54" #t "2012-10-19" #t "10:23:54"]]
@@ -118,25 +118,36 @@
                           (qp/process-query
                             (assoc (mt/mbql-query times)
                                    :middleware {:format-rows? false})))))))
-      (mt/test-drivers #{:sqlite}
-        (is (= [[1 "foo" "2004-10-19 10:23:54" "2004-10-19" "10:23:54"]
-                [2 "bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
-                [3 "baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]
-               ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
-               (mt/rows (mt/dataset string-times
-                          (qp/process-query
-                            (assoc (mt/mbql-query times)
-                                   :middleware {:format-rows? false}))))))))
+      (testing "oracle doesn't have a time type"
+        (mt/test-drivers #{:oracle}
+          (is (= [[1 "foo" #t "2004-10-19T10:23:54" #t "2004-10-19"]
+                  [2 "bar" #t "2008-10-19T10:23:54" #t "2008-10-19"]
+                  [3 "baz" #t "2012-10-19T10:23:54" #t "2012-10-19"]]
+                 ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
+                 (mt/rows (mt/dataset string-times
+                            (qp/process-query
+                              (assoc (mt/mbql-query times)
+                                     :middleware {:format-rows? false}))))))))
+      (testing "sqlite returns as strings"
+        (mt/test-drivers #{:sqlite}
+          (is (= [[1 "foo" "2004-10-19 10:23:54" "2004-10-19" "10:23:54"]
+                  [2 "bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
+                  [3 "baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]
+                 ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
+                 (mt/rows (mt/dataset string-times
+                            (qp/process-query
+                              (assoc (mt/mbql-query times)
+                                     :middleware {:format-rows? false})))))))))
     (testing "are queryable as dates"
-      (testing "a datetime field"
-        (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
-          (is (= 1
-                 (count (mt/rows (mt/dataset string-times
-                                   (mt/run-mbql-query times
-                                     {:filter   [:= [:datetime-field $ts :day] "2008-10-19"]}))))))))
-      (testing "a date field"
-        (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
-          (is (= 1
-                 (count (mt/rows (mt/dataset string-times
-                                   (mt/run-mbql-query times
-                                     {:filter   [:= [:datetime-field $d :day] "2008-10-19"]})))))))))))
+        (testing "a datetime field"
+          (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+            (is (= 1
+                   (count (mt/rows (mt/dataset string-times
+                                     (mt/run-mbql-query just_dates
+                                       {:filter   [:= [:datetime-field $ts :day] "2008-10-19"]}))))))))
+        (testing "a date field"
+          (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+            (is (= 1
+                   (count (mt/rows (mt/dataset string-times
+                                     (mt/run-mbql-query times
+                                       {:filter   [:= [:datetime-field $d :day] "2008-10-19"]})))))))))))
