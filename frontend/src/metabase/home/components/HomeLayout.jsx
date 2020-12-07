@@ -1,7 +1,6 @@
 import React from "react";
 import { Box } from "grid-styled";
 
-import CollectionContent from "metabase/collections/containers/CollectionContent";
 import CollectionSidebar from "metabase/collections/containers/CollectionSidebar";
 
 import { PageWrapper } from "metabase/collections/components/Layout";
@@ -22,12 +21,8 @@ const HomeLayout = ({ params: { collectionId }, children }) => {
         ml={340}
         pb={4}
       >
-        <CollectionContent isRoot={isRoot} collectionId={collectionId} />
+        {children}
       </Box>
-      {
-        // Need to have this here so the child modals will show up
-        children
-      }
     </PageWrapper>
   );
 };

@@ -87,11 +87,12 @@ import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal
 import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
-import CollectionLanding from "metabase/components/CollectionLanding";
+import CollectionContent from "metabase/collections/containers/CollectionContent";
 import Overworld from "metabase/containers/Overworld";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
+import HomeLayout from "metabase/home/components/HomeLayout";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => !authData.hasSetupToken,
@@ -194,19 +195,21 @@ export const getRoutes = store => (
         <Route path="/explore" component={PostSetupApp} />
         <Route path="/explore/:databaseId" component={PostSetupApp} />
 
-        <Route path="search" title={t`Search`} component={SearchApp} />
         <Route path="archive" title={t`Archive`} component={ArchiveApp} />
 
         <Route path="collection/users" component={IsAdmin}>
           <IndexRoute component={UserCollectionList} />
         </Route>
 
-        <Route path="collection/:collectionId" component={CollectionLanding}>
-          <ModalRoute path="edit" modal={CollectionEdit} />
-          <ModalRoute path="archive" modal={ArchiveCollectionModal} />
-          <ModalRoute path="new_collection" modal={CollectionCreate} />
-          <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
-          <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+        <Route component={HomeLayout}>
+          <Route path="collection/:collectionId" component={CollectionContent}>
+            <ModalRoute path="edit" modal={CollectionEdit} />
+            <ModalRoute path="archive" modal={ArchiveCollectionModal} />
+            <ModalRoute path="new_collection" modal={CollectionCreate} />
+            <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
+            <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+          </Route>
+          <Route path="search" title={t`Search`} component={SearchApp} />
         </Route>
 
         <Route path="activity" component={HomepageApp} />
