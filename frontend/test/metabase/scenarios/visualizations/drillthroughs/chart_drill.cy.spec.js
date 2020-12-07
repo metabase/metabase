@@ -9,8 +9,10 @@ import {
 } from "__support__/cypress";
 
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should allow brush date filter", () => {
     withSampleDataset(({ ORDERS, PRODUCTS }) => {
