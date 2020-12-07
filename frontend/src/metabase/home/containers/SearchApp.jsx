@@ -11,23 +11,21 @@ import Database from "metabase/entities/databases";
 
 import EmptyState from "metabase/components/EmptyState";
 import EntityItem from "metabase/components/EntityItem";
-import Subhead from "metabase/components/Subhead";
+import PageHeading from "metabase/components/PageHeading";
 import { FILTERS } from "metabase/components/ItemTypeFilterBar";
 
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import NoResults from "assets/img/no_results.svg";
 
-const PAGE_PADDING = [1, 2, 4];
-
 export default class SearchApp extends React.Component {
   render() {
     const { location } = this.props;
     return (
-      <Box mx={PAGE_PADDING}>
+      <Box w={"80%"} mx="auto" pt={2}>
         {location.query.q && (
           <Flex align="center" py={[2, 3]}>
-            <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
+            <PageHeading>{jt`Results for "${location.query.q}"`}</PageHeading>
           </Flex>
         )}
         <Box>

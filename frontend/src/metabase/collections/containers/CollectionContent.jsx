@@ -161,7 +161,7 @@ export default class CollectionContent extends React.Component {
 
     return (
       <Box pt={2}>
-        <Box w={"80%"} ml="auto" mr="auto">
+        <Box w={"80%"} mx="auto">
           <Flex
             align="center"
             py={3}
