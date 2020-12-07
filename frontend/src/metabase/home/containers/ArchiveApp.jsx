@@ -45,7 +45,7 @@ export default class ArchiveApp extends Component {
     } = this.props;
     return (
       <Box>
-        <Box py={2}>
+        <Box py={[2, 3]}>
           <PageHeading>{t`Archive`}</PageHeading>
         </Box>
         <Box>
