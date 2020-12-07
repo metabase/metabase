@@ -186,7 +186,7 @@
                                    (mt/run-mbql-query times
                                      {:filter   [:= [:datetime-field $ts :day] "2008-10-19"]}))))))))
       (testing "a date field"
-        (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle)
+        (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
           (is (= 1
                  (count (mt/rows (mt/dataset string-times
                                    (mt/run-mbql-query times
