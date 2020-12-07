@@ -138,7 +138,7 @@
 (deftest iso-8601-text-fields
   (testing "text fields with special_type :type/ISO8601DateTimeString"
     (testing "return as dates"
-      (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :oracle)
+      (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :oracle :sparksql)
         (is (= [[1 "foo" #t "2004-10-19T10:23:54" #t "2004-10-19" #t "10:23:54"]
                 [2 "bar" #t "2008-10-19T10:23:54" #t "2008-10-19" #t "10:23:54"]
                 [3 "baz" #t "2012-10-19T10:23:54" #t "2012-10-19" #t "10:23:54"]]
@@ -148,7 +148,7 @@
                             (assoc (mt/mbql-query times)
                                    :middleware {:format-rows? false})))))))
       (testing "oracle doesn't have a time type"
-        (mt/test-drivers #{#_:oracle :postgres}
+        (mt/test-drivers #{:oracle :sparksql}
           (is (= [[1 "foo" #t "2004-10-19T10:23:54" #t "2004-10-19"]
                   [2 "bar" #t "2008-10-19T10:23:54" #t "2008-10-19"]
                   [3 "baz" #t "2012-10-19T10:23:54" #t "2012-10-19"]]

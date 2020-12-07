@@ -169,7 +169,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:oracle :type/ISO8601DateTimeString]
   [_driver _special_type expr]
-  (hsql/call :to_timestamp expr "YYYY-MM-DDHH:mi:SS"))
+  (hsql/call :to_timestamp expr "YYYY-MM-DD HH:mi:SS"))
 
 (defmethod sql.qp/cast-temporal-string [:oracle :type/ISO8601DateString]
   [_driver _special_type expr]
