@@ -5,6 +5,7 @@ import {
   signInAsNormalUser,
   createBasicAlert,
   popover,
+  openPeopleTable,
 } from "__support__/cypress";
 // Ported from alert.e2e.spec.js
 // *** We should also check that alerts can be set up through slack
@@ -151,7 +152,7 @@ describe("scenarios > alert", () => {
 
     it.skip("should fall back to raw data alert and show a warning", () => {
       // Create a time-multiseries q
-      cy.visit("/question/new?database=1&table=3"); // "People" table
+      openPeopleTable();
       cy.findByText("Summarize").click();
       cy.get(".Icon-notebook").click();
       cy.findByText("Summarize").click();

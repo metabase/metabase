@@ -142,7 +142,7 @@
   (when (use-ssh-tunnel? details)
     (.close ^ClientSession (:tunnel-session details))))
 
-(defn with-ssh-tunnel*
+(defn do-with-ssh-tunnel
   "Starts an SSH tunnel, runs the supplied function with the tunnel open, then closes it"
   [details f]
   (if (use-ssh-tunnel? details)
@@ -150,8 +150,6 @@
       (try
         (log/trace (u/format-color 'cyan "<< OPENED SSH TUNNEL >>"))
         (f details-with-tunnel)
-        (catch Exception e
-          (throw e))
         (finally
           (close-tunnel! details-with-tunnel)
           (log/trace (u/format-color 'cyan "<< CLOSED SSH TUNNEL >>")))))
@@ -161,6 +159,6 @@
   "Starts an ssh tunnel, and binds the supplied name to a database
   details map with it's values adjusted to use the tunnel"
   [[name details] & body]
-  `(with-ssh-tunnel* ~details
+  `(do-with-ssh-tunnel ~details
      (fn [~name]
        ~@body)))

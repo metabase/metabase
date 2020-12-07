@@ -2,6 +2,7 @@ import {
   snapshot,
   restore,
   USERS,
+  USER_GROUPS,
   withSampleDataset,
   signInAsAdmin,
 } from "__support__/cypress";
@@ -63,9 +64,7 @@ describe("snapshots", () => {
     });
   }
 
-  const ALL_USERS_GROUP = 1;
-  const COLLECTION_GROUP = 4;
-  const DATA_GROUP = 5;
+  const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
 
   function addUsersAndGroups() {
     // groups

@@ -4,7 +4,9 @@ import {
   popover,
   _typeUsingGet,
   _typeUsingPlaceholder,
+  signInAsAdmin,
   withSampleDataset,
+  openOrdersTable,
 } from "__support__/cypress";
 
 const customFormulas = [
@@ -69,8 +71,7 @@ describe("scenarios > question > custom columns", () => {
 
   it("can create a custom column (metabase#13241)", () => {
     const columnName = "Simple Math";
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
     cy.get(".Icon-add_data").click();
 
     popover().within(() => {
@@ -91,7 +92,7 @@ describe("scenarios > question > custom columns", () => {
 
   it("can create a custom column with an existing column name", () => {
     customFormulas.forEach(({ customFormula, columnName }) => {
-      cy.visit("/question/new?database=1&table=2&mode=notebook");
+      openOrdersTable({ mode: "notebook" });
       cy.get(".Icon-add_data").click();
 
       popover().within(() => {
@@ -111,8 +112,7 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it("should create custom column with fields from aggregated data (metabase#12762)", () => {
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
 
     cy.findByText("Summarize").click();
 
@@ -161,8 +161,7 @@ describe("scenarios > question > custom columns", () => {
 
   it.skip("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289)", () => {
     const columnName = "TestColumn";
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
 
     // Add custom column that will be used later in summarize (group by)
     cy.findByText("Custom column").click();
@@ -213,8 +212,7 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it.skip("should not return same results for columns with the same name (metabase#12649)", () => {
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
     // join with Products
     cy.findByText("Join data").click();
     cy.findByText("Products").click();
@@ -241,6 +239,54 @@ describe("scenarios > question > custom columns", () => {
       .within(() => {
         cy.findByText("1");
       });
+  });
+
+  it.skip("should be able to use custom expression after aggregation (metabase#13857)", () => {
+    const CE_NAME = "13857_CE";
+    const CC_NAME = "13857_CC";
+
+    signInAsAdmin();
+    withSampleDataset(({ ORDERS, ORDERS_ID }) => {
+      cy.request("POST", "/api/card", {
+        name: "13857",
+        dataset_query: {
+          database: 1,
+          query: {
+            expressions: {
+              [CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
+            },
+            "source-query": {
+              aggregation: [
+                [
+                  "aggregation-options",
+                  ["*", 1, 1],
+                  { "display-name": CE_NAME },
+                ],
+              ],
+              breakout: [
+                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ],
+              "source-table": ORDERS_ID,
+            },
+          },
+          type: "query",
+        },
+        display: "table",
+        visualization_settings: {},
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.server();
+        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+        cy.visit(`/question/${QUESTION_ID}`);
+
+        cy.log("**Reported failing v0.34.3 through v0.37.2**");
+        cy.wait("@cardQuery").then(xhr => {
+          expect(xhr.response.body.error).not.to.exist;
+        });
+
+        cy.findByText(CC_NAME);
+      });
+    });
   });
 
   it.skip("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
