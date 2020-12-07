@@ -13,10 +13,6 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
-// These aren't used yet, but we want to add them to the codebase now to get translations
-// eslint-disable-next-line
-const _moreStrings = [columnName => t`Totals for ${columnName}`];
-
 const partitions = [
   {
     name: "rows",
@@ -162,7 +158,14 @@ export default class PivotTable extends Component {
       console.warn(e);
     }
     console.log(pivoted);
-    const { topIndex, leftIndex, getRowSection, subtotalValues } = pivoted;
+    const {
+      topIndex,
+      leftIndex,
+      getRowSection,
+      subtotalValues,
+      rowCount,
+      columnCount,
+    } = pivoted;
     const cellWidth = 80;
     const cellHeight = 25;
     const topHeaderHeight =
@@ -221,13 +224,19 @@ export default class PivotTable extends Component {
                   height={topHeaderHeight}
                   rowCount={1}
                   rowHeight={topHeaderHeight}
-                  columnCount={topIndex.length + (leftIndex.length > 0 ? 1 : 0)}
+                  columnCount={columnCount}
                   columnWidth={columnWidth}
                   cellRenderer={({ key, style, columnIndex }) => {
                     if (columnIndex === topIndex.length) {
                       return (
-                        <div key={key} style={style}>
-                          {t`Row totals`}
+                        <div
+                          key={key}
+                          style={style}
+                          className="flex-column px1 pt1"
+                        >
+                          <div className="flex" style={{ height: cellHeight }}>
+                            <Ellipsified>{t`Row totals`}</Ellipsified>
+                          </div>
                         </div>
                       );
                     }
@@ -267,13 +276,23 @@ export default class PivotTable extends Component {
                   width={leftHeaderWidth}
                   height={height - topHeaderHeight}
                   className="scroll-hide-all text-dark border-right border-medium"
-                  rowCount={leftIndex.length + (topIndex.length > 0 ? 1 : 0)}
+                  rowCount={rowCount}
                   rowHeight={rowHeight}
                   rowRenderer={({ key, style, index }) => {
                     if (index === leftIndex.length) {
                       return (
-                        <div key={key} style={style}>
-                          {t`Grand totals`}
+                        <div key={key} style={style} className="flex">
+                          <div className="flex flex-column">
+                            <div
+                              style={{
+                                height: cellHeight,
+                                width: cellWidth * rowIndexes.length,
+                              }}
+                              className="p1"
+                            >
+                              {t`Grand totals`}
+                            </div>
+                          </div>
                         </div>
                       );
                     }
@@ -309,60 +328,12 @@ export default class PivotTable extends Component {
                   width={width - leftHeaderWidth}
                   height={height - topHeaderHeight}
                   className="text-dark"
-                  rowCount={leftIndex.length + (topIndex.length > 0 ? 1 : 0)}
+                  rowCount={rowCount}
                   rowHeight={rowHeight}
-                  columnCount={topIndex.length + (leftIndex.length > 0 ? 1 : 0)}
+                  columnCount={columnCount}
                   columnWidth={columnWidth}
                   cellRenderer={({ key, style, rowIndex, columnIndex }) => {
-                    if (
-                      rowIndex === leftIndex.length ||
-                      columnIndex === topIndex.length
-                    ) {
-                      if (
-                        rowIndex === leftIndex.length &&
-                        columnIndex === topIndex.length
-                      ) {
-                        return (
-                          <div key={key} style={style}>
-                            {subtotalValues["[]"]["[]"][0]}
-                          </div>
-                        );
-                      }
-                      if (rowIndex === leftIndex.length) {
-                        return (
-                          <div key={key} style={style}>
-                            {
-                              subtotalValues[
-                                JSON.stringify(columnIndexes.sort())
-                              ][
-                                JSON.stringify([
-                                  topIndex[columnIndex][0][0].value,
-                                ])
-                              ]
-                            }
-                          </div>
-                        );
-                      }
-                      if (columnIndex === topIndex.length) {
-                        return (
-                          <div key={key} style={style}>
-                            {
-                              subtotalValues[JSON.stringify(rowIndexes.sort())][
-                                JSON.stringify([
-                                  leftIndex[rowIndex][0][0].value,
-                                ])
-                              ]
-                            }
-                          </div>
-                        );
-                      }
-
-                      return null;
-                    }
-                    const rows = getRowSection(
-                      topIndex[columnIndex][0][0].value,
-                      leftIndex[rowIndex][0][0].value,
-                    );
+                    const rows = getRowSection(columnIndex, rowIndex);
                     return (
                       <div key={key} style={style} className="flex flex-column">
                         {rows.map(row => (

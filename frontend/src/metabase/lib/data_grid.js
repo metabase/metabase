@@ -46,10 +46,12 @@ export function multiLevelPivot(
   );
 
   const valueColumns = valueColumnIndexes.map(index => data.cols[index]);
+  const topIndex = getIndex(columnColumnTree, { valueColumns });
+  const leftIndex = getIndex(rowColumnTree, {});
 
   return {
-    topIndex: getIndex(columnColumnTree, { valueColumns }),
-    leftIndex: getIndex(rowColumnTree, {}),
+    topIndex,
+    leftIndex,
     getSubtotalSection: (subtotalId, rowIndexValues, columnIndexValues) => {},
     subtotalValues,
     getRowSection: createRowSectionGetter({
@@ -57,7 +59,12 @@ export function multiLevelPivot(
       columnColumnTree,
       rowColumnTree,
       valueFormatters,
+      subtotalValues,
+      columnColumnIndexes,
+      rowColumnIndexes,
     }),
+    columnCount: topIndex.length + (leftIndex.length > 0 ? 1 : 0),
+    rowCount: leftIndex.length + (topIndex.length > 0 ? 1 : 0),
   };
 }
 
@@ -66,16 +73,64 @@ function createRowSectionGetter({
   columnColumnTree,
   rowColumnTree,
   valueFormatters,
+  subtotalValues,
+  columnColumnIndexes,
+  rowColumnIndexes,
 }) {
-  return (topValue, leftValue) => {
+  return (columnIndex, rowIndex) => {
     const rows =
-      leftValue === undefined
+      rowIndex === undefined
         ? [[]]
-        : enumerate(rowColumnTree.find(node => node.value === leftValue));
+        : rowIndex === rowColumnTree.length
+        ? [[]]
+        : enumerate(rowColumnTree[rowIndex]);
     const columns =
-      topValue === undefined
+      columnIndex === undefined
         ? [[]]
-        : enumerate(columnColumnTree.find(node => node.value === topValue));
+        : columnIndex === columnColumnTree.length
+        ? [[]]
+        : enumerate(columnColumnTree[columnIndex]);
+    if (
+      rowIndex === rowColumnTree.length &&
+      columnIndex === columnColumnTree.length
+    ) {
+      const values = subtotalValues[JSON.stringify([])][JSON.stringify([])];
+      return [
+        values === undefined
+          ? new Array(valueFormatters.length).fill(null)
+          : values.map((v, i) => valueFormatters[i](v)),
+      ];
+    }
+    if (rowIndex === rowColumnTree.length) {
+      console.log("bottom totals", {
+        columns,
+        columnColumnIndexes,
+        subtotalValues,
+      });
+      return [
+        columns.flatMap(col => {
+          const values =
+            subtotalValues[JSON.stringify(columnColumnIndexes)][
+              JSON.stringify(col)
+            ];
+          return values === undefined
+            ? new Array(valueFormatters.length).fill(null)
+            : values.map((v, i) => valueFormatters[i](v));
+        }),
+      ];
+    }
+    if (columnIndex === columnColumnTree.length) {
+      console.log("right totals", { rows, rowColumnIndexes, subtotalValues });
+      return rows.map(row => {
+        const values =
+          subtotalValues[JSON.stringify(rowColumnIndexes)][JSON.stringify(row)];
+        return [
+          values === undefined
+            ? new Array(valueFormatters.length).fill(null)
+            : values.map((v, i) => valueFormatters[i](v)),
+        ];
+      });
+    }
     return rows.map(row =>
       columns.flatMap(col => {
         const valueKey = JSON.stringify(col.concat(row));
