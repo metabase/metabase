@@ -5,14 +5,15 @@ import {
   openOrdersTable,
   openReviewsTable,
   withSampleDataset,
-  sidebar,
 } from "__support__/cypress";
 
 // test various entry points into the query builder
 
 describe("scenarios > question > new", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   describe("browse data", () => {
     it("should load orders table and summarize", () => {
