@@ -7,7 +7,6 @@ import { Box, Flex } from "grid-styled";
 import ArchivedItem from "../../components/ArchivedItem";
 import Button from "metabase/components/Button";
 import BulkActionBar from "metabase/components/BulkActionBar";
-import Card from "metabase/components/Card";
 import PageHeading from "metabase/components/PageHeading";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 import VirtualizedList from "metabase/components/VirtualizedList";
@@ -45,55 +44,49 @@ export default class ArchiveApp extends Component {
       onToggleSelected,
     } = this.props;
     return (
-      <Box mx={4}>
-        <Box mt={2} py={2}>
+      <Box>
+        <Box py={[2, 3]}>
           <PageHeading>{t`Archive`}</PageHeading>
         </Box>
-        <Box w={2 / 3}>
-          <Card
-            style={{
-              height: list.length > 0 ? ROW_HEIGHT * list.length : "auto",
-            }}
-          >
-            {list.length > 0 ? (
-              <VirtualizedList
-                items={list}
-                rowHeight={ROW_HEIGHT}
-                renderItem={({ item, index }) => (
-                  <ArchivedItem
-                    type={item.type}
-                    name={item.getName()}
-                    icon={item.getIcon()}
-                    color={item.getColor()}
-                    isAdmin={isAdmin}
-                    onUnarchive={
-                      item.setArchived
-                        ? async () => {
-                            await item.setArchived(false);
-                            reload();
-                          }
-                        : null
-                    }
-                    onDelete={
-                      item.delete
-                        ? async () => {
-                            await item.delete();
-                            reload();
-                          }
-                        : null
-                    }
-                    selected={selection.has(item)}
-                    onToggleSelected={() => onToggleSelected(item)}
-                    showSelect={selected.length > 0}
-                  />
-                )}
-              />
-            ) : (
-              <Flex p={5} align="center" justify="center">
-                <h2>{t`Items you archive will appear here.`}</h2>
-              </Flex>
-            )}
-          </Card>
+        <Box>
+          {list.length > 0 ? (
+            <VirtualizedList
+              items={list}
+              rowHeight={ROW_HEIGHT}
+              renderItem={({ item, index }) => (
+                <ArchivedItem
+                  type={item.type}
+                  name={item.getName()}
+                  icon={item.getIcon()}
+                  color={item.getColor()}
+                  isAdmin={isAdmin}
+                  onUnarchive={
+                    item.setArchived
+                      ? async () => {
+                          await item.setArchived(false);
+                          reload();
+                        }
+                      : null
+                  }
+                  onDelete={
+                    item.delete
+                      ? async () => {
+                          await item.delete();
+                          reload();
+                        }
+                      : null
+                  }
+                  selected={selection.has(item)}
+                  onToggleSelected={() => onToggleSelected(item)}
+                  showSelect={selected.length > 0}
+                />
+              )}
+            />
+          ) : (
+            <Flex p={5} align="center" justify="center">
+              <h2>{t`Items you archive will appear here.`}</h2>
+            </Flex>
+          )}
         </Box>
         <BulkActionBar showing={selected.length > 0}>
           <Flex align="center" py={2} px={4}>

@@ -22,7 +22,7 @@ export default class SearchApp extends React.Component {
   render() {
     const { location } = this.props;
     return (
-      <Box w={"80%"} mx="auto" pt={2}>
+      <Box>
         {location.query.q && (
           <Flex align="center" py={[2, 3]}>
             <PageHeading>{jt`Results for "${location.query.q}"`}</PageHeading>

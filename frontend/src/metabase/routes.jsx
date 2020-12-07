@@ -195,8 +195,6 @@ export const getRoutes = store => (
         <Route path="/explore" component={PostSetupApp} />
         <Route path="/explore/:databaseId" component={PostSetupApp} />
 
-        <Route path="archive" title={t`Archive`} component={ArchiveApp} />
-
         <Route path="collection/users" component={IsAdmin}>
           <IndexRoute component={UserCollectionList} />
         </Route>
@@ -210,6 +208,7 @@ export const getRoutes = store => (
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
           </Route>
           <Route path="search" title={t`Search`} component={SearchApp} />
+          <Route path="archive" title={t`Archive`} component={ArchiveApp} />
         </Route>
 
         <Route path="activity" component={HomepageApp} />
