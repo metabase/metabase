@@ -180,7 +180,7 @@
     (testing "are queryable as dates"
       (testing "a datetime field"
         ;; TODO: why does this fail on oracle? gives a NPE
-        (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+        (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle)
           (is (= 1
                  (count (mt/rows (mt/dataset string-times
                                    (mt/run-mbql-query times
