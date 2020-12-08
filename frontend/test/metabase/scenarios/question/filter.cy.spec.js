@@ -110,7 +110,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("3621077291879").should("not.exist"); // one of the "Gizmo" EANs
   });
 
-  it.skip("'Between Dates' filter should behave consistently (metabase#12872)", () => {
+  it("'Between Dates' filter should behave consistently (metabase#12872)", () => {
     withSampleDataset(({ PRODUCTS }) => {
       cy.request("POST", "/api/card", {
         name: "12872",
