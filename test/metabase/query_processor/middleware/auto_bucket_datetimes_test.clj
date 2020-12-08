@@ -212,7 +212,7 @@
       (let [query (mt/mbql-query checkins
                     {:filter [:between [:joined-field "Checkins" $date] "2019-11-01" "2019-11-01"]
                      :joins  [{:alias        "Checkins"
-                               :condition    [:= $id [:joined-field "Checkins" $date]]
+                               :condition    [:= $id [:joined-field "Checkins" $id]]
                                :fields       :all
                                :source-table $$checkins}]})]
         (is (= (mt/$ids checkins
@@ -224,7 +224,7 @@
                               [:between $date "2019-11-01" "2019-11-01"]
                               [:between [:joined-field "Checkins" $date] "2019-11-01" "2019-11-01"]]
                      :joins  [{:alias        "Checkins"
-                               :condition    [:= $id [:joined-field "Checkins" $date]]
+                               :condition    [:= $id [:joined-field "Checkins" $id]]
                                :fields       :all
                                :source-table $$checkins}]})]
         (is (= (mt/$ids checkins
@@ -232,13 +232,21 @@
                   [:between [:datetime-field $date :day] "2019-11-01" "2019-11-01"]
                   [:between [:datetime-field [:joined-field "Checkins" $date] :day] "2019-11-01" "2019-11-01"]])
                (get-in (auto-bucket query) [:query :filter])))))
-    (testing "Don't auto-bucket an already-bucketed joined-field"
-      (let [query (mt/mbql-query checkins
-                    {:filter [:between [:datetime-field [:joined-field "Checkins" $date] :month] "2019-11-01" "2019-11-01"]
-                     :joins  [{:alias        "Checkins"
-                               :condition    [:= $id [:joined-field "Checkins" $date]]
-                               :fields       :all
-                               :source-table $$checkins}]})]
-        (is (= (mt/$ids checkins
-                 [:between [:datetime-field [:joined-field "Checkins" $date] :month] "2019-11-01" "2019-11-01"])
-               (get-in (auto-bucket query) [:query :filter])))))))
+    (doseq [[message filter-clause] (mt/$ids checkins
+                                      {"Don't auto-bucket non-temporal joined-field"
+                                       [:= [:joined-field "Checkins" $id] 1]
+
+                                       "Don't auto-bucket an already-bucketed joined-field"
+                                       [:between [:datetime-field [:joined-field "Checkins" $date] :month] "2019-11-01" "2019-11-01"]
+
+                                       "Don't auto-bucket joined-field for non-comparison filter clauses"
+                                       [:not-null [:joined-field "Checkins" $date]]})]
+      (testing message
+        (let [query (mt/mbql-query checkins
+                      {:filter filter-clause
+                       :joins  [{:alias        "Checkins"
+                                 :condition    [:= $id [:joined-field "Checkins" $id]]
+                                 :fields       :all
+                                 :source-table $$checkins}]})]
+          (is (= filter-clause
+                 (get-in (auto-bucket query) [:query :filter]))))))))

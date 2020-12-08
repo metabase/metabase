@@ -97,7 +97,8 @@
                  ;; `:joined-field` clause itself
                  [:joined-field _ field]
                  (let [wrapped-field (wrap-fields field)]
-                   (when-not (= field wrapped-field)
+                   (if (= field wrapped-field)
+                     &match
                      [:datetime-field &match :day]))
 
                  ;; if it's a raw `:field-id` and `field-id->type-info` tells us it's a `:type/Temporal` (but not `:type/Time`),
@@ -105,7 +106,8 @@
                  [(_ :guard #{:field-id :field-literal}) (_ :guard datetime-but-not-time?) & _]
                  ;; don't wrap this if it is inside a `:joined-field` clause -- that should be covered by the pattern
                  ;; above
-                 (when-not (= (last &parents) :joined-field)
+                 (if (contains? (set &parents) :joined-field)
+                   &match
                    [:datetime-field &match :day])))]
        (m/update-existing-in query [:query clause-to-rewrite] wrap-fields)))))
 
