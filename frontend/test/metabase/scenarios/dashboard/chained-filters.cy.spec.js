@@ -1,9 +1,7 @@
-import {
-  signIn,
-  restore,
-  popover,
-  withSampleDataset,
-} from "__support__/cypress";
+import { signIn, restore, popover } from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { PEOPLE } = SAMPLE_DATASET;
 
 describe("scenarios > dashboard > chained filter", () => {
   beforeEach(() => {
@@ -13,10 +11,8 @@ describe("scenarios > dashboard > chained filter", () => {
 
   for (const has_field_values of ["search", "list"]) {
     it(`limit ${has_field_values} options based on linked filter`, () => {
-      withSampleDataset(({ PEOPLE }) =>
-        cy.request("PUT", `/api/field/${PEOPLE.CITY}`, { has_field_values }),
-      );
-      cy.visit("/dashboard/1");
+      cy.request("PUT", `/api/field/${PEOPLE.CITY}`, { has_field_values }),
+        cy.visit("/dashboard/1");
       // start editing
       cy.get(".Icon-pencil").click();
 

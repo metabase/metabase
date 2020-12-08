@@ -1,9 +1,4 @@
-import {
-  signInAsAdmin,
-  signIn,
-  withSampleDataset,
-  restore,
-} from "__support__/cypress";
+import { signInAsAdmin, signIn, restore } from "__support__/cypress";
 
 describe("scenarios > dashboard > permissions", () => {
   before(restore);
@@ -16,48 +11,47 @@ describe("scenarios > dashboard > permissions", () => {
 
     // The setup is a bunch of nested API calls to create the questions, dashboard, dashcards, collections and link them all up together.
     let firstQuestionId, secondQuestionId;
-    withSampleDataset(({ ORDERS_ID }) => {
-      cy.request("POST", "/api/collection", {
-        name: "locked down collection",
-        color: "#509EE3",
-        parent_id: null,
-      }).then(({ body: { id: collection_id } }) => {
-        // TODO - This will break if the default snapshot updates collections or groups.
-        // We should first request the current graph and then modify it.
-        cy.request("PUT", "/api/collection/graph", {
-          revision: 1,
-          groups: {
-            "1": { "6": "none", root: "none" },
-            "2": { "6": "write", root: "write" },
-            "3": { "6": "write", root: "write" },
-            "4": { "6": "none", root: "write" },
-            "5": { "6": "none", root: "none" },
-          },
-        });
-        cy.request("POST", "/api/card", {
-          dataset_query: {
-            database: 1,
-            type: "native",
-            native: { query: "select 'foo'" },
-          },
-          display: "table",
-          visualization_settings: {},
-          name: "First Question",
-          collection_id,
-        }).then(({ body: { id } }) => (firstQuestionId = id));
+
+    cy.request("POST", "/api/collection", {
+      name: "locked down collection",
+      color: "#509EE3",
+      parent_id: null,
+    }).then(({ body: { id: collection_id } }) => {
+      // TODO - This will break if the default snapshot updates collections or groups.
+      // We should first request the current graph and then modify it.
+      cy.request("PUT", "/api/collection/graph", {
+        revision: 1,
+        groups: {
+          "1": { "6": "none", root: "none" },
+          "2": { "6": "write", root: "write" },
+          "3": { "6": "write", root: "write" },
+          "4": { "6": "none", root: "write" },
+          "5": { "6": "none", root: "none" },
+        },
       });
       cy.request("POST", "/api/card", {
         dataset_query: {
           database: 1,
           type: "native",
-          native: { query: "select 'bar'" },
+          native: { query: "select 'foo'" },
         },
         display: "table",
         visualization_settings: {},
-        name: "Second Question",
-        collection_id: null,
-      }).then(({ body: { id } }) => (secondQuestionId = id));
+        name: "First Question",
+        collection_id,
+      }).then(({ body: { id } }) => (firstQuestionId = id));
     });
+    cy.request("POST", "/api/card", {
+      dataset_query: {
+        database: 1,
+        type: "native",
+        native: { query: "select 'bar'" },
+      },
+      display: "table",
+      visualization_settings: {},
+      name: "Second Question",
+      collection_id: null,
+    }).then(({ body: { id } }) => (secondQuestionId = id));
 
     cy.request("POST", "/api/dashboard", { name: "dashboard" }).then(
       ({ body: { id: dashId } }) => {
