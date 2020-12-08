@@ -73,3 +73,5 @@ target/checksum.txt
 xcshareddata
 xcuserdata
 dev/src/dev/nocommit/
+
+**/cypress-sample-dataset.json
