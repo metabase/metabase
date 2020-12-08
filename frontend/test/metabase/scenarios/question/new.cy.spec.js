@@ -69,10 +69,24 @@ describe("scenarios > question > new", () => {
             .contains("Summarize")
             .click();
 
+          // CSS class of a sorted header cell
+          cy.get("[class*=TableInteractive-headerCellData--sorted]").as(
+            "sortedCell",
+          );
+
+          // At this point only "Sum of Subtotal" should be sorted
+          cy.get("@sortedCell")
+            .its("length")
+            .should("eq", 1);
           removeMetricFromSidebar("Sum of Subtotal");
 
           cy.wait("@dataset");
           cy.findByText("Sum of Subtotal").should("not.exist");
+
+          // "Sum of Total" should not be sorted, nor any other header cell
+          cy.get("@sortedCell")
+            .its("length")
+            .should("eq", 0);
 
           removeMetricFromSidebar("Sum of Total");
 
