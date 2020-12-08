@@ -176,12 +176,16 @@ export default class PivotTable extends Component {
       return indexItem[indexItem.length - 1].length * cellWidth;
     }
 
+    const showRowSubtotals = leftIndex[0].length > 1;
     function rowHeight({ index }) {
       if (leftIndex.length === 0 || index === leftIndex.length) {
         return cellHeight;
       }
       const indexItem = leftIndex[index];
-      return (indexItem[indexItem.length - 1].length + 1) * cellHeight;
+      return (
+        (indexItem[indexItem.length - 1].length + (showRowSubtotals ? 1 : 0)) *
+        cellHeight
+      );
     }
 
     return (
@@ -281,7 +285,7 @@ export default class PivotTable extends Component {
                               }}
                               className="p1"
                             >
-                              {t`Grand totals`}
+                              <Ellipsified>{t`Grand totals`}</Ellipsified>
                             </div>
                           </div>
                         </div>
@@ -310,10 +314,12 @@ export default class PivotTable extends Component {
                             </div>
                           ))}
                         </div>
-                        <div
-                          style={{ height: cellHeight }}
-                          className="p1"
-                        >{t`Totals for ${leftIndex[index][0][0].value}`}</div>
+                        {showRowSubtotals && (
+                          <div
+                            style={{ height: cellHeight }}
+                            className="p1"
+                          >{t`Totals for ${leftIndex[index][0][0].value}`}</div>
+                        )}
                       </div>
                     );
                   }}

@@ -113,13 +113,18 @@ function createRowSectionGetter({
       ];
     }
     if (columnIndex === columnColumnTree.length) {
-      const subtotalRoww = columns.flatMap(col => {
-        const values =
-          subtotalValues[JSON.stringify(rowColumnIndexes.slice(0, -1))][
-            JSON.stringify([rows[0][0]])
-          ];
-        return formatValues(values);
-      });
+      const subtotalRows =
+        rowColumnIndexes.length > 1
+          ? [
+              columns.flatMap(col => {
+                const values =
+                  subtotalValues[JSON.stringify(rowColumnIndexes.slice(0, -1))][
+                    JSON.stringify([rows[0][0]])
+                  ];
+                return formatValues(values);
+              }),
+            ]
+          : [];
 
       return rows
         .map(row => {
@@ -129,18 +134,23 @@ function createRowSectionGetter({
             ];
           return [formatValues(values)];
         })
-        .concat([subtotalRoww]);
+        .concat(subtotalRows);
     }
 
-    const subtotalRow = columns.flatMap(col => {
-      const values =
-        subtotalValues[
-          JSON.stringify(
-            columnColumnIndexes.concat(rowColumnIndexes.slice(0, 1)),
-          )
-        ][JSON.stringify(col.concat(rows[0][0]))];
-      return formatValues(values);
-    });
+    const subtotalRows =
+      rowColumnIndexes.length > 1
+        ? [
+            columns.flatMap(col => {
+              const values =
+                subtotalValues[
+                  JSON.stringify(
+                    columnColumnIndexes.concat(rowColumnIndexes.slice(0, 1)),
+                  )
+                ][JSON.stringify(col.concat(rows[0][0]))];
+              return formatValues(values);
+            }),
+          ]
+        : [];
 
     return rows
       .map(row =>
@@ -149,7 +159,7 @@ function createRowSectionGetter({
           return formatValues(values);
         }),
       )
-      .concat([subtotalRow]);
+      .concat(subtotalRows);
   };
 }
 
