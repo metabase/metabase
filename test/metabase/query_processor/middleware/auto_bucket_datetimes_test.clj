@@ -231,4 +231,14 @@
                  [:and
                   [:between [:datetime-field $date :day] "2019-11-01" "2019-11-01"]
                   [:between [:datetime-field [:joined-field "Checkins" $date] :day] "2019-11-01" "2019-11-01"]])
+               (get-in (auto-bucket query) [:query :filter])))))
+    (testing "Don't auto-bucket an already-bucketed joined-field"
+      (let [query (mt/mbql-query checkins
+                    {:filter [:between [:datetime-field [:joined-field "Checkins" $date] :month] "2019-11-01" "2019-11-01"]
+                     :joins  [{:alias        "Checkins"
+                               :condition    [:= $id [:joined-field "Checkins" $date]]
+                               :fields       :all
+                               :source-table $$checkins}]})]
+        (is (= (mt/$ids checkins
+                 [:between [:datetime-field [:joined-field "Checkins" $date] :month] "2019-11-01" "2019-11-01"])
                (get-in (auto-bucket query) [:query :filter])))))))
