@@ -11,8 +11,10 @@ import {
 // test various entry points into the query builder
 
 describe("scenarios > question > new", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   describe("browse data", () => {
     it("should load orders table and summarize", () => {
@@ -32,6 +34,68 @@ describe("scenarios > question > new", () => {
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
       cy.contains("37.65");
+    });
+
+    it.skip("should handle (removing) multiple metrics when one is sorted (metabase#13990)", () => {
+      withSampleDataset(({ ORDERS, ORDERS_ID }) => {
+        cy.request("POST", "/api/card", {
+          name: "12625",
+          dataset_query: {
+            database: 1,
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [
+                ["count"],
+                ["sum", ["field-id", ORDERS.SUBTOTAL]],
+                ["sum", ["field-id", ORDERS.TOTAL]],
+              ],
+              breakout: [
+                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+              ],
+              "order-by": [["desc", ["aggregation", 1]]],
+            },
+            type: "query",
+          },
+          display: "table",
+          visualization_settings: {},
+        }).then(({ body: { id: QESTION_ID } }) => {
+          cy.server();
+          cy.route("POST", `/api/card/${QESTION_ID}/query`).as("cardQuery");
+          cy.route("POST", `/api/dataset`).as("dataset");
+
+          cy.visit(`/question/${QESTION_ID}`);
+
+          cy.wait("@cardQuery");
+          cy.get("button")
+            .contains("Summarize")
+            .click();
+
+          // CSS class of a sorted header cell
+          cy.get("[class*=TableInteractive-headerCellData--sorted]").as(
+            "sortedCell",
+          );
+
+          // At this point only "Sum of Subtotal" should be sorted
+          cy.get("@sortedCell")
+            .its("length")
+            .should("eq", 1);
+          removeMetricFromSidebar("Sum of Subtotal");
+
+          cy.wait("@dataset");
+          cy.findByText("Sum of Subtotal").should("not.exist");
+
+          // "Sum of Total" should not be sorted, nor any other header cell
+          cy.get("@sortedCell")
+            .its("length")
+            .should("eq", 0);
+
+          removeMetricFromSidebar("Sum of Total");
+
+          cy.wait("@dataset");
+          cy.findByText(/No results!/i).should("not.exist");
+          cy.contains("744"); // `Count` for year 2016
+        });
+      });
     });
 
     it.skip("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
@@ -236,3 +300,12 @@ describe("scenarios > question > new", () => {
     });
   });
 });
+
+function removeMetricFromSidebar(metricName) {
+  cy.get("[class*=SummarizeSidebar__AggregationToken]")
+    .contains(metricName)
+    .parent()
+    .find(".Icon-close")
+    .should("be.visible")
+    .click();
+}
