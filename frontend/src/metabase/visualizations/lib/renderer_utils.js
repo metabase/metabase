@@ -245,7 +245,7 @@ conditional fill color.
 export function syntheticStackedBarsForWaterfallChart(
   datas,
   settings = {},
-  series = {},
+  series = [],
 ) {
   const showTotal = settings && settings["waterfall.show_total"];
   const stackedBarsDatas = datas.slice();
@@ -322,11 +322,15 @@ export function getXInterval({ settings, series }, xValues, warn) {
 }
 
 export function xValueForWaterfallTotal({ settings, series }) {
+  const xValues = getXValues({ settings, series });
+  const xInterval = getXInterval({ settings, series }, xValues);
+
   if (isTimeseries(settings)) {
-    const xValues = getXValues({ settings, series });
-    const { count, interval } = getXInterval({ settings, series }, xValues);
+    const { count, interval } = xInterval;
     const lastXValue = xValues[xValues.length - 1];
     return lastXValue.clone().add(count, interval);
+  } else if (isQuantitative(settings) || isHistogram(settings)) {
+    return xValues[xValues.length - 1] + xInterval;
   }
 
   return t`Total`;
