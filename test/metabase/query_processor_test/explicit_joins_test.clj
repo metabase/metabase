@@ -492,8 +492,8 @@
                   {:fields [$datetime_tz]
                    :filter [:and
                             [:between $datetime_tz "2019-11-01" "2019-11-01"]
-                            [:between &Attempts.datetime_tz "2019-11-01" "2019-11-01"]]
-                   :joins  [{:alias        "Attempts"
-                             :condition    [:= $id &Attempts.id]
-                             :fields       [&Attempts.datetime_tz]
+                            [:between &attempts_joined.datetime_tz "2019-11-01" "2019-11-01"]]
+                   :joins  [{:alias        "attempts_joined"
+                             :condition    [:= $id &attempts_joined.id]
+                             :fields       [&attempts_joined.datetime_tz]
                              :source-table $$attempts}]}))))))))
