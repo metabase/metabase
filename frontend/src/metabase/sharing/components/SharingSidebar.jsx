@@ -6,6 +6,7 @@ import { t, jt, ngettext, msgid } from "ttag";
 import Card from "metabase/components/Card";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import Icon from "metabase/components/Icon";
+import Label from "metabase/components/type/Label";
 import Link from "metabase/components/Link";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Radio from "metabase/components/Radio";
@@ -403,11 +404,16 @@ class SharingSidebar extends React.Component {
     }
 
     return (
-      <li className={cx("flex align-center mr1 mb1 p1 text-medium")}>
-        <span className="text-medium">
-          <Icon name="person" />
-        </span>
-        <span className="ml1 text-medium">
+      <li className="flex align-center mr1 text-bold text-medium hover-child hover--inherit">
+        <Icon
+          name="group"
+          className="text-medium hover-child hover--inherit"
+          size={12}
+        />
+        <span
+          className="ml1 text-medium hover-child hover--inherit"
+          style={{ fontSize: "12px" }}
+        >
           {first.common_name || first.email}
           {text !== "" && text}
         </span>
@@ -417,11 +423,9 @@ class SharingSidebar extends React.Component {
 
   renderRecipients(pulse) {
     return (
-      <div className="text-medium">
+      <div className="text-medium hover-child">
         <ul
-          className={cx(
-            "pl1 pt1 pb0 pr0 flex flex-wrap bg-white scroll-x scroll-y",
-          )}
+          className="flex flex-wrap scroll-x scroll-y"
           style={{ maxHeight: 130 }}
         >
           {this.renderEmailRecipients(pulse.channels[0].recipients)}
@@ -529,27 +533,30 @@ class SharingSidebar extends React.Component {
               />
             </Tooltip>
           </div>
-          <div className="myb mx4">
+          <div className="my2 mx4">
             {pulseList.map(pulse => (
               <Card
                 flat
-                hoverable
-                className="mt1 mb3 cursor-pointer"
+                className="mb3 cursor-pointer bg-brand-hover"
                 onClick={() =>
                   this.editPulse(pulse, pulse.channels[0].channel_type)
                 }
               >
-                <div className="p3">
-                  <div className="flex align-center mb1">
+                <div className="px3 py2 hover-parent hover--inherit text-white-hover">
+                  <div className="flex align-center hover-child hover--inherit">
                     <Icon
                       name={
                         pulse.channels[0].channel_type === "email"
                           ? "mail"
                           : "slack"
                       }
-                      className="mr1 text-brand"
+                      className="mr1"
+                      style={{ paddingBottom: "5px" }}
+                      size={16}
                     />
-                    <h3>{this.friendlySchedule(pulse.channels[0])}</h3>
+                    <Label className="hover-child hover--inherit">
+                      {this.friendlySchedule(pulse.channels[0])}
+                    </Label>
                   </div>
                   {pulse.channels[0].channel_type === "email" &&
                     this.renderRecipients(pulse)}
