@@ -1,7 +1,9 @@
 import "@testing-library/cypress/add-commands";
 
 export const version = require("../../../version.json");
-export { default as SAMPLE_DATASET } from "./cypress-sample-dataset.json";
+export {
+  default as SAMPLE_DATASET,
+} from "__support__/cypress-sample-dataset.json";
 
 export const USERS = {
   admin: {
