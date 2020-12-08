@@ -102,22 +102,3 @@
   with extra metadata), but other types may be available if plugins are installed. (The interface is extensible.)"
   []
   (set (keys (methods i/stream-options))))
-
-(defn ^:deprecated stream-api-results-to-export-format
-  "For legacy compatability. Takes QP results in the normal `:api` response format and streams them to a different
-  format.
-
-  TODO -- this function is provided mainly because rewriting all of the Pulse/Alert code to stream results directly
-  was a lot of work. I intend to rework that code so we can stream directly to the correct export format(s) at some
-  point in the future; for now, this function is a stopgap.
-
-  Results are streamed synchronosuly. Caller is responsible for closing `os` when this call is complete."
-  [export-format ^OutputStream os {{:keys [rows]} :data, :as results}]
-  (let [w (i/streaming-results-writer export-format os)]
-    (i/begin! w results)
-    (dorun
-     (map-indexed
-      (fn [i row]
-        (i/write-row! w row i))
-      rows))
-    (i/finish! w results)))

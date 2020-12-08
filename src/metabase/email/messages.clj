@@ -10,14 +10,16 @@
             [medley.core :as m]
             [metabase
              [config :as config]
+             [driver :as driver]
              [email :as email]
              [public-settings :as public-settings]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
             [metabase.pulse.render :as render]
             [metabase.pulse.render
              [body :as render.body]
              [style :as render.style]]
-            [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.streaming.interface :as qp.streaming.i]
             [metabase.util
              [i18n :refer [deferred-trs trs tru]]
@@ -27,7 +29,7 @@
              [core :as stencil]
              [loader :as stencil-loader]]
             [toucan.db :as db])
-  (:import [java.io File IOException]))
+  (:import [java.io File IOException OutputStream]))
 
 (defn- app-name-trs
   "Return the user configured application name, or Metabase translated
@@ -316,18 +318,42 @@
       :else
       (no "less than %d columns, %d rows in results" render.body/cols-limit render.body/rows-limit))))
 
+(defn- stream-api-results-to-export-format
+  "For legacy compatability. Takes QP results in the normal `:api` response format and streams them to a different
+  format.
+
+  TODO -- this function is provided mainly because rewriting all of the Pulse/Alert code to stream results directly
+  was a lot of work. I intend to rework that code so we can stream directly to the correct export format(s) at some
+  point in the future; for now, this function is a stopgap.
+
+  Results are streamed synchronosuly. Caller is responsible for closing `os` when this call is complete."
+  [export-format ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
+  ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
+    ;; get timezone information when writing results
+  (driver/with-driver (driver.u/database->driver database-id)
+    (qp.store/with-store
+      (qp.store/fetch-and-store-database! database-id)
+      (let [w (qp.streaming.i/streaming-results-writer export-format os)]
+        (qp.streaming.i/begin! w results)
+        (dorun
+         (map-indexed
+          (fn [i row]
+            (qp.streaming.i/write-row! w row i))
+          rows))
+        (qp.streaming.i/finish! w results)))))
+
 (defn- result-attachment
   [{{card-name :name, :as card} :card, {{:keys [rows], :as result-data} :data, :as result} :result}]
   (when (seq rows)
     [(when-let [temp-file (and (include-csv-attachment? card result-data)
                                (create-temp-file-or-throw "csv"))]
        (with-open [os (io/output-stream temp-file)]
-         (qp.streaming/stream-api-results-to-export-format :csv os result))
+         (stream-api-results-to-export-format :csv os result))
        (create-result-attachment-map "csv" card-name temp-file))
      (when-let [temp-file (and (:include_xls card)
                                (create-temp-file-or-throw "xlsx"))]
        (with-open [os (io/output-stream temp-file)]
-         (qp.streaming/stream-api-results-to-export-format :xlsx os result))
+         (stream-api-results-to-export-format :xlsx os result))
        (create-result-attachment-map "xlsx" card-name temp-file))]))
 
 (defn- result-attachments [results]
