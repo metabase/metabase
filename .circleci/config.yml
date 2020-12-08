@@ -1342,7 +1342,7 @@ workflows:
           test-files-location: frontend/test/metabase-db/mongo
           before-steps:
             - wait-for-port:
-                port: 27019
+                port: 27017
           <<: *Matrix
 
       - fe-tests-cypress:
