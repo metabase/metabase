@@ -7,6 +7,10 @@ import {
   withSampleDataset,
 } from "__support__/cypress";
 
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS_ID } = SAMPLE_DATASET;
+
 // test various entry points into the query builder
 
 describe("scenarios > question > new", () => {
@@ -117,7 +121,7 @@ describe("scenarios > question > new", () => {
         name: "11439",
         dataset_query: {
           database: 1,
-          query: { "source-table": 2 },
+          query: { "source-table": ORDERS_ID },
           type: "query",
         },
         type: "query",
