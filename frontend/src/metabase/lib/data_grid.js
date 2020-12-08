@@ -1,4 +1,5 @@
 import _ from "underscore";
+import { getIn } from "icepick";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -16,7 +17,7 @@ export function multiLevelPivot(
   // this stores pivot table values keyed by all pivoted columns
   const valuesByKey = {};
 
-  // loop over the rows to build trees of column/row header data
+  // loop over the primary rows to build trees of column/row header data
   for (const row of data.rows) {
     // mutate the trees to add the tuple from the current row
     updateValueObject(row, columnColumnIndexes, columnColumnTree);
@@ -29,6 +30,7 @@ export function multiLevelPivot(
     valuesByKey[valueKey] = valueColumnIndexes.map(index => row[index]);
   }
 
+  // build objects to look up subtotal values
   const subtotalValues = {};
   for (const [subtotalName, subtotal] of Object.entries(subtotals)) {
     const indexes = JSON.parse(subtotalName);
@@ -52,7 +54,8 @@ export function multiLevelPivot(
   return {
     topIndex,
     leftIndex,
-    getSubtotalSection: (subtotalId, rowIndexValues, columnIndexValues) => {},
+    columnCount: topIndex.length + (leftIndex.length > 0 ? 1 : 0),
+    rowCount: leftIndex.length + (topIndex.length > 0 ? 1 : 0),
     getRowSection: createRowSectionGetter({
       valuesByKey,
       columnColumnTree,
@@ -62,8 +65,6 @@ export function multiLevelPivot(
       columnColumnIndexes,
       rowColumnIndexes,
     }),
-    columnCount: topIndex.length + (leftIndex.length > 0 ? 1 : 0),
-    rowCount: leftIndex.length + (topIndex.length > 0 ? 1 : 0),
   };
 }
 
@@ -80,75 +81,59 @@ function createRowSectionGetter({
     values === undefined
       ? new Array(valueFormatters.length).fill(null)
       : values.map((v, i) => valueFormatters[i](v));
+  const getSubtotals = (breakoutIndexes, values) =>
+    formatValues(
+      getIn(subtotalValues, [breakoutIndexes, values].map(JSON.stringify)),
+    );
 
   return (columnIndex, rowIndex) => {
     const rows =
-      rowIndex === undefined
-        ? [[]]
-        : rowIndex === rowColumnTree.length
+      rowIndex === rowColumnTree.length
         ? [[]]
         : enumerate(rowColumnTree[rowIndex]);
     const columns =
-      columnIndex === undefined
-        ? [[]]
-        : columnIndex === columnColumnTree.length
+      columnIndex === columnColumnTree.length
         ? [[]]
         : enumerate(columnColumnTree[columnIndex]);
+
+    // totals in the bottom right
     if (
       rowIndex === rowColumnTree.length &&
       columnIndex === columnColumnTree.length
     ) {
-      const values = subtotalValues[JSON.stringify([])][JSON.stringify([])];
-      return [formatValues(values)];
+      return [getSubtotals([], [])];
     }
+
+    // "grand totals" on the bottom
     if (rowIndex === rowColumnTree.length) {
-      return [
-        columns.flatMap(col => {
-          const values =
-            subtotalValues[JSON.stringify(columnColumnIndexes)][
-              JSON.stringify(col)
-            ];
-          return formatValues(values);
-        }),
-      ];
+      return [columns.flatMap(col => getSubtotals(columnColumnIndexes, col))];
     }
+
+    // "row totals" on the right
     if (columnIndex === columnColumnTree.length) {
       const subtotalRows =
         rowColumnIndexes.length > 1
           ? [
-              columns.flatMap(col => {
-                const values =
-                  subtotalValues[JSON.stringify(rowColumnIndexes.slice(0, -1))][
-                    JSON.stringify([rows[0][0]])
-                  ];
-                return formatValues(values);
-              }),
+              columns.flatMap(col =>
+                getSubtotals(rowColumnIndexes.slice(0, -1), [rows[0][0]]),
+              ),
             ]
           : [];
 
       return rows
-        .map(row => {
-          const values =
-            subtotalValues[JSON.stringify(rowColumnIndexes)][
-              JSON.stringify(row)
-            ];
-          return [formatValues(values)];
-        })
+        .map(row => [getSubtotals(rowColumnIndexes, row)])
         .concat(subtotalRows);
     }
 
     const subtotalRows =
       rowColumnIndexes.length > 1
         ? [
-            columns.flatMap(col => {
-              const values =
-                subtotalValues[
-                  JSON.stringify(
-                    columnColumnIndexes.concat(rowColumnIndexes.slice(0, 1)),
-                  )
-                ][JSON.stringify(col.concat(rows[0][0]))];
-              return formatValues(values);
-            }),
+            columns.flatMap(col =>
+              getSubtotals(
+                columnColumnIndexes.concat(rowColumnIndexes.slice(0, 1)),
+                col.concat(rows[0][0]),
+              ),
+            ),
           ]
         : [];
 

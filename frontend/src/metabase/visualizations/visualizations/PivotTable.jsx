@@ -161,7 +161,7 @@ export default class PivotTable extends Component {
       rowCount,
       columnCount,
     } = pivoted;
-    const cellWidth = 80;
+    const cellWidth = 100;
     const cellHeight = 25;
     const topHeaderHeight =
       topIndex.length === 0 ? cellHeight : topIndex[0].length * cellHeight + 8; // the extravertical padding
