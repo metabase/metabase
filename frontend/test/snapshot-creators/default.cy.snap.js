@@ -7,9 +7,6 @@ import {
   signInAsAdmin,
 } from "__support__/cypress";
 
-const METADATA_JSON_FILE =
-  "frontend/test/__support__/cypress-sample-dataset.json";
-
 describe("snapshots", () => {
   describe("default", () => {
     it("default", () => {
@@ -19,8 +16,10 @@ describe("snapshots", () => {
       addUsersAndGroups();
       withSampleDataset(SAMPLE_DATASET => {
         createQuestionAndDashboard(SAMPLE_DATASET);
-        cy.exec(`git update-index --assume-unchanged ${METADATA_JSON_FILE}`);
-        cy.writeFile(METADATA_JSON_FILE, SAMPLE_DATASET);
+        cy.writeFile(
+          "frontend/test/__support__/cypress_sample_dataset.json",
+          SAMPLE_DATASET,
+        );
       });
       snapshot("default");
       restore("blank");

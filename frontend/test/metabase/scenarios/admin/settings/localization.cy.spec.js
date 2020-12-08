@@ -1,4 +1,5 @@
-import { restore, SAMPLE_DATASET, signInAsAdmin } from "__support__/cypress";
+import { restore, signInAsAdmin } from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
