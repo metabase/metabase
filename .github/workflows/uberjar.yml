@@ -24,10 +24,10 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: 14.x
-    - name: Prepare JDK 8
+    - name: Prepare JDK 11
       uses: actions/setup-java@v1
       with:
-        java-version: 8
+        java-version: 11
     - name: Install gettext
       run: sudo apt install gettext
     - name: Install Clojure CLI
@@ -57,11 +57,7 @@ jobs:
         key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}-${{ hashFiles('**/deps.edn') }}
     - run: lein with-profile +include-all-drivers,+cloverage,+junit,+oss deps
 
-    - run: ./bin/build version
-    - run: ./bin/build translations
-    - run: ./bin/build frontend
-    - run: ./bin/build drivers
-    - run: ./bin/build uberjar
+    - run: ./bin/build
 
     - name: Mark with the commit hash
       run:  git rev-parse --short HEAD > COMMIT-ID
