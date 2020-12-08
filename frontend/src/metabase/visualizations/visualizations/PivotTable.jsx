@@ -120,8 +120,6 @@ export default class PivotTable extends Component {
     const columnsWithoutPivotGroup = data.cols.filter(
       col => !isPivotGroupColumn(col),
     );
-    console.log({ data });
-    console.log({ columnsWithoutPivotGroup });
 
     const {
       rows: rowIndexes,
@@ -137,7 +135,6 @@ export default class PivotTable extends Component {
         .filter(index => index !== -1);
     });
     const pivotData = splitPivotData(data, rowIndexes, columnIndexes);
-    console.log(pivotData);
     const {
       [JSON.stringify(
         _.range(columnIndexes.length + rowIndexes.length),
@@ -157,12 +154,10 @@ export default class PivotTable extends Component {
     } catch (e) {
       console.warn(e);
     }
-    console.log(pivoted);
     const {
       topIndex,
       leftIndex,
       getRowSection,
-      subtotalValues,
       rowCount,
       columnCount,
     } = pivoted;
@@ -186,12 +181,8 @@ export default class PivotTable extends Component {
         return cellHeight;
       }
       const indexItem = leftIndex[index];
-      return indexItem[indexItem.length - 1].length * cellHeight;
+      return (indexItem[indexItem.length - 1].length + 1) * cellHeight;
     }
-    console.log(
-      "heights",
-      _.range(leftIndex.length).map(index => rowHeight({ index })),
-    );
 
     return (
       <div className="overflow-scroll">
@@ -297,26 +288,32 @@ export default class PivotTable extends Component {
                       );
                     }
                     return (
-                      <div key={key} style={style} className="flex">
-                        {leftIndex[index].map((col, index) => (
-                          <div className="flex flex-column">
-                            {col.map(({ value, span = 1 }) => (
-                              <div
-                                style={{
-                                  height: cellHeight * span,
-                                  width: cellWidth,
-                                }}
-                                className="p1"
-                              >
-                                <Ellipsified>
-                                  {formatValue(value, {
-                                    column: primary.cols[rowIndexes[index]],
-                                  })}
-                                </Ellipsified>
-                              </div>
-                            ))}
-                          </div>
-                        ))}
+                      <div key={key} style={style} className="flex flex-column">
+                        <div className="flex">
+                          {leftIndex[index].map((col, index) => (
+                            <div className="flex flex-column">
+                              {col.map(({ value, span = 1 }) => (
+                                <div
+                                  style={{
+                                    height: cellHeight * span,
+                                    width: cellWidth,
+                                  }}
+                                  className="p1"
+                                >
+                                  <Ellipsified>
+                                    {formatValue(value, {
+                                      column: primary.cols[rowIndexes[index]],
+                                    })}
+                                  </Ellipsified>
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                        <div
+                          style={{ height: cellHeight }}
+                          className="p1"
+                        >{t`Totals for ${leftIndex[index][0][0].value}`}</div>
                       </div>
                     );
                   }}
@@ -410,7 +407,6 @@ function isColumnValid(col) {
 function splitPivotData(data, rowIndexes, columnIndexes) {
   const groupIndex = data.cols.findIndex(isPivotGroupColumn);
   const remainingColumns = data.cols.filter(col => !isPivotGroupColumn(col));
-  console.log("splitPivotData", { data, groupIndex, remainingColumns });
   return _.chain(data.rows)
     .groupBy(row => row[groupIndex])
     .pairs()

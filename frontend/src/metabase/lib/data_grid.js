@@ -53,7 +53,6 @@ export function multiLevelPivot(
     topIndex,
     leftIndex,
     getSubtotalSection: (subtotalId, rowIndexValues, columnIndexValues) => {},
-    subtotalValues,
     getRowSection: createRowSectionGetter({
       valuesByKey,
       columnColumnTree,
@@ -77,6 +76,11 @@ function createRowSectionGetter({
   columnColumnIndexes,
   rowColumnIndexes,
 }) {
+  const formatValues = values =>
+    values === undefined
+      ? new Array(valueFormatters.length).fill(null)
+      : values.map((v, i) => valueFormatters[i](v));
+
   return (columnIndex, rowIndex) => {
     const rows =
       rowIndex === undefined
@@ -95,52 +99,57 @@ function createRowSectionGetter({
       columnIndex === columnColumnTree.length
     ) {
       const values = subtotalValues[JSON.stringify([])][JSON.stringify([])];
-      return [
-        values === undefined
-          ? new Array(valueFormatters.length).fill(null)
-          : values.map((v, i) => valueFormatters[i](v)),
-      ];
+      return [formatValues(values)];
     }
     if (rowIndex === rowColumnTree.length) {
-      console.log("bottom totals", {
-        columns,
-        columnColumnIndexes,
-        subtotalValues,
-      });
       return [
         columns.flatMap(col => {
           const values =
             subtotalValues[JSON.stringify(columnColumnIndexes)][
               JSON.stringify(col)
             ];
-          return values === undefined
-            ? new Array(valueFormatters.length).fill(null)
-            : values.map((v, i) => valueFormatters[i](v));
+          return formatValues(values);
         }),
       ];
     }
     if (columnIndex === columnColumnTree.length) {
-      console.log("right totals", { rows, rowColumnIndexes, subtotalValues });
-      return rows.map(row => {
+      const subtotalRoww = columns.flatMap(col => {
         const values =
-          subtotalValues[JSON.stringify(rowColumnIndexes)][JSON.stringify(row)];
-        return [
-          values === undefined
-            ? new Array(valueFormatters.length).fill(null)
-            : values.map((v, i) => valueFormatters[i](v)),
-        ];
+          subtotalValues[JSON.stringify(rowColumnIndexes.slice(0, -1))][
+            JSON.stringify([rows[0][0]])
+          ];
+        return formatValues(values);
       });
+
+      return rows
+        .map(row => {
+          const values =
+            subtotalValues[JSON.stringify(rowColumnIndexes)][
+              JSON.stringify(row)
+            ];
+          return [formatValues(values)];
+        })
+        .concat([subtotalRoww]);
     }
-    return rows.map(row =>
-      columns.flatMap(col => {
-        const valueKey = JSON.stringify(col.concat(row));
-        const values = valuesByKey[valueKey];
-        if (values === undefined) {
-          return new Array(valueFormatters.length).fill(null);
-        }
-        return values.map((v, i) => valueFormatters[i](v));
-      }),
-    );
+
+    const subtotalRow = columns.flatMap(col => {
+      const values =
+        subtotalValues[
+          JSON.stringify(
+            columnColumnIndexes.concat(rowColumnIndexes.slice(0, 1)),
+          )
+        ][JSON.stringify(col.concat(rows[0][0]))];
+      return formatValues(values);
+    });
+
+    return rows
+      .map(row =>
+        columns.flatMap(col => {
+          const values = valuesByKey[JSON.stringify(col.concat(row))];
+          return formatValues(values);
+        }),
+      )
+      .concat([subtotalRow]);
   };
 }
 
