@@ -17,8 +17,6 @@
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s]))
 
-;; TODO: FIX THIS TO WORK WITH ASYNC
-
 (defn- process-query-append-results
   "Reduce the results of a single `query` using `rf` and initial value `init`."
   [query rf init context]
@@ -71,15 +69,13 @@
      (qp.store/with-store
        (let [main-breakout           (:breakout (:query query))
              col-determination-query (-> query
-                                         ;; TODO: move this to a bitmask or something that scales better / easier to use
+                                              ;; TODO: move this to a bitmask or something that scales better / easier to use
                                          (assoc-in [:query :expressions] {"pivot-grouping" [:ltrim (json/generate-string main-breakout)]})
                                          (assoc-in [:query :fields] [[:expression "pivot-grouping"]]))
              all-expected-cols       (qp/query->expected-cols (qp/query->preprocessed col-determination-query))
-             all-queries             (pivot/generate-queries query)
-             first-query             (first all-queries)
-             rest-queries            (rest all-queries)]
+             all-queries             (pivot/generate-queries query)]
          (process-multiple-queries
-          (concat [first-query] rest-queries)
+          all-queries
           (assoc qp-context
                  :info (assoc info :context qp-context)
                  ;; this function needs to be executed at the start of every new query to
@@ -93,14 +89,13 @@
                  ;; this function needs to be called for each row so that it can actually
                  ;; shape the row according to the `:column-mapping-fn` above
                  :row-mapping-fn (fn [row context]
-                                  ;; the first query doesn't need any special mapping, it already has all the columns
-                                   (let [col-mapping (:pivot-column-mapping context)]
-                                     (if col-mapping
-                                       (map (fn [mapping]
-                                              (when mapping
-                                                (nth row mapping)))
-                                            (:pivot-column-mapping context))
-                                       row))))))))))
+                                   ;; the first query doesn't need any special mapping, it already has all the columns
+                                   (if-let [col-mapping (:pivot-column-mapping context)]
+                                     (map (fn [mapping]
+                                            (when mapping
+                                              (nth row mapping)))
+                                          col-mapping)
+                                     row)))))))))
 
 (api/defendpoint POST "/pivot/dataset"
   "Generate a pivoted dataset for an ad-hoc query"
