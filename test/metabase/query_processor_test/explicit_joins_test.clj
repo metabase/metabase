@@ -1,14 +1,14 @@
 (ns metabase.query-processor-test.explicit-joins-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure
+             [set :as set]
+             [test :refer :all]]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [test :as mt]]
             [metabase.models.card :refer [Card]]
             [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test.data
-             [datasets :as datasets]
-             [interface :as tx]]))
+            [metabase.test.data.interface :as tx]))
 
 (defn- native-form [query]
   (:query (qp/query->native query)))
@@ -203,7 +203,7 @@
                       :order-by [[:asc [:field-id $name]]]})))))))))
 
 (deftest specific-fields-test
-  (datasets/test-drivers (mt/normal-drivers-with-feature :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we include a list of specific Fields?"
       (let [{:keys [columns rows]} (mt/format-rows-by [#(some-> % int) str identity]
                                      (mt/rows+column-names
@@ -238,7 +238,7 @@
                rows))))))
 
 (deftest all-fields-datetime-field-test
-  (datasets/test-drivers (mt/normal-drivers-with-feature :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing (str "Do Joins with `:fields``:all` work if the joined table includes Fields that come back wrapped in"
                   " `:datetime-field` forms?")
       (let [{:keys [columns rows]} (mt/format-rows-by [int identity identity int identity int int]
@@ -260,7 +260,7 @@
                rows))))))
 
 (deftest select-*-source-query-test
-  (datasets/test-drivers (mt/normal-drivers-with-feature :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "We should be able to run a query that for whatever reason ends up with a `SELECT *` for the source query"
       (let [{:keys [rows columns]} (mt/format-rows-by [int int]
                                      (mt/rows+column-names
@@ -384,9 +384,9 @@
       (mt/with-temp Card [{card-id               :id
                            {source-query :query} :dataset_query
                            source-metadata       :result_metadata} (qp.test-util/card-with-source-metadata-for-query
-                                                                    (mt/mbql-query checkins
-                                                                      {:aggregation [[:count]]
-                                                                       :breakout    [!month.date]}))]
+                           (mt/mbql-query checkins
+                             {:aggregation [[:count]]
+                              :breakout    [!month.date]}))]
         (is (= {:rows    [["2013-01-01T00:00:00Z"  8 "2013-01-01T00:00:00Z"  8]
                           ["2013-02-01T00:00:00Z" 11 "2013-02-01T00:00:00Z" 11]
                           ["2013-03-01T00:00:00Z" 21 "2013-03-01T00:00:00Z" 21]]
@@ -422,19 +422,19 @@
     (testing (str "Do we gracefully handle situtations where joins would produce multiple columns with the same name? "
                   "(Multiple columns named `id` in the example below)")
       (let [{:keys [rows columns]} (mt/rows+column-names
-                                     (mt/format-rows-by [int       ; checkins.id
-                                                         str       ; checkins.date
-                                                         int       ; checkins.user_id
-                                                         int       ; checkins.venue_id
-                                                         int       ; users.id
-                                                         str       ; users.name
-                                                         str       ; users.last_login
-                                                         int       ; venues.id
-                                                         str       ; venues.name
-                                                         int       ; venues.category_id
-                                                         3.0       ; venues.latitude
-                                                         3.0       ; venues.longitude
-                                                         int]      ; venues.price
+                                     (mt/format-rows-by [int  ; checkins.id
+                                                         str  ; checkins.date
+                                                         int  ; checkins.user_id
+                                                         int  ; checkins.venue_id
+                                                         int  ; users.id
+                                                         str  ; users.name
+                                                         str  ; users.last_login
+                                                         int  ; venues.id
+                                                         str  ; venues.name
+                                                         int  ; venues.category_id
+                                                         3.0  ; venues.latitude
+                                                         3.0  ; venues.longitude
+                                                         int] ; venues.price
                                        (mt/run-mbql-query checkins
                                          {:source-query {:source-table $$checkins
                                                          :joins
@@ -479,17 +479,21 @@
                     :limit    2}))))))))
 
 (deftest joined-date-filter-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+  ;; TIMEZONE FIXME — The excluded drivers below don't have TIME types, so the `attempted-murders` dataset doesn't
+  ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still load
+  ;; the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
+  (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :nested-queries :left-join)
+                                   #{:oracle :presto :redshift :sparksql :snowflake})
     (testing "Date filter should behave the same for joined columns"
       (mt/dataset attempted-murders
         (is (= [["2019-11-01T07:23:18.331Z" "2019-11-01T07:23:18.331Z"]]
                (mt/rows
-                 (mt/run-mbql-query attempts
-                   {:fields [$datetime_tz]
-                    :filter [:and
-                             [:between $datetime_tz "2019-11-01" "2019-11-01"]
-                             [:between &Attempts.datetime_tz "2019-11-01" "2019-11-01"]]
-                    :joins  [{:alias        "Attempts"
-                              :condition    [:= $id &Attempts.id]
-                              :fields       [&Attempts.datetime_tz]
-                              :source-table $$attempts}]}))))))))
+                (mt/run-mbql-query attempts
+                  {:fields [$datetime_tz]
+                   :filter [:and
+                            [:between $datetime_tz "2019-11-01" "2019-11-01"]
+                            [:between &Attempts.datetime_tz "2019-11-01" "2019-11-01"]]
+                   :joins  [{:alias        "Attempts"
+                             :condition    [:= $id &Attempts.id]
+                             :fields       [&Attempts.datetime_tz]
+                             :source-table $$attempts}]}))))))))
