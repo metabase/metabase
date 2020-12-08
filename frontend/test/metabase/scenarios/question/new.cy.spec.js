@@ -35,7 +35,7 @@ describe("scenarios > question > new", () => {
       cy.contains("37.65");
     });
 
-    it.skip("should handle (removing) multiple metrics when one is sorted (metabase)", () => {
+    it.skip("should handle (removing) multiple metrics when one is sorted (metabase#13990)", () => {
       withSampleDataset(({ ORDERS, ORDERS_ID }) => {
         cy.request("POST", "/api/card", {
           name: "12625",
