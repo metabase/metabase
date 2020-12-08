@@ -512,22 +512,24 @@ class SharingSidebar extends React.Component {
           <div className="p4 flex justify-between align-center">
             <h3>{t`Schedules`}</h3>
 
-            <Tooltip tooltip={t`Set up a new schedule`}>
-              <Icon
-                name="add"
-                className="text-brand bg-light-hover rounded p1 cursor-pointer"
-                size={20}
-                onClick={() => this.createSubscription()}
-              />
-            </Tooltip>
-            <Tooltip tooltip={t`Close`}>
-              <Icon
-                name="close"
-                className="text-brand bg-light-hover rounded p1 cursor-pointer"
-                size={20}
-                onClick={onCancel}
-              />
-            </Tooltip>
+            <div className="flex align-center">
+              <Tooltip tooltip={t`Set up a new schedule`}>
+                <Icon
+                  name="add"
+                  className="text-brand bg-light-hover rounded p1 cursor-pointer mr1"
+                  size={18}
+                  onClick={() => this.createSubscription()}
+                />
+              </Tooltip>
+              <Tooltip tooltip={t`Close`}>
+                <Icon
+                  name="close"
+                  className="text-light bg-light-hover rounded p1 cursor-pointer"
+                  size={22}
+                  onClick={onCancel}
+                />
+              </Tooltip>
+            </div>
           </div>
           <div className="myb mx4">
             {pulseList.map(pulse => (
