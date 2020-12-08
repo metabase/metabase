@@ -959,6 +959,9 @@ jobs:
       node:
         type: string
         default: ""
+      before-steps:
+        type: steps
+        default: []
       <<: *Params
     executor: << parameters.e >>
     environment:
@@ -976,6 +979,7 @@ jobs:
                   - restore_cache:
                       name: Restore cached uberjar built in previous step
                       <<: *CacheKeyUberjar
+                  - steps: << parameters.before-steps >>
                 command: |
                   run test-cypress-no-build <<# parameters.only-single-database >> --testFiles << parameters.test-files-location >> <</ parameters.only-single-database >>
                 after-steps:
@@ -1336,6 +1340,9 @@ workflows:
           cypress-group: "mongo"
           only-single-database: true
           test-files-location: frontend/test/metabase-db/mongo
+          before-steps:
+            - wait-for-port:
+                port: 27017
           <<: *Matrix
 
       - fe-tests-cypress:
@@ -1346,6 +1353,9 @@ workflows:
           cypress-group: "postgres"
           only-single-database: true
           test-files-location: frontend/test/metabase-db/postgres
+          before-steps:
+            - wait-for-port:
+                port: 5432
           <<: *Matrix
 
       - fe-tests-cypress:
@@ -1356,6 +1366,9 @@ workflows:
           cypress-group: "mysql"
           only-single-database: true
           test-files-location: frontend/test/metabase-db/mysql
+          before-steps:
+            - wait-for-port:
+                port: 3306
           <<: *Matrix
 
   nightly:
