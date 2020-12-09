@@ -9,6 +9,7 @@ import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
+import Subhead from "metabase/components/type/Subhead";
 import Link from "metabase/components/Link";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import RecipientPicker from "metabase/pulse/components/RecipientPicker";
@@ -504,8 +505,8 @@ class SharingSidebar extends React.Component {
     if (editingMode === "list-pulses") {
       return (
         <Sidebar>
-          <div className="p4 flex justify-between align-center">
-            <h3>{t`Subscriptions`}</h3>
+          <div className="px4 pt3 flex justify-between align-center">
+            <Subhead>{t`Subscriptions`}</Subhead>
 
             <Flex align="center">
               <Tooltip tooltip={t`Set up a new schedule`}>
