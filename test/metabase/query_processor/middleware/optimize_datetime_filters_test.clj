@@ -144,15 +144,14 @@
                      [:absolute-datetime filter-value unit]
                      [:absolute-datetime filter-value unit]])))))))))
 
-(defn- optimize-with-timezone [t]
+(defn- optimize-filter-clauses [t]
   (let [query {:database 1
                :type     :query
                :query    {:filter [:=
                                    [:datetime-field [:field-id 1] :day]
                                    [:absolute-datetime t :day]]}}]
     (-> (mt/test-qp-middleware optimize-datetime-filters/optimize-datetime-filters query)
-        :pre
-        (get-in [:query :filter]))))
+        (get-in [:pre :query :filter]))))
 
 (deftest timezones-test
   (driver/with-driver ::timezone-driver
@@ -174,7 +173,7 @@
                               [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime lower :default]]
                               [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime upper :default]]]]
                 (is (= expected
-                       (optimize-with-timezone t))
+                       (optimize-filter-clauses t))
                     (format "= %s in the %s timezone should be optimized to range %s -> %s"
                             t timezone-id lower upper))))))))))
 
