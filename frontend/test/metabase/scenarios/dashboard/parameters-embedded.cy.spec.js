@@ -1,10 +1,8 @@
-import {
-  signInAsAdmin,
-  signOut,
-  restore,
-  popover,
-  withSampleDataset,
-} from "__support__/cypress";
+import { signInAsAdmin, signOut, restore, popover } from "__support__/cypress";
+
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, PEOPLE } = SAMPLE_DATASET;
 
 const METABASE_SECRET_KEY =
   "24134bd93e081773fb178e8e1abb4e8a973822f7e19c872bd92c8d5a122ef63f";
@@ -25,27 +23,23 @@ describe("scenarios > dashboard > parameters-embedded", () => {
     restore();
     signInAsAdmin();
 
-    withSampleDataset(SAMPLE_DATASET => {
-      cy.log(SAMPLE_DATASET);
-      const { ORDERS, PEOPLE } = SAMPLE_DATASET;
-      cy.request("POST", `/api/field/${ORDERS.USER_ID}/dimension`, {
-        type: "external",
-        name: "User ID",
-        human_readable_field_id: PEOPLE.NAME,
-      });
+    cy.request("POST", `/api/field/${ORDERS.USER_ID}/dimension`, {
+      type: "external",
+      name: "User ID",
+      human_readable_field_id: PEOPLE.NAME,
+    });
 
-      [ORDERS.USER_ID, PEOPLE.NAME, PEOPLE.ID].forEach(id =>
-        cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
-      );
+    [ORDERS.USER_ID, PEOPLE.NAME, PEOPLE.ID].forEach(id =>
+      cy.request("PUT", `/api/field/${id}`, { has_field_values: "search" }),
+    );
 
-      createQuestion(SAMPLE_DATASET).then(res => {
-        questionId = res.body.id;
-        createDashboard().then(res => {
-          dashboardId = res.body.id;
-          addCardToDashboard({ dashboardId, questionId }).then(res => {
-            dashcardId = res.body.id;
-            mapParameters({ dashboardId, questionId, dashcardId });
-          });
+    createQuestion().then(res => {
+      questionId = res.body.id;
+      createDashboard().then(res => {
+        dashboardId = res.body.id;
+        addCardToDashboard({ dashboardId, questionId }).then(res => {
+          dashcardId = res.body.id;
+          mapParameters({ dashboardId, questionId, dashcardId });
         });
       });
     });
@@ -226,7 +220,7 @@ function sharedParametersTests(visitUrl) {
   });
 }
 
-const createQuestion = ({ ORDERS, PEOPLE }) =>
+const createQuestion = () =>
   cy.request("PUT", "/api/card/3", {
     name: "Test Question",
     dataset_query: {

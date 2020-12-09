@@ -1,5 +1,8 @@
 // Imported from drillthroughs.e2e.spec.js
-import { restore, signInAsAdmin, withSampleDataset } from "__support__/cypress";
+import { restore, signInAsAdmin } from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
 
 // This question is part of our pre-defined data set used for testing
 const Q2 = {
@@ -43,19 +46,17 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
         signInAsAdmin();
 
         // Convert Q2 to a scalar with a filter applied
-        withSampleDataset(({ ORDERS }) => {
-          cy.request("PUT", `/api/card/${Q2.id}`, {
-            dataset_query: {
-              database: 1,
-              query: {
-                aggregation: [["count"]],
-                filter: [">", ["field-id", ORDERS.TOTAL], 100],
-                "source-table": 2,
-              },
-              type: "query",
+        cy.request("PUT", `/api/card/${Q2.id}`, {
+          dataset_query: {
+            database: 1,
+            query: {
+              aggregation: [["count"]],
+              filter: [">", ["field-id", ORDERS.TOTAL], 100],
+              "source-table": ORDERS_ID,
             },
-            display: "scalar",
-          });
+            type: "query",
+          },
+          display: "scalar",
         });
 
         addCardToNewDashboard(DASHBOARD_NAME, Q2.id);
@@ -79,48 +80,46 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
         signInAsAdmin();
 
         // Create muliscalar card
-        withSampleDataset(({ PEOPLE, PEOPLE_ID }) => {
-          cy.request("POST", "/api/card", {
-            name: CARD_NAME,
-            dataset_query: {
-              database: 1,
-              query: {
-                "source-table": PEOPLE_ID,
-                aggregation: [["count"]],
-                breakout: [
-                  ["field-id", PEOPLE.SOURCE],
-                  ["datetime-field", ["field-id", PEOPLE.CREATED_AT], "month"],
-                ],
-              },
-              type: "query",
+        cy.request("POST", "/api/card", {
+          name: CARD_NAME,
+          dataset_query: {
+            database: 1,
+            query: {
+              "source-table": PEOPLE_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field-id", PEOPLE.SOURCE],
+                ["datetime-field", ["field-id", PEOPLE.CREATED_AT], "month"],
+              ],
             },
-            display: "line",
-            visualization_settings: {},
-          }).then(({ body: { id: CARD_ID } }) => {
-            // Create new dashboard
-            cy.request("POST", "/api/dashboard", {
-              name: DASHBOARD_NAME,
-            }).then(({ body: { id: DASHBOARD_ID } }) => {
-              // Prepare to wait for this specific XHR:
-              // We need to do this because Cypress sees the string that is "card title" before card is fully rendered.
-              // That string then gets detached from DOM just prior to this XHR and gets re-rendered again inside a new DOM element.
-              // Cypress was complaining it cannot click on a detached element.
-              cy.server();
-              cy.route("POST", `/api/card/${CARD_ID}/query`).as("cardQuery");
+            type: "query",
+          },
+          display: "line",
+          visualization_settings: {},
+        }).then(({ body: { id: CARD_ID } }) => {
+          // Create new dashboard
+          cy.request("POST", "/api/dashboard", {
+            name: DASHBOARD_NAME,
+          }).then(({ body: { id: DASHBOARD_ID } }) => {
+            // Prepare to wait for this specific XHR:
+            // We need to do this because Cypress sees the string that is "card title" before card is fully rendered.
+            // That string then gets detached from DOM just prior to this XHR and gets re-rendered again inside a new DOM element.
+            // Cypress was complaining it cannot click on a detached element.
+            cy.server();
+            cy.route("POST", `/api/card/${CARD_ID}/query`).as("cardQuery");
 
-              // Add previously created question to the new dashboard
-              cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cardId: CARD_ID,
-                sizeX: 16,
-                sizeY: 12,
-              });
-
-              cy.visit(`/dashboard/${DASHBOARD_ID}`);
-              cy.findByText(DASHBOARD_NAME);
-
-              cy.wait("@cardQuery"); // wait for the title to be re-rendered before we can click on it
-              cy.findByText(CARD_NAME).click();
+            // Add previously created question to the new dashboard
+            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cardId: CARD_ID,
+              sizeX: 16,
+              sizeY: 12,
             });
+
+            cy.visit(`/dashboard/${DASHBOARD_ID}`);
+            cy.findByText(DASHBOARD_NAME);
+
+            cy.wait("@cardQuery"); // wait for the title to be re-rendered before we can click on it
+            cy.findByText(CARD_NAME).click();
           });
         });
       });

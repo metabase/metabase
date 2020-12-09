@@ -5,9 +5,12 @@ import {
   _typeUsingGet,
   _typeUsingPlaceholder,
   signInAsAdmin,
-  withSampleDataset,
   openOrdersTable,
 } from "__support__/cypress";
+
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
 const customFormulas = [
   {
@@ -246,46 +249,41 @@ describe("scenarios > question > custom columns", () => {
     const CC_NAME = "13857_CC";
 
     signInAsAdmin();
-    withSampleDataset(({ ORDERS, ORDERS_ID }) => {
-      cy.request("POST", "/api/card", {
-        name: "13857",
-        dataset_query: {
-          database: 1,
-          query: {
-            expressions: {
-              [CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
-            },
-            "source-query": {
-              aggregation: [
-                [
-                  "aggregation-options",
-                  ["*", 1, 1],
-                  { "display-name": CE_NAME },
-                ],
-              ],
-              breakout: [
-                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-              ],
-              "source-table": ORDERS_ID,
-            },
+
+    cy.request("POST", "/api/card", {
+      name: "13857",
+      dataset_query: {
+        database: 1,
+        query: {
+          expressions: {
+            [CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
           },
-          type: "query",
+          "source-query": {
+            aggregation: [
+              ["aggregation-options", ["*", 1, 1], { "display-name": CE_NAME }],
+            ],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+            ],
+            "source-table": ORDERS_ID,
+          },
         },
-        display: "table",
-        visualization_settings: {},
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.server();
+      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
 
-        cy.visit(`/question/${QUESTION_ID}`);
+      cy.visit(`/question/${QUESTION_ID}`);
 
-        cy.log("**Reported failing v0.34.3 through v0.37.2**");
-        cy.wait("@cardQuery").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
-        });
-
-        cy.findByText(CC_NAME);
+      cy.log("**Reported failing v0.34.3 through v0.37.2**");
+      cy.wait("@cardQuery").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
       });
+
+      cy.findByText(CC_NAME);
     });
   });
 });
