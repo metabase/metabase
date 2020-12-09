@@ -3,8 +3,11 @@ import {
   restore,
   popover,
   visitAlias,
-  withSampleDataset,
 } from "__support__/cypress";
+
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS_ID } = SAMPLE_DATASET;
 
 const SAMPLE_DB_URL = "/admin/datamodel/database/1";
 
@@ -16,9 +19,7 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
     cy.server();
     cy.route("PUT", "/api/table/*").as("tableUpdate");
     cy.route("PUT", "/api/field/*").as("fieldUpdate");
-    withSampleDataset(({ ORDERS_ID }) => {
-      cy.wrap(`${SAMPLE_DB_URL}/table/${ORDERS_ID}`).as(`ORDERS_URL`);
-    });
+    cy.wrap(`${SAMPLE_DB_URL}/table/${ORDERS_ID}`).as(`ORDERS_URL`);
   });
 
   it("should allow editing of the name and description", () => {
@@ -174,7 +175,7 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
     // check that new order is obeyed in queries
     cy.request("POST", "/api/dataset", {
       database: 1,
-      query: { "source-table": 2 },
+      query: { "source-table": ORDERS_ID },
       type: "query",
     }).then(resp => {
       expect(resp.body.data.cols[0].name).to.eq("PRODUCT_ID");

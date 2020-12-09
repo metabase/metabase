@@ -4,8 +4,11 @@ import {
   openOrdersTable,
   popover,
   signIn,
-  withSampleDataset,
 } from "__support__/cypress";
+
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { PRODUCTS } = SAMPLE_DATASET;
 
 describe("scenarios > question > view", () => {
   before(restore);
@@ -105,41 +108,40 @@ describe("scenarios > question > view", () => {
       cy.request("POST", "/api/dashboard", {
         name: "Dashboard",
       });
-      withSampleDataset(({ PRODUCTS }) => {
-        cy.request("POST", "/api/card", {
-          name: "Question",
-          dataset_query: {
-            type: "native",
-            native: {
-              query: "select * from products where {{category}} and {{vendor}}",
-              "template-tags": {
-                category: {
-                  id: "6b8b10ef-0104-1047-1e5v-2492d5954555",
-                  name: "category",
-                  "display-name": "CATEGORY",
-                  type: "dimension",
-                  dimension: ["field-id", PRODUCTS.CATEGORY],
-                  "widget-type": "id",
-                },
-                vendor: {
-                  id: "6b8b10ef-0104-1047-1e5v-2492d5964545",
-                  name: "vendor",
-                  "display-name": "VENDOR",
-                  type: "dimension",
-                  dimension: ["field-id", PRODUCTS.VENDOR],
-                  "widget-type": "id",
-                },
+
+      cy.request("POST", "/api/card", {
+        name: "Question",
+        dataset_query: {
+          type: "native",
+          native: {
+            query: "select * from products where {{category}} and {{vendor}}",
+            "template-tags": {
+              category: {
+                id: "6b8b10ef-0104-1047-1e5v-2492d5954555",
+                name: "category",
+                "display-name": "CATEGORY",
+                type: "dimension",
+                dimension: ["field-id", PRODUCTS.CATEGORY],
+                "widget-type": "id",
+              },
+              vendor: {
+                id: "6b8b10ef-0104-1047-1e5v-2492d5964545",
+                name: "vendor",
+                "display-name": "VENDOR",
+                type: "dimension",
+                dimension: ["field-id", PRODUCTS.VENDOR],
+                "widget-type": "id",
               },
             },
-            database: 1,
           },
-          display: "table",
-          visualization_settings: {},
-        });
-        cy.request("POST", "/api/dashboard/2/cards", {
-          id: 2,
-          cardId: 4,
-        });
+          database: 1,
+        },
+        display: "table",
+        visualization_settings: {},
+      });
+      cy.request("POST", "/api/dashboard/2/cards", {
+        id: 2,
+        cardId: 4,
       });
     });
 
