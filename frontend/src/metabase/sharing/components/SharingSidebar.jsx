@@ -729,7 +729,7 @@ class SharingSidebar extends React.Component {
               ] || t`Messages`} will be sent at`}
               onScheduleChange={this.onChannelScheduleChange.bind(this, index)}
             />
-            <div className="pt2">
+            <div className="pt2 pb1">
               <SendTestEmail
                 channel={channel}
                 pulse={pulse}
@@ -737,7 +737,7 @@ class SharingSidebar extends React.Component {
               />
             </div>
 
-            <div className="text-bold py2 mt2 flex justify-between align-center border-top">
+            <div className="text-bold py3 mt2 flex justify-between align-center border-top">
               <Heading>{t`Don't send if there aren't results`}</Heading>
               <Toggle
                 value={pulse.skip_if_empty || false}
