@@ -359,7 +359,6 @@ export default class PivotTable extends Component {
                       </div>
                     );
                   }}
-                  onRowsRendered={() => {}}
                   onScroll={({ scrollLeft, scrollTop }) =>
                     onScroll({ scrollLeft, scrollTop })
                   }
