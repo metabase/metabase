@@ -105,7 +105,10 @@
     (with-log-level [metabase.query-processor :debug]
       ...)"
   [level & body]
-  `(do-with-log-messages-for-level ~level (fn [] ~@body)))
+  `(do-with-log-messages-for-level ~(if (sequential? level)
+                                      `(quote ~level)
+                                      level)
+                                   (fn [] ~@body)))
 
 (defmacro with-log-messages-for-level
   "Executes `body` with the metabase logging level set to `level-kwd`. This is needed when the logging level is set at a
