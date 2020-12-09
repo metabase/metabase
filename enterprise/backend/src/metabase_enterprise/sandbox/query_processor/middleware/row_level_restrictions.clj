@@ -182,11 +182,11 @@
     (log/tracef "Not updating metadata for GTAP {0}: GTAP has no associated Card ID" gtap-id)
 
     (db/exists? Card :id card-id, :result_metadata [:not= nil])
-    (log/trace "Not updating metadata for GTAP {0} Card {1}: Card already has result metadata" gtap-id card-id)
+    (log/tracef "Not updating metadata for GTAP {0} Card {1}: Card already has result metadata" gtap-id card-id)
 
     :else
     (do
-      (log/trace "Saving results metadata for GTAP {0} Card {1}" gtap-id card-id)
+      (log/tracef "Saving results metadata for GTAP {0} Card {1}" gtap-id card-id)
       (db/update! Card card-id :result_metadata new-metadata))))
 
 (s/defn ^:private gtap->source :- {:source-query                     s/Any
