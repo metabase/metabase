@@ -1008,9 +1008,6 @@ jobs:
             - restore_cache:
                 name: Restore cached uberjar built in previous step
                 <<: *CacheKeyUberjar
-            - run:
-                name: Generate version file
-                command: ./bin/build version
       - store_artifacts:
           path: /home/circleci/metabase/metabase/cypress
       - store_test_results:
