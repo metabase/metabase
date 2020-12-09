@@ -108,6 +108,12 @@ export default class PivotTable extends Component {
     },
   };
 
+  componentDidUpdate() {
+    this.bodyGrid && this.bodyGrid.recomputeGridSize();
+    this.leftList && this.leftList.recomputeGridSize();
+    this.topGrid && this.topGrid.recomputeGridSize();
+  }
+
   render() {
     const { settings, data, width, height } = this.props;
     if (data == null || !data.cols.some(isPivotGroupColumn)) {
@@ -125,28 +131,26 @@ export default class PivotTable extends Component {
       rows: rowIndexes,
       columns: columnIndexes,
       values: valueIndexes,
-    } = _.mapObject(setting, columns => {
-      return columns
+    } = _.mapObject(setting, columns =>
+      columns
         .map(field_ref =>
           columnsWithoutPivotGroup.findIndex(col =>
             _.isEqual(col.field_ref, field_ref),
           ),
         )
-        .filter(index => index !== -1);
-    });
-    const pivotData = splitPivotData(data, rowIndexes, columnIndexes);
-    const {
-      [JSON.stringify(
-        _.range(columnIndexes.length + rowIndexes.length),
-      )]: primary,
-      ...subtotals
-    } = pivotData;
+        .filter(index => index !== -1),
+    );
+    const { pivotData, columns } = splitPivotData(
+      data,
+      rowIndexes,
+      columnIndexes,
+    );
 
     let pivoted;
     try {
       pivoted = multiLevelPivot(
-        primary,
-        subtotals,
+        pivotData,
+        columns,
         columnIndexes,
         rowIndexes,
         valueIndexes,
@@ -206,14 +210,13 @@ export default class PivotTable extends Component {
                       style={{ height: cellHeight, width: cellWidth }}
                       className="px1"
                     >
-                      <Ellipsified>
-                        {formatColumn(primary.cols[index])}
-                      </Ellipsified>
+                      <Ellipsified>{formatColumn(columns[index])}</Ellipsified>
                     </div>
                   ))}
                 </div>
                 {/* top header */}
                 <Grid
+                  ref={e => (this.topGrid = e)}
                   className="border-bottom border-medium scroll-hide-all text-medium"
                   width={width - leftHeaderWidth}
                   height={topHeaderHeight}
@@ -253,7 +256,7 @@ export default class PivotTable extends Component {
                               >
                                 <Ellipsified>
                                   {formatValue(value, {
-                                    column: primary.cols[columnIndexes[index]],
+                                    column: columns[columnIndexes[index]],
                                   })}
                                 </Ellipsified>
                               </div>
@@ -268,6 +271,7 @@ export default class PivotTable extends Component {
                 />
                 {/* left header */}
                 <List
+                  ref={e => (this.leftList = e)}
                   width={leftHeaderWidth}
                   height={height - topHeaderHeight}
                   className="scroll-hide-all text-dark border-right border-medium"
@@ -306,7 +310,7 @@ export default class PivotTable extends Component {
                                 >
                                   <Ellipsified>
                                     {formatValue(value, {
-                                      column: primary.cols[rowIndexes[index]],
+                                      column: columns[rowIndexes[index]],
                                     })}
                                   </Ellipsified>
                                 </div>
@@ -328,6 +332,7 @@ export default class PivotTable extends Component {
                 />
                 {/* pivot table body */}
                 <Grid
+                  ref={e => (this.bodyGrid = e)}
                   width={width - leftHeaderWidth}
                   height={height - topHeaderHeight}
                   className="text-dark"
@@ -385,7 +390,7 @@ function updateValueWithCurrentColumns(storedValue, columns) {
   );
   // add toAdd to first partitions where it matches the filter
   for (const fieldRef of toAdd) {
-    for (const { filter, name } of partitions) {
+    for (const { columnFilter: filter, name } of partitions) {
       const column = columns.find(
         c => JSON.stringify(c.field_ref) === fieldRef,
       );
@@ -412,25 +417,23 @@ function isColumnValid(col) {
 
 function splitPivotData(data, rowIndexes, columnIndexes) {
   const groupIndex = data.cols.findIndex(isPivotGroupColumn);
-  const remainingColumns = data.cols.filter(col => !isPivotGroupColumn(col));
-  return _.chain(data.rows)
+  const columns = data.cols.filter(col => !isPivotGroupColumn(col));
+  const pivotData = _.chain(data.rows)
     .groupBy(row => row[groupIndex])
     .pairs()
     .map(([key, rows]) => {
       const indexes = JSON.parse(key).map(breakout =>
-        remainingColumns.findIndex(col => _.isEqual(col.field_ref, breakout)),
+        columns.findIndex(col => _.isEqual(col.field_ref, breakout)),
       );
 
       return [
         JSON.stringify(indexes),
-        {
-          cols: remainingColumns,
-          rows: rows.map(row =>
-            row.slice(0, groupIndex).concat(row.slice(groupIndex + 1)),
-          ),
-        },
+        rows.map(row =>
+          row.slice(0, groupIndex).concat(row.slice(groupIndex + 1)),
+        ),
       ];
     })
     .object()
     .value();
+  return { pivotData, columns };
 }
