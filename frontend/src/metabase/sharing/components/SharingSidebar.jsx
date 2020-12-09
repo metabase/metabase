@@ -10,7 +10,7 @@ import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 import Link from "metabase/components/Link";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Radio from "metabase/components/Radio";
+import ButtonGroup from "metabase/components/ButtonGroup";
 import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 import SchedulePicker from "metabase/components/SchedulePicker";
 import Select, { Option } from "metabase/components/Select";
@@ -475,21 +475,23 @@ class SharingSidebar extends React.Component {
 
     if (pulse.id != null && !pulse.archived) {
       return (
-        <ModalWithTrigger
-          triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
-          triggerElement={t`Delete this subscription`}
-        >
-          {({ onClose }) => (
-            <DeleteModalWithConfirm
-              objectType="pulse"
-              title={t`Archive` + ' "' + pulse.name + '"?'}
-              buttonText={t`Archive`}
-              confirmItems={this.getConfirmItems()}
-              onClose={onClose}
-              onDelete={this.handleArchive}
-            />
-          )}
-        </ModalWithTrigger>
+        <div className="border-top pt1 pb3 flex justify-end">
+          <ModalWithTrigger
+            triggerClasses="Button Button--borderless text-light text-error-hover flex-align-right flex-no-shrink"
+            triggerElement={t`Delete this subscription`}
+          >
+            {({ onClose }) => (
+              <DeleteModalWithConfirm
+                objectType="pulse"
+                title={t`Archive` + ' "' + pulse.name + '"?'}
+                buttonText={t`Archive`}
+                confirmItems={this.getConfirmItems()}
+                onClose={onClose}
+                onDelete={this.handleArchive}
+              />
+            )}
+          </ModalWithTrigger>
+        </div>
       );
     }
 
@@ -583,9 +585,9 @@ class SharingSidebar extends React.Component {
           <div className="my1 mx4">
             <Card
               flat
-              hoverable={emailSpec.configured}
               className={cx("mt1 mb3", {
-                "cursor-pointer": slackSpec.configured,
+                "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
+                  emailSpec.configured,
               })}
               onClick={() => {
                 if (emailSpec.configured) {
@@ -600,7 +602,10 @@ class SharingSidebar extends React.Component {
                     name="mail"
                     className={cx(
                       "mr1",
-                      { "text-brand": emailSpec.configured },
+                      {
+                        "text-brand hover-child hover--inherit":
+                          emailSpec.configured,
+                      },
                       { "text-light": !emailSpec.configured },
                     )}
                   />
@@ -608,7 +613,11 @@ class SharingSidebar extends React.Component {
                     className={cx({ "text-light": !emailSpec.configured })}
                   >{t`Email it`}</h3>
                 </div>
-                <div className="text-medium">
+                <div
+                  className={cx("text-medium", {
+                    "hover-child hover--inherit": emailSpec.configured,
+                  })}
+                >
                   {!emailSpec.configured &&
                     jt`You'll need to ${(
                       <Link to="/admin/settings/email" className="link">
@@ -622,8 +631,10 @@ class SharingSidebar extends React.Component {
             </Card>
             <Card
               flat
-              hoverable={slackSpec.configured}
-              className={cx({ "cursor-pointer": slackSpec.configured })}
+              className={cx({
+                "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
+                  slackSpec.configured,
+              })}
               onClick={() => {
                 if (slackSpec.configured) {
                   this.setState({ editingMode: "add-edit-slack" });
@@ -638,13 +649,18 @@ class SharingSidebar extends React.Component {
                     size={24}
                     className={cx("mr1", {
                       "text-light": !slackSpec.configured,
+                      "hover-child hover--inherit": slackSpec.configured,
                     })}
                   />
                   <h3
                     className={cx({ "text-light": !slackSpec.configured })}
                   >{t`Send it to Slack`}</h3>
                 </div>
-                <div className="text-medium">
+                <div
+                  className={cx("text-medium", {
+                    "hover-child hover--inherit": slackSpec.configured,
+                  })}
+                >
                   {!slackSpec.configured &&
                     jt`First, you'll have to ${(
                       <Link to="/admin/settings/slack" className="link">
@@ -723,7 +739,7 @@ class SharingSidebar extends React.Component {
               ] || t`Messages`} will be sent at`}
               onScheduleChange={this.onChannelScheduleChange.bind(this, index)}
             />
-            <div className="pt2">
+            <div className="pt2 pb1">
               <SendTestEmail
                 channel={channel}
                 pulse={pulse}
@@ -731,7 +747,7 @@ class SharingSidebar extends React.Component {
               />
             </div>
 
-            <div className="text-bold py2 mt2 flex justify-between align-center border-top">
+            <div className="text-bold py3 mt2 flex justify-between align-center border-top">
               <Heading>{t`Don't send if there aren't results`}</Heading>
               <Toggle
                 value={pulse.skip_if_empty || false}
@@ -754,11 +770,11 @@ class SharingSidebar extends React.Component {
               />
             </div>
             {this.attachmentTypeValue() != null && (
-              <div className="text-bold py2 flex justify-between align-center">
-                <Radio
+              <div className="pb3 flex">
+                <ButtonGroup
                   options={[
-                    { name: "CSV", value: "csv" },
-                    { name: "XLSX", value: "xls" },
+                    { name: ".csv", value: "csv" },
+                    { name: ".xlsx", value: "xls" },
                   ]}
                   onChange={value => this.setAttachmentType(value)}
                   value={this.attachmentTypeValue()}
