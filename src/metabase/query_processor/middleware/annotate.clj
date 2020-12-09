@@ -461,21 +461,32 @@
     (map merge source-metadata cols)
     cols))
 
+(defn- flow-field-metadata
+  "Merge information about fields from `source-metadata` into the returned `cols`."
+  [source-metadata cols]
+  (let [field-id->metadata (u/key-by :id source-metadata)]
+    (for [col cols]
+      (if-let [source-metadata-for-field (-> col :id field-id->metadata)]
+        (merge source-metadata-for-field col)
+        col))))
+
 (defn- cols-for-source-query
   [{:keys [source-metadata], {native-source-query :native, :as source-query} :source-query} results]
-  (println source-query)
   (if native-source-query
     (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
     (mbql-cols source-query results)))
 
-(s/defn mbql-cols
+(defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
   query."
-  [{:keys [source-metadata source-query fields], :as inner-query} :- su/Map, results]
+  [{:keys [source-metadata source-query fields], :as inner-query}, results]
   (let [cols (cols-for-mbql-query inner-query)]
     (cond
       (and (empty? cols) source-query)
       (cols-for-source-query inner-query results)
+
+      source-query
+      (flow-field-metadata (cols-for-source-query inner-query results) cols)
 
       (every? (partial mbql.u/is-clause? :field-literal) fields)
       (maybe-merge-source-metadata source-metadata cols)

@@ -887,6 +887,20 @@
 
 ;;; -------------------------------------------- putting it all togetrher --------------------------------------------
 
+(defn- apply-clauses
+  "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
+  because it is aliased."
+  [driver honeysql-form {:keys [source-query expressions source-metadata native], :as inner-query}]
+  (let [field-metadata (when-not native
+                         (u/key-by :id (annotate/mbql-cols inner-query nil)))]
+    (binding [*query* (assoc inner-query :field-metadata field-metadata)]
+      (if source-query
+        (apply-clauses-with-aliased-source-query-table
+         driver
+         (apply-source-query driver honeysql-form inner-query)
+         inner-query)
+        (apply-top-level-clauses driver honeysql-form inner-query)))))
+
 (defn- expressions->subselect
   [{:keys [expressions fields] :as query}]
   (let [subselect (-> query
@@ -900,22 +914,6 @@
                         [:expression expression-name] [:field-literal expression-name :type/*])
         (dissoc :source-table :joins :expressions :source-metadata)
         (assoc :source-query subselect))))
-
-(defn- apply-clauses
-  "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
-  because it is aliased."
-  [driver honeysql-form {:keys [source-query expressions source-metadata native], :as inner-query}]
-  (binding [*query* (->> (or source-metadata
-                             (when-not native
-                               (annotate/mbql-cols inner-query nil)))
-                         (u/key-by :id)
-                         (assoc inner-query :field-metadata))]
-    (if source-query
-      (apply-clauses-with-aliased-source-query-table
-       driver
-       (apply-source-query driver honeysql-form inner-query)
-       inner-query)
-      (apply-top-level-clauses driver honeysql-form inner-query))))
 
 (defn- preprocess-query
   [{:keys [expressions] :as query}]
@@ -933,14 +931,10 @@
 ;;; |                                                 MBQL -> Native                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- mbql->honeysql
-  [driver outer-query]
-  (build-honeysql-form driver outer-query))
-
 (defn mbql->native
   "Transpile MBQL query into a native SQL statement."
   {:style/indent 1}
   [driver {inner-query :query, database :database, :as outer-query}]
-  (let [honeysql-form (mbql->honeysql driver outer-query)
+  (let [honeysql-form (build-honeysql-form driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))

@@ -94,7 +94,7 @@
     ;; be qualifying aliases with aliases things still work the right way.
     (mt/with-everything-store
       (driver/with-driver :h2
-        (is (= {:select    [[(bound-alias "v" (id :field "v" "NAME")) (bound-alias :source (id :field-alias "NAME"))]
+        (is (= {:select    [[(bound-alias "v" (id :field "v" "NAME")) (bound-alias :source (id :field-alias "v__NAME"))]
                             [:%count.*                                (bound-alias :source (id :field-alias "count"))]]
                 :from      [[{:select [[(id :field "PUBLIC" "CHECKINS" "ID")       (id :field-alias "ID")]
                                        [(id :field "PUBLIC" "CHECKINS" "DATE")     (id :field-alias "DATE")]
