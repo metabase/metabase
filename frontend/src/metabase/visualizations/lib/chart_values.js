@@ -211,7 +211,7 @@ export function onRenderValueLabels(
     const yScale = yScaleForSeries(seriesIndex);
     const xPos = xShifts[seriesIndex] + xScale(x);
     let yPos = yScale(yy) + (showLabelBelow ? 18 : -8);
-    if (y >= 0 && display === "waterfall") {
+    if (y < 0 && display === "waterfall") {
       yPos += 25;
     }
     // if the yPos is below the x axis, move it to be above the data point
