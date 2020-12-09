@@ -686,7 +686,7 @@
 
 ;;; -------------------------------------------------- join tables ---------------------------------------------------
 
-(declare build-honeysql-form)
+(declare mbql->honeysql)
 
 (defmulti join->honeysql
   "Compile a single MBQL `join` to HoneySQL."
@@ -708,7 +708,7 @@
       (SQLSourceQuery. (:native source-query) (:params source-query))
 
       source-query
-      (build-honeysql-form driver {:query source-query})
+      (mbql->honeysql driver {:query source-query})
 
       :else
       (->honeysql driver (qp.store/table source-table)))))
@@ -889,7 +889,7 @@
 (defn- apply-clauses
   "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
   because it is aliased."
-  [driver honeysql-form {:keys [source-query expressions source-metadata native], :as inner-query}]
+  [driver honeysql-form {:keys [source-query source-metadata native], :as inner-query}]
   (let [field-metadata (when-not native
                          (u/key-by :id (annotate/mbql-cols inner-query nil)))]
     (binding [*query* (assoc inner-query :field-metadata field-metadata)]
@@ -910,7 +910,10 @@
                                          distinct)))]
     (-> query
         (mbql.u/replace [:joined-field _ field]       field
-                        [:expression expression-name] [:field-literal expression-name :type/*])
+                        [:expression expression-name] [:field-literal expression-name
+                                                       (->> expression-name
+                                                            expressions
+                                                            (annotate/col-info-for-field-clause query))])
         (dissoc :source-table :joins :expressions :source-metadata)
         (assoc :source-query subselect))))
 
