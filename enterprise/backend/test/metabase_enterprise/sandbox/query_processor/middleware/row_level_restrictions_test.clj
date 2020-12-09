@@ -16,7 +16,9 @@
             [metabase.mbql
              [normalize :as normalize]
              [util :as mbql.u]]
-            [metabase.models.permissions :as perms]
+            [metabase.models
+             [permissions :as perms]
+             [permissions-group :as perms-group]]
             [metabase.query-processor.util :as qputil]
             [metabase.test.data.env :as tx.env]
             [metabase.test.util :as tu]
