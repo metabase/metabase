@@ -8,7 +8,7 @@ import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Radio from "metabase/components/Radio";
+import ButtonGroup from "metabase/components/ButtonGroup";
 import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 import SchedulePicker from "metabase/components/SchedulePicker";
 import Select, { Option } from "metabase/components/Select";
@@ -760,11 +760,11 @@ class SharingSidebar extends React.Component {
               />
             </div>
             {this.attachmentTypeValue() != null && (
-              <div className="text-bold py2 flex justify-between align-center">
-                <Radio
+              <div className="pb3 flex">
+                <ButtonGroup
                   options={[
-                    { name: "CSV", value: "csv" },
-                    { name: "XLSX", value: "xls" },
+                    { name: ".csv", value: "csv" },
+                    { name: ".xlsx", value: "xls" },
                   ]}
                   onChange={value => this.setAttachmentType(value)}
                   value={this.attachmentTypeValue()}
