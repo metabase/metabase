@@ -32,6 +32,10 @@ export const GTAPApi = {
   attributes: GET("/api/mt/user/attributes"),
 };
 
+// Pivot tables need extra data beyond what's described in the MBQL query itself.
+// To fetch that extra data we rely on specific APIs for pivot tables that mirrow the normal endpoints.
+// Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
+// If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
 export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
   function wrap(api) {
     return (params: ?Data, ...rest: any) => {
