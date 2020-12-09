@@ -44,7 +44,7 @@ import {
   toUnderlyingRecords,
   drillUnderlyingRecords,
 } from "metabase/modes/lib/actions";
-import { MetabaseApi, CardApi } from "metabase/services";
+import { MetabaseApi, CardApi, maybeUsePivotEndpoint } from "metabase/services";
 import Questions from "metabase/entities/questions";
 
 import type {
@@ -824,7 +824,7 @@ export default class Question {
       };
 
       return [
-        await CardApi.query(queryParams, {
+        await maybeUsePivotEndpoint(CardApi.query, this.card())(queryParams, {
           cancelled: cancelDeferred.promise,
         }),
       ];
@@ -835,7 +835,7 @@ export default class Question {
           parameters,
         };
 
-        return MetabaseApi.dataset(
+        return maybeUsePivotEndpoint(MetabaseApi.dataset, this.card())(
           datasetQueryWithParameters,
           cancelDeferred ? { cancelled: cancelDeferred.promise } : {},
         );

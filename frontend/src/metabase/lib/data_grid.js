@@ -1,9 +1,11 @@
 import _ from "underscore";
+import { getIn } from "icepick";
 
 import { formatValue } from "metabase/lib/formatting";
 
 export function multiLevelPivot(
-  data,
+  pivotData,
+  columns,
   columnColumnIndexes,
   rowColumnIndexes,
   valueColumnIndexes,
@@ -15,8 +17,12 @@ export function multiLevelPivot(
   // this stores pivot table values keyed by all pivoted columns
   const valuesByKey = {};
 
-  // loop over the rows to build trees of column/row header data
-  for (const row of data.rows) {
+  // loop over the primary rows to build trees of column/row header data
+  for (const row of pivotData[
+    JSON.stringify(
+      _.range(columnColumnIndexes.length + rowColumnIndexes.length),
+    )
+  ]) {
     // mutate the trees to add the tuple from the current row
     updateValueObject(row, columnColumnIndexes, columnColumnTree);
     updateValueObject(row, rowColumnIndexes, rowColumnTree);
@@ -28,20 +34,44 @@ export function multiLevelPivot(
     valuesByKey[valueKey] = valueColumnIndexes.map(index => row[index]);
   }
 
+  // build objects to look up subtotal values
+  const subtotalValues = {};
+  for (const [subtotalName, subtotal] of Object.entries(pivotData)) {
+    const indexes = JSON.parse(subtotalName);
+    subtotalValues[subtotalName] = {};
+    for (const row of subtotal) {
+      const valueKey = JSON.stringify(indexes.map(index => row[index]));
+      subtotalValues[subtotalName][valueKey] = valueColumnIndexes.map(
+        index => row[index],
+      );
+    }
+  }
+
   const valueFormatters = valueColumnIndexes.map(index => value =>
-    formatValue(value, { column: data.cols[index] }),
+    formatValue(value, { column: columns[index] }),
   );
 
-  const valueColumns = valueColumnIndexes.map(index => data.cols[index]);
+  const valueColumns = valueColumnIndexes.map(index => columns[index]);
+  const topIndex = getIndex(columnColumnTree, { valueColumns });
+  const leftIndex = getIndex(rowColumnTree, {});
 
+  const columnCount =
+    topIndex.length + (topIndex.length > 1 && leftIndex.length > 0 ? 1 : 0);
+  const rowCount =
+    leftIndex.length + (leftIndex.length > 1 && topIndex.length > 0 ? 1 : 0);
   return {
-    topIndex: getIndex(columnColumnTree, { valueColumns }),
-    leftIndex: getIndex(rowColumnTree, {}),
+    topIndex,
+    leftIndex,
+    columnCount,
+    rowCount,
     getRowSection: createRowSectionGetter({
       valuesByKey,
       columnColumnTree,
       rowColumnTree,
       valueFormatters,
+      subtotalValues,
+      columnColumnIndexes,
+      rowColumnIndexes,
     }),
   };
 }
@@ -51,26 +81,86 @@ function createRowSectionGetter({
   columnColumnTree,
   rowColumnTree,
   valueFormatters,
+  subtotalValues,
+  columnColumnIndexes,
+  rowColumnIndexes,
 }) {
-  return (topValue, leftValue) => {
-    const rows =
-      leftValue === undefined
-        ? [[]]
-        : enumerate(rowColumnTree.find(node => node.value === leftValue));
-    const columns =
-      topValue === undefined
-        ? [[]]
-        : enumerate(columnColumnTree.find(node => node.value === topValue));
-    return rows.map(row =>
-      columns.flatMap(col => {
-        const valueKey = JSON.stringify(col.concat(row));
-        const values = valuesByKey[valueKey];
-        if (values === undefined) {
-          return new Array(valueFormatters.length).fill(null);
-        }
-        return values.map((v, i) => valueFormatters[i](v));
-      }),
+  const formatValues = values =>
+    values === undefined
+      ? new Array(valueFormatters.length).fill(null)
+      : values.map((v, i) => valueFormatters[i](v));
+  const getSubtotals = (breakoutIndexes, values) =>
+    formatValues(
+      getIn(
+        subtotalValues,
+        [breakoutIndexes, values].map(a =>
+          JSON.stringify(
+            _.sortBy(a, (_value, index) => breakoutIndexes[index]),
+          ),
+        ),
+      ),
     );
+
+  return (columnIndex, rowIndex) => {
+    const rows =
+      rowIndex >= rowColumnTree.length
+        ? [[]]
+        : enumerate(rowColumnTree[rowIndex]);
+    const columns =
+      columnIndex >= columnColumnTree.length
+        ? [[]]
+        : enumerate(columnColumnTree[columnIndex]);
+
+    const bottomRow =
+      rowIndex === rowColumnTree.length && rowColumnTree.length > 0;
+    const rightColumn =
+      columnIndex === columnColumnTree.length && columnColumnTree.length > 0;
+    // totals in the bottom right
+    if (bottomRow && rightColumn) {
+      return [getSubtotals([], [])];
+    }
+
+    // "grand totals" on the bottom
+    if (bottomRow) {
+      return [columns.flatMap(col => getSubtotals(columnColumnIndexes, col))];
+    }
+
+    // "row totals" on the right
+    if (rightColumn) {
+      const subtotalRows =
+        rowColumnIndexes.length > 1
+          ? [
+              columns.flatMap(col =>
+                getSubtotals(rowColumnIndexes.slice(0, -1), [rows[0][0]]),
+              ),
+            ]
+          : [];
+
+      return rows
+        .map(row => [getSubtotals(rowColumnIndexes, row)])
+        .concat(subtotalRows);
+    }
+
+    const subtotalRows =
+      rowColumnIndexes.length > 1
+        ? [
+            columns.flatMap(col =>
+              getSubtotals(
+                columnColumnIndexes.concat(rowColumnIndexes.slice(0, 1)),
+                col.concat(rows[0][0]),
+              ),
+            ),
+          ]
+        : [];
+
+    return rows
+      .map(row =>
+        columns.flatMap(col => {
+          const values = valuesByKey[JSON.stringify(col.concat(row))];
+          return formatValues(values);
+        }),
+      )
+      .concat(subtotalRows);
   };
 }
 
@@ -82,9 +172,9 @@ function enumerate({ value, children }, path = []) {
   return children.flatMap(child => enumerate(child, pathWithValue));
 }
 
-function getIndex(values, { valueColumns = [] } = {}) {
+function getIndex(values, { valueColumns = [], depth = 0 } = {}) {
   if (values.length === 0) {
-    if (valueColumns.length > 1) {
+    if (valueColumns.length > 1 || depth === 0) {
       // if we have multiple value columns include their column names
       const colNames = valueColumns.map(col => ({
         value: col.display_name,
@@ -95,9 +185,9 @@ function getIndex(values, { valueColumns = [] } = {}) {
     return [];
   }
   return values.map(({ value, children }) => {
-    const foo = _.zip(...getIndex(children, { valueColumns })).map(a =>
-      a.flat(),
-    );
+    const foo = _.zip(
+      ...getIndex(children, { valueColumns, depth: depth + 1 }),
+    ).map(a => a.flat());
     const span = foo.length === 0 ? 1 : foo[foo.length - 1].length;
     return [[{ value, span }], ...foo];
   });
