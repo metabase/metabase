@@ -472,8 +472,10 @@ class SharingSidebar extends React.Component {
             {({ onClose }) => (
               <DeleteModalWithConfirm
                 objectType="pulse"
-                title={t`Archive` + ' "' + pulse.name + '"?'}
-                buttonText={t`Archive`}
+                title={
+                  t`Delete this subscription to ` + ' "' + pulse.name + '"?'
+                }
+                buttonText={t`Delete`}
                 confirmItems={this.getConfirmItems()}
                 onClose={onClose}
                 onDelete={this.handleArchive}
