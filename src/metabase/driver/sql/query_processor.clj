@@ -1,6 +1,7 @@
 (ns metabase.driver.sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
-  (:require [clojure.string :as str]
+  (:require [clojure.core.match :refer [match]]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
@@ -209,6 +210,16 @@
   (fn [driver seconds-or-milliseconds _] [(driver/dispatch-on-initialized-driver driver) seconds-or-milliseconds])
   :hierarchy #'driver/hierarchy)
 
+(defmulti cast-temporal-string
+  "Cast a string representing "
+  {:arglists '([driver special_type expr]), :added "0.38.0"}
+  (fn [driver special_type _] [(driver/dispatch-on-initialized-driver driver) special_type])
+  :hierarchy #'driver/hierarchy)
+
+(defmethod cast-temporal-string :default
+  [driver special_type _expr]
+  (throw (Exception. (tru "Driver {0} does not support {1}" driver special_type))))
+
 (defmethod unix-timestamp->honeysql [:sql :milliseconds]
   [driver _ expr]
   (unix-timestamp->honeysql driver :seconds (hx// expr 1000)))
@@ -256,13 +267,14 @@
   [driver [_ _ expression-definition]]
   (->honeysql driver expression-definition))
 
-(defn cast-unix-timestamp-field-if-needed
+(defn cast-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field field-identifier]
-  (condp #(isa? %2 %1) (:special_type field)
-    :type/UNIXTimestampSeconds      (unix-timestamp->honeysql driver :seconds      field-identifier)
-    :type/UNIXTimestampMilliseconds (unix-timestamp->honeysql driver :milliseconds field-identifier)
-    field-identifier))
+  (match [(:base_type field) (:special_type field)]
+    [_ (:isa? :type/UNIXTimestampSeconds)]      (unix-timestamp->honeysql driver :seconds      field-identifier)
+    [_ (:isa? :type/UNIXTimestampMilliseconds)] (unix-timestamp->honeysql driver :milliseconds field-identifier)
+    [:type/Text (:isa? :type/TemporalString)]   (cast-temporal-string driver (:special_type field) field-identifier)
+    :else field-identifier))
 
 ;; default implmentation is a no-op; other drivers can override it as needed
 (defmethod ->honeysql [:sql Identifier]
@@ -277,7 +289,7 @@
                      (let [{schema :schema, table-name :name} (qp.store/table table-id)]
                        [schema table-name]))
         identifier (->honeysql driver (apply hx/identifier :field (concat qualifiers [field-name])))]
-    (cast-unix-timestamp-field-if-needed driver field identifier)))
+    (cast-field-if-needed driver field identifier)))
 
 (defmethod ->honeysql [:sql :field-id]
   [driver [_ field-id]]
