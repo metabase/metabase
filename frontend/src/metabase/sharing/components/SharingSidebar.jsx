@@ -505,7 +505,7 @@ class SharingSidebar extends React.Component {
       return (
         <Sidebar>
           <div className="p4 flex justify-between align-center">
-            <h3>{t`Schedules`}</h3>
+            <h3>{t`Subscriptions`}</h3>
 
             <Flex align="center">
               <Tooltip tooltip={t`Set up a new schedule`}>
