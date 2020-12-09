@@ -2,6 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import { t, jt, ngettext, msgid } from "ttag";
+import { Flex } from "grid-styled";
 
 import Card from "metabase/components/Card";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
@@ -516,22 +517,24 @@ class SharingSidebar extends React.Component {
           <div className="p4 flex justify-between align-center">
             <h3>{t`Schedules`}</h3>
 
-            <Tooltip tooltip={t`Set up a new schedule`}>
-              <Icon
-                name="add"
-                className="text-brand bg-light-hover rounded p1 cursor-pointer"
-                size={20}
-                onClick={() => this.createSubscription()}
-              />
-            </Tooltip>
-            <Tooltip tooltip={t`Close`}>
-              <Icon
-                name="close"
-                className="text-brand bg-light-hover rounded p1 cursor-pointer"
-                size={20}
-                onClick={onCancel}
-              />
-            </Tooltip>
+            <Flex align="center">
+              <Tooltip tooltip={t`Set up a new schedule`}>
+                <Icon
+                  name="add"
+                  className="text-brand bg-light-hover rounded p1 cursor-pointer mr1"
+                  size={18}
+                  onClick={() => this.createSubscription()}
+                />
+              </Tooltip>
+              <Tooltip tooltip={t`Close`}>
+                <Icon
+                  name="close"
+                  className="text-light bg-light-hover rounded p1 cursor-pointer"
+                  size={22}
+                  onClick={onCancel}
+                />
+              </Tooltip>
+            </Flex>
           </div>
           <div className="my2 mx4">
             {pulseList.map(pulse => (
