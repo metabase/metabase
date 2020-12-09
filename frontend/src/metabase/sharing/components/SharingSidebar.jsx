@@ -573,9 +573,9 @@ class SharingSidebar extends React.Component {
           <div className="my1 mx4">
             <Card
               flat
-              hoverable={emailSpec.configured}
               className={cx("mt1 mb3", {
-                "cursor-pointer": slackSpec.configured,
+                "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
+                  emailSpec.configured,
               })}
               onClick={() => {
                 if (emailSpec.configured) {
@@ -590,7 +590,10 @@ class SharingSidebar extends React.Component {
                     name="mail"
                     className={cx(
                       "mr1",
-                      { "text-brand": emailSpec.configured },
+                      {
+                        "text-brand hover-child hover--inherit":
+                          emailSpec.configured,
+                      },
                       { "text-light": !emailSpec.configured },
                     )}
                   />
@@ -598,7 +601,11 @@ class SharingSidebar extends React.Component {
                     className={cx({ "text-light": !emailSpec.configured })}
                   >{t`Email it`}</h3>
                 </div>
-                <div className="text-medium">
+                <div
+                  className={cx("text-medium", {
+                    "hover-child hover--inherit": emailSpec.configured,
+                  })}
+                >
                   {!emailSpec.configured &&
                     jt`You'll need to ${(
                       <Link to="/admin/settings/email" className="link">
@@ -612,8 +619,10 @@ class SharingSidebar extends React.Component {
             </Card>
             <Card
               flat
-              hoverable={slackSpec.configured}
-              className={cx({ "cursor-pointer": slackSpec.configured })}
+              className={cx({
+                "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
+                  slackSpec.configured,
+              })}
               onClick={() => {
                 if (slackSpec.configured) {
                   this.setState({ editingMode: "add-edit-slack" });
@@ -628,13 +637,18 @@ class SharingSidebar extends React.Component {
                     size={24}
                     className={cx("mr1", {
                       "text-light": !slackSpec.configured,
+                      "hover-child hover--inherit": slackSpec.configured,
                     })}
                   />
                   <h3
                     className={cx({ "text-light": !slackSpec.configured })}
                   >{t`Send it to Slack`}</h3>
                 </div>
-                <div className="text-medium">
+                <div
+                  className={cx("text-medium", {
+                    "hover-child hover--inherit": slackSpec.configured,
+                  })}
+                >
                   {!slackSpec.configured &&
                     jt`First, you'll have to ${(
                       <Link to="/admin/settings/slack" className="link">
