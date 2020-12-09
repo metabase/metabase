@@ -470,21 +470,23 @@ class SharingSidebar extends React.Component {
 
     if (pulse.id != null && !pulse.archived) {
       return (
-        <ModalWithTrigger
-          triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
-          triggerElement={t`Delete this subscription`}
-        >
-          {({ onClose }) => (
-            <DeleteModalWithConfirm
-              objectType="pulse"
-              title={t`Archive` + ' "' + pulse.name + '"?'}
-              buttonText={t`Archive`}
-              confirmItems={this.getConfirmItems()}
-              onClose={onClose}
-              onDelete={this.handleArchive}
-            />
-          )}
-        </ModalWithTrigger>
+        <div className="border-top pt1 pb3 flex justify-end">
+          <ModalWithTrigger
+            triggerClasses="Button Button--borderless text-light text-error-hover flex-align-right flex-no-shrink"
+            triggerElement={t`Delete this subscription`}
+          >
+            {({ onClose }) => (
+              <DeleteModalWithConfirm
+                objectType="pulse"
+                title={t`Archive` + ' "' + pulse.name + '"?'}
+                buttonText={t`Archive`}
+                confirmItems={this.getConfirmItems()}
+                onClose={onClose}
+                onDelete={this.handleArchive}
+              />
+            )}
+          </ModalWithTrigger>
+        </div>
       );
     }
 
