@@ -59,7 +59,7 @@
 (def ^:private TagParam
   "Schema for a tag parameter declaration, passed in as part of the `:template-tags` list."
   (s/named
-   {(s/optional-key :id)           su/NonBlankString ; this is used internally by the frontend
+   {(s/optional-key :id)           su/NonBlankString     ; this is used internally by the frontend
     :name                          su/NonBlankString
     :display-name                  su/NonBlankString
     :type                          ParamType
@@ -68,9 +68,10 @@
     (s/optional-key :snippet-name) su/NonBlankString
     (s/optional-key :snippet-id)   su/IntGreaterThanZero
     (s/optional-key :database)     su/IntGreaterThanZero ; used by tags of `:type :snippet`
-    (s/optional-key :widget-type)  s/Keyword ; type of the [default] value if `:type` itself is `dimension`
+    (s/optional-key :widget-type)  s/Keyword             ; type of the [default] value if `:type` itself is `dimension`
     (s/optional-key :required)     s/Bool
-    (s/optional-key :default)      s/Any}
+    (s/optional-key :default)      s/Any
+    s/Keyword                      s/Any}
    "valid template-tags tag"))
 
 (def ^:private ParsedParamValue

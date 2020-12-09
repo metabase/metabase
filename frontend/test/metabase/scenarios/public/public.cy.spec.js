@@ -19,7 +19,10 @@ const USERS = {
   "anonymous user": () => signOut(),
 };
 
-describe("scenarios > public", () => {
+// [quarantine]: failing almost consistently in CI
+// Skipping the whole spec because it needs to be refactored.
+// If possible, re-use as much code as possible but let test run in isolation.
+describe.skip("scenarios > public", () => {
   let questionId;
   before(() => {
     restore();

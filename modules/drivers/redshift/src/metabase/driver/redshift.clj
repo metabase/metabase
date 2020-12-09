@@ -176,6 +176,11 @@
  [:postgres Types/TIMESTAMP])
 
 (prefer-method
+ sql-jdbc.execute/read-column-thunk
+ [::legacy/use-legacy-classes-for-read-and-set Types/TIME]
+ [:postgres Types/TIME])
+
+(prefer-method
  sql-jdbc.execute/set-parameter
  [::legacy/use-legacy-classes-for-read-and-set OffsetTime]
  [:postgres OffsetTime])
