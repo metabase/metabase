@@ -1,8 +1,5 @@
 (ns metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
   (:require [clojure.tools.logging :as log]
-            [metabase
-             [query-processor :as qp]
-             [util :as u]]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase.api.common :as api :refer [*current-user* *current-user-id* *current-user-permissions-set*]]
             [metabase.mbql
@@ -21,6 +18,7 @@
             [metabase.query-processor.middleware
              [annotate :as annotate]
              [fetch-source-query :as fetch-source-query]]
+            [metabase.util :as u]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
@@ -167,7 +165,7 @@
                :type     :query
                :query    source-query}
         cols  (binding [api/*current-user-permissions-set* (atom #{"/"})]
-                (-> (qp/process-query (assoc query :limit 0))
+                (-> ((resolve 'metabase.query-processor/process-query) (assoc query :limit 0))
                     :data :cols))]
     (u/prog1 (for [col cols]
                (select-keys col [:name :base_type :display_name :special_type]))
