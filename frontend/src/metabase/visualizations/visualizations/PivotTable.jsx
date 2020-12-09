@@ -145,14 +145,6 @@ export default class PivotTable extends Component {
       rowIndexes,
       columnIndexes,
     );
-    console.log({
-      data,
-      pivotData,
-      columns,
-      rowIndexes,
-      columnIndexes,
-      valueIndexes,
-    });
 
     let pivoted;
     try {
