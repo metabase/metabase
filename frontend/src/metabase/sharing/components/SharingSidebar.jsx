@@ -529,7 +529,7 @@ class SharingSidebar extends React.Component {
                   onClick={onCancel}
                 />
               </Tooltip>
-            </div>
+            </Flex>
           </div>
           <div className="myb mx4">
             {pulseList.map(pulse => (
