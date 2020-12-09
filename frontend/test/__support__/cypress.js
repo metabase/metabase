@@ -290,4 +290,12 @@ function addQADatabase(engine, db_display_name, port) {
   }).then(({ status }) => {
     expect(status).to.equal(200);
   });
+
+  // Make sure we have all the metadata because we'll need to use it in tests
+  cy.request("POST", "/api/database/2/sync_schema").then(({ status }) => {
+    expect(status).to.equal(200);
+  });
+  cy.request("POST", "/api/database/2/rescan_values").then(({ status }) => {
+    expect(status).to.equal(200);
+  });
 }
