@@ -92,7 +92,8 @@
                          {:display_name "Category → Name"
                           :source       :fields
                           :field_ref    $category_id->categories.name
-                          :fk_field_id  %category_id})]
+                          :fk_field_id  %category_id
+                          :source_alias "CATEGORIES__via__CATEGORY_ID"})]
                  (doall
                   (annotate/column-info
                    {:type  :query
@@ -109,7 +110,8 @@
           (is (= [(merge (info-for-field :categories :name)
                          {:display_name "Categories → Name"
                           :source       :fields
-                          :field_ref    &Categories.categories.name})]
+                          :field_ref    &Categories.categories.name
+                          :source_alias "Categories"})]
                  (doall
                   (annotate/column-info
                    {:type  :query

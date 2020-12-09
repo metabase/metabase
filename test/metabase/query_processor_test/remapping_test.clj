@@ -137,7 +137,8 @@
                                 :display_name  "Foo"
                                 :name          (mt/format-name "name_2")
                                 :remapped_from (mt/format-name "category_id")
-                                :field_ref     $category_id->categories.name))]}
+                                :field_ref     $category_id->categories.name
+                                :source_alias  "CATEGORIES__via__CATEGORY_ID"))]}
                (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
                  (mt/format-rows-by [str int str str]
                    (mt/run-mbql-query venues
