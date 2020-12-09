@@ -7,7 +7,7 @@ import { push } from "react-router-redux";
 import Greeting from "metabase/lib/greeting";
 import Modal from "metabase/components/Modal";
 import Card from "metabase/components/Card";
-import Subhead from "metabase/components/Subhead";
+import Subhead from "metabase/components/type/Subhead";
 
 import Activity from "../components/Activity";
 import RecentViews from "../components/RecentViews";
