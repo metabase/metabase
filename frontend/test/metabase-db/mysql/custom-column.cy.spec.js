@@ -28,14 +28,12 @@ describe.skip("mysql > user > question > custom column", () => {
         dataset_query: {
           type: "query",
           query: {
-            "source-query": {
-              "source-table": PEOPLE_ID,
-              breakout: [["field-id", PEOPLE.SOURCE]],
-            },
+            "source-table": PEOPLE_ID,
+            breakout: [["expression", CC_NAME]],
             expressions: {
               [CC_NAME]: [
                 "substring",
-                ["field-literal", "SOURCE", "type/Text"],
+                ["field-id", PEOPLE.SOURCE],
                 0,
                 4, // we want 4 letter abbreviation
               ],
