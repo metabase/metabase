@@ -78,7 +78,7 @@ export const CardApi = {
   update: PUT("/api/card/:id"),
   delete: DELETE("/api/card/:cardId"),
   query: POST("/api/card/:cardId/query"),
-  query_pivot: POST("/api/card/:cardId/query"), // same for now
+  query_pivot: POST("/api/advanced_computation/pivot/card/:cardId/query"),
   // isfavorite:                  GET("/api/card/:cardId/favorite"),
   favorite: POST("/api/card/:cardId/favorite"),
   unfavorite: DELETE("/api/card/:cardId/favorite"),
@@ -255,7 +255,7 @@ export const MetabaseApi = {
   field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
-  dataset_pivot: POST("/api/advanced_computation/pivot/dataset"), // same for now
+  dataset_pivot: POST("/api/advanced_computation/pivot/dataset"),
   dataset_duration: POST("/api/dataset/duration"),
   native: POST("/api/dataset/native"),
 
