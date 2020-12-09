@@ -16,6 +16,10 @@ describe("snapshots", () => {
       addUsersAndGroups();
       withSampleDataset(SAMPLE_DATASET => {
         createQuestionAndDashboard(SAMPLE_DATASET);
+        cy.writeFile(
+          "frontend/test/__support__/cypress_sample_dataset.json",
+          SAMPLE_DATASET,
+        );
       });
       snapshot("default");
       restore("blank");
