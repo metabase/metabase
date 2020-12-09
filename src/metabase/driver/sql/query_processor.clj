@@ -6,7 +6,6 @@
              [core :as hsql]
              [format :as hformat]
              [helpers :as h]]
-            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -920,7 +919,7 @@
   (cond-> query
     expressions expressions->subselect))
 
-(s/defn build-honeysql-form
+(s/defn mbql->honeysql
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver, {inner-query :query} :- su/Map]
   (u/prog1 (apply-clauses driver {} (preprocess-query inner-query))
@@ -935,6 +934,6 @@
   "Transpile MBQL query into a native SQL statement."
   {:style/indent 1}
   [driver {inner-query :query, database :database, :as outer-query}]
-  (let [honeysql-form (build-honeysql-form driver outer-query)
+  (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))
