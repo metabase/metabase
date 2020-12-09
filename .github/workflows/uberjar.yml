@@ -7,6 +7,8 @@ on:
       - 'release-**'
     paths-ignore:
     - 'docs/**'
+    - 'frontend/test/**'
+    - 'enterprise/frontend/test/**'
 
 jobs:
 
