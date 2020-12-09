@@ -16,7 +16,6 @@
              [error-type :as qp.error-type]
              [store :as qp.store]]
             [metabase.query-processor.middleware
-             [add-source-metadata :as add-source-metadata]
              [annotate :as annotate]
              [fetch-source-query :as fetch-source-query]]
             [metabase.util :as u]
@@ -151,34 +150,64 @@
 (defn- table-gtap->source [{table-id :table_id, :as gtap}]
   {:source-query {:source-table table-id, :parameters (gtap->parameters gtap)}})
 
-;; If a GTAP source query doesn't have results metadata for whatever reason, we can infer the results metadata if we
-;; assume the results will match the shape of the Table we're GTAPping; figure out what the results metadata for that
-;; Table would be and return that. In practice, this is hopefully a safe assumption to make, but we never explictly
-;; enforce a constraint that a GTAP must return the exact same columns as the Table it replaces. (We probably SHOULD
-;; enforce this constraint.)
+;; If a GTAP source query doesn't have results metadata for whatever reason, we can infer the results metadata by
+;; running the query on its own for the User in question. We'll run the query with a `LIMIT 0`, so it doesn't return
+;; any rows, but it should be enough to give us the relevant metadata for the result columns.
+;;
+;; Note that we only need to infer metadata in this fashion for situations where we're applying GTAPs to joined tables
+;; and using `:fields :all` for that join -- we need to know the columns that are produced in order to build the
+;; surrounding query correctly. (We probably could use `SELECT *`, but at this time we're always selecting every Field
+;; individually)
 
-(s/defn ^:private source-metadata-for-table :- [mbql.s/SourceQueryMetadata]
-  "Determine the source metadata that would normally come back for a Table with `table-id`."
-  [table-id :- su/IntGreaterThanZero]
-  (log/tracef "GTAP source query has no results Metadata. Inferring metdata from Table %d %s.%s"
-              table-id
-              (pr-str (:schema (qp.store/table table-id)))
-              (pr-str (:name (qp.store/table table-id))))
-  (let [cols (add-source-metadata/mbql-source-query->metadata {:source-table table-id})]
+(s/defn ^:private run-gtap-source-query-for-metadata :- [mbql.s/SourceQueryMetadata]
+  [source-query :- mbql.s/SourceQuery]
+  (let [query {:database (:id (qp.store/database))
+               :type     :query
+               :query    source-query}
+        cols  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+                (-> ((resolve 'metabase.query-processor/process-query) (assoc query :limit 0))
+                    :data :cols))]
     (u/prog1 (for [col cols]
                (select-keys col [:name :base_type :display_name :special_type]))
       (log/tracef "Inferred source query metadata:\n%s" (u/pprint-to-str 'magenta <>)))))
 
+;; This metadata will be the same regardless of what user runs the query in question, so we only need to run it once
+;; for each GTAP Card; we can save it and reuse it after that point. `update-metadata-for-gtap!` takes care of that.
+
+(defn- update-metadata-for-gtap!
+  "Callback that saves results metadata for the Card associated with a GTAP if it does not already have it."
+  [{card-id :card_id, gtap-id :id} new-metadata]
+  (cond
+    (not card-id)
+    (log/tracef "Not updating metadata for GTAP %s: GTAP has no associated Card ID" gtap-id)
+
+    (db/exists? Card :id card-id, :result_metadata [:not= nil])
+    (log/tracef "Not updating metadata for GTAP %s Card %s: Card already has result metadata" gtap-id card-id)
+
+    :else
+    (do
+      (log/tracef "Saving results metadata for GTAP %s Card %s" gtap-id card-id)
+      (db/update! Card card-id :result_metadata new-metadata))))
+
 (s/defn ^:private gtap->source :- {:source-query                     s/Any
                                    (s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata]
                                    s/Keyword                         s/Any}
-  "Get the source query associated with a `gtap`."
-  [{card-id :card_id, table-id :table_id, :as gtap} infer-source-metadata?]
-  {:pre [gtap]}
-  (let [source-query (preprocess-source-query ((if card-id card-gtap->source table-gtap->source) gtap))]
-    (cond-> source-query
-      (and infer-source-metadata? (empty? (:source-metadata source-query)))
-      (assoc :source-metadata (source-metadata-for-table table-id)))))
+  "Get the source query associated with a `gtap`.
+
+  `save-metadata!` is a callback function with the signature
+
+    (save-metadata! result-metadata)
+
+  that will be called if we end up running the GTAP source query in question to infer the metadata. This callback
+  should save the metadata so we don't have to run the query again in the future."
+  [{card-id :card_id, table-id :table_id, :as gtap} :- su/Map run-gtap-source-query-for-metadata?]
+  (let [source-query            (preprocess-source-query ((if card-id card-gtap->source table-gtap->source) gtap))
+        run-query-for-metadata? (and run-gtap-source-query-for-metadata? (empty? (:source-metadata source-query)))]
+    (if-not run-query-for-metadata?
+      source-query
+      (let [metadata (run-gtap-source-query-for-metadata source-query)]
+        (update-metadata-for-gtap! gtap metadata)
+        (assoc source-query :source-metadata metadata)))))
 
 (s/defn ^:private gtap->perms-set :- #{perms/ObjectPath}
   "Calculate the set of permissions needed to run the query associated with a GTAP; this set of permissions is excluded
@@ -217,10 +246,10 @@
   ;; columns as the Table it replaces, but this constraint is not enforced anywhere. If we infer metadata and the GTAP
   ;; turns out *not* to match exactly, the query could break. So only infer it in cases where the query would
   ;; definitely break otherwise.
-  (let [infer-source-metadata? (= (:fields m) :all)]
+  (let [run-gtap-source-query-for-metadata? (= (:fields m) :all)]
     (u/prog1 (merge
               (dissoc m :source-table :source-query)
-              (gtap->source gtap infer-source-metadata?))
+              (gtap->source gtap run-gtap-source-query-for-metadata?))
       (log/tracef "Applied GTAP: replaced\n%swith\n%s"
                   (u/pprint-to-str 'yellow m)
                   (u/pprint-to-str 'green <>)))))
