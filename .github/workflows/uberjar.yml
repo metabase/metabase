@@ -18,6 +18,7 @@ jobs:
         edition: [ee, oss]
     env:
       MB_EDITION: ${{ matrix.edition }}
+      INTERACTIVE: false
     steps:
     - uses: actions/checkout@v2
     - name: Prepare Node.js
