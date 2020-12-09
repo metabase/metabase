@@ -1,4 +1,7 @@
-import { restore, withSampleDataset, signInAsAdmin } from "__support__/cypress";
+import { restore, signInAsAdmin } from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > admin > permissions", () => {
   before(restore);
@@ -11,24 +14,23 @@ describe("scenarios > admin > permissions", () => {
     // programatically create and save a question based on Orders table
     // filter: created before June 1st, 2016
     // summarize: Count by CreatedAt: Week
-    withSampleDataset(({ ORDERS }) => {
-      cy.request("POST", "/api/card", {
-        name: "Orders created before June 1st 2016",
-        dataset_query: {
-          database: 1,
-          query: {
-            "source-table": 2,
-            aggregation: [["count"]],
-            breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "week"],
-            ],
-            filter: ["<", ["field-id", ORDERS.CREATED_AT], "2016-06-01"],
-          },
-          type: "query",
+
+    cy.request("POST", "/api/card", {
+      name: "Orders created before June 1st 2016",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "week"],
+          ],
+          filter: ["<", ["field-id", ORDERS.CREATED_AT], "2016-06-01"],
         },
-        display: "line",
-        visualization_settings: {},
-      });
+        type: "query",
+      },
+      display: "line",
+      visualization_settings: {},
     });
 
     // find and open that question
@@ -42,37 +44,31 @@ describe("scenarios > admin > permissions", () => {
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
-    withSampleDataset(({ ORDERS }) => {
-      cy.request("POST", "/api/card", {
-        name: "13604",
-        dataset_query: {
-          database: 1,
-          query: {
-            "source-table": 2,
-            aggregation: [["count"]],
-            breakout: [
-              [
-                "datetime-field",
-                ["field-id", ORDERS.CREATED_AT],
-                "day-of-week",
-              ],
-            ],
-            filter: [
-              "between",
-              ["field-id", ORDERS.CREATED_AT],
-              "2020-03-02", // Monday
-              "2020-03-03", // Tuesday
-            ],
-          },
-          type: "query",
+    cy.request("POST", "/api/card", {
+      name: "13604",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day-of-week"],
+          ],
+          filter: [
+            "between",
+            ["field-id", ORDERS.CREATED_AT],
+            "2020-03-02", // Monday
+            "2020-03-03", // Tuesday
+          ],
         },
-        display: "bar",
-        visualization_settings: {
-          "graph.dimensions": ["CREATED_AT"],
-          "graph.metrics": ["count"],
-          "graph.x_axis.scale": "ordinal",
-        },
-      });
+        type: "query",
+      },
+      display: "bar",
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count"],
+        "graph.x_axis.scale": "ordinal",
+      },
     });
 
     cy.visit("/collection/root");
