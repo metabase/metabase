@@ -11,8 +11,10 @@ import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 const { ORDERS, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > question > filter", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it.skip("should load needed data (metabase#12985)", () => {
     // Save a Question
