@@ -1,3 +1,4 @@
+**/cypress_sample_dataset.json
 *.class
 *.iml
 *.jar
@@ -6,6 +7,7 @@
 *.sqlite
 *.trace.db
 *.xcworkspacedata
+*~
 .DS_Store
 .\#*
 .cpcache/
@@ -66,11 +68,10 @@ OSX/dsa_priv.pem
 bin/node_modules/
 bin/release/aws-eb/metabase-aws-eb.zip
 coverage-summary.json
+dev/src/dev/nocommit/
 pom.xml
 pom.xml.asc
 profiles.clj
 target/checksum.txt
 xcshareddata
 xcuserdata
-dev/src/dev/nocommit/
-*~

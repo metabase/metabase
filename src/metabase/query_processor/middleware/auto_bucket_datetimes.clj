@@ -2,7 +2,8 @@
   "Middleware for automatically bucketing unbucketed `:type/Temporal` (but not `:type/Time`) Fields with `:day`
   bucketing. Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against
   `yyyy-MM-dd` format datetime strings."
-  (:require [metabase.mbql
+  (:require [medley.core :as m]
+            [metabase.mbql
              [predicates :as mbql.preds]
              [schema :as mbql.s]
              [util :as mbql.u]]
@@ -28,7 +29,7 @@
 ;; which would save a bit of time when we do resolve them
 (s/defn ^:private unbucketed-fields->field-id->type-info :- FieldIDOrName->TypeInfo
   "Fetch a map of Field ID -> type information for the Fields referred to by the `unbucketed-fields`."
-  [unbucketed-fields :- (su/non-empty [(mbql.s.helpers/one-of mbql.s/field-id mbql.s/field-literal)])]
+  [unbucketed-fields :- (su/non-empty [(mbql.s.helpers/one-of mbql.s/field-id mbql.s/field-literal mbql.s/joined-field)])]
   (merge
    ;; build map of field-literal-name -> {:base_type base-type}
    (into {} (for [[clause field-name base-type] unbucketed-fields
@@ -66,7 +67,7 @@
    ;; do not autobucket field-ids that are already wrapped by another Field clause like `datetime-field` or
    ;; `binning-strategy`
    (and (mbql.preds/Field? x)
-        (not (mbql.u/is-clause? #{:field-id :field-literal} x)))))
+        (not (mbql.u/is-clause? #{:field-id :field-literal :joined-field} x)))))
 
 (defn- date-or-datetime-field? [{base-type :base_type, special-type :special_type}]
   (some (fn [field-type]
@@ -76,7 +77,7 @@
 
 (s/defn ^:private wrap-unbucketed-fields
   "Wrap Fields in breakouts and filters in a `:datetime-field` clause if appropriate; look at corresponing type
-  information in `field-id->type-inf` to see if we should do so."
+  information in `field-id->type-info` to see if we should do so."
   ;; we only want to wrap clauses in `:breakout` and `:filter` so just make a 3-arg version of this fn that takes the
   ;; name of the clause to rewrite and call that twice
   ([query field-id->type-info :- FieldIDOrName->TypeInfo]
@@ -86,15 +87,29 @@
 
   ([query field-id->type-info clause-to-rewrite]
    (let [datetime-but-not-time? (comp date-or-datetime-field? field-id->type-info)]
-     (mbql.u/replace-in query [:query clause-to-rewrite]
-       ;; don't replace anything that's already wrapping a `field-id`
-       (_ :guard should-not-be-autobucketed?)
-       &match
+     (letfn [(wrap-fields [x]
+               (mbql.u/replace x
+                 ;; don't replace anything that's already wrapping a `field-id` (other than `:joined-field`)
+                 (_ :guard should-not-be-autobucketed?)
+                 &match
 
-       ;; if it's a raw `:field-id` and `field-id->type-info` tells us it's a `:type/Temporal` (but not `:type/Time`),
-       ;; then go ahead and replace it
-       [(_ :guard #{:field-id :field-literal}) (_ :guard datetime-but-not-time?) & _]
-       [:datetime-field &match :day]))))
+                 ;; if wrapping the the field wrapped by `:joined-field` would have an effect, then wrap the entire
+                 ;; `:joined-field` clause itself
+                 [:joined-field _ field]
+                 (let [wrapped-field (wrap-fields field)]
+                   (if (= field wrapped-field)
+                     &match
+                     [:datetime-field &match :day]))
+
+                 ;; if it's a raw `:field-id` and `field-id->type-info` tells us it's a `:type/Temporal` (but not `:type/Time`),
+                 ;; then go ahead and replace it
+                 [(_ :guard #{:field-id :field-literal}) (_ :guard datetime-but-not-time?) & _]
+                 ;; don't wrap this if it is inside a `:joined-field` clause -- that should be covered by the pattern
+                 ;; above
+                 (if (contains? (set &parents) :joined-field)
+                   &match
+                   [:datetime-field &match :day])))]
+       (m/update-existing-in query [:query clause-to-rewrite] wrap-fields)))))
 
 (s/defn ^:private auto-bucket-datetimes*
   [{{breakouts :breakout, filter-clause :filter} :query, :as query}]
