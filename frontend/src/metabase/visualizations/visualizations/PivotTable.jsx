@@ -325,7 +325,10 @@ export default class PivotTable extends Component {
                         </div>
                         {showRowSubtotals && (
                           <Cell
-                            value={t`Totals for ${leftIndex[index][0][0].value}`}
+                            value={t`Totals for ${formatValue(
+                              leftIndex[index][0][0].value,
+                              { column: columns[rowIndexes[0]] },
+                            )}`}
                             isSubtotal
                             width={leftIndex[0].length}
                           />
