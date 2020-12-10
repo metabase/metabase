@@ -250,7 +250,7 @@
 
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name]]
-  (->honeysql driver (mbql.u/expression-with-name {:query *query*} expression-name)))
+  (->honeysql driver (mbql.u/expression-with-name *query* expression-name)))
 
 (defn cast-unix-timestamp-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."

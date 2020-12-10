@@ -213,11 +213,8 @@
       :field_ref &match)
 
     [:expression expression-name]
-    (if-let [matching-expression (when (seq expressions)
-                                   (some expressions ((juxt keyword u/qualified-name) expression-name)))]
+    (if-let [matching-expression (mbql.u/expression-with-name inner-query expression-name)]
       (merge
-       ;; There's some inconsistency when expression names are keywords and when strings.
-       ;; TODO: remove this duality once https://github.com/metabase/mbql/issues/5 is resolved.
        (infer-expression-type matching-expression)
        {:name            expression-name
         :display_name    expression-name

@@ -11,7 +11,10 @@
              [query-processor :as qp]
              [util :as u]]
             [metabase.driver.util :as driver.u]
-            [metabase.models.field :refer [Field]]
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table]]]
+            [metabase.query-processor.middleware.add-implicit-joins :as joins]
             [metabase.test.data :as data]
             [metabase.test.data
              [env :as tx.env]
@@ -149,8 +152,10 @@
         dest-col   (col dest-table-kw dest-field-kw)]
     (-> dest-col
         (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
-        (assoc :field_ref   [:fk-> [:field-id (:id source-col)] [:field-id (:id dest-col)]]
-               :fk_field_id (:id source-col)))))
+        (assoc :field_ref    [:fk-> [:field-id (:id source-col)] [:field-id (:id dest-col)]]
+               :fk_field_id  (:id source-col)
+               :source_alias (#'joins/join-alias (db/select-one-field :name Table :id (data/id dest-table-kw))
+                                                 (:name source-col))))))
 
 (declare cols)
 
