@@ -325,11 +325,11 @@ describe("scenarios > question > filter", () => {
 
         cy.location("search").should("eq", "?id=1");
 
-        // Reload" page, or rather visit the dashboard link again
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+        cy.reload();
 
         cy.findByText("13960");
         cy.findAllByText("Doohickey").should("not.exist");
+        // TODO: depending on how this issue will be fixed, the next assertion might need to be updated
         cy.location("search").should("eq", "?id=1");
       });
     });
