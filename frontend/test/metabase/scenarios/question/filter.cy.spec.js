@@ -400,13 +400,6 @@ describe("scenarios > question > filter", () => {
       cy.log("**URL is correct at this point, but there are no results**");
       cy.location("search").should("eq", `?${ID_FILTER.name}=1`);
       cy.findByText("Rustic Paper Wallet"); // Product ID 1, Gizmo
-
-      cy.reload();
-      cy.findByText(QUESTION_NAME);
-      cy.log(
-        "**After reload, even the URL fails because it includes the default category filter again**",
-      );
-      cy.location("search").should("eq", `?${ID_FILTER.name}=1`);
     });
   });
 });
