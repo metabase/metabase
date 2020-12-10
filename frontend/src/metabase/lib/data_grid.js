@@ -137,7 +137,7 @@ function createRowSectionGetter({
           : [];
 
       return rows
-        .map(row => [getSubtotals(rowColumnIndexes, row)])
+        .map(row => getSubtotals(rowColumnIndexes, row))
         .concat(subtotalRows);
     }
 
