@@ -10,6 +10,21 @@
              [util :as u]]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]))
 
+(mt/defdataset toucan-microsecond-incidents
+  [["incidents" [{:field-name "severity"
+                  :base-type  :type/Integer}
+                 {:field-name   "timestamp"
+                  :base-type    :type/BigInteger
+                  :special-type :type/UNIXTimestampMicroseconds}]
+    [[4 1433587200000000]
+     [0 1433965860000000]]]])
+
+(deftest microseconds-test
+  (mt/test-drivers (mt/normal-drivers)
+    (is (= #{[1 4 "2015-06-06T10:40:00Z"] [2 0 "2015-06-10T19:51:00Z"]}
+           (set (mt/rows (mt/dataset toucan-microsecond-incidents
+                           (mt/run-mbql-query incidents))))))))
+
 (deftest filter-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= 10

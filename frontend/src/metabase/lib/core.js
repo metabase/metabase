@@ -259,6 +259,11 @@ export const field_special_types = [
     section: t`Date and Time`,
   },
   {
+    id: TYPE.UNIXTimestampMicroseconds,
+    name: t`UNIX Timestamp (Microseconds)`,
+    section: t`Date and Time`,
+  },
+  {
     id: TYPE.UNIXTimestampSeconds,
     name: t`UNIX Timestamp (Seconds)`,
     section: t`Date and Time`,

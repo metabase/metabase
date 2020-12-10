@@ -224,6 +224,10 @@
   [driver _ expr]
   (unix-timestamp->honeysql driver :seconds (hx// expr 1000)))
 
+(defmethod unix-timestamp->honeysql [:sql :microseconds]
+  [driver _ expr]
+  (unix-timestamp->honeysql driver :seconds (hx// expr 1000000)))
+
 (defmethod unix-timestamp->honeysql :default
   [driver seconds-or-milliseconds expr]
   (unix-timestamp->timestamp driver seconds-or-milliseconds expr))
@@ -267,13 +271,24 @@
   [driver [_ _ expression-definition]]
   (->honeysql driver expression-definition))
 
+(defn unix-timestamp->honeysql*
+  "Function in front of `unix-timestamp->honeysql` to translate the special type to the appropriate magnitude (seconds,
+  milliseconds, microseconds)."
+  [driver special_type field-identifier]
+  (assert (isa? special_type :type/UNIXTimestamp) "")
+  (let [type->magnitude {:type/UNIXTimestampMicroseconds :microseconds
+                         :type/UNIXTimestampMilliseconds :milliseconds
+                         :type/UNIXTimestampSeconds      :seconds}
+        magnitude       (or (get type->magnitude special_type)
+                            (throw (Exception. (tru "No magnitude known for {0}" special_type))))]
+    (unix-timestamp->honeysql driver magnitude field-identifier)))
+
 (defn cast-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field field-identifier]
   (match [(:base_type field) (:special_type field)]
-    [_ (:isa? :type/UNIXTimestampSeconds)]      (unix-timestamp->honeysql driver :seconds      field-identifier)
-    [_ (:isa? :type/UNIXTimestampMilliseconds)] (unix-timestamp->honeysql driver :milliseconds field-identifier)
-    [:type/Text (:isa? :type/TemporalString)]   (cast-temporal-string driver (:special_type field) field-identifier)
+    [(:isa? :type/Integer)  (:isa? :type/UNIXTimestamp)]  (unix-timestamp->honeysql* driver (:special_type field) field-identifier)
+    [:type/Text             (:isa? :type/TemporalString)] (cast-temporal-string driver (:special_type field) field-identifier)
     :else field-identifier))
 
 ;; default implmentation is a no-op; other drivers can override it as needed
