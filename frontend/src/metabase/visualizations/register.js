@@ -20,6 +20,7 @@ import ScatterPlot from "./visualizations/ScatterPlot";
 import Funnel from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
 import ObjectDetail from "./visualizations/ObjectDetail";
+import PivotTable from "./visualizations/PivotTable";
 
 export default function() {
   registerVisualization(Scalar);
@@ -39,5 +40,6 @@ export default function() {
   registerVisualization(MapViz);
   registerVisualization(Funnel);
   registerVisualization(ObjectDetail);
+  registerVisualization(PivotTable);
   setDefaultVisualization(Table);
 }

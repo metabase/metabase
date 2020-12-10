@@ -2,7 +2,7 @@ import React from "react";
 import cx from "classnames";
 import { Box, Flex } from "grid-styled";
 import CopyToClipboard from "react-copy-to-clipboard";
-import Subhead from "metabase/components/Subhead";
+import Subhead from "metabase/components/type/Subhead";
 
 import colors, { harmony } from "metabase/lib/colors";
 

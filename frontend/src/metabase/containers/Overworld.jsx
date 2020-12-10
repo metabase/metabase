@@ -18,7 +18,7 @@ import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import Subhead from "metabase/components/Subhead";
+import Subhead from "metabase/components/type/Subhead";
 import RetinaImage from "react-retina-image";
 
 import * as Urls from "metabase/lib/urls";

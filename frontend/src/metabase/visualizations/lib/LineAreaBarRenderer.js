@@ -480,7 +480,10 @@ function setChartColor({ series, settings, chartType }, chart, groups, index) {
 
   if (chartType === "waterfall") {
     chart.on("pretransition", function(chart) {
-      chart.selectAll("g.stack._0 rect.bar").style("fill", "transparent");
+      chart
+        .selectAll("g.stack._0 rect.bar")
+        .style("fill", "transparent")
+        .style("pointer-events", "none");
       chart
         .selectAll("g.stack._3 rect.bar")
         .style("fill", settings["waterfall.total_color"]);

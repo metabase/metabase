@@ -39,7 +39,7 @@
 ;; constrain the job execution to only be one at a time. Other triggers wanting the job to run will misfire.
 
 (def ^:private analyze-duration-threshold-for-refingerprinting
-  "If the `analyze-db!` step is shorter than this number of MINUTES, then we may refingerprint fields."
+  "If the `analyze-db!` step is shorter than this number of `minutes`, then we may refingerprint fields."
   5)
 
 (defn- should-refingerprint-fields?
