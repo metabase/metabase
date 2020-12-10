@@ -225,4 +225,102 @@ describe("scenarios > question > filter", () => {
       cy.findAllByText("Gizmo");
     });
   });
+
+  it.skip("should not preserve cleared filter with the default value on refresh (metabase#13960)", () => {
+    // create question
+    cy.request("POST", "/api/card", {
+      name: "13960",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field-id", PRODUCTS.CATEGORY]],
+        },
+        database: 1,
+      },
+      display: "pie",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      // create dashboard
+      cy.request("POST", "/api/dashboard", {
+        name: "13960D",
+      }).then(({ body: { id: DASHBOARD_ID } }) => {
+        // add filters to the dashboard and set the default value to the first one
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          name: "13960D",
+          parameters: [
+            {
+              name: "Category",
+              slug: "category",
+              id: "c32a49e1",
+              type: "category",
+              default: ["Doohickey"],
+            },
+            { name: "ID", slug: "id", id: "f2bf003c", type: "id" },
+          ],
+        });
+
+        // add question to the dashboard
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 10,
+                sizeY: 10,
+                series: [],
+                visualization_settings: {},
+                parameter_mappings: [
+                  {
+                    parameter_id: "c32a49e1",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+                  },
+                  {
+                    parameter_id: "f2bf003c",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", PRODUCTS.ID]],
+                  },
+                ],
+              },
+            ],
+          });
+        });
+        cy.server();
+        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+
+        cy.wait("@cardQuery");
+        cy.get("fieldset")
+          .find(".Icon-close")
+          .click();
+
+        cy.url().should("not.include", "?category=Doohickey");
+        cy.get("fieldset")
+          .contains(/ID/i)
+          .click();
+        cy.findByPlaceholderText("Enter an ID").type("1");
+        cy.get("button")
+          .then($button => {
+            expect($button).not.to.be.disabled;
+          })
+          .contains("Add filter")
+          .click();
+
+        cy.location("search").should("eq", "?id=1");
+
+        cy.reload();
+        cy.findByText("13960");
+        cy.findByText("Doohickey").should("not.exist");
+        cy.location("search").should("eq", "?id=1");
+      });
+    });
+  });
 });
