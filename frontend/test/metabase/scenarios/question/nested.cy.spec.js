@@ -4,6 +4,7 @@ import {
   restore,
   popover,
   createNativeQuestion,
+  openOrdersTable,
 } from "__support__/cypress";
 
 describe("scenarios > question > nested (metabase#12568)", () => {
@@ -196,7 +197,7 @@ describe("scenarios > question > nested", () => {
   });
 
   it.skip("should display granularity for aggregated fields in nested questions (metabase#13764)", () => {
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
     // add initial aggregation ("Average of Total by Order ID")
     cy.findByText("Summarize").click();
     cy.findByText("Average of ...").click();

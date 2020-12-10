@@ -61,6 +61,7 @@ import {
   EmbedApi,
   AutoApi,
   MetabaseApi,
+  maybeUsePivotEndpoint,
 } from "metabase/services";
 
 import {
@@ -85,6 +86,7 @@ const dashboard = new schema.Entity("dashboard", {
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
 
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
+export const SET_SHARING = "metabase/dashboard/SET_SHARING";
 
 // NOTE: this is used in metabase/redux/metadata but can't be imported directly due to circular reference
 export const FETCH_DASHBOARD = "metabase/dashboard/FETCH_DASHBOARD";
@@ -159,6 +161,7 @@ function getDashboardType(id) {
 
 export const initialize = createAction(INITIALIZE);
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
+export const setSharing = createAction(SET_SHARING);
 
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 export const showAddParameterPopover = createAction(SHOW_ADD_PARAMETER_POPOVER);
@@ -594,14 +597,14 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = await fetchDataOrError(
-        MetabaseApi.dataset(
+        maybeUsePivotEndpoint(MetabaseApi.dataset, card)(
           { ...datasetQuery, ignore_cache: ignoreCache },
           queryOptions,
         ),
       );
     } else {
       result = await fetchDataOrError(
-        CardApi.query(
+        maybeUsePivotEndpoint(CardApi.query, card)(
           {
             cardId: card.id,
             parameters: datasetQuery.parameters,
@@ -1018,6 +1021,16 @@ const isEditing = handleActions(
   {},
 );
 
+const isSharing = handleActions(
+  {
+    [INITIALIZE]: { next: state => false },
+    [SET_SHARING]: {
+      next: (state, { payload }) => payload || false,
+    },
+  },
+  {},
+);
+
 export function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters && before.embedding_params) {
     return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
@@ -1314,6 +1327,7 @@ const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
 export default combineReducers({
   dashboardId,
   isEditing,
+  isSharing,
   dashboards,
   dashcards,
   editingParameterId,

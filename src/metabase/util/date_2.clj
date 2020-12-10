@@ -6,11 +6,11 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [java-time.core :as t.core]
-            [metabase.config :as config]
             [metabase.util.date-2
              [common :as common]
              [parse :as parse]]
             [metabase.util.i18n :refer [tru]]
+            [potemkin.types :as p.types]
             [schema.core :as s])
   (:import [java.time Duration Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime Period ZonedDateTime]
            [java.time.temporal Temporal TemporalAdjuster WeekFields]
@@ -406,6 +406,63 @@
    (period-duration t (now-of-same-class t))
    duration))
 
+(p.types/defprotocol+ WithTimeZoneSameInstant
+  "Protocol for converting a temporal value to an equivalent one in a given timezone."
+  (with-time-zone-same-instant [t ^java.time.ZoneId zone-id]
+    "Convert a temporal value to an equivalent one in a given timezone. For local temporal values, this simply
+    converts it to the corresponding offset/zoned type; for offset/zoned types, this applies an appropriate timezone
+    shift."))
+
+;; We don't know what zone offset to shift this to, since the offset for a zone-id can vary depending on the date
+;; part of a temporal value (e.g. DST vs non-DST). So just adjust to the non-DST "standard" offset for the zone in
+;; question.
+(defn- standard-offset
+  "Standard (non-DST) offset for a time zone, for cases when we don't have date information."
+  ^java.time.ZoneOffset [^java.time.ZoneId zone-id]
+  (.. zone-id getRules (getStandardOffset (t/instant 0))))
+
+(extend-protocol WithTimeZoneSameInstant
+  ;; convert to a OffsetTime with no offset (UTC); the OffsetTime method impl will apply the zone shift.
+  LocalTime
+  (with-time-zone-same-instant [t zone-id]
+    (t/offset-time t (standard-offset zone-id)))
+
+  OffsetTime
+  (with-time-zone-same-instant [t ^java.time.ZoneId zone-id]
+    (t/with-offset-same-instant t (standard-offset zone-id)))
+
+  LocalDate
+  (with-time-zone-same-instant [t zone-id]
+    (t/offset-date-time t (t/local-time 0) zone-id))
+
+  LocalDate
+  (with-time-zone-same-instant [t zone-id]
+    (t/offset-date-time t (t/local-time 0) zone-id))
+
+  LocalDateTime
+  (with-time-zone-same-instant [t zone-id]
+    (t/offset-date-time t zone-id))
+
+  ;; instants are always normalized to UTC, so don't make any changes here. If you want to format in a different zone,
+  ;; convert to an OffsetDateTime or ZonedDateTime first.
+  Instant
+  (with-time-zone-same-instant [t _]
+    t)
+
+  OffsetDateTime
+  (with-time-zone-same-instant [t ^java.time.ZoneId zone-id]
+    ;; calculate the zone offset applicable for the date in question
+    (if (or (= t OffsetDateTime/MAX)
+            (= t OffsetDateTime/MIN))
+      t
+      (let [rules  (.getRules zone-id)
+            offset (.getOffset rules (t/instant t))]
+        (t/with-offset-same-instant t offset))))
+
+  ZonedDateTime
+  (with-time-zone-same-instant [t zone-id]
+    (t/with-zone-same-instant t zone-id)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      Etc                                                       |
@@ -442,13 +499,3 @@
 (defmethod print-method Duration
   [d writer]
   (print-method (list 't/duration (str d)) writer))
-
-;; mark everything in the `clj-time` namespaces as `:deprecated`, if they're loaded. If not, we don't care
-(when config/is-dev?
-  (doseq [a-namespace '[clj-time.core clj-time.coerce clj-time.format]]
-    (try
-      (let [a-namespace (the-ns a-namespace)]
-        (alter-meta! a-namespace assoc :deprecated true)
-        (doseq [[_ varr] (ns-publics a-namespace)]
-          (alter-meta! varr assoc :deprecated true)))
-      (catch Throwable _))))

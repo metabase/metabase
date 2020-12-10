@@ -52,7 +52,7 @@ class CollectionsList extends React.Component {
                             className="absolute text-brand cursor-pointer"
                             align="center"
                             justifyContent="center"
-                            style={{ left: -16 }}
+                            style={{ left: -20 }}
                           >
                             <Icon
                               name={isOpen ? "chevrondown" : "chevronright"}

@@ -7,13 +7,13 @@
             [metabase
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.email.messages :as email]
             [metabase.models
              [collection :as collection]
              [permissions :as perms]
              [permissions-group :as group]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
              [session :refer [Session]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util
              [i18n :as i18n :refer [deferred-tru trs]]
              [schema :as su]]
@@ -162,7 +162,8 @@
   (let [reset-token (set-password-reset-token! (u/get-id new-user))
         ;; the new user join url is just a password reset with an indicator that this is a first time user
         join-url    (str (form-password-reset-url reset-token) "#new")]
-    (email/send-new-user-email! new-user invitor join-url)))
+    (classloader/require 'metabase.email.messages)
+    ((resolve 'metabase.email.messages/send-new-user-email!) new-user invitor join-url)))
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
@@ -204,7 +205,8 @@
   [new-user :- NewUser]
   (u/prog1 (insert-new-user! (assoc new-user :google_auth true))
     ;; send an email to everyone including the site admin if that's set
-    (email/send-user-joined-admin-notification-email! <>, :google-auth? true)))
+    (classloader/require 'metabase.email.messages)
+    ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true)))
 
 (s/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins

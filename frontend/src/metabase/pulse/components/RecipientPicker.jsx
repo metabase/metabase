@@ -52,44 +52,48 @@ export default class RecipientPicker extends Component {
   render() {
     const { recipients, users, autoFocus } = this.props;
     return (
-      <TokenField
-        value={recipients}
-        options={
-          users
-            ? users.map(user => ({ label: user.common_name, value: user }))
-            : []
-        }
-        onChange={this.handleOnChange}
-        placeholder={
-          recipients.length === 0
-            ? t`Enter email addresses you'd like this data to go to`
-            : null
-        }
-        autoFocus={autoFocus && recipients.length === 0}
-        multi
-        valueRenderer={value => value.common_name || value.email}
-        optionRenderer={option => (
-          <div className="flex align-center">
-            <span className="text-white">
-              <UserAvatar user={option.value} />
-            </span>
-            <span className="ml1 h4">{option.value.common_name}</span>
-          </div>
-        )}
-        filterOption={(option, filterString) =>
-          // case insensitive search of name or email
-          ~option.value.common_name
-            .toLowerCase()
-            .indexOf(filterString.toLowerCase()) ||
-          ~option.value.email.toLowerCase().indexOf(filterString.toLowerCase())
-        }
-        parseFreeformValue={inputValue => {
-          if (VALID_EMAIL_REGEX.test(inputValue)) {
-            return { email: inputValue };
+      <div className="bordered rounded" style={{ padding: "2px" }}>
+        <TokenField
+          value={recipients}
+          options={
+            users
+              ? users.map(user => ({ label: user.common_name, value: user }))
+              : []
           }
-        }}
-        updateOnInputBlur
-      />
+          onChange={this.handleOnChange}
+          placeholder={
+            recipients.length === 0
+              ? t`Enter user names or email addresses`
+              : null
+          }
+          autoFocus={autoFocus && recipients.length === 0}
+          multi
+          valueRenderer={value => value.common_name || value.email}
+          optionRenderer={option => (
+            <div className="flex align-center">
+              <span className="text-white">
+                <UserAvatar user={option.value} />
+              </span>
+              <span className="ml1">{option.value.common_name}</span>
+            </div>
+          )}
+          filterOption={(option, filterString) =>
+            // case insensitive search of name or email
+            ~option.value.common_name
+              .toLowerCase()
+              .indexOf(filterString.toLowerCase()) ||
+            ~option.value.email
+              .toLowerCase()
+              .indexOf(filterString.toLowerCase())
+          }
+          parseFreeformValue={inputValue => {
+            if (VALID_EMAIL_REGEX.test(inputValue)) {
+              return { email: inputValue };
+            }
+          }}
+          updateOnInputBlur
+        />
+      </div>
     );
   }
 }

@@ -347,6 +347,9 @@ export default class CollectionContent extends React.Component {
                         </ItemDragSource>
                       </Box>
                     )}
+                    // needed in order to prevent an issue with content not fully rendering
+                    // due to the collection content scrolling layout
+                    useAutoSizerHeight={true}
                   />
                 </Box>
               </PinDropTarget>

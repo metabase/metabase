@@ -2,6 +2,7 @@ import {
   restore,
   signInAsAdmin,
   openOrdersTable,
+  openReviewsTable,
   popover,
 } from "__support__/cypress";
 
@@ -69,7 +70,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     cy.findByText("Save").click();
 
     cy.log("**Numeric ratings should be remapped to custom strings**");
-    cy.visit("/question/new?database=1&table=4");
+    openReviewsTable();
     Object.values(customMap).forEach(rating => {
       cy.findAllByText(rating);
     });

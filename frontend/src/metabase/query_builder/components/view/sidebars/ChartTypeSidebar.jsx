@@ -11,7 +11,7 @@ import { color, lighten } from "metabase/lib/colors";
 import visualizations from "metabase/visualizations";
 
 const FIXED_LAYOUT = [
-  ["line", "bar", "combo", "area", "row"],
+  ["line", "bar", "combo", "area", "waterfall", "row"],
   ["scatter", "pie", "funnel", "smartscalar", "progress", "gauge"],
   ["scalar", "table", "map"],
 ];

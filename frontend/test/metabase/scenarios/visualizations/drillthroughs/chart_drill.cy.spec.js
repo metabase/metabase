@@ -3,13 +3,16 @@ import {
   restore,
   withSampleDataset,
   openProductsTable,
+  openOrdersTable,
   popover,
   sidebar,
 } from "__support__/cypress";
 
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should allow brush date filter", () => {
     withSampleDataset(({ ORDERS, PRODUCTS }) => {
@@ -65,6 +68,110 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.contains("Doohickey");
         cy.contains("Gizmo");
         cy.contains("Widget");
+      });
+    });
+  });
+
+  it.skip("should allow drill-through on combined cards with different amount of series (metabase#13457)", () => {
+    withSampleDataset(({ ORDERS, ORDERS_ID }) => {
+      cy.log("**--1. Create the first question--**");
+
+      cy.request("POST", "/api/card", {
+        name: "13457_Q1",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+            ],
+          },
+          type: "query",
+        },
+        display: "line",
+        visualization_settings: {},
+      }).then(({ body: { id: Q1_ID } }) => {
+        cy.log("**--2. Create the second question--**");
+
+        cy.request("POST", "/api/card", {
+          name: "13457_Q2",
+          dataset_query: {
+            database: 1,
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [
+                ["avg", ["field-id", ORDERS.DISCOUNT]],
+                ["avg", ["field-id", ORDERS.QUANTITY]],
+              ],
+              breakout: [
+                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+              ],
+            },
+            type: "query",
+          },
+          display: "line",
+          visualization_settings: {},
+        }).then(({ body: { id: Q2_ID } }) => {
+          cy.log("**--3. Create a dashboard--**");
+
+          cy.request("POST", "/api/dashboard", {
+            name: "13457D",
+          }).then(({ body: { id: DASHBOARD_ID } }) => {
+            cy.log("**--4. Add the first question to the dashboard--**");
+
+            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cardId: Q1_ID,
+            }).then(({ body: { id: DASH_CARD_ID } }) => {
+              cy.log(
+                "**--5. Add additional series combining it with the second question--**",
+              );
+
+              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                cards: [
+                  {
+                    id: DASH_CARD_ID,
+                    card_id: Q1_ID,
+                    row: 0,
+                    col: 0,
+                    sizeX: 16,
+                    sizeY: 12,
+                    series: [
+                      {
+                        id: Q2_ID,
+                        model: "card",
+                      },
+                    ],
+                    visualization_settings: {},
+                    parameter_mappings: [],
+                  },
+                ],
+              });
+            });
+
+            cy.visit(`/dashboard/${DASHBOARD_ID}`);
+
+            cy.log("**The first series line**");
+            cy.get(".sub.enable-dots._0")
+              .find(".dot")
+              .eq(0)
+              .click({ force: true });
+            cy.findByText(/Zoom in/i);
+            cy.findByText(/View these Orders/i);
+
+            // Click anywhere else to close the first action panel
+            cy.findByText("13457D").click();
+
+            // Second line from the second question
+            cy.log("**The third series line**");
+            cy.get(".sub.enable-dots._2")
+              .find(".dot")
+              .eq(0)
+              .click({ force: true });
+            cy.findByText(/Zoom in/i);
+            cy.findByText(/View these Orders/i);
+          });
+        });
       });
     });
   });
@@ -155,8 +262,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it.skip("should drill-through on filtered aggregated results (metabase#13504)", () => {
-    // go straight to "orders" in custom questions
-    cy.visit("/question/new?database=1&table=2&mode=notebook");
+    openOrdersTable({ mode: "notebook" });
     cy.findByText("Summarize").click();
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();

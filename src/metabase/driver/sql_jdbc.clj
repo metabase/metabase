@@ -63,3 +63,15 @@
 (defmethod driver/describe-table-fks :sql-jdbc
   [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table))
+
+(defmethod sql.qp/cast-temporal-string [:sql-jdbc :type/ISO8601DateTimeString]
+  [_driver _special_type expr]
+  (hx/->timestamp expr))
+
+(defmethod sql.qp/cast-temporal-string [:sql-jdbc :type/ISO8601DateString]
+  [_driver _special_type expr]
+  (hx/->date expr))
+
+(defmethod sql.qp/cast-temporal-string [:sql-jdbc :type/ISO8601TimeString]
+  [_driver _special_type expr]
+  (hx/->time expr))

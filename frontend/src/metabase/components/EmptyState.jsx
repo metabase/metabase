@@ -5,7 +5,7 @@ import { Box, Flex } from "grid-styled";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import Text from "metabase/components/Text";
+import Text from "metabase/components/type/Text";
 
 type EmptyStateProps = {
   message?: React$Element<any>,

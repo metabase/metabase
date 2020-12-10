@@ -3,6 +3,7 @@ import React from "react";
 import { ngettext, msgid, t } from "ttag";
 
 import { formatNumber } from "metabase/lib/formatting";
+import { HARD_ROW_LIMIT } from "metabase/lib/query";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";
@@ -23,16 +24,22 @@ const QuestionRowCount = ({
 
   const query = question.query();
 
+  const cappedMessage = t`Showing first ${HARD_ROW_LIMIT} rows`;
+
+  // Shown based on a query that has been altered
   const limitMessage =
     query instanceof StructuredQuery
-      ? query.limit() == null
-        ? t`Show all rows`
+      ? query.limit() == null || query.limit() >= HARD_ROW_LIMIT
+        ? cappedMessage
         : t`Show ${formatRowCount(query.limit())}`
       : null;
 
+  // Shown based on a query that has been run
   const resultMessage =
     result.data.rows_truncated != null
       ? t`Showing first ${formatRowCount(result.row_count)}`
+      : result.row_count === HARD_ROW_LIMIT
+      ? cappedMessage
       : t`Showing ${formatRowCount(result.row_count)}`;
 
   const message = isResultDirty ? limitMessage : resultMessage;

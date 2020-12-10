@@ -2,15 +2,17 @@
   (:require [cheshire.core :as json]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
+            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.streaming.interface :as i]
             [metabase.util
              [date-2 :as u.date]
              [i18n :refer [tru]]])
   (:import java.io.OutputStream
            [java.time LocalDate LocalDateTime OffsetDateTime ZonedDateTime]
-           java.util.Date
            [org.apache.poi.ss.usermodel Cell CellType Workbook]
            org.apache.poi.xssf.streaming.SXSSFWorkbook))
+
+(def ^:private ^:dynamic *results-timezone-id* "UTC")
 
 (defmethod i/stream-options :xlsx
   [_]
@@ -58,31 +60,39 @@
 
 (defn- set-cell! [^Cell cell format-string date]
   (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
-  (.setCellValue cell ^Date date)
+  (.setCellValue cell ^java.util.Date date)
   (.setCellStyle cell (create-or-get-date-format (.. cell getSheet getWorkbook) format-string)))
 
-(defmethod spreadsheet/set-cell! LocalDate [^Cell cell val]
-  ;; this truncates the time to midnight UTC on the given date
-  (set-cell! cell date-format (t/java-date (t/zoned-date-time val (t/local-time 00 00) (t/zone-id)))))
+(defn- apply-timezone [t]
+  (u.date/with-time-zone-same-instant t (t/zone-id *results-timezone-id*)))
 
-(defmethod spreadsheet/set-cell! LocalDateTime [^Cell cell val]
-  (set-cell! cell datetime-format (t/java-date (t/zoned-date-time val (t/zone-id)))))
+(defmethod spreadsheet/set-cell! LocalDate
+  [^Cell cell t]
+  (set-cell! cell date-format (t/java-date (apply-timezone t))))
 
-(defmethod spreadsheet/set-cell! ZonedDateTime [^Cell cell val]
-  (set-cell! cell datetime-format (t/java-date val)))
+(defmethod spreadsheet/set-cell! LocalDateTime
+  [^Cell cell t]
+  (spreadsheet/set-cell! cell (t/java-date (apply-timezone t))))
 
-(defmethod spreadsheet/set-cell! OffsetDateTime [^Cell cell val]
-  (set-cell! cell datetime-format (t/java-date val)))
+(defmethod spreadsheet/set-cell! ZonedDateTime
+  [^Cell cell t]
+  (set-cell! cell datetime-format (t/java-date (apply-timezone t))))
+
+(defmethod spreadsheet/set-cell! OffsetDateTime
+  [^Cell cell t]
+  (set-cell! cell datetime-format (t/java-date (apply-timezone t))))
 
 ;; overrides the default implementation from docjure, so that a plain Date object
 ;; carries its time too
-(defmethod spreadsheet/set-cell! Date [^Cell cell val]
+(defmethod spreadsheet/set-cell! java.util.Date
+  [^Cell cell val]
   (set-cell! cell datetime-format val))
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
 ;; implementations we've already defined for encoding things as JSON. These implementations live in
 ;; `metabase.middleware`.
-(defmethod spreadsheet/set-cell! Object [^Cell cell, value]
+(defmethod spreadsheet/set-cell! Object
+  [^Cell cell, value]
   (when (= (.getCellType cell) CellType/FORMULA)
     (.setCellType cell CellType/STRING))
   ;; stick the object in a JSON map and encode it, which will force conversion to a string. Then unparse that JSON and
@@ -92,18 +102,22 @@
                                (json/parse-string keyword)
                                :v))))
 
-;; TODO -- this is obviously not streaming! SAD!
 (defmethod i/streaming-results-writer :xlsx
   [_ ^OutputStream os]
-  (let [workbook    (SXSSFWorkbook.)
-        cell-styles (atom {})
-        sheet       (spreadsheet/add-sheet! workbook (tru "Query result"))]
+  (let [workbook         (SXSSFWorkbook.)
+        cell-styles      (atom {})
+        sheet            (spreadsheet/add-sheet! workbook (tru "Query result"))
+        results-timezone (atom nil)]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [cols]} :data}]
+        ;; avoid circular refs
+        (classloader/require 'metabase.query-processor.timezone)
+        (reset! results-timezone ((resolve 'metabase.query-processor.timezone/results-timezone-id)))
         (spreadsheet/add-row! sheet (map (some-fn :display_name :name) cols)))
 
       (write-row! [_ row _]
-        (binding [*cell-styles* cell-styles]
+        (binding [*cell-styles*      cell-styles
+                  *results-timezone-id* @results-timezone]
           (spreadsheet/add-row! sheet row)))
 
       (finish! [_ _]

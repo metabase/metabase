@@ -7,4 +7,4 @@
 (u/strict-extend (class CardFavorite)
   models/IModel
   (merge models/IModelDefaults
-         {:properties   (constantly {:timestamped? true})}))
+         {:properties (constantly {:timestamped? true})}))
