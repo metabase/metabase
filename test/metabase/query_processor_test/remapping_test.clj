@@ -33,14 +33,15 @@
                      ["Artisan"  3 2]
                      ["Asian"    4 2]]
               :cols [(-> (mt/col :categories :name)
-                         (assoc :remapped_from (mt/format-name "category_id"))
-                         (assoc :field_ref [:fk-> [:field-id (mt/id :venues :category_id)]
-                                            [:field-id (mt/id :categories :name)]])
-                         (assoc :fk_field_id (mt/id :venues :category_id))
-                         (assoc :source :breakout))
+                         (assoc :remapped_from (mt/format-name "category_id")
+                                :field_ref     [:fk-> [:field-id (mt/id :venues :category_id)]
+                                                [:field-id (mt/id :categories :name)]]
+                                :source_alias  "CATEGORIES__via__CATEGORY_ID"
+                                :fk_field_id   (mt/id :venues :category_id)
+                                :source        :breakout))
                      (-> (mt/col :venues :category_id)
-                         (assoc :remapped_to (mt/format-name "name"))
-                         (assoc :source :breakout))
+                         (assoc :remapped_to (mt/format-name "name")
+                                :source      :breakout))
                      {:field_ref    [:aggregation 0]
                       :source       :aggregation
                       :display_name "Count"
@@ -62,24 +63,18 @@
                      ["25°"                             11 "Burger"]
                      ["33 Taps"                          7 "Bar"]
                      ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
-              :cols [(-> (mt/col :venues :name)
-                         (assoc :field_ref [:field-literal (mt/format-name "name") :type/Text])
-                         (dissoc :description :parent_id :visibility_type))
+              :cols [(mt/col :venues :name)
                      (-> (mt/col :venues :category_id)
-                         (assoc :remapped_to "Foo")
-                         (assoc :field_ref [:field-literal (mt/format-name"category_id")])
-                         (dissoc :description :parent_id :visibility_type))
+                         (assoc :remapped_to "Foo"))
                      (#'add-dimension-projections/create-remapped-col "Foo" (mt/format-name "category_id") :type/Text)]}
-             (-> (mt/format-rows-by [str int str]
-                   (mt/run-mbql-query venues
-                     {:source-query {:source-table (mt/id :venues)
-                                     :fields       [[:field-id (mt/id :venues :name)]
-                                                    [:field-id  (mt/id :venues :category_id)]]
-                                     :order-by     [[:asc [:field-id (mt/id :venues :name)]]]
-                                     :limit        4}}))
-                 qp.test/rows-and-cols
-                 (update :cols (fn [[c1 c2 c3]]
-                                 [c1 (update c2 :field_ref (comp vec butlast)) c3]))))))))
+             (->> (mt/run-mbql-query venues
+                    {:source-query {:source-table (mt/id :venues)
+                                    :fields       [[:field-id (mt/id :venues :name)]
+                                                   [:field-id (mt/id :venues :category_id)]]
+                                    :order-by     [[:asc [:field-id (mt/id :venues :name)]]]
+                                    :limit        4}})
+                  (mt/format-rows-by [str int str])
+                  qp.test/rows-and-cols))))))
 
 (defn- select-columns
   "Focuses the given resultset to columns that return true when passed to `columns-pred`. Typically this would be done
@@ -113,7 +108,8 @@
                               :display_name  "Foo"
                               :name          (mt/format-name "name_2")
                               :remapped_from (mt/format-name "category_id")
-                              :field_ref     $category_id->categories.name))]}
+                              :field_ref     $category_id->categories.name
+                              :source_alias  "CATEGORIES__via__CATEGORY_ID"))]}
              (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
                (mt/format-rows-by [int str int double double int str]
                  (mt/run-mbql-query venues

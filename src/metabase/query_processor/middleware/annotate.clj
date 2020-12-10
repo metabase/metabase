@@ -213,16 +213,13 @@
       :field_ref &match)
 
     [:expression expression-name]
-    (if-let [matching-expression (mbql.u/expression-with-name inner-query expression-name)]
-      (merge
-       (infer-expression-type matching-expression)
-       {:name            expression-name
-        :display_name    expression-name
-        ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
-        :expression_name expression-name
-        :field_ref       &match})
-      (throw (ex-info (tru "No expression named {0} found. Found: {1}" expression-name (keys expressions))
-               {:type :invalid-query, :clause &match, :expressions expressions})))
+    (merge
+     (infer-expression-type (mbql.u/expression-with-name inner-query expression-name))
+     {:name            expression-name
+      :display_name    expression-name
+      ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
+      :expression_name expression-name
+      :field_ref       &match})
 
     [:field-id id]
     (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id) :database_type)]

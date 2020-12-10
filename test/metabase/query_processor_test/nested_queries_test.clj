@@ -140,7 +140,7 @@
 (deftest sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using a SQL source query"
-      (is (= (breakout-results :has-source-metadata? false)
+      (is (= (breakout-results)
              (qp.test/rows-and-cols
                (mt/format-rows-by [int int]
                  (mt/run-mbql-query venues
@@ -416,9 +416,8 @@
         (let [[date-col count-col] (for [col (-> (qp/process-query {:database (mt/id), :type :query, :query source-query})
                                                  :data :cols)]
                                      (-> (into {} col)
-                                         (dissoc :description :parent_id :visibility_type)
                                          (assoc :source :fields)))]
-          (is (= [(assoc date-col  :field_ref [:field-literal "DATE" :type/Date])
+          (is (= [(assoc date-col  :field_ref [:field-id (mt/id :checkins :date)])
                   (assoc count-col :field_ref [:field-literal "count" (:base_type count-col)])]
                  (mt/cols
                    (qp/process-query (query-with-source-card card))))))))))
