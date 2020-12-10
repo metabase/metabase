@@ -27,6 +27,17 @@
                    [:fk-> $orders.user_id $people.source]]
      :filter      [:and [:= [:fk-> $orders.user_id $people.source] "Google" "Organic"]]}))
 
+(defn- parameters-query
+  []
+  (mt/mbql-query orders
+    {:aggregation [[:count]]
+     :breakout    [[:fk-> $orders.user_id $people.state]
+                   [:fk-> $orders.user_id $people.source]]
+     :filter      [:and [:= [:fk-> $orders.user_id $people.source] "Google" "Organic"]]
+     :parameters  [{:type "category"
+                    :target [:dimension [:fk-> $orders.product_id $products.category]]
+                    :value "Gadget"}]}))
+
 (defn- pivot-card
   []
   {:dataset_query (pivot-query)})
@@ -88,6 +99,24 @@
            (is (= [nil "Google" 3798] (drop-last (nth rows 90))))
            (is (= [nil "Organic" 3764] (drop-last (nth rows 91))))
            (is (= [nil nil 7562] (drop-last (last rows)))))))))
+
+(deftest pivot-parameter-dataset-test
+  (mt/dataset sample-dataset
+    (testing "POST /api/advanced_computation/pivot/dataset"
+       (testing "Run a pivot table"
+         (let [result (mt/user-http-request :rasta :post 202 "advanced_computation/pivot/dataset" (parameters-query))
+               rows   (mt/rows result)]
+           (is (= 137 (:row_count result)))
+           (is (= "completed" (:status result)))
+           (is (= 4 (count (get-in result [:data :cols]))))
+           (is (= 137 (count rows)))
+
+           ;; spot checking rows, but leaving off the discriminator on the end
+           (is (= ["AK" "Google" 27] (drop-last (first rows))))
+           (is (= ["AK" "Organic" 25] (drop-last (second rows))))
+           (is (= ["AK" nil 52] (drop-last (nth rows 90))))
+           (is (= ["AL" nil 57] (drop-last (nth rows 91))))
+           (is (= [nil nil 2009] (drop-last (last rows)))))))))
 
 (deftest pivot-card-test
   (mt/dataset sample-dataset
