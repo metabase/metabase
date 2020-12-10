@@ -265,6 +265,7 @@ export function onRenderValueLabels(
         .attr("class", klass)
         .text(({ y, seriesIndex }) =>
           formatYValue(y, {
+            negativeInParentheses: displays[seriesIndex] === "waterfall",
             compact: compact === null ? compactForSeries[seriesIndex] : compact,
           }),
         ),
