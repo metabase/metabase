@@ -176,7 +176,7 @@
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
   queries with native source queries won't work, since we don't need the results."
   [{query-type :type, :as query}]
-  (when-not (= query-type :query)
+  (when-not (= (keyword query-type) :query)
     (throw (ex-info (tru "Can only determine expected columns for MBQL queries.")
              {:type error-type/qp})))
   ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to

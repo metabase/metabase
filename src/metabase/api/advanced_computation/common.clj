@@ -63,27 +63,28 @@
    (qp.store/with-store
      (let [main-breakout           (:breakout (:query query))
            col-determination-query (-> query
-                                              ;; TODO: move this to a bitmask or something that scales better / easier to use
+                                       ;; TODO: move this to a bitmask or something that scales better / easier to use
                                        (assoc-in [:query :expressions] {"pivot-grouping" [:ltrim (json/generate-string main-breakout)]})
-                                       (assoc-in [:query :fields] [[:expression "pivot-grouping"]]))
-           all-expected-cols       (qp/query->expected-cols (qp/query->preprocessed col-determination-query))
+                                       (assoc-in [:query :fields] [[:expression "pivot-grouping"]])
+                                       (dissoc :async?))
+           all-expected-cols       (qp/query->expected-cols col-determination-query)
            all-queries             (pivot/generate-queries query)]
        (process-multiple-queries
         all-queries
         (assoc context
                :info (assoc info :context context)
-                 ;; this function needs to be executed at the start of every new query to
-                 ;; determine the mapping for maintaining query shape
+               ;; this function needs to be executed at the start of every new query to
+               ;; determine the mapping for maintaining query shape
                :column-mapping-fn (fn [query]
-                                    (let [query-cols (map-indexed vector (qp/query->expected-cols (qp/query->preprocessed query)))]
+                                    (let [query-cols (map-indexed vector (qp/query->expected-cols query))]
                                       (map (fn [item]
                                              (some #(when (= (:name item) (:name (second %)))
                                                       (first %)) query-cols))
                                            all-expected-cols)))
-                 ;; this function needs to be called for each row so that it can actually
-                 ;; shape the row according to the `:column-mapping-fn` above
+               ;; this function needs to be called for each row so that it can actually
+               ;; shape the row according to the `:column-mapping-fn` above
                :row-mapping-fn (fn [row context]
-                                   ;; the first query doesn't need any special mapping, it already has all the columns
+                                 ;; the first query doesn't need any special mapping, it already has all the columns
                                  (if-let [col-mapping (:pivot-column-mapping context)]
                                    (map (fn [mapping]
                                           (when mapping
