@@ -323,7 +323,7 @@ export function getXInterval({ settings, series }, xValues, warn) {
 
 export function xValueForWaterfallTotal({ settings, series }) {
   const xValues = getXValues({ settings, series });
-  const xInterval = getXInterval({ settings, series }, xValues);
+  const xInterval = getXInterval({ settings, series }, xValues, () => {});
 
   if (isTimeseries(settings)) {
     const { count, interval } = xInterval;
