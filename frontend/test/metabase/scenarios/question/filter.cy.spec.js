@@ -227,7 +227,8 @@ describe("scenarios > question > filter", () => {
   });
 
   it.skip("should not preserve cleared filter with the default value on refresh (metabase#13960)", () => {
-    // create question
+    cy.log("**--1. Create a question--**");
+
     cy.request("POST", "/api/card", {
       name: "13960",
       dataset_query: {
@@ -242,11 +243,15 @@ describe("scenarios > question > filter", () => {
       display: "pie",
       visualization_settings: {},
     }).then(({ body: { id: QUESTION_ID } }) => {
-      // create dashboard
+      cy.log("**--2. Create a dashboard--**");
+
       cy.request("POST", "/api/dashboard", {
         name: "13960D",
       }).then(({ body: { id: DASHBOARD_ID } }) => {
-        // add filters to the dashboard and set the default value to the first one
+        cy.log(
+          "**--3. Add filters to the dashboard and set the default value to the first one--**",
+        );
+
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
           name: "13960D",
           parameters: [
@@ -261,10 +266,13 @@ describe("scenarios > question > filter", () => {
           ],
         });
 
-        // add question to the dashboard
+        cy.log("**--4. Add question to the dashboard--**");
+
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
+          cy.log("**--5. Connect the filters to the card--**");
+
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
             cards: [
               {
@@ -298,27 +306,30 @@ describe("scenarios > question > filter", () => {
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
 
         cy.wait("@cardQuery");
-        cy.get("fieldset")
-          .find(".Icon-close")
-          .click();
+        cy.location("search").should("eq", "?category=Doohickey");
+
+        // Remove default filter (category)
+        cy.get("fieldset .Icon-close").click();
 
         cy.url().should("not.include", "?category=Doohickey");
+
+        // Set filter value to the `ID`
         cy.get("fieldset")
           .contains(/ID/i)
           .click();
         cy.findByPlaceholderText("Enter an ID").type("1");
-        cy.get("button")
-          .then($button => {
-            expect($button).not.to.be.disabled;
-          })
-          .contains("Add filter")
+        cy.findByText("Add filter")
+          .closest("button")
+          .should("not.be.disabled")
           .click();
 
         cy.location("search").should("eq", "?id=1");
 
-        cy.reload();
+        // Reload" page, or rather visit the dashboard link again
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+
         cy.findByText("13960");
-        cy.findByText("Doohickey").should("not.exist");
+        cy.findAllByText("Doohickey").should("not.exist");
         cy.location("search").should("eq", "?id=1");
       });
     });
