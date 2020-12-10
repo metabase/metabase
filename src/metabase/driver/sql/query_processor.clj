@@ -287,7 +287,7 @@
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field field-identifier]
   (match [(:base_type field) (:special_type field)]
-    [(:isa? :type/Integer)  (:isa? :type/UNIXTimestamp)]  (unix-timestamp->honeysql* driver (:special_type field) field-identifier)
+    [(:isa? :type/Number)   (:isa? :type/UNIXTimestamp)]  (unix-timestamp->honeysql* driver (:special_type field) field-identifier)
     [:type/Text             (:isa? :type/TemporalString)] (cast-temporal-string driver (:special_type field) field-identifier)
     :else field-identifier))
 
