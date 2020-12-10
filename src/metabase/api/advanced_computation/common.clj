@@ -62,10 +62,7 @@
   ([context query info]
    (qp.store/with-store
      (let [main-breakout           (:breakout (:query query))
-           col-determination-query (-> query
-                                       ;; TODO: move this to a bitmask or something that scales better / easier to use
-                                       (assoc-in [:query :expressions] {"pivot-grouping" [:ltrim (json/generate-string main-breakout)]})
-                                       (assoc-in [:query :fields] [[:expression "pivot-grouping"]])
+           col-determination-query (-> (pivot/add-grouping-field query main-breakout)
                                        (dissoc :async?))
            all-expected-cols       (qp/query->expected-cols col-determination-query)
            all-queries             (pivot/generate-queries query)]

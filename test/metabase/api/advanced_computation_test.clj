@@ -80,7 +80,29 @@
           ;; spot checking rows, but leaving off the discriminator on the end
           (is (= ["AK" "Affiliate" "Doohickey" 18 81] (drop-last (first rows))))
           (is (= ["MS" nil "Doohickey" 78 291] (drop-last (nth rows 1000))))
-          (is (= [nil nil nil 18760 69540] (drop-last (last rows)))))))))
+          (is (= [nil nil nil 18760 69540] (drop-last (last rows))))))
+
+      (testing "with an added expression"
+        (let [query (-> (pivot-query)
+                        (assoc-in [:query :fields] [[:expression "test-expr"]])
+                        (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
+              result (mt/user-http-request :rasta :post 202 "advanced_computation/pivot/dataset" query)
+              rows (mt/rows result)]
+          (is (= 1384 (:row_count result)))
+          (is (= 1384 (count rows)))
+
+          (let [cols (get-in result [:data :cols])]
+            (is (= 7 (count cols)))
+            (is (= {:base_type "type/Text"
+                    :special_type nil
+                    :name "test-expr"
+                    :display_name "test-expr"
+                    :expression_name "test-expr"
+                    :field_ref ["expression" "test-expr"]
+                    :source "fields"}
+                   (nth cols 5))))
+
+          (is (= [nil nil nil 18760 69540 "wheeee" "[]"] (last rows))))))))
 
 (deftest pivot-filter-dataset-test
   (mt/dataset sample-dataset
@@ -135,19 +157,18 @@
           (is (= [nil nil nil 18760 69540] (drop-last (last rows)))))))))
 
 (deftest pivot-public-card-test
-  (mt/with-log-level :info
-    (mt/dataset sample-dataset
-      (testing "GET /api/advanced_computation/public/pivot/card/:uuid/query"
-        (mt/with-temporary-setting-values [enable-public-sharing true]
-          (with-temp-pivot-public-card [{uuid :public_uuid}]
-            (let [result (http/client :get 202 (format "advanced_computation/public/pivot/card/%s/query" uuid))
-                  rows   (mt/rows result)]
-              (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
-              (is (= "completed" (:status result)))
-              (is (= 6 (count (get-in result [:data :cols]))))
-              (is (= 1384 (count rows)))
+  (mt/dataset sample-dataset
+    (testing "GET /api/advanced_computation/public/pivot/card/:uuid/query"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-pivot-public-card [{uuid :public_uuid}]
+          (let [result (http/client :get 202 (format "advanced_computation/public/pivot/card/%s/query" uuid))
+                rows   (mt/rows result)]
+            (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+            (is (= "completed" (:status result)))
+            (is (= 6 (count (get-in result [:data :cols]))))
+            (is (= 1384 (count rows)))
 
-              ;; spot checking rows, but leaving off the discriminator on the end
-              (is (= ["AK" "Affiliate" "Doohickey" 18 81] (drop-last (first rows))))
-              (is (= ["MS" nil "Doohickey" 78 291] (drop-last (nth rows 1000))))
-              (is (= [nil nil nil 18760 69540] (drop-last (last rows)))))))))))
+            ;; spot checking rows, but leaving off the discriminator on the end
+            (is (= ["AK" "Affiliate" "Doohickey" 18 81] (drop-last (first rows))))
+            (is (= ["MS" nil "Doohickey" 78 291] (drop-last (nth rows 1000))))
+            (is (= [nil nil nil 18760 69540] (drop-last (last rows))))))))))
