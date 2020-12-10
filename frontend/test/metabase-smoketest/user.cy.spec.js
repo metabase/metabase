@@ -32,31 +32,34 @@ describe("smoketest > user", () => {
     cy.findByText("Visualization");
   });
 
-  it("should filter via both the header and notebook editor", () => {
+  it("should sort via both the header and notebook editor", () => {
     // Sorting by header
-
     cy.wait(1000)
       .get(".Icon-table2")
       .click();
     cy.get(".cellData")
       .eq(2)
-      .findByText("Durable Wool Toucan");
+      .as("firstTableCell");
 
-    cy.findAllByText("Average of Rating")
-      .last()
+    cy.get("@firstTableCell").contains("Aerodynamic Bronze Hat");
+
+    cy.get(".cellData")
+      .contains("Average of Rating")
       .click();
-    cy.get(".Icon-arrow_up").click();
 
-    cy.get(".TableInteractive-cellWrapper--firstColumn")
-      .last()
-      .findByText("Lightweight Steel Watch");
+    cy.get(".Icon-arrow_down").click();
+
+    cy.get("@firstTableCell").contains("Ergonomic Wool Bag");
 
     // Sorting by notebook editor
-
     cy.get(".Icon-notebook").click();
-    cy.get(".Icon-close")
-      .last()
-      .click();
+
+    cy.findByText("Sort")
+      .next() // not ideal, but at least we're making sure 'x' is related to 'Sort'
+      .within(() => {
+        cy.get(".Icon-close") // Remove applied sorting
+          .click();
+      });
 
     cy.findByText("Sort").click();
     cy.findAllByText("Title")
