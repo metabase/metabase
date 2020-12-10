@@ -901,7 +901,7 @@
         (apply-top-level-clauses driver honeysql-form inner-query)))))
 
 (defn- expressions->subselect
-  [{:keys [expressions fields] :as query}]
+  [query]
   (let [subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata :expressions])
                       (assoc :fields (-> query
@@ -911,9 +911,9 @@
     (-> query
         (mbql.u/replace [:joined-field _ field]       field
                         [:expression expression-name] [:field-literal expression-name
-                                                       (->> expression-name
-                                                            expressions
-                                                            (annotate/col-info-for-field-clause query))])
+                                                       (->> &match
+                                                            (annotate/col-info-for-field-clause query)
+                                                            :base_type)])
         (dissoc :source-table :joins :expressions :source-metadata)
         (assoc :source-query subselect))))
 
@@ -922,9 +922,9 @@
   (cond-> query
     expressions expressions->subselect))
 
-(s/defn mbql->honeysql
+(defn mbql->honeysql
   "Build the HoneySQL form we will compile to SQL and execute."
-  [driver, {inner-query :query} :- su/Map]
+  [driver {inner-query :query}]
   (u/prog1 (apply-clauses driver {} (preprocess-query inner-query))
     (when-not i/*disable-qp-logging*
       (log/tracef "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>)))))
