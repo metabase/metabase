@@ -72,7 +72,7 @@
     (if-not (metastore/enable-sandboxes?)
       (raise (ex-info (str (tru "Error: sandboxing is not enabled for this instance.")
                            " "
-                           (tru "Please check you have set a valid Entrprise token and try again."))
+                           (tru "Please check you have set a valid Enterprise token and try again."))
                {:status-code 403}))
       (handler request respond raise))))
 
