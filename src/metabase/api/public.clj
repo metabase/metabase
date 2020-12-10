@@ -70,7 +70,8 @@
   (api/check-public-sharing-enabled)
   (card-with-uuid uuid))
 
-(defmulti ^:private transform-results
+(defmulti transform-results
+  "Transform results to be suitable for a public endpoint"
   {:arglists '([results])}
   :status)
 
@@ -95,7 +96,9 @@
    (when-not (qp.error-type/show-in-embeds? error-type)
      {:error (tru "An error occurred while running the query.")})))
 
-(defn- public-reducedf [orig-reducedf]
+(defn public-reducedf
+  "Reducer function for public data"
+  [orig-reducedf]
   (fn [metadata final-metadata context]
     (orig-reducedf metadata (transform-results final-metadata) context)))
 
