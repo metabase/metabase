@@ -179,7 +179,7 @@
   [driver _ field-or-value]
   (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000))))
 
-(defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:oracle :microseconds]
   [driver _ field-or-value]
   (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000000))))
 
