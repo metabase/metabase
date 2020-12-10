@@ -3,9 +3,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import cx from "classnames";
-import { t } from "ttag";
 
-import Tooltip from "metabase/components/Tooltip";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
@@ -56,20 +54,18 @@ export default class DashboardSharingEmbeddingModal extends Component {
         ref={m => (this._modal = m)}
         full
         triggerElement={
-          <Tooltip tooltip={t`Sharing and embedding`}>
-            <a
-              className={linkClassNames}
-              onClick={() => {
-                MetabaseAnalytics.trackEvent(
-                  "Sharing / Embedding",
-                  "dashboard",
-                  "Sharing Link Clicked",
-                );
-              }}
-            >
-              {linkText}
-            </a>
-          </Tooltip>
+          <a
+            className={linkClassNames}
+            onClick={() => {
+              MetabaseAnalytics.trackEvent(
+                "Sharing / Embedding",
+                "dashboard",
+                "Sharing Link Clicked",
+              );
+            }}
+          >
+            {linkText}
+          </a>
         }
         triggerClasses={cx(className, "text-brand-hover")}
         className="scroll-y"

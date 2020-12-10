@@ -40,7 +40,7 @@ export default class DeleteModalWithConfirm extends Component {
     );
     return (
       <ModalContent title={title} onClose={this.props.onClose}>
-        <div className="px4">
+        <div>
           <ul>
             {confirmItems.map((item, index) => (
               <li
@@ -60,7 +60,7 @@ export default class DeleteModalWithConfirm extends Component {
                     }
                   />
                 </span>
-                <span className="ml2 h4">{item}</span>
+                <span className="ml1 h4">{item}</span>
               </li>
             ))}
           </ul>

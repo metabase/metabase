@@ -1,8 +1,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
 
 import ButtonGroup from "metabase/components/ButtonGroup";
 import CheckBox from "metabase/components/CheckBox";
+import Text from "metabase/components/type/Text";
+import Label from "metabase/components/type/Label";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 import Toggle from "metabase/components/Toggle";
 
@@ -152,7 +155,8 @@ export default class EmailAttachmentPicker extends Component {
 
         {attachmentType != null && (
           <div>
-            <div className="pb3 flex">
+            <div className="my1 flex justify-between">
+              <Label className="pt1">{t`File format`}</Label>
               <ButtonGroup
                 options={[
                   { name: ".csv", value: "csv" },
@@ -162,10 +166,10 @@ export default class EmailAttachmentPicker extends Component {
                 value={attachmentType}
               />
             </div>
-            <div className="text-bold py2 flex justify-between align-center">
-              <ul className="pt1">
+            <div className="text-bold pt1 pb2 flex justify-between align-center">
+              <ul>
                 <li
-                  className="px1 pb1 flex align-center cursor-pointer border-bottom mb1"
+                  className="mb1 flex align-center cursor-pointer border-bottom"
                   onClick={this.onToggleAll}
                 >
                   <StackedCheckBox
@@ -174,13 +178,14 @@ export default class EmailAttachmentPicker extends Component {
                       cards,
                       selectedCardIds,
                     )}
-                    className="mr1"
+                    className="mr2"
                   />
+                  <Text>{t`Questions to attach`}</Text>
                 </li>
                 {cards.map(card => (
                   <li
                     key={card.id}
-                    className="px1 pb1 flex align-center cursor-pointer"
+                    className="pb1 flex align-center cursor-pointer"
                     onClick={() => {
                       this.onToggleCard(card);
                     }}
