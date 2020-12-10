@@ -87,8 +87,8 @@ function createRowSectionGetter({
 }) {
   const formatValues = values =>
     values === undefined
-      ? new Array(valueFormatters.length).fill(null)
-      : values.map((v, i) => valueFormatters[i](v));
+      ? new Array(valueFormatters.length).fill({ value: null })
+      : values.map((v, i) => ({ value: valueFormatters[i](v) }));
   const getSubtotals = (breakoutIndexes, values) =>
     formatValues(
       getIn(
@@ -99,7 +99,7 @@ function createRowSectionGetter({
           ),
         ),
       ),
-    );
+    ).map(value => ({ ...value, isSubtotal: true }));
 
   return (columnIndex, rowIndex) => {
     const rows =
