@@ -20,8 +20,12 @@
      [0 1433965860000000]]]])
 
 (deftest microseconds-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (disj (mt/normal-drivers) :sqlite)
     (is (= #{[1 4 "2015-06-06T10:40:00Z"] [2 0 "2015-06-10T19:51:00Z"]}
+           (set (mt/rows (mt/dataset toucan-microsecond-incidents
+                           (mt/run-mbql-query incidents)))))))
+  (mt/test-drivers #{:sqlite}
+    (is (= #{[1 4 "2015-06-06 10:40:00"] [2 0 "2015-06-10 19:51:00"]}
            (set (mt/rows (mt/dataset toucan-microsecond-incidents
                            (mt/run-mbql-query incidents))))))))
 
