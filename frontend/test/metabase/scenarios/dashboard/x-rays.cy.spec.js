@@ -1,8 +1,10 @@
 import { restore, signInAsAdmin } from "../../../__support__/cypress";
 
 describe("scenarios > x-rays", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should exist on homepage when person first signs in", () => {
     cy.visit("/");
