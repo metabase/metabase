@@ -118,6 +118,7 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] (hsql/call :to_timestamp expr))
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] (hsql/call :to_timestamp expr 3))
+(defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] (hsql/call :to_timestamp expr 6))
 
 (defmethod sql.qp/current-datetime-honeysql-form :snowflake
   [_]
