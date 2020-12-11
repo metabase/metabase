@@ -1,4 +1,9 @@
-import { restore, signInAsNormalUser, sidebar } from "__support__/cypress";
+import {
+  restore,
+  signInAsNormalUser,
+  sidebar,
+  popover,
+} from "__support__/cypress";
 
 describe("smoketest > user", () => {
   // Goal: user can use all the features of the simple question and notebook editor
@@ -57,19 +62,19 @@ describe("smoketest > user", () => {
     cy.findByText("Sort")
       .next() // not ideal, but at least we're making sure 'x' is related to 'Sort'
       .within(() => {
-        cy.get(".Icon-close") // Remove applied sorting
+        cy.get(".Icon-close") // Remove previously applied sorting
           .click();
       });
 
+    // Add new sort (by Title)
     cy.findByText("Sort").click();
-    cy.findAllByText("Title")
-      .last()
-      .click();
+
+    popover().within(() => {
+      cy.findAllByText("Title").click();
+    });
     cy.findByText("Visualize").click();
 
-    cy.get(".TableInteractive-cellWrapper--firstColumn")
-      .last()
-      .contains("Durable Wool Toucan");
+    cy.get("@firstTableCell").contains("Aerodynamic Bronze Hat");
 
     cy.get(".Icon-table2").click();
   });
