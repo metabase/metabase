@@ -45,9 +45,9 @@ export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
       const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
         setting,
         fieldRefs =>
-          fieldRefs.map(field_ref =>
-            breakout.findIndex(b => _.isEqual(b, field_ref)),
-          ),
+          fieldRefs
+            .map(field_ref => breakout.findIndex(b => _.isEqual(b, field_ref)))
+            .filter(index => index !== -1),
       );
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
     };
@@ -55,14 +55,18 @@ export function maybeUsePivotEndpoint(api: APIMethod, card: Card): APIMethod {
   if (card.display !== "pivot") {
     return api;
   }
-  switch (api) {
-    case CardApi.query:
-      return wrap(CardApi.query_pivot);
-    case MetabaseApi.dataset:
-      return wrap(MetabaseApi.dataset_pivot);
-    default:
-      return api;
+
+  const mapping = [
+    [CardApi.query, CardApi.query_pivot],
+    [MetabaseApi.dataset, MetabaseApi.dataset_pivot],
+    [PublicApi.cardQuery, PublicApi.cardQueryPivot],
+  ];
+  for (const [from, to] of mapping) {
+    if (api === from) {
+      return wrap(to);
+    }
   }
+  return api;
 }
 
 export const CardApi = {
@@ -130,6 +134,9 @@ export const CollectionsApi = {
 export const PublicApi = {
   card: GET("/api/public/card/:uuid"),
   cardQuery: GET("/api/public/card/:uuid/query"),
+  cardQueryPivot: GET(
+    "/api/advanced_computation/public/pivot/card/:uuid/query",
+  ),
   dashboard: GET("/api/public/dashboard/:uuid"),
   dashboardCardQuery: GET("/api/public/dashboard/:uuid/card/:cardId"),
 };
