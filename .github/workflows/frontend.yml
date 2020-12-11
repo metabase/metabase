@@ -21,7 +21,6 @@ on:
 jobs:
 
   fe-linter-flow:
-    if: "!contains(github.event.head_commit.message, '[ci skip]')"
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
@@ -40,7 +39,6 @@ jobs:
       name: Run Flow type checker
 
   fe-linter-prettier:
-    if: "!contains(github.event.head_commit.message, '[ci skip]')"
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
@@ -59,7 +57,6 @@ jobs:
       name: Run Prettier formatting linter
 
   fe-linter-eslint:
-    if: "!contains(github.event.head_commit.message, '[ci skip]')"
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
@@ -78,7 +75,6 @@ jobs:
       name: Run ESLint linter
 
   fe-linter-docs-links:
-    if: "!contains(github.event.head_commit.message, '[ci skip]')"
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
