@@ -228,6 +228,12 @@ export function applyChartQuantitativeXAxis(
   );
   const dimensionColumn = firstSeries.data.cols[0];
 
+  const waterfallTotalX =
+    firstSeries.card.display === "waterfall" &&
+    chart.settings["waterfall.show_total"]
+      ? xValues[xValues.length - 1]
+      : null;
+
   if (chart.settings["graph.x_axis.labels_enabled"]) {
     chart.xAxisLabel(
       chart.settings["graph.x_axis.title_text"] ||
@@ -242,6 +248,9 @@ export function applyChartQuantitativeXAxis(
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
     chart.xAxis().tickFormat(d => {
+      if (waterfallTotalX && waterfallTotalX === d) {
+        return t`Total`;
+      }
       // don't show ticks that aren't multiples of xInterval
       if (isMultipleOf(d, xInterval)) {
         return formatValue(d, {
