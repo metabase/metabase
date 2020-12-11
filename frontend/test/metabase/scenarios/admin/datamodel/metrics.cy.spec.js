@@ -1,4 +1,7 @@
 import { restore, signInAsAdmin, popover, modal } from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > admin > datamodel > metrics", () => {
   before(restore);
@@ -187,9 +190,9 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.request("POST", "/api/metric", {
         name: "13022_Metric",
         desription: "desc",
-        table_id: 2,
+        table_id: ORDERS_ID,
         definition: {
-          "source-table": 2,
+          "source-table": ORDERS_ID,
           aggregation: [
             [
               "aggregation-options",

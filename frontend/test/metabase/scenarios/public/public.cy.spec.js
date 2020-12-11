@@ -5,8 +5,11 @@ import {
   restore,
   popover,
   modal,
-  withSampleDataset,
 } from "__support__/cypress";
+
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { PRODUCTS } = SAMPLE_DATASET;
 
 const COUNT_ALL = "200";
 const COUNT_DOOHICKEY = "42";
@@ -29,35 +32,31 @@ describe.skip("scenarios > public", () => {
     signInAsAdmin();
 
     // setup parameterized question
-    withSampleDataset(({ PRODUCTS }) =>
-      cy
-        .request("POST", "/api/card", {
-          name: "sql param",
-          dataset_query: {
-            type: "native",
-            native: {
-              query: "select count(*) from products where {{c}}",
-              "template-tags": {
-                c: {
-                  id: "e126f242-fbaa-1feb-7331-21ac59f021cc",
-                  name: "c",
-                  "display-name": "Category",
-                  type: "dimension",
-                  dimension: ["field-id", PRODUCTS.CATEGORY],
-                  default: null,
-                  "widget-type": "category",
-                },
-              },
+    cy.request("POST", "/api/card", {
+      name: "sql param",
+      dataset_query: {
+        type: "native",
+        native: {
+          query: "select count(*) from products where {{c}}",
+          "template-tags": {
+            c: {
+              id: "e126f242-fbaa-1feb-7331-21ac59f021cc",
+              name: "c",
+              "display-name": "Category",
+              type: "dimension",
+              dimension: ["field-id", PRODUCTS.CATEGORY],
+              default: null,
+              "widget-type": "category",
             },
-            database: 1,
           },
-          display: "scalar",
-          visualization_settings: {},
-        })
-        .then(({ body }) => {
-          questionId = body.id;
-        }),
-    );
+        },
+        database: 1,
+      },
+      display: "scalar",
+      visualization_settings: {},
+    }).then(({ body }) => {
+      questionId = body.id;
+    });
   });
 
   beforeEach(() => {
