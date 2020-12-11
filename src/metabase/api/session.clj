@@ -64,13 +64,6 @@
   ((get-method create-session! :sso) session-type user))
 
 
-(s/defmethod create-session! :password
-  [session-type, user :- CreateSessionUserInfo]
-  ;; this is actually the same as `create-session!` for `:sso` for CE. Resist the urge to refactor this multimethod
-  ;; out impl is a little different in EE.
-  ((get-method create-session! :sso) session-type user))
-
-
 ;;; ## API Endpoints
 
 (def ^:private login-throttlers
