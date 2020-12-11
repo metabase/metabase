@@ -271,23 +271,23 @@
   [driver [_ _ expression-definition]]
   (->honeysql driver expression-definition))
 
-(defn unix-timestamp->honeysql*
-  "Function in front of `unix-timestamp->honeysql` to translate the special type to the appropriate magnitude (seconds,
-  milliseconds, microseconds)."
-  [driver special_type field-identifier]
-  (assert (isa? special_type :type/UNIXTimestamp) "")
-  (let [type->magnitude {:type/UNIXTimestampMicroseconds :microseconds
-                         :type/UNIXTimestampMilliseconds :milliseconds
-                         :type/UNIXTimestampSeconds      :seconds}
-        magnitude       (or (get type->magnitude special_type)
-                            (throw (Exception. (tru "No magnitude known for {0}" special_type))))]
-    (unix-timestamp->honeysql driver magnitude field-identifier)))
+(defn special-type->unit
+  "Translates types like `:type/UNIXTimestampSeconds` to the corresponding unit of time to use."
+  [special-type]
+  (assert (isa? special-type :type/UNIXTimestamp) "Special type must be a UNIXTimestamp")
+  (or (get {:type/UNIXTimestampMicroseconds :microseconds
+            :type/UNIXTimestampMilliseconds :milliseconds
+            :type/UNIXTimestampSeconds      :seconds}
+           special-type)
+      (throw (Exception. (tru "No magnitude known for {0}" special-type)))))
 
 (defn cast-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field field-identifier]
   (match [(:base_type field) (:special_type field)]
-    [(:isa? :type/Number)   (:isa? :type/UNIXTimestamp)]  (unix-timestamp->honeysql* driver (:special_type field) field-identifier)
+    [(:isa? :type/Number)   (:isa? :type/UNIXTimestamp)]  (unix-timestamp->honeysql driver
+                                                                                    (special-type->unit (:special_type field))
+                                                                                    field-identifier)
     [:type/Text             (:isa? :type/TemporalString)] (cast-temporal-string driver (:special_type field) field-identifier)
     :else field-identifier))
 

@@ -8,7 +8,15 @@
              [query-processor-test :as qp.test]
              [test :as mt]
              [util :as u]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]))
+
+(deftest special-type->unit-test
+  (testing "every descendant of `:type/UNIXTimestamp` has a unit associated with it"
+    (doseq [special-type (descendants :type/UNIXTimestamp)]
+      (is (sql.qp/special-type->unit special-type))))
+  (testing "throws if argument is not a descendant of `:type/UNIXTimestamp`"
+    (is (thrown? AssertionError (sql.qp/special-type->unit :type/Integer)))))
 
 (mt/defdataset toucan-microsecond-incidents
   [["incidents" [{:field-name "severity"

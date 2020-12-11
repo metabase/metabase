@@ -242,7 +242,7 @@
     driver
     (let [identifier (cond->> (sql.qp/->honeysql driver (sql.qp/field->identifier driver field))
                        (isa? special-type :type/UNIXTimestamp)
-                       (sql.qp/unix-timestamp->honeysql* driver special-type))]
+                       (sql.qp/unix-timestamp->honeysql driver (sql.qp/special-type->unit special-type)))]
       (if (date-params/date-type? param-type)
         (sql.qp/date driver :day identifier)
         identifier)))))
