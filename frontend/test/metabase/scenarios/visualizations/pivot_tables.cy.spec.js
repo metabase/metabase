@@ -1,4 +1,7 @@
-import { signInAsAdmin, restore, withSampleDataset } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATASET;
 
 const QUESTION_NAME = "Cypress Pivot Table";
 
@@ -10,9 +13,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
   it("should be created from an ad-hoc question", () => {
     // We're intentionally setting the visualization to `bar` here
-    createPivotTableQuestion({ display: "bar" });
-    cy.visit("/collection/root");
-    cy.findByText(QUESTION_NAME).click();
+    createAndVisitTestQuestion({ display: "bar" });
 
     // By changing the visualization type, we make this an "ad-hoc" question
     cy.findByText("Visualization").click();
@@ -23,15 +24,13 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
     assertOnPivotSettings();
-    assertOnpivotTable();
+    assertOnPivotTable();
   });
 
   it("should correctly display saved question", () => {
-    createPivotTableQuestion();
-    cy.visit("/collection/root");
-    cy.findByText(QUESTION_NAME).click();
+    createAndVisitTestQuestion();
 
-    assertOnpivotTable();
+    assertOnPivotTable();
 
     // Open Pivot table side-bar
     cy.findByText("Settings").click();
@@ -40,11 +39,9 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should not show sub-total data after a switch to other viz type", () => {
-    createPivotTableQuestion();
-    cy.visit("/collection/root");
-    cy.findByText(QUESTION_NAME).click();
+    createAndVisitTestQuestion();
 
-    // Switch to ordinary table
+    // Switch to "ordinary" table
     cy.findByText("Visualization").click();
     cy.get(".Icon-table")
       .should("be.visible")
@@ -65,30 +62,30 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 });
 
-function createPivotTableQuestion({ display = "pivot" } = {}) {
-  withSampleDataset(({ ORDERS, ORDERS_ID, PRODUCTS, PEOPLE }) => {
-    cy.request("POST", "/api/card", {
-      name: QUESTION_NAME,
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["fk->", ["field-id", ORDERS.USER_ID], ["field-id", PEOPLE.SOURCE]],
-            [
-              "fk->",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["field-id", PRODUCTS.CATEGORY],
-            ],
+function createAndVisitTestQuestion({ display = "pivot" } = {}) {
+  cy.request("POST", "/api/card", {
+    name: QUESTION_NAME,
+    dataset_query: {
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["fk->", ["field-id", ORDERS.USER_ID], ["field-id", PEOPLE.SOURCE]],
+          [
+            "fk->",
+            ["field-id", ORDERS.PRODUCT_ID],
+            ["field-id", PRODUCTS.CATEGORY],
           ],
-        },
-        database: 1,
+        ],
       },
-      display,
-      description: null,
-      visualization_settings: {},
-    });
+      database: 1,
+    },
+    display,
+    description: null,
+    visualization_settings: {},
+  }).then(({ body: { id: QUESTION_ID } }) => {
+    cy.visit(`/question/${QUESTION_ID}`);
   });
 }
 
@@ -112,7 +109,7 @@ function assertOnPivotSettings() {
     .contains("Count");
 }
 
-function assertOnpivotTable() {
+function assertOnPivotTable() {
   cy.log("**-- Implicit assertions on a table itself --**");
   cy.get(".Visualization").within(() => {
     cy.findByText(/Users? → Source/);
