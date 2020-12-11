@@ -72,7 +72,8 @@ describe("scenarios > x-rays", () => {
         .click({ force: true });
       cy.findByText("X-ray").click();
 
-      cy.wait("@dataset");
+      // x-rays take long time even locally - that can timeout in CI so we have to extend it
+      cy.wait("@dataset", { timeout: 30000 });
       cy.findByText(
         "A closer look at number of Orders where Created At is in March 2018 and Category is Gadget",
       );
