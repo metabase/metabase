@@ -183,7 +183,7 @@ export default class PivotTable extends Component {
     }
 
     return (
-      <div className="overflow-scroll">
+      <div className="overflow-scroll no-outline">
         <ScrollSync>
           {({ onScroll, scrollLeft, scrollTop }) => (
             <div>
