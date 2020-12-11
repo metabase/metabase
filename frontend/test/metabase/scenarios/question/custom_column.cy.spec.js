@@ -288,35 +288,31 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it.skip("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
-    withSampleDataset(({ ORDERS }) => {
-      cy.request("POST", "/api/card", {
-        name: "13634",
-        dataset_query: {
-          database: 1,
-          query: {
-            expressions: { "Foo Bar": ["+", 57910, 1] },
-            "source-query": {
-              aggregation: [["cum-count"]],
-              breakout: [
-                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-              ],
-              "source-table": 2,
-            },
+    cy.request("POST", "/api/card", {
+      name: "13634",
+      dataset_query: {
+        database: 1,
+        query: {
+          expressions: { "Foo Bar": ["+", 57910, 1] },
+          "source-query": {
+            aggregation: [["cum-count"]],
+            breakout: [
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+            ],
+            "source-table": ORDERS_ID,
           },
-          type: "query",
         },
-        display: "table",
-        visualization_settings: {},
-      }).then(({ body: { id: questionId } }) => {
-        cy.visit(`/question/${questionId}`);
-        cy.findByText("13634");
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: questionId } }) => {
+      cy.visit(`/question/${questionId}`);
+      cy.findByText("13634");
 
-        cy.log(
-          "**Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2**",
-        );
-        cy.findByText("Foo Bar");
-        cy.findAllByText("57911");
-      });
+      cy.log("**Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2**");
+      cy.findByText("Foo Bar");
+      cy.findAllByText("57911");
     });
   });
 });

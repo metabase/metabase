@@ -114,15 +114,13 @@ describe("scenarios > question > new", () => {
     });
 
     it.skip("should correctly choose between 'Object Detail' and 'Table (metabase#13717)", () => {
-      withSampleDataset(({ ORDERS }) => {
-        // set ID to `No special type`
-        cy.request("PUT", `/api/field/${ORDERS.ID}`, {
-          special_type: null,
-        });
-        // set Quantity to `Entity Key`
-        cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
-          special_type: "type/PK",
-        });
+      // set ID to `No special type`
+      cy.request("PUT", `/api/field/${ORDERS.ID}`, {
+        special_type: null,
+      });
+      // set Quantity to `Entity Key`
+      cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+        special_type: "type/PK",
       });
 
       openOrdersTable();
@@ -270,33 +268,32 @@ describe("scenarios > question > new", () => {
 
     it.skip("trend visualization should work regardless of column order (metabase#13710)", () => {
       cy.server();
-      withSampleDataset(({ ORDERS }) => {
-        cy.request("POST", "/api/card", {
-          name: "13710",
-          dataset_query: {
-            database: 1,
-            query: {
-              "source-table": 2,
-              breakout: [
-                ["field-id", ORDERS.QUANTITY],
-                ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-              ],
-            },
-            type: "query",
+
+      cy.request("POST", "/api/card", {
+        name: "13710",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            breakout: [
+              ["field-id", ORDERS.QUANTITY],
+              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+            ],
           },
-          display: "smartscalar",
-          visualization_settings: {},
-        }).then(({ body: { id: questionId } }) => {
-          cy.route("POST", `/api/card/${questionId}/query`).as("cardQuery");
+          type: "query",
+        },
+        display: "smartscalar",
+        visualization_settings: {},
+      }).then(({ body: { id: questionId } }) => {
+        cy.route("POST", `/api/card/${questionId}/query`).as("cardQuery");
 
-          cy.visit(`/question/${questionId}`);
-          cy.findByText("13710");
+        cy.visit(`/question/${questionId}`);
+        cy.findByText("13710");
 
-          cy.wait("@cardQuery");
-          cy.log("**Reported failing on v0.35 - v0.37.0.2**");
-          cy.log("**Bug: showing blank visualization**");
-          cy.get(".ScalarValue").contains("33");
-        });
+        cy.wait("@cardQuery");
+        cy.log("**Reported failing on v0.35 - v0.37.0.2**");
+        cy.log("**Bug: showing blank visualization**");
+        cy.get(".ScalarValue").contains("33");
       });
     });
   });

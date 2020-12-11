@@ -47,31 +47,31 @@ describe("scenarios > dashboard > permissions", () => {
         name: "First Question",
         collection_id,
       }).then(({ body: { id } }) => (firstQuestionId = id));
+
+      cy.request("POST", "/api/card", {
+        dataset_query: {
+          database: 1,
+          type: "native",
+          native: { query: "select 'foo'" },
+        },
+        display: "table",
+        visualization_settings: {},
+        name: "First Question",
+        collection_id,
+      }).then(({ body: { id } }) => (firstQuestionId = id));
+
+      cy.request("POST", "/api/card", {
+        dataset_query: {
+          database: 1,
+          type: "native",
+          native: { query: "select 'bar'" },
+        },
+        display: "table",
+        visualization_settings: {},
+        name: "Second Question",
+        collection_id: null,
+      }).then(({ body: { id } }) => (secondQuestionId = id));
     });
-
-    cy.request("POST", "/api/card", {
-      dataset_query: {
-        database: 1,
-        type: "native",
-        native: { query: "select 'foo'" },
-      },
-      display: "table",
-      visualization_settings: {},
-      name: "First Question",
-      collection_id,
-    }).then(({ body: { id } }) => (firstQuestionId = id));
-
-    cy.request("POST", "/api/card", {
-      dataset_query: {
-        database: 1,
-        type: "native",
-        native: { query: "select 'bar'" },
-      },
-      display: "table",
-      visualization_settings: {},
-      name: "Second Question",
-      collection_id: null,
-    }).then(({ body: { id } }) => (secondQuestionId = id));
 
     cy.request("POST", "/api/dashboard", { name: "dashboard" }).then(
       ({ body: { id: dashId } }) => {
