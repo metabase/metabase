@@ -271,8 +271,10 @@
   [driver [_ _ expression-definition]]
   (->honeysql driver expression-definition))
 
-(defn special-type->unit
-  "Translates types like `:type/UNIXTimestampSeconds` to the corresponding unit of time to use."
+(defn special-type->unix-timestamp-unit
+  "Translates types like `:type/UNIXTimestampSeconds` to the corresponding unit of time to use in
+  `unix-timestamp->honeysql`.  Throws an AssertionError if the argument does not descend from `:type/UNIXTimestamp`
+  and an exception if the type does not have an associated unit."
   [special-type]
   (assert (isa? special-type :type/UNIXTimestamp) "Special type must be a UNIXTimestamp")
   (or (get {:type/UNIXTimestampMicroseconds :microseconds
@@ -286,7 +288,7 @@
   [driver field field-identifier]
   (match [(:base_type field) (:special_type field)]
     [(:isa? :type/Number)   (:isa? :type/UNIXTimestamp)]  (unix-timestamp->honeysql driver
-                                                                                    (special-type->unit (:special_type field))
+                                                                                    (special-type->unix-timestamp-unit (:special_type field))
                                                                                     field-identifier)
     [:type/Text             (:isa? :type/TemporalString)] (cast-temporal-string driver (:special_type field) field-identifier)
     :else field-identifier))
