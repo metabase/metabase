@@ -248,10 +248,10 @@ export function applyChartQuantitativeXAxis(
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
     chart.xAxis().tickFormat(d => {
-      // don't show ticks that aren't multiples of xInterval
-      if (waterfallTotalX === d) {
+      if (waterfallTotalX && waterfallTotalX === d) {
         return t`Total`;
       }
+      // don't show ticks that aren't multiples of xInterval
       if (isMultipleOf(d, xInterval)) {
         return formatValue(d, {
           ...chart.settings.column(dimensionColumn),
