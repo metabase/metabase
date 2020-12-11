@@ -49,6 +49,7 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.contains(`Started from ${QUESTION_NAME}`);
 
+    cy.log("**-- Assertions on a table itself --**");
     cy.get(".Visualization").within(() => {
       cy.findByText(/Users? → Source/);
       cy.findByText("783"); // Affiliate - Doohickey
@@ -58,6 +59,31 @@ describe("scenarios > visualizations > pivot tables", () => {
       cy.findByText("3,520").should("not.exist");
       cy.findByText("4,784").should("not.exist");
       cy.findByText("18,760").should("not.exist");
+    });
+  });
+
+  it("should rearrange pivoted columns", () => {
+    createAndVisitTestQuestion();
+
+    // Open Pivot table side-bar
+    cy.findByText("Settings").click();
+
+    // Give it some time to open the side-bar fully before we start dragging
+    cy.findByText(/Pivot Table options/i);
+
+    // Drag the second aggregate (Product category) from table columns to table rows
+    dragField(1, 0);
+
+    // One field should now be empty
+    cy.findByText("Drag fields here");
+
+    cy.log("**-- Implicit assertions on a table itself --**");
+    cy.get(".Visualization").within(() => {
+      cy.findByText(/Products? → Category/);
+      cy.findByText(/Users? → Source/);
+      cy.findByText("Count");
+      cy.findByText(/Totals for Doohickey/i);
+      cy.findByText("3,976");
     });
   });
 });
@@ -119,4 +145,20 @@ function assertOnPivotTable() {
     cy.findByText("4,784");
     cy.findByText("18,760");
   });
+}
+
+// Rely on native drag events, rather than on the coordinates
+// We have 3 "drag-handles" in this test. Their indexes are 0-based.
+function dragField(startIndex, dropIndex) {
+  cy.get(".Grabber")
+    .should("be.visible")
+    .as("dragHandle");
+
+  cy.get("@dragHandle")
+    .eq(startIndex)
+    .trigger("dragstart");
+
+  cy.get("@dragHandle")
+    .eq(dropIndex)
+    .trigger("drop");
 }
