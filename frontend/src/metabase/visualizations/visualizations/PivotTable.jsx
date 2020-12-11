@@ -7,7 +7,7 @@ import { Grid, List, ScrollSync } from "react-virtualized";
 
 import Ellipsified from "metabase/components/Ellipsified";
 import { isDimension } from "metabase/lib/schema_metadata";
-import { multiLevelPivot } from "metabase/lib/data_grid";
+import { isPivotGroupColumn, multiLevelPivot } from "metabase/lib/data_grid";
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
@@ -126,38 +126,23 @@ export default class PivotTable extends Component {
     if (setting == null) {
       return null;
     }
-    const columnsWithoutPivotGroup = data.cols.filter(
-      col => !isPivotGroupColumn(col),
-    );
+    const columns = data.cols.filter(col => !isPivotGroupColumn(col));
 
     const {
       rows: rowIndexes,
       columns: columnIndexes,
       values: valueIndexes,
-    } = _.mapObject(setting, columns =>
-      columns
+    } = _.mapObject(setting, columnFieldRefs =>
+      columnFieldRefs
         .map(field_ref =>
-          columnsWithoutPivotGroup.findIndex(col =>
-            _.isEqual(col.field_ref, field_ref),
-          ),
+          columns.findIndex(col => _.isEqual(col.field_ref, field_ref)),
         )
         .filter(index => index !== -1),
-    );
-    const { pivotData, columns } = splitPivotData(
-      data,
-      rowIndexes,
-      columnIndexes,
     );
 
     let pivoted;
     try {
-      pivoted = multiLevelPivot(
-        pivotData,
-        columns,
-        columnIndexes,
-        rowIndexes,
-        valueIndexes,
-      );
+      pivoted = multiLevelPivot(data, columnIndexes, rowIndexes, valueIndexes);
     } catch (e) {
       console.warn(e);
     }
@@ -423,37 +408,10 @@ function updateValueWithCurrentColumns(storedValue, columns) {
   return value;
 }
 
-function isPivotGroupColumn(col) {
-  return col.name === "pivot-grouping";
-}
-
 function isColumnValid(col) {
   return (
     col.source === "aggregation" ||
     col.source === "breakout" ||
     isPivotGroupColumn(col)
   );
-}
-
-function splitPivotData(data, rowIndexes, columnIndexes) {
-  const groupIndex = data.cols.findIndex(isPivotGroupColumn);
-  const columns = data.cols.filter(col => !isPivotGroupColumn(col));
-  const pivotData = _.chain(data.rows)
-    .groupBy(row => row[groupIndex])
-    .pairs()
-    .map(([key, rows]) => {
-      const indexes = JSON.parse(key).map(breakout =>
-        columns.findIndex(col => _.isEqual(col.field_ref, breakout)),
-      );
-
-      return [
-        JSON.stringify(indexes),
-        rows.map(row =>
-          row.slice(0, groupIndex).concat(row.slice(groupIndex + 1)),
-        ),
-      ];
-    })
-    .object()
-    .value();
-  return { pivotData, columns };
 }
