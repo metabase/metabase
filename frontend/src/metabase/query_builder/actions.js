@@ -839,7 +839,9 @@ export const updateQuestion = (
     const isPivot = newQuestion.display() === "pivot";
     const wasPivot = oldQuestion.display() === "pivot";
     const queryHasBreakouts =
-      isPivot && newQuestion.query().breakouts().length > 0;
+      isPivot &&
+      newQuestion.isStructured() &&
+      newQuestion.query().breakouts().length > 0;
 
     // we can only pivot queries with breakouts
     if (queryHasBreakouts) {
