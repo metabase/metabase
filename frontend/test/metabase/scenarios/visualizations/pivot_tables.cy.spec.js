@@ -38,6 +38,31 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     assertOnPivotSettings();
   });
+
+  it("should not show sub-total data after a switch to other viz type", () => {
+    createPivotTableQuestion();
+    cy.visit("/collection/root");
+    cy.findByText(QUESTION_NAME).click();
+
+    // Switch to ordinary table
+    cy.findByText("Visualization").click();
+    cy.get(".Icon-table")
+      .should("be.visible")
+      .click();
+
+    cy.contains(`Started from ${QUESTION_NAME}`);
+
+    cy.get(".Visualization").within(() => {
+      cy.findByText(/Users? → Source/);
+      cy.findByText("783"); // Affiliate - Doohickey
+      cy.findByText("986"); // Twitter - Gizmo
+      cy.findByText(/Row totals/i).should("not.exist");
+      cy.findByText(/Grand totals/i).should("not.exist");
+      cy.findByText("3,520").should("not.exist");
+      cy.findByText("4,784").should("not.exist");
+      cy.findByText("18,760").should("not.exist");
+    });
+  });
 });
 
 function createPivotTableQuestion({ display = "pivot" } = {}) {
