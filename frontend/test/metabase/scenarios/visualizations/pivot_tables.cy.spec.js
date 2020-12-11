@@ -1,9 +1,6 @@
-import {
-  signInAsAdmin,
-  restore,
-  openOrdersTable,
-  popover,
-} from "__support__/cypress";
+import { signInAsAdmin, restore, withSampleDataset } from "__support__/cypress";
+
+const QUESTION_NAME = "Cypress Pivot Table";
 
 describe("scenarios > visualizations > pivot tables", () => {
   beforeEach(() => {
@@ -12,64 +9,92 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should be created from an ad-hoc question", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-    cy.route("POST", "/api/advanced_computation/pivot/dataset").as(
-      "pivotTableDataset",
-    );
+    // We're intentionally setting the visualization to `bar` here
+    createPivotTableQuestion({ display: "bar" });
+    cy.visit("/collection/root");
+    cy.findByText(QUESTION_NAME).click();
 
-    openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
-    cy.findByText("Count of rows").click();
-    cy.findByText("Pick a column to group by").click();
-    popover().within(() => {
-      cy.findByText(/Orders?$/).click(); // Collapse "Orders" to avoid additional scrolling
-      cy.findByText(/Users?$/).click();
-    });
-    cy.get(".ReactVirtualized__Grid").scrollTo("bottom"); // "Source" is not visible - we have to scroll
-    cy.findByText("Source").click();
-    // Add another metric
-    cy.get(".Icon-add")
-      .last() // This is fragile, but there's no other way to get to this element right now
-      .click();
-    popover().within(() => {
-      cy.findByText(/Products?$/).click();
-      cy.findByText("Category").click();
-    });
-    cy.findByText("Visualize").click();
-    cy.wait("@dataset");
-
+    // By changing the visualization type, we make this an "ad-hoc" question
     cy.findByText("Visualization").click();
-    cy.get(".Icon-pivot_table").click();
-    cy.wait("@pivotTableDataset");
+    cy.get(".Icon-pivot_table")
+      .should("be.visible")
+      .click();
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
-    cy.get("[draggable=true]").as("fieldOption");
 
-    cy.log("**-- Implicit side-bar assertions --**");
-    cy.findByText(/Pivot Table options/i);
+    assertOnPivotSettings();
+    assertOnpivotTable();
+  });
 
-    cy.findByText("Fields to use for the table rows");
-    cy.get("@fieldOption")
-      .eq(0)
-      .contains(/Users? → Source/);
-    cy.findByText("Fields to use for the table columns");
-    cy.get("@fieldOption")
-      .eq(1)
-      .contains(/Products? → Category/);
-    cy.findByText("Fields to use for the table values");
-    cy.get("@fieldOption")
-      .eq(2)
-      .contains("Count");
+  it("should correctly display saved question", () => {
+    createPivotTableQuestion();
+    cy.visit("/collection/root");
+    cy.findByText(QUESTION_NAME).click();
 
-    cy.log("**-- Implicit assertions on a table itself --**");
-    cy.get(".Visualization").within(() => {
-      cy.findByText(/Users? → Source/);
-      cy.findByText(/Row totals/i);
-      cy.findByText(/Grand totals/i);
-      cy.findByText("3,520");
-      cy.findByText("4,784");
-      cy.findByText("18,760");
-    });
+    assertOnpivotTable();
+
+    // Open Pivot table side-bar
+    cy.findByText("Settings").click();
+
+    assertOnPivotSettings();
   });
 });
+
+function createPivotTableQuestion({ display = "pivot" } = {}) {
+  withSampleDataset(({ ORDERS, ORDERS_ID, PRODUCTS, PEOPLE }) => {
+    cy.request("POST", "/api/card", {
+      name: QUESTION_NAME,
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["fk->", ["field-id", ORDERS.USER_ID], ["field-id", PEOPLE.SOURCE]],
+            [
+              "fk->",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["field-id", PRODUCTS.CATEGORY],
+            ],
+          ],
+        },
+        database: 1,
+      },
+      display,
+      description: null,
+      visualization_settings: {},
+    });
+  });
+}
+
+function assertOnPivotSettings() {
+  cy.get("[draggable=true]").as("fieldOption");
+
+  cy.log("**-- Implicit side-bar assertions --**");
+  cy.findByText(/Pivot Table options/i);
+
+  cy.findByText("Fields to use for the table rows");
+  cy.get("@fieldOption")
+    .eq(0)
+    .contains(/Users? → Source/);
+  cy.findByText("Fields to use for the table columns");
+  cy.get("@fieldOption")
+    .eq(1)
+    .contains(/Products? → Category/);
+  cy.findByText("Fields to use for the table values");
+  cy.get("@fieldOption")
+    .eq(2)
+    .contains("Count");
+}
+
+function assertOnpivotTable() {
+  cy.log("**-- Implicit assertions on a table itself --**");
+  cy.get(".Visualization").within(() => {
+    cy.findByText(/Users? → Source/);
+    cy.findByText(/Row totals/i);
+    cy.findByText(/Grand totals/i);
+    cy.findByText("3,520");
+    cy.findByText("4,784");
+    cy.findByText("18,760");
+  });
+}
