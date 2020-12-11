@@ -1,7 +1,6 @@
 (ns metabase.api.advanced-computation.common
   "Common routines between the public and internal endpoints for /api/advanced_computation"
-  (:require [cheshire.core :as json]
-            [clojure.core.async :as a]
+  (:require [clojure.core.async :as a]
             [metabase.api.common :as api]
             [metabase.query-processor :as qp]
             [metabase.query-processor
