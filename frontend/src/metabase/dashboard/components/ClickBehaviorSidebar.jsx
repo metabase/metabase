@@ -22,6 +22,7 @@ import Sidebar from "metabase/dashboard/components/Sidebar";
 import ClickMappings, {
   withUserAttributes,
   clickTargetObjectType,
+  isMappableColumn,
 } from "metabase/dashboard/components/ClickMappings";
 
 import {
@@ -832,7 +833,9 @@ const CustomLinkText = ({
 
 const ValuesYouCanReference = withUserAttributes(
   ({ dashcard, parameters, userAttributes }) => {
-    const columns = dashcard.card.result_metadata.map(c => c.name);
+    const columns = dashcard.card.result_metadata
+      .filter(isMappableColumn)
+      .map(c => c.name);
     const parameterNames = parameters.map(p => p.name);
     const sections = [
       {

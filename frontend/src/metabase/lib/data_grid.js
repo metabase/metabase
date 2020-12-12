@@ -64,7 +64,11 @@ export function multiLevelPivot(
     const valueKey = JSON.stringify(
       columnColumnIndexes.concat(rowColumnIndexes).map(index => row[index]),
     );
-    valuesByKey[valueKey] = valueColumnIndexes.map(index => row[index]);
+    const values = valueColumnIndexes.map(index => row[index]);
+    valuesByKey[valueKey] = {
+      values,
+      data: row.map((value, index) => ({ value, col: columns[index] })),
+    };
   }
 
   // build objects to look up subtotal values
@@ -189,8 +193,11 @@ function createRowSectionGetter({
     return rows
       .map(row =>
         columns.flatMap(col => {
-          const values = valuesByKey[JSON.stringify(col.concat(row))];
-          return formatValues(values);
+          const { values, data } =
+            valuesByKey[JSON.stringify(col.concat(row))] || {};
+          return formatValues(values).map(o =>
+            data === undefined ? o : { ...o, clicked: { data } },
+          );
         }),
       )
       .concat(subtotalRows);
