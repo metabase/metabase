@@ -97,6 +97,7 @@ window.MetabaseBootstrap = {
     "type/ImageURL": ["type/URL"],
     "type/Price": ["type/Currency"],
     "type/UNIXTimestampMilliseconds": ["type/UNIXTimestamp"],
+    "type/UNIXTimestampMicroseconds": ["type/UNIXTimestamp"],
     "type/Collection": ["type/*"],
     "type/User": ["type/*"],
     "type/Array": ["type/Collection"],

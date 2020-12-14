@@ -8,7 +8,35 @@
              [query-processor-test :as qp.test]
              [test :as mt]
              [util :as u]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]))
+
+(deftest special-type->unix-timestamp-unit-test
+  (testing "every descendant of `:type/UNIXTimestamp` has a unit associated with it"
+    (doseq [special-type (descendants :type/UNIXTimestamp)]
+      (is (sql.qp/special-type->unix-timestamp-unit special-type))))
+  (testing "throws if argument is not a descendant of `:type/UNIXTimestamp`"
+    (is (thrown? AssertionError (sql.qp/special-type->unix-timestamp-unit :type/Integer)))))
+
+(mt/defdataset toucan-microsecond-incidents
+  [["incidents" [{:field-name "severity"
+                  :base-type  :type/Integer}
+                 {:field-name   "timestamp"
+                  :base-type    :type/BigInteger
+                  :special-type :type/UNIXTimestampMicroseconds}]
+    [[4 1433587200000000]
+     [0 1433965860000000]]]])
+
+(deftest microseconds-test
+  (mt/test-drivers (disj (mt/normal-drivers) :sqlite)
+    (let [results (get {:sqlite #{[1 4 "2015-06-06 10:40:00"] [2 0 "2015-06-10 19:51:00"]}
+                        :oracle #{[1M 4M "2015-06-06T10:40:00Z"] [2M 0M "2015-06-10T19:51:00Z"]}}
+                       driver/*driver*
+                       ;; default result shape
+                       #{[1 4 "2015-06-06T10:40:00Z"] [2 0 "2015-06-10T19:51:00Z"]})]
+      (is (= results
+             (set (mt/rows (mt/dataset toucan-microsecond-incidents
+                             (mt/run-mbql-query incidents)))))))))
 
 (deftest filter-test
   (mt/test-drivers (mt/normal-drivers)

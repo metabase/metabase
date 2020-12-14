@@ -786,7 +786,7 @@ export const getCollectionsPermissionsGrid = createSelector(
 
     return {
       type: "collection",
-      icon: "collection",
+      icon: "folder",
       crumbs,
       groups,
       permissions: {

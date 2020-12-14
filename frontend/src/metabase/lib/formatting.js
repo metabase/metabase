@@ -77,6 +77,7 @@ export type FormattingOptions = {
   prefix?: string,
   suffix?: string,
   scale?: number,
+  negativeInParentheses?: boolean,
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString
   scale?: number,
   number_separators?: NumberSeparators,
@@ -171,6 +172,15 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
 
   if (typeof options.scale === "number" && !isNaN(options.scale)) {
     number = options.scale * number;
+  }
+
+  if (number < 0 && options.negativeInParentheses) {
+    return (
+      "(" +
+      // $FlowFixMe coerce into string
+      formatNumber(-number, { ...options, negativeInParentheses: false }) +
+      ")"
+    );
   }
 
   if (options.compact) {

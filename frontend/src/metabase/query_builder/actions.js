@@ -838,8 +838,13 @@ export const updateQuestion = (
     // We have special logic when going to, coming from, or updating a pivot table.
     const isPivot = newQuestion.display() === "pivot";
     const wasPivot = oldQuestion.display() === "pivot";
+    const queryHasBreakouts =
+      isPivot &&
+      newQuestion.isStructured() &&
+      newQuestion.query().breakouts().length > 0;
 
-    if (isPivot && !wasPivot) {
+    // we can only pivot queries with breakouts
+    if (isPivot && !wasPivot && queryHasBreakouts) {
       // compute the pivot setting now so we can query the appropriate data
       const series = assocIn(
         getRawSeries(getState()),

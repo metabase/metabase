@@ -356,7 +356,8 @@
   (trunc (keyword (format "week(%s)" (name (setting/get-keyword :start-of-week)))) expr))
 
 (doseq [[unix-timestamp-type bigquery-fn] {:seconds      :timestamp_seconds
-                                           :milliseconds :timestamp_millis}]
+                                           :milliseconds :timestamp_millis
+                                           :microseconds :timestamp_micros}]
   (defmethod sql.qp/unix-timestamp->honeysql [:bigquery unix-timestamp-type]
     [_ _ expr]
     (with-temporal-type (hsql/call bigquery-fn expr) :timestamp)))

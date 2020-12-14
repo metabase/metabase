@@ -3,13 +3,47 @@ import { getIn } from "icepick";
 
 import { formatValue } from "metabase/lib/formatting";
 
+export function isPivotGroupColumn(col) {
+  return col.name === "pivot-grouping";
+}
+
+// This pulls apart the different aggregations that were packed into one result set.
+// There's a column indicating which breakouts were used to compute that row.
+// We use that column to split apart the data and convert the field refs to indexes.
+function splitPivotData(data, rowIndexes, columnIndexes) {
+  const groupIndex = data.cols.findIndex(isPivotGroupColumn);
+  const columns = data.cols.filter(col => !isPivotGroupColumn(col));
+  const pivotData = _.chain(data.rows)
+    .groupBy(row => row[groupIndex])
+    .pairs()
+    .map(([key, rows]) => {
+      const indexes = JSON.parse(key).map(breakout =>
+        columns.findIndex(col => _.isEqual(col.field_ref, breakout)),
+      );
+      const keyAsIndexes = JSON.stringify(indexes);
+      const rowsWithoutColumn = rows.map(row =>
+        row.slice(0, groupIndex).concat(row.slice(groupIndex + 1)),
+      );
+
+      return [keyAsIndexes, rowsWithoutColumn];
+    })
+    .object()
+    .value();
+  return { pivotData, columns };
+}
+
 export function multiLevelPivot(
-  pivotData,
-  columns,
+  data,
   columnColumnIndexes,
   rowColumnIndexes,
   valueColumnIndexes,
 ) {
+  const { pivotData, columns } = splitPivotData(
+    data,
+    rowColumnIndexes,
+    columnColumnIndexes,
+  );
+
   // we build a tree for each tuple of pivoted column/row values seen in the data
   const columnColumnTree = [];
   const rowColumnTree = [];
@@ -18,11 +52,10 @@ export function multiLevelPivot(
   const valuesByKey = {};
 
   // loop over the primary rows to build trees of column/row header data
-  for (const row of pivotData[
-    JSON.stringify(
-      _.range(columnColumnIndexes.length + rowColumnIndexes.length),
-    )
-  ]) {
+  const primaryRowsKey = JSON.stringify(
+    _.range(columnColumnIndexes.length + rowColumnIndexes.length),
+  );
+  for (const row of pivotData[primaryRowsKey]) {
     // mutate the trees to add the tuple from the current row
     updateValueObject(row, columnColumnIndexes, columnColumnTree);
     updateValueObject(row, rowColumnIndexes, rowColumnTree);
@@ -31,7 +64,11 @@ export function multiLevelPivot(
     const valueKey = JSON.stringify(
       columnColumnIndexes.concat(rowColumnIndexes).map(index => row[index]),
     );
-    valuesByKey[valueKey] = valueColumnIndexes.map(index => row[index]);
+    const values = valueColumnIndexes.map(index => row[index]);
+    valuesByKey[valueKey] = {
+      values,
+      data: row.map((value, index) => ({ value, col: columns[index] })),
+    };
   }
 
   // build objects to look up subtotal values
@@ -87,8 +124,8 @@ function createRowSectionGetter({
 }) {
   const formatValues = values =>
     values === undefined
-      ? new Array(valueFormatters.length).fill(null)
-      : values.map((v, i) => valueFormatters[i](v));
+      ? Array(valueFormatters.length).fill({ value: null })
+      : values.map((v, i) => ({ value: valueFormatters[i](v) }));
   const getSubtotals = (breakoutIndexes, values) =>
     formatValues(
       getIn(
@@ -99,7 +136,7 @@ function createRowSectionGetter({
           ),
         ),
       ),
-    );
+    ).map(value => ({ ...value, isSubtotal: true }));
 
   return (columnIndex, rowIndex) => {
     const rows =
@@ -137,7 +174,7 @@ function createRowSectionGetter({
           : [];
 
       return rows
-        .map(row => [getSubtotals(rowColumnIndexes, row)])
+        .map(row => getSubtotals(rowColumnIndexes, row))
         .concat(subtotalRows);
     }
 
@@ -156,8 +193,11 @@ function createRowSectionGetter({
     return rows
       .map(row =>
         columns.flatMap(col => {
-          const values = valuesByKey[JSON.stringify(col.concat(row))];
-          return formatValues(values);
+          const { values, data } =
+            valuesByKey[JSON.stringify(col.concat(row))] || {};
+          return formatValues(values).map(o =>
+            data === undefined ? o : { ...o, clicked: { data } },
+          );
         }),
       )
       .concat(subtotalRows);

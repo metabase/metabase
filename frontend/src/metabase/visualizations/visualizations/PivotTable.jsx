@@ -7,7 +7,7 @@ import { Grid, List, ScrollSync } from "react-virtualized";
 
 import Ellipsified from "metabase/components/Ellipsified";
 import { isDimension } from "metabase/lib/schema_metadata";
-import { multiLevelPivot } from "metabase/lib/data_grid";
+import { isPivotGroupColumn, multiLevelPivot } from "metabase/lib/data_grid";
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
@@ -31,6 +31,8 @@ const partitions = [
   },
 ];
 
+const CELL_WIDTH = 100;
+const CELL_HEIGHT = 25;
 export default class PivotTable extends Component {
   props: VisualizationProps;
   static uiName = t`Pivot Table`;
@@ -39,13 +41,14 @@ export default class PivotTable extends Component {
 
   static isSensible({ cols }) {
     return (
+      cols.length >= 2 &&
       cols.every(isColumnValid) &&
       cols.filter(col => col.source === "breakout").length < 5
     );
   }
 
   static checkRenderable([{ data }]) {
-    if (!data.cols.every(isColumnValid)) {
+    if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
       throw new Error(
         t`Pivot tables can only be used with aggregated queries.`,
       );
@@ -123,38 +126,23 @@ export default class PivotTable extends Component {
     if (setting == null) {
       return null;
     }
-    const columnsWithoutPivotGroup = data.cols.filter(
-      col => !isPivotGroupColumn(col),
-    );
+    const columns = data.cols.filter(col => !isPivotGroupColumn(col));
 
     const {
       rows: rowIndexes,
       columns: columnIndexes,
       values: valueIndexes,
-    } = _.mapObject(setting, columns =>
-      columns
+    } = _.mapObject(setting, columnFieldRefs =>
+      columnFieldRefs
         .map(field_ref =>
-          columnsWithoutPivotGroup.findIndex(col =>
-            _.isEqual(col.field_ref, field_ref),
-          ),
+          columns.findIndex(col => _.isEqual(col.field_ref, field_ref)),
         )
         .filter(index => index !== -1),
-    );
-    const { pivotData, columns } = splitPivotData(
-      data,
-      rowIndexes,
-      columnIndexes,
     );
 
     let pivoted;
     try {
-      pivoted = multiLevelPivot(
-        pivotData,
-        columns,
-        columnIndexes,
-        rowIndexes,
-        valueIndexes,
-      );
+      pivoted = multiLevelPivot(data, columnIndexes, rowIndexes, valueIndexes);
     } catch (e) {
       console.warn(e);
     }
@@ -165,35 +153,35 @@ export default class PivotTable extends Component {
       rowCount,
       columnCount,
     } = pivoted;
-    const cellWidth = 100;
-    const cellHeight = 25;
     const topHeaderHeight =
-      topIndex.length === 0 ? cellHeight : topIndex[0].length * cellHeight + 8; // the extravertical padding
+      topIndex.length === 0
+        ? CELL_HEIGHT
+        : topIndex[0].length * CELL_HEIGHT + 8; // the extravertical padding
     const leftHeaderWidth =
-      leftIndex.length === 0 ? 0 : leftIndex[0].length * cellWidth;
+      leftIndex.length === 0 ? 0 : leftIndex[0].length * CELL_WIDTH;
 
     function columnWidth({ index }) {
       if (topIndex.length === 0 || index === topIndex.length) {
-        return cellWidth;
+        return CELL_WIDTH;
       }
       const indexItem = topIndex[index];
-      return indexItem[indexItem.length - 1].length * cellWidth;
+      return indexItem[indexItem.length - 1].length * CELL_WIDTH;
     }
 
     const showRowSubtotals = leftIndex[0].length > 1;
     function rowHeight({ index }) {
       if (leftIndex.length === 0 || index === leftIndex.length) {
-        return cellHeight;
+        return CELL_HEIGHT;
       }
       const indexItem = leftIndex[index];
       return (
         (indexItem[indexItem.length - 1].length + (showRowSubtotals ? 1 : 0)) *
-        cellHeight
+        CELL_HEIGHT
       );
     }
 
     return (
-      <div className="overflow-scroll">
+      <div className="overflow-scroll no-outline">
         <ScrollSync>
           {({ onScroll, scrollLeft, scrollTop }) => (
             <div>
@@ -206,12 +194,7 @@ export default class PivotTable extends Component {
                 {/* top left corner - displays left header columns */}
                 <div className="flex align-end border-right border-bottom border-medium">
                   {rowIndexes.map(index => (
-                    <div
-                      style={{ height: cellHeight, width: cellWidth }}
-                      className="px1"
-                    >
-                      <Ellipsified>{formatColumn(columns[index])}</Ellipsified>
-                    </div>
+                    <Cell value={formatColumn(columns[index])} />
                   ))}
                 </div>
                 {/* top header */}
@@ -230,11 +213,12 @@ export default class PivotTable extends Component {
                         <div
                           key={key}
                           style={style}
-                          className="flex-column px1 pt1"
+                          className="flex-column justify-end px1 pt1"
                         >
-                          <div className="flex" style={{ height: cellHeight }}>
-                            <Ellipsified>{t`Row totals`}</Ellipsified>
-                          </div>
+                          <Cell
+                            value={t`Row totals`}
+                            width={valueIndexes.length}
+                          />
                         </div>
                       );
                     }
@@ -246,10 +230,10 @@ export default class PivotTable extends Component {
                         className="flex-column px1 pt1"
                       >
                         {rows.map((row, index) => (
-                          <div className="flex" style={{ height: cellHeight }}>
+                          <div className="flex" style={{ height: CELL_HEIGHT }}>
                             {row.map(({ value, span }) => (
                               <div
-                                style={{ width: cellWidth * span }}
+                                style={{ width: CELL_WIDTH * span }}
                                 className={cx({
                                   "border-bottom": index < rows.length - 1,
                                 })}
@@ -282,15 +266,11 @@ export default class PivotTable extends Component {
                       return (
                         <div key={key} style={style} className="flex">
                           <div className="flex flex-column">
-                            <div
-                              style={{
-                                height: cellHeight,
-                                width: cellWidth * rowIndexes.length,
-                              }}
-                              className="p1"
-                            >
-                              <Ellipsified>{t`Grand totals`}</Ellipsified>
-                            </div>
+                            <Cell
+                              value={t`Grand totals`}
+                              isSubtotal
+                              width={rowIndexes.length}
+                            />
                           </div>
                         </div>
                       );
@@ -303,15 +283,23 @@ export default class PivotTable extends Component {
                               {col.map(({ value, span = 1 }) => (
                                 <div
                                   style={{
-                                    height: cellHeight * span,
-                                    width: cellWidth,
+                                    height: CELL_HEIGHT * span,
+                                    width: CELL_WIDTH,
                                   }}
-                                  className="p1"
+                                  className="px1"
                                 >
                                   <Ellipsified>
-                                    {formatValue(value, {
-                                      column: columns[rowIndexes[index]],
-                                    })}
+                                    <div
+                                      style={{
+                                        height: CELL_HEIGHT,
+                                        lineHeight: `${CELL_HEIGHT}px`,
+                                        width: CELL_WIDTH,
+                                      }}
+                                    >
+                                      {formatValue(value, {
+                                        column: columns[rowIndexes[index]],
+                                      })}
+                                    </div>
                                   </Ellipsified>
                                 </div>
                               ))}
@@ -319,10 +307,14 @@ export default class PivotTable extends Component {
                           ))}
                         </div>
                         {showRowSubtotals && (
-                          <div
-                            style={{ height: cellHeight }}
-                            className="p1"
-                          >{t`Totals for ${leftIndex[index][0][0].value}`}</div>
+                          <Cell
+                            value={t`Totals for ${formatValue(
+                              leftIndex[index][0][0].value,
+                              { column: columns[rowIndexes[0]] },
+                            )}`}
+                            isSubtotal
+                            width={leftIndex[0].length}
+                          />
                         )}
                       </div>
                     );
@@ -346,13 +338,19 @@ export default class PivotTable extends Component {
                       <div key={key} style={style} className="flex flex-column">
                         {rows.map(row => (
                           <div className="flex">
-                            {row.map(value => (
-                              <div
-                                style={{ width: cellWidth, height: cellHeight }}
-                                className="p1"
-                              >
-                                {value}
-                              </div>
+                            {row.map(({ value, isSubtotal, clicked }) => (
+                              <Cell
+                                value={value}
+                                isSubtotal={isSubtotal}
+                                onClick={
+                                  clicked &&
+                                  (() =>
+                                    this.props.onVisualizationClick({
+                                      ...clicked,
+                                      settings: this.props.settings,
+                                    }))
+                                }
+                              />
                             ))}
                           </div>
                         ))}
@@ -372,6 +370,26 @@ export default class PivotTable extends Component {
       </div>
     );
   }
+}
+
+function Cell({ value, isSubtotal, onClick, width = 1, height = 1 }) {
+  return (
+    <div
+      style={{
+        width: CELL_WIDTH * width,
+        height: CELL_HEIGHT * height,
+        lineHeight: `${CELL_HEIGHT * height}px`,
+        borderTop: "1px solid white",
+      }}
+      className={cx(
+        { "bg-medium": isSubtotal, "cursor-pointer": onClick },
+        "px1",
+      )}
+      onClick={onClick}
+    >
+      <Ellipsified>{value}</Ellipsified>
+    </div>
+  );
 }
 
 function updateValueWithCurrentColumns(storedValue, columns) {
@@ -403,37 +421,10 @@ function updateValueWithCurrentColumns(storedValue, columns) {
   return value;
 }
 
-function isPivotGroupColumn(col) {
-  return col.name === "pivot-grouping";
-}
-
 function isColumnValid(col) {
   return (
     col.source === "aggregation" ||
     col.source === "breakout" ||
     isPivotGroupColumn(col)
   );
-}
-
-function splitPivotData(data, rowIndexes, columnIndexes) {
-  const groupIndex = data.cols.findIndex(isPivotGroupColumn);
-  const columns = data.cols.filter(col => !isPivotGroupColumn(col));
-  const pivotData = _.chain(data.rows)
-    .groupBy(row => row[groupIndex])
-    .pairs()
-    .map(([key, rows]) => {
-      const indexes = JSON.parse(key).map(breakout =>
-        columns.findIndex(col => _.isEqual(col.field_ref, breakout)),
-      );
-
-      return [
-        JSON.stringify(indexes),
-        rows.map(row =>
-          row.slice(0, groupIndex).concat(row.slice(groupIndex + 1)),
-        ),
-      ];
-    })
-    .object()
-    .value();
-  return { pivotData, columns };
 }

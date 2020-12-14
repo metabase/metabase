@@ -425,7 +425,7 @@ export const getIsVisualized = createSelector(
   (question, settings) =>
     question &&
     // table is the default
-    (question.display() !== "table" ||
+    ((question.display() !== "table" && question.display() !== "pivot") ||
       // any "table." settings has been explcitly set
       Object.keys(question.settings()).some(k => k.startsWith("table.")) ||
       // "table.pivot" setting has been implicitly set to true

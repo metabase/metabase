@@ -9,6 +9,7 @@ import Select from "metabase/components/Select";
 
 import Question from "metabase-lib/lib/Question";
 import MetabaseSettings from "metabase/lib/settings";
+import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { getTargetsWithSourceFilters } from "metabase/lib/click-behavior";
 import { GTAPApi } from "metabase/services";
 
@@ -28,7 +29,7 @@ import { getParameters } from "metabase/dashboard/selectors";
       getIn(clickBehavior, ["parameterMapping", id, "source"]) != null,
   );
   const sourceOptions = {
-    column: dashcard.card.result_metadata,
+    column: dashcard.card.result_metadata.filter(isMappableColumn),
     parameter: parameters,
   };
   return { setTargets, unsetTargets, sourceOptions };
@@ -299,6 +300,11 @@ export function withUserAttributes(ComposedComponent) {
       );
     }
   };
+}
+
+export function isMappableColumn(column) {
+  // Pivot tables have a column in the result set that shouldn't be displayed.
+  return !isPivotGroupColumn(column);
 }
 
 export function clickTargetObjectType(object) {

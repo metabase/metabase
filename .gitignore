@@ -74,3 +74,5 @@ xcshareddata
 xcuserdata
 dev/src/dev/nocommit/
 *~
+
+**/cypress_sample_dataset.json

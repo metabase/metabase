@@ -330,10 +330,10 @@
              :created_at         (java.util.Date.)}
 
             (nil? model)
-            (log-or-die (:on-error model) (trs "Error loading dependencies: reference to an unknown entitiy {0}" model_id))
+            (log-or-die (:on-error model) (trs "Error loading dependencies: reference to an unknown entity {0}" model_id))
 
             (nil? dependent-on)
-            (log-or-die (:on-error model) (trs "Error loading dependencies: reference to an unknown entitiy {0}" dependent_on_id))))))))
+            (log-or-die (:on-error model) (trs "Error loading dependencies: reference to an unknown entity {0}" dependent_on_id))))))))
 
 (defn compatible?
   "Is dump at path `path` compatible with the currently running version of Metabase?"

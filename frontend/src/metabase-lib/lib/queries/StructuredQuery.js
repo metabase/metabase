@@ -707,6 +707,9 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns An array of MBQL @type {Breakout}s.
    */
   breakouts(): BreakoutWrapper[] {
+    if (this.query() == null) {
+      return [];
+    }
     return Q.getBreakouts(this.query()).map(
       (breakout, index) => new BreakoutWrapper(breakout, index, this),
     );

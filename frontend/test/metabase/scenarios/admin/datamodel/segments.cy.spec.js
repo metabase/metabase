@@ -1,12 +1,15 @@
+// Ported from `segments.e2e.spec.js`
 import {
   restore,
   signInAsAdmin,
   popover,
   modal,
   sidebar,
-  withSampleDataset,
 } from "__support__/cypress";
-// Ported from `segments.e2e.spec.js`
+
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > admin > datamodel > segments", () => {
   before(restore);
@@ -53,17 +56,15 @@ describe("scenarios > admin > datamodel > segments", () => {
       signInAsAdmin();
 
       // Create a segment through API
-      withSampleDataset(({ ORDERS }) => {
-        cy.request("POST", "/api/segment", {
-          name: SEGMENT_NAME,
-          description: "All orders with a total under $100.",
-          table_id: 2,
-          definition: {
-            "source-table": 2,
-            aggregation: [["count"]],
-            filter: ["<", ["field-id", ORDERS.TOTAL], 100],
-          },
-        });
+      cy.request("POST", "/api/segment", {
+        name: SEGMENT_NAME,
+        description: "All orders with a total under $100.",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          filter: ["<", ["field-id", ORDERS.TOTAL], 100],
+        },
       });
     });
 
