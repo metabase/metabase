@@ -153,8 +153,6 @@ export default class PivotTable extends Component {
       rowCount,
       columnCount,
     } = pivoted;
-    const CELL_WIDTH = 100;
-    const CELL_HEIGHT = 25;
     const topHeaderHeight =
       topIndex.length === 0
         ? CELL_HEIGHT
