@@ -370,7 +370,7 @@ function Cell({ value, isSubtotal, width = 1, height = 1 }) {
         lineHeight: `${CELL_HEIGHT * height}px`,
         borderTop: "1px solid white",
       }}
-      className={cx({ "bg-medium": isSubtotal }, "px1")}
+      className={cx({ "bg-medium text-bold": isSubtotal }, "px1")}
     >
       <Ellipsified>{value}</Ellipsified>
     </div>
