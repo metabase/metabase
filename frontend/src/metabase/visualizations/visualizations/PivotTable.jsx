@@ -381,7 +381,10 @@ function Cell({ value, isSubtotal, onClick, width = 1, height = 1 }) {
         lineHeight: `${CELL_HEIGHT * height}px`,
         borderTop: "1px solid white",
       }}
-      className={cx({ "bg-medium": isSubtotal }, "px1")}
+      className={cx(
+        { "bg-medium": isSubtotal, "cursor-pointer": onClick },
+        "px1",
+      )}
       onClick={onClick}
     >
       <Ellipsified>{value}</Ellipsified>
