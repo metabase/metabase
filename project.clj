@@ -169,7 +169,8 @@
 
   :jvm-opts
   ["-XX:+IgnoreUnrecognizedVMOptions"                                 ; ignore things not recognized for our Java version instead of refusing to start
-   "-Djava.awt.headless=true"]                                        ; prevent Java icon from randomly popping up in dock when running `lein ring server`
+   "-Djava.awt.headless=true"                                         ; prevent Java icon from randomly popping up in dock when running `lein ring server`
+   "-Dclojure.main.report=stderr"]                                    ; error to stderr not the file by default. We should not merge this
 
   :target-path "target/%s"
 
