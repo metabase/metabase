@@ -192,10 +192,24 @@
   ChronoZonedDateTime (->temporal [this] (.toInstant this))
   Temporal (->temporal [this] this))
 
+(def date-time-rf
+  "Reducing function for date times, accumulating earliest and latest values."
+  (robust-fuse {:earliest earliest
+                :latest   latest}))
+
 (deffingerprinter :type/DateTime
   ((map ->temporal)
-   (robust-fuse {:earliest earliest
-                 :latest   latest})))
+   date-time-rf))
+
+(deffingerprinter [:type/DateTime :type/UNIXTimestampSeconds]
+  ((comp (map (fn [x] (when x (* x 1000))))
+         (map ->temporal))
+   date-time-rf))
+
+(deffingerprinter [:type/DateTime :type/UNIXTimestampMicroseconds]
+  ((comp (map (fn [x] (when x (/ x 1000))))
+         (map ->temporal))
+   date-time-rf))
 
 (defn- histogram
   "Transducer that summarizes numerical data with a histogram."
