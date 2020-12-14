@@ -124,7 +124,7 @@ function createRowSectionGetter({
 }) {
   const formatValues = values =>
     values === undefined
-      ? new Array(valueFormatters.length).fill({ value: null })
+      ? Array(valueFormatters.length).fill({ value: null })
       : values.map((v, i) => ({ value: valueFormatters[i](v) }));
   const getSubtotals = (breakoutIndexes, values) =>
     formatValues(

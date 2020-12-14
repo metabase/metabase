@@ -147,6 +147,9 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:h2 :millisecond] [_ _ expr]
   (add-to-1970 expr "millisecond"))
 
+(defmethod sql.qp/unix-timestamp->honeysql [:h2 :millisecond] [_ _ expr]
+  (add-to-1970 expr "microsecond"))
+
 
 ;; H2 doesn't have date_trunc() we fake it by formatting a date to an appropriate string
 ;; and then converting back to a date.
