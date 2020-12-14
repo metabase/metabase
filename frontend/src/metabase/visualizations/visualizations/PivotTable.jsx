@@ -18,17 +18,17 @@ const partitions = [
   {
     name: "rows",
     columnFilter: isDimension,
-    title: t`Row fields`,
+    title: t`Fields to use for the table rows`,
   },
   {
     name: "columns",
     columnFilter: isDimension,
-    title: t`Column fields`,
+    title: t`Fields to use for the table columns`,
   },
   {
     name: "values",
     columnFilter: col => !isDimension(col),
-    title: t`Value fields`,
+    title: t`Fields to use for the table values`,
   },
 ];
 
