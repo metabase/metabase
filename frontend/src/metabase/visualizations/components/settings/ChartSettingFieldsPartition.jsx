@@ -134,7 +134,9 @@ class Partition extends React.Component {
 )
 class EmptyPartition extends React.Component {
   render() {
-    return this.props.connectDropTarget(<div>{t`Drag fields here`}</div>);
+    return this.props.connectDropTarget(
+      <div className="p2 text-centered bg-light rounded text-medium">{t`Drag fields here`}</div>,
+    );
   }
 }
 

@@ -4,6 +4,7 @@ import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
 import { Grid, List, ScrollSync } from "react-virtualized";
+import { Flex } from "grid-styled";
 
 import Ellipsified from "metabase/components/Ellipsified";
 import { isDimension } from "metabase/lib/schema_metadata";
@@ -192,7 +193,7 @@ export default class PivotTable extends Component {
                 }}
               >
                 {/* top left corner - displays left header columns */}
-                <div className="flex align-end border-right border-bottom border-medium">
+                <div className="flex align-end border-right border-bottom border-medium bg-light">
                   {rowIndexes.map(index => (
                     <Cell value={formatColumn(columns[index])} />
                   ))}
@@ -230,7 +231,7 @@ export default class PivotTable extends Component {
                         className="flex-column px1 pt1"
                       >
                         {rows.map((row, index) => (
-                          <div className="flex" style={{ height: CELL_HEIGHT }}>
+                          <Flex style={{ height: CELL_HEIGHT }}>
                             {row.map(({ value, span }) => (
                               <div
                                 style={{ width: CELL_WIDTH * span }}
@@ -245,7 +246,7 @@ export default class PivotTable extends Component {
                                 </Ellipsified>
                               </div>
                             ))}
-                          </div>
+                          </Flex>
                         ))}
                       </div>
                     );
@@ -264,15 +265,15 @@ export default class PivotTable extends Component {
                   rowRenderer={({ key, style, index }) => {
                     if (index === leftIndex.length) {
                       return (
-                        <div key={key} style={style} className="flex">
-                          <div className="flex flex-column">
+                        <Flex key={key} style={style}>
+                          <Flex flexDirection="column">
                             <Cell
                               value={t`Grand totals`}
                               isSubtotal
                               width={rowIndexes.length}
                             />
-                          </div>
-                        </div>
+                          </Flex>
+                        </Flex>
                       );
                     }
                     return (
@@ -286,7 +287,7 @@ export default class PivotTable extends Component {
                                     height: CELL_HEIGHT * span,
                                     width: CELL_WIDTH,
                                   }}
-                                  className="px1"
+                                  className="px1 bg-light"
                                 >
                                   <Ellipsified>
                                     <div
@@ -335,9 +336,9 @@ export default class PivotTable extends Component {
                   cellRenderer={({ key, style, rowIndex, columnIndex }) => {
                     const rows = getRowSection(columnIndex, rowIndex);
                     return (
-                      <div key={key} style={style} className="flex flex-column">
+                      <Flex flexDirection="column" key={key} style={style}>
                         {rows.map(row => (
-                          <div className="flex">
+                          <Flex>
                             {row.map(({ value, isSubtotal, clicked }) => (
                               <Cell
                                 value={value}
@@ -352,9 +353,9 @@ export default class PivotTable extends Component {
                                 }
                               />
                             ))}
-                          </div>
+                          </Flex>
                         ))}
-                      </div>
+                      </Flex>
                     );
                   }}
                   onScroll={({ scrollLeft, scrollTop }) =>
@@ -382,7 +383,7 @@ function Cell({ value, isSubtotal, onClick, width = 1, height = 1 }) {
         borderTop: "1px solid white",
       }}
       className={cx(
-        { "bg-medium": isSubtotal, "cursor-pointer": onClick },
+        { "bg-medium text-bold": isSubtotal, "cursor-pointer": onClick },
         "px1",
       )}
       onClick={onClick}
