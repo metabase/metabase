@@ -838,34 +838,41 @@ export const updateQuestion = (
     // We have special logic when going to, coming from, or updating a pivot table.
     const isPivot = newQuestion.display() === "pivot";
     const wasPivot = oldQuestion.display() === "pivot";
+    const queryHasBreakouts =
+      isPivot &&
+      newQuestion.isStructured() &&
+      newQuestion.query().breakouts().length > 0;
 
-    if (isPivot && !wasPivot) {
-      // compute the pivot setting now so we can query the appropriate data
-      const series = assocIn(
-        getRawSeries(getState()),
-        [0, "card", "display"],
-        "pivot",
-      );
-      const key = "pivot_table.column_split";
-      const setting = getQuestionWithDefaultVisualizationSettings(
-        newQuestion,
-        series,
-      ).setting(key);
-      newQuestion = newQuestion.updateSettings({ [key]: setting });
-    }
+    // we can only pivot queries with breakouts
+    if (queryHasBreakouts) {
+      if (isPivot && !wasPivot) {
+        // compute the pivot setting now so we can query the appropriate data
+        const series = assocIn(
+          getRawSeries(getState()),
+          [0, "card", "display"],
+          "pivot",
+        );
+        const key = "pivot_table.column_split";
+        const setting = getQuestionWithDefaultVisualizationSettings(
+          newQuestion,
+          series,
+        ).setting(key);
+        newQuestion = newQuestion.updateSettings({ [key]: setting });
+      }
 
-    if (
-      // switching to pivot
-      (isPivot && !wasPivot) ||
-      // switching away from pivot
-      (!isPivot && wasPivot) ||
-      // updating the pivot rows/cols
-      !_.isEqual(
-        newQuestion.setting("pivot_table.column_split"),
-        oldQuestion.setting("pivot_table.column_split"),
-      )
-    ) {
-      run = true; // force a run when switching to/from pivot or updating it's setting
+      if (
+        // switching to pivot
+        (isPivot && !wasPivot) ||
+        // switching away from pivot
+        (!isPivot && wasPivot) ||
+        // updating the pivot rows/cols
+        !_.isEqual(
+          newQuestion.setting("pivot_table.column_split"),
+          oldQuestion.setting("pivot_table.column_split"),
+        )
+      ) {
+        run = true; // force a run when switching to/from pivot or updating it's setting
+      }
     }
     // </PIVOT LOGIC>
 
