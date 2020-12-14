@@ -202,53 +202,54 @@ describe("scenarios > dashboard > chained filter", () => {
     });
   }
 
-  context("reproduces metabase#13868", () => {
-    it.only("can use a chained filter with embedded SQL questions", () => {
-      createDashboardWithQuestion({}, dashboardId => {
-        // Enable embedding for this dashboard with both the city and state filters enabled
-        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-          embedding_params: {
-            city: "enabled",
-            state: "enabled",
-          },
-          enable_embedding: true,
-        });
-        cy.visit(`/dashboard/${dashboardId}`);
+  it.only("can use a chained filter with embedded SQL questions (metabase#13868)", () => {
+    createDashboardWithQuestion({}, dashboardId => {
+      // Enable embedding for this dashboard with both the city and state filters enabled
+      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        embedding_params: {
+          city: "enabled",
+          state: "enabled",
+        },
+        enable_embedding: true,
       });
-      // First make sure normal filtering works - we reuse the chained filter test above
-      // Select Alaska as a state. We should see Anchorage as a option but not Anacoco
-      cy.findByText("State").click();
-      popover().within(() => {
-        cy.findByText("AK").click();
-        cy.findByText("Add filter").click();
-      });
-      cy.findByText("City").click();
-      popover().within(() => {
-        cy.findByPlaceholderText("Search by City").type("An");
-        cy.findByText("Anacoco").should("not.exist");
-        cy.findByText("Anchorage").click();
-        cy.findByText("Add filter").click();
-      });
-      cy.get(".y-label").contains("Count");
+      cy.visit(`/dashboard/${dashboardId}`);
+    });
 
-      // Then we make sure it works in pseudo-embedded mode.
-      cy.visit(`/embed/dashboard/${DASHBOARD_JWT_TOKEN}`);
-      cy.findByText("State").click();
-      popover().within(() => {
-        cy.findByText("AK").click();
-        cy.findByText("Add filter").click();
-      });
-      cy.findByText("City").click();
-      popover().within(() => {
-        cy.findByPlaceholderText("Search by City").type("An");
-        cy.findByText("Anacoco").should("not.exist");
-        cy.findByText("Anchorage").click();
-        cy.findByText("Add filter").click();
+    // First make sure normal filtering works - we reuse the chained filter test above.
+    // Select Alaska as a state. We should see Anchorage as a option but not Anacoco.
+    // Once Anchorage is selected, the chart should display.
+    cy.findByText("State").click();
+    popover().within(() => {
+      cy.findByText("AK").click();
+      cy.findByText("Add filter").click();
+    });
+    cy.findByText("City").click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Search by City").type("An");
+      cy.findByText("Anacoco").should("not.exist");
+      cy.findByText("Anchorage").click();
+      cy.findByText("Add filter").click();
+    });
+    cy.get(".y-label").contains("Count");
 
-        // cy.get(".y-label").contains("Count");
-        // cy.findByText("There was a problem").should("not.exist");
-        cy.get(".Icon-warning");
-      });
+    // Then we make sure it works in pseudo-embedded mode.
+    cy.visit(`/embed/dashboard/${DASHBOARD_JWT_TOKEN}`);
+    cy.findByText("State").click();
+    popover().within(() => {
+      cy.findByText("AK").click();
+      cy.findByText("Add filter").click();
+    });
+    cy.findByText("City").click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Search by City").type("An");
+      cy.findByText("Anacoco").should("not.exist");
+      cy.findByText("Anchorage").click();
+      cy.findByText("Add filter").click();
+
+      cy.get("y-label").contains("Count");
+      cy.findByText("There was a problem displaying this chart.").should(
+        "not.exist",
+      );
     });
   });
 });
