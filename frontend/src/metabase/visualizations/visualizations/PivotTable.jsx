@@ -339,7 +339,7 @@ export default class PivotTable extends Component {
                       <Flex flexDirection="column" key={key} style={style}>
                         {rows.map(row => (
                           <Flex>
-                            {row.map(({ value, isSubtotal }) => (
+                            {row.map(({ value, isSubtotal, clicked }) => (
                               <Cell
                                 value={value}
                                 isSubtotal={isSubtotal}
