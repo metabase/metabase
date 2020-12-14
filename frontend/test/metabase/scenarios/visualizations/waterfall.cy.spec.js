@@ -1,4 +1,8 @@
-import { signInAsNormalUser, restore } from "__support__/cypress";
+import {
+  openOrdersTable,
+  signInAsNormalUser,
+  restore,
+} from "__support__/cypress";
 
 describe("scenarios > visualizations > waterfall", () => {
   beforeEach(() => {
@@ -58,16 +62,12 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should work with time-series data", () => {
-    cy.visit("/");
-    cy.findByText("Ask a question").click();
-    cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset").click();
-    cy.findByText("Orders").click();
-    cy.findByText("Pick the metric you want to see").click();
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Summarize").click();
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
-    cy.findByText("Add filters to narrow your answer").click();
+    cy.findByText("Filter").click();
     cy.findByText("Created At").click();
     cy.get("input[placeholder='30']")
       .clear()
@@ -76,7 +76,6 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Days").click();
     cy.findByText("Months").click();
     cy.findByText("Add filter").click();
-
     cy.findByText("Visualize").click();
     cy.contains("Visualization").click();
     cy.get(".Icon-waterfall").click();
@@ -93,15 +92,12 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should hide the Total label if there is no space", () => {
-    cy.visit("/");
-    cy.findByText("Ask a question").click();
-    cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset").click();
-    cy.findByText("Orders").click();
-    cy.findByText("Pick the metric you want to see").click();
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Summarize").click();
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
+
     cy.findByText("Visualize").click();
     cy.contains("Visualization").click();
     cy.get(".Icon-waterfall").click();
