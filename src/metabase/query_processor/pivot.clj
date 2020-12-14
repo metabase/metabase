@@ -15,16 +15,23 @@
   [breakouts]
   (powerset breakouts))
 
+(defn add-grouping-field
+  "Add the grouping field and expression to the query"
+  [query breakout]
+  (-> query
+      (assoc-in [:query :breakout] breakout)
+      ;;TODO: `pivot-grouping` is not "magic" enough to mark it as an internal thing
+      (update-in [:query :fields]
+                 #(conj % [:expression "pivot-grouping"]))
+      ;;TODO: replace this value with a bitmask or something to indicate the source better
+      (update-in [:query :expressions]
+                 #(assoc % "pivot-grouping" [:ltrim (json/generate-string breakout)]))))
+
 (defn generate-queries
   "Generate the additional queries to perform a generic pivot table"
   [request]
   (let [query     (:query request)
         breakouts (generate-breakouts (:breakout query))]
     (map (fn [breakout]
-           (-> request
-               (assoc-in [:query :breakout] breakout)
-               ;;TODO: `pivot-grouping` is not "magic" enough to mark it as an internal thing
-               (assoc-in [:query :fields] [[:expression "pivot-grouping"]])
-               ;;TODO: replace this value with a bitmask or something to indicate the source better
-               (assoc-in [:query :expressions] {"pivot-grouping" [:ltrim (json/generate-string breakout)]})))
+           (add-grouping-field request breakout))
          breakouts)))
