@@ -1,5 +1,3 @@
-import { getIn } from "icepick";
-
 import { pivot, multiLevelPivot } from "metabase/lib/data_grid";
 
 import { TYPE } from "metabase/lib/types";
