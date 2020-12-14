@@ -186,29 +186,28 @@
 (extend-protocol ITemporalCoerceable
   nil      (->temporal [_]    nil)
   String   (->temporal [this] (->temporal (u.date/parse this)))
-  Long     (->temporal [this] (->temporal (t/instant this)))
+  Long     (->temporal [this] (->temporal (t/instant this))) ;; expects millis
   Integer  (->temporal [this] (->temporal (t/instant this)))
   ChronoLocalDateTime (->temporal [this] (.toInstant this (ZoneOffset/UTC)))
   ChronoZonedDateTime (->temporal [this] (.toInstant this))
   Temporal (->temporal [this] this))
 
 (def date-time-rf
-  "Reducing function for date times, accumulating earliest and latest values."
-  (robust-fuse {:earliest earliest
-                :latest   latest}))
+  "Reducing function for date times, coercing to temporal using `ITemporalCoerceable` and accumulating earliest and
+  latest values."
+  ((map ->temporal)
+   (robust-fuse {:earliest earliest
+                 :latest   latest})))
 
 (deffingerprinter :type/DateTime
-  ((map ->temporal)
-   date-time-rf))
+  date-time-rf)
 
 (deffingerprinter [:type/DateTime :type/UNIXTimestampSeconds]
-  ((comp (map (fn [x] (when x (* x 1000))))
-         (map ->temporal))
+  ((map (fn [x] (when x (* x 1000))))
    date-time-rf))
 
 (deffingerprinter [:type/DateTime :type/UNIXTimestampMicroseconds]
-  ((comp (map (fn [x] (when x (/ x 1000))))
-         (map ->temporal))
+  ((map (fn [x] (when x (/ x 1000))))
    date-time-rf))
 
 (defn- histogram
