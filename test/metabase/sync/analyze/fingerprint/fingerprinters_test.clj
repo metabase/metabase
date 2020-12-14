@@ -80,7 +80,9 @@
                                        [:type :type/DateTime]))
                   :type/UNIXTimestampSeconds      [      1593599400 nil]
                   :type/UNIXTimestampMilliseconds [   1593599400000 nil]
-                  :type/UNIXTimestampMicroseconds [1593599400000000 nil])))))))))
+                  :type/UNIXTimestampMicroseconds [1593599400000000 nil]
+                  ;; check that division with a residue correctly truncates in milliseconds
+                  :type/UNIXTimestampMicroseconds [1593599400000002 nil])))))))))
 
 (deftest disambiguate-test
   (testing "We should correctly disambiguate multiple competing multimethods (DateTime and FK in this case)"

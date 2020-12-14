@@ -207,7 +207,7 @@
    date-time-rf))
 
 (deffingerprinter [:type/DateTime :type/UNIXTimestampMicroseconds]
-  ((map (fn [x] (when x (/ x 1000))))
+  ((map (fn [x] (when x (long (/ x 1000)))))
    date-time-rf))
 
 (defn- histogram
