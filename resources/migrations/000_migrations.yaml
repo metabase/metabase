@@ -7781,3 +7781,25 @@ databaseChangeLog:
                   initiallyDeferred: false
                   onDelete: CASCADE
             tableName: pulse_card
+
+  - changeSet:
+      id: 277
+      author: tsmacdonald
+      comment: Added 0.38.0 - Dashboard subscriptions
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse_card
+            constraintName: fk_pulse_card_ref_pulse_card_id
+
+  - changeSet:
+      id: 278
+      author: tsmacdonald
+      comment: Added 0.38.0 - Dashboard subscrptions
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_card
+            baseColumnNames: dashboard_card_id
+            referencedTableName: report_dashboardcard
+            referencedColumnNames: id
+            constraintName: fk_pulse_card_ref_pulse_card_id
+            onDelete: CASCADE

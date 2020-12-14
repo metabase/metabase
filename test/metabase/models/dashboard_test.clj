@@ -14,6 +14,8 @@
              [database :refer [Database]]
              [interface :as mi]
              [permissions :as perms]
+             [pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]
              [table :refer [Table]]
              [user :as user]]
             [metabase.test
@@ -172,6 +174,22 @@
         (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
           (is (= nil
                  (:public_uuid dashboard))))))))
+
+(deftest post-update-test
+  (tt/with-temp* [Dashboard           [{dashboard-id :id} {:name "Lucky the Pigeon's Lucky Stuff"}]
+                  Card                [{card-id :id}]
+                  Pulse               [{pulse-id :id}]
+                  DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                  PulseCard           [{pulse-card-id :id} {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]]
+    (testing "Pulse name updates"
+      (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves")
+      (is (= "Lucky's Close Shaves"
+             (db/select-one-field :name Pulse :id pulse-id))))
+    (testing "PulseCard syncing"
+      (tt/with-temp Card [{new-card-id :id}]
+        (add-dashcard! dashboard-id new-card-id)
+        (db/update! Dashboard dashboard-id :name "Lucky's Close Shaves")
+        (is (not (nil? (db/select-one PulseCard :card_id new-card-id))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
