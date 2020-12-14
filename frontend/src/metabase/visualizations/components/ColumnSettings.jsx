@@ -25,7 +25,6 @@ type Props = {
   whitelist?: Set<SettingId>,
   blacklist?: Set<SettingId>,
   inheritedSettings?: Settings,
-  noReset?: boolean,
 };
 
 const ColumnSettings = ({
@@ -35,7 +34,6 @@ const ColumnSettings = ({
   whitelist,
   blacklist,
   inheritedSettings = {},
-  noReset = false,
 }: Props) => {
   const storedSettings = value || {};
 
@@ -82,7 +80,6 @@ const ColumnSettings = ({
             hidden={false}
             unset={storedSettings[widget.id] === undefined}
             noPadding
-            noReset={noReset || widget.noReset}
           />
         ))
       ) : (
