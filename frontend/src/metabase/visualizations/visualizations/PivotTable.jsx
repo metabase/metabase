@@ -193,7 +193,7 @@ export default class PivotTable extends Component {
                 }}
               >
                 {/* top left corner - displays left header columns */}
-                <div className="flex align-end border-right border-bottom border-medium">
+                <div className="flex align-end border-right border-bottom border-medium bg-light">
                   {rowIndexes.map(index => (
                     <Cell value={formatColumn(columns[index])} />
                   ))}
@@ -287,7 +287,7 @@ export default class PivotTable extends Component {
                                     height: CELL_HEIGHT * span,
                                     width: CELL_WIDTH,
                                   }}
-                                  className="px1"
+                                  className="px1 bg-light"
                                 >
                                   <Ellipsified>
                                     <div
