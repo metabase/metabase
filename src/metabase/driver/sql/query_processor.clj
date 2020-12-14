@@ -26,8 +26,7 @@
              [wrap-value-literals :as value-literal]]
             [metabase.util
              [honeysql-extensions :as hx]
-             [i18n :refer [deferred-tru tru]]
-             [schema :as su]]
+             [i18n :refer [deferred-tru tru]]]
             [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
