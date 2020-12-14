@@ -340,7 +340,18 @@ export default class PivotTable extends Component {
                         {rows.map(row => (
                           <Flex>
                             {row.map(({ value, isSubtotal }) => (
-                              <Cell value={value} isSubtotal={isSubtotal} />
+                              <Cell
+                                value={value}
+                                isSubtotal={isSubtotal}
+                                onClick={
+                                  clicked &&
+                                  (() =>
+                                    this.props.onVisualizationClick({
+                                      ...clicked,
+                                      settings: this.props.settings,
+                                    }))
+                                }
+                              />
                             ))}
                           </Flex>
                         ))}
@@ -362,7 +373,7 @@ export default class PivotTable extends Component {
   }
 }
 
-function Cell({ value, isSubtotal, width = 1, height = 1 }) {
+function Cell({ value, isSubtotal, onClick, width = 1, height = 1 }) {
   return (
     <div
       style={{
@@ -371,7 +382,11 @@ function Cell({ value, isSubtotal, width = 1, height = 1 }) {
         lineHeight: `${CELL_HEIGHT * height}px`,
         borderTop: "1px solid white",
       }}
-      className={cx({ "bg-medium text-bold": isSubtotal }, "px1")}
+      className={cx(
+        { "bg-medium text-bold": isSubtotal, "cursor-pointer": onClick },
+        "px1",
+      )}
+      onClick={onClick}
     >
       <Ellipsified>{value}</Ellipsified>
     </div>
