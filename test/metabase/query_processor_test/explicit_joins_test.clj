@@ -323,35 +323,28 @@
     (testing "Can we join on a Field literal for a source query?"
       ;; Also: if you join against an *explicit* source query, do all columns for both queries come back? (Only applies
       ;; if you include `:source-metadata`)
-      (is (= {:rows
-              [["2013-01-01T00:00:00Z"  8 "2013-01-01T00:00:00Z"  8]
-               ["2013-02-01T00:00:00Z" 11 "2013-02-01T00:00:00Z" 11]
-               ["2013-03-01T00:00:00Z" 21 "2013-03-01T00:00:00Z" 21]
-               ["2013-04-01T00:00:00Z" 26 "2013-04-01T00:00:00Z" 26]
-               ["2013-05-01T00:00:00Z" 23 "2013-05-01T00:00:00Z" 23]
-               ["2013-06-01T00:00:00Z" 26 "2013-06-01T00:00:00Z" 26]
-               ["2013-07-01T00:00:00Z" 20 "2013-07-01T00:00:00Z" 20]
-               ["2013-08-01T00:00:00Z" 22 "2013-08-01T00:00:00Z" 22]
-               ["2013-09-01T00:00:00Z" 13 "2013-09-01T00:00:00Z" 13]
-               ["2013-10-01T00:00:00Z" 26 "2013-10-01T00:00:00Z" 26]]
-              :columns [(data/format-name "date") "count" (data/format-name "date_2") "count_2"]}
+      (is (= {:rows [[1 3 46 3] [2 9 40 9] [4 7 5 7]]
+              :columns [(data/format-name "venue_id") "count" (data/format-name "category_id") "count_2"]}
              (mt/format-rows-by [identity int identity int]
                (qp.test/rows+column-names
                  (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                                    (mt/mbql-query checkins
+                                                    (mt/mbql-query venues
                                                       {:aggregation [[:count]]
-                                                       :breakout    [!month.date]}))]
+                                                       :breakout    [$category_id]
+                                                       }))]
                    (mt/run-mbql-query checkins
                      {:source-query {:source-table $$checkins
                                      :aggregation  [[:count]]
-                                     :breakout     [!month.date]}
+                                     :breakout     [$venue_id]}
                       :joins
                       [{:fields       :all
-                        :alias        "checkins_2"
+                        :alias        "venues"
                         :source-table (str "card__" card-id)
-                        :condition    [:= !month.*date &checkins_2.*date]}]
-                      :order-by     [[:asc !month.*date]]
-                      :limit        10})))))))))
+                        :strategy         :inner-join
+                        :condition    [:= [:field-literal "count" :type/Number]
+                                       [:joined-field "venues" [:field-literal "count" :type/Number]]]}]
+                      :order-by     [[:asc $venue_id]]
+                      :limit        3})))))))))
 
 (deftest aggregate-join-results-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -387,22 +380,24 @@
       (tt/with-temp Card [{card-id               :id
                            {source-query :query} :dataset_query
                            source-metadata       :result_metadata} (qp.test-util/card-with-source-metadata-for-query
-                                                                    (mt/mbql-query checkins
+                                                                    (mt/mbql-query venues
                                                                       {:aggregation [[:count]]
-                                                                       :breakout    [!month.date]}))]
-        (is (= {:rows    [["2013-01-01T00:00:00Z"  8 "2013-01-01T00:00:00Z"  8]
-                          ["2013-02-01T00:00:00Z" 11 "2013-02-01T00:00:00Z" 11]
-                          ["2013-03-01T00:00:00Z" 21 "2013-03-01T00:00:00Z" 21]]
-                :columns [(data/format-name "date") "count" (data/format-name "date_2") "count_2"]}
+                                                                       :breakout    [$category_id]}))]
+        (is (= {:rows    [[1 3 46 3] [2 9 40 9] [4 7 5 7]]
+                :columns [(data/format-name "venue_id") "count" (data/format-name "category_id") "count_2"]}
                (qp.test/rows+column-names
                  (mt/format-rows-by [identity int identity int]
                    (mt/run-mbql-query checkins
-                     {:source-query source-query
+                     {:source-query {:source-table $$checkins
+                                     :aggregation  [[:count]]
+                                     :breakout     [$venue_id]}
                       :joins        [{:source-table (str "card__" card-id)
-                                      :alias        "checkins_by_month"
+                                      :alias        "venues"
                                       :fields       :all
-                                      :condition    [:= *checkins.date &checkins_by_month.*checkins.date]}]
-                      :order-by     [[:asc *checkins.date]]
+                                      :strategy     :inner-join
+                                      :condition    [:= [:field-literal "count" :type/Number]
+                                                     [:joined-field "venues" [:field-literal "count" :type/Number]]]}]
+                      :order-by     [[:asc $venue_id]]
                       :limit        3})))))))))
 
 (deftest joined-field-in-time-interval-test

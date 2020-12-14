@@ -614,7 +614,7 @@
     (assert (seq dataset-id))
     (binding [sql.qp/*query* (assoc outer-query :dataset-id dataset-id)]
       (let [[sql & params] (->> outer-query
-                                (sql.qp/build-honeysql-form driver)
+                                (sql.qp/mbql->honeysql driver)
                                 (sql.qp/format-honeysql driver))]
         {:query      sql
          :params     params

@@ -130,10 +130,10 @@
        (record! metadata)
        (rf (cond-> result
              (map? result)
-             (update :data assoc
+             (update :data             assoc
                      :results_metadata {:checksum (metadata-checksum metadata)
                                         :columns  metadata}
-                     :insights insights)))))))
+                     :insights         insights)))))))
 
 (defn record-and-return-metadata!
   "Middleware that records metadata about the columns returned when running the query."
