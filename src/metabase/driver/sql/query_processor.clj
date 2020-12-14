@@ -277,11 +277,17 @@
   [_ identifier]
   identifier)
 
+(def ^:dynamic ^:private *joined-field?*
+  "Are we inside a joined field?"
+  false)
+
 (defn- unambiguous-field-alias
   [driver field-id]
   (let [alias  (field->alias driver (qp.store/field field-id))
         prefix (-> *query* :field-metadata (get field-id) :source_alias)]
-    (if (and prefix alias (not= prefix *table-alias*))
+    (if (and prefix alias
+             (not= prefix *table-alias*)
+             (not *joined-field?*))
       (str prefix  "__" alias)
       alias)))
 
@@ -306,7 +312,8 @@
 
 (defmethod ->honeysql [:sql :joined-field]
   [driver [_ alias field]]
-  (binding [*table-alias* alias]
+  (binding [*table-alias*   alias
+            *joined-field?* true]
     (->honeysql driver field)))
 
 ;; (p.types/defrecord+ AtTimezone [expr timezone-id]

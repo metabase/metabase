@@ -58,12 +58,15 @@
                       :limit        5})))))))))
 
 
-(defn- breakout-results [& {:keys [has-source-metadata?], :or {has-source-metadata? true}}]
+(defn- breakout-results [& {:keys [has-source-metadata? native-source?],
+                            :or {has-source-metadata? true native-source? false}}]
   {:rows [[1 22]
           [2 59]
           [3 13]
           [4  6]]
    :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
+            native-source?             (-> (assoc :field_ref [:field-literal "PRICE" :type/Integer])
+                                           (dissoc :description :parent_id :visibility_type))
             (not has-source-metadata?) (dissoc :id :special_type :settings :fingerprint :table_id))
           (qp.test/aggregate-col :count)]})
 
@@ -205,13 +208,13 @@
                     (mt/$ids venues
                       {:aggregation [:count]
                        :breakout    [*price]})))))))]
-    (is (= (breakout-results :has-source-metadata? false)
+    (is (= (breakout-results :has-source-metadata? false :native-source? true)
            (run-native-query "SELECT * FROM VENUES"))
         "make sure `card__id`-style queries work with native source queries as well")
-    (is (= (breakout-results :has-source-metadata? false)
+    (is (= (breakout-results :has-source-metadata? false :native-source? true)
            (run-native-query "SELECT * FROM VENUES -- small comment here"))
         "Ensure trailing comments are trimmed and don't cause a wrapping SQL query to fail")
-    (is (= (breakout-results :has-source-metadata? false)
+    (is (= (breakout-results :has-source-metadata? false :native-source? true)
            (run-native-query "SELECT * FROM VENUES -- small comment here\n"))
         "Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail")))
 

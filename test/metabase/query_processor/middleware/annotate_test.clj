@@ -437,7 +437,7 @@
          (infered-col-type  [:coalesce "foo" "bar"])))
   (is (= {:base_type    :type/Text
           :special_type :type/Name}
-         (infered-col-type  [:coalesce [:field-id [:field-id (mt/id :venues :name)]] "bar"]))))
+         (infered-col-type  [:coalesce [:field-id (mt/id :venues :name)] "bar"]))))
 
 (deftest test-case
   (is (= {:base_type    :type/Text
@@ -448,7 +448,7 @@
          (infered-col-type [:case [[[:> [:field-id (mt/id :venues :price)] 2]
                                     [:+ [:field-id (mt/id :venues :price)] 1]]]])))
   (testing "Make sure we skip nils when infering case return type"
-    (is (= {:base_type    :type/Number
+    (is (= {:base_type    :type/Float
             :special_type :type/Number}
            (infered-col-type [:case [[[:< [:field-id (mt/id :venues :price)] 10] [:value nil {:base_type :type/Number}]]
                                      [[:> [:field-id (mt/id :venues :price)] 2] 10]]]))))
