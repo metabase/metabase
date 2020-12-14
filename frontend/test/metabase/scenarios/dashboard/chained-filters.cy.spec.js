@@ -3,6 +3,13 @@ import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { PEOPLE } = SAMPLE_DATASET;
 
+// This token (simliar to what's done in parameters-embedded.cy.spec.js) just encodes the dashboardId=2 and dashboard parameters
+// See this link for details: https://jwt.io/#debugger-io?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjJ9LCJwYXJhbXMiOnt9LCJpYXQiOjE2MDc5NzUwMTMsIl9lbWJlZGRpbmdfcGFyYW1zIjp7InN0YXRlIjoiZW5hYmxlZCIsImNpdHkiOiJlbmFibGVkIn19.nqy_ibysLb6QB9o3loG5SNgOoE5HdexuUjCjA_KS1kM
+const DASHBOARD_JWT_TOKEN =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjJ9LCJwYXJhbXMiOnt9LCJpYXQiOjE2MDc5NzUwMTMsIl9lbWJlZGRpbmdfcGFyYW1zIjp7InN0YXRlIjoiZW5hYmxlZCIsImNpdHkiOiJlbmFibGVkIn19.nqy_ibysLb6QB9o3loG5SNgOoE5HdexuUjCjA_KS1kM";
+
+// TODO: Refactor `createDashboardWithQuestion`, `createQuestion`, and `createDashboard` into helpers at some point.
+// They're also used in `dashboard-drill.cy.spec.js` to help with question setup.
 function createDashboardWithQuestion(
   { dashboardName = "dashboard" } = {},
   callback,
@@ -12,6 +19,7 @@ function createDashboardWithQuestion(
   });
 }
 
+// Create a native SQL question with two parameters for city and state.
 function createQuestion(options, callback) {
   cy.request("POST", "/api/card", {
     name: "Count of People by State (SQL)",
@@ -48,6 +56,9 @@ function createQuestion(options, callback) {
   });
 }
 
+// Create a dashboard with the city filter dependent on the state filter.
+// Once created, add the provided questionId to the dashboard and then
+// map the city/state filters to the template-tags in the native query.
 function createDashboard({ dashboardName, questionId }, callback) {
   cy.request("POST", "/api/dashboard", {
     name: dashboardName,
@@ -80,8 +91,8 @@ function createDashboard({ dashboardName, questionId }, callback) {
             card_id: questionId,
             row: 0,
             col: 0,
-            sizeX: 6,
-            sizeY: 6,
+            sizeX: 10,
+            sizeY: 10,
             parameter_mappings: [
               {
                 parameter_id: "e8f79be9",
@@ -194,7 +205,7 @@ describe("scenarios > dashboard > chained filter", () => {
   context("reproduces metabase#13868", () => {
     it.only("can use a chained filter with embedded SQL questions", () => {
       createDashboardWithQuestion({}, dashboardId => {
-        cy.visit(`/dashboard/${dashboardId}`);
+        // Enable embedding for this dashboard with both the city and state filters enabled
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           embedding_params: {
             city: "enabled",
@@ -202,6 +213,7 @@ describe("scenarios > dashboard > chained filter", () => {
           },
           enable_embedding: true,
         });
+        cy.visit(`/dashboard/${dashboardId}`);
       });
       // First make sure normal filtering works - we reuse the chained filter test above
       // Select Alaska as a state. We should see Anchorage as a option but not Anacoco
@@ -217,12 +229,10 @@ describe("scenarios > dashboard > chained filter", () => {
         cy.findByText("Anchorage").click();
         cy.findByText("Add filter").click();
       });
-      cy.contains("Count");
+      cy.get(".y-label").contains("Count");
 
-      // Then we make sure it works in embedded mode
-      cy.visit(
-        "/embed/dashboard/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjJ9LCJwYXJhbXMiOnt9LCJpYXQiOjE2MDc5NzUwMTMsIl9lbWJlZGRpbmdfcGFyYW1zIjp7InN0YXRlIjoiZW5hYmxlZCIsImNpdHkiOiJlbmFibGVkIn19.nqy_ibysLb6QB9o3loG5SNgOoE5HdexuUjCjA_KS1kM",
-      );
+      // Then we make sure it works in pseudo-embedded mode.
+      cy.visit(`/embed/dashboard/${DASHBOARD_JWT_TOKEN}`);
       cy.findByText("State").click();
       popover().within(() => {
         cy.findByText("AK").click();
@@ -235,8 +245,9 @@ describe("scenarios > dashboard > chained filter", () => {
         cy.findByText("Anchorage").click();
         cy.findByText("Add filter").click();
 
-        cy.contains("Count");
-        cy.findByText("There was a problem").should("not.exist");
+        // cy.get(".y-label").contains("Count");
+        // cy.findByText("There was a problem").should("not.exist");
+        cy.get(".Icon-warning");
       });
     });
   });
