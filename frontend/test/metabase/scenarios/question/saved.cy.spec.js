@@ -6,8 +6,10 @@ import {
 } from "__support__/cypress";
 
 describe("scenarios > question > saved", () => {
-  before(restore);
-  beforeEach(signInAsNormalUser);
+  beforeEach(() => {
+    restore();
+    signInAsNormalUser();
+  });
 
   it("view and filter saved question", () => {
     cy.visit("/question/1");
