@@ -637,7 +637,7 @@
     (keyword (snake-key (name k)))
     (str/replace k #"-" "_")))
 
-(defn recursive-map-keys
+(defn recursively-replace-map-keys
   "Recursively replace the keys in a map with the value of `(f key)`."
   [f m]
   (walk/postwalk
@@ -647,9 +647,9 @@
    m))
 
 (defn snake-keys
-  "Convert the keys in a map from `lisp-case` to `snake-case`."
-  [m]
-  (recursive-map-keys snake-key m))
+  "Recursively convert all map keys in `x` from `lisp-case` to `snake-case`."
+  [x]
+  (recursively-replace-map-keys snake-key x))
 
 (def ^:private do-with-us-locale-lock (Object.))
 

@@ -60,58 +60,52 @@
    :details])
 
 (def ^:private DatabaseInstanceWithRequiredStoreKeys
-  (s/both
-   (class Database)
-   {:id      su/IntGreaterThanZero
-    :engine  s/Keyword
-    :name    su/NonBlankString
-    :details su/Map
-    s/Any    s/Any}))
+  {:id      su/IntGreaterThanZero
+   :engine  s/Keyword
+   :name    su/NonBlankString
+   :details su/Map
+   s/Any    s/Any})
 
 (def ^:private table-columns-to-fetch
   "Columns you should fetch for any Table you want to stash in the Store."
   [:id
    :name
-   :display_name
+   :display-name
    :schema])
 
 (def ^:private TableInstanceWithRequiredStoreKeys
-  (s/both
-   (class Table)
-   {:schema (s/maybe s/Str)
-    :name   su/NonBlankString
-    s/Any   s/Any}))
+  {:schema (s/maybe s/Str)
+   :name   su/NonBlankString
+   s/Any   s/Any})
 
 
 (def ^:private field-columns-to-fetch
   "Columns to fetch for and Field you want to stash in the Store. These get returned as part of the `:cols` metadata in
   query results. Try to keep this set pared down to just what's needed by the QP and frontend, since it has to be done
   for every MBQL query."
-  [:base_type
-   :database_type
+  [:base-type
+   :database-type
    :description
-   :display_name
+   :display-name
    :fingerprint
    :id
    :name
-   :parent_id
+   :parent-id
    :settings
-   :special_type
-   :table_id
-   :visibility_type])
+   :special-type
+   :table-id
+   :visibility-type])
 
 (def ^:private FieldInstanceWithRequiredStorekeys
-  (s/both
-   (class Field)
-   {:name          su/NonBlankString
-    :display_name  su/NonBlankString
-    :description   (s/maybe s/Str)
-    :database_type su/NonBlankString
-    :base_type     su/FieldType
-    :special_type  (s/maybe su/FieldType)
-    :fingerprint   (s/maybe su/Map)
-    :parent_id     (s/maybe su/IntGreaterThanZero)
-    s/Any          s/Any}))
+  {:name          su/NonBlankString
+   :display-name  su/NonBlankString
+   :description   (s/maybe s/Str)
+   :database-type su/NonBlankString
+   :base-type     su/FieldType
+   :special-type  (s/maybe su/FieldType)
+   :fingerprint   (s/maybe su/Map)
+   :parent-id     (s/maybe su/IntGreaterThanZero)
+   s/Any          s/Any})
 
 
 ;;; ------------------------------------------ Saving objects in the Store -------------------------------------------

@@ -39,26 +39,19 @@
   {:arglists '([e])}
   class)
 
-(defmethod api-exception-response Throwable [^Throwable e]
+(defmethod api-exception-response Throwable
+  [^Throwable e]
   (let [{:keys [status-code] :as info} (ex-data e)
 
         other-info (dissoc info :status-code :schema :type)
         message    (.getMessage e)
-        body       (cond
-                     ;; Exceptions that include a status code *and* other info are things like
-                     ;; Field validation exceptions. Return those as is
-                     (and status-code (seq other-info))
-                     (ui18n/localized-strings->strings other-info)
-
+        body       (if (and status-code (empty? other-info))
                      ;; If status code was specified but other data wasn't, it's something like a
                      ;; 404. Return message as the (plain-text) body.
-                     status-code
                      (str message)
-
-                     ;; Otherwise it's a 500. Return the full Exception for debugging purposes
-                     :else
+                     ;; For everything else: return a map containing all the Exception info
                      (merge
-                      other-info
+                      (ui18n/localized-strings->strings other-info)
                       (Throwable->map e)
                       {:message message
                        :type    (class e)}))]
@@ -67,12 +60,14 @@
      :headers (mw.security/security-headers)
      :body    body}))
 
-(defmethod api-exception-response SQLException [e]
+(defmethod api-exception-response SQLException
+  [e]
   (-> ((get-method api-exception-response (.getSuperclass SQLException)) e)
       (assoc-in [:body :sql-exception-chain] (str/split (with-out-str (jdbc/print-sql-exception-chain e))
                                                         #"\s*\n\s*"))))
 
-(defmethod api-exception-response EofException [e]
+(defmethod api-exception-response EofException
+  [e]
   (log/info (trs "Request canceled before finishing."))
   {:status-code 204, :body nil, :headers (mw.security/security-headers)})
 
@@ -85,7 +80,6 @@
      request
      respond
      (comp respond api-exception-response))))
-
 
 (defn catch-uncaught-exceptions
   "Middleware that catches any unexpected Exceptions that reroutes them thru `raise` where they can be handled

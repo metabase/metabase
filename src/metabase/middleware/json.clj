@@ -71,17 +71,17 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- streamed-json-response
-  "Write `response-seq` to a PipedOutputStream as JSON, returning the connected PipedInputStream"
-  [response-seq opts]
+  "Write `response-body` to a PipedOutputStream as JSON, returning the connected PipedInputStream"
+  [response-body opts]
   (rui/piped-input-stream
    (fn [^OutputStream output-stream]
      (with-open [output-writer   (OutputStreamWriter. output-stream StandardCharsets/UTF_8)
                  buffered-writer (BufferedWriter. output-writer)]
-       (json/generate-stream response-seq buffered-writer opts)))))
+       (json/generate-stream response-body buffered-writer opts)))))
 
 (defn- wrap-streamed-json-response* [opts response]
   (if-let [json-response (and (coll? (:body response))
-                              (update-in response [:body] streamed-json-response opts))]
+                              (update response :body streamed-json-response opts))]
     (if (contains? (:headers json-response) "Content-Type")
       json-response
       (rr/content-type json-response "application/json; charset=utf-8"))

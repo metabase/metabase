@@ -1,10 +1,6 @@
 (ns metabase.sync.interface
   "Schemas and constants used by the sync code."
   (:require [clj-time.core :as time]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
@@ -61,10 +57,21 @@
 ;; out from the ns declaration when running `cljr-clean-ns`. Plus as a bonus in the future we could add additional
 ;; validations to these, e.g. requiring that a Field have a base_type
 
-(def DatabaseInstance             "Schema for a valid instance of a Metabase Database." (class Database))
-(def TableInstance                "Schema for a valid instance of a Metabase Table."    (class Table))
-(def FieldInstance                "Schema for a valid instance of a Metabase Field."    (class Field))
-(def ResultColumnMetadataInstance "Schema for a valid instance of a Metabase Field."    (class {}))
+(def DatabaseInstance
+  "Schema for a valid instance of a Metabase Database."
+  {:id su/IntGreaterThanZero, s/Keyword s/Any})
+
+(def TableInstance
+  "Schema for a valid instance of a Metabase Table."
+  {:id su/IntGreaterThanZero, :db-id su/IntGreaterThanZero, s/Keyword s/Any})
+
+(def FieldInstance
+  "Schema for a valid instance of a Metabase Field."
+  {:id su/IntGreaterThanZero, :table-id su/IntGreaterThanZero, s/Keyword s/Any})
+
+(def ResultColumnMetadataInstance
+  "Schema for a valid instance of a Metabase Field."
+  {:id su/IntGreaterThanZero, s/Keyword s/Any})
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

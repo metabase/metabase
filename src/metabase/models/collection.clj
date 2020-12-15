@@ -945,6 +945,7 @@
   their Personal Collection.)"
   {:batched-hydrate :personal_collection_id}
   [users]
+  (println "HYDRATE PERSONAL COLLECTION ID")
   (when (seq users)
     ;; efficiently create a map of user ID -> personal collection ID
     (let [user-id->collection-id (db/select-field->id :personal_owner_id Collection

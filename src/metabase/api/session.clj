@@ -39,11 +39,11 @@
 
 (def ^:private CreateSessionUserInfo
   {:id         su/IntGreaterThanZero
-   :last_login s/Any
+   :last-login s/Any
    s/Keyword   s/Any})
 
 (s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
-  [_, user :- CreateSessionUserInfo]
+  [_ user :- CreateSessionUserInfo]
   (let [session-uuid (UUID/randomUUID)
         session      (or
                       (db/insert! Session
@@ -57,19 +57,11 @@
     (assoc session :id session-uuid)))
 
 (s/defmethod create-session! :password :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
-  [session-type, user :- CreateSessionUserInfo]
+  [session-type user :- CreateSessionUserInfo]
   ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
   (when-not (public-settings/enable-password-login)
     (throw (UnsupportedOperationException. (str (tru "Password login is disabled for this instance.")))))
   ((get-method create-session! :sso) session-type user))
-
-
-(s/defmethod create-session! :password
-  [session-type, user :- CreateSessionUserInfo]
-  ;; this is actually the same as `create-session!` for `:sso` for CE. Resist the urge to refactor this multimethod
-  ;; out impl is a little different in EE.
-  ((get-method create-session! :sso) session-type user))
-
 
 ;;; ## API Endpoints
 
@@ -142,7 +134,8 @@
     (f)
     (catch clojure.lang.ExceptionInfo e
       (throw (ex-info (ex-message e)
-                      (assoc (ex-data e) :status-code 400))))))
+                      (assoc (ex-data e) :status-code 400)
+                      e)))))
 
 (defmacro http-400-on-error
   "Add `{:status-code 400}` to exception data thrown by `body`."
@@ -165,7 +158,6 @@
         (throttle/with-throttling [(login-throttlers :ip-address) request-source
                                    (login-throttlers :username)   username]
           (do-login))))))
-
 
 (api/defendpoint DELETE "/"
   "Logout."

@@ -14,7 +14,9 @@
             [metabase.models
              [session :refer [Session]]
              [user :as user :refer [User]]]
-            [metabase.util.i18n :as i18n :refer [deferred-trs tru]]
+            [metabase.util
+             [i18n :as i18n :refer [deferred-trs tru]]
+             [magic-map :as magic-map]]
             [ring.util.response :as resp]
             [schema.core :as s]
             [toucan.db :as db])
@@ -220,7 +222,7 @@
           params (concat [session-id]
                          (when (seq anti-csrf-token)
                            [anti-csrf-token]))]
-      (first (jdbc/query (db/connection) (cons sql params))))))
+      (first (jdbc/query (db/connection) (cons sql params) {:row-fn magic-map/magic-map})))))
 
 (defn- merge-current-user-info
   [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale]} :headers, :as request}]9

@@ -20,6 +20,7 @@
             [metabase.util
              [date-2 :as u.date]
              [i18n :refer [trs]]
+             [magic-map :as magic-map]
              [schema :as su]]
             [ring.util.codec :as codec]
             [schema.core :as s]
@@ -251,27 +252,27 @@
 ;; The `name-for-logging` function is used all over the sync code to make sure we have easy access to consistently
 ;; formatted descriptions of various objects.
 
-(defprotocol ^:private NameForLogging
-  (name-for-logging [this]
-    "Return an appropriate string for logging an object in sync logging messages.
-     Should be something like \"postgres Database 'test-data'\""))
+(defmulti name-for-logging
+  "Return an appropriate string for logging an object in sync logging messages.
+  Should bge something like \"postgres Database 'test-data'\""
+  {:arglists '([x])}
+  magic-map/toucan-name)
 
-(extend-protocol NameForLogging
-  i/DatabaseInstance
-  (name-for-logging [{database-name :name, id :id, engine :engine,}]
-    (trs "{0} Database {1} ''{2}''" (name engine) (or id "") database-name))
+(defmethod name-for-logging "Database"
+  [{database-name :name, id :id, engine :engine,}]
+  (trs "{0} Database {1} ''{2}''" (name engine) (or id "") database-name))
 
-  i/TableInstance
-  (name-for-logging [{schema :schema, id :id, table-name :name}]
-    (trs "Table {0} ''{1}''" (or id "") (str (when (seq schema) (str schema ".")) table-name)))
+(defmethod name-for-logging "Table"
+  [{schema :schema, id :id, table-name :name}]
+  (trs "Table {0} ''{1}''" (or id "") (str (when (seq schema) (str schema ".")) table-name)))
 
-  i/FieldInstance
-  (name-for-logging [{field-name :name, id :id}]
-    (trs "Field {0} ''{1}''" (or id "") field-name))
+(defmethod name-for-logging "Field"
+  [{field-name :name, id :id}]
+  (trs "Field {0} ''{1}''" (or id "") field-name))
 
-  i/ResultColumnMetadataInstance
-  (name-for-logging [{field-name :name}]
-    (trs "Field ''{0}''" field-name)))
+(defmethod name-for-logging nil
+  [{field-name :name}]
+  (trs "Field ''{0}''" field-name))
 
 (defn calculate-hash
   "Calculate a cryptographic hash on `clj-data` and return that hash as a string"

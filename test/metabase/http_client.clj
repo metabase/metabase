@@ -108,13 +108,12 @@
   (try
     (let [response (client :post 200 "session" credentials)]
       (or (:id response)
-          (throw (ex-info "Unexpected response" {:response response}))))
+          (throw (ex-info "Unexpected response: missing :id" {:response response}))))
     (catch Throwable e
       (println "Failed to authenticate with credentials" credentials e)
       (throw (ex-info "Failed to authenticate with credentials"
                       {:credentials credentials}
                       e)))))
-
 
 ;;; client
 

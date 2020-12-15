@@ -30,6 +30,9 @@
              [no-preview-display :as no-preview-display]
              [text-fingerprint :as text-fingerprint]]
             [metabase.util :as u]
+            [metabase.util
+             [i18n :refer [trs]]
+             [magic-map :as magic-map]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -39,7 +42,7 @@
 
 (def ^:private values-that-can-be-set
   "Columns of Field that classifiers are allowed to set."
-  #{:special_type :preview_display :has_field_values :entity_type})
+  #{:special-type :preview-display :has-field-values :entity-type})
 
 (def ^:private FieldOrTableInstance (s/either i/FieldInstance i/TableInstance))
 
@@ -47,22 +50,25 @@
   "Save the updates in `updated-model` (can be either a `Field` or `Table`)."
   [original-model :- FieldOrTableInstance, updated-model :- FieldOrTableInstance]
   (assert (= (type original-model) (type updated-model)))
-  (let [[_ values-to-set] (data/diff original-model updated-model)]
+  (let [original-model    (magic-map/magic-map original-model)
+        updated-model     (magic-map/magic-map updated-model)
+        [_ values-to-set] (data/diff original-model updated-model)]
     (when (seq values-to-set)
-      (log/debug (format "Based on classification, updating these values of %s: %s"
-                         (sync-util/name-for-logging original-model)
-                         values-to-set)))
+      (log/debug (trs "Based on classification, updating these values of {0}: {1}"
+                      (sync-util/name-for-logging original-model)
+                      values-to-set)))
     ;; Check that we're not trying to set anything that we're not allowed to
     (doseq [k (keys values-to-set)]
       (when-not (contains? values-that-can-be-set k)
-        (throw (Exception. (format "Classifiers are not allowed to set the value of %s." k)))))
+        (throw (ex-info (format "Classifiers are not allowed to set the value of %s." k)
+                        {}))))
     ;; cool, now we should be ok to update the model
     (when values-to-set
       (db/update! (if (instance? (type Field) original-model)
                     Field
                     Table)
           (u/get-id original-model)
-        values-to-set)
+          values-to-set)
       true)))
 
 (def ^:private classifiers

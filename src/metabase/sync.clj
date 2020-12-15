@@ -14,6 +14,7 @@
              [interface :as i]
              [sync-metadata :as sync-metadata]
              [util :as sync-util]]
+            [metabase.util :as u]
             [schema.core :as s])
   (:import java.time.temporal.Temporal))
 
@@ -32,15 +33,22 @@
   This function is called when a Database is first added."
   {:style/indent 1}
   [database :- i/DatabaseInstance]
-  (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-    (mapv (fn [[f step-name]] (assoc (f database) :name step-name))
-          [
-           ;; First make sure Tables, Fields, and FK information is up-to-date
-           [sync-metadata/sync-db-metadata! "metadata"]
-           ;; Next, run the 'analysis' step where we do things like scan values of fields and update special types accordingly
-           [analyze/analyze-db! "analyze"]
-           ;; Finally, update cached FieldValues
-           [field-values/update-field-values! "field-values"]])))
+  (u/prog1
+    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
+      (mapv (fn [[f step-name]]
+              (let [result (f database)]
+                (when (instance? Throwable result)
+                  (throw result))
+                (assoc result :name step-name)))
+            ;; First make sure Tables, Fields, and FK information is up-to-date
+            [[sync-metadata/sync-db-metadata! "metadata"]
+             ;; Next, run the 'analysis' step where we do things like scan values of fields and update special types
+             ;; accordingly
+             [analyze/analyze-db! "analyze"]
+             ;; Finally, update cached FieldValues
+             [field-values/update-field-values! "field-values"]]))
+    (when (instance? Throwable <>)
+      (throw <>))))
 
 (s/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`."

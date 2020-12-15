@@ -226,10 +226,12 @@
   (try (s/validate schema value)
        (catch Throwable e
          (throw (ex-info (tru "Invalid field: {0}" field-name)
-                  {:status-code 400
-                   :errors      {(keyword field-name) (or (su/api-error-message schema)
-                                                          (:message (ex-data e))
-                                                          (.getMessage e))}})))))
+                         (merge
+                          (Throwable->map e)
+                          {:status-code 400
+                           :errors      {(keyword field-name) (or (su/api-error-message schema)
+                                                                  (:message (ex-data e))
+                                                                  (.getMessage e))}}))))))
 
 (defn validate-params
   "Generate a series of `validate-param` calls for each param and schema pair in PARAM->SCHEMA."

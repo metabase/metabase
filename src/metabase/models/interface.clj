@@ -10,14 +10,16 @@
             [metabase.util
              [cron :as cron-util]
              [encryption :as encryption]
-             [i18n :refer [trs tru]]]
+             [i18n :refer [trs tru]]
+             [magic-map :as magic-map]]
             [potemkin.types :as p.types]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
             [toucan.models :as models])
   (:import [java.io BufferedInputStream ByteArrayInputStream DataInputStream]
            java.sql.Blob
-           java.util.zip.GZIPInputStream))
+           java.util.zip.GZIPInputStream
+           metabase.util.magic_map.MagicMap))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |
@@ -226,6 +228,15 @@
   This method is appropriate for powering `PUT` API endpoints. Like `can-create?` this method was added YEARS after
   most of the current API endpoints were written, so it is used in very few places, and this logic is determined
   ad-hoc in the API endpoints themselves. Use this method going forward!"))
+
+(extend-protocol IObjectPermissions
+  MagicMap
+  (can-read? [m]
+    (can-read? (magic-map/->toucan-instance m)))
+  (can-write? [m]
+    (can-write? (magic-map/->toucan-instance m)))
+  (can-update? [m changes]
+    (can-update? (magic-map/->toucan-instance m) (magic-map/->toucan-instance changes))))
 
 (def IObjectPermissionsDefaults
   "Default implementations for `IObjectPermissions`."

@@ -5,6 +5,7 @@
              [jdbc :as jdbc]]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
+            [honeysql.format :as hformat]
             [metabase
              [config :as config]
              [connection-pool :as connection-pool]
@@ -16,6 +17,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.util
              [i18n :refer [trs]]
+             [magic-map :as magic-map]
              [schema :as su]]
             [ring.util.codec :as codec]
             [schema.core :as s]
@@ -252,17 +254,31 @@
   "HoneySQL quoting style to use for application DBs of the given type. Note for H2 application DBs we automatically
   uppercase all identifiers (since this is H2's default behavior) whereas in the SQL QP we stick with the case we got
   when we synced the DB."
-  [db-type]
-  (case db-type
-    :postgres :ansi
-    :h2       :h2
-    :mysql    :mysql))
+  ([]
+   (quoting-style (db-type)))
+
+  ([db-type]
+   (case db-type
+     :postgres :ansi
+     :h2       :h2
+     :mysql    :mysql)))
+
+(defn- magic-quoting-style []
+  (keyword "magic" (name (quoting-style))))
+
+(defn- create-magic-quoting-style! []
+  (let [original-quote-fn (#'hformat/quote-fns (quoting-style))
+        magic-quote-fn    (fn [s]
+                            (-> s original-quote-fn u/snake-key))]
+    (alter-var-root #'hformat/quote-fns assoc (magic-quoting-style) magic-quote-fn)))
 
 (defn- create-connection-pool!
   "Create a connection pool for the application DB and set it as the default Toucan connection. This is normally called
   once during start up; calling it a second time (e.g. from the REPL) will "
   [jdbc-spec]
-  (db/set-default-quoting-style! (quoting-style (db-type)))
+  (create-magic-quoting-style!)
+  (db/set-default-automatically-convert-dashes-and-underscores! false)
+  (db/set-default-quoting-style! (magic-quoting-style))
   ;; REPL usage only: kill the old pool if one exists
   (u/ignore-exceptions
     (when-let [^PoolBackedDataSource pool (:datasource (db/connection))]
@@ -270,7 +286,8 @@
       (.close pool)))
   (log/debug (trs "Set default db connection with connection pool..."))
   (db/set-default-db-connection! (connection-pool/connection-pool-spec jdbc-spec application-db-connection-pool-props))
-  (db/set-default-jdbc-options! {:read-columns db.jdbc-protocols/read-columns})
+  (db/set-default-jdbc-options! {:read-columns db.jdbc-protocols/read-columns
+                                 :row-fn       magic-map/magic-map})
   nil)
 
 

@@ -9,7 +9,8 @@
             [metabase.models.user :as user :refer [User]]
             [metabase.test.initialize :as initialize]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.util.schema :as su])
   (:import clojure.lang.ExceptionInfo
            metabase.models.user.UserInstance))
 
@@ -73,7 +74,7 @@
               :is_qbnewb    true
               :is_active    active)))))
 
-(s/defn fetch-user :- UserInstance
+(s/defn fetch-user :- {:id su/IntGreaterThanZero, :email su/Email, s/Keyword s/Any}
   "Fetch the User object associated with `username`. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"

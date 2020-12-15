@@ -11,19 +11,21 @@
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
 
 (def ^:private example-query
-  {:database (mt/id)
-   :type     :query
-   :query    {:source-table (mt/id :venues)
-              :fields       [[:field-id (mt/id :venues :price)]
-                             [:field-id (mt/id :venues :longitude)]
-                             [:field-id (mt/id :venues :category_id)]]}})
+  (delay
+    {:database (mt/id)
+     :type     :query
+     :query    {:source-table (mt/id :venues)
+                :fields       [[:field-id (mt/id :venues :price)]
+                               [:field-id (mt/id :venues :longitude)]
+                               [:field-id (mt/id :venues :category_id)]]}}))
 
 (def ^:private remapped-field
-  {:name                      "Product"
-   :field_id                  (mt/id :venues :category_id)
-   :human_readable_field_id   (mt/id :categories :name)
-   :field_name                "CATEGORY_ID"
-   :human_readable_field_name "NAME"})
+  (delay
+    {:name                      "Product"
+     :field_id                  (mt/id :venues :category_id)
+     :human_readable_field_id   (mt/id :categories :name)
+     :field_name                "CATEGORY_ID"
+     :human_readable_field_name "NAME"}))
 
 (defn- do-with-fake-remappings-for-field-3 [f]
   (with-redefs [add-dim-projections/fields->field-id->remapping-dimension
@@ -39,7 +41,7 @@
      (fn []
        (is (= [[[:field-id (mt/id :venues :category_id)]
                 [:fk-> [:field-id (mt/id :venues :category_id)] [:field-id (mt/id :categories :name)]]
-                remapped-field]]
+                @remapped-field]]
               (#'add-dim-projections/create-remap-col-tuples [[:field-id (mt/id :venues :price)]
                                                               [:field-id (mt/id :venues :longitude)]
                                                               [:field-id (mt/id :venues :category_id)]])))))))
@@ -48,57 +50,57 @@
   (do-with-fake-remappings-for-field-3
    (fn []
      (testing "make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]"
-       (is (= [[remapped-field]
-               (update-in example-query [:query :fields]
+       (is (= [[@remapped-field]
+               (update-in @example-query [:query :fields]
                           conj [:fk-> [:field-id (mt/id :venues :category_id)]
                                 [:field-id (mt/id :categories :name)]])]
-              (#'add-dim-projections/add-fk-remaps example-query))))
+              (#'add-dim-projections/add-fk-remaps @example-query))))
 
      (testing "make sure we don't duplicate remappings"
-       (is (= [[remapped-field]
-               (update-in example-query [:query :fields]
+       (is (= [[@remapped-field]
+               (update-in @example-query [:query :fields]
                           conj [:fk-> [:field-id (mt/id :venues :category_id)]
                                 [:field-id (mt/id :categories :name)]])]
               (#'add-dim-projections/add-fk-remaps
-               (update-in example-query [:query :fields]
+               (update-in @example-query [:query :fields]
                           conj [:fk-> [:field-id (mt/id :venues :category_id)]
                                 [:field-id (mt/id :categories :name)]])))))
 
      (testing "adding FK remaps should replace any existing order-bys for a field with order bys for the FK remapping Field"
-       (is (= [[remapped-field]
-               (-> example-query
+       (is (= [[@remapped-field]
+               (-> @example-query
                    (assoc-in [:query :order-by]
                              [[:asc [:fk-> [:field-id (mt/id :venues :category_id)]
                                      [:field-id (mt/id :categories :name)]]]])
                    (update-in [:query :fields]
                               conj [:fk-> [:field-id (mt/id :venues :category_id)]
                                     [:field-id (mt/id :categories :name)]]))]
-              (-> example-query
+              (-> @example-query
                   (assoc-in [:query :order-by] [[:asc [:field-id (mt/id :venues :category_id)]]])
                   (#'add-dim-projections/add-fk-remaps)))))
 
      (testing "adding FK remaps should replace any existing breakouts for a field with order bys for the FK remapping Field"
-       (is (= [[remapped-field]
-               (-> example-query
+       (is (= [[@remapped-field]
+               (-> @example-query
                    (assoc-in [:query :aggregation] [[:count]])
                    (assoc-in [:query :breakout]
                              [[:fk-> [:field-id (mt/id :venues :category_id)]
                                [:field-id (mt/id :categories :name)]]
                               [:field-id (mt/id :venues :category_id)]])
                    (m/dissoc-in [:query :fields]))]
-              (-> example-query
+              (-> @example-query
                   (m/dissoc-in [:query :fields])
                   (assoc-in [:query :aggregation] [[:count]])
                   (assoc-in [:query :breakout] [[:field-id (mt/id :venues :category_id)]])
                   (#'add-dim-projections/add-fk-remaps)))))
 
      (testing "make sure FK remaps work with nested queries"
-       (let [example-query (assoc example-query :query {:source-query (:query example-query)})]
-         (is (= [[remapped-field]
+       (let [example-query (assoc @example-query :query {:source-query (:query @example-query)})]
+         (is (= [[@remapped-field]
                  (update-in example-query [:query :source-query :fields]
                             conj [:fk-> [:field-id (mt/id :venues :category_id)]
                                   [:field-id (mt/id :categories :name)]])]
-                (#'add-dim-projections/add-fk-remaps example-query))))))))
+                (#'add-dim-projections/add-fk-remaps @example-query))))))))
 
 
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------

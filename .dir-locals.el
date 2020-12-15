@@ -17,16 +17,20 @@
                             ;; Define custom indentation for functions inside metabase.
                             ;; This list isn't complete; add more forms as we come across them.
                             (define-clojure-indent
+                              (l/matcha '(1 (:defn)))
+                              (l/matche '(1 (:defn)))
                               (let-404 1)
                               (match 1)
                               (merge-with 1)
-                              (l/matche '(1 (:defn)))
-                              (l/matcha '(1 (:defn)))
-                              (p.types/defprotocol+ '(1 (:defn)))
                               (p.types/def-abstract-type '(1 (:defn)))
+                              (p.types/defprotocol+ '(1 (:defn)))
+                              (p.types/defrecord+ '(2 nil nil (:defn)))
                               (p.types/deftype+ '(2 nil nil (:defn)))
+                              (p/def-abstract-type '(1 (:defn)))
                               (p/def-map-type '(2 nil nil (:defn)))
-                              (p.types/defrecord+ '(2 nil nil (:defn))))))
+                              (p/defprotocol+ '(1 (:defn)))
+                              (p/defrecord+ '(2 nil nil (:defn)))
+                              (p/deftype+ '(2 nil nil (:defn))))))
                   ;; if you're using clj-refactor (highly recommended!), prefer prefix notation when cleaning the ns form
                   (cljr-favor-prefix-notation . t)
                   ;; prefer keeping source width about ~118, GitHub seems to cut off stuff at either 119 or 120 and

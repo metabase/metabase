@@ -77,6 +77,7 @@
           ;; spot checking rows, but leaving off the discriminator on the end
           (is (= ["AK" "Affiliate" "Doohickey" 18 81] (drop-last (first rows))))
           (is (= ["MS" nil "Doohickey" 78 291] (drop-last (nth rows 1000))))
+
           (is (= [nil nil nil 18760 69540] (drop-last (last rows)))))))))
 
 (deftest pivot-public-card-test
