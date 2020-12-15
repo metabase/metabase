@@ -40,6 +40,10 @@ export default class PivotTable extends Component {
   static identifier = "pivot";
   static iconName = "pivot_table";
 
+  static isLiveResizable(series) {
+    return false;
+  }
+
   static isSensible({ cols }) {
     return (
       cols.length >= 2 &&
