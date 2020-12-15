@@ -34,12 +34,11 @@
 (s/def ::change
   (s/keys :opt-un [:change/addColumn :change/addTable]))
 
-;; TODO -- addColumn should only include one column.
 (s/def :change/addColumn
-  (s/keys :req-un [:add-column/tableName ::columns]))
+  (s/keys :req-un [:add-column/tableName :add-column/columns]))
 
-(s/def ::columns
-  (s/+ :columns/column))
+(s/def :add-column/columns
+  (s/alt :column :columns/column))
 
 (s/def :columns/column
   (s/keys :req-un [::column]))
