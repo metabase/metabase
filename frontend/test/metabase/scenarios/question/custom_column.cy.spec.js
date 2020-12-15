@@ -330,7 +330,8 @@ describe("scenarios > question > custom columns", () => {
         expect(xhr.response.body.error).not.to.exist;
       });
 
-      cy.findByText(CC_NAME);
+      cy.contains(`Sum of ${CC_NAME}`);
+      cy.get(".Visualization .dot").should("have.length.of.at.least", 8);
     });
   });
 });
