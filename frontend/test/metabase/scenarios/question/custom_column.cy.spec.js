@@ -10,7 +10,7 @@ import {
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
 
 const customFormulas = [
   {
@@ -281,6 +281,51 @@ describe("scenarios > question > custom columns", () => {
       cy.visit(`/question/${QUESTION_ID}`);
 
       cy.log("**Reported failing v0.34.3 through v0.37.2**");
+      cy.wait("@cardQuery").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+
+      cy.findByText(CC_NAME);
+    });
+  });
+
+  it.skip("should work with implicit joins (metabase#14080)", () => {
+    const CC_NAME = "OneisOne";
+    signInAsAdmin();
+
+    cy.request("POST", "/api/card", {
+      name: "14080",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: { [CC_NAME]: ["*", 1, 1] },
+          aggregation: [
+            [
+              "distinct",
+              [
+                "fk->",
+                ["field-id", ORDERS.PRODUCT_ID],
+                ["field-id", PRODUCTS.ID],
+              ],
+            ],
+            ["sum", ["expression", CC_NAME]],
+          ],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+          ],
+        },
+        type: "query",
+      },
+      display: "line",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.server();
+      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      cy.log("**Regression since v0.37.1 - it works on v0.37.0**");
       cy.wait("@cardQuery").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
