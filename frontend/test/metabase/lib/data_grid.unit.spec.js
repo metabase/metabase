@@ -2,35 +2,31 @@ import { pivot, multiLevelPivot } from "metabase/lib/data_grid";
 
 import { TYPE } from "metabase/lib/types";
 
+const D1 = {
+  name: "D1",
+  display_name: "Dimension 1",
+  base_type: TYPE.Text,
+  field_ref: ["field-id", 123],
+  source: "breakout",
+};
+const D2 = {
+  name: "D2",
+  display_name: "Dimension 2",
+  base_type: TYPE.Text,
+  field_ref: ["field-id", 456],
+  source: "breakout",
+};
+const M = { name: "M", display_name: "Metric", base_type: TYPE.Integer };
+
 function makeData(rows) {
   return {
     rows: rows,
-    cols: [
-      { name: "D1", display_name: "Dimension 1", base_type: TYPE.Text },
-      { name: "D2", display_name: "Dimension 2", base_type: TYPE.Text },
-      { name: "M", display_name: "Metric", base_type: TYPE.Integer },
-    ],
+    cols: [D1, D2, M],
   };
 }
 
 function makePivotData(rows, cols) {
-  cols = cols || [
-    {
-      name: "D1",
-      display_name: "Dimension 1",
-      base_type: TYPE.Text,
-      field_ref: ["field-id", 123],
-      source: "breakout",
-    },
-    {
-      name: "D2",
-      display_name: "Dimension 2",
-      base_type: TYPE.Text,
-      field_ref: ["field-id", 456],
-      source: "breakout",
-    },
-    { name: "M", display_name: "Metric", base_type: TYPE.Integer },
-  ];
+  cols = cols || [D1, D2, M];
 
   const primaryGroup = JSON.stringify(
     cols.filter(col => col.source === "breakout").map(col => col.field_ref),
@@ -237,20 +233,8 @@ describe("data_grid", () => {
       const data = makePivotData(
         [["a", "b", 1, 2]],
         [
-          {
-            name: "D1",
-            display_name: "Dimension 1",
-            base_type: TYPE.Text,
-            source: "breakout",
-            field_ref: ["field-id", 123],
-          },
-          {
-            name: "D2",
-            display_name: "Dimension 2",
-            base_type: TYPE.Text,
-            source: "breakout",
-            field_ref: ["field-id", 456],
-          },
+          D1,
+          D2,
           { name: "M1", display_name: "Metric", base_type: TYPE.Integer },
           { name: "M2", display_name: "Metric", base_type: TYPE.Integer },
         ],
@@ -285,20 +269,8 @@ describe("data_grid", () => {
           ["a2", "b2", "c2", 1],
         ],
         [
-          {
-            name: "D1",
-            display_name: "Dimension 1",
-            base_type: TYPE.Text,
-            source: "breakout",
-            field_ref: ["field-id", 123],
-          },
-          {
-            name: "D2",
-            display_name: "Dimension 2",
-            base_type: TYPE.Text,
-            source: "breakout",
-            field_ref: ["field-id", 456],
-          },
+          D1,
+          D2,
           {
             name: "D3",
             display_name: "Dimension 3",
@@ -399,20 +371,8 @@ describe("data_grid", () => {
           [2, 1, "2020-01-01T00:00:00", 1000],
         ],
         [
-          {
-            name: "D1",
-            display_name: "Dimension 1",
-            base_type: TYPE.Float,
-            source: "breakout",
-            field_ref: ["field-id", 123],
-          },
-          {
-            name: "D2",
-            display_name: "Dimension 2",
-            base_type: TYPE.Float,
-            source: "breakout",
-            field_ref: ["field-id", 456],
-          },
+          D1,
+          D2,
           {
             name: "M1",
             display_name: "Metric 1",
@@ -435,24 +395,7 @@ describe("data_grid", () => {
     });
 
     it("should return subtotals in each section", () => {
-      const cols = [
-        {
-          name: "D1",
-          display_name: "Dimension 1",
-          base_type: TYPE.Text,
-          field_ref: ["field-id", 123],
-          source: "breakout",
-        },
-        {
-          name: "D2",
-          display_name: "Dimension 2",
-          base_type: TYPE.Text,
-          field_ref: ["field-id", 456],
-          source: "breakout",
-        },
-        { name: "M", display_name: "Metric", base_type: TYPE.Integer },
-      ];
-
+      const cols = [D1, D2, M];
       const primaryGroup = JSON.stringify(
         cols.filter(col => col.source === "breakout").map(col => col.field_ref),
       );
