@@ -1,0 +1,5 @@
+{:paths ["src"]
+
+ :deps
+ {io.forward/yaml      {:mvn/version "1.0.9"}   ; don't upgrade to 1.0.10 -- doesn't work on Java 8 (!)
+  org.flatland/ordered {:mvn/version "1.5.9"}}} ; used by io.forward/yaml -- need the newer version
