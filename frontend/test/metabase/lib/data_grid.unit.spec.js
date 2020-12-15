@@ -152,7 +152,12 @@ describe("data_grid", () => {
       ["b", "z", 6],
     ]);
     it("should produce multi-level top index", () => {
-      const { topIndex, leftIndex } = multiLevelPivot(data, [0, 1], [], [2]);
+      const { topIndex, leftIndex, rowCount, columnCount } = multiLevelPivot(
+        data,
+        [0, 1],
+        [],
+        [2],
+      );
       expect(topIndex).toEqual([
         [
           [{ value: "a", span: 3 }],
@@ -171,10 +176,17 @@ describe("data_grid", () => {
           ],
         ],
       ]);
-      expect(leftIndex).toEqual([[[]]]);
+      expect(leftIndex).toEqual([]);
+      expect(rowCount).toEqual(1);
+      expect(columnCount).toEqual(3);
     });
     it("should produce multi-level left index", () => {
-      const { topIndex, leftIndex } = multiLevelPivot(data, [], [0, 1], [2]);
+      const { topIndex, leftIndex, rowCount, columnCount } = multiLevelPivot(
+        data,
+        [],
+        [0, 1],
+        [2],
+      );
       expect(leftIndex).toEqual([
         [
           [{ value: "a", span: 3 }],
@@ -194,6 +206,8 @@ describe("data_grid", () => {
         ],
       ]);
       expect(topIndex).toEqual([[[{ value: "Metric", span: 1 }]]]);
+      expect(rowCount).toEqual(3);
+      expect(columnCount).toEqual(1);
     });
     it("should allow unspecified values", () => {
       const data = makePivotData([
