@@ -10,6 +10,31 @@ describe("scenarios > visualizations > waterfall", () => {
     signInAsNormalUser();
   });
 
+  function verifyWaterfallRendering(xLabel = null, yLabel = null) {
+    // a waterfall chart is just a stacked bar chart, with 4 bars
+    // (not all of them will be visible at once, but they should exist)
+    cy.get(".Visualization .sub .chart-body").within(() => {
+      cy.get(".stack._0");
+      cy.get(".stack._1");
+      cy.get(".stack._2");
+      cy.get(".stack._3");
+    });
+    cy.get(".Visualization .axis.x").within(() => {
+      cy.findByText("Total");
+    });
+
+    if (xLabel) {
+      cy.get(".Visualization .x-axis-label").within(() => {
+        cy.findByText(xLabel);
+      });
+    }
+    if (yLabel) {
+      cy.get(".Visualization .y-axis-label").within(() => {
+        cy.findByText(yLabel);
+      });
+    }
+  }
+
   it("should work with ordinal series", () => {
     cy.visit("/question/new");
     cy.contains("Native query").click();
@@ -20,15 +45,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.contains("Visualization").click();
     cy.get(".Icon-waterfall").click();
 
-    cy.get(".Visualization .x-axis-label").within(() => {
-      cy.findByText("PRODUCT");
-    });
-    cy.get(".Visualization .y-axis-label").within(() => {
-      cy.findByText("PROFIT");
-    });
-    cy.get(".Visualization .axis.x").within(() => {
-      cy.findByText("Total");
-    });
+    verifyWaterfallRendering("PRODUCT", "PROFIT");
   });
 
   it("should work with quantitative series", () => {
@@ -50,15 +67,7 @@ describe("scenarios > visualizations > waterfall", () => {
       .last()
       .click(); // Y
 
-    cy.get(".Visualization .x-axis-label").within(() => {
-      cy.findByText("XX");
-    });
-    cy.get(".Visualization .y-axis-label").within(() => {
-      cy.findByText("YY");
-    });
-    cy.get(".Visualization .axis.x").within(() => {
-      cy.findByText("Total");
-    });
+    verifyWaterfallRendering("XX", "YY");
   });
 
   it("should work with time-series data", () => {
@@ -80,15 +89,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.contains("Visualization").click();
     cy.get(".Icon-waterfall").click();
 
-    cy.get(".Visualization .x-axis-label").within(() => {
-      cy.findByText("Created At");
-    });
-    cy.get(".Visualization .y-axis-label").within(() => {
-      cy.findByText("Count");
-    });
-    cy.get(".Visualization .axis.x").within(() => {
-      cy.findByText("Total");
-    });
+    verifyWaterfallRendering("Created At", "Count");
   });
 
   it("should hide the Total label if there is no space", () => {
@@ -111,15 +112,22 @@ describe("scenarios > visualizations > waterfall", () => {
     beforeEach(() => {
       restore();
       signInAsNormalUser();
-    });
-
-    it("should allow toggling of the total bar", () => {
       cy.visit("/question/new");
       cy.contains("Native query").click();
-      cy.get(".ace_content").type("select 'A' as X, 42 as Y");
+      cy.get(".ace_content").type("select 'A' as X, -4.56 as Y");
       cy.get(".NativeQueryEditor .Icon-play").click();
       cy.contains("Visualization").click();
       cy.get(".Icon-waterfall").click();
+    });
+
+    it("should have increase, decrease, and total color options", () => {
+      cy.contains("Display").click();
+      cy.findByText("Increase color").click();
+      cy.findByText("Decrease color").click();
+      cy.findByText("Total color").click();
+    });
+
+    it("should allow toggling of the total bar", () => {
       cy.contains("Display").click();
 
       cy.contains("Show total")
@@ -139,12 +147,6 @@ describe("scenarios > visualizations > waterfall", () => {
     });
 
     it("should allow toggling of value labels", () => {
-      cy.visit("/question/new");
-      cy.contains("Native query").click();
-      cy.get(".ace_content").type("select 'A' as X, -4.56 as Y");
-      cy.get(".NativeQueryEditor .Icon-play").click();
-      cy.contains("Visualization").click();
-      cy.get(".Icon-waterfall").click();
       cy.contains("Display").click();
 
       cy.get(".Visualization .value-label").should("not.exist");
