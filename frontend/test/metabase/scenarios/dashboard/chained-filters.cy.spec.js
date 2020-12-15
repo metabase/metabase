@@ -245,11 +245,11 @@ describe("scenarios > dashboard > chained filter", () => {
       cy.findByText("Anacoco").should("not.exist");
       cy.findByText("Anchorage").click();
       cy.findByText("Add filter").click();
-
-      cy.get("y-label").contains("Count");
-      cy.findByText("There was a problem displaying this chart.").should(
-        "not.exist",
-      );
     });
+    
+    cy.get(".y-label").contains("Count");
+    cy.findByText("There was a problem displaying this chart.").should(
+      "not.exist",
+    );
   });
 });
