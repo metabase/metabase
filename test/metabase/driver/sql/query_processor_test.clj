@@ -94,8 +94,8 @@
     ;; be qualifying aliases with aliases things still work the right way.
     (mt/with-everything-store
       (driver/with-driver :h2
-        (is (= {:select    [[(bound-alias "v" (id :field "v" "NAME")) (bound-alias :source (id :field-alias "NAME"))]
-                            [:%count.*                                (bound-alias :source (id :field-alias "count"))]]
+        (is (= {:select    [[(bound-alias "v" (id :field "v" "NAME")) (bound-alias "source" (id :field-alias "NAME"))]
+                            [:%count.*                                (bound-alias "source" (id :field-alias "count"))]]
                 :from      [[{:select [[(id :field "PUBLIC" "CHECKINS" "ID")       (id :field-alias "ID")]
                                        [(id :field "PUBLIC" "CHECKINS" "DATE")     (id :field-alias "DATE")]
                                        [(id :field "PUBLIC" "CHECKINS" "USER_ID")  (id :field-alias "USER_ID")]
@@ -105,15 +105,15 @@
                                        (id :field "PUBLIC" "CHECKINS" "DATE")
                                        #t "2015-01-01T00:00:00.000-00:00"]}
                              (id :table-alias "source")]]
-                :left-join [[(id :table "PUBLIC" "VENUES") (bound-alias :source (id :table-alias "v"))]
+                :left-join [[(id :table "PUBLIC" "VENUES") (bound-alias "source" (id :table-alias "v"))]
                             [:=
-                             (bound-alias :source (id :field "source" "VENUE_ID"))
+                             (bound-alias "source" (id :field "source" "VENUE_ID"))
                              (bound-alias "v" (id :field "v" "ID"))]],
 
                 :group-by  [(bound-alias "v" (id :field "v" "NAME"))]
                 :where     [:and
                             [:like (bound-alias "v" (id :field "v" "NAME")) "F%"]
-                            [:> (bound-alias :source (id :field "source" "user_id")) 0]],
+                            [:> (bound-alias "source" (id :field "source" "user_id")) 0]],
                 :order-by  [[(bound-alias "v" (id :field "v" "NAME")) :asc]]}
                (#'sql.qp/mbql->honeysql
                 ::id-swap

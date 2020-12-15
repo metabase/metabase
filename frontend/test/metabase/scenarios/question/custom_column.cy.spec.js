@@ -289,7 +289,7 @@ describe("scenarios > question > custom columns", () => {
     });
   });
 
-  it.skip("should work with implicit joins (metabase#14080)", () => {
+  it("should work with implicit joins (metabase#14080)", () => {
     const CC_NAME = "OneisOne";
     signInAsAdmin();
 
