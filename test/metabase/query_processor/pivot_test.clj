@@ -21,36 +21,31 @@
         (let [expected [{:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]
                                                [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
                                                [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]]
-                                 :expressions {"pivot-grouping" [:ltrim (generate-string [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]
-                                                                                          [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
-                                                                                          [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]])]}}}
+                                 :expressions {"pivot-grouping" [:abs 0]}}}
 
                         {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
                                                [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]]
-                                 :expressions {"pivot-grouping" [:ltrim (generate-string [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
-                                                                                          [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]])]}}}
+                                 :expressions {"pivot-grouping" [:abs 1]}}}
 
                         {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]
                                                [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]]
-                                 :expressions {"pivot-grouping" [:ltrim (generate-string [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]
-                                                                                          [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]])]}}}
+                                 :expressions {"pivot-grouping" [:abs 2]}}}
 
                         {:query {:breakout    [[:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]]
-                                 :expressions {"pivot-grouping" [:ltrim (generate-string [[:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]])]}}}
+                                 :expressions {"pivot-grouping" [:abs 3]}}}
 
                         {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]
                                                [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]]
-                                 :expressions {"pivot-grouping" [:ltrim (generate-string [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]
-                                                                                          [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]])]}}}
+                                 :expressions {"pivot-grouping" [:abs 4]}}}
 
                         {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]]
-                                 :expressions {"pivot-grouping" [:ltrim (generate-string [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]])]}}}
+                                 :expressions {"pivot-grouping" [:abs 5]}}}
 
                         {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]]
-                                 :expressions {"pivot-grouping" [:ltrim (generate-string [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]])]}}}
+                                 :expressions {"pivot-grouping" [:abs 6]}}}
 
                         {:query {:breakout    []
-                                 :expressions {"pivot-grouping" [:ltrim (generate-string [])]}}}]
+                                 :expressions {"pivot-grouping" [:abs 7]}}}]
               expected (map (fn [expected-val] (-> expected-val
                                                    (assoc :type              :query
                                                           :parameters        []

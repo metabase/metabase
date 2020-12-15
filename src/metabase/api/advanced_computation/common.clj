@@ -61,8 +61,7 @@
   ([context query info]
    (qp.store/with-store
      (let [main-breakout           (:breakout (:query query))
-           col-determination-query (-> (pivot/add-grouping-field query main-breakout)
-                                       (dissoc :async?))
+           col-determination-query (pivot/add-grouping-field query main-breakout 0)
            all-expected-cols       (qp/query->expected-cols col-determination-query)
            all-queries             (pivot/generate-queries query)]
        (process-multiple-queries
