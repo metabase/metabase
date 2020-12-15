@@ -888,7 +888,7 @@
 
     SELECT source.*
     FROM ( SELECT * FROM some_table ) source"
-  :source)
+  "source")
 
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all

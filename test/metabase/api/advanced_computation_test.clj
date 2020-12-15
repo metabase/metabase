@@ -6,6 +6,7 @@
              [models :refer [Card]]
              [test :as mt]
              [util :as u]]
+            [metabase.mbql.schema :as schema]
             [metabase.test.fixtures :as fixtures])
   (:import java.util.UUID))
 
@@ -37,6 +38,13 @@
      :parameters  [{:type "category"
                     :target [:dimension [:fk-> $orders.product_id $products.category]]
                     :value "Gadget"}]}))
+
+(defn- query-with-average
+  []
+  (mt/mbql-query orders
+    {:aggregation [[:count] [:avg [:fk-> $orders.product_id $products.rating]]]
+     :breakout    [[:datetime-field $orders.created_at :month]
+                   [:fk-> $orders.user_id $people.source]]}))
 
 (defn- pivot-card
   []
@@ -83,26 +91,31 @@
           (is (= [nil nil nil 18760 69540] (drop-last (last rows))))))
 
       (testing "with an added expression"
-        (let [query (-> (pivot-query)
-                        (assoc-in [:query :fields] [[:expression "test-expr"]])
-                        (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
+        (let [query  (-> (pivot-query)
+                         (assoc-in [:query :fields] [[:expression "test-expr"]])
+                         (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
               result (mt/user-http-request :rasta :post 202 "advanced_computation/pivot/dataset" query)
-              rows (mt/rows result)]
+              rows   (mt/rows result)]
           (is (= 1384 (:row_count result)))
           (is (= 1384 (count rows)))
 
           (let [cols (get-in result [:data :cols])]
             (is (= 7 (count cols)))
-            (is (= {:base_type "type/Text"
-                    :special_type nil
-                    :name "test-expr"
-                    :display_name "test-expr"
+            (is (= {:base_type       "type/Text"
+                    :special_type    nil
+                    :name            "test-expr"
+                    :display_name    "test-expr"
                     :expression_name "test-expr"
-                    :field_ref ["expression" "test-expr"]
-                    :source "fields"}
+                    :field_ref       ["expression" "test-expr"]
+                    :source          "fields"}
                    (nth cols 5))))
 
-          (is (= [nil nil nil 18760 69540 "wheeee" "[]"] (last rows))))))))
+          (is (= [nil nil nil 18760 69540 "wheeee" "[]"] (last rows)))))
+
+      (testing "with an average"
+        (let [result (mt/user-http-request :rasta :post 202 "advanced_computation/pivot/dataset" (query-with-average))
+              rows   (mt/rows result)]
+          (is (= 296 (:row_count result))))))))
 
 (deftest pivot-filter-dataset-test
   (mt/dataset sample-dataset
