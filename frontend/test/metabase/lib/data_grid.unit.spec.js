@@ -433,5 +433,57 @@ describe("data_grid", () => {
       ]);
       expect(extractValues(getRowSection(1, 1))).toEqual([[null, null]]);
     });
+
+    it("should return subtotals in each section", () => {
+      const cols = [
+        {
+          name: "D1",
+          display_name: "Dimension 1",
+          base_type: TYPE.Text,
+          field_ref: ["field-id", 123],
+          source: "breakout",
+        },
+        {
+          name: "D2",
+          display_name: "Dimension 2",
+          base_type: TYPE.Text,
+          field_ref: ["field-id", 456],
+          source: "breakout",
+        },
+        { name: "M", display_name: "Metric", base_type: TYPE.Integer },
+      ];
+
+      const primaryGroup = JSON.stringify(
+        cols.filter(col => col.source === "breakout").map(col => col.field_ref),
+      );
+      const subtotalOne = JSON.stringify([cols[0].field_ref]);
+      const subtotalTwo = JSON.stringify([cols[1].field_ref]);
+      const rows = [
+        ["a", "x", 1, primaryGroup],
+        ["a", "y", 2, primaryGroup],
+        ["b", "x", 3, primaryGroup],
+        ["b", "y", 4, primaryGroup],
+        ["a", null, 3, subtotalOne],
+        ["b", null, 7, subtotalOne],
+        [null, "x", 4, subtotalTwo],
+        [null, "y", 6, subtotalTwo],
+        [null, null, 10, "[]"],
+      ];
+      const data = {
+        rows,
+        cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
+      };
+      const { getRowSection, rowCount, columnCount } = multiLevelPivot(
+        data,
+        [],
+        [0, 1],
+        [2],
+      );
+      expect(rowCount).toEqual(3);
+      expect(columnCount).toEqual(1);
+      expect(extractValues(getRowSection(0, 0))).toEqual([["1"], ["2"], ["3"]]);
+      expect(extractValues(getRowSection(0, 1))).toEqual([["3"], ["4"], ["7"]]);
+      expect(extractValues(getRowSection(0, 2))).toEqual([["10"]]);
+    });
   });
 });
