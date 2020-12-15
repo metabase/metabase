@@ -28,8 +28,10 @@ function firstCell(contain_assertion, value) {
 }
 
 describe("scenarios > question > custom columns", () => {
-  before(restore);
-  beforeEach(signInAsNormalUser);
+  beforeEach(() => {
+    restore();
+    signInAsNormalUser();
+  });
 
   it.skip("cc should only apply to correct column (metabase#12649)", () => {
     // Create custom question
