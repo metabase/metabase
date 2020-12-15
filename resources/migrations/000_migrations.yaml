@@ -1555,6 +1555,9 @@ databaseChangeLog:
   - changeSet:
       id: 12
       author: agilliland
+      validCheckSum:
+        - 8:bedbea570e5dfc694b4cf5a8f6a4f445
+        - 8:e862a199cba5b4ce0cba713110f66cfb
       changes:
         - addColumn:
             tableName: report_card
@@ -1568,6 +1571,9 @@ databaseChangeLog:
                     foreignKeyName: fk_report_card_ref_database_id
                     deferrable: false
                     initiallyDeferred: false
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: table_id
                   type: int
@@ -1577,6 +1583,9 @@ databaseChangeLog:
                     foreignKeyName: fk_report_card_ref_table_id
                     deferrable: false
                     initiallyDeferred: false
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: query_type
                   type: varchar(16)
@@ -3366,6 +3375,9 @@ databaseChangeLog:
   - changeSet:
       id: 49
       author: camsaul
+      validCheckSum:
+        - 8:56dcab086b21de1df002561efeac8bb6
+        - 8:4508e7d5f6d4da3c4a2de3bf5e3c5851
       changes:
         ######################################## Card public_uuid & indices ########################################
         - addColumn:
@@ -3377,6 +3389,9 @@ databaseChangeLog:
                   remarks: 'Unique UUID used to in publically-accessible links to this Card.'
                   constraints:
                     unique: true
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: made_public_by_id
                   type: int
@@ -3400,6 +3415,9 @@ databaseChangeLog:
                   remarks: 'Unique UUID used to in publically-accessible links to this Dashboard.'
                   constraints:
                     unique: true
+        - addColumn:
+            tableName: report_dashboard
+            columns:
               - column:
                   name: made_public_by_id
                   type: int
@@ -3421,6 +3439,9 @@ databaseChangeLog:
   - changeSet:
       id: 50
       author: camsaul
+      validCheckSum:
+        - 8:388da4c48984aad647709514e4ba9204
+        - 8:98a6ab6428ea7a589507464e34ade58a
       changes:
         ######################################## new Card columns ########################################
         - addColumn:
@@ -3433,6 +3454,9 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: embedding_params
                   type: text
@@ -3448,6 +3472,9 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: report_dashboard
+            columns:
               - column:
                   name: embedding_params
                   type: text
@@ -3634,6 +3661,9 @@ databaseChangeLog:
   - changeSet:
       id: 55
       author: camsaul
+      validCheckSum:
+        - 8:87c4becde5fe208ba2c356128df86fba
+        - 8:11bbd199bfa57b908ea3b1a470197de9
       changes:
         - addColumn:
             tableName: report_dashboard
@@ -3645,6 +3675,9 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: report_dashboard
+            columns:
               - column:
                   name: position
                   type: integer
@@ -3807,6 +3840,9 @@ databaseChangeLog:
   - changeSet:
       id: 60
       author: camsaul
+      validCheckSum:
+        - 8:4f997b2cd3309882e900493892381f38
+        - 8:2141162a1c99a5dd95e5a67c5595e6d7
       comment: 'Added 0.26.0'
       changes:
         - addColumn:
@@ -3819,6 +3855,9 @@ databaseChangeLog:
                   defaultValue: '0 50 * * * ? *' # run at the end of every hour
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: metabase_database
+            columns:
               - column:
                   name: cache_field_values_schedule
                   type: varchar(254)
@@ -3981,6 +4020,9 @@ databaseChangeLog:
       id: 68
       author: sbelak
       comment: 'Added 0.27.0'
+      validCheckSum:
+        - 8:ca201aeb20c1719a46c6bcc3fc95c81d
+        - 8:b4ac06d133dfbdc6567d992c7e18c6ec
       changes:
         - addColumn:
             tableName: computation_job
@@ -3988,12 +4030,18 @@ databaseChangeLog:
               - column:
                   name: context
                   type: text
+        - addColumn:
+            tableName: computation_job
+            columns:
               - column:
                   name: ended_at
                   type: DATETIME
   - changeSet:
       id: 69
       author: senior
+      validCheckSum:
+        - 8:97b7768436b9e8d695bae984020d754c
+        - 8:eadbe00e97eb53df4b3df60462f593f6
       comment: 'Added 0.27.0'
       remarks: 'Add columns to the pulse table for alerts'
       changes:
@@ -4004,10 +4052,16 @@ databaseChangeLog:
                   name: alert_condition
                   type: varchar(254)
                   remarks: 'Condition (i.e. "rows" or "goal") used as a guard for alerts'
+        - addColumn:
+            tableName: pulse
+            columns:
               - column:
                   name: alert_first_only
                   type: boolean
                   remarks: 'True if the alert should be disabled after the first notification'
+        - addColumn:
+            tableName: pulse
+            columns:
               - column:
                   name: alert_above_goal
                   type: boolean
@@ -4050,6 +4104,9 @@ databaseChangeLog:
   - changeSet:
       id: 72
       author: senior
+      validCheckSum:
+        - 8:ed16046dfa04c139f48e9068eb4faee4
+        - 8:4dc6debdf779ab9273cf2158a84bb154
       comment: 'Added 0.28.0'
       changes:
         - addColumn:
@@ -4062,6 +4119,9 @@ databaseChangeLog:
                   remarks: 'True if a CSV of the data should be included for this pulse card'
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: pulse_card
+            columns:
               - column:
                   name: include_xls
                   type: boolean
@@ -6394,6 +6454,9 @@ databaseChangeLog:
                   defaultValueNumeric: 0
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: metabase_field
+            columns:
               - column:
                   name: custom_position
                   type: int

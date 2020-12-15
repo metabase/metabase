@@ -11,10 +11,11 @@
   (s/+ (s/alt :property  (s/keys :req-un [::property])
               :changeSet (s/keys :req-un [::changeSet]))))
 
+;; TODO -- change sets must be distinct by ID.
 (s/def ::changeSet
-  (s/keys :req-un [:change-set/id :change-set/changes]
+  (s/keys :req-un [:change-set/id :change-set/changes :change-set/author]
           ;; TODO -- require these on new change sets
-          :opt-un [:change-set/author :change-set/comment]))
+          :opt-un [:change-set/comment]))
 
 (s/def :change-set/id
   (s/or
@@ -32,7 +33,7 @@
   (s/+ ::change))
 
 (s/def ::change
-  (s/keys :opt-un [:change/addColumn :change/addTable]))
+  (s/keys :opt-un [:change/addColumn]))
 
 (s/def :change/addColumn
   (s/keys :req-un [:add-column/tableName :add-column/columns]))
