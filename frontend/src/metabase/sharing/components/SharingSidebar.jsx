@@ -10,6 +10,7 @@ import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPi
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 import Subhead from "metabase/components/type/Subhead";
+import Text from "metabase/components/type/Text";
 import Link from "metabase/components/Link";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import RecipientPicker from "metabase/pulse/components/RecipientPicker";
@@ -585,8 +586,8 @@ class SharingSidebar extends React.Component {
                 }
               }}
             >
-              <div className="p3">
-                <div className="flex align-center mb1">
+              <div className="px3 pt3 pb2">
+                <div className="flex align-center">
                   <Icon
                     name="mail"
                     className={cx(
@@ -602,7 +603,8 @@ class SharingSidebar extends React.Component {
                     className={cx({ "text-light": !emailSpec.configured })}
                   >{t`Email it`}</h3>
                 </div>
-                <div
+                <Text
+                  lineHeight={1.5}
                   className={cx("text-medium", {
                     "hover-child hover--inherit": emailSpec.configured,
                   })}
@@ -615,7 +617,7 @@ class SharingSidebar extends React.Component {
                     )} first.`}
                   {emailSpec.configured &&
                     t`You can send this dashboard regularly to users or email addresses.`}
-                </div>
+                </Text>
               </div>
             </Card>
             <Card
@@ -631,7 +633,7 @@ class SharingSidebar extends React.Component {
                 }
               }}
             >
-              <div className="p3">
+              <div className="px3 pt3 pb2">
                 <div className="flex align-center mb1">
                   <Icon
                     name={slackSpec.configured ? "slack_colorized" : "slack"}
@@ -645,7 +647,8 @@ class SharingSidebar extends React.Component {
                     className={cx({ "text-light": !slackSpec.configured })}
                   >{t`Send it to Slack`}</h3>
                 </div>
-                <div
+                <Text
+                  lineHeight={1.5}
                   className={cx("text-medium", {
                     "hover-child hover--inherit": slackSpec.configured,
                   })}
@@ -658,7 +661,7 @@ class SharingSidebar extends React.Component {
                     )}.`}
                   {slackSpec.configured &&
                     t`Pick a channel and a schedule, and Metabase will do the rest.`}
-                </div>
+                </Text>
               </div>
             </Card>
           </div>
