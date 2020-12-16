@@ -299,6 +299,37 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findByText("There was a problem with your question").should("not.exist");
   });
 
+  it.skip("should display correct value in a tooltip for unaggregated data (metabase#11907)", () => {
+    cy.request("POST", "/api/card", {
+      name: "11907",
+      dataset_query: {
+        type: "native",
+        native: {
+          query:
+            "SELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 5 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 4 AS \"c\"",
+          "template-tags": {},
+        },
+        database: 1,
+      },
+      display: "line",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      clickLineDot({ index: 0 });
+      popover().within(() => {
+        cy.findByText("January 1, 2020");
+        cy.findByText("10");
+      });
+
+      clickLineDot({ index: 1 });
+      popover().within(() => {
+        cy.findByText("January 2, 2020");
+        cy.findByText("5");
+      });
+    });
+  });
+
   describe("for an unsaved question", () => {
     before(() => {
       restore();
@@ -329,3 +360,9 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 });
+
+function clickLineDot({ index } = {}) {
+  cy.get(".Visualization .dot")
+    .eq(index)
+    .click({ force: true });
+}
