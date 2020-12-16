@@ -851,3 +851,14 @@
        [#","                  "."]
        ;; move minus sign at end to front
        [#"(^[^-]+)-$"         "-$1"]]))))
+
+(defmacro or-with
+  "Like or, but determines truthiness with `pred`."
+  ([pred]
+   nil)
+  ([pred x & more]
+   `(let [pred# ~pred
+          x#    ~x]
+      (if (pred# x#)
+        x#
+        (or-with pred# ~@more)))))

@@ -269,6 +269,21 @@
     "$.05"          0.05M
     "0.05"          0.05M))
 
+(deftest or-with-test
+  (testing "empty case"
+    (is (= (or) (u/or-with identity))))
+  (testing "short-circuiting"
+    (let [counter (atom [])
+          expensive-fn (fn [x] (swap! counter conj x) x)
+          result (u/or-with even?
+                            (expensive-fn 1)
+                            (expensive-fn 2)
+                            (expensive-fn 3))]
+      (is (= [result @counter]
+             [2 [1 2]]))))
+  (testing "failure"
+    (is (nil? (u/or-with even? 1 3 5)))))
+
 ;; Local Variables:
 ;; eval: (add-to-list (make-local-variable 'clojure-align-cond-forms) "are+")
 ;; End:
