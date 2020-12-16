@@ -140,7 +140,11 @@
                (db/update! Database (u/get-id database)
                  k "2 CANS PER DAY"))))))))
 
-(defrecord MockJobExecutionContext [job-data-map]
+;; this is a deftype due to an issue with Clojure. The `org.quartz.JobExecutionContext` interface has a put method and
+;; defrecord emits a put method and things get
+;; funky. https://ask.clojure.org/index.php/9943/defrecord-can-emit-invalid-bytecode
+;; https://www.quartz-scheduler.org/api/2.1.7/org/quartz/JobExecutionContext.html#put(java.lang.Object,%20java.lang.Object)
+(deftype MockJobExecutionContext [job-data-map]
   org.quartz.JobExecutionContext
   (getMergedJobDataMap [this] (org.quartz.JobDataMap. job-data-map))
 
