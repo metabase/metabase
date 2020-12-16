@@ -16,7 +16,7 @@ const MOCK_PULSE_FORM_INPUT = {
 describe("scenarios > pulse", () => {
   before(restore);
   beforeEach(signInAsAdmin);
-  it("should be able get to the new pulse page from a collection page", () => {
+  it("should be able get to the new pulse page from the navbar", () => {
     cy.visit("/");
 
     cy.get(".Icon-add").click();
