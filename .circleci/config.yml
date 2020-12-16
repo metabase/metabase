@@ -577,7 +577,7 @@ jobs:
       - attach-workspace
       - create-checksum-file:
           filename: .MIGRATIONS-CHECKSUM
-          find-args: resources/migrations -type -f -name '*.yaml'
+          find-args: resources/migrations -type f -name '*.yaml'
       - create-checksum-file:
           filename: .MIGRATIONS-LINTER-CHECKSUMS
           find-args: bin/lint-migrations-file -type f -name '*.clj' -or -name 'deps.edn'
