@@ -1,8 +1,12 @@
 (ns lint-migrations-file
-  (:require [clojure.java.io :as io]
+  (:require [change-set strict unstrict]
+            [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [clojure.spec.alpha :as s]
             [yaml.core :as yaml]))
+
+(comment change-set.strict/keep-me
+         change-set.unstrict/keep-me)
 
 ;; just print ordered maps like normal maps.
 (defmethod print-method flatland.ordered.map.OrderedMap
@@ -36,13 +40,6 @@
          (s/+ (s/alt :property  (s/keys :req-un [::property])
                      :changeSet (s/keys :req-un [::changeSet])))))
 
-;; Strict change set validation:
-;;
-;; All *new* change sets can only have one change per change set -- this is a Liquibase best practice. (Otherwise part
-;; of the change set can succeed without the entire change set succeeding)
-;;
-;; Comment is required. Has to be something like 'Added x.38.0'
-
 (def strict-change-set-cutoff
   "All change sets with an ID >= this number will be validated with the strict spec."
   172)
@@ -59,79 +56,26 @@
 (defmulti change-set
   change-set-validation-level)
 
-;; ID must be either an integer or string
-(s/def :change-set/id
-  (s/or
-   :int int?
-   :int-string (s/and
-                string?
-                (fn [^String s]
-                  (try
-                    (Integer/parseInt s)
-                    (catch Throwable _
-                      false))))))
-
-(s/def :change-set/comment
-  string?)
-
-(s/def :change-set/shared
-  (s/keys :req-un [:change-set/id :change-set/author]))
+(defmethod change-set :strict
+  [_]
+  :change-set.strict/change-set)
 
 (defmethod change-set :unstrict
   [_]
-  (s/merge
-   :change-set/shared
-   (s/keys :req-un [:change-set.unstrict/changes]
-           :opt-un [:change-set.unstrict/comment])))
-
-(s/def :change-set.unstrict/comment
-  string?)
-
-(defmethod change-set :strict
-  [_]
-  (s/merge
-   :change-set/shared
-   (s/keys :req-un [:change-set.strict/changes :change-set.strict/comment])))
-
-(s/def change-set.strict/comment
-  (partial re-find #"Added [\d.x]+"))
+  :change-set.unstrict/change-set)
 
 (s/def ::changeSet
   (s/multi-spec change-set change-set-validation-level))
-
-(s/def ::change
-  (s/keys :opt-un [:change/addColumn]))
-
-(s/def :change/addColumn
-  (s/keys :req-un [:add-column/tableName :add-column/columns]))
-
-(s/def :add-column/columns
-  (s/alt :column :columns/column))
-
-(s/def :columns/column
-  (s/keys :req-un [::column]))
-
-(s/def ::column
-  (s/keys :req-un [:column/name :column/type]
-          :opt-un [:column/remarks]))
-
-;; unstrict change set: one or more changes
-(s/def :change-set.unstrict/changes
-  (s/+ ::change))
-
-;; only one change allowed per change set for the strict schema.
-(s/def :change-set.strict/changes
-  (s/alt :change ::change))
-
-;; TODO -- correct use of onDelete: CASCADE (addForeignKeyConstraint) or deleteCascade: true (constraints)
 
 (defn validate-migrations [migrations]
   (when (= (s/conform ::migrations migrations) :clojure.spec.alpha/invalid)
     (let [data (s/explain-data ::migrations migrations)]
       (throw (ex-info (str "Validation failed:\n" (with-out-str (pprint/pprint (mapv #(dissoc % :val)
                                                                                      (:clojure.spec.alpha/problems data)))))
-                      (or data {})))))
+                      (or (dissoc data :clojure.spec.alpha/value) {})))))
   :ok)
+
+;; TODO -- correct use of onDelete: CASCADE (addForeignKeyConstraint) or deleteCascade: true (constraints)
 
 (def filename
   "../../resources/migrations/000_migrations.yaml")

@@ -7837,7 +7837,7 @@ databaseChangeLog:
   - changeSet:
       id: 275
       author: dpsutton
-      comment: 'Add refingerprint to Database'
+      comment: 'Added 0.38.0 refingerprint to Database'
       changes:
         - addColumn:
             tableName: metabase_database
@@ -7850,7 +7850,7 @@ databaseChangeLog:
   - changeSet:
       id: 276
       author: robroland
-      comment: Added 0.37.0 - Dashboard subscriptions
+      comment: Added 0.38.0 - Dashboard subscriptions
       changes:
         - addColumn:
             columns:
