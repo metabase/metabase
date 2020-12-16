@@ -325,7 +325,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       clickLineDot({ index: 1 });
       popover().within(() => {
         cy.findByText("January 2, 2020");
-        cy.findByText("1");
+        cy.findByText("5");
       });
     });
   });
