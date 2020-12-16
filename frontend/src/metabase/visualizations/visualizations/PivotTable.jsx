@@ -173,7 +173,9 @@ export default class PivotTable extends Component {
       return indexItem[indexItem.length - 1].length * CELL_WIDTH;
     }
 
-    const showRowSubtotals = leftIndex[0].length > 1;
+    // show row subtotals if the left index has multiple tiers
+    const showRowSubtotals = leftIndex.length > 0 && leftIndex[0].length > 1;
+
     function rowHeight({ index }) {
       if (leftIndex.length === 0 || index === leftIndex.length) {
         return CELL_HEIGHT;
