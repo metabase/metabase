@@ -7863,5 +7863,4 @@ databaseChangeLog:
                   foreignKeyName: fk_pulse_card_ref_pulse_card_id
                   deferrable: false
                   initiallyDeferred: false
-                  onDelete: CASCADE
             tableName: pulse_card

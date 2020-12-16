@@ -6,3 +6,6 @@
 
 (s/def ::addColumn
   (s/keys :req-un [::tableName]))
+
+(s/def ::createTable
+  (s/keys :req-un [::tableName]))

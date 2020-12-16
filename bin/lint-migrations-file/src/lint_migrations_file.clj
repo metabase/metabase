@@ -75,8 +75,6 @@
                       (or (dissoc data :clojure.spec.alpha/value) {})))))
   :ok)
 
-;; TODO -- correct use of onDelete: CASCADE (addForeignKeyConstraint) or deleteCascade: true (constraints)
-
 (def filename
   "../../resources/migrations/000_migrations.yaml")
 

@@ -20,6 +20,12 @@
                       :columns   [(mock-column)]}
                      (apply array-map keyvals))})
 
+(defn- mock-create-table-changes [& keyvals]
+  {:createTable (merge {:tableName "my_table"
+                        :columns   [(mock-column)]
+                        :remarks   "Wow"}
+                       (apply array-map keyvals))})
+
 (defn- validate [& changes]
   (lint-migrations-file/validate-migrations
    {:databaseChangeLog changes}))
@@ -44,15 +50,20 @@
 
 (deftest only-one-column-per-add-column-test
   (testing "we should only allow one column per addColumn change"
-    (is (= :ok
+    (doseq [id [1 200]]
+      (is (= :ok
+             (validate
+              (mock-change-set
+               :id id
+               :changes [(mock-add-column-changes)]))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Extra input"
            (validate
-            (mock-change-set :changes [(mock-add-column-changes)]))))
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Extra input"
-         (validate
-          (mock-change-set :changes [(mock-add-column-changes :columns [(mock-column :name "A")
-                                                                        (mock-column :name "B")])]))))))
+            (mock-change-set
+             :id id
+             :changes [(mock-add-column-changes :columns [(mock-column :name "A")
+                                                          (mock-column :name "B")])])))))))
 
 (deftest one-change-per-change-set-test
   (testing "[strict only] only allow one change per change set"
@@ -76,3 +87,35 @@
          (validate (mock-change-set :id 200, :comment "Bad comment"))))
     (is (= :ok
            (validate (mock-change-set :id 200, :comment "Added x.38.0"))))))
+
+(deftest no-on-delete-in-constraints-test
+  (testing "Make sure we don't use onDelete in constraints"
+    (doseq [id         [1 200]
+            change-set [(mock-change-set
+                         :id id
+                         :changes [(mock-add-column-changes
+                                    :columns [(mock-column :constraints {:onDelete "CASCADE"})])])
+                        (mock-change-set
+                         :id id
+                         :changes [(mock-create-table-changes
+                                    :columns [(mock-column :constraints {:onDelete "CASCADE"})])])]]
+      (testing (format "Change set =\n%s" (pr-str change-set))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"onDelete is only for addForeignKeyConstraints"
+             (validate change-set)))))))
+
+(deftest require-remarks-for-create-table-test
+  (testing "[strict only] require remarks for newly created tables"
+    (is (= :ok
+           (validate
+            (mock-change-set
+             :id 1
+             :changes [(update (mock-create-table-changes) :createTable dissoc :remarks)]))))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #":remarks"
+         (validate
+          (mock-change-set
+           :id 200
+           :changes [(update (mock-create-table-changes) :createTable dissoc :remarks)]))))))

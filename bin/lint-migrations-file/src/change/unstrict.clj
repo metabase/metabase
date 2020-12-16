@@ -9,13 +9,24 @@
 (s/def ::column
   (s/keys :req-un [:column.unstrict/column]))
 
-(s/def ::columns
+(s/def :change.unstrict.add-column/columns
   (s/alt :column ::column))
 
 (s/def ::addColumn
   (s/merge
    :change.common/addColumn
-   (s/keys :req-un [::columns])))
+   (s/keys :req-un [:change.unstrict.add-column/columns])))
+
+(s/def ::remarks string?)
+
+(s/def :change.unstrict.create-table/columns
+  (s/+ (s/alt :column ::column)))
+
+(s/def ::createTable
+  (s/merge
+   :change.common/createTable
+   (s/keys :req-un [:change.unstrict.create-table/columns]
+           :opt-un [::remarks])))
 
 (s/def ::change
-  (s/keys :opt-un [::addColumn]))
+  (s/keys :opt-un [::addColumn ::createTable]))
