@@ -17,7 +17,7 @@ describe("scenarios > pulse", () => {
   before(restore);
   beforeEach(signInAsAdmin);
   it("should be able get to the new pulse page from a collection page", () => {
-    cy.visit("/collection/root");
+    cy.visit("/");
 
     cy.get(".Icon-add").click();
     cy.contains("New pulse").click();
