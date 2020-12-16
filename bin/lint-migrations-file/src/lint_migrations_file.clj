@@ -4,20 +4,44 @@
             [clojure.spec.alpha :as s]
             [yaml.core :as yaml]))
 
+;; just print ordered maps like normal maps.
+(defmethod print-method flatland.ordered.map.OrderedMap
+  [m writer]
+  (print-method (into {} m) writer))
+
 (s/def ::migrations
   (s/keys :req-un [::databaseChangeLog]))
 
+(defn- change-set-ids [change-log]
+  (for [{{id :id} :changeSet} change-log
+        :when                 id]
+    (if (string? id)
+      (Integer/parseInt id)
+      id)))
+
+(defn distinct-change-set-ids? [change-log]
+  ;; there are actually two migration 32s, so that's the only exception we're allowing.
+  (let [ids (remove (partial = 32) (change-set-ids change-log))]
+    ;; can't apply distinct? with so many IDs
+    (= (count ids) (count (set ids)))))
+
+(defn change-set-ids-in-order? [change-log]
+  (let [ids (change-set-ids change-log)]
+    (= ids (sort ids))))
+
 ;; TODO -- change sets must be distinct by ID.
 (s/def ::databaseChangeLog
-  (s/+ (s/alt :property  (s/keys :req-un [::property])
-              :changeSet (s/keys :req-un [::changeSet]))))
+  (s/and distinct-change-set-ids?
+         change-set-ids-in-order?
+         (s/+ (s/alt :property  (s/keys :req-un [::property])
+                     :changeSet (s/keys :req-un [::changeSet])))))
 
 ;; Strict change set validation:
 ;;
 ;; All *new* change sets can only have one change per change set -- this is a Liquibase best practice. (Otherwise part
 ;; of the change set can succeed without the entire change set succeeding)
 ;;
-;; comment is required.
+;; Comment is required. Has to be something like 'Added x.38.0'
 
 (def strict-change-set-cutoff
   "All change sets with an ID >= this number will be validated with the strict spec."
@@ -103,8 +127,10 @@
 
 (defn validate-migrations [migrations]
   (when (= (s/conform ::migrations migrations) :clojure.spec.alpha/invalid)
-    (throw (ex-info (str "Validation failed: " (s/explain-str ::migrations migrations))
-                    (or (s/explain-data ::migrations migrations) {}))))
+    (let [data (s/explain-data ::migrations migrations)]
+      (throw (ex-info (str "Validation failed:\n" (with-out-str (pprint/pprint (mapv #(dissoc % :val)
+                                                                                     (:clojure.spec.alpha/problems data)))))
+                      (or data {})))))
   :ok)
 
 (def filename
@@ -125,6 +151,6 @@
     (println "Ok.")
     (System/exit 0)
     (catch Throwable e
-      (println (.getMessage e))
       (pprint/pprint (Throwable->map e))
+      (println (.getMessage e))
       (System/exit 1))))
