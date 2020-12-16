@@ -24,18 +24,21 @@
                                                 [:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]]
                                   :expressions {"pivot-grouping" [:abs 0]}}}
 
-                         {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
-                                                [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]]
+                         {:query {:breakout    [[:fk-> (mt/$ids $orders.product_id) (mt/$ids $products.category)]]
                                   :expressions {"pivot-grouping" [:abs 1]}}}
 
-                         {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]]
+                         {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]
+                                                [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]]
                                   :expressions {"pivot-grouping" [:abs 2]}}}
 
-                         {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]]
+                         {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]]
                                   :expressions {"pivot-grouping" [:abs 3]}}}
 
+                         {:query {:breakout    [[:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.source)]]
+                                  :expressions {"pivot-grouping" [:abs 4]}}}
+
                          {:query {:breakout    []
-                                  :expressions {"pivot-grouping" [:abs 4]}}}]
+                                  :expressions {"pivot-grouping" [:abs 5]}}}]
                expected (map (fn [expected-val] (-> expected-val
                                                     (assoc :type       :query
                                                            :parameters []
@@ -45,6 +48,5 @@
                                                     (assoc-in [:query :aggregation] [[:count] [:sum (mt/$ids $orders.quantity)]])
                                                     (assoc-in [:query :source-table] (mt/$ids $$orders)))) expected)
                actual   (map (fn [actual-val] (dissoc actual-val :database)) (sut/generate-queries request))]
-
-           (is (= 5 (count actual)))
+           (is (= 6 (count actual)))
            (is (= expected actual))))))))
