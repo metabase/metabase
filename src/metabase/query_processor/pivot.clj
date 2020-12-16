@@ -1,6 +1,7 @@
 (ns metabase.query-processor.pivot
   "Pivot table actions for the query processor"
-  (:require [cheshire.core :as json]))
+  (:require [cheshire.core :as json]
+            [metabase.util :as u]))
 
 (defn powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
@@ -10,10 +11,12 @@
           :when (not (zero? (bit-and (bit-shift-left 1 item) combo)))]
       (nth xs item))))
 
-(defn- generate-breakouts
-  "Generate the combinatorial breakouts for a given query pivot table query"
-  [breakouts]
-  (powerset breakouts))
+(defn- generate-specified-breakouts
+  "Generate breakouts specified by pivot_rows"
+  [breakouts pivot_rows]
+  (let [individual-row-breakouts (for [pivots (powerset pivot_rows)]
+                                   (map #(nth breakouts %) pivots))]
+    (apply conj [breakouts] individual-row-breakouts)))
 
 (defn add-grouping-field
   "Add the grouping field and expression to the query"
@@ -31,7 +34,7 @@
   "Generate the additional queries to perform a generic pivot table"
   [request]
   (let [query     (:query request)
-        breakouts (generate-breakouts (:breakout query))]
+        breakouts (generate-specified-breakouts (:breakout query) (:pivot_rows request))]
     (map (fn [[index breakout]]
            (add-grouping-field request breakout index))
          (map-indexed vector breakouts))))

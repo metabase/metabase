@@ -23,22 +23,26 @@
 
 (defn- filters-query
   []
-  (mt/mbql-query orders
-    {:aggregation [[:count]]
-     :breakout    [[:fk-> $orders.user_id $people.state]
-                   [:fk-> $orders.user_id $people.source]]
-     :filter      [:and [:= [:fk-> $orders.user_id $people.source] "Google" "Organic"]]}))
+  (-> (mt/mbql-query orders
+        {:aggregation [[:count]]
+         :breakout    [[:fk-> $orders.user_id $people.state]
+                       [:fk-> $orders.user_id $people.source]]
+         :filter      [:and [:= [:fk-> $orders.user_id $people.source] "Google" "Organic"]]})
+      (assoc :pivot_rows [1 0]
+             :pivot_cols [2])))
 
 (defn- parameters-query
   []
-  (mt/mbql-query orders
-    {:aggregation [[:count]]
-     :breakout    [[:fk-> $orders.user_id $people.state]
-                   [:fk-> $orders.user_id $people.source]]
-     :filter      [:and [:= [:fk-> $orders.user_id $people.source] "Google" "Organic"]]
-     :parameters  [{:type "category"
-                    :target [:dimension [:fk-> $orders.product_id $products.category]]
-                    :value "Gadget"}]}))
+  (-> (mt/mbql-query orders
+        {:aggregation [[:count]]
+         :breakout    [[:fk-> $orders.user_id $people.state]
+                       [:fk-> $orders.user_id $people.source]]
+         :filter      [:and [:= [:fk-> $orders.user_id $people.source] "Google" "Organic"]]
+         :parameters  [{:type   "category"
+                        :target [:dimension [:fk-> $orders.product_id $products.category]]
+                        :value  "Gadget"}]})
+      (assoc :pivot_rows [1 0]
+             :pivot_cols [2])))
 
 (defn- pivot-card
   []
@@ -74,14 +78,14 @@
       (testing "Run a pivot table"
         (let [result (mt/user-http-request :rasta :post 202 "advanced_computation/pivot/dataset" (pivot-query))
               rows   (mt/rows result)]
-          (is (= 1384 (:row_count result)))
+          (is (= 1168 (:row_count result)))
           (is (= "completed" (:status result)))
           (is (= 6 (count (get-in result [:data :cols]))))
-          (is (= 1384 (count rows)))
+          (is (= 1168 (count rows)))
 
           ;; spot checking rows, but leaving off the discriminator on the end
           (is (= ["AK" "Affiliate" "Doohickey" 18 81] (drop-last (first rows))))
-          (is (= ["MS" nil "Doohickey" 78 291] (drop-last (nth rows 1000))))
+          (is (= ["MT" "Google" nil 186 706] (drop-last (nth rows 1000))))
           (is (= [nil nil nil 18760 69540] (drop-last (last rows))))))
 
       (testing "with an added expression"
@@ -90,8 +94,8 @@
                         (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
               result (mt/user-http-request :rasta :post 202 "advanced_computation/pivot/dataset" query)
               rows (mt/rows result)]
-          (is (= 1384 (:row_count result)))
-          (is (= 1384 (count rows)))
+          (is (= 1168 (:row_count result)))
+          (is (= 1168 (count rows)))
 
           (let [cols (get-in result [:data :cols])]
             (is (= 7 (count cols)))
@@ -104,7 +108,7 @@
                     :source "fields"}
                    (nth cols 5))))
 
-          (is (= [nil nil nil 18760 69540 "wheeee" 7] (last rows))))))))
+          (is (= [nil nil nil 18760 69540 "wheeee" 4] (last rows))))))))
 
 (deftest pivot-filter-dataset-test
   (mt/dataset sample-dataset
@@ -112,16 +116,16 @@
        (testing "Run a pivot table"
          (let [result (mt/user-http-request :rasta :post 202 "advanced_computation/pivot/dataset" (filters-query))
                rows   (mt/rows result)]
-           (is (= 140 (:row_count result)))
+           (is (= 230 (:row_count result)))
            (is (= "completed" (:status result)))
            (is (= 4 (count (get-in result [:data :cols]))))
-           (is (= 140 (count rows)))
+           (is (= 230 (count rows)))
 
            ;; spot checking rows, but leaving off the discriminator on the end
            (is (= ["AK" "Google" 119] (drop-last (first rows))))
            (is (= ["AK" "Organic" 89] (drop-last (second rows))))
-           (is (= [nil "Google" 3798] (drop-last (nth rows 90))))
-           (is (= [nil "Organic" 3764] (drop-last (nth rows 91))))
+           (is (= ["IA" nil 248] (drop-last (nth rows 190))))
+           (is (= ["ID" nil 78] (drop-last (nth rows 191))))
            (is (= [nil nil 7562] (drop-last (last rows)))))))))
 
 (deftest pivot-parameter-dataset-test
@@ -130,16 +134,16 @@
        (testing "Run a pivot table"
          (let [result (mt/user-http-request :rasta :post 202 "advanced_computation/pivot/dataset" (parameters-query))
                rows   (mt/rows result)]
-           (is (= 137 (:row_count result)))
+           (is (= 225 (:row_count result)))
            (is (= "completed" (:status result)))
            (is (= 4 (count (get-in result [:data :cols]))))
-           (is (= 137 (count rows)))
+           (is (= 225 (count rows)))
 
            ;; spot checking rows, but leaving off the discriminator on the end
            (is (= ["AK" "Google" 27] (drop-last (first rows))))
            (is (= ["AK" "Organic" 25] (drop-last (second rows))))
-           (is (= ["AK" nil 52] (drop-last (nth rows 90))))
-           (is (= ["AL" nil 57] (drop-last (nth rows 91))))
+           (is (= ["OR" nil 48] (drop-last (nth rows 210))))
+           (is (= ["PA" nil 45] (drop-last (nth rows 211))))
            (is (= [nil nil 2009] (drop-last (last rows)))))))))
 
 (deftest pivot-card-test
@@ -148,14 +152,14 @@
       (with-temp-pivot-card [_ card]
         (let [result (mt/user-http-request :rasta :post 202 (format "advanced_computation/pivot/card/%d/query" (u/get-id card)))
               rows   (mt/rows result)]
-          (is (= 1384 (:row_count result)))
+          (is (= 889 (:row_count result)))
           (is (= "completed" (:status result)))
           (is (= 6 (count (get-in result [:data :cols]))))
-          (is (= 1384 (count rows)))
+          (is (= 889 (count rows)))
 
           ;; spot checking rows, but leaving off the discriminator on the end
           (is (= ["AK" "Affiliate" "Doohickey" 18 81] (drop-last (first rows))))
-          (is (= ["MS" nil "Doohickey" 78 291] (drop-last (nth rows 1000))))
+          (is (= ["MS" "Organic" "Gizmo" 16 42] (drop-last (nth rows 445))))
           (is (= [nil nil nil 18760 69540] (drop-last (last rows)))))))))
 
 (deftest pivot-public-card-test
@@ -168,9 +172,9 @@
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 1384 (count rows)))
+            (is (= 889 (count rows)))
 
             ;; spot checking rows, but leaving off the discriminator on the end
             (is (= ["AK" "Affiliate" "Doohickey" 18 81] (drop-last (first rows))))
-            (is (= ["MS" nil "Doohickey" 78 291] (drop-last (nth rows 1000))))
+            (is (= ["CO" "Affiliate" "Gadget" 62 211] (drop-last (nth rows 100))))
             (is (= [nil nil nil 18760 69540] (drop-last (last rows))))))))))
