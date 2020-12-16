@@ -481,8 +481,13 @@
             (db/update! User user-id :login_attributes nil)))))
 
     (testing "Test that login will fallback to local for users not in LDAP"
-      (is (schema= SessionResponse
-                   (mt/client :post 200 "session" (mt/user->credentials :crowberto)))))
+      (mt/with-temporary-setting-values [enable-password-login true]
+        (is (schema= SessionResponse
+                     (mt/client :post 200 "session" (mt/user->credentials :crowberto)))))
+      (testing "...but not if password login is disabled"
+        (mt/with-temporary-setting-values [enable-password-login false]
+          (is (= "Password login is disabled for this instance."
+                 (mt/client :post 400 "session" (mt/user->credentials :crowberto)))))))
 
     (testing "Test that login will NOT fallback for users in LDAP but with an invalid password"
       ;; NOTE: there's a different password in LDAP for Lucky
@@ -497,7 +502,7 @@
             (db/simple-delete! Session :user_id user-id)
             (is (schema= SessionResponse
                          (mt/suppress-output
-                          (mt/client :post 200 "session" (mt/user->credentials :rasta)))))
+                           (mt/client :post 200 "session" (mt/user->credentials :rasta)))))
             (finally
               (db/update! User user-id :login_attributes nil))))))
 
