@@ -7,16 +7,35 @@
 (s/def ::migrations
   (s/keys :req-un [::databaseChangeLog]))
 
+;; TODO -- change sets must be distinct by ID.
 (s/def ::databaseChangeLog
   (s/+ (s/alt :property  (s/keys :req-un [::property])
               :changeSet (s/keys :req-un [::changeSet]))))
 
-;; TODO -- change sets must be distinct by ID.
-(s/def ::changeSet
-  (s/keys :req-un [:change-set/id :change-set/changes :change-set/author]
-          ;; TODO -- require these on new change sets
-          :opt-un [:change-set/comment]))
+;; Strict change set validation:
+;;
+;; All *new* change sets can only have one change per change set -- this is a Liquibase best practice. (Otherwise part
+;; of the change set can succeed without the entire change set succeeding)
+;;
+;; comment is required.
 
+(def strict-change-set-cutoff
+  "All change sets with an ID >= this number will be validated with the strict spec."
+  172)
+
+(defn change-set-validation-level [{id :id}]
+  (let [id (cond
+             (integer? id) id
+             (string? id)  (Integer/parseInt ^String id)
+             :else         (throw (ex-info "Invalid ID" {:id id})))]
+    (if (>= id strict-change-set-cutoff)
+      :strict
+      :unstrict)))
+
+(defmulti change-set
+  change-set-validation-level)
+
+;; ID must be either an integer or string
 (s/def :change-set/id
   (s/or
    :int int?
@@ -28,9 +47,33 @@
                     (catch Throwable _
                       false))))))
 
-(s/def :change-set/changes
-  ;; TODO -- only one change allowed for new change sets
-  (s/+ ::change))
+(s/def :change-set/comment
+  string?)
+
+(s/def :change-set/shared
+  (s/keys :req-un [:change-set/id :change-set/author]))
+
+(defmethod change-set :unstrict
+  [_]
+  (s/merge
+   :change-set/shared
+   (s/keys :req-un [:change-set.unstrict/changes]
+           :opt-un [:change-set.unstrict/comment])))
+
+(s/def :change-set.unstrict/comment
+  string?)
+
+(defmethod change-set :strict
+  [_]
+  (s/merge
+   :change-set/shared
+   (s/keys :req-un [:change-set.strict/changes :change-set.strict/comment])))
+
+(s/def change-set.strict/comment
+  (partial re-find #"Added [\d.x]+"))
+
+(s/def ::changeSet
+  (s/multi-spec change-set change-set-validation-level))
 
 (s/def ::change
   (s/keys :opt-un [:change/addColumn]))
@@ -47,6 +90,14 @@
 (s/def ::column
   (s/keys :req-un [:column/name :column/type]
           :opt-un [:column/remarks]))
+
+;; unstrict change set: one or more changes
+(s/def :change-set.unstrict/changes
+  (s/+ ::change))
+
+;; only one change allowed per change set for the strict schema.
+(s/def :change-set.strict/changes
+  (s/alt :change ::change))
 
 ;; TODO -- correct use of onDelete: CASCADE (addForeignKeyConstraint) or deleteCascade: true (constraints)
 
