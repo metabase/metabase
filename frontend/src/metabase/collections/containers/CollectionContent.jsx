@@ -205,21 +205,13 @@ export default class CollectionContent extends React.Component {
                     isRoot={isRoot}
                   />
                 )}
-              <Box>
-                <EntityMenu
-                  tooltip={t`Create`}
-                  className="hide sm-show mr1 text-brand"
-                  triggerIcon="add"
-                  items={[
-                    {
-                      title: t`New collection`,
-                      icon: `folder`,
-                      link: Urls.newCollection(this.props.collectionId),
-                      event: `NavBar;New Dashboard Click;`,
-                    },
-                  ]}
-                />
-              </Box>
+              <Tooltip tooltip={t`New collection`}>
+                <Link to={Urls.newCollection(this.props.collectionId)}>
+                  <IconWrapper>
+                    <Icon name="folder" />
+                  </IconWrapper>
+                </Link>
+              </Tooltip>
             </Flex>
           </Flex>
           {collectionHasPins ? (
