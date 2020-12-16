@@ -212,18 +212,6 @@ export default class CollectionContent extends React.Component {
                   triggerIcon="add"
                   items={[
                     {
-                      title: t`New dashboard`,
-                      icon: `dashboard`,
-                      action: () => this.setState({ showDashboardModal: true }),
-                      event: `NavBar;New Dashboard Click;`,
-                    },
-                    {
-                      title: t`New pulse`,
-                      icon: `pulse`,
-                      link: Urls.newPulse(),
-                      event: `NavBar;New Pulse Click;`,
-                    },
-                    {
                       title: t`New collection`,
                       icon: `folder`,
                       link: Urls.newCollection(this.props.collectionId),
