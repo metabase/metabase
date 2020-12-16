@@ -757,7 +757,7 @@ jobs:
             - run:
                 name: Run Liquibase migrations linter tests
                 command: |
-                  cd /home/circleci/metabase/metabase/bin/lint-migrations-yaml && clojure -M:test
+                  cd /home/circleci/metabase/metabase/bin/lint-migrations-file && clojure -M:test
                 no_output_timeout: 10m
 
 
