@@ -506,7 +506,7 @@ class SharingSidebar extends React.Component {
         <a
           className="link"
           target="_blank"
-          href={MetabaseSettings.docsUrl("users-guide/10-pulses.html")}
+          href={MetabaseSettings.docsUrl("users-guide/10-pulses")}
         >
           Learn more
         </a>
