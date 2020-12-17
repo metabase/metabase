@@ -29,6 +29,7 @@ import { push, goBack } from "react-router-redux";
 import { connect } from "react-redux";
 
 import { cleanPulse, createChannel } from "metabase/lib/pulse";
+import MetabaseSettings from "metabase/lib/settings";
 
 import {
   getPulseId,
@@ -498,6 +499,12 @@ class SharingSidebar extends React.Component {
     const { editingMode } = this.state;
     const { pulse, formInput, pulseList, onCancel } = this.props;
 
+    const caveatMessage = (<Text className="mx4 my2 p2 bg-light text-dark rounded">{jt`${<span className="text-bold">Note:</span>} charts in your subscription won't look the same as in your dashboard. ${<a
+      className="link"
+      target="_blank"
+      href={MetabaseSettings.docsUrl("users-guide/10-pulses.html#pick-your-data")}
+    >Learn more</a>}.`}</Text>);
+
     // protect from empty values that will mess this up
     if (formInput === null || pulse === null || pulseList === null) {
       return <Sidebar />;
@@ -694,10 +701,11 @@ class SharingSidebar extends React.Component {
           onCancel={onCancel}
           className="text-dark"
         >
-          <div className="pt4 flex align-center px4">
+          <div className="pt4 px4 flex align-center">
             <Icon name="mail" className="mr1" size={21} />
             <Heading>{t`Email this dashboard`}</Heading>
           </div>
+          {caveatMessage}
           <div className="my2 px4">
             <div>
               <div className="text-bold mb1">
@@ -797,6 +805,7 @@ class SharingSidebar extends React.Component {
             <Icon name="slack" className="mr1" size={21} />
             <Heading>{t`Send this dashboard to Slack`}</Heading>
           </div>
+          {caveatMessage}
           <div className="pb2 px4">
             {channelSpec.fields &&
               this.renderFields(channel, index, channelSpec)}
