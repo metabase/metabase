@@ -225,12 +225,12 @@ class Column extends React.Component {
         <div>
           <ColumnDragger
             className={cx(
-              "ColumnDragger text-dark mb1 bordered rounded cursor-grab hover-parent hover--visibility text-bold flex justify-between",
+              "text-dark mb1 bordered rounded cursor-grab text-bold flex justify-between",
               { disabled: isDragging },
             )}
           >
             {column.display_name}
-            <Grabber style={{ width: 10 }} className="hover-child" />
+            <Grabber style={{ width: 10 }} />
           </ColumnDragger>
         </div>,
       ),
