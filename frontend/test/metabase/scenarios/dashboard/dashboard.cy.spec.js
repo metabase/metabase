@@ -24,7 +24,7 @@ describe("scenarios > dashboard", () => {
 
   it("should create new dashboard", () => {
     // Create dashboard
-    cy.visit("/collection/root");
+    cy.visit("/");
     cy.get(".Icon-add").click();
     cy.findByText("New dashboard").click();
     cy.findByLabelText("Name").type("Test Dash");
