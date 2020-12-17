@@ -225,7 +225,7 @@ class Column extends React.Component {
         <div>
           <ColumnDragger
             className={cx(
-              "text-dark mb1 bordered rounded cursor-grab hover-parent hover--visibility text-bold flex justify-between",
+              "ColumnDragger text-dark mb1 bordered rounded cursor-grab hover-parent hover--visibility text-bold flex justify-between",
               { disabled: isDragging },
             )}
           >

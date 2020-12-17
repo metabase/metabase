@@ -150,6 +150,8 @@ function assertOnPivotTable() {
 // Rely on native drag events, rather than on the coordinates
 // We have 3 "drag-handles" in this test. Their indexes are 0-based.
 function dragField(startIndex, dropIndex) {
+  cy.get(".ColumnGrabber").trigger("mouseover");
+
   cy.get(".Grabber")
     .should("be.visible")
     .as("dragHandle");
