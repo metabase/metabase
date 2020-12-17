@@ -6,6 +6,7 @@ import _ from "underscore";
 import styled from "styled-components";
 import colors, { lighten } from "metabase/lib/colors";
 
+import Label from "metabase/components/type/Label";
 import Grabber from "metabase/components/Grabber";
 
 const ColumnDragger = styled.div`
@@ -93,7 +94,7 @@ class Partition extends React.Component {
     } = this.props;
     return connectDropTarget(
       <div className={className}>
-        <h4 className="mb2">{title}</h4>
+        <Label color="medium">{title}</Label>
         {columns.length === 0 ? (
           <EmptyPartition
             columnFilter={columnFilter}
