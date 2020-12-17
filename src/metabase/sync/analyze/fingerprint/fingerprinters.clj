@@ -16,9 +16,9 @@
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram
            com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
+           [java.time LocalDateTime ZoneOffset]
            [java.time.chrono ChronoLocalDateTime ChronoZonedDateTime]
-           java.time.temporal.Temporal
-           java.time.ZoneOffset))
+           [java.time.temporal ChronoUnit Temporal]))
 
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
@@ -223,18 +223,42 @@
        (not (Double/isNaN x))
        (not (Double/isInfinite x))))
 
+(def twenty-years-ago (.. (LocalDateTime/now)
+                          (minus 20 ChronoUnit/YEARS)
+                          (toInstant ZoneOffset/UTC)
+                          (getEpochSecond)))
+
+(def twenty-years-from-now (.. (LocalDateTime/now)
+                               (plus 20 ChronoUnit/YEARS)
+                               (toInstant ZoneOffset/UTC)
+                               (getEpochSecond)))
+
+(defn between [l h]
+  (fn [x]
+    (<= l x h)))
+
 (deffingerprinter :type/Number
   (redux/post-complete
-   ((filter real-number?) histogram)
-   (fn [h]
-     (let [{q1 0.25 q3 0.75} (hist/percentiles h 0.25 0.75)]
-       (robust-map
-        :min (hist/minimum h)
-        :max (hist/maximum h)
-        :avg (hist/mean h)
-        :sd  (some-> h hist/variance math/sqrt)
-        :q1  q1
-        :q3  q3)))))
+    ((filter real-number?) (robust-fuse {:histogram            histogram
+                                         :percent-seconds      (stats/proportion (between twenty-years-ago twenty-years-from-now))
+                                         :percent-milliseconds (stats/proportion
+                                                                 (between (* twenty-years-ago 1000)
+                                                                          (* twenty-years-from-now 1000)))
+                                         :percent-microseconds (stats/proportion
+                                                                 (between (* twenty-years-ago 1000000)
+                                                                          (* twenty-years-from-now 1000000)))}))
+    (fn [{h :histogram :keys [percent-seconds percent-milliseconds percent-microseconds]}]
+      (let [{q1 0.25 q3 0.75} (hist/percentiles h 0.25 0.75)]
+        (robust-map
+          :min (hist/minimum h)
+          :max (hist/maximum h)
+          :avg (hist/mean h)
+          :sd  (some-> h hist/variance math/sqrt)
+          :q1  q1
+          :q3  q3
+          :percent-seconds percent-seconds
+          :percent-milliseconds percent-milliseconds
+          :percent-microseconds percent-microseconds)))))
 
 (defn- valid-serialized-json?
   "Is x a serialized JSON dictionary or array. Hueristically recognize maps and arrays. Uses the following strategies:

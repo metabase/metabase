@@ -1,7 +1,8 @@
-(ns metabase.sync.analyze.classifiers.text-fingerprint
-  "Logic for inferring the special types of *Text* fields based on their TextFingerprints.
+(ns metabase.sync.analyze.classifiers.fingerprint
+  "Logic for inferring the special types of fields based on their Fingerprints.
    These tests only run against Fields that *don't* have existing special types."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.core.match :refer [match]]
+            [clojure.tools.logging :as log]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
@@ -42,6 +43,18 @@
             special-type))
         percent-key->special-type))
 
+(s/defn ^:private infer-special-type-for-number-fingerprint :- (s/maybe su/FieldType)
+  [number-fingerprint :- i/NumberFingerprint]
+  (let [percentages (select-keys number-fingerprint [:percent-seconds
+                                                     :percent-milliseconds
+                                                     :percent-microseconds])]
+    (->> percentages
+         (filter (fn [[k v]] (and (number? v) (>= v percent-valid-threshold))))
+         ffirst
+         (get {:percent-seconds      :type/UNIXTimestampSeconds
+               :percent-milliseconds :type/UNIXTimestampMilliseconds
+               :percent-microseconds :type/UNIXTimestampMicroseconds}))))
+
 (defn- can-edit-special-type?
   "We can edit the special type if its currently unset or if it was set during the current analysis phase. The original
   field might exist in the metadata at `:sync.classify/original`. This is an attempt at classifier refinement: we
@@ -53,16 +66,25 @@
         (and original
              (nil? (:special_type original))))))
 
+(defn infer-special-type* [base-type fingerprint]
+  (match [base-type fingerprint]
+    [(:isa? :type/Text) {:type {:type/Text text-fingerprint}}]
+    (infer-special-type-for-text-fingerprint text-fingerprint)
+
+    ;; use :type/Number instead of :type/Integer as Oracle maps to :type/Decimal for their biginteger type
+    [(:isa? :type/Number) {:type {:type/Number number-fingerprint}}]
+    (infer-special-type-for-number-fingerprint number-fingerprint)
+
+    :else nil))
 
 (s/defn infer-special-type :- (s/maybe i/FieldInstance)
   "Do classification for `:type/Text` Fields with a valid `TextFingerprint`.
    Currently this only checks the various recorded percentages, but this is subject to change in the future."
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
-  (when (and (isa? (:base_type field) :type/Text)
-             (can-edit-special-type? field))
-    (when-let [text-fingerprint (get-in fingerprint [:type :type/Text])]
-      (when-let [inferred-special-type (infer-special-type-for-text-fingerprint text-fingerprint)]
-        (log/debug (format "Based on the fingerprint of %s, we're marking it as %s."
-                           (sync-util/name-for-logging field) inferred-special-type))
-        (assoc field
-               :special_type inferred-special-type)))))
+  (when (can-edit-special-type? field)
+    (when-let [inferred-special-type (infer-special-type* (:base_type field)
+                                                          fingerprint)]
+      (log/debug (format "Based on the fingerprint of %s, we're marking it as %s."
+                         (sync-util/name-for-logging field) inferred-special-type))
+      (assoc field
+             :special_type inferred-special-type))))

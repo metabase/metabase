@@ -406,12 +406,15 @@
                        :special_type "type/Quantity"
                        :fingerprint  {:global {:distinct-count 1
                                                :nil%           0.0},
-                                      :type   {:type/Number {:min 100.0
-                                                             :max 100.0
-                                                             :avg 100.0
-                                                             :q1  100.0
-                                                             :q3  100.0
-                                                             :sd  nil}}}}]
+                                      :type   {:type/Number {:min                  100.0
+                                                             :max                  100.0
+                                                             :avg                  100.0
+                                                             :q1                   100.0
+                                                             :q3                   100.0
+                                                             :sd                   nil
+                                                             :percent-seconds      0.0
+                                                             :percent-milliseconds 0.0
+                                                             :percent-microseconds 0.0}}}}]
                      (db/select-one-field :result_metadata Card :name card-name))))))))))
 
 (deftest fetch-results-metadata-test
@@ -445,7 +448,8 @@
                          :special_type "type/Quantity"
                          :fingerprint  {:global {:distinct-count 1
                                                  :nil%           0.0},
-                                        :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
+                                        :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil
+                                                               :percent-seconds 0.0 :percent-milliseconds 0.0 :percent-microseconds 0.0}}}}]
                        (db/select-one-field :result_metadata Card :name card-name))))
               (testing "Was the user id found in the generated SQL?"
                 (is (= true
@@ -634,7 +638,8 @@
                  :special_type "type/Quantity"
                  :fingerprint  {:global {:distinct-count 1
                                          :nil%           0.0},
-                                :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
+                                :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil
+                                                       :percent-seconds 0.0 :percent-milliseconds 0.0 :percent-microseconds 0.0}}}}]
                (db/select-one-field :result_metadata Card :id (u/get-id card))))))))
 
 (deftest can-we-change-the-collection-position-of-a-card-

@@ -81,7 +81,8 @@
   (testing (str "Native queries don't know what the associated Fields are for the results, we need to compute the fingerprints, but "
                 "they should sill be the same except for some of the optimizations we do when we have all the information.")
     (mt/with-temp Card [card {:dataset_query {:database (mt/id), :type :native, :native {:query "select * from venues"}}}]
-      (is (= (assoc-in mock.u/venue-fingerprints [:category_id :type] #:type{:Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0, :sd 23.06}})
+      (is (= (assoc-in mock.u/venue-fingerprints [:category_id :type] #:type{:Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0, :sd 23.06
+                                                                                      :percent-seconds 0.0 :percent-milliseconds 0.0 :percent-microseconds 0.0}})
              (name->fingerprints (query->result-metadata (query-for-card card))))))))
 
 (deftest compute-special-types-test

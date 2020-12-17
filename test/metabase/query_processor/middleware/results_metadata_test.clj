@@ -45,7 +45,8 @@
 
 (def ^:private default-card-results-native
   (for [column (-> default-card-results
-                   (update-in [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.06}}))]
+                   (update-in [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.06
+                                                                          :percent-seconds 0.0 :percent-milliseconds 0.0 :percent-microseconds 0.0}}))]
     (assoc column :display_name (:name column))))
 
 (deftest save-result-metadata-test
@@ -182,7 +183,8 @@
                :special_type "type/Quantity"
                :fingerprint  {:global {:distinct-count 3
                                        :nil%           0.0},
-                              :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}}]
+                              :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5
+                                                     :percent-seconds 0.0 :percent-milliseconds 0.0 :percent-microseconds 0.0}}}}]
              (-> card
                  card-metadata
                  round-to-2-decimals
