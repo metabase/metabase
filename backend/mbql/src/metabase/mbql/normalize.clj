@@ -229,7 +229,8 @@
   "Normalize source/results metadata for a single column."
   [metadata]
   {:pre [(map? metadata)]}
-  (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :special_type :visibility_type :field_ref :source :unit])
+  (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :special_type :visibility_type :source :unit])
+      (m/update-existing :field_ref normalize-tokens)
       (m/update-existing :fingerprint walk/keywordize-keys)))
 
 (defn- normalize-native-query

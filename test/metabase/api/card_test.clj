@@ -35,7 +35,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- count-base-type []
-  (-> (mt/run-mbql-query venues {:aggregation [[:count]]}) :data :cols first :base_type u/qualified-name))
+  (-> (mt/run-mbql-query venues {:aggregation [[:count]]}) :data :cols first :base_type))
 
 (def card-defaults
   {:archived            false
@@ -329,10 +329,10 @@
                                                                  :result_metadata    metadata
                                                                  :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
             ;; now check the metadata that was saved in the DB
-            (is (= [{:base_type    "type/Integer"
+            (is (= [{:base_type    :type/Integer
                      :display_name "Count Chocula"
                      :name         "count_chocula"
-                     :special_type "type/Number"}]
+                     :special_type :type/Number}]
                    (db/select-one-field :result_metadata Card :name card-name)))))))))
 
 (deftest save-card-with-empty-result-metadata-test
@@ -374,10 +374,10 @@
                                          :result_metadata    (map fingerprint-integers->doubles metadata)
                                          :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
             (testing "check the metadata that was saved in the DB"
-              (is (= [{:base_type    "type/Integer"
+              (is (= [{:base_type    :type/Integer
                        :display_name "Count Chocula"
                        :name         "count_chocula"
-                       :special_type "type/Number"
+                       :special_type :type/Number
                        :fingerprint  {:global {:distinct-count 285},
                                       :type   {:type/Number {:min 5.0, :max 2384.0, :avg 1000.2}}}}]
                      (db/select-one-field :result_metadata Card :name card-name))))))))))
@@ -400,10 +400,10 @@
                                          ;; bad checksum
                                          :metadata_checksum  "ABCDEF"))
             (testing "check the correct metadata was fetched and was saved in the DB"
-              (is (= [{:base_type    "type/BigInteger"
+              (is (= [{:base_type    :type/BigInteger
                        :display_name "Count"
                        :name         "count"
-                       :special_type "type/Quantity"
+                       :special_type :type/Quantity
                        :fingerprint  {:global {:distinct-count 1
                                                :nil%           0.0},
                                       :type   {:type/Number {:min 100.0
@@ -442,7 +442,7 @@
                 (is (= [{:base_type    (count-base-type)
                          :display_name "Count"
                          :name         "count"
-                         :special_type "type/Quantity"
+                         :special_type :type/Quantity
                          :fingerprint  {:global {:distinct-count 1
                                                  :nil%           0.0},
                                         :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
@@ -518,7 +518,8 @@
                    :database_id            (mt/id) ; these should be inferred from the dataset_query
                    :table_id               (mt/id :venues)
                    :collection_id          (u/get-id collection)
-                   :collection             (into {} collection)})
+                   :collection             (into {} collection)
+                   :result_metadata        (mt/obj->json->obj (:result_metadata card))})
                  (mt/user-http-request :rasta :get 200 (str "card/" (u/get-id card))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -609,10 +610,10 @@
                                :result_metadata   metadata
                                :metadata_checksum (#'results-metadata/metadata-checksum metadata)})
         ;; now check the metadata that was saved in the DB
-        (is (= [{:base_type    "type/Integer"
+        (is (= [{:base_type    :type/Integer
                  :display_name "Count Chocula"
                  :name         "count_chocula"
-                 :special_type "type/Number"}]
+                 :special_type :type/Number}]
                (db/select-one-field :result_metadata Card :id (u/get-id card))))))))
 
 (deftest make-sure-when-updating-a-card-the-correct-query-metadata-is-fetched--if-incorrect-
@@ -628,10 +629,10 @@
                                :result_metadata   metadata
                                :metadata_checksum "ABC123"}) ; invalid checksum
         ;; now check the metadata that was saved in the DB
-        (is (= [{:base_type    "type/BigInteger"
+        (is (= [{:base_type    :type/BigInteger
                  :display_name "Count"
                  :name         "count"
-                 :special_type "type/Quantity"
+                 :special_type :type/Quantity
                  :fingerprint  {:global {:distinct-count 1
                                          :nil%           0.0},
                                 :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]

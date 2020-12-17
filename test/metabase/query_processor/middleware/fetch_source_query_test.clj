@@ -121,78 +121,71 @@
 ;;; |                                                   JOINS 2.0                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;
 (deftest joins-test
-  (let [expected-metadata [{:name            "name"
-                            :display_name    "Card Name"
-                            :base_type       :type/Text
-                            :special_type    nil
-                            :visibility_type nil
-                            :source          nil
-                            :field_ref       nil
-                            :fingerprint     nil}]]
-    (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query categories {:limit 100})
-                                       :result_metadata [{:name         "name"
-                                                          :display_name "Card Name"
-                                                          :base_type    "type/Text"}]}]
-      (testing "Are `card__id` source tables resolved in `:joins`?"
+  (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query categories {:limit 100})
+                                     :result_metadata [{:name         "name"
+                                                        :display_name "Card Name"
+                                                        :base_type    "type/Text"}]}]
+    (testing "Are `card__id` source tables resolved in `:joins`?"
+      (is (= (mt/mbql-query venues
+               {:joins [{:source-query    {:source-table $$categories, :limit 100}
+                         :alias           "c",
+                         :condition       [:= $category_id [:joined-field "c" $categories.id]]
+                         :source-metadata [{:name "name", :display_name "Card Name", :base_type :type/Text}]}]})
+             (resolve-card-id-source-tables
+              (mt/mbql-query venues
+                {:joins [{:source-table (str "card__" card-id)
+                          :alias        "c"
+                          :condition    [:= $category_id [:joined-field "c" $categories.id]]}]})))))
+
+    (testing "Are `card__id` source tables resolved in JOINs against a source query?"
+      (is (= (mt/mbql-query venues
+               {:joins [{:source-query {:source-query    {:source-table $$categories, :limit 100}
+                                        :source-metadata [{:name "name", :display_name "Card Name", :base_type :type/Text}]}
+                         :alias        "c",
+                         :condition    [:= $category_id [:joined-field "c" $categories.id]]}]})
+             (resolve-card-id-source-tables
+              (mt/mbql-query venues
+                {:joins [{:source-query {:source-table (str "card__" card-id)}
+                          :alias        "c"
+                          :condition    [:= $category_id [:joined-field "c" $categories.id]]}]})))))
+
+    (testing "Are `card__id` source tables resolved in JOINs inside nested source queries?"
+      (is (= (mt/mbql-query venues
+               {:source-query {:source-table $$venues
+                               :joins        [{:source-query    {:source-table $$categories
+                                                                 :limit        100}
+                                               :alias           "c"
+                                               :condition       [:= $category_id [:joined-field "c" $categories.id]]
+                                               :source-metadata [{:name "name", :display_name "Card Name", :base_type :type/Text}]}]}})
+             (resolve-card-id-source-tables
+              (mt/mbql-query venues
+                {:source-query
+                 {:source-table $$venues
+                  :joins        [{:source-table (str "card__" card-id)
+                                  :alias        "c"
+                                  :condition    [:= $category_id [:joined-field "c" $categories.id]]}]}})))))
+
+    (testing "Can we recursively resolve multiple card ID `:source-table`s in Joins?"
+      (mt/with-temp Card [{card-2-id :id} {:dataset_query
+                                           (mt/mbql-query nil
+                                             {:source-table (str "card__" card-id), :limit 200})}]
         (is (= (mt/mbql-query venues
-                 {:joins [{:source-query    {:source-table $$categories, :limit 100}
-                           :alias           "c",
-                           :condition       [:= $category_id [:joined-field "c" $categories.id]]
-                           :source-metadata expected-metadata}]})
+                 {:joins [{:alias           "c"
+                           :condition       [:= $category_id &c.$categories.id]
+                           :source-query    {:source-query    {:source-table $$categories :limit 100}
+                                             :source-metadata [{:name "name", :display_name "Card Name", :base_type :type/Text}]
+                                             :limit           200}
+                           :source-metadata [{:name         "name"
+                                              :display_name "Card Name"
+                                              :base_type    :type/Text
+                                              :field_ref    [:field-literal "name" :type/Text]
+                                               :source       :fields}]}]})
                (resolve-card-id-source-tables
                 (mt/mbql-query venues
-                  {:joins [{:source-table (str "card__" card-id)
+                  {:joins [{:source-table (str "card__" card-2-id)
                             :alias        "c"
-                            :condition    [:= $category_id [:joined-field "c" $categories.id]]}]})))))
-
-      (testing "Are `card__id` source tables resolved in JOINs against a source query?"
-        (is (= (mt/mbql-query venues
-                 {:joins [{:source-query {:source-query    {:source-table $$categories, :limit 100}
-                                          :source-metadata expected-metadata}
-                           :alias        "c",
-                           :condition    [:= $category_id [:joined-field "c" $categories.id]]}]})
-               (resolve-card-id-source-tables
-                (mt/mbql-query venues
-                  {:joins [{:source-query {:source-table (str "card__" card-id)}
-                            :alias        "c"
-                            :condition    [:= $category_id [:joined-field "c" $categories.id]]}]})))))
-
-      (testing "Are `card__id` source tables resolved in JOINs inside nested source queries?"
-        (is (= (mt/mbql-query venues
-                 {:source-query {:source-table $$venues
-                                 :joins        [{:source-query    {:source-table $$categories
-                                                                   :limit        100}
-                                                 :alias           "c"
-                                                 :condition       [:= $category_id [:joined-field "c" $categories.id]]
-                                                 :source-metadata expected-metadata}]}})
-               (resolve-card-id-source-tables
-                (mt/mbql-query venues
-                  {:source-query
-                   {:source-table $$venues
-                    :joins        [{:source-table (str "card__" card-id)
-                                    :alias        "c"
-                                    :condition    [:= $category_id [:joined-field "c" $categories.id]]}]}})))))
-
-      (testing "Can we recursively resolve multiple card ID `:source-table`s in Joins?"
-        (mt/with-temp Card [{card-2-id :id} {:dataset_query
-                                             (mt/mbql-query nil
-                                               {:source-table (str "card__" card-id), :limit 200})}]
-          (is (= (mt/mbql-query venues
-                   {:joins [{:alias           "c"
-                             :condition       [:= $category_id &c.$categories.id]
-                             :source-query    {:source-query    {:source-table $$categories :limit 100}
-                                               :source-metadata expected-metadata
-                                               :limit           200}
-                             :source-metadata (update (vec expected-metadata) 0 assoc
-                                                      :field_ref [:field-literal "name" :type/Text]
-                                                      :source    :fields)}]})
-                 (resolve-card-id-source-tables
-                  (mt/mbql-query venues
-                    {:joins [{:source-table (str "card__" card-2-id)
-                              :alias        "c"
-                              :condition    [:= $category_id &c.categories.id]}]})))))))))
+                            :condition    [:= $category_id &c.categories.id]}]}))))))))
 
 (deftest circular-dependency-test
   (testing "Middleware should throw an Exception if we try to resolve a source query for a card whose source query is itself"
