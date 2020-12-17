@@ -542,7 +542,8 @@ export default class TokenField extends Component {
         {value.map((v, index) => (
           <li
             key={index}
-            className={cx("flex align-center mr1 mb1 p1 rounded bg-medium")}
+            className={cx("flex align-center mr1 mb1 px1 rounded bg-medium")}
+            style={{ paddingTop: "12px", paddingBottom: "12px" }}
           >
             <span
               style={{ ...defaultStyleValue, ...valueStyle }}
@@ -552,14 +553,14 @@ export default class TokenField extends Component {
             </span>
             {multi && (
               <a
-                className="text-medium text-default-hover px1"
+                className="text-medium flex align-center text-error-hover px1"
                 onClick={e => {
                   e.preventDefault();
                   this.removeValue(v);
                 }}
                 onMouseDown={e => e.preventDefault()}
               >
-                <Icon name="close" size={12} />
+                <Icon name="close" className="flex align-center" size={12} />
               </a>
             )}
           </li>
