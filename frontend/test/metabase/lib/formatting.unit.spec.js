@@ -26,6 +26,13 @@ describe("formatting", () => {
       expect(formatNumber(-10)).toEqual("-10");
       expect(formatNumber(-99999999)).toEqual("-99,999,999");
     });
+    it("should format large numbers correctly with non-default number separator", () => {
+      const options = { number_separators: ",." };
+      expect(formatNumber(10.1, options)).toEqual("10,1");
+      expect(formatNumber(99999999.9, options)).toEqual("99.999.999,9");
+      expect(formatNumber(-10.1, options)).toEqual("-10,1");
+      expect(formatNumber(-99999999.9, options)).toEqual("-99.999.999,9");
+    });
     it("should format to 2 significant digits", () => {
       expect(formatNumber(1 / 3)).toEqual("0.33");
       expect(formatNumber(-1 / 3)).toEqual("-0.33");

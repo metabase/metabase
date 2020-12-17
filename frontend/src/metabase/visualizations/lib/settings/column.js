@@ -386,6 +386,7 @@ export const NUMBER_COLUMN_SETTINGS = {
         { name: "100 000,00", value: ", " },
         { name: "100.000,00", value: ",." },
         { name: "100000.00", value: "." },
+        { name: "100’000.00", value: ".’" },
       ],
     },
     default: ".,",
