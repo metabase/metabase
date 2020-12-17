@@ -231,7 +231,7 @@ export default class PivotTable extends Component {
                         <div
                           key={key}
                           style={style}
-                          className="flex-column justify-end px1 pt1"
+                          className="flex-column justify-end align-center px1 pt1 bg-medium text-bold text-dark"
                         >
                           <Cell
                             value={t`Row totals`}
