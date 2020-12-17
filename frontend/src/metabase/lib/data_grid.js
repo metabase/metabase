@@ -13,12 +13,15 @@ export function isPivotGroupColumn(col) {
 function splitPivotData(data, rowIndexes, columnIndexes) {
   const groupIndex = data.cols.findIndex(isPivotGroupColumn);
   const columns = data.cols.filter(col => !isPivotGroupColumn(col));
+  const breakouts = columns.filter(col => col.source === "breakout");
+
   const pivotData = _.chain(data.rows)
     .groupBy(row => row[groupIndex])
     .pairs()
     .map(([key, rows]) => {
-      const indexes = JSON.parse(key).map(breakout =>
-        columns.findIndex(col => _.isEqual(col.field_ref, breakout)),
+      key = parseInt(key);
+      const indexes = _.range(breakouts.length).filter(
+        index => !((1 << index) & key),
       );
       const keyAsIndexes = JSON.stringify(indexes);
       const rowsWithoutColumn = rows.map(row =>
