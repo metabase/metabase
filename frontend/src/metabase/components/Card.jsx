@@ -11,7 +11,6 @@ const Card = styled.div`
   ${props => props.dark && `color: white`};
   border-radius: 6px;
   box-shadow: 0 7px 20px ${props => color("shadow")};
-  transition: all 0.2s linear;
   line-height: 24px;
   ${props =>
     props.hoverable &&
