@@ -1,5 +1,6 @@
 (ns metabase.query-processor.pivot
-  "Pivot table actions for the query processor")
+  "Pivot table actions for the query processor"
+  (:require [clojure.set :refer [map-invert]]))
 
 (defn powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
@@ -18,11 +19,15 @@
     (concat
      [breakouts]
      (generator [pivot-cols])
-     (generator (powerset pivot-rows)))))
+     (generator (powerset (or pivot-rows
+                              ;; this can happen for the public/embed endpoints,
+                              ;; where we aren't given a pivot_rows / pivot_cols
+                              ;; parameter, so we'll just generate everything
+                              (vec (range 0 (count breakouts)))))))))
 
 (defn add-grouping-field
   "Add the grouping field and expression to the query"
-  [query breakout index]
+  [query breakout bitmask]
   (-> query
       (assoc-in [:query :breakout] breakout)
       ;;TODO: `pivot-grouping` is not "magic" enough to mark it as an internal thing
@@ -30,15 +35,29 @@
                  #(conj % [:expression "pivot-grouping"]))
       ;;TODO: replace this value with a bitmask or something to indicate the source better
       (update-in [:query :expressions]
-                 #(assoc % "pivot-grouping" [:abs index]))))
+                 #(assoc % "pivot-grouping" [:abs bitmask]))))
 
 (defn generate-queries
   "Generate the additional queries to perform a generic pivot table"
   [request]
-  (let [query     (:query request)
-        breakouts (generate-specified-breakouts (:breakout query)
-                                                (:pivot_rows request)
-                                                (:pivot_cols request))]
-    (map (fn [[index breakout]]
-           (add-grouping-field request breakout index))
-         (map-indexed vector breakouts))))
+  (let [query                (:query request)
+        all-breakouts        (:breakout query)
+        bitmask-index        (map-invert (into {} (map-indexed hash-map all-breakouts)))
+        new-breakouts        (generate-specified-breakouts all-breakouts
+                                                           (:pivot_rows request)
+                                                           (:pivot_cols request))
+        bitwise-not-truncate (fn [num-bits val]
+                               (- (dec (bit-shift-left 1 num-bits)) val))]
+    (map (fn [breakout]
+           ;; this implements basically what PostgreSQL does for grouping -
+           ;; look at the original set of groups - if that column is part of *this*
+           ;; group, then set the appropriate bit (entry 1 sets bit 1, etc)
+           ;; at the end, perform a bitwise-not with a mask. Doing it manually
+           ;; because (bit-not) extends to a Long, and twos-complement and such
+           ;; make that messy.
+           (let [start-mask (reduce
+                             #(bit-or (bit-shift-left 1 %2) %1) 0
+                             (map #(get bitmask-index %) breakout))]
+             (add-grouping-field request breakout
+                                 (bitwise-not-truncate (count all-breakouts) start-mask))))
+         new-breakouts)))

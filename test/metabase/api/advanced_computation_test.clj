@@ -83,10 +83,9 @@
           (is (= 6 (count (get-in result [:data :cols]))))
           (is (= 1172 (count rows)))
 
-          ;; spot checking rows, but leaving off the discriminator on the end
-          (is (= ["AK" "Affiliate" "Doohickey" 18 81] (drop-last (first rows))))
-          (is (= ["MI" "Google" nil 141 525] (drop-last (nth rows 1000))))
-          (is (= [nil nil nil 18760 69540] (drop-last (last rows))))))
+          (is (= ["AK" "Affiliate" "Doohickey" 18 81 0] (first rows)))
+          (is (= ["MI" "Google" nil 141 525 4] (nth rows 1000)))
+          (is (= [nil nil nil 18760 69540 7] (last rows)))))
 
       (testing "with an added expression"
         (let [query (-> (pivot-query)
@@ -108,7 +107,7 @@
                     :source "fields"}
                    (nth cols 5))))
 
-          (is (= [nil nil nil 18760 69540 "wheeee" 5] (last rows))))))))
+          (is (= [nil nil nil 18760 69540 "wheeee" 7] (last rows))))))))
 
 (deftest pivot-filter-dataset-test
   (mt/dataset sample-dataset
@@ -121,12 +120,11 @@
            (is (= 4 (count (get-in result [:data :cols]))))
            (is (= 140 (count rows)))
 
-           ;; spot checking rows, but leaving off the discriminator on the end
-           (is (= ["AK" "Google" 119] (drop-last (first rows))))
-           (is (= ["AK" "Organic" 89] (drop-last (second rows))))
-           (is (= ["WA" nil 148] (drop-last (nth rows 135))))
-           (is (= ["WI" nil 245] (drop-last (nth rows 136))))
-           (is (= [nil nil 7562] (drop-last (last rows)))))))))
+           (is (= ["AK" "Google" 119 0] (first rows)))
+           (is (= ["AK" "Organic" 89 0] (second rows)))
+           (is (= ["WA" nil 148 2] (nth rows 135)))
+           (is (= ["WI" nil 245 2] (nth rows 136)))
+           (is (= [nil nil 7562 3] (last rows))))))))
 
 (deftest pivot-parameter-dataset-test
   (mt/with-log-level :error
@@ -140,12 +138,11 @@
            (is (= 4 (count (get-in result [:data :cols]))))
            (is (= 137 (count rows)))
 
-           ;; spot checking rows, but leaving off the discriminator on the end
-           (is (= ["AK" "Google" 27] (drop-last (first rows))))
-           (is (= ["AK" "Organic" 25] (drop-last (second rows))))
-           (is (= ["VA" nil 29] (drop-last (nth rows 130))))
-           (is (= ["VT" nil 8] (drop-last (nth rows 131))))
-           (is (= [nil nil 2009] (drop-last (last rows))))))))))
+           (is (= ["AK" "Google" 27 0] (first rows)))
+           (is (= ["AK" "Organic" 25 0] (second rows)))
+           (is (= ["VA" nil 29 2] (nth rows 130)))
+           (is (= ["VT" nil 8 2] (nth rows 131)))
+           (is (= [nil nil 2009 3] (last rows)))))))))
 
 
 (deftest pivot-card-test
@@ -154,15 +151,15 @@
       (with-temp-pivot-card [_ card]
         (let [result (mt/user-http-request :rasta :post 202 (format "advanced_computation/pivot/card/%d/query" (u/get-id card)))
               rows   (mt/rows result)]
-          (is (= 890 (:row_count result)))
+          (is (= 2273 (:row_count result)))
           (is (= "completed" (:status result)))
           (is (= 6 (count (get-in result [:data :cols]))))
-          (is (= 890 (count rows)))
+          (is (= 2273 (count rows)))
 
-          ;; spot checking rows, but leaving off the discriminator on the end
-          (is (= ["AK" "Affiliate" "Doohickey" 18 81] (drop-last (first rows))))
-          (is (= ["MS" "Organic" "Gizmo" 16 42] (drop-last (nth rows 445))))
-          (is (= [nil nil nil 18760 69540] (drop-last (last rows)))))))))
+          (is (= ["AK" "Affiliate" "Doohickey" 18 81 0] (first rows)))
+          (is (= ["MS" "Organic" "Gizmo" 16 42 0] (nth rows 445)))
+          (is (= ["ND" nil nil 589 2183 6] (nth rows 2250)))
+          (is (= [nil nil nil 18760 69540 7] (last rows))))))))
 
 (deftest pivot-public-card-test
   (mt/dataset sample-dataset
@@ -174,9 +171,9 @@
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 890 (count rows)))
+            (is (= 2273 (count rows)))
 
-            ;; spot checking rows, but leaving off the discriminator on the end
-            (is (= ["AK" "Affiliate" "Doohickey" 18 81] (drop-last (first rows))))
-            (is (= ["CO" "Affiliate" "Gadget" 62 211] (drop-last (nth rows 100))))
-            (is (= [nil nil nil 18760 69540] (drop-last (last rows))))))))))
+            (is (= ["AK" "Affiliate" "Doohickey" 18 81 0] (first rows)))
+            (is (= ["CO" "Affiliate" "Gadget" 62 211 0] (nth rows 100)))
+            (is (= ["ND" nil nil 589 2183 6] (nth rows 2250)))
+            (is (= [nil nil nil 18760 69540 7] (last rows)))))))))
