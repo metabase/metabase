@@ -283,5 +283,6 @@
   {:style/indent 1}
   [current-user-id & body]
   `(do-with-current-user
-    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale]] :id ~current-user-id)
+    (when-let [current-user-id# ~current-user-id]
+      (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale]] :id current-user-id#))
     (fn [] ~@body)))
