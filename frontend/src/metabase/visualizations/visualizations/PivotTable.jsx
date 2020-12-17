@@ -339,7 +339,11 @@ export default class PivotTable extends Component {
                               { column: columns[rowIndexes[0]] },
                             )}`}
                             isSubtotal
-                            width={leftIndex[0].length}
+                            width={
+                              leftIndex[0].length +
+                              LEFT_SIDE_PADDING +
+                              LEFT_SIDE_PADDING
+                            }
                             style={{ paddingLeft: LEFT_SIDE_PADDING }}
                           />
                         )}
