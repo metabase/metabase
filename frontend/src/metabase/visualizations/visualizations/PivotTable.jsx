@@ -198,7 +198,8 @@ export default class PivotTable extends Component {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: `${leftHeaderWidth}px auto`,
+                  gridTemplateColumns: `${leftHeaderWidth +
+                    LEFT_SIDE_PADDING}px auto`,
                 }}
               >
                 {/* top left corner - displays left header columns */}
