@@ -41,7 +41,7 @@ describe("scenarios > admin > databases > edit", () => {
       cy.findByText("Scheduling");
     });
 
-    it.skip("respects the settings for automatic query running (metabase#13187)", () => {
+    it("respects the settings for automatic query running (metabase#13187)", () => {
       cy.log("**--Turn off `auto run queries`--**");
       cy.request("PUT", "/api/database/1", {
         auto_run_queries: false,
