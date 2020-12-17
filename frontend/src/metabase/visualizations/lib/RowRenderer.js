@@ -16,7 +16,6 @@ import { getFriendlyName } from "./utils";
 import { checkXAxisLabelOverlap } from "./LineAreaBarPostRender";
 
 const ROW_GAP = 5;
-const ROW_MAX_HEIGHT = 30;
 
 export default function rowRenderer(
   element,
@@ -170,12 +169,6 @@ export default function rowRenderer(
   const rowHeight = maxTextHeight + chart.gap() + labelPadVertical * 2;
   const cap = Math.max(1, Math.floor(containerHeight / rowHeight));
   chart.cap(cap);
-
-  // assume all bars are same height?
-  const barHeight = chart.select("g.row")[0][0].getBoundingClientRect().height;
-  if (barHeight > ROW_MAX_HEIGHT) {
-    chart.fixedBarHeight(ROW_MAX_HEIGHT);
-  }
 
   chart.render();
 
