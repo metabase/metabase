@@ -163,7 +163,7 @@ export default class PivotTable extends Component {
         ? CELL_HEIGHT
         : topIndex[0].length * CELL_HEIGHT + 8; // the extravertical padding
     const leftHeaderWidth =
-      leftIndex.length === 0 ? 0 : leftIndex[0].length * CELL_WIDTH;
+      leftIndex.length === 0 ? 0 : leftIndex[0].length * CELL_WIDTH + 40;
 
     function columnWidth({ index }) {
       if (topIndex.length === 0 || index === topIndex.length) {
@@ -187,6 +187,9 @@ export default class PivotTable extends Component {
       );
     }
 
+    /* in order to give the left column some breathing room, we need to add a constant padding offset */
+    const LEFT_SIDE_PADDING = 32;
+
     return (
       <div className="overflow-scroll no-outline">
         <ScrollSync>
@@ -199,9 +202,17 @@ export default class PivotTable extends Component {
                 }}
               >
                 {/* top left corner - displays left header columns */}
-                <div className="flex align-end border-right border-bottom border-medium bg-light">
+                <div className="flex align-center border-right border-bottom border-medium bg-light">
                   {rowIndexes.map(index => (
-                    <Cell value={formatColumn(columns[index])} />
+                    <Cell
+                      value={formatColumn(columns[index])}
+                      width={CELL_WIDTH + LEFT_SIDE_PADDING + LEFT_SIDE_PADDING}
+                      style={{
+                        paddingLeft: LEFT_SIDE_PADDING,
+                        paddingRight: LEFT_SIDE_PADDING,
+                        fontWeight: "bold",
+                      }}
+                    />
                   ))}
                 </div>
                 {/* top header */}
@@ -265,7 +276,7 @@ export default class PivotTable extends Component {
                   ref={e => (this.leftList = e)}
                   width={leftHeaderWidth}
                   height={height - topHeaderHeight}
-                  className="scroll-hide-all text-dark border-right border-medium"
+                  className="scroll-hide-all text-dark border-medium"
                   rowCount={rowCount}
                   rowHeight={rowHeight}
                   rowRenderer={({ key, style, index }) => {
@@ -276,7 +287,11 @@ export default class PivotTable extends Component {
                             <Cell
                               value={t`Grand totals`}
                               isSubtotal
-                              width={rowIndexes.length}
+                              width={rowIndexes.length + LEFT_SIDE_PADDING * 2}
+                              style={{
+                                paddingLeft: LEFT_SIDE_PADDING,
+                                borderRight: `1px solid red`,
+                              }}
                             />
                           </Flex>
                         </Flex>
@@ -286,21 +301,25 @@ export default class PivotTable extends Component {
                       <div key={key} style={style} className="flex flex-column">
                         <div className="flex">
                           {leftIndex[index].map((col, index) => (
-                            <div className="flex flex-column">
+                            <div className="flex full flex-column">
                               {col.map(({ value, span = 1 }) => (
                                 <div
                                   style={{
                                     height: CELL_HEIGHT * span,
-                                    width: CELL_WIDTH,
+                                    width:
+                                      CELL_WIDTH +
+                                      LEFT_SIDE_PADDING +
+                                      LEFT_SIDE_PADDING,
+                                    paddingLeft: LEFT_SIDE_PADDING,
                                   }}
-                                  className="px1 bg-light"
+                                  className="px1 bg-light text-bold full"
                                 >
                                   <Ellipsified>
                                     <div
                                       style={{
                                         height: CELL_HEIGHT,
                                         lineHeight: `${CELL_HEIGHT}px`,
-                                        width: CELL_WIDTH,
+                                        width: CELL_WIDTH + LEFT_SIDE_PADDING,
                                       }}
                                     >
                                       {formatValue(value, {
@@ -321,6 +340,7 @@ export default class PivotTable extends Component {
                             )}`}
                             isSubtotal
                             width={leftIndex[0].length}
+                            style={{ paddingLeft: LEFT_SIDE_PADDING }}
                           />
                         )}
                       </div>
@@ -379,14 +399,21 @@ export default class PivotTable extends Component {
   }
 }
 
-function Cell({ value, isSubtotal, onClick, width = 1, height = 1 }) {
+function Cell({
+  value,
+  isSubtotal,
+  onClick,
+  width = 1,
+  height = 1,
+  style = {},
+}) {
   return (
     <div
       style={{
+        ...style,
         width: CELL_WIDTH * width,
         height: CELL_HEIGHT * height,
         lineHeight: `${CELL_HEIGHT * height}px`,
-        borderTop: "1px solid white",
       }}
       className={cx(
         { "bg-medium text-bold": isSubtotal, "cursor-pointer": onClick },
