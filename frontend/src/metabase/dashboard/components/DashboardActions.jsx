@@ -56,7 +56,7 @@ export const getDashboardActions = (
                 onSharingClick();
               }}
             >
-              {t`Create a dashboard subscription`}
+              {t`Dashboard subscriptions`}
             </a>
           </div>
           <div>
