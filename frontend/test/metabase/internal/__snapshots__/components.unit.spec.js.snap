@@ -198,7 +198,7 @@ exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
 
 exports[`Card should render "dark" correctly 1`] = `
 <div
-  className="Card-fqt8sg-0 cWXXUc"
+  className="Card-fqt8sg-0 bnAjGM"
 >
   <div
     className="p4"
@@ -210,7 +210,7 @@ exports[`Card should render "dark" correctly 1`] = `
 
 exports[`Card should render "hoverable" correctly 1`] = `
 <div
-  className="Card-fqt8sg-0 fQGlCM"
+  className="Card-fqt8sg-0 fDXUKg"
 >
   <div
     className="p4"
@@ -222,7 +222,7 @@ exports[`Card should render "hoverable" correctly 1`] = `
 
 exports[`Card should render "normal" correctly 1`] = `
 <div
-  className="Card-fqt8sg-0 IqgNc"
+  className="Card-fqt8sg-0 kYEIzT"
 >
   <div
     className="p4"
@@ -1326,8 +1326,8 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
         "border": "2px solid #A989C5",
         "borderRadius": 4,
         "height": 16,
-        "left": 4,
-        "top": -4,
+        "left": 3,
+        "top": -3,
         "width": 16,
         "zIndex": -1,
       }
@@ -1386,8 +1386,8 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
         "border": "2px solid #509EE3",
         "borderRadius": 4,
         "height": 16,
-        "left": 4,
-        "top": -4,
+        "left": 3,
+        "top": -3,
         "width": 16,
         "zIndex": -1,
       }
@@ -1427,8 +1427,8 @@ exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
         "border": "2px solid #B8BBC3",
         "borderRadius": 4,
         "height": 16,
-        "left": 4,
-        "top": -4,
+        "left": 3,
+        "top": -3,
         "width": 16,
         "zIndex": -1,
       }
