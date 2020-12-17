@@ -67,22 +67,7 @@
                                  1234 ; int
                                  1594067133360 ; long
                                  "2007-12-03T10:15:30.00Z" ; string
-                                 (java.time.ZonedDateTime/of 2016 01 01 20 04 0 0 (java.time.ZoneOffset/UTC))]))))
-            (testing "handle different unix units"
-              (let [expected {:earliest "2020-07-01T10:30:00Z", :latest "2020-07-01T10:30:00Z"}]
-                (are [type values] (= expected
-                                      (get-in
-                                       (transduce identity
-                                                  (f/fingerprinter
-                                                    (field/map->FieldInstance {:base_type :type/Integer
-                                                                               :special_type type}))
-                                                  values)
-                                       [:type :type/DateTime]))
-                  :type/UNIXTimestampSeconds      [      1593599400 nil]
-                  :type/UNIXTimestampMilliseconds [   1593599400000 nil]
-                  :type/UNIXTimestampMicroseconds [1593599400000000 nil]
-                  ;; check that division with a residue correctly truncates in milliseconds
-                  :type/UNIXTimestampMicroseconds [1593599400000002 nil])))))))))
+                                 (java.time.ZonedDateTime/of 2016 01 01 20 04 0 0 (java.time.ZoneOffset/UTC))]))))))))))
 
 (deftest disambiguate-test
   (testing "We should correctly disambiguate multiple competing multimethods (DateTime and FK in this case)"
