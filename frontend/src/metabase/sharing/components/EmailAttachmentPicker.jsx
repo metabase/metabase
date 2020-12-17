@@ -179,7 +179,7 @@ export default class EmailAttachmentPicker extends Component {
                       selectedCardIds,
                     )}
                   />
-                <Text ml={1}>{t`Questions to attach`}</Text>
+                  <Text ml={1}>{t`Questions to attach`}</Text>
                 </li>
                 {cards.map(card => (
                   <li

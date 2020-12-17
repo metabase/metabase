@@ -499,11 +499,21 @@ class SharingSidebar extends React.Component {
     const { editingMode } = this.state;
     const { pulse, formInput, pulseList, onCancel } = this.props;
 
-    const caveatMessage = (<Text className="mx4 my2 p2 bg-light text-dark rounded">{jt`${<span className="text-bold">Note:</span>} charts in your subscription won't look the same as in your dashboard. ${<a
-      className="link"
-      target="_blank"
-      href={MetabaseSettings.docsUrl("users-guide/10-pulses.html#pick-your-data")}
-    >Learn more</a>}.`}</Text>);
+    const caveatMessage = (
+      <Text className="mx4 my2 p2 bg-light text-dark rounded">{jt`${(
+        <span className="text-bold">Note:</span>
+      )} charts in your subscription won't look the same as in your dashboard. ${(
+        <a
+          className="link"
+          target="_blank"
+          href={MetabaseSettings.docsUrl(
+            "users-guide/10-pulses.html#pick-your-data",
+          )}
+        >
+          Learn more
+        </a>
+      )}.`}</Text>
+    );
 
     // protect from empty values that will mess this up
     if (formInput === null || pulse === null || pulseList === null) {

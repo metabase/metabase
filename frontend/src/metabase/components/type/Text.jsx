@@ -1,5 +1,11 @@
 import styled from "styled-components";
-import { space, fontSize, fontWeight, letterSpacing, lineHeight } from "styled-system";
+import {
+  space,
+  fontSize,
+  fontWeight,
+  letterSpacing,
+  lineHeight,
+} from "styled-system";
 import { color } from "metabase/lib/colors";
 
 const Text = styled.div`
