@@ -1,5 +1,7 @@
 // combine compile/suggest/syntax so we only need to parse once
 export function processSource(options) {
+  // Lazily load all these parser-related stuff, because parser construction is expensive
+  // https://github.com/metabase/metabase/issues/13472
   const parse = require("./parser").parse;
   const compile = require("./compile").compile;
   const suggest = require("./suggest").suggest;
