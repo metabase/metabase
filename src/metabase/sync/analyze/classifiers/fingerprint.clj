@@ -1,5 +1,5 @@
-(ns metabase.sync.analyze.classifiers.text-fingerprint
-  "Logic for inferring the special types of *Text* fields based on their TextFingerprints.
+(ns metabase.sync.analyze.classifiers.fingerprint
+  "Logic for inferring the special types of fields based on their Fingerprints.
    These tests only run against Fields that *don't* have existing special types."
   (:require [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
@@ -94,7 +94,7 @@
              (nil? (:special_type original))))))
 
 (s/defn infer-special-type :- (s/maybe i/FieldInstance)
-  "Do classification for `:type/Text` Fields with a valid `TextFingerprint`.
+  "Do classification for `:type/Text` Fields with a valid `TextFingerprint` and `:type/Number` Fields with a valid `NumberFingerprint`.
    Currently this only checks the various recorded percentages, but this is subject to change in the future."
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
   (when (can-edit-special-type? field)

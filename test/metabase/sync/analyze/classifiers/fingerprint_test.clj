@@ -1,9 +1,9 @@
-(ns metabase.sync.analyze.classifiers.text-fingerprint-test
+(ns metabase.sync.analyze.classifiers.fingerprint-test
   (:require [clojure.test :refer :all]
             [metabase.models.field :as field]
-            [metabase.sync.analyze.classifiers.text-fingerprint :as text-fingerprint]))
+            [metabase.sync.analyze.classifiers.fingerprint :as fingerprint]))
 
-(def can-edit? #'text-fingerprint/can-edit-special-type?)
+(def can-edit? #'fingerprint/can-edit-special-type?)
 
 (deftest can-edit-special-type?
   (testing "When special type is nil we can change it"
@@ -13,9 +13,9 @@
       (is (not (can-edit? field)))
       (is (can-edit? (with-meta field {:sync.classify/original {:name "field" :special_type nil}}))))))
 
-(def infer #'text-fingerprint/infer-special-type-for-text-fingerprint)
-(def threshold @#'text-fingerprint/percent-valid-threshold)
-(def lower-threshold @#'text-fingerprint/lower-percent-valid-threshold)
+(def infer #'fingerprint/infer-special-type-for-text-fingerprint)
+(def threshold @#'fingerprint/percent-valid-threshold)
+(def lower-threshold @#'fingerprint/lower-percent-valid-threshold)
 
 (deftest infer-special-type-for-text-fingerprint-test
   (let [expectations [[:percent-json  :type/SerializedJSON]
@@ -37,17 +37,17 @@
           field             (field/map->FieldInstance {:name "field" :base_type :type/Text})]
       (testing "can infer a special type from fingerprints"
         (is (= :type/SerializedJSON
-               (:special_type (text-fingerprint/infer-special-type field fingerprint))))
+               (:special_type (fingerprint/infer-special-type field fingerprint))))
         (is (= :type/State
-               (:special_type (text-fingerprint/infer-special-type field state-fingerprint)))))
+               (:special_type (fingerprint/infer-special-type field state-fingerprint)))))
       (testing "can infer a special type from fingerprints if another classifier has put one one"
         (let [field-with-original (with-meta (assoc field :special_type :type/Category) {:sync.classify/original field})]
           (is (= :type/SerializedJSON
-                 (:special_type (text-fingerprint/infer-special-type field-with-original fingerprint))))
+                 (:special_type (fingerprint/infer-special-type field-with-original fingerprint))))
           (is (= :type/State
-                 (:special_type (text-fingerprint/infer-special-type field-with-original state-fingerprint))))))))
+                 (:special_type (fingerprint/infer-special-type field-with-original state-fingerprint))))))))
   (let [fingerprint {:type {:type/Number {:q1 1608305837 :q3 1608305838}}}
         field       (field/map->FieldInstance {:name "field" :base_type :type/Integer})]
     (testing "infers that it is a unix timestamp field"
       (is (= :type/UNIXTimestampSeconds
-             (:special_type (text-fingerprint/infer-special-type field fingerprint)))))))
+             (:special_type (fingerprint/infer-special-type field fingerprint)))))))
