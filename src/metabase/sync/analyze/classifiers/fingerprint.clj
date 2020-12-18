@@ -61,11 +61,13 @@
                                     (getEpochSecond)))
 
 (s/defn ^:private infer-special-type-for-number-fingerprint :- (s/maybe su/FieldType)
-  [{:keys [q1 q3] :as number-fingerprint} :- i/NumberFingerprint]
+  [{:keys [q1 q3] :as _number-fingerprint} :- i/NumberFingerprint]
   (when (and (number? q1) (number? q3))
-    (cond (<= past-threshold q1 future-threshold) :type/UNIXTimestampSeconds
-          (<= (* past-threshold 1000) q1 (* future-threshold 1000)) :type/UNIXTimestampSeconds
-          (<= (* past-threshold 1000000) q1 (* future-threshold 1000000)) :type/UNIXTimestampSeconds)))
+    (let [within-threshold? (fn [factor] (and (<= (* past-threshold factor) q1)
+                                              (<= q3 (* future-threshold factor))))]
+      (cond (within-threshold?       1) :type/UNIXTimestampSeconds
+            (within-threshold?    1000) :type/UNIXTimestampMilliseconds
+            (within-threshold? 1000000) :type/UNIXTimestampMicroseconds))))
 
 
 (defn- infer-special-type*
