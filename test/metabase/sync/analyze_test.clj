@@ -13,9 +13,9 @@
              [sync-metadata :as sync-metadata]]
             [metabase.sync.analyze.classifiers
              [category :as classifiers.category]
-             [fingerprint :as classify-fingerprint]
              [name :as classifiers.name]
-             [no-preview-display :as classifiers.no-preview-display]]
+             [no-preview-display :as classifiers.no-preview-display]
+             [text-fingerprint :as classify-text-fingerprint]]
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.test
              [data :as data]
@@ -93,7 +93,7 @@
     (sync-survives-crash? classifiers.name/special-type-for-name-and-base-type)
     (sync-survives-crash? classifiers.category/infer-is-category-or-list)
     (sync-survives-crash? classifiers.no-preview-display/infer-no-preview-display)
-    (sync-survives-crash? classify-fingerprint/infer-special-type)))
+    (sync-survives-crash? classify-text-fingerprint/infer-special-type)))
 
 (deftest survive-classify-table-errors
   (testing "Make sure we survive table classification failing"
@@ -101,7 +101,7 @@
 
 (defn- classified-special-type [values]
   (let [field (field/map->FieldInstance {:base_type :type/Text})]
-    (:special_type (classify-fingerprint/infer-special-type
+    (:special_type (classify-text-fingerprint/infer-special-type
                     field
                     (transduce identity (fingerprinters/fingerprinter field) values)))))
 

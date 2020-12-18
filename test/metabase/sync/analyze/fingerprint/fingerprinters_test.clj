@@ -5,8 +5,7 @@
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.test :as mt]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import (java.time ZoneOffset LocalDateTime)))
+            [toucan.db :as db]))
 
 (deftest fingerprint-temporal-values-test
   ;; we want to test h2 and postgres, because h2 doesn't
@@ -99,49 +98,27 @@
 (deftest fingerprint-numeric-values-test
   (is (= {:global {:distinct-count 3
                    :nil%           0.0}
-          :type   {:type/Number {:avg                  2.0
-                                 :min                  1.0
-                                 :max                  3.0
-                                 :q1                   1.25
-                                 :q3                   2.75
-                                 :sd                   1.0
-                                 :percent-seconds      0.0
-                                 :percent-milliseconds 0.0
-                                 :percent-microseconds 0.0}}}
+          :type   {:type/Number {:avg 2.0
+                                 :min 1.0
+                                 :max 3.0
+                                 :q1  1.25
+                                 :q3  2.75
+                                 :sd  1.0}}}
          (transduce identity
                     (f/fingerprinter (field/map->FieldInstance {:base_type :type/Number}))
                     [1.0 2.0 3.0])))
   (testing "We should robustly survive weird values such as NaN, Infinity, and nil"
     (is (= {:global {:distinct-count 7
                      :nil%           0.25}
-            :type   {:type/Number {:avg                  2.0
-                                   :min                  1.0
-                                   :max                  3.0
-                                   :q1                   1.25
-                                   :q3                   2.75
-                                   :sd                   1.0
-                                   :percent-seconds      0.0
-                                   :percent-milliseconds 0.0
-                                   :percent-microseconds 0.0}}}
+            :type   {:type/Number {:avg 2.0
+                                   :min 1.0
+                                   :max 3.0
+                                   :q1  1.25
+                                   :q3  2.75
+                                   :sd  1.0}}}
            (transduce identity
                       (f/fingerprinter (field/map->FieldInstance {:base_type :type/Number}))
-                      [1.0 2.0 3.0 Double/NaN Double/POSITIVE_INFINITY Double/NEGATIVE_INFINITY nil nil]))))
-  (testing "identifies seconds, milliseconds, and microseconds"
-    (let [now (.. (LocalDateTime/now)
-                  (toInstant ZoneOffset/UTC)
-                  (getEpochSecond))
-          fut (.. (LocalDateTime/now)
-                  (plus 10 java.time.temporal.ChronoUnit/YEARS)
-                  (toInstant ZoneOffset/UTC)
-                  (getEpochSecond))
-          fingerprint! (fn [k values]
-                         (get-in (transduce identity (f/fingerprinter (field/map->FieldInstance {:base_type :type/Number})) values)
-                                 [:type :type/Number k]))]
-      (doseq [[k factor] [[:percent-seconds            1]
-                          [:percent-milliseconds    1000]
-                          [:percent-microseconds 1000000]]]
-        (is (= 1.0 (fingerprint! k (map (partial * factor)
-                                        (range now fut (quot (- fut now) 30))))))))))
+                      [1.0 2.0 3.0 Double/NaN Double/POSITIVE_INFINITY Double/NEGATIVE_INFINITY nil nil])))))
 
 (deftest fingerprint-string-values-test
   (is (= {:global {:distinct-count 5
@@ -187,15 +164,12 @@
       (testing "number fingerprints"
         (is (schema= {:global {:distinct-count (s/eq 4)
                                :nil%           (s/eq 0.0)}
-                      :type   {:type/Number {:min                  (s/eq 1.0)
-                                             :q1                   (s/pred #(< 1.44 % 1.46) "approx 1.4591129021415095")
-                                             :q3                   (s/pred #(< 2.4 % 2.5) "approx 2.493086095768049")
-                                             :max                  (s/eq 4.0)
-                                             :sd                   (s/pred #(< 0.76 % 0.78) "between 0.76 and 0.78")
-                                             :avg                  (s/eq 2.03)
-                                             :percent-seconds      (s/eq 0.0)
-                                             :percent-milliseconds (s/eq 0.0)
-                                             :percent-microseconds (s/eq 0.0)}}}
+                      :type   {:type/Number {:min (s/eq 1.0)
+                                             :q1  (s/pred #(< 1.44 % 1.46) "approx 1.4591129021415095")
+                                             :q3  (s/pred #(< 2.4 % 2.5) "approx 2.493086095768049")
+                                             :max (s/eq 4.0)
+                                             :sd  (s/pred #(< 0.76 % 0.78) "between 0.76 and 0.78")
+                                             :avg (s/eq 2.03)}}}
                      (db/select-one-field :fingerprint Field :id (mt/id :venues :price))))))))
 
 (deftest valid-serialized-json?-test

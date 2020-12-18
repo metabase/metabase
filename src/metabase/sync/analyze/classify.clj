@@ -26,9 +26,9 @@
              [util :as sync-util]]
             [metabase.sync.analyze.classifiers
              [category :as category]
-             [fingerprint :as fingerprint]
              [name :as name]
-             [no-preview-display :as no-preview-display]]
+             [no-preview-display :as no-preview-display]
+             [text-fingerprint :as text-fingerprint]]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -75,7 +75,7 @@
   [name/infer-and-assoc-special-type
    category/infer-is-category-or-list
    no-preview-display/infer-no-preview-display
-   fingerprint/infer-special-type])
+   text-fingerprint/infer-special-type])
 
 (s/defn run-classifiers :- i/FieldInstance
   "Run all the available `classifiers` against `field` and `fingerprint`, and return the resulting `field` with

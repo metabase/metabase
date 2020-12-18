@@ -101,15 +101,12 @@
 
 (def NumberFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Number`."
-  {(s/optional-key :min)                  (s/maybe s/Num)
-   (s/optional-key :max)                  (s/maybe s/Num)
-   (s/optional-key :avg)                  (s/maybe s/Num)
-   (s/optional-key :q1)                   (s/maybe s/Num)
-   (s/optional-key :q3)                   (s/maybe s/Num)
-   (s/optional-key :sd)                   (s/maybe s/Num)
-   (s/optional-key :percent-seconds)      (s/maybe s/Num)
-   (s/optional-key :percent-milliseconds) (s/maybe s/Num)
-   (s/optional-key :percent-microseconds) (s/maybe s/Num)})
+  {(s/optional-key :min) (s/maybe s/Num)
+   (s/optional-key :max) (s/maybe s/Num)
+   (s/optional-key :avg) (s/maybe s/Num)
+   (s/optional-key :q1)  (s/maybe s/Num)
+   (s/optional-key :q3)  (s/maybe s/Num)
+   (s/optional-key :sd)  (s/maybe s/Num)})
 
 (def TextFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Text`."
