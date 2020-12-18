@@ -234,7 +234,7 @@ describe("metabase-smoketest > admin", () => {
     });
 
     it.skip("should create a new dashboard with the previous questions as admin", () => {
-      cy.visit("/collection/root");
+      cy.visit("/");
       // New dashboard
       cy.get(".Icon-add").click();
       cy.findByText("New dashboard").click();

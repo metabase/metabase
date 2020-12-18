@@ -70,7 +70,7 @@ class CollectionSidebar extends React.Component {
         <CollectionLink
           to={Urls.collection("root")}
           selected={isRoot}
-          mb={2}
+          mb={1}
           mt={2}
         >
           <Icon name="folder" mr={1} />
@@ -86,7 +86,7 @@ class CollectionSidebar extends React.Component {
             currentCollection={collectionId}
           />
 
-          <Box mt={"32px"}>
+          <Box>
             <CollectionsList
               openCollections={this.state.openCollections}
               onClose={this.onClose}
@@ -96,16 +96,19 @@ class CollectionSidebar extends React.Component {
               currentCollection={collectionId}
             />
           </Box>
-
-          {currentUser.is_superuser && (
-            <CollectionLink to={Urls.collection("users")}>
-              <Icon name="group" mr={1} />
-              {t`Other users' personal collections`}
-            </CollectionLink>
-          )}
         </Box>
 
         <Box className="mt-auto" pb={2} pl={SIDEBAR_SPACER * 2}>
+          {currentUser.is_superuser && (
+            <Link
+              my={2}
+              to={Urls.collection("users")}
+              className="flex align-center text-bold text-light text-brand-hover"
+            >
+              <Icon name="group" mr={1} />
+              {t`Other users' personal collections`}
+            </Link>
+          )}
           <Link
             to={`/archive`}
             className="flex align-center text-bold text-light text-brand-hover"

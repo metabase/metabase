@@ -19,6 +19,9 @@
     (concat
      [breakouts]
      (generator [pivot-cols])
+     (when (and (seq pivot-cols)
+                (seq pivot-rows))
+       (generator [(concat [(first pivot-rows)] pivot-cols)]))
      (generator (powerset (or pivot-rows
                               ;; this can happen for the public/embed endpoints,
                               ;; where we aren't given a pivot_rows / pivot_cols

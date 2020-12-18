@@ -169,7 +169,7 @@ export default class EmailAttachmentPicker extends Component {
             <div className="text-bold pt1 pb2 flex justify-between align-center">
               <ul>
                 <li
-                  className="mb1 flex align-center cursor-pointer border-bottom"
+                  className="mb2 flex align-center cursor-pointer border-bottom"
                   onClick={this.onToggleAll}
                 >
                   <StackedCheckBox
@@ -178,14 +178,13 @@ export default class EmailAttachmentPicker extends Component {
                       cards,
                       selectedCardIds,
                     )}
-                    className="mr2"
                   />
-                  <Text>{t`Questions to attach`}</Text>
+                  <Text ml={1}>{t`Questions to attach`}</Text>
                 </li>
                 {cards.map(card => (
                   <li
                     key={card.id}
-                    className="pb1 flex align-center cursor-pointer"
+                    className="pb2 flex align-center cursor-pointer"
                     onClick={() => {
                       this.onToggleCard(card);
                     }}
