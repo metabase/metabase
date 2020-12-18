@@ -2,11 +2,14 @@
   "Logic for inferring the special types of *Text* fields based on their TextFingerprints.
    These tests only run against Fields that *don't* have existing special types."
   (:require [clojure.tools.logging :as log]
+            [clojure.core.match :refer [match]]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s])
+  (:import (java.time LocalDateTime ZoneOffset)
+           java.time.temporal.ChronoUnit))
 
 (def ^:private ^:const ^Double percent-valid-threshold
   "Fields that have at least this percent of values that are satisfy some predicate (such as `u/email?`)
@@ -42,6 +45,40 @@
             special-type))
         percent-key->special-type))
 
+(def ^:private ^Long year-threshold
+  "An arbitrary threshold for a duration around now that we check for integers inside of in order to mark them as
+  UNIXTimestamps."
+  20)
+
+(def ^:private past-threshold (.. (LocalDateTime/now)
+                                  (minus year-threshold ChronoUnit/YEARS)
+                                  (toInstant ZoneOffset/UTC)
+                                  (getEpochSecond)))
+
+(def ^:private future-threshold (.. (LocalDateTime/now)
+                                    (plus year-threshold ChronoUnit/YEARS)
+                                    (toInstant ZoneOffset/UTC)
+                                    (getEpochSecond)))
+
+(s/defn ^:private infer-special-type-for-number-fingerprint :- (s/maybe su/FieldType)
+  [{:keys [q1 q3] :as number-fingerprint} :- i/NumberFingerprint]
+  (when (and (number? q1) (number? q3))
+    (cond (<= past-threshold q1 future-threshold) :type/UNIXTimestampSeconds
+          (<= (* past-threshold 1000) q1 (* future-threshold 1000)) :type/UNIXTimestampSeconds
+          (<= (* past-threshold 1000000) q1 (* future-threshold 1000000)) :type/UNIXTimestampSeconds)))
+
+
+(defn infer-special-type* [base-type fingerprint]
+  (match [base-type fingerprint]
+    [(:isa? :type/Text) {:type {:type/Text text-fingerprint}}]
+    (infer-special-type-for-text-fingerprint text-fingerprint)
+
+    ;; use :type/Number instead of :type/Integer as Oracle maps to :type/Decimal for their biginteger type
+    [(:isa? :type/Number) {:type {:type/Number number-fingerprint}}]
+    (infer-special-type-for-number-fingerprint number-fingerprint)
+
+    :else nil))
+
 (defn- can-edit-special-type?
   "We can edit the special type if its currently unset or if it was set during the current analysis phase. The original
   field might exist in the metadata at `:sync.classify/original`. This is an attempt at classifier refinement: we
@@ -53,16 +90,14 @@
         (and original
              (nil? (:special_type original))))))
 
-
 (s/defn infer-special-type :- (s/maybe i/FieldInstance)
   "Do classification for `:type/Text` Fields with a valid `TextFingerprint`.
    Currently this only checks the various recorded percentages, but this is subject to change in the future."
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
-  (when (and (isa? (:base_type field) :type/Text)
-             (can-edit-special-type? field))
-    (when-let [text-fingerprint (get-in fingerprint [:type :type/Text])]
-      (when-let [inferred-special-type (infer-special-type-for-text-fingerprint text-fingerprint)]
-        (log/debug (format "Based on the fingerprint of %s, we're marking it as %s."
-                           (sync-util/name-for-logging field) inferred-special-type))
-        (assoc field
-               :special_type inferred-special-type)))))
+  (when (can-edit-special-type? field)
+    (when-let [inferred-special-type (infer-special-type* (:base_type field)
+                                                          fingerprint)]
+      (log/debug (format "Based on the fingerprint of %s, we're marking it as %s."
+                         (sync-util/name-for-logging field) inferred-special-type))
+      (assoc field
+             :special_type inferred-special-type))))

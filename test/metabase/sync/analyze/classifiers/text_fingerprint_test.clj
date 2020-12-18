@@ -31,17 +31,23 @@
       (is (= :type/State (infer (zipmap (map first expectations) (repeat lower-threshold))))))))
 
 (deftest infer-special-type-test
-  (let [fingerprint       {:type {:type/Text {:percent-json threshold}}}
-        state-fingerprint {:type {:type/Text {:percent-state lower-threshold}}}
-        field             (field/map->FieldInstance {:name "field" :base_type :type/Text})]
-    (testing "can infer a special type from text fingerprints"
-      (is (= :type/SerializedJSON
-             (:special_type (text-fingerprint/infer-special-type field fingerprint))))
-      (is (= :type/State
-             (:special_type (text-fingerprint/infer-special-type field state-fingerprint)))))
-    (testing "can infer a special type from text fingerprints if another classifier has put one one"
-      (let [field-with-original (with-meta (assoc field :special_type :type/Category) {:sync.classify/original field})]
+  (testing "text fingerprints"
+    (let [fingerprint       {:type {:type/Text {:percent-json threshold}}}
+          state-fingerprint {:type {:type/Text {:percent-state lower-threshold}}}
+          field             (field/map->FieldInstance {:name "field" :base_type :type/Text})]
+      (testing "can infer a special type from fingerprints"
         (is (= :type/SerializedJSON
-               (:special_type (text-fingerprint/infer-special-type field-with-original fingerprint))))
+               (:special_type (text-fingerprint/infer-special-type field fingerprint))))
         (is (= :type/State
-               (:special_type (text-fingerprint/infer-special-type field-with-original state-fingerprint))))))))
+               (:special_type (text-fingerprint/infer-special-type field state-fingerprint)))))
+      (testing "can infer a special type from fingerprints if another classifier has put one one"
+        (let [field-with-original (with-meta (assoc field :special_type :type/Category) {:sync.classify/original field})]
+          (is (= :type/SerializedJSON
+                 (:special_type (text-fingerprint/infer-special-type field-with-original fingerprint))))
+          (is (= :type/State
+                 (:special_type (text-fingerprint/infer-special-type field-with-original state-fingerprint))))))))
+  (let [fingerprint {:type {:type/Number {:q1 1608305837 :q3 1608305838}}}
+        field       (field/map->FieldInstance {:name "field" :base_type :type/Integer})]
+    (testing "infers that it is a unix timestamp field"
+      (is (= :type/UNIXTimestampSeconds
+             (:special_type (text-fingerprint/infer-special-type field fingerprint)))))))
