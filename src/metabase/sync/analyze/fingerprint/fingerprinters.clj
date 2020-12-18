@@ -223,7 +223,7 @@
        (not (Double/isNaN x))
        (not (Double/isInfinite x))))
 
-(def ^:private year-threshold
+(def ^:private ^Long year-threshold
   "An arbitrary threshold for a duration around now that we check for integers inside of in order to mark them as
   UNIXTimestamps."
   20)
