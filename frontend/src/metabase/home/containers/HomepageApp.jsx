@@ -4,7 +4,6 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import { push } from "react-router-redux";
 
-import Greeting from "metabase/lib/greeting";
 import Card from "metabase/components/Card";
 import Subhead from "metabase/components/type/Subhead";
 
@@ -46,9 +45,6 @@ export default class HomepageApp extends Component {
 
   constructor(props) {
     super(props);
-    this.state = {
-      greeting: Greeting.sayHello(props.user && props.user.first_name),
-    };
   }
 
   render() {
