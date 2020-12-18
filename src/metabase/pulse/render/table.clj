@@ -5,7 +5,7 @@
             [metabase.pulse.render
              [color :as color]
              [style :as style]])
-  (:import jdk.nashorn.api.scripting.JSObject))
+  (:import org.openjdk.nashorn.api.scripting.JSObject))
 
 ;; Our 'helpful' NS declaration linter will complain that common is unused. But we need to require it so
 ;; NumericWrapper exists in the first place.
