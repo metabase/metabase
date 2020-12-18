@@ -50,7 +50,7 @@ executors:
   java-15:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:openjdk-15-lein-2.95-buster
+      - image: circleci/clojure:openjdk-15-lein-2.9.5-buster
         environment:
           MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
 
