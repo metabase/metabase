@@ -32,8 +32,13 @@ const partitions = [
   },
 ];
 
+// cell width and height for normal body cells
 const CELL_WIDTH = 100;
 const CELL_HEIGHT = 25;
+// the left header has a wider cell width and some additional spacing on the left to align with the title
+const LEFT_HEADER_LEFT_SPACING = 24;
+const LEFT_HEADER_CELL_WIDTH = 145;
+
 export default class PivotTable extends Component {
   props: VisualizationProps;
   static uiName = t`Pivot Table`;
@@ -163,7 +168,10 @@ export default class PivotTable extends Component {
         ? CELL_HEIGHT
         : topIndex[0].length * CELL_HEIGHT + 8; // the extravertical padding
     const leftHeaderWidth =
-      leftIndex.length === 0 ? 0 : leftIndex[0].length * CELL_WIDTH;
+      leftIndex.length === 0
+        ? 0
+        : LEFT_HEADER_LEFT_SPACING +
+          leftIndex[0].length * LEFT_HEADER_CELL_WIDTH;
 
     function columnWidth({ index }) {
       if (topIndex.length === 0 || index === topIndex.length) {
@@ -199,9 +207,18 @@ export default class PivotTable extends Component {
                 }}
               >
                 {/* top left corner - displays left header columns */}
-                <div className="flex align-end border-right border-bottom border-medium bg-light">
+                <div
+                  className="flex align-end border-right border-bottom border-medium bg-light"
+                  style={{
+                    // add left spacing unless the header width is 0
+                    paddingLeft: leftHeaderWidth && LEFT_HEADER_LEFT_SPACING,
+                  }}
+                >
                   {rowIndexes.map(index => (
-                    <Cell value={formatColumn(columns[index])} />
+                    <Cell
+                      value={formatColumn(columns[index])}
+                      baseWidth={LEFT_HEADER_CELL_WIDTH}
+                    />
                   ))}
                 </div>
                 {/* top header */}
@@ -276,7 +293,10 @@ export default class PivotTable extends Component {
                             <Cell
                               value={t`Grand totals`}
                               isSubtotal
-                              width={rowIndexes.length}
+                              style={{
+                                paddingLeft: LEFT_HEADER_LEFT_SPACING,
+                                width: leftHeaderWidth,
+                              }}
                             />
                           </Flex>
                         </Flex>
@@ -286,21 +306,27 @@ export default class PivotTable extends Component {
                       <div key={key} style={style} className="flex flex-column">
                         <div className="flex">
                           {leftIndex[index].map((col, index) => (
-                            <div className="flex flex-column">
+                            <div
+                              className="flex flex-column bg-light"
+                              style={{
+                                paddingLeft:
+                                  index === 0 ? LEFT_HEADER_LEFT_SPACING : 0,
+                              }}
+                            >
                               {col.map(({ value, span = 1 }) => (
                                 <div
                                   style={{
                                     height: CELL_HEIGHT * span,
-                                    width: CELL_WIDTH,
+                                    width: LEFT_HEADER_CELL_WIDTH,
                                   }}
-                                  className="px1 bg-light"
+                                  className="px1"
                                 >
                                   <Ellipsified>
                                     <div
                                       style={{
                                         height: CELL_HEIGHT,
                                         lineHeight: `${CELL_HEIGHT}px`,
-                                        width: CELL_WIDTH,
+                                        width: LEFT_HEADER_CELL_WIDTH,
                                       }}
                                     >
                                       {formatValue(value, {
@@ -320,7 +346,10 @@ export default class PivotTable extends Component {
                               { column: columns[rowIndexes[0]] },
                             )}`}
                             isSubtotal
-                            width={leftIndex[0].length}
+                            style={{
+                              paddingLeft: LEFT_HEADER_LEFT_SPACING,
+                              width: leftHeaderWidth,
+                            }}
                           />
                         )}
                       </div>
@@ -379,22 +408,34 @@ export default class PivotTable extends Component {
   }
 }
 
-function Cell({ value, isSubtotal, onClick, width = 1, height = 1 }) {
+function Cell({
+  value,
+  isSubtotal,
+  onClick,
+  width = 1,
+  height = 1,
+  baseWidth = CELL_WIDTH,
+  baseHeight = CELL_HEIGHT,
+  style,
+}) {
   return (
     <div
       style={{
-        width: CELL_WIDTH * width,
-        height: CELL_HEIGHT * height,
+        width: baseWidth * width,
+        height: baseHeight * height,
         lineHeight: `${CELL_HEIGHT * height}px`,
         borderTop: "1px solid white",
+        ...style,
       }}
-      className={cx(
-        { "bg-medium text-bold": isSubtotal, "cursor-pointer": onClick },
-        "px1",
-      )}
+      className={cx({
+        "bg-medium text-bold": isSubtotal,
+        "cursor-pointer": onClick,
+      })}
       onClick={onClick}
     >
-      <Ellipsified>{value}</Ellipsified>
+      <div className="px1">
+        <Ellipsified>{value}</Ellipsified>
+      </div>
     </div>
   );
 }
