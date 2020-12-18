@@ -1,8 +1,8 @@
 (ns metabase.sync.analyze.classifiers.text-fingerprint
   "Logic for inferring the special types of *Text* fields based on their TextFingerprints.
    These tests only run against Fields that *don't* have existing special types."
-  (:require [clojure.tools.logging :as log]
-            [clojure.core.match :refer [match]]
+  (:require [clojure.core.match :refer [match]]
+            [clojure.tools.logging :as log]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
@@ -68,7 +68,10 @@
           (<= (* past-threshold 1000000) q1 (* future-threshold 1000000)) :type/UNIXTimestampSeconds)))
 
 
-(defn infer-special-type* [base-type fingerprint]
+(defn- infer-special-type*
+  "Helper function that matches on the base type and the matching fingerprint. Currently supports `:type/Text` and
+  `:type/Number`."
+  [base-type fingerprint]
   (match [base-type fingerprint]
     [(:isa? :type/Text) {:type {:type/Text text-fingerprint}}]
     (infer-special-type-for-text-fingerprint text-fingerprint)
