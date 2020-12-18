@@ -1,5 +1,5 @@
 (ns metabase.pulse.render.table-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
             [metabase.pulse.render
              [color :as color]
              [table :as table]
@@ -55,15 +55,21 @@
 ;; with the cell value. The script right now is hard coded to always return #ff0000. Once the real script is in place,
 ;; we should find some similar basic values that can rely on. The goal isn't to test out the javascript choosing in
 ;; the color (that should be done in javascript) but to verify that the pieces are all connecting correctly
-(expect
-  {"1" nil,                    "2" nil,                    "3" "rgba(0, 255, 0, 0.75)"
-   "4" nil,                    "5" nil,                    "6" "rgba(0, 128, 128, 0.75)"
-   "7" "rgba(255, 0, 0, 0.65)" "8" "rgba(255, 0, 0, 0.2)"  "9" "rgba(0, 0, 255, 0.75)"}
-  (let [query-results {:cols [{:name "a"} {:name "b"} {:name "c"}]
-                       :rows [[1 2 3]
-                              [4 5 6]
-                              [7 8 9]]}]
-    (-> (color/make-color-selector query-results (:visualization_settings render.tu/test-card))
-        (#'table/render-table 0 ["a" "b" "c"] (query-results->header+rows query-results))
-        find-table-body
-        cell-value->background-color)))
+(deftest background-color-selection-smoke-test
+ (let [query-results {:cols [{:name "a"} {:name "b"} {:name "c"}]
+                      :rows [[1 2 3]
+                             [4 5 6]
+                             [7 8 9]]}]
+   (is (= {"1" nil
+           "2" nil
+           "3" "rgba(0, 255, 0, 0.75)"
+           "4" nil
+           "5" nil
+           "6" "rgba(0, 128, 128, 0.75)"
+           "7" "rgba(255, 0, 0, 0.65)"
+           "8" "rgba(255, 0, 0, 0.2)"
+           "9" "rgba(0, 0, 255, 0.75)"}
+          (-> (color/make-color-selector query-results (:visualization_settings render.tu/test-card))
+              (#'table/render-table 0 ["a" "b" "c"] (query-results->header+rows query-results))
+              find-table-body
+              cell-value->background-color)))))

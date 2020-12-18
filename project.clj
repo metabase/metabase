@@ -134,7 +134,11 @@
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
    [org.mariadb.jdbc/mariadb-java-client "2.6.2"]                     ; MySQL/MariaDB driver
-   [org.openjdk.nashorn/nashorn-core "15.0"]                          ; JavaScript engine -- formerly shipped as part of the JVM
+   [org.openjdk.nashorn/nashorn-core "15.0"]                          ; JavaScript engine (Java 15+)
+   [org.ow2.asm/asm "7.3.1"]                                          ; dependency for Nashorn
+   [org.ow2.asm/asm-commons "7.3.1"]                                  ; dependency for Nashorn
+   [org.ow2.asm/asm-tree "7.3.1"]                                     ; dependency for Nashorn
+   [org.ow2.asm/asm-util "7.3.1"]                                     ; dependency for Nashorn
    [org.postgresql/postgresql "42.2.8"]                               ; Postgres driver
    [org.slf4j/slf4j-api "1.7.30"]                                     ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
    [org.tcrawley/dynapath "1.1.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
