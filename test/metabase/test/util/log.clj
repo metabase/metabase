@@ -104,6 +104,8 @@
 
     (with-log-level [metabase.query-processor :debug]
       ...)"
+  {:arglists '([level & body]
+               [[namespace level] & body])}
   [level & body]
   `(do-with-log-messages-for-level ~(if (sequential? level)
                                       `(quote ~level)

@@ -30,18 +30,18 @@
   (mt/round-all-decimals 2 data))
 
 (def ^:private default-card-results
-  [{:name         "ID",      :display_name "ID", :base_type "type/BigInteger",
-    :special_type "type/PK", :fingerprint  (:id mutil/venue-fingerprints)}
-   {:name         "NAME",      :display_name "Name", :base_type "type/Text",
-    :special_type "type/Name", :fingerprint  (:name mutil/venue-fingerprints)}
-   {:name         "PRICE", :display_name "Price", :base_type "type/Integer",
+  [{:name         "ID",      :display_name "ID", :base_type :type/BigInteger,
+    :special_type :type/PK, :fingerprint  (:id mutil/venue-fingerprints)}
+   {:name         "NAME",      :display_name "Name", :base_type :type/Text,
+    :special_type :type/Name, :fingerprint  (:name mutil/venue-fingerprints)}
+   {:name         "PRICE", :display_name "Price", :base_type :type/Integer,
     :special_type nil,     :fingerprint  (:price mutil/venue-fingerprints)}
-   {:name         "CATEGORY_ID", :display_name "Category ID", :base_type "type/Integer",
+   {:name         "CATEGORY_ID", :display_name "Category ID", :base_type :type/Integer,
     :special_type nil,           :fingerprint  (:category_id mutil/venue-fingerprints)}
-   {:name         "LATITUDE",      :display_name "Latitude", :base_type "type/Float",
-    :special_type "type/Latitude", :fingerprint  (:latitude mutil/venue-fingerprints)}
-   {:name         "LONGITUDE",      :display_name "Longitude", :base_type "type/Float"
-    :special_type "type/Longitude", :fingerprint  (:longitude mutil/venue-fingerprints)}])
+   {:name         "LATITUDE",      :display_name "Latitude", :base_type :type/Float,
+    :special_type :type/Latitude, :fingerprint  (:latitude mutil/venue-fingerprints)}
+   {:name         "LONGITUDE",      :display_name "Longitude", :base_type :type/Float
+    :special_type :type/Longitude, :fingerprint  (:longitude mutil/venue-fingerprints)}])
 
 (def ^:private default-card-results-native
   (for [column (-> default-card-results
@@ -62,25 +62,25 @@
 
   (testing "check that using a Card as your source doesn't overwrite the results metadata..."
     (mt/with-temp Card [card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
-                              :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]
+                              :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
       (let [result (qp/process-userland-query {:database mbql.s/saved-questions-virtual-database-id
                                                :type     :query
                                                :query    {:source-table (str "card__" (u/get-id card))}})]
         (when-not (= :completed (:status result))
           (throw (ex-info "Query failed." result))))
-      (is (= [{:name "NAME", :display_name "Name", :base_type "type/Text"}]
+      (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
              (card-metadata card)))))
 
   (testing "...even when running via the API endpoint"
     (mt/with-temp* [Collection [collection]
                     Card       [card {:collection_id   (u/get-id collection)
                                       :dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
-                                      :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]]
+                                      :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]]
       (perms/grant-collection-read-permissions! (group/all-users) collection)
       ((users/user->client :rasta) :post 202 "dataset" {:database mbql.s/saved-questions-virtual-database-id
                                                         :type     :query
                                                         :query    {:source-table (str "card__" (u/get-id card))}})
-      (is (= [{:name "NAME", :display_name "Name", :base_type "type/Text"}]
+      (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
              (card-metadata card))))))
 
 (deftest valid-checksum-test
@@ -90,17 +90,17 @@
          (boolean (results-metadata/valid-checksum? "ABCD" (#'results-metadata/metadata-checksum "ABCDE"))))))
 
 (def ^:private example-metadata
-  [{:base_type    "type/Text"
+  [{:base_type    :type/Text
     :display_name "Date"
     :name         "DATE"
     :unit         nil
     :special_type nil
     :fingerprint  {:global {:distinct-count 618 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
                                                                                    :latest   "2015-12-29T00:00:00.000Z"}}}}
-   {:base_type    "type/Integer"
+   {:base_type    :type/Integer
     :display_name "count"
     :name         "count"
-    :special_type "type/Quantity"
+    :special_type :type/Quantity
     :fingerprint  {:global {:distinct-count 3
                             :nil%           0.0},
                    :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}}])
@@ -169,17 +169,17 @@
                    :breakout     [[:datetime-field [:field-id (mt/id :checkins :date)] :year]]}
         :info     {:card-id    (u/get-id card)
                    :query-hash (qputil/query-hash {})}})
-      (is (= [{:base_type    "type/DateTime"
+      (is (= [{:base_type    :type/DateTime
                :display_name "Date"
                :name         "DATE"
-               :unit         "year"
+               :unit         :year
                :special_type nil
                :fingerprint  {:global {:distinct-count 618 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-01-03"
                                                                                               :latest   "2015-12-29"}}}}
-              {:base_type    "type/BigInteger"
+              {:base_type    :type/BigInteger
                :display_name "Count"
                :name         "count"
-               :special_type "type/Quantity"
+               :special_type :type/Quantity
                :fingerprint  {:global {:distinct-count 3
                                        :nil%           0.0},
                               :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}}]

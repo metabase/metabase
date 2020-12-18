@@ -21,7 +21,6 @@
   (mt/test-drivers (metadata-queries-test-drivers)
     (is (= 100
            (metadata-queries/field-distinct-count (Field (mt/id :checkins :venue_id)))))
-
     (is (= 15
            (metadata-queries/field-distinct-count (Field (mt/id :checkins :user_id)))))))
 
