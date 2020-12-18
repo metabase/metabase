@@ -588,6 +588,6 @@
                         :order-by [[:asc $id]]
                         :limit    3})))))
           (testing "After running the query the first time, result_metadata should have been saved for the GTAP Card"
-            (is (= [{:name "ID", :base_type "type/BigInteger", :display_name "ID"}
-                    {:name "NAME", :base_type "type/Text", :display_name "NAME"}]
+            (is (= [{:name "ID", :base_type :type/BigInteger, :display_name "ID"}
+                    {:name "NAME", :base_type :type/Text, :display_name "NAME"}]
                    (db/select-one-field :result_metadata Card :id venues-gtap-card-id)))))))))

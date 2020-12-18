@@ -142,6 +142,23 @@
   ([table-kw field-kw]
    (field-literal-col (col table-kw field-kw))))
 
+(defn field-literal-col-keep-extra-cols
+  "Return expected `:cols` info for a Field that was referred to as a `:field-literal`. This differs from
+  `field-literal-col` in that it doesn't remove columns like `:description` -- in some cases metadata will come back
+  with these cols, and in some it won't -- I think it has to do with whether the Card had `:source_metadata` saved for
+  it.
+
+    (field-literal-col-keep-extra-cols :venues :price)
+    (field-literal-col-keep-extra-cols (aggregate-col :count))"
+  {:arglists '([col] [table-kw field-kw])}
+  ([{field-name :name, base-type :base_type, unit :unit, :as col}]
+   (assoc col
+          :field_ref [:field-literal field-name base-type]
+          :source    :fields))
+
+  ([table-kw field-kw]
+   (field-literal-col-keep-extra-cols (col table-kw field-kw))))
+
 (defn fk-col
   "Return expected `:cols` info for a Field that came in via an implicit join (i.e, via an `fk->` clause)."
   [source-table-kw source-field-kw, dest-table-kw dest-field-kw]
