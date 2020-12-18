@@ -46,11 +46,7 @@ describe("scenarios > admin > databases > edit", () => {
 
       cy.findByLabelText(
         "Automatically run queries when doing simple filtering and summarizing",
-      ).then($el => {
-        const className = $el[0].className;
-
-        expect(className).to.contain("selected");
-      });
+      ).should("have.attr", "aria-checked", "true");
     });
 
     it("should respect the settings for automatic query running (metabase#13187)", () => {
@@ -64,11 +60,7 @@ describe("scenarios > admin > databases > edit", () => {
       cy.log("**Reported failing on v0.36.4**");
       cy.findByLabelText(
         "Automatically run queries when doing simple filtering and summarizing",
-      ).then($el => {
-        const className = $el[0].className;
-
-        expect(className).not.to.contain("selected");
-      });
+      ).should("have.attr", "aria-checked", "false");
     });
   });
 
