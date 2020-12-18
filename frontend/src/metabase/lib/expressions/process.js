@@ -1,10 +1,10 @@
-import { parse } from "metabase/lib/expressions/parser";
-import { compile } from "metabase/lib/expressions/compile";
-import { suggest } from "metabase/lib/expressions/suggest";
-import { syntax } from "metabase/lib/expressions/syntax";
-
 // combine compile/suggest/syntax so we only need to parse once
 export function processSource(options) {
+  const parse = require("./parser").parse;
+  const compile = require("./compile").compile;
+  const suggest = require("./suggest").suggest;
+  const syntax = require("./syntax").syntax;
+
   const { source, targetOffset } = options;
 
   let expression;
