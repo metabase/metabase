@@ -78,13 +78,13 @@
       (testing "Run a pivot table"
         (let [result (mt/user-http-request :rasta :post 202 "advanced_computation/pivot/dataset" (pivot-query))
               rows   (mt/rows result)]
-          (is (= 1172 (:row_count result)))
+          (is (= 1192 (:row_count result)))
           (is (= "completed" (:status result)))
           (is (= 6 (count (get-in result [:data :cols]))))
-          (is (= 1172 (count rows)))
+          (is (= 1192 (count rows)))
 
           (is (= ["AK" "Affiliate" "Doohickey" 18 81 0] (first rows)))
-          (is (= ["MI" "Google" nil 141 525 4] (nth rows 1000)))
+          (is (= ["WV" "Facebook" nil 45 292 4] (nth rows 1000)))
           (is (= [nil nil nil 18760 69540 7] (last rows)))))
 
       (testing "with an added expression"
@@ -93,8 +93,8 @@
                         (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
               result (mt/user-http-request :rasta :post 202 "advanced_computation/pivot/dataset" query)
               rows (mt/rows result)]
-          (is (= 1172 (:row_count result)))
-          (is (= 1172 (count rows)))
+          (is (= 1192 (:row_count result)))
+          (is (= 1192 (count rows)))
 
           (let [cols (get-in result [:data :cols])]
             (is (= 7 (count cols)))
@@ -115,15 +115,15 @@
        (testing "Run a pivot table"
          (let [result (mt/user-http-request :rasta :post 202 "advanced_computation/pivot/dataset" (filters-query))
                rows   (mt/rows result)]
-           (is (= 140 (:row_count result)))
+           (is (= 230 (:row_count result)))
            (is (= "completed" (:status result)))
            (is (= 4 (count (get-in result [:data :cols]))))
-           (is (= 140 (count rows)))
+           (is (= 230 (count rows)))
 
            (is (= ["AK" "Google" 119 0] (first rows)))
            (is (= ["AK" "Organic" 89 0] (second rows)))
-           (is (= ["WA" nil 148 2] (nth rows 135)))
-           (is (= ["WI" nil 245 2] (nth rows 136)))
+           (is (= ["MS" "Google" 43 0] (nth rows 135)))
+           (is (= ["MS" nil 136 2] (nth rows 205)))
            (is (= [nil nil 7562 3] (last rows))))))))
 
 (deftest pivot-parameter-dataset-test
@@ -133,15 +133,15 @@
        (testing "Run a pivot table"
          (let [result (mt/user-http-request :rasta :post 202 "advanced_computation/pivot/dataset" (parameters-query))
                rows   (mt/rows result)]
-           (is (= 137 (:row_count result)))
+           (is (= 225 (:row_count result)))
            (is (= "completed" (:status result)))
            (is (= 4 (count (get-in result [:data :cols]))))
-           (is (= 137 (count rows)))
+           (is (= 225 (count rows)))
 
            (is (= ["AK" "Google" 27 0] (first rows)))
            (is (= ["AK" "Organic" 25 0] (second rows)))
-           (is (= ["VA" nil 29 2] (nth rows 130)))
-           (is (= ["VT" nil 8 2] (nth rows 131)))
+           (is (= ["MN" "Organic" 39 0] (nth rows 130)))
+           (is (= ["NE" nil 59 2] (nth rows 205)))
            (is (= [nil nil 2009 3] (last rows)))))))))
 
 
