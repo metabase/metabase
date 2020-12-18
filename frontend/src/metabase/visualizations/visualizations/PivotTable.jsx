@@ -74,7 +74,7 @@ export default class PivotTable extends Component {
         partitions,
         columns: data == null ? [] : data.cols,
       }),
-      getValue: ([{ data }], settings = {}) => {
+      getValue: ([{ data, card }], settings = {}) => {
         const storedValue = settings["pivot_table.column_split"];
         if (data == null) {
           return undefined;
@@ -111,7 +111,8 @@ export default class PivotTable extends Component {
             columnsToPartition,
           );
         }
-        return setting;
+
+        return addMissingCardBreakouts(setting, card);
       },
     },
   };
@@ -426,6 +427,16 @@ function updateValueWithCurrentColumns(storedValue, columns) {
     }
   }
   return value;
+}
+
+function addMissingCardBreakouts(setting, card) {
+  const breakouts = getIn(card, ["dataset_query", "query", "breakout"]);
+  const breakoutFieldRefs = breakouts.map(field_ref => ({ field_ref }));
+  const { columns, rows } = updateValueWithCurrentColumns(
+    setting,
+    breakoutFieldRefs,
+  );
+  return { ...setting, columns, rows };
 }
 
 function isColumnValid(col) {
