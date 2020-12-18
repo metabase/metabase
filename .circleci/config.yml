@@ -47,6 +47,13 @@ executors:
         environment:
           MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
 
+  java-15:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:openjdk-15-lein-2.95-buster
+        environment:
+          MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
+
   postgres-9-6:
     working_directory: /home/circleci/metabase/metabase/
     docker:
@@ -1060,7 +1067,7 @@ workflows:
           requires:
             - be-deps
           lein-command: with-profile +junit test
-          skip-key: tests
+          skip-key: tests-<< matrix.edition >>
           <<: *Matrix
 
       - lein:
@@ -1069,7 +1076,16 @@ workflows:
             - be-deps
           e: java-11
           lein-command: with-profile +junit test
-          skip-key: tests-java-11
+          skip-key: tests-java-11-<< matrix.edition >>
+          <<: *Matrix
+
+      - lein:
+          name: be-tests-java-15-<< matrix.edition >>
+          requires:
+            - be-deps
+          e: java-15
+          lein-command: with-profile +junit test
+          skip-key: tests-java-15-<< matrix.edition >>
           <<: *Matrix
 
       - lein:

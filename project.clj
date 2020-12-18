@@ -77,7 +77,6 @@
                  slingshot]]
    ;; fork to address #13102 - see upstream PR: https://github.com/dm3/clojure.java-time/pull/60
    ;; TODO: switch back to the upstream once a version is released with the above patch
-   [robdaemon/clojure.java-time "0.3.3-SNAPSHOT"]                     ; Java 8 java.time wrapper
    [clojurewerkz/quartzite "2.1.0"                                    ; scheduling library
     :exclusions [c3p0]]
    [colorize "0.1.1" :exclusions [org.clojure/clojure]]               ; string output with ANSI color codes (for logging)
@@ -135,6 +134,7 @@
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
    [org.mariadb.jdbc/mariadb-java-client "2.6.2"]                     ; MySQL/MariaDB driver
+   [org.openjdk.nashorn/nashorn-core "15.0"]                          ; JavaScript engine -- formerly shipped as part of the JVM
    [org.postgresql/postgresql "42.2.8"]                               ; Postgres driver
    [org.slf4j/slf4j-api "1.7.30"]                                     ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
    [org.tcrawley/dynapath "1.1.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
@@ -148,6 +148,7 @@
    [ring/ring-core "1.8.0"]
    [ring/ring-jetty-adapter "1.8.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
    [ring/ring-json "0.5.0"]                                           ; Ring middleware for reading/writing JSON automatically
+   [robdaemon/clojure.java-time "0.3.3-SNAPSHOT"]                     ; Java 8 java.time wrapper
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [toucan "1.15.1" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
                                  org.clojure/tools.logging
