@@ -223,30 +223,37 @@
        (not (Double/isNaN x))
        (not (Double/isInfinite x))))
 
-(def twenty-years-ago (.. (LocalDateTime/now)
-                          (minus 20 ChronoUnit/YEARS)
-                          (toInstant ZoneOffset/UTC)
-                          (getEpochSecond)))
+(def ^:private year-threshold
+  "An arbitrary threshold for a duration around now that we check for integers inside of in order to mark them as
+  UNIXTimestamps."
+  20)
 
-(def twenty-years-from-now (.. (LocalDateTime/now)
-                               (plus 20 ChronoUnit/YEARS)
-                               (toInstant ZoneOffset/UTC)
-                               (getEpochSecond)))
+(def ^:private past-threshold (.. (LocalDateTime/now)
+                                  (minus year-threshold ChronoUnit/YEARS)
+                                  (toInstant ZoneOffset/UTC)
+                                  (getEpochSecond)))
 
-(defn between [l h]
+(def ^:private future-threshold (.. (LocalDateTime/now)
+                                    (plus year-threshold ChronoUnit/YEARS)
+                                    (toInstant ZoneOffset/UTC)
+                                    (getEpochSecond)))
+
+(defn- between
+  "Returns a function of a single arg that returns true if that arg is between the low and high."
+  [l h]
   (fn [x]
     (<= l x h)))
 
 (deffingerprinter :type/Number
   (redux/post-complete
     ((filter real-number?) (robust-fuse {:histogram            histogram
-                                         :percent-seconds      (stats/proportion (between twenty-years-ago twenty-years-from-now))
+                                         :percent-seconds      (stats/proportion (between past-threshold future-threshold))
                                          :percent-milliseconds (stats/proportion
-                                                                 (between (* twenty-years-ago 1000)
-                                                                          (* twenty-years-from-now 1000)))
+                                                                 (between (* past-threshold 1000)
+                                                                          (* future-threshold 1000)))
                                          :percent-microseconds (stats/proportion
-                                                                 (between (* twenty-years-ago 1000000)
-                                                                          (* twenty-years-from-now 1000000)))}))
+                                                                 (between (* past-threshold 1000000)
+                                                                          (* future-threshold 1000000)))}))
     (fn [{h :histogram :keys [percent-seconds percent-milliseconds percent-microseconds]}]
       (let [{q1 0.25 q3 0.75} (hist/percentiles h 0.25 0.75)]
         (robust-map

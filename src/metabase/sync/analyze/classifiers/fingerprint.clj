@@ -44,6 +44,7 @@
         percent-key->special-type))
 
 (s/defn ^:private infer-special-type-for-number-fingerprint :- (s/maybe su/FieldType)
+  "Check percentages of the number fingerprint to return a corresponding `:type/UNIXTimestamp` if applicable."
   [number-fingerprint :- i/NumberFingerprint]
   (let [percentages (select-keys number-fingerprint [:percent-seconds
                                                      :percent-milliseconds
@@ -66,7 +67,8 @@
         (and original
              (nil? (:special_type original))))))
 
-(defn infer-special-type* [base-type fingerprint]
+(s/defn ^:private infer-special-type* :- (s/maybe su/FieldType)
+  [base-type fingerprint :- (s/maybe i/Fingerprint)]
   (match [base-type fingerprint]
     [(:isa? :type/Text) {:type {:type/Text text-fingerprint}}]
     (infer-special-type-for-text-fingerprint text-fingerprint)
@@ -82,8 +84,7 @@
    Currently this only checks the various recorded percentages, but this is subject to change in the future."
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
   (when (can-edit-special-type? field)
-    (when-let [inferred-special-type (infer-special-type* (:base_type field)
-                                                          fingerprint)]
+    (when-let [inferred-special-type (infer-special-type* (:base_type field) fingerprint)]
       (log/debug (format "Based on the fingerprint of %s, we're marking it as %s."
                          (sync-util/name-for-logging field) inferred-special-type))
       (assoc field
