@@ -2,10 +2,11 @@
   "Unit tests for /api/advanced_computation endpoints."
   (:require [clojure.test :refer :all]
             [metabase.http-client :as http]
-            [metabase.models :refer [Card]]
+            [metabase.models :refer [Card Dashboard DashboardCard]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [toucan.db :as db])
   (:import java.util.UUID))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -169,6 +170,16 @@
             (is (= ["ND" nil nil 6 589 2183] (nth rows 2250)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
+;; public endpoints
+
+(defmacro ^:private with-temp-pivot-public-card {:style/indent 1} [[binding & [card]] & body]
+  `(let [card-settings# (merge (pivot-card) (shared-obj) ~card)]
+     (mt/with-temp Card [card# card-settings#]
+       ;; add :public_uuid back in to the value that gets bound because it might not come back from post-select if
+       ;; public sharing is disabled; but we still want to test it
+       (let [~binding (assoc card# :public_uuid (:public_uuid card-settings#))]
+         ~@body))))
+
 (deftest pivot-public-card-test
   (mt/test-drivers applicable-drivers
     (mt/dataset sample-dataset
@@ -182,7 +193,59 @@
               (is (= 6 (count (get-in result [:data :cols]))))
               (is (= 2273 (count rows)))
 
-              (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
-              (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
-              (is (= ["ND" nil nil 6 589 2183] (nth rows 2250)))
-              (is (= [nil nil nil 7 18760 69540] (last rows))))))))))
+              (is (= ["AK" "Affiliate" "Doohickey" 18 81 0] (first rows)))
+              (is (= ["CO" "Affiliate" "Gadget" 62 211 0] (nth rows 100)))
+              (is (= ["ND" nil nil 589 2183 6] (nth rows 2250)))
+              (is (= [nil nil nil 18760 69540 7] (last rows))))))))))
+
+(defmacro ^:private with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
+  `(let [dashboard-settings# (merge
+                              {:parameters [{:id      "_PEOPLE_ID_"
+                                             :name    "People ID"
+                                             :slug    "people_id"
+                                             :type    "id"
+                                             :target  [:dimension (mt/id :people :id)]
+                                             :default nil}]}
+                              (shared-obj)
+                              ~dashboard)]
+     (mt/with-temp Dashboard [dashboard# dashboard-settings#]
+       (let [~binding (assoc dashboard# :public_uuid (:public_uuid dashboard-settings#))]
+         ~@body))))
+
+(defn- add-card-to-dashboard! {:style/indent 2} [card dashboard & {:as kvs}]
+  (db/insert! DashboardCard (merge {:dashboard_id (u/get-id dashboard), :card_id (u/get-id card)}
+                                   kvs)))
+
+(defmacro ^:private with-temp-pivot-public-dashboard-and-card
+  {:style/indent 1}
+  [[dashboard-binding card-binding & [dashcard-binding]] & body]
+  `(with-temp-public-dashboard [dash#]
+     (with-temp-pivot-public-card [card#]
+       (let [~dashboard-binding        dash#
+             ~card-binding             card#
+             ~(or dashcard-binding
+                  (gensym "dashcard")) (add-card-to-dashboard! card# dash#)]
+         ~@body))))
+
+(defn- dashcard-url
+  "URL for fetching results of a public DashCard."
+  [dash card]
+  (str "advanced_computation/public/pivot/dashboard/" (:public_uuid dash) "/card/" (u/get-id card)))
+
+(deftest pivot-public-dashcard-test
+  (mt/test-drivers applicable-drivers
+    (mt/dataset sample-dataset
+      (testing "GET /api/advanced_computation/public/pivot/dashboard/:uuid/card/:card-id"
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (with-temp-pivot-public-dashboard-and-card [dash card]
+            (let [result (http/client :get 202 (dashcard-url dash card))
+                  rows   (mt/rows result)]
+              (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+              (is (= "completed" (:status result)))
+              (is (= 6 (count (get-in result [:data :cols]))))
+              (is (= 2273 (count rows)))
+
+              (is (= ["AK" "Affiliate" "Doohickey" 18 81 0] (first rows)))
+              (is (= ["CO" "Affiliate" "Gadget" 62 211 0] (nth rows 100)))
+              (is (= ["ND" nil nil 589 2183 6] (nth rows 2250)))
+              (is (= [nil nil nil 18760 69540 7] (last rows))))))))))
