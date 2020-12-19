@@ -86,7 +86,7 @@
        (or (not (string? v))
            (not (str/blank? v)))))
 
-(s/defn ^:private validate-and-merge-params :- {s/Keyword s/Any}
+(s/defn validate-and-merge-params :- {s/Keyword s/Any}
   "Validate that the `token-params` passed in the JWT and the `user-params` (passed as part of the URL) are allowed, and
   that ones that are required are specified by checking them against a Card or Dashboard's `object-embedding-params`
   (the object's value of `:embedding_params`). Throws a 400 if any of the checks fail. If all checks are successful,
@@ -149,10 +149,10 @@
   [card]
   (update card :parameters concat (template-tag-parameters card)))
 
-(s/defn ^:private apply-merged-id->value :- (s/maybe [{:slug   su/NonBlankString
-                                                       :type   s/Keyword
-                                                       :target s/Any
-                                                       :value  s/Any}])
+(s/defn apply-merged-id->value :- (s/maybe [{:slug   su/NonBlankString
+                                             :type   s/Keyword
+                                             :target s/Any
+                                             :value  s/Any}])
   "Adds `value` to parameters with `slug` matching a key in `merged-id->value` and removes parameters without a
    `value`."
   [parameters merged-id->value]
@@ -163,14 +163,14 @@
       (assoc (select-keys param [:type :target :slug])
         :value value))))
 
-(defn- resolve-card-parameters
+(defn resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
   [card-or-id]
   (-> (db/select-one [Card :dataset_query], :id (u/get-id card-or-id))
       add-implicit-card-parameters
       :parameters))
 
-(defn- resolve-dashboard-parameters
+(defn resolve-dashboard-parameters
   "Returns parameters for a card on a dashboard with `:target` resolved via `:parameter_mappings`."
   [dashboard-id dashcard-id card-id]
   (let [param-id->param (u/key-by :id (for [param (db/select-one-field :parameters Dashboard :id dashboard-id)]
@@ -186,7 +186,7 @@
           :when         param]
       (assoc param :target (:target param-mapping)))))
 
-(s/defn ^:private normalize-query-params :- {s/Keyword s/Any}
+(s/defn normalize-query-params :- {s/Keyword s/Any}
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
   `wrap-keyword-params` middleware normally converts all query params keys to keywords, but only if they seem like
   ones that make sense as keywords. Some params, such as ones that start with a number, do not pass this test, and are
@@ -269,10 +269,10 @@
    (api/check (:enable_embedding object)
      [400 (tru "Embedding is not enabled for this object.")])))
 
-(def ^:private ^{:arglists '([dashboard-id])} check-embedding-enabled-for-dashboard
+(def ^{:arglists '([dashboard-id])} check-embedding-enabled-for-dashboard
   (partial check-embedding-enabled-for-object Dashboard))
 
-(def ^:private ^{:arglists '([card-id])} check-embedding-enabled-for-card
+(def ^{:arglists '([card-id])} check-embedding-enabled-for-card
   (partial check-embedding-enabled-for-object Card))
 
 
@@ -289,7 +289,7 @@
     (check-embedding-enabled-for-card (eu/get-in-unsigned-token-or-throw unsigned [:resource :question]))
     (card-for-unsigned-token unsigned, :constraints {:enable_embedding true})))
 
-(s/defn ^:private run-query-for-unsigned-token-async
+(defn run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
   for this Card. Returns core.async channel to fetch the results."
   [unsigned-token export-format query-params & options]

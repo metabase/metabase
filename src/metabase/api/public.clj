@@ -102,7 +102,7 @@
   (fn [metadata final-metadata context]
     (orig-reducedf metadata (transform-results final-metadata) context)))
 
-(s/defn run-query-for-card-with-id-async
+(defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
   Returns a `StreamingResponse` object that should be returned as the result of an API endpoint."
   [card-id export-format parameters & options]
@@ -200,7 +200,7 @@
                           dashboard-params)))
         dashcard-param-mappings))
 
-(s/defn ^:private resolve-params :- (s/maybe [{s/Keyword s/Any}])
+(s/defn resolve-params :- (s/maybe [{s/Keyword s/Any}])
   "Resolve the parmeters passed in to the API (`query-params`) and make sure they're actual valid parameters the
   Dashboard with `dashboard-id`. This is done to prevent people from adding in parameters that aren't actually present
   on the Dashboard. When successful, this will return a merged sequence based on the original `dashboard-params`, but
@@ -254,7 +254,7 @@
                                    {:type qp.error-type/invalid-parameter})))]]
         (merge query-param dashboard-param)))))
 
-(defn- check-card-is-in-dashboard
+(defn check-card-is-in-dashboard
   "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in a DashboardCard at the top level or
   as a series, or throw an Exception. If not such relationship exists this will throw a 404 Exception."
   [card-id dashboard-id]

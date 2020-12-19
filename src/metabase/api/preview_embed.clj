@@ -14,7 +14,9 @@
              [embed :as embed-api]]
             [metabase.util.embed :as eu]))
 
-(defn- check-and-unsign [token]
+(defn check-and-unsign
+  "Validate a token"
+  [token]
   (api/check-superuser)
   (api/check-embedding-enabled)
   (eu/unsign token))
