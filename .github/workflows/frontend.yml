@@ -15,6 +15,7 @@ on:
     - 'frontend/**'
     - 'enterprise/frontend/**'
     - 'docs/**'
+    - '**/package.lock'
     - '**/yarn.lock'
     - '.github/workflows/**'
 
