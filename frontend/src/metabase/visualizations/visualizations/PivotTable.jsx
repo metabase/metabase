@@ -429,8 +429,14 @@ function updateValueWithCurrentColumns(storedValue, columns) {
   return value;
 }
 
+// This is a hack. We need to pass pivot_rows and pivot_cols on each query.
+// When a breakout is added to the query, we need to partition it before getting the rows.
+// We pretend the breakouts are columns so we can partition the new breakout.
 function addMissingCardBreakouts(setting, card) {
   const breakouts = getIn(card, ["dataset_query", "query", "breakout"]);
+  if (breakouts.length <= setting.columns.length + setting.rows.length) {
+    return setting;
+  }
   const breakoutFieldRefs = breakouts.map(field_ref => ({ field_ref }));
   const { columns, rows } = updateValueWithCurrentColumns(
     setting,
