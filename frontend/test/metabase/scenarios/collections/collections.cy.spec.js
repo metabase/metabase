@@ -330,6 +330,40 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("Browse all items").click();
       cy.findByText("Child");
     });
+
+    it.skip("sub-collection should be available in save and move modals (#14122)", () => {
+      const COLLECTION = "14122C";
+      // Create Parent collection within `Our analytics`
+      cy.request("POST", "/api/collection", {
+        name: COLLECTION,
+        color: "#509EE3",
+        parent_id: 1,
+      });
+      cy.visit("/collection/root");
+      cy.get("[class*=CollectionSidebar]").as("sidebar");
+
+      openDropdownFor("Your personal collection");
+      cy.findByText(COLLECTION);
+      cy.get("@sidebar")
+        .contains("Our analytics")
+        .click();
+
+      openEllipsisMenuFor("Orders");
+      cy.findByText("Move this item").click();
+
+      modal().within(() => {
+        cy.findByText("My personal collection")
+          .parent()
+          .find(".Icon-chevronright")
+          .click();
+
+        cy.findByText(COLLECTION).click();
+        cy.findByText("Move")
+          .closest(".Button")
+          .should("not.be.disabled")
+          .click();
+      });
+    });
   });
 });
 
