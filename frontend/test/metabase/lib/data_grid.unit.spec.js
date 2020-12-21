@@ -6,14 +6,12 @@ const D1 = {
   name: "D1",
   display_name: "Dimension 1",
   base_type: TYPE.Text,
-  field_ref: ["field-id", 123],
   source: "breakout",
 };
 const D2 = {
   name: "D2",
   display_name: "Dimension 2",
   base_type: TYPE.Text,
-  field_ref: ["field-id", 456],
   source: "breakout",
 };
 const M = { name: "M", display_name: "Metric", base_type: TYPE.Integer };
@@ -28,9 +26,7 @@ function makeData(rows) {
 function makePivotData(rows, cols) {
   cols = cols || [D1, D2, M];
 
-  const primaryGroup = JSON.stringify(
-    cols.filter(col => col.source === "breakout").map(col => col.field_ref),
-  );
+  const primaryGroup = 0;
   return {
     rows: rows.map(row => [...row, primaryGroup]),
     cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
@@ -276,7 +272,6 @@ describe("data_grid", () => {
             display_name: "Dimension 3",
             base_type: TYPE.Text,
             source: "breakout",
-            field_ref: ["field-id", 789],
           },
           { name: "M1", display_name: "Metric", base_type: TYPE.Integer },
         ],
@@ -317,14 +312,12 @@ describe("data_grid", () => {
             base_type: TYPE.Float,
             binning_info: { bin_width: 10 },
             source: "breakout",
-            field_ref: ["field-id", 123],
           },
           {
             name: "D2",
             display_name: "Dimension 2",
             base_type: TYPE.DateTime,
             source: "breakout",
-            field_ref: ["field-id", 456],
           },
           {
             name: "M1",
@@ -347,7 +340,6 @@ describe("data_grid", () => {
             display_name: "Dimension 1",
             base_type: TYPE.Float,
             source: "breakout",
-            field_ref: ["field-id", 123],
           },
           {
             name: "M1",
@@ -394,13 +386,12 @@ describe("data_grid", () => {
       expect(extractValues(getRowSection(1, 1))).toEqual([[null, null]]);
     });
 
-    it("should return subtotals in each section", () => {
+    it.only("should return subtotals in each section", () => {
       const cols = [D1, D2, M];
-      const primaryGroup = JSON.stringify(
-        cols.filter(col => col.source === "breakout").map(col => col.field_ref),
-      );
-      const subtotalOne = JSON.stringify([cols[0].field_ref]);
-      const subtotalTwo = JSON.stringify([cols[1].field_ref]);
+      const primaryGroup = 0;
+      const subtotalOne = 2;
+      const subtotalTwo = 1;
+      const subtotalThree = 3;
       const rows = [
         ["a", "x", 1, primaryGroup],
         ["a", "y", 2, primaryGroup],
@@ -410,7 +401,7 @@ describe("data_grid", () => {
         ["b", null, 7, subtotalOne],
         [null, "x", 4, subtotalTwo],
         [null, "y", 6, subtotalTwo],
-        [null, null, 10, "[]"],
+        [null, null, 10, subtotalThree],
       ];
       const data = {
         rows,

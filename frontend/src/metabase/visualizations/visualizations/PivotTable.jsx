@@ -74,7 +74,7 @@ export default class PivotTable extends Component {
         partitions,
         columns: data == null ? [] : data.cols,
       }),
-      getValue: ([{ data }], settings = {}) => {
+      getValue: ([{ data, card }], settings = {}) => {
         const storedValue = settings["pivot_table.column_split"];
         if (data == null) {
           return undefined;
@@ -111,7 +111,8 @@ export default class PivotTable extends Component {
             columnsToPartition,
           );
         }
-        return setting;
+
+        return addMissingCardBreakouts(setting, card);
       },
     },
   };
@@ -426,6 +427,22 @@ function updateValueWithCurrentColumns(storedValue, columns) {
     }
   }
   return value;
+}
+
+// This is a hack. We need to pass pivot_rows and pivot_cols on each query.
+// When a breakout is added to the query, we need to partition it before getting the rows.
+// We pretend the breakouts are columns so we can partition the new breakout.
+function addMissingCardBreakouts(setting, card) {
+  const breakouts = getIn(card, ["dataset_query", "query", "breakout"]);
+  if (breakouts.length <= setting.columns.length + setting.rows.length) {
+    return setting;
+  }
+  const breakoutFieldRefs = breakouts.map(field_ref => ({ field_ref }));
+  const { columns, rows } = updateValueWithCurrentColumns(
+    setting,
+    breakoutFieldRefs,
+  );
+  return { ...setting, columns, rows };
 }
 
 function isColumnValid(col) {
