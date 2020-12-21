@@ -175,6 +175,14 @@ export default class ChartClickActions extends Component {
       });
       delete groupedClickActions["sum"];
     }
+    if (!groupedClickActions["filter"]) {
+      // Only SQL column headings do not have filter actions, and we want to restyle the Formatting action for SQL columns
+      groupedClickActions["formatting"][0] = {
+        ...groupedClickActions["formatting"][0],
+        buttonType: "horizontal",
+        icon: "gear",
+      };
+    }
     const sections = _.chain(groupedClickActions)
       .pairs()
       .sortBy(([key]) => (SECTIONS[key] ? SECTIONS[key].index : 99))

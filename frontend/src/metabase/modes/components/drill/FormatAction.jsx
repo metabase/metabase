@@ -22,6 +22,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   return [
     {
       name: "formatting",
+      title: "Column formatting",
       section: "sort",
       buttonType: "formatting",
       icon: "gear",
