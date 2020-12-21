@@ -3,11 +3,14 @@ import Database from "metabase/entities/databases";
 
 function NewFeature({ databases }) {
   return (
-    <ol>
-      {databases.map(database => (
-        <li>{database.name}</li>
-      ))}
-    </ol>
+    <div className="p4">
+      <h1>List some databases</h1>
+      <ol>
+        {databases.map(database => (
+          <li>{database.name}</li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
