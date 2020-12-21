@@ -167,6 +167,10 @@ export function reactivateUser(userId) {
   return `/admin/people/${userId}/reactivate`;
 }
 
+export function datamodelDatabase (databaseId) {
+  return `/admin/datamodel/database/${databaseId}`;
+}
+
 export function browseDatabase(database) {
   return `/browse/${database.id}`;
 }
