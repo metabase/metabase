@@ -345,7 +345,9 @@ export default class DashboardHeader extends Component {
     if (extraButtons.length > 0 && !isEditing) {
       buttons.push(
         <PopoverWithTrigger
-          triggerElement={<Icon name="ellipsis" className="text-brand-hover" />}
+          triggerElement={
+            <Icon name="ellipsis" size={20} className="text-brand-hover" />
+          }
         >
           <div className="py1">
             {extraButtons.map((b, i) => (
