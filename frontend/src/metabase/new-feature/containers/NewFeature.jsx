@@ -1,7 +1,14 @@
 import React from "react";
+import Database from "metabase/entities/databases";
 
-function NewFeature() {
-  return <div>Welcome to our new feature!</div>;
+function NewFeature({ databases }) {
+  return (
+    <ol>
+      {databases.map(database => (
+        <li>{database.name}</li>
+      ))}
+    </ol>
+  );
 }
 
-export default NewFeature;
+export default Database.loadList()(NewFeature);
