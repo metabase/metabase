@@ -311,6 +311,11 @@ export const getRoutes = store => (
         />
       </Route>
 
+      <Route
+        path="/cool-new-feature"
+        component={() => <div>Welcome to our new feature!</div>}
+      />
+
       {/* PULSE */}
       <Route path="/pulse" title={t`Pulses`}>
         {/* NOTE: legacy route, not linked to in app */}
