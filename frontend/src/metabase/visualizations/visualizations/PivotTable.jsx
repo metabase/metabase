@@ -209,7 +209,7 @@ export default class PivotTable extends Component {
               >
                 {/* top left corner - displays left header columns */}
                 <div
-                  className="flex align-end border-right border-bottom border-medium bg-light"
+                  className="flex align-center border-right border-bottom border-medium bg-light"
                   style={{
                     // add left spacing unless the header width is 0
                     paddingLeft: leftHeaderWidth && LEFT_HEADER_LEFT_SPACING,
