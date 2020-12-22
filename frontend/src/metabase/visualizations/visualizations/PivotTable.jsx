@@ -242,18 +242,16 @@ export default class PivotTable extends Component {
       ({ key, style, index }) => {
         if (index === leftIndex.length) {
           return (
-            <Flex key={key} style={style}>
-              <Flex flexDirection="column">
-                <Cell
-                  value={t`Grand totals`}
-                  isSubtotal
-                  style={{
-                    paddingLeft: LEFT_HEADER_LEFT_SPACING,
-                    width: leftHeaderWidth,
-                  }}
-                />
-              </Flex>
-            </Flex>
+            <Cell
+              value={t`Grand totals`}
+              isSubtotal
+              key={key}
+              style={{
+                ...style,
+                paddingLeft: LEFT_HEADER_LEFT_SPACING,
+                width: leftHeaderWidth,
+              }}
+            />
           );
         }
         return (
