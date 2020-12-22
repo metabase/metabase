@@ -205,13 +205,15 @@ export default class CollectionContent extends React.Component {
                     isRoot={isRoot}
                   />
                 )}
-              <Tooltip tooltip={t`New collection`}>
-                <Link to={Urls.newCollection(this.props.collectionId)}>
-                  <IconWrapper>
-                    <Icon name="folder" />
-                  </IconWrapper>
-                </Link>
-              </Tooltip>
+              {collection && collection.can_write && (
+                <Tooltip tooltip={t`New collection`}>
+                  <Link to={Urls.newCollection(this.props.collectionId)}>
+                    <IconWrapper>
+                      <Icon name="folder" />
+                    </IconWrapper>
+                  </Link>
+                </Tooltip>
+              )}
             </Flex>
           </Flex>
           {collectionHasPins ? (
