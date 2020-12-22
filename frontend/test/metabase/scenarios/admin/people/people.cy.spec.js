@@ -1,8 +1,11 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { signInAsAdmin, restore, USERS } from "__support__/cypress";
+const { normal } = USERS;
 
 describe("scenarios > admin > people", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   const email = `testy${Math.round(Math.random() * 100000)}@metabase.com`;
 
@@ -67,10 +70,10 @@ describe("scenarios > admin > people", () => {
       cy.findByText("Add someone").click();
 
       // first modal
-      cy.findByLabelText("First name").type("TestyNew");
-      cy.findByLabelText("Last name").type("McTestfaceNew");
+      cy.findByLabelText("First name").type(normal.first_name + "New");
+      cy.findByLabelText("Last name").type(normal.last_name + "New");
       // bit of a hack since there are multiple "Email" nodes
-      cy.findByLabelText("Email").type(email.toUpperCase());
+      cy.findByLabelText("Email").type(normal.username.toUpperCase());
       cy.findByText("Create").click();
       cy.contains("Email address already in use.");
     });
