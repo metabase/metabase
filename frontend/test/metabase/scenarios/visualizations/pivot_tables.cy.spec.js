@@ -100,8 +100,8 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.get(".Visualization").within(() => {
       cy.findByText("Subtotal");
       cy.findByText("Count");
-      cy.contains(/\d+\s+–\s+\d+/);
       cy.findByText("2,720");
+      cy.findByText(/Grand totals/i);
       cy.findByText("18,760");
     });
   });
