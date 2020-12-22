@@ -20,7 +20,7 @@ Collections in Metabase are a lot like folders. They're where all your team's da
 
 If your teammates are cool, they'll have pinned some important dashboards or questions within your collections; if so, those important or useful items will show up in a different color at the top of a collection. Any dashboards that are pinned in the top-level, **Our Analytics** collection will also show up on the Metabase homepage.
 
-Collections have a list of any other items that are saved within them, as well as a list of other collections that are saved inside the current one.
+Collections have a list of any other items that are saved within them, and you can see what other collections are saved inside of the current one by checking out the navigation sidebar.
 
 #### Exploring dashboards
 
@@ -55,7 +55,7 @@ When you're looking at the detail view of a question, you can use all the same a
 
 ![Heading actions](images/drill-through/heading-actions.png)
 
-One of our personal favorite ways to explore is with the **Distribution** option. This will show you how many rows there are in a given table, grouped by column you clicked on. So if you have a Users table, if you click on an Age column and select Distribution, you'll see a bar chart with the count of users you have in each age bracket.
+One of our personal favorite ways to explore is with the **Distribution** option. This will show you how many rows there are in a given table, grouped by the column you clicked on. So if you have a Users table, if you click on an Age column and select Distribution, you'll see a bar chart with the count of users you have in each age bracket.
 
 ---
 

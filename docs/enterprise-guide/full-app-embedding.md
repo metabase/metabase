@@ -100,8 +100,8 @@ When signing JWTs for either SSO (i.e., in full-app embedding) or standalone que
 
 Check out these articles:
 
-- [Deliver analytics to your customers](https://www.metabase.com/blog/external-facing-analytics/index.html).
-- [Embed Metabase in your app to deliver multi-tenant, self-service analytics](https://www.metabase.com/blog/embedding/index.html).
+- [Deliver analytics to your customers](https://www.metabase.com/learn/building-analytics/dashboards/linking-filters.html).
+- [Embed Metabase in your app to deliver multi-tenant, self-service analytics](https://www.metabase.com/learn/developing-applications/advanced-metabase/multi-tenant-self-service-analytics.html).
 - [Create charts with explorable data](https://www.metabase.com/learn/developing-applications/advanced-metabase/multi-tenant-self-service-analytics.html).
 
 ---
