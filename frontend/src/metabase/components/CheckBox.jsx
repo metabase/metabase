@@ -67,6 +67,8 @@ export default class CheckBox extends Component {
         onClick={e => {
           this.onClick(e);
         }}
+        role="checkbox"
+        aria-checked={checked}
       >
         {(checked || indeterminate) && !noIcon && (
           <Icon
