@@ -5,10 +5,15 @@ import {
   openReviewsTable,
   popover,
 } from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > admin > datamodel > metadata", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should correctly show remapped column value", () => {
     // go directly to Data Model page for Sample Dataset
@@ -73,6 +78,36 @@ describe("scenarios > admin > datamodel > metadata", () => {
     openReviewsTable();
     Object.values(customMap).forEach(rating => {
       cy.findAllByText(rating);
+    });
+  });
+
+  it.skip("should not include date when metric is binned by hour of day (metabase#14124)", () => {
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      special_type: null,
+    });
+
+    cy.request("POST", "/api/card", {
+      name: "14124",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "hour-of-day"],
+          ],
+        },
+        type: "query",
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      cy.findByText("Created At: Hour of day");
+
+      cy.log("**Reported failing in v0.37.2**");
+      cy.findByText(/^3:00 AM$/);
     });
   });
 });
