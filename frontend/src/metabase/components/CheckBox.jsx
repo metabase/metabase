@@ -37,7 +37,6 @@ export default class CheckBox extends Component {
   }
 
   onKeyPress = e => {
-    // Space bar
     if (e.keyCode === KEYCODE_SPACE) {
       this.onClick(e);
     }
