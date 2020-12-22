@@ -1,4 +1,8 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import {
+  signInAsAdmin,
+  restore,
+  visitQuestionAdhoc,
+} from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATASET;
@@ -12,17 +16,11 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should be created from an ad-hoc question", () => {
-    // We're intentionally setting the visualization to `bar` here
-    createAndVisitTestQuestion({ display: "bar" });
-
-    // By changing the visualization type, we make this an "ad-hoc" question
-    cy.findByText("Visualization").click();
-    cy.get(".Icon-pivot_table")
-      .should("be.visible")
-      .click();
+    visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
+    cy.findByText("Settings").click();
     assertOnPivotSettings();
     assertOnPivotTable();
   });
@@ -107,25 +105,27 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 });
 
+const testQuery = {
+  type: "query",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      ["fk->", ["field-id", ORDERS.USER_ID], ["field-id", PEOPLE.SOURCE]],
+      [
+        "fk->",
+        ["field-id", ORDERS.PRODUCT_ID],
+        ["field-id", PRODUCTS.CATEGORY],
+      ],
+    ],
+  },
+  database: 1,
+};
+
 function createAndVisitTestQuestion({ display = "pivot" } = {}) {
   cy.request("POST", "/api/card", {
     name: QUESTION_NAME,
-    dataset_query: {
-      type: "query",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          ["fk->", ["field-id", ORDERS.USER_ID], ["field-id", PEOPLE.SOURCE]],
-          [
-            "fk->",
-            ["field-id", ORDERS.PRODUCT_ID],
-            ["field-id", PRODUCTS.CATEGORY],
-          ],
-        ],
-      },
-      database: 1,
-    },
+    dataset_query: testQuery,
     display,
     description: null,
     visualization_settings: {},
