@@ -58,16 +58,18 @@
                       :limit        5})))))))))
 
 
-(defn- breakout-results [& {:keys [has-source-metadata? native-source?],
-                            :or {has-source-metadata? true native-source? false}}]
+(defn- breakout-results [& {:keys [has-source-metadata? has-extra-cols?]
+                            :or   {has-source-metadata? true
+                                   has-extra-cols?      false}}]
   {:rows [[1 22]
           [2 59]
           [3 13]
           [4  6]]
-   :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
-            native-source?             (-> (assoc :field_ref [:field-literal "PRICE" :type/Integer])
-                                           (dissoc :description :parent_id :visibility_type))
-            (not has-source-metadata?) (dissoc :id :special_type :settings :fingerprint :table_id))
+   :cols [(cond-> (qp.test/breakout-col ((if has-extra-cols?
+                                           qp.test/field-literal-col-keep-extra-cols
+                                           qp.test/field-literal-col) :venues :price))
+            (not has-source-metadata?)
+            (dissoc :id :special_type :settings :fingerprint :table_id))
           (qp.test/aggregate-col :count)]})
 
 (deftest mbql-source-query-breakout-aggregation-test
@@ -188,7 +190,7 @@
     ;; This is the format that is actually used by the frontend; it gets translated to the normal `source-query`
     ;; format by middleware. It's provided as a convenience so only minimal changes need to be made to the frontend.
     (mt/with-temp Card [card (venues-mbql-card-def)]
-      (is (= (breakout-results)
+      (is (= (breakout-results :has-extra-cols? true)
              (qp.test/rows-and-cols
                (mt/format-rows-by [int int]
                  (qp/process-query
@@ -372,15 +374,14 @@
 
 (deftest correct-column-metadata-test
   (testing "make sure a query using a source query comes back with the correct columns metadata"
-    (is (= (map
-            (partial qp.test/col :venues)
-            [:id :name :category_id :latitude :longitude :price])
+    (is (= (map (partial qp.test/field-literal-col-keep-extra-cols :venues)
+                [:id :name :category_id :latitude :longitude :price])
            (mt/cols
              (mt/with-temp Card [card (venues-mbql-card-def)]
                (qp/process-query (query-with-source-card card)))))))
 
   (testing "make sure a breakout/aggregate query using a source query comes back with the correct columns metadata"
-    (is (= [(qp.test/breakout-col (qp.test/col :venues :price))
+    (is (= [(qp.test/breakout-col (qp.test/field-literal-col-keep-extra-cols :venues :price))
             (qp.test/aggregate-col :count)]
            (mt/cols
              (mt/with-temp Card [card (venues-mbql-card-def)]

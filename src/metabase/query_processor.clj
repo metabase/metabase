@@ -11,6 +11,7 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.util :as driver.u]
+            [metabase.mbql.util :as mbql.u]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor
              [context :as context]
@@ -176,7 +177,7 @@
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
   queries with native source queries won't work, since we don't need the results."
   [{query-type :type, :as query}]
-  (when-not (= query-type :query)
+  (when-not (= (mbql.u/normalize-token query-type) :query)
     (throw (ex-info (tru "Can only determine expected columns for MBQL queries.")
              {:type error-type/qp})))
   ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
@@ -184,7 +185,7 @@
   (qp.store/with-store
     (let [preprocessed (query->preprocessed query)]
       (driver/with-driver (driver.u/database->driver (:database preprocessed))
-        (seq (annotate/merged-column-info preprocessed nil))))))
+        (not-empty (vec (annotate/merged-column-info preprocessed nil)))))))
 
 (defn query->native
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled

@@ -19,7 +19,7 @@
              [params :as params]
              [permissions :as perms]
              [pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
+             [pulse-card :as pulse-card :refer [PulseCard]]
              [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
             [metabase.query-processor.async :as qp.async]
@@ -74,19 +74,47 @@
     (assert-valid-parameters dashboard)
     (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 
-(defn- post-update [dashboard]
-  ;; find any subscriptions for this dashboard and update the name to match
-  (let [affected (db/query
-                  {:select    [:p.id]
+(defn- post-update
+  "Updates the pulses' names and syncs the PulseCards"
+  [dashboard]
+  (let [dashboard-id (:id dashboard)
+        affected (db/query
+                  {:select    [[:p.id :pulse_id] [:pc.card_id :card_id]]
                    :modifiers [:distinct]
                    :from      [[Dashboard :d]]
                    :join      [[DashboardCard :dc] [:= :dc.dashboard_id :d.id]
                                [PulseCard :pc] [:= :pc.dashboard_card_id :dc.id]
                                [Pulse :p] [:= :p.id :pc.pulse_id]]
-                   :where     [:= :d.id (:id dashboard)]})]
-    (when (seq affected)
-      (db/update-where! Pulse {:id [:in (map :id affected)]}
-                        :name (:name dashboard)))))
+                   :where     [:= :d.id dashboard-id]})]
+    (when-let [pulse-ids (seq (distinct (map :pulse_id affected)))]
+      (let [correct-card-ids     (->> (db/query {:select [:dc.card_id]
+                                                 :modifiers [:distinct]
+                                                 :from [[DashboardCard :dc]]
+                                                 :where [:and
+                                                         [:= :dc.dashboard_id dashboard-id]
+                                                         [:not= :dc.card_id nil]]})
+                                      (map :card_id)
+                                      set)
+            stale-card-ids       (->> affected
+                                      (keep :card_id)
+                                      set)
+            cards-to-add         (set/difference correct-card-ids stale-card-ids)
+            card-id->dashcard-id (when (seq cards-to-add)
+                                   (db/select-field->id :card_id DashboardCard :dashboard_id dashboard-id,
+                                                        :card_id [:in cards-to-add]))
+            positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
+                                                      (range)))
+            new-pulse-cards      (for [pulse-id                         pulse-ids,
+                                       [[card-id dashcard-id] position] (map vector card-id->dashcard-id
+                                                                                    (positions-for pulse-id))]
+                                   {:pulse_id          pulse-id
+                                    :card_id           card-id
+                                    :dashboard_card_id dashcard-id
+                                    :position          position})]
+        (db/transaction
+          (db/update-where! Pulse {:id [:in pulse-ids]}
+            :name (:name dashboard))
+          (pulse-card/bulk-create! new-pulse-cards))))))
 
 (u/strict-extend (class Dashboard)
   models/IModel

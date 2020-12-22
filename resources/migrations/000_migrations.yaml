@@ -1555,6 +1555,9 @@ databaseChangeLog:
   - changeSet:
       id: 12
       author: agilliland
+      validCheckSum:
+        - 8:bedbea570e5dfc694b4cf5a8f6a4f445
+        - 8:e862a199cba5b4ce0cba713110f66cfb
       changes:
         - addColumn:
             tableName: report_card
@@ -1568,6 +1571,9 @@ databaseChangeLog:
                     foreignKeyName: fk_report_card_ref_database_id
                     deferrable: false
                     initiallyDeferred: false
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: table_id
                   type: int
@@ -1577,6 +1583,9 @@ databaseChangeLog:
                     foreignKeyName: fk_report_card_ref_table_id
                     deferrable: false
                     initiallyDeferred: false
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: query_type
                   type: varchar(16)
@@ -3366,6 +3375,9 @@ databaseChangeLog:
   - changeSet:
       id: 49
       author: camsaul
+      validCheckSum:
+        - 8:56dcab086b21de1df002561efeac8bb6
+        - 8:4508e7d5f6d4da3c4a2de3bf5e3c5851
       changes:
         ######################################## Card public_uuid & indices ########################################
         - addColumn:
@@ -3377,6 +3389,9 @@ databaseChangeLog:
                   remarks: 'Unique UUID used to in publically-accessible links to this Card.'
                   constraints:
                     unique: true
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: made_public_by_id
                   type: int
@@ -3400,6 +3415,9 @@ databaseChangeLog:
                   remarks: 'Unique UUID used to in publically-accessible links to this Dashboard.'
                   constraints:
                     unique: true
+        - addColumn:
+            tableName: report_dashboard
+            columns:
               - column:
                   name: made_public_by_id
                   type: int
@@ -3421,6 +3439,9 @@ databaseChangeLog:
   - changeSet:
       id: 50
       author: camsaul
+      validCheckSum:
+        - 8:388da4c48984aad647709514e4ba9204
+        - 8:98a6ab6428ea7a589507464e34ade58a
       changes:
         ######################################## new Card columns ########################################
         - addColumn:
@@ -3433,6 +3454,9 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: report_card
+            columns:
               - column:
                   name: embedding_params
                   type: text
@@ -3448,6 +3472,9 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: report_dashboard
+            columns:
               - column:
                   name: embedding_params
                   type: text
@@ -3634,6 +3661,9 @@ databaseChangeLog:
   - changeSet:
       id: 55
       author: camsaul
+      validCheckSum:
+        - 8:87c4becde5fe208ba2c356128df86fba
+        - 8:11bbd199bfa57b908ea3b1a470197de9
       changes:
         - addColumn:
             tableName: report_dashboard
@@ -3645,6 +3675,9 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: report_dashboard
+            columns:
               - column:
                   name: position
                   type: integer
@@ -3807,6 +3840,9 @@ databaseChangeLog:
   - changeSet:
       id: 60
       author: camsaul
+      validCheckSum:
+        - 8:4f997b2cd3309882e900493892381f38
+        - 8:2141162a1c99a5dd95e5a67c5595e6d7
       comment: 'Added 0.26.0'
       changes:
         - addColumn:
@@ -3819,6 +3855,9 @@ databaseChangeLog:
                   defaultValue: '0 50 * * * ? *' # run at the end of every hour
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: metabase_database
+            columns:
               - column:
                   name: cache_field_values_schedule
                   type: varchar(254)
@@ -3978,22 +4017,31 @@ databaseChangeLog:
                   constraints:
                     nullable: false
   - changeSet:
-    - id: 68
-    - author: sbelak
-    - comment: 'Added 0.27.0'
-    - changes:
-      - addColumn:
+      id: 68
+      author: sbelak
+      comment: 'Added 0.27.0'
+      validCheckSum:
+        - 8:ca201aeb20c1719a46c6bcc3fc95c81d
+        - 8:b4ac06d133dfbdc6567d992c7e18c6ec
+      changes:
+        - addColumn:
             tableName: computation_job
             columns:
               - column:
                   name: context
                   type: text
+        - addColumn:
+            tableName: computation_job
+            columns:
               - column:
                   name: ended_at
                   type: DATETIME
   - changeSet:
       id: 69
       author: senior
+      validCheckSum:
+        - 8:97b7768436b9e8d695bae984020d754c
+        - 8:eadbe00e97eb53df4b3df60462f593f6
       comment: 'Added 0.27.0'
       remarks: 'Add columns to the pulse table for alerts'
       changes:
@@ -4004,10 +4052,16 @@ databaseChangeLog:
                   name: alert_condition
                   type: varchar(254)
                   remarks: 'Condition (i.e. "rows" or "goal") used as a guard for alerts'
+        - addColumn:
+            tableName: pulse
+            columns:
               - column:
                   name: alert_first_only
                   type: boolean
                   remarks: 'True if the alert should be disabled after the first notification'
+        - addColumn:
+            tableName: pulse
+            columns:
               - column:
                   name: alert_above_goal
                   type: boolean
@@ -4050,6 +4104,9 @@ databaseChangeLog:
   - changeSet:
       id: 72
       author: senior
+      validCheckSum:
+        - 8:ed16046dfa04c139f48e9068eb4faee4
+        - 8:4dc6debdf779ab9273cf2158a84bb154
       comment: 'Added 0.28.0'
       changes:
         - addColumn:
@@ -4062,6 +4119,9 @@ databaseChangeLog:
                   remarks: 'True if a CSV of the data should be included for this pulse card'
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: pulse_card
+            columns:
               - column:
                   name: include_xls
                   type: boolean
@@ -4103,9 +4163,10 @@ databaseChangeLog:
         - addColumn:
             tableName: report_card
             columns:
-              name: read_permissions
-              type: text
-              remarks: 'Permissions required to view this Card and run its query.'
+              - column:
+                  name: read_permissions
+                  type: text
+                  remarks: 'Permissions required to view this Card and run its query.'
   - changeSet:
       id: 76
       author: senior
@@ -4114,9 +4175,10 @@ databaseChangeLog:
         - addColumn:
             tableName: metabase_table
             columns:
-              name: fields_hash
-              type: text
-              remarks: 'Computed hash of all of the fields associated to this table'
+              - column:
+                  name: fields_hash
+                  type: text
+                  remarks: 'Computed hash of all of the fields associated to this table'
   - changeSet:
       id: 77
       author: senior
@@ -4125,9 +4187,10 @@ databaseChangeLog:
         - addColumn:
             tableName: core_user
             columns:
-              name: login_attributes
-              type: text
-              remarks: 'JSON serialized map with attributes used for row level permissions'
+              - column:
+                  name: login_attributes
+                  type: text
+                  remarks: 'JSON serialized map with attributes used for row level permissions'
   - changeSet:
       id: 78
       author: camsaul
@@ -4201,12 +4264,13 @@ databaseChangeLog:
         - addColumn:
             tableName: report_dashboard
             columns:
-              name: collection_id
-              type: int
-              remarks: 'Optional ID of Collection this Dashboard belongs to.'
-              constraints:
-                references: collection(id)
-                foreignKeyName: fk_dashboard_collection_id
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: 'Optional ID of Collection this Dashboard belongs to.'
+                  constraints:
+                    references: collection(id)
+                    foreignKeyName: fk_dashboard_collection_id
               # TODO - if someone deletes a collection, what should happen to the Dashboards that are in it? Should they
               # get deleted as well? Or should collection_id be cleared, effectively putting them in the so-called
               # "root" collection?
@@ -4219,12 +4283,13 @@ databaseChangeLog:
         - addColumn:
             tableName: pulse
             columns:
-              name: collection_id
-              type: int
-              remarks: 'Options ID of Collection this Pulse belongs to.'
-              constraints:
-                references: collection(id)
-                foreignKeyName: fk_pulse_collection_id
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: 'Options ID of Collection this Pulse belongs to.'
+                  constraints:
+                    references: collection(id)
+                    foreignKeyName: fk_pulse_collection_id
         - createIndex:
             tableName: pulse
             indexName: idx_pulse_collection_id
@@ -4238,12 +4303,13 @@ databaseChangeLog:
         - addColumn:
             tableName: collection
             columns:
-              name: location
-              type: varchar(254)
-              remarks: 'Directory-structure path of ancestor Collections. e.g. "/1/2/" means our Parent is Collection 2, and their parent is Collection 1.'
-              constraints:
-                nullable: false
-              defaultValue: "/"
+              - column:
+                  name: location
+                  type: varchar(254)
+                  remarks: 'Directory-structure path of ancestor Collections. e.g. "/1/2/" means our Parent is Collection 2, and their parent is Collection 1.'
+                  constraints:
+                    nullable: false
+                  defaultValue: "/"
         - createIndex:
             tableName: collection
             indexName: idx_collection_location
@@ -4258,21 +4324,24 @@ databaseChangeLog:
         - addColumn:
             tableName: report_dashboard
             columns:
-              name: collection_position
-              type: smallint
-              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+              - column:
+                  name: collection_position
+                  type: smallint
+                  remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
         - addColumn:
             tableName: report_card
             columns:
-              name: collection_position
-              type: smallint
-              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+              - column:
+                  name: collection_position
+                  type: smallint
+                  remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
         - addColumn:
             tableName: pulse
             columns:
-              name: collection_position
-              type: smallint
-              remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
+              - column:
+                  name: collection_position
+                  type: smallint
+                  remarks: 'Optional pinned position for this item in its Collection. NULL means item is not pinned.'
   - changeSet:
       id: 82
       author: senior
@@ -4281,9 +4350,10 @@ databaseChangeLog:
         - addColumn:
             tableName: core_user
             columns:
-              name: updated_at
-              type: datetime
-              remarks: 'When was this User last updated?'
+              - column:
+                  name: updated_at
+                  type: datetime
+                  remarks: 'When was this User last updated?'
         - sql:
             sql: update core_user set updated_at=date_joined
 # Remove the GTAP card_id constraint. When not included, will default to querying against the GTAP table_id.
@@ -4326,10 +4396,11 @@ databaseChangeLog:
         - addColumn:
             tableName: pulse
             columns:
-              name: archived
-              type: boolean
-              remarks: 'Has this pulse been archived?'
-              defaultValueBoolean: false
+              - column:
+                  name: archived
+                  type: boolean
+                  remarks: 'Has this pulse been archived?'
+                  defaultValueBoolean: false
         # Before this change, metrics/segments had opposite logic, rather than marking something as archived
         # it was marked as active. Since the column is now an archived column, flip the boolean value
         #
@@ -4346,15 +4417,16 @@ databaseChangeLog:
         - addColumn:
             tableName: collection
             columns:
-              name: personal_owner_id
-              type: int
-              remarks: 'If set, this Collection is a personal Collection, for exclusive use of the User with this ID.'
-              constraints:
-                references: core_user(id)
-                foreignKeyName: fk_collection_personal_owner_id
-                unique: true
-                uniqueConstraintName: unique_collection_personal_owner_id
-                deleteCascade: true
+              - column:
+                  name: personal_owner_id
+                  type: int
+                  remarks: 'If set, this Collection is a personal Collection, for exclusive use of the User with this ID.'
+                  constraints:
+                    references: core_user(id)
+                    foreignKeyName: fk_collection_personal_owner_id
+                    unique: true
+                    uniqueConstraintName: unique_collection_personal_owner_id
+                    deleteCascade: true
         # Needed so we can efficiently look up the Collection belonging to a User, and so we can efficiently enforce the
         # unique constraint
         - createIndex:
@@ -4374,9 +4446,10 @@ databaseChangeLog:
         - addColumn:
             tableName: collection
             columns:
-              name: _slug
-              type: varchar(254)
-              remarks: 'Sluggified version of the Collection name. Used only for display purposes in URL; not unique or indexed.'
+              - column:
+                  name: _slug
+                  type: varchar(254)
+                  remarks: 'Sluggified version of the Collection name. Used only for display purposes in URL; not unique or indexed.'
         # I don't know of an easy way to copy existing values of slug to _slug with Liquibase as we create the column so
         # just have to do it this way instead
         - sql:
@@ -4429,12 +4502,13 @@ databaseChangeLog:
         - addColumn:
             tableName: core_user
             columns:
-              name: saml_auth
-              type: boolean
-              defaultValueBoolean: false
-              constraints:
-                nullable: false
-              remarks: 'Boolean to indicate if this user is authenticated via SAML'
+              - column:
+                  name: saml_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+                  remarks: 'Boolean to indicate if this user is authenticated via SAML'
 
 # The Quartz Task Scheduler can use a DB to 'cluster' tasks and make sure they are only ran by a single instance where
 # using a multi-instance Metabase setup.
@@ -5101,9 +5175,10 @@ databaseChangeLog:
         - addColumn:
             tableName: core_user
             columns:
-              name: sso_source
-              type: varchar(254)
-              remarks: 'String to indicate the SSO backend the user is from'
+              - column:
+                  name: sso_source
+                  type: varchar(254)
+                  remarks: 'String to indicate the SSO backend the user is from'
         - sql:
             sql: update core_user set sso_source='saml' where saml_auth=true
         - dropColumn:
@@ -5138,9 +5213,10 @@ databaseChangeLog:
         - addColumn:
             tableName: query_execution
             columns:
-              name: database_id
-              type: integer
-              remarks: 'ID of the database this query was ran against.'
+              - column:
+                  name: database_id
+                  type: integer
+                  remarks: 'ID of the database this query was ran against.'
 
 # Start recording the actual query dictionary that's been executed
 
@@ -5152,9 +5228,10 @@ databaseChangeLog:
         - addColumn:
             tableName: query
             columns:
-              name: query
-              type: text
-              remarks: 'The actual "query dictionary" for this query.'
+              - column:
+                  name: query
+                  type: text
+                  remarks: 'The actual "query dictionary" for this query.'
 
 # Create the TaskHistory table, intended to provide debugging info on our background/quartz processes
   - changeSet:
@@ -5253,9 +5330,10 @@ databaseChangeLog:
         - addColumn:
             tableName: metabase_field
             columns:
-              name: settings
-              type: text
-              remarks: 'Serialized JSON FE-specific settings like formatting, etc. Scope of what is stored here may increase in future.'
+              - column:
+                  name: settings
+                  type: text
+                  remarks: 'Serialized JSON FE-specific settings like formatting, etc. Scope of what is stored here may increase in future.'
 #
 # Change MySQL/Maria's blob type to LONGBLOB to more closely match what H2 and PostgreSQL support for size limits
 #
@@ -5400,12 +5478,13 @@ databaseChangeLog:
         - addColumn:
             tableName: metabase_database
             columns:
-              name: auto_run_queries
-              remarks: 'Whether to automatically run queries when doing simple filtering and summarizing in the Query Builder.'
-              type: boolean
-              constraints:
-                nullable: false
-              defaultValueBoolean: true
+              - column:
+                  name: auto_run_queries
+                  remarks: 'Whether to automatically run queries when doing simple filtering and summarizing in the Query Builder.'
+                  type: boolean
+                  constraints:
+                    nullable: false
+                  defaultValueBoolean: true
 
 
   # To fix EE full-app embedding without compromising security. Full-app embed sessions cannot have `SameSite` attributes in their cookies.
@@ -5417,9 +5496,10 @@ databaseChangeLog:
         - addColumn:
             tableName: core_session
             columns:
-              name: anti_csrf_token
-              type: text
-              remarks: 'Anti-CSRF token for full-app embed sessions.'
+              - column:
+                  name: anti_csrf_token
+                  type: text
+                  remarks: 'Anti-CSRF token for full-app embed sessions.'
 
 #
 # Change `metabase_field.database_type` to `text` to accomodate more exotic field types (enums in Clickhouse, rows in Presto, ...)
@@ -6349,9 +6429,10 @@ databaseChangeLog:
         - addColumn:
             tableName: core_user
             columns:
-              name: locale
-              remarks: 'Preferred ISO locale (language/country) code, e.g "en" or "en-US", for this User. Overrides site default.'
-              type: varchar(5)
+              - column:
+                  name: locale
+                  remarks: 'Preferred ISO locale (language/country) code, e.g "en" or "en-US", for this User. Overrides site default.'
+                  type: varchar(5)
 
 # Add Field `database_position` to keep the order in which fields are ordered in the DB, `custom_position` for custom
 # position; and Table `field_order` setting.
@@ -6373,6 +6454,9 @@ databaseChangeLog:
                   defaultValueNumeric: 0
                   constraints:
                     nullable: false
+        - addColumn:
+            tableName: metabase_field
+            columns:
               - column:
                   name: custom_position
                   type: int
@@ -7753,7 +7837,7 @@ databaseChangeLog:
   - changeSet:
       id: 275
       author: dpsutton
-      comment: 'Add refingerprint to Database'
+      comment: 'Added 0.38.0 refingerprint to Database'
       changes:
         - addColumn:
             tableName: metabase_database
@@ -7766,7 +7850,7 @@ databaseChangeLog:
   - changeSet:
       id: 276
       author: robroland
-      comment: Added 0.37.0 - Dashboard subscriptions
+      comment: Added 0.38.0 - Dashboard subscriptions
       changes:
         - addColumn:
             columns:
@@ -7779,5 +7863,26 @@ databaseChangeLog:
                   foreignKeyName: fk_pulse_card_ref_pulse_card_id
                   deferrable: false
                   initiallyDeferred: false
-                  onDelete: CASCADE
             tableName: pulse_card
+
+  - changeSet:
+      id: 277
+      author: tsmacdonald
+      comment: Added 0.38.0 - Dashboard subscriptions
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse_card
+            constraintName: fk_pulse_card_ref_pulse_card_id
+
+  - changeSet:
+      id: 278
+      author: tsmacdonald
+      comment: Added 0.38.0 - Dashboard subscrptions
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_card
+            baseColumnNames: dashboard_card_id
+            referencedTableName: report_dashboardcard
+            referencedColumnNames: id
+            constraintName: fk_pulse_card_ref_pulse_card_id
+            onDelete: CASCADE

@@ -13,12 +13,15 @@ export function isPivotGroupColumn(col) {
 function splitPivotData(data, rowIndexes, columnIndexes) {
   const groupIndex = data.cols.findIndex(isPivotGroupColumn);
   const columns = data.cols.filter(col => !isPivotGroupColumn(col));
+  const breakouts = columns.filter(col => col.source === "breakout");
+
   const pivotData = _.chain(data.rows)
     .groupBy(row => row[groupIndex])
     .pairs()
     .map(([key, rows]) => {
-      const indexes = JSON.parse(key).map(breakout =>
-        columns.findIndex(col => _.isEqual(col.field_ref, breakout)),
+      key = parseInt(key);
+      const indexes = _.range(breakouts.length).filter(
+        index => !((1 << index) & key),
       );
       const keyAsIndexes = JSON.stringify(indexes);
       const rowsWithoutColumn = rows.map(row =>
@@ -92,10 +95,8 @@ export function multiLevelPivot(
   const topIndex = getIndex(columnColumnTree, { valueColumns });
   const leftIndex = getIndex(rowColumnTree, {});
 
-  const columnCount =
-    topIndex.length + (topIndex.length > 1 && leftIndex.length > 0 ? 1 : 0);
-  const rowCount =
-    leftIndex.length + (leftIndex.length > 1 && topIndex.length > 0 ? 1 : 0);
+  const columnCount = getIndexCount(topIndex);
+  const rowCount = getIndexCount(leftIndex);
   return {
     topIndex,
     leftIndex,
@@ -111,6 +112,15 @@ export function multiLevelPivot(
       rowColumnIndexes,
     }),
   };
+}
+
+function getIndexCount({ length }) {
+  return (
+    // we need at least one row/column
+    (length === 0 ? 1 : length) +
+    // if there are multiple rows/columns, add one for totals
+    (length > 1 ? 1 : 0)
+  );
 }
 
 function createRowSectionGetter({
@@ -214,7 +224,7 @@ function enumerate({ value, children }, path = []) {
 
 function getIndex(values, { valueColumns = [], depth = 0 } = {}) {
   if (values.length === 0) {
-    if (valueColumns.length > 1 || depth === 0) {
+    if (valueColumns.length > 1 || (depth === 0 && valueColumns.length > 0)) {
       // if we have multiple value columns include their column names
       const colNames = valueColumns.map(col => ({
         value: col.display_name,

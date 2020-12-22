@@ -17,11 +17,14 @@ import * as Urls from "metabase/lib/urls";
 import { color, darken, lighten } from "metabase/lib/colors";
 
 import Icon, { IconWrapper } from "metabase/components/Icon";
+import EntityMenu from "metabase/components/EntityMenu";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
+import Modal from "metabase/components/Modal";
 
 import ProfileLink from "metabase/nav/components/ProfileLink";
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import { getPath, getContext, getUser } from "../selectors";
 import {
@@ -168,6 +171,8 @@ class SearchBar extends React.Component {
   }
 }
 
+const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
+
 @Database.loadList({
   // set this to false to prevent a potential spinner on the main nav
   loadingAndErrorWrapper: false,
@@ -177,6 +182,10 @@ class SearchBar extends React.Component {
   mapDispatchToProps,
 )
 export default class Navbar extends Component {
+  state = {
+    modal: null,
+  };
+
   static propTypes = {
     context: PropTypes.string.isRequired,
     path: PropTypes.string.isRequired,
@@ -187,6 +196,12 @@ export default class Navbar extends Component {
     return this.props.path.startsWith(path);
   }
 
+  setModal(modal) {
+    this.setState({ modal });
+    if (this._newPopover) {
+      this._newPopover.close();
+    }
+  }
   renderAdminNav() {
     return (
       // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
@@ -247,6 +262,7 @@ export default class Navbar extends Component {
 
           <ProfileLink {...this.props} />
         </div>
+        {this.renderModal()}
       </nav>
     );
   }
@@ -267,6 +283,7 @@ export default class Navbar extends Component {
             </Link>
           </li>
         </ul>
+        {this.renderModal()}
       </nav>
     );
   }
@@ -345,6 +362,26 @@ export default class Navbar extends Component {
               </Link>
             </IconWrapper>
           )}
+          <EntityMenu
+            tooltip={t`Create`}
+            className="hide sm-show mr1"
+            triggerIcon="add"
+            triggerProps={{ hover: NavHover }}
+            items={[
+              {
+                title: t`New dashboard`,
+                icon: `dashboard`,
+                action: () => this.setModal(MODAL_NEW_DASHBOARD),
+                event: `NavBar;New Dashboard Click;`,
+              },
+              {
+                title: t`New pulse`,
+                icon: `pulse`,
+                link: Urls.newPulse(),
+                event: `NavBar;New Pulse Click;`,
+              },
+            ]}
+          />
           {hasNativeWrite && (
             <IconWrapper
               className="relative hide sm-show mr1 overflow-hidden"
@@ -361,8 +398,27 @@ export default class Navbar extends Component {
           )}
           <ProfileLink {...this.props} />
         </Flex>
+        {this.renderModal()}
       </Flex>
     );
+  }
+
+  renderModal() {
+    const { modal } = this.state;
+    if (modal) {
+      return (
+        <Modal onClose={() => this.setState({ modal: null })}>
+          {modal === MODAL_NEW_DASHBOARD ? (
+            <CreateDashboardModal
+              createDashboard={this.props.createDashboard}
+              onClose={() => this.setState({ modal: null })}
+            />
+          ) : null}
+        </Modal>
+      );
+    } else {
+      return null;
+    }
   }
 
   render() {

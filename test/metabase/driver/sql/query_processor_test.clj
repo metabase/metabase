@@ -105,15 +105,15 @@
                                        (id :field "PUBLIC" "CHECKINS" "DATE")
                                        #t "2015-01-01T00:00:00.000-00:00"]}
                              (id :table-alias "source")]]
-                :left-join [[(id :table "PUBLIC" "VENUES") (bound-alias :source (id :table-alias "v"))]
+                :left-join [[(id :table "PUBLIC" "VENUES") (bound-alias "source" (id :table-alias "v"))]
                             [:=
-                             (bound-alias :source (id :field "source" "VENUE_ID"))
+                             (bound-alias "source" (id :field "source" "VENUE_ID"))
                              (bound-alias "v" (id :field "v" "ID"))]],
 
                 :group-by  [(bound-alias "v" (id :field "v" "NAME"))]
                 :where     [:and
                             [:like (bound-alias "v" (id :field "v" "NAME")) "F%"]
-                            [:> (bound-alias :source (id :field "source" "user_id")) 0]],
+                            [:> (bound-alias "source" (id :field "source" "user_id")) 0]],
                 :order-by  [[(bound-alias "v" (id :field "v" "NAME")) :asc]]}
                (#'sql.qp/mbql->honeysql
                 ::id-swap

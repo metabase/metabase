@@ -120,7 +120,7 @@ function syncDeprecatedColorFamilies() {
   normal.orange = colors["accent5"];
   normal.teal = colors["accent6"];
   normal.indigo = colors["accent7"];
-  normal.gray = colors["text-medium"];
+  normal.gray = colors["text-dark"];
   normal.grey1 = colors["text-light"];
   normal.grey2 = colors["text-medium"];
   normal.grey3 = colors["text-dark"];

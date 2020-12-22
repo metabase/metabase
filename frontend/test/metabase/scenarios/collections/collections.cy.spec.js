@@ -4,8 +4,14 @@ import {
   setupLocalHostEmail,
   signInAsNormalUser,
   modal,
+  signOut,
+  USERS,
+  USER_GROUPS,
 } from "__support__/cypress";
 // Ported from initial_collection.e2e.spec.js
+
+const { nocollection } = USERS;
+const { DATA_GROUP } = USER_GROUPS;
 
 // Z because the api lists them alphabetically by name, so it makes it easier to check
 const [admin, collection, sub_collection] = [
@@ -273,6 +279,89 @@ describe("scenarios > collection_defaults", () => {
 
         cy.visit("/collection/root");
         cy.findByText(dashboard_name);
+      });
+    });
+  });
+
+  describe("Collection related issues reproductions", () => {
+    beforeEach(() => {
+      restore();
+      signInAsAdmin();
+    });
+
+    it.skip("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
+      // Create Parent collection within `Our analytics`
+      cy.request("POST", "/api/collection", {
+        name: "Parent",
+        color: "#509EE3",
+        parent_id: null,
+      }).then(({ body: { id: PARENT_COLLECTION_ID } }) => {
+        // Create Child collection within Parent collection
+        cy.request("POST", "/api/collection", {
+          name: "Child",
+          color: "#509EE3",
+          parent_id: PARENT_COLLECTION_ID,
+        }).then(({ body: { id: CHILD_COLLECTION_ID } }) => {
+          // Fetch collection permission graph
+          cy.request("GET", "/api/collection/graph").then(
+            ({ body: { groups, revision } }) => {
+              // Give `Data` group permission to "curate" Child collection only
+              // Access to everything else is revoked by default - that's why we chose `Data` group
+              groups[DATA_GROUP][CHILD_COLLECTION_ID] = "write";
+
+              // We're chaining these 2 requestes in order to match shema (passing it from GET to PUT)
+              // Similar to what we did in `sandboxes.cy.spec.js` with the permission graph
+              cy.request("PUT", "/api/collection/graph", {
+                // Pass previously mutated `groups` object
+                groups,
+                revision,
+              });
+            },
+          );
+        });
+      });
+
+      signOut();
+      cy.log("**--Sign in as `nocollection` user--**");
+      cy.request("POST", "/api/session", nocollection);
+
+      cy.visit("/");
+      cy.findByText("Child");
+      cy.findByText("Browse all items").click();
+      cy.findByText("Child");
+    });
+
+    it.skip("sub-collection should be available in save and move modals (#14122)", () => {
+      const COLLECTION = "14122C";
+      // Create Parent collection within `Our analytics`
+      cy.request("POST", "/api/collection", {
+        name: COLLECTION,
+        color: "#509EE3",
+        parent_id: 1,
+      });
+      cy.visit("/collection/root");
+      cy.get("[class*=CollectionSidebar]").as("sidebar");
+
+      openDropdownFor("Your personal collection");
+      cy.findByText(COLLECTION);
+      cy.get("@sidebar")
+        .contains("Our analytics")
+        .click();
+
+      openEllipsisMenuFor("Orders");
+      cy.findByText("Move this item").click();
+
+      modal().within(() => {
+        cy.findByText("My personal collection")
+          .parent()
+          .find(".Icon-chevronright")
+          .click();
+
+        cy.findByText(COLLECTION).click();
+        cy.findByText("Move")
+          .closest(".Button")
+          .should("not.be.disabled")
+          .click();
       });
     });
   });

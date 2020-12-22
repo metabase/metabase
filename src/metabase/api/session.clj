@@ -60,14 +60,7 @@
   [session-type, user :- CreateSessionUserInfo]
   ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
   (when-not (public-settings/enable-password-login)
-    (throw (UnsupportedOperationException. (str (tru "Password login is disabled for this instance.")))))
-  ((get-method create-session! :sso) session-type user))
-
-
-(s/defmethod create-session! :password
-  [session-type, user :- CreateSessionUserInfo]
-  ;; this is actually the same as `create-session!` for `:sso` for CE. Resist the urge to refactor this multimethod
-  ;; out impl is a little different in EE.
+    (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
   ((get-method create-session! :sso) session-type user))
 
 

@@ -5,6 +5,7 @@
              [test :refer :all]]
             [metabase
              [models :refer [Card]]
+             [query-processor :as qp]
              [test :as mt]
              [util :as u]]
             [metabase.mbql.schema :as mbql.s]
@@ -24,11 +25,25 @@
    :type     :query
    :query    (assoc inner-query :source-metadata nil)})
 
+(defn- default-result-with-inner-query
+  ([inner-query]
+   (default-result-with-inner-query inner-query ::infer))
+
+  ([inner-query metadata]
+   (let [outer-query {:database (mt/id)
+                      :type     :query
+                      :query    inner-query}]
+     (assoc-in outer-query [:query :source-metadata] (not-empty (mt/derecordize
+                                                                 (if (= metadata ::infer)
+                                                                   (qp/query->expected-cols outer-query)
+                                                                   metadata)))))))
+
 (deftest resolve-mbql-queries-test
   (testing "make sure that the `resolve-card-id-source-tables` middleware correctly resolves MBQL queries"
     (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
       (is (= (assoc (default-result-with-inner-query
-                     {:source-query {:source-table (mt/id :venues)}})
+                     {:source-query {:source-table (mt/id :venues)}}
+                     (qp/query->expected-cols (mt/mbql-query venues)))
                     :info {:card-id (u/get-id card)})
              (resolve-card-id-source-tables
               (wrap-inner-query
@@ -38,7 +53,8 @@
         (is (= (assoc (default-result-with-inner-query
                        {:aggregation  [[:count]]
                         :breakout     [[:field-literal "price" :type/Integer]]
-                        :source-query {:source-table (mt/id :venues)}})
+                        :source-query {:source-table (mt/id :venues)}}
+                       (qp/query->expected-cols (mt/mbql-query :venues)))
                       :info {:card-id (u/get-id card)})
                (resolve-card-id-source-tables
                 (wrap-inner-query
@@ -50,7 +66,8 @@
       (testing "with filters"
         (is (= (assoc (default-result-with-inner-query
                        {:source-query {:source-table (mt/id :checkins)}
-                        :filter       [:between [:field-literal "date" :type/Date] "2015-01-01" "2015-02-01"]})
+                        :filter       [:between [:field-literal "date" :type/Date] "2015-01-01" "2015-02-01"]}
+                       (qp/query->expected-cols (mt/mbql-query :checkins)))
                       :info {:card-id (u/get-id card)})
                (resolve-card-id-source-tables
                 (wrap-inner-query
@@ -67,7 +84,8 @@
       (is (= (assoc (default-result-with-inner-query
                      {:aggregation  [[:count]]
                       :breakout     [[:field-literal "price" :type/Integer]]
-                      :source-query {:native (format "SELECT * FROM %s" (mt/format-name "venues"))}})
+                      :source-query {:native (format "SELECT * FROM %s" (mt/format-name "venues"))}}
+                     nil)
                     :info {:card-id (u/get-id card)})
              (resolve-card-id-source-tables
               (wrap-inner-query
@@ -83,13 +101,17 @@
                     Card [card-2 {:dataset_query {:database mbql.s/saved-questions-virtual-database-id
                                                   :type     :query
                                                   :query    {:source-table (str "card__" (u/get-id card-1)), :limit 50}}}]]
-      (is (= (assoc (default-result-with-inner-query
-                     {:limit        25
-                      :source-query {:limit           50
-                                     :source-query    {:source-table (mt/id :venues)
-                                                       :limit        100}
-                                     :source-metadata nil}})
-                    :info {:card-id (u/get-id card-2)})
+      (is (= (-> (default-result-with-inner-query
+                  {:limit        25
+                   :source-query {:limit           50
+                                  :source-query    {:source-table (mt/id :venues)
+                                                    :limit        100}
+                                  :source-metadata nil}}
+                  (for [col (qp/query->expected-cols (mt/mbql-query :venues))]
+                    (assoc col :field_ref [:field-literal (:name col) (:base_type col)])))
+                 (assoc-in [:query :source-query :source-metadata]
+                           (mt/derecordize (qp/query->expected-cols (mt/mbql-query :venues))))
+                 (assoc :info {:card-id (u/get-id card-2)}))
              (resolve-card-id-source-tables
               (wrap-inner-query
                {:source-table (str "card__" (u/get-id card-2)), :limit 25})))))))
@@ -99,7 +121,6 @@
 ;;; |                                                   JOINS 2.0                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;
 (deftest joins-test
   (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query categories {:limit 100})
                                      :result_metadata [{:name         "name"
@@ -155,7 +176,11 @@
                            :source-query    {:source-query    {:source-table $$categories :limit 100}
                                              :source-metadata [{:name "name", :display_name "Card Name", :base_type :type/Text}]
                                              :limit           200}
-                           :source-metadata nil}]})
+                           :source-metadata [{:name         "name"
+                                              :display_name "Card Name"
+                                              :base_type    :type/Text
+                                              :field_ref    [:field-literal "name" :type/Text]
+                                               :source       :fields}]}]})
                (resolve-card-id-source-tables
                 (mt/mbql-query venues
                   {:joins [{:source-table (str "card__" card-2-id)
@@ -237,7 +262,7 @@
       (let [query (assoc (mt/mbql-query nil {:source-table (format "card__%d" card-id)})
                          :info {:card-id Integer/MAX_VALUE})]
         (is (= (assoc (mt/mbql-query nil {:source-query    {:source-table (mt/id :venues)}
-                                          :source-metadata nil})
+                                          :source-metadata (mt/derecordize (qp/query->expected-cols (mt/mbql-query :venues)))})
                       :info {:card-id Integer/MAX_VALUE})
                (resolve-card-id-source-tables query)))))))
 

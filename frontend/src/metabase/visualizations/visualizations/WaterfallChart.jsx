@@ -41,7 +41,7 @@ export default class WaterfallChart extends LineAreaBarChart {
       section: t`Display`,
       props: { title: t`Total color` },
       widget: "color",
-      default: color("accent7"),
+      default: color("text-dark"),
       getHidden: (series, vizSettings) =>
         vizSettings["waterfall.show_total"] !== true,
       readDependencies: ["waterfall.show_total"],

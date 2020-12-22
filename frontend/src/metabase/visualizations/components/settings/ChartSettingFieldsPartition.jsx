@@ -3,8 +3,20 @@ import cx from "classnames";
 import { t } from "ttag";
 import { DragSource, DropTarget } from "react-dnd";
 import _ from "underscore";
+import styled from "styled-components";
+import colors, { lighten } from "metabase/lib/colors";
 
+import Label from "metabase/components/type/Label";
 import Grabber from "metabase/components/Grabber";
+
+const ColumnDragger = styled.div`
+  padding: 12px 14px;
+  box-shadow: 0 2px 3px ${lighten(colors["text-dark"], 1.5)};
+  &:hover {
+    box-shadow: 0 2px 5px ${lighten(colors["text-dark"], 1.3)};
+    transition: all 300ms linear;
+  }
+`;
 
 class ChartSettingFieldsPartition extends React.Component {
   constructor(props) {
@@ -82,7 +94,7 @@ class Partition extends React.Component {
     } = this.props;
     return connectDropTarget(
       <div className={className}>
-        <h4 className="mb2">{title}</h4>
+        <Label color="medium">{title}</Label>
         {columns.length === 0 ? (
           <EmptyPartition
             columnFilter={columnFilter}
@@ -134,7 +146,9 @@ class Partition extends React.Component {
 )
 class EmptyPartition extends React.Component {
   render() {
-    return this.props.connectDropTarget(<div>{t`Drag fields here`}</div>);
+    return this.props.connectDropTarget(
+      <div className="p2 text-centered bg-light rounded text-medium">{t`Drag fields here`}</div>,
+    );
   }
 }
 
@@ -208,14 +222,16 @@ class Column extends React.Component {
     } = this.props;
     return connectDropTarget(
       connectDragSource(
-        <div
-          className={cx(
-            "text-dark p1 mb1 bordered rounded dropshadow text-bold flex justify-between",
-            { disabled: isDragging },
-          )}
-        >
-          {column.display_name}
-          <Grabber style={{ width: 10 }} />
+        <div>
+          <ColumnDragger
+            className={cx(
+              "text-dark mb1 bordered rounded cursor-grab text-bold flex justify-between",
+              { disabled: isDragging },
+            )}
+          >
+            {column.display_name}
+            <Grabber style={{ width: 10 }} />
+          </ColumnDragger>
         </div>,
       ),
     );

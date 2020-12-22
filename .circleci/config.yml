@@ -570,6 +570,25 @@ jobs:
                 command: ./bin/i18n/build-translation-resources
                 no_output_timeout: 2m
 
+  check-migrations:
+    executor:
+      metabase-ci
+    steps:
+      - attach-workspace
+      - create-checksum-file:
+          filename: .MIGRATIONS-CHECKSUM
+          find-args: resources/migrations -type f -name '*.yaml'
+      - create-checksum-file:
+          filename: .MIGRATIONS-LINTER-CHECKSUMS
+          find-args: bin/lint-migrations-file -type f -name '*.clj' -or -name 'deps.edn'
+      - run-on-change:
+          cache-key: check-migrations-{{ checksum ".MIGRATIONS-CHECKSUM" }}-{{ checksum ".MIGRATIONS-LINTER-CHECKSUMS" }}
+          steps:
+            - run:
+                name: Verify Liquibase Migrations
+                command: ./bin/lint-migrations-file.sh
+                no_output_timeout: 10m
+
 
 ########################################################################################################################
 #                                                       BACKEND                                                        #
@@ -734,6 +753,11 @@ jobs:
                 name: Run release script tests
                 command: |
                   cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
+                no_output_timeout: 10m
+            - run:
+                name: Run Liquibase migrations linter tests
+                command: |
+                  cd /home/circleci/metabase/metabase/bin/lint-migrations-file && clojure -M:test
                 no_output_timeout: 10m
 
 
@@ -1047,6 +1071,10 @@ workflows:
       - verify-i18n-files:
           requires:
             - fe-deps
+
+      - check-migrations:
+          requires:
+            - checkout
 
       - be-deps:
           requires:

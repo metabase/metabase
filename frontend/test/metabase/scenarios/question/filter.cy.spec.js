@@ -11,8 +11,10 @@ import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 const { ORDERS, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > question > filter", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it.skip("should load needed data (metabase#12985)", () => {
     // Save a Question
@@ -221,6 +223,183 @@ describe("scenarios > question > filter", () => {
       cy.log("**Reported failing on v0.35.4**");
       cy.log(`Error message: **Column 'source.${CE_NAME}' not found;**`);
       cy.findAllByText("Gizmo");
+    });
+  });
+
+  it.skip("should not preserve cleared filter with the default value on refresh (metabase#13960)", () => {
+    cy.log("**--1. Create a question--**");
+
+    cy.request("POST", "/api/card", {
+      name: "13960",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field-id", PRODUCTS.CATEGORY]],
+        },
+        database: 1,
+      },
+      display: "pie",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.log("**--2. Create a dashboard--**");
+
+      cy.request("POST", "/api/dashboard", {
+        name: "13960D",
+      }).then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.log(
+          "**--3. Add filters to the dashboard and set the default value to the first one--**",
+        );
+
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          name: "13960D",
+          parameters: [
+            {
+              name: "Category",
+              slug: "category",
+              id: "c32a49e1",
+              type: "category",
+              default: ["Doohickey"],
+            },
+            { name: "ID", slug: "id", id: "f2bf003c", type: "id" },
+          ],
+        });
+
+        cy.log("**--4. Add question to the dashboard--**");
+
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          cy.log("**--5. Connect the filters to the card--**");
+
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 10,
+                sizeY: 10,
+                series: [],
+                visualization_settings: {},
+                parameter_mappings: [
+                  {
+                    parameter_id: "c32a49e1",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+                  },
+                  {
+                    parameter_id: "f2bf003c",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", PRODUCTS.ID]],
+                  },
+                ],
+              },
+            ],
+          });
+        });
+        cy.server();
+        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+
+        cy.wait("@cardQuery");
+        cy.location("search").should("eq", "?category=Doohickey");
+
+        // Remove default filter (category)
+        cy.get("fieldset .Icon-close").click();
+
+        cy.url().should("not.include", "?category=Doohickey");
+
+        // Set filter value to the `ID`
+        cy.get("fieldset")
+          .contains(/ID/i)
+          .click();
+        cy.findByPlaceholderText("Enter an ID").type("1");
+        cy.findByText("Add filter")
+          .closest("button")
+          .should("not.be.disabled")
+          .click();
+
+        cy.location("search").should("eq", "?id=1");
+
+        cy.reload();
+
+        cy.findByText("13960");
+        cy.findAllByText("Doohickey").should("not.exist");
+        // TODO: depending on how this issue will be fixed, the next assertion might need to be updated
+        cy.location("search").should("eq", "?id=1");
+      });
+    });
+  });
+
+  it.skip("should clear default filter value in native questions (metabase#13961)", () => {
+    const QUESTION_NAME = "13961";
+    const [CATEGORY_FILTER, ID_FILTER] = [
+      { name: "category", display_name: "Category", type: "dimension" },
+      { name: "prodid", display_name: "ProdId", type: "number" },
+    ];
+
+    cy.request("POST", "/api/card", {
+      name: QUESTION_NAME,
+      dataset_query: {
+        type: "native",
+        native: {
+          query:
+            "SELECT * FROM PRODUCTS WHERE 1=1 AND {{category}} [[AND ID={{prodid}}]]",
+          "template-tags": {
+            [CATEGORY_FILTER.name]: {
+              id: "00315d5e-4a41-99da-1a41-e5254dacff9d",
+              name: CATEGORY_FILTER.name,
+              "display-name": CATEGORY_FILTER.display_name,
+              type: CATEGORY_FILTER.type,
+              default: "Doohickey",
+              dimension: ["field-id", PRODUCTS.CATEGORY],
+              "widget-type": "category",
+            },
+            [ID_FILTER.name]: {
+              id: "4775bccc-e82a-4069-fc6b-2acc90aadb8b",
+              name: ID_FILTER.name,
+              "display-name": ID_FILTER.display_name,
+              type: ID_FILTER.type,
+              default: null,
+            },
+          },
+        },
+        database: 1,
+      },
+      display: "table",
+      visualization_settings: {},
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      cy.findByText(QUESTION_NAME);
+      cy.findAllByText("Small Marble Shoes"); // Product ID 2, Doohickey
+
+      cy.location("search").should("eq", "?category=Doohickey");
+
+      // Remove default filter (category)
+      cy.get("fieldset .Icon-close").click();
+
+      cy.get(".Icon-play")
+        .first()
+        .should("be.visible")
+        .as("rerunQuestion");
+
+      cy.get("@rerunQuestion").click();
+      cy.url().should("not.include", "?category=Doohickey");
+
+      // Add value `1` to the ID filter
+      cy.findByPlaceholderText(ID_FILTER.display_name).type("1");
+
+      cy.get("@rerunQuestion").click();
+
+      cy.log("**--Reported tested and failing on v0.34.3 through v0.37.3--**");
+      cy.log("**URL is correct at this point, but there are no results**");
+      cy.location("search").should("eq", `?${ID_FILTER.name}=1`);
+      cy.findByText("Rustic Paper Wallet"); // Product ID 1, Gizmo
     });
   });
 });
