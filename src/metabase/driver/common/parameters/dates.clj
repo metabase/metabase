@@ -10,7 +10,8 @@
              [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s])
-  (:import java.time.temporal.Temporal))
+  (:import java.time.LocalDateTime
+           java.time.temporal.Temporal))
 
 (s/defn date-type?
   "Is param type `:date` or some subtype like `:date/month-year`?"
@@ -38,12 +39,27 @@
 
 (defn- comparison-range
   ([t unit]
-   (comparison-range t t unit))
+   (comparison-range t t unit :day))
 
   ([start end unit]
+   (comparison-range start end unit :day))
+
+  ([start end unit resolution]
    (merge
-    (u.date/comparison-range start unit :>= {:resolution :day})
-    (u.date/comparison-range end   unit :<= {:resolution :day, :end :inclusive}))))
+    (u.date/comparison-range start unit :>= {:resolution resolution})
+    (u.date/comparison-range end   unit :<= {:resolution resolution, :end :inclusive}))))
+
+(defn- second-range
+  [start end]
+  (comparison-range start end :second :second))
+
+(defn- minute-range
+  [start end]
+  (comparison-range start end :minute :minute))
+
+(defn- hour-range
+  [start end]
+  (comparison-range start end :hour :hour))
 
 (defn- week-range [start end]
   (comparison-range start end :week))
@@ -65,7 +81,13 @@
      :end   (.atEndOfQuarter year-quarter)}))
 
 (def ^:private operations-by-date-unit
-  {"day"   {:unit-range day-range
+  {"second" {:unit-range second-range
+             :to-period t/seconds}
+   "minute" {:unit-range minute-range
+             :to-period t/minutes}
+   "hour" {:unit-range hour-range
+           :to-period t/hours}
+   "day"   {:unit-range day-range
             :to-period  t/days}
    "week"  {:unit-range week-range
             :to-period  t/weeks}
@@ -74,6 +96,12 @@
    "year"  {:unit-range year-range
             :to-period  t/years}})
 
+(defn- maybe-reduce-resolution [unit dt]
+  (if
+    (contains? #{"second" "minute" "hour"} unit)
+    dt
+    ; for units that are a day or longer, convert back to LocalDate
+    (.toLocalDate ^LocalDateTime dt)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              DATE STRING DECODERS                                              |
@@ -111,43 +139,48 @@
 (def ^:private relative-date-string-decoders
   [{:parser #(= % "today")
     :range  (fn [_ dt]
-              {:start dt,
-               :end   dt})
+              (let [dt-res (.toLocalDate ^LocalDateTime dt)]
+                {:start dt-res,
+                 :end   dt-res}))
     :filter (fn [_ field] [:= [:datetime-field field :day] [:relative-datetime :current]])}
 
    {:parser #(= % "yesterday")
     :range  (fn [_ dt]
-              {:start (t/minus dt (t/days 1))
-               :end   (t/minus dt (t/days 1))})
+              (let [dt-res (.toLocalDate ^LocalDateTime dt)]
+                {:start (t/minus dt-res (t/days 1))
+                 :end   (t/minus dt-res (t/days 1))}))
     :filter (fn [_ field] [:= [:datetime-field field :day] [:relative-datetime -1 :day]])}
 
    ;; adding a tilde (~) at the end of a past<n><unit> filter means we should include the current day/etc.
    ;; e.g. past30days  = past 30 days, not including partial data for today ({:include-current false})
    ;;      past30days~ = past 30 days, *including* partial data for today   ({:include-current true})
-   {:parser (regex->parser #"past([0-9]+)(day|week|month|year)s(~?)", [:int-value :unit :include-current?])
+   {:parser (regex->parser #"past([0-9]+)(second|minute|hour|day|week|month|year)s(~?)", [:int-value :unit :include-current?])
     :range  (fn [{:keys [unit int-value unit-range to-period include-current?]} dt]
-              (unit-range (t/minus dt (to-period int-value))
-                          (t/minus dt (to-period (if (seq include-current?) 0 1)))))
+              (let [dt-res (maybe-reduce-resolution unit dt)]
+                (unit-range (t/minus dt-res (to-period int-value))
+                            (t/minus dt-res (to-period (if (seq include-current?) 0 1))))))
     :filter (fn [{:keys [unit int-value include-current?]} field]
               [:time-interval field (- int-value) (keyword unit) {:include-current (boolean (seq include-current?))}])}
 
-   {:parser (regex->parser #"next([0-9]+)(day|week|month|year)s(~?)" [:int-value :unit :include-current?])
+   {:parser (regex->parser #"next([0-9]+)(second|minute|hour|day|week|month|year)s(~?)" [:int-value :unit :include-current?])
     :range  (fn [{:keys [unit int-value unit-range to-period include-current?]} dt]
-              (unit-range (t/plus dt (to-period (if (seq include-current?) 0 1)))
-                          (t/plus dt (to-period int-value))))
+              (let [dt-res (maybe-reduce-resolution unit dt)]
+                (unit-range (t/plus dt-res (to-period (if (seq include-current?) 0 1)))
+                            (t/plus dt-res (to-period int-value)))))
     :filter (fn [{:keys [unit int-value]} field]
               [:time-interval field int-value (keyword unit)])}
 
    {:parser (regex->parser #"last(day|week|month|year)" [:unit])
     :range  (fn [{:keys [unit-range to-period]} dt]
-              (let [last-unit (t/minus dt (to-period 1))]
+              (let [last-unit (t/minus (.toLocalDate ^LocalDateTime dt) (to-period 1))]
                 (unit-range last-unit last-unit)))
     :filter (fn [{:keys [unit]} field]
               [:time-interval field :last (keyword unit)])}
 
    {:parser (regex->parser #"this(day|week|month|year)" [:unit])
     :range  (fn [{:keys [unit-range]} dt]
-              (unit-range dt dt))
+              (let [dt-adj (.toLocalDate ^LocalDateTime dt)]
+                (unit-range dt-adj dt-adj)))
     :filter (fn [{:keys [unit]} field]
               [:time-interval field :current (keyword unit)])}])
 
@@ -261,10 +294,10 @@
   ([date-string  :- s/Str, {:keys [inclusive-start? inclusive-end?]
                             :or   {inclusive-start? true, inclusive-end? true}}]
    (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}
-         today   (t/local-date)]
+         now (t/local-date-time)]
      ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
      ;; days depending on the user timezone
-     (or (->> (execute-decoders relative-date-string-decoders :range today date-string)
+     (or (->> (execute-decoders relative-date-string-decoders :range now date-string)
               (adjust-inclusive-range-if-needed options)
               (m/map-vals u.date/format))
          ;; Absolute date ranges don't need the time zone conversion because in SQL the date ranges are compared

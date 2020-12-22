@@ -14,6 +14,8 @@ import type {
 } from "metabase-types/types/Query";
 
 export const DATE_PERIODS: RelativeDatetimeUnit[] = [
+  "minute",
+  "hour",
   "day",
   "week",
   "month",
