@@ -234,8 +234,11 @@ exports[`Card should render "normal" correctly 1`] = `
 
 exports[`CheckBox should render "Default - Off" correctly 1`] = `
 <div
+  aria-checked={undefined}
   className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
+  onKeyPress={[Function]}
+  role="checkbox"
   style={
     Object {
       "backgroundColor": "white",
@@ -245,13 +248,17 @@ exports[`CheckBox should render "Default - Off" correctly 1`] = `
       "width": 16,
     }
   }
+  tabIndex="0"
 />
 `;
 
 exports[`CheckBox should render "Green" correctly 1`] = `
 <div
+  aria-checked={true}
   className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
+  onKeyPress={[Function]}
+  role="checkbox"
   style={
     Object {
       "backgroundColor": "#88BF4D",
@@ -261,6 +268,7 @@ exports[`CheckBox should render "Green" correctly 1`] = `
       "width": 16,
     }
   }
+  tabIndex="0"
 >
   <svg
     aria-label="check icon"
@@ -285,8 +293,11 @@ exports[`CheckBox should render "Green" correctly 1`] = `
 
 exports[`CheckBox should render "On - Default blue" correctly 1`] = `
 <div
+  aria-checked={true}
   className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
+  onKeyPress={[Function]}
+  role="checkbox"
   style={
     Object {
       "backgroundColor": "#509EE3",
@@ -296,6 +307,7 @@ exports[`CheckBox should render "On - Default blue" correctly 1`] = `
       "width": 16,
     }
   }
+  tabIndex="0"
 >
   <svg
     aria-label="check icon"
@@ -320,8 +332,11 @@ exports[`CheckBox should render "On - Default blue" correctly 1`] = `
 
 exports[`CheckBox should render "Purple" correctly 1`] = `
 <div
+  aria-checked={true}
   className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
+  onKeyPress={[Function]}
+  role="checkbox"
   style={
     Object {
       "backgroundColor": "#A989C5",
@@ -331,6 +346,7 @@ exports[`CheckBox should render "Purple" correctly 1`] = `
       "width": 16,
     }
   }
+  tabIndex="0"
 >
   <svg
     aria-label="check icon"
@@ -355,8 +371,11 @@ exports[`CheckBox should render "Purple" correctly 1`] = `
 
 exports[`CheckBox should render "Red" correctly 1`] = `
 <div
+  aria-checked={true}
   className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
+  onKeyPress={[Function]}
+  role="checkbox"
   style={
     Object {
       "backgroundColor": "#EF8C8C",
@@ -366,6 +385,7 @@ exports[`CheckBox should render "Red" correctly 1`] = `
       "width": 16,
     }
   }
+  tabIndex="0"
 >
   <svg
     aria-label="check icon"
@@ -390,8 +410,11 @@ exports[`CheckBox should render "Red" correctly 1`] = `
 
 exports[`CheckBox should render "Yellow" correctly 1`] = `
 <div
+  aria-checked={true}
   className="flex align-center justify-center cursor-pointer"
   onClick={[Function]}
+  onKeyPress={[Function]}
+  role="checkbox"
   style={
     Object {
       "backgroundColor": "#F9D45C",
@@ -401,6 +424,7 @@ exports[`CheckBox should render "Yellow" correctly 1`] = `
       "width": 16,
     }
   }
+  tabIndex="0"
 >
   <svg
     aria-label="check icon"
@@ -1284,8 +1308,11 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
   }
 >
   <div
+    aria-checked={true}
     className="flex align-center justify-center cursor-pointer"
     onClick={[Function]}
+    onKeyPress={[Function]}
+    role="checkbox"
     style={
       Object {
         "backgroundColor": "#A989C5",
@@ -1295,6 +1322,7 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
         "width": 16,
       }
     }
+    tabIndex="0"
   >
     <svg
       aria-label="check icon"
@@ -1316,8 +1344,11 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
     </svg>
   </div>
   <div
+    aria-checked={true}
     className="absolute flex align-center justify-center cursor-pointer"
     onClick={[Function]}
+    onKeyPress={[Function]}
+    role="checkbox"
     style={
       Object {
         "backgroundColor": "#A989C5",
@@ -1330,6 +1361,7 @@ exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
         "zIndex": -1,
       }
     }
+    tabIndex="0"
   />
 </div>
 `;
@@ -1344,8 +1376,11 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
   }
 >
   <div
+    aria-checked={true}
     className="flex align-center justify-center cursor-pointer"
     onClick={[Function]}
+    onKeyPress={[Function]}
+    role="checkbox"
     style={
       Object {
         "backgroundColor": "#509EE3",
@@ -1355,6 +1390,7 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
         "width": 16,
       }
     }
+    tabIndex="0"
   >
     <svg
       aria-label="check icon"
@@ -1376,8 +1412,11 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
     </svg>
   </div>
   <div
+    aria-checked={true}
     className="absolute flex align-center justify-center cursor-pointer"
     onClick={[Function]}
+    onKeyPress={[Function]}
+    role="checkbox"
     style={
       Object {
         "backgroundColor": "#509EE3",
@@ -1390,6 +1429,7 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
         "zIndex": -1,
       }
     }
+    tabIndex="0"
   />
 </div>
 `;
@@ -1404,8 +1444,11 @@ exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
   }
 >
   <div
+    aria-checked={undefined}
     className="flex align-center justify-center cursor-pointer"
     onClick={[Function]}
+    onKeyPress={[Function]}
+    role="checkbox"
     style={
       Object {
         "backgroundColor": "white",
@@ -1415,10 +1458,14 @@ exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
         "width": 16,
       }
     }
+    tabIndex="0"
   />
   <div
+    aria-checked={undefined}
     className="absolute flex align-center justify-center cursor-pointer"
     onClick={[Function]}
+    onKeyPress={[Function]}
+    role="checkbox"
     style={
       Object {
         "backgroundColor": "white",
@@ -1431,6 +1478,7 @@ exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
         "zIndex": -1,
       }
     }
+    tabIndex="0"
   />
 </div>
 `;
