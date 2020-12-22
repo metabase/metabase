@@ -223,8 +223,10 @@ export default class PivotTable extends Component {
                     })}
                   >
                     <Ellipsified>
-                      {" "}
-                      {topIndexFormatters[index](value)}
+                      {index < topIndexFormatters.length
+                        ? topIndexFormatters[index](value)
+                        : value // Metric names don't have formatters
+                      }
                     </Ellipsified>
                   </div>
                 ))}
@@ -291,7 +293,7 @@ export default class PivotTable extends Component {
             {showRowSubtotals && (
               <Cell
                 value={t`Totals for ${leftIndexFormatters[0](
-                  leftIndex[index][0][0],
+                  leftIndex[index][0][0].value,
                 )}`}
                 isSubtotal
                 style={{
