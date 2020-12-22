@@ -87,8 +87,18 @@ export function multiLevelPivot(
     }
   }
 
-  const valueFormatters = valueColumnIndexes.map(index => value =>
-    formatValue(value, { column: columns[index] }),
+  // pivot tables have a lot of repeated values, so we use memoized formatters for each column
+  const [valueFormatters, topIndexFormatters, leftIndexFormatters] = [
+    valueColumnIndexes,
+    columnColumnIndexes,
+    rowColumnIndexes,
+  ].map(indexes =>
+    indexes.map(index =>
+      _.memoize(
+        value => formatValue(value, { column: columns[index] }),
+        value => [value, index].join(),
+      ),
+    ),
   );
 
   const valueColumns = valueColumnIndexes.map(index => columns[index]);
@@ -100,6 +110,8 @@ export function multiLevelPivot(
   return {
     topIndex,
     leftIndex,
+    topIndexFormatters,
+    leftIndexFormatters,
     columnCount,
     rowCount,
     getRowSection: createRowSectionGetter({
@@ -148,7 +160,7 @@ function createRowSectionGetter({
       ),
     ).map(value => ({ ...value, isSubtotal: true }));
 
-  return (columnIndex, rowIndex) => {
+  const getter = (columnIndex, rowIndex) => {
     const rows =
       rowIndex >= rowColumnTree.length
         ? [[]]
@@ -212,6 +224,7 @@ function createRowSectionGetter({
       )
       .concat(subtotalRows);
   };
+  return _.memoize(getter, (i1, i2) => [i1, i2].join());
 }
 
 function enumerate({ value, children }, path = []) {
@@ -235,11 +248,12 @@ function getIndex(values, { valueColumns = [], depth = 0 } = {}) {
     return [];
   }
   return values.map(({ value, children }) => {
-    const foo = _.zip(
+    const lowerLayers = _.zip(
       ...getIndex(children, { valueColumns, depth: depth + 1 }),
     ).map(a => a.flat());
-    const span = foo.length === 0 ? 1 : foo[foo.length - 1].length;
-    return [[{ value, span }], ...foo];
+    const span =
+      lowerLayers.length === 0 ? 1 : lowerLayers[lowerLayers.length - 1].length;
+    return [[{ value, span }], ...lowerLayers];
   });
 }
 
