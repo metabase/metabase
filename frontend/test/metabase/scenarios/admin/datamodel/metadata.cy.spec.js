@@ -7,8 +7,10 @@ import {
 } from "__support__/cypress";
 
 describe("scenarios > admin > datamodel > metadata", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    signInAsAdmin();
+  });
 
   it("should correctly show remapped column value", () => {
     // go directly to Data Model page for Sample Dataset
