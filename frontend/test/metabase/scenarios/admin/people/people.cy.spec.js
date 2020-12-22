@@ -77,5 +77,27 @@ describe("scenarios > admin > people", () => {
       cy.findByText("Create").click();
       cy.contains("Email address already in use.");
     });
+
+    // Migrated from `frontend/test/metabase/admin/people/containers/EditUserModal.integ.spec.js`
+    it("should edit existing user details", () => {
+      const NEW_NAME = "John";
+
+      cy.visit("/admin/people");
+      cy.findByText(`${normal.first_name} ${normal.last_name}`)
+        .closest("tr")
+        .within(() => {
+          cy.get(".Icon-ellipsis").click();
+        });
+      cy.findByText("Edit user").click();
+      cy.findByDisplayValue(normal.first_name)
+        .click()
+        .clear()
+        .type(NEW_NAME);
+      cy.findByText("Update")
+        .closest(".Button")
+        .should("not.be.disabled")
+        .click();
+      cy.findByText(`${NEW_NAME} ${normal.last_name}`);
+    });
   });
 });
